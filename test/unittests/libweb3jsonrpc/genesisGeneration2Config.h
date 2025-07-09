@@ -887,7 +887,7 @@ static std::string const c_genesisGeneration2ConfigString = std::string(R"(
             "infoHttpRpcPort": 9574,
             "bindIP": "0.0.0.0",
             "logLevel": "info",
-            "logLevelConfig": "info",)" +
+            "logLevelConfig": "info",)" ) +
 #ifndef MIRAGE
             std::string( R"(
             "imaMessageProxySChain": "0xd2AAa00100000000000000000000000000000000",
@@ -972,6 +972,6 @@ static std::string const c_genesisGeneration2ConfigString = std::string(R"(
             ]
     }
 }
-)");
+)" );
 
 #endif // GENESISGENERATION2CONFIG_H

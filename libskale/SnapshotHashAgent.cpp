@@ -261,8 +261,8 @@ std::tuple< dev::h256, libff::alt_bn128_G1, libff::alt_bn128_G2 > SnapshotHashAg
         libff::alt_bn128_G2 publicKey;
         if ( urlToDownloadSnapshotFrom_.empty() ) {
 #ifdef MIRAGE
-            auto _nodeID = chainParams_.nodeInfo.id;
-            const auto& nodes = chainParams_.sChain.currentGroups.back().nodes;
+            auto _nodeID = chainParams_.getSelfNodeId();
+            const auto& nodes = chainParams_.getSchainNodes();
             auto blsPublicKey =
                 chainParams_.getNodeBLSPublicKeyInCurrentCommittee( _nodeID, blockTimestamp );
             publicKey.X.c0 = libff::alt_bn128_Fq( blsPublicKey[0].c_str() );
