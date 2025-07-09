@@ -644,7 +644,13 @@ void TransactionBase::checkAndValidateBITETransaction() const {
 
     RLP rlpEncodedBITETxn;
     try {
-        rlpEncodedBITETxn = RLP( m_data );
+        try {
+            rlpEncodedBITETxn = RLP( m_data );
+        } catch ( ... ) {
+            BOOST_THROW_EXCEPTION(
+                InvalidBITETransaction() << errinfo_comment(
+                    std::string( "BITE transaction's data must be RLP encoded" ) ) );
+        }
 
         if ( !rlpEncodedBITETxn.isList() )
             BOOST_THROW_EXCEPTION(
@@ -660,7 +666,7 @@ void TransactionBase::checkAndValidateBITETransaction() const {
             BOOST_THROW_EXCEPTION(
                 BITETransactionTooShort()
                 << errinfo_comment( std::string( "BITE transaction's data is too short: expected 2 "
-                                                 "elements to be in BITE payload, got" ) +
+                                                 "elements to be in BITE payload, got " ) +
                                     std::to_string( biteTxnRlpList.size() ) ) );
 
         // extract epochId
@@ -681,7 +687,7 @@ void TransactionBase::checkAndValidateBITETransaction() const {
                 BITETransactionTooShort() << errinfo_comment(
                     std::string( "BITE transaction's data is invalid: wrong encrypted "
                                  "data size: expected at least " ) +
-                    std::to_string( BITE_CIPHERTEXT_MIN_LEN ) + std::string( ", got" ) +
+                    std::to_string( BITE_CIPHERTEXT_MIN_LEN ) + std::string( ", got " ) +
                     std::to_string( encryptedBITEData.size() ) ) );
 
         try {
@@ -699,7 +705,7 @@ void TransactionBase::checkAndValidateBITETransaction() const {
         } catch ( libBLS::ThresholdUtils::IsNotWellFormed& ex ) {
             BOOST_THROW_EXCEPTION(
                 InvalidBITETransaction() << errinfo_comment(
-                    std::string( "BITE transaction's data is invalid" ) + ex.what() ) );
+                    std::string( "BITE transaction's data is invalid: " ) + ex.what() ) );
         }
     } catch ( const Exception& _e ) {
         LOG( m_loggerDebug ) << std::string( "invalid BITE data format: " )
