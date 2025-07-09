@@ -404,7 +404,7 @@ public:
     static uint64_t howMany() { return Counter< TransactionBase >::howMany(); }
 
 protected:
-    mutable dev::Logger m_loggerError{ createLogger( VerbosityError, "TransactionBase" ) };
+    mutable dev::Logger m_loggerDebug{ createLogger( VerbosityDebug, "TransactionBase" ) };
 
     Type m_type = NullTransaction;  ///< Is this a contract-creation transaction or a message-call
     ///< transaction?

@@ -701,8 +701,8 @@ void TransactionBase::checkAndValidateBITETransaction() const {
                 InvalidBITETransaction() << errinfo_comment(
                     std::string( "BITE transaction's data is invalid" ) + ex.what() ) );
         }
-    } catch ( Exception& _e ) {
-        LOG( m_loggerError ) << std::string( "invalid BITE data format: " )
+    } catch ( const Exception& _e ) {
+        LOG( m_loggerDebug ) << std::string( "invalid BITE data format: " )
                              << std::string( _e.what() );
         throw;
     }
