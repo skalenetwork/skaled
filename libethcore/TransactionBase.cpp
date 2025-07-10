@@ -698,7 +698,6 @@ void TransactionBase::checkAndValidateBITETransaction() const {
         try {
             // check that ciphertext is valid
             libBLS::Ciphertext ciphertext = libBLS::Ciphertext::fromBytes( encryptedBITEData );
-            ciphertext.validate();
 
             // validate encrypted AES key
             libBLS::CipheredKey cipheredkey = ciphertext.key;
