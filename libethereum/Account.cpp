@@ -90,8 +90,8 @@ PrecompiledContract createPrecompiledContract( js::mObject const& _precompiled )
         unsigned base = toUnsigned( l.at( "base" ) );
         unsigned word = toUnsigned( l.at( "word" ) );
 
+#ifndef MIRAGE
         h160Set allowedAddresses;
-
         auto restrictAccessIt = _precompiled.find( c_restrictAccess );
         if ( restrictAccessIt != _precompiled.end() ) {
             auto& obj = restrictAccessIt->second;
@@ -110,9 +110,13 @@ PrecompiledContract createPrecompiledContract( js::mObject const& _precompiled )
                        << "! It should be array!\n";
             }
         }  // restrictAccessIt
-
+#endif
         return PrecompiledContract(
-            base, word, PrecompiledRegistrar::executor( n ), startingBlock, allowedAddresses );
+            base, word, PrecompiledRegistrar::executor( n ), startingBlock,
+#ifndef MIRAGE
+            allowedAddresses
+#endif
+);
     } catch ( PricerNotFound const& ) {
         cwarn << "Couldn't create a precompiled contract account. Missing a pricer called:" << n;
         throw;
