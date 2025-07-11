@@ -112,9 +112,9 @@ PrecompiledContract createPrecompiledContract( js::mObject const& _precompiled )
         }  // restrictAccessIt
 #endif
         return PrecompiledContract(
-            base, word, PrecompiledRegistrar::executor( n ), startingBlock,
+            base, word, PrecompiledRegistrar::executor( n ), startingBlock
 #ifndef MIRAGE
-            allowedAddresses
+            , allowedAddresses
 #endif
 );
     } catch ( PricerNotFound const& ) {
