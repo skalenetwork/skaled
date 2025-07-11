@@ -1149,8 +1149,8 @@ h256 Client::importTransaction( Transaction const& _t, TransactionBroadcast _txO
         bc().number() ? this->blockInfo( bc().currentHash() ) : bc().genesis(), state,
         chainParams(), 0, gasBidPrice, chainParams().isMultiTransactionModeEnabled() );
 
-    // invalid BITE transactions should not be added to txn queue
 #ifdef BITE
+    // invalid BITE transactions should not be added to txn queue
     // only validate in production setup
     if ( !chainParams().isTestSignaturesEnabled() )
         _t.checkAndValidateBITETransaction();
