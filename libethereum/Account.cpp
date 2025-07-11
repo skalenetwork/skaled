@@ -111,12 +111,12 @@ PrecompiledContract createPrecompiledContract( js::mObject const& _precompiled )
             }
         }  // restrictAccessIt
 #endif
-        return PrecompiledContract(
-            base, word, PrecompiledRegistrar::executor( n ), startingBlock
+        return PrecompiledContract( base, word, PrecompiledRegistrar::executor( n ), startingBlock
 #ifndef MIRAGE
-            , allowedAddresses
+            ,
+            allowedAddresses
 #endif
-);
+        );
     } catch ( PricerNotFound const& ) {
         cwarn << "Couldn't create a precompiled contract account. Missing a pricer called:" << n;
         throw;
