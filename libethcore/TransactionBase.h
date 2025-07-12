@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include <libdevcore/Log.h>
 #include <libdevcore/RLP.h>
 #include <libdevcore/SHA3.h>
 #include <libdevcrypto/Common.h>
@@ -408,6 +409,8 @@ public:
     static uint64_t howMany() { return Counter< TransactionBase >::howMany(); }
 
 protected:
+    mutable dev::Logger m_loggerDebug{ createLogger( VerbosityDebug, "TransactionBase" ) };
+
     Type m_type = NullTransaction;  ///< Is this a contract-creation transaction or a message-call
     ///< transaction?
     boost::optional< uint64_t > m_chainId;  ///< EIP155 value for calculating transaction hash
