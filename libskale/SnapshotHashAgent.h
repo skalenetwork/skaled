@@ -100,7 +100,7 @@ private:
         const std::string& url, unsigned blockNumber
 #ifdef MIRAGE
         ,
-        uint64_t blockTimestamp
+        uint64_t blockTimestamp, int64_t nodeId = -1
 #endif
     );
     std::pair< dev::h256, libff::alt_bn128_G1 > votedHash_;

@@ -223,7 +223,7 @@ std::tuple< dev::h256, libff::alt_bn128_G1, libff::alt_bn128_G2 > SnapshotHashAg
     const std::string& url, unsigned blockNumber
 #ifdef MIRAGE
     ,
-    uint64_t blockTimestamp
+    uint64_t blockTimestamp, int64_t nodeId
 #endif
 ) {
     jsonrpc::HttpClient* jsonRpcClient = new jsonrpc::HttpClient( url );
@@ -261,10 +261,15 @@ std::tuple< dev::h256, libff::alt_bn128_G1, libff::alt_bn128_G2 > SnapshotHashAg
         libff::alt_bn128_G2 publicKey;
         if ( urlToDownloadSnapshotFrom_.empty() ) {
 #ifdef MIRAGE
-            auto _nodeID = chainParams_.getSelfNodeId();
-            const auto& nodes = chainParams_.getSchainNodes();
+            if ( nodeId == -1 ) {
+                LOG( m_loggerError )
+                    << "WARNING "
+                    << "nodeId is not set while urlToDownloadSnapshotFrom_ is empty";
+                delete jsonRpcClient;
+                return {};
+            }
             auto blsPublicKey =
-                chainParams_.getNodeBLSPublicKeyInCurrentCommittee( _nodeID, blockTimestamp );
+                chainParams_.getNodeBLSPublicKeyInCurrentCommittee( nodeId, blockTimestamp );
             publicKey.X.c0 = libff::alt_bn128_Fq( blsPublicKey[0].c_str() );
             publicKey.X.c1 = libff::alt_bn128_Fq( blsPublicKey[1].c_str() );
             publicKey.Y.c0 = libff::alt_bn128_Fq( blsPublicKey[2].c_str() );
@@ -324,7 +329,8 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom( un
                     auto snapshotData = askNodeForHash( nodeUrl, blockNumber
 #ifdef MIRAGE
                         ,
-                        blockTimestamp
+                        blockTimestamp,
+                        static_cast< int64_t >( this->chainParams_.getNodeByIndex( i ).id )
 #endif
                     );
                     if ( std::get< 0 >( snapshotData ).size > 0 ) {
