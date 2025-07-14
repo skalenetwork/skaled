@@ -75,6 +75,12 @@ class SkaleFace : public ServerInterface< SkaleFace > {
         ( void ) request;
         response = this->skale_getLatestSnapshotBlockNumberAndTimestamp();
     }
+
+    inline virtual void skale_getBLSPublicKeyI(
+        const Json::Value& request, Json::Value& response ) {
+        ( void ) request;
+        response = this->skale_getBLSPublicKey();
+    }
 #endif
 
     inline virtual void skale_getLatestBlockNumberI(
@@ -122,6 +128,7 @@ class SkaleFace : public ServerInterface< SkaleFace > {
     virtual std::string skale_getLatestSnapshotBlockNumber() = 0;
 #ifdef MIRAGE
     virtual std::string skale_getLatestSnapshotBlockNumberAndTimestamp() = 0;
+    virtual Json::Value skale_getBLSPublicKey() = 0;
 #endif
     virtual std::string skale_getLatestBlockNumber() = 0;
     virtual Json::Value skale_getDBUsage() = 0;

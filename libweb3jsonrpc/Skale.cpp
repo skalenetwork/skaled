@@ -372,6 +372,21 @@ std::string Skale::skale_getLatestSnapshotBlockNumberAndTimestamp() {
 
     return joResponse.dump();
 }
+
+Json::Value Skale::skale_getBLSPublicKey() {
+    try {
+        Json::Value response;
+        return response;
+    } catch ( Exception const& ) {
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+    } catch ( const std::exception& e ) {
+        throw jsonrpc::JsonRpcException( e.what() );
+    } catch ( ... ) {
+        BOOST_THROW_EXCEPTION(
+            jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
+    }
+}
+
 #endif
 
 Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
