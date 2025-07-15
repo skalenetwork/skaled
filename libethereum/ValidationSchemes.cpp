@@ -157,9 +157,7 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "infoWsRpcPort6", { { js::int_type }, JsonFieldPresence::Optional } },
             { "infoWssRpcPort", { { js::int_type }, JsonFieldPresence::Optional } },
             { "infoWssRpcPort6", { { js::int_type }, JsonFieldPresence::Optional } },
-#ifndef MIRAGE
             { "imaMonitoringPort", { { js::int_type }, JsonFieldPresence::Optional } },
-#endif
             { "emptyBlockIntervalMs", { { js::int_type }, JsonFieldPresence::Optional } },
             { "emptyBlockIntervalAfterCatchupMs",
                 { { js::int_type }, JsonFieldPresence::Optional } },
@@ -170,7 +168,6 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "wallets", { { js::obj_type }, JsonFieldPresence::Optional } },
 
             { "ecdsaKeyName", { { js::str_type }, JsonFieldPresence::Optional } },
-#ifndef MIRAGE
             { "verifyImaMessagesViaLogsSearch",
                 { { js::bool_type }, JsonFieldPresence::Optional } },
             { "verifyImaMessagesViaContractCall",
@@ -179,7 +176,6 @@ void validateConfigJson( js::mObject const& _obj ) {
                 { { js::bool_type }, JsonFieldPresence::Optional } },
             { "imaDebugSkipMessageProxyLogsSearch",
                 { { js::bool_type }, JsonFieldPresence::Optional } },
-#endif
             { "minCacheSize", { { js::int_type }, JsonFieldPresence::Optional } },
             { "maxCacheSize", { { js::int_type }, JsonFieldPresence::Optional } },
             { "collectionQueueSize", { { js::int_type }, JsonFieldPresence::Optional } },
@@ -219,7 +215,6 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "log-value-size-limit", { { js::int_type }, JsonFieldPresence::Optional } },
             { "log-json-string-limit", { { js::int_type }, JsonFieldPresence::Optional } },
             { "log-tx-params-limit", { { js::int_type }, JsonFieldPresence::Optional } },
-#ifndef MIRAGE
             { "no-ima-signing", { { js::bool_type }, JsonFieldPresence::Optional } },
             { "skale-manager", { { js::obj_type }, JsonFieldPresence::Optional } },
             { "imaMainNet", { { js::str_type }, JsonFieldPresence::Optional } },
@@ -227,7 +222,6 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "imaMessageProxyMainNet", { { js::str_type }, JsonFieldPresence::Optional } },
             { "imaCallerAddressSChain", { { js::str_type }, JsonFieldPresence::Optional } },
             { "imaCallerAddressMainNet", { { js::str_type }, JsonFieldPresence::Optional } },
-#endif
             { "syncNode", { { js::bool_type }, JsonFieldPresence::Optional } },
             { "archiveMode", { { js::bool_type }, JsonFieldPresence::Optional } },
             { "syncFromCatchup", { { js::bool_type }, JsonFieldPresence::Optional } },

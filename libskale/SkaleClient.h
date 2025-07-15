@@ -41,7 +41,9 @@ public:
 
     Json::Value skale_getSnapshotSignature( unsigned blockNumber ) noexcept( false );
 
-#ifndef MIRAGE
+#ifdef MIRAGE
+    Json::Value skale_getBLSPublicKey() noexcept( false );
+#else
     Json::Value skale_imaInfo() noexcept( false );
 #endif
 

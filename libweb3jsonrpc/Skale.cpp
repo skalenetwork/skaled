@@ -357,20 +357,28 @@ std::string Skale::skale_getLatestSnapshotBlockNumber() {
 }
 
 #ifdef MIRAGE
-std::string Skale::skale_getLatestSnapshotBlockNumberAndTimestamp() {
-    nlohmann::json joResponse = nlohmann::json::object();
+Json::Value Skale::skale_getBLSPublicKey() {
+    try {
+        nlohmann::json publicKeyInfo = nlohmann::json::object();
+        const auto& blsPublicKey = m_client.chainParams().getSelfBlsPublicKey();
 
-    int64_t blockNumber = this->m_client.getLatestSnapshotBlockNumer();
-    if ( blockNumber > 0 ) {
-        joResponse["blockNumber"] = blockNumber;
-        auto blockHeader = this->m_client.blockInfo( blockNumber );
-        joResponse["timestamp"] = blockHeader.timestamp();
-    } else {
-        joResponse["blockNumber"] = "earliest";
-        joResponse["timestamp"] = 0;
+        publicKeyInfo["BLSPublicKey0"] = blsPublicKey.at( 0 );
+        publicKeyInfo["BLSPublicKey1"] = blsPublicKey.at( 1 );
+        publicKeyInfo["BLSPublicKey2"] = blsPublicKey.at( 2 );
+        publicKeyInfo["BLSPublicKey3"] = blsPublicKey.at( 3 );
+
+        std::string strResponse = publicKeyInfo.dump();
+        Json::Value response;
+        Json::Reader().parse( strResponse, response );
+        return response;
+    } catch ( Exception const& ) {
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+    } catch ( const std::exception& e ) {
+        throw jsonrpc::JsonRpcException( e.what() );
+    } catch ( ... ) {
+        BOOST_THROW_EXCEPTION(
+            jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
-
-    return joResponse.dump();
 }
 #endif
 
