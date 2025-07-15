@@ -681,9 +681,8 @@ void TransactionBase::checkAndValidateBITETransaction( uint64_t _currentEpochId 
                     std::string( "BITE transaction's data is invalid: epochId must be an int" ) ) );
         uint64_t epochIdFromTxn = biteTxnRlpList[0].toInt< uint64_t >();
         if ( epochIdFromTxn != _currentEpochId )
-            BOOST_THROW_EXCEPTION(
-                InvalidBITETransaction() << errinfo_comment(
-                    std::string( "BITE transaction's data is invalid: wrong epochId" ) ) );
+            BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment( std::string(
+                                       "BITE transaction's data is invalid: wrong epochId" ) ) );
 
         // Extract encrypted BITE data:
         // encrypted AES key + encrypted data
