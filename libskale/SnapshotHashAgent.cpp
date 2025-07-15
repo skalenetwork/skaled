@@ -261,21 +261,10 @@ std::tuple< dev::h256, libff::alt_bn128_G1, libff::alt_bn128_G2 > SnapshotHashAg
         libff::alt_bn128_G2 publicKey;
         if ( urlToDownloadSnapshotFrom_.empty() ) {
 #ifdef MIRAGE
-            if ( nodeId == -1 ) {
-                LOG( m_loggerError )
-                    << "WARNING "
-                    << "nodeId is not set while urlToDownloadSnapshotFrom_ is empty";
-                delete jsonRpcClient;
-                return {};
-            }
-            auto blsPublicKey =
-                chainParams_.getNodeBLSPublicKeyInCurrentCommittee( nodeId, blockTimestamp );
-            publicKey.X.c0 = libff::alt_bn128_Fq( blsPublicKey[0].c_str() );
-            publicKey.X.c1 = libff::alt_bn128_Fq( blsPublicKey[1].c_str() );
-            publicKey.Y.c0 = libff::alt_bn128_Fq( blsPublicKey[2].c_str() );
-            publicKey.Y.c1 = libff::alt_bn128_Fq( blsPublicKey[3].c_str() );
+            Json::Value joPublicKeyResponse = skaleClient.skale_getBLSPublicKey();
 #else
             Json::Value joPublicKeyResponse = skaleClient.skale_imaInfo();
+#endif
             publicKey.X.c0 =
                 libff::alt_bn128_Fq( joPublicKeyResponse["BLSPublicKey0"].asCString() );
             publicKey.X.c1 =
@@ -284,7 +273,6 @@ std::tuple< dev::h256, libff::alt_bn128_G1, libff::alt_bn128_G2 > SnapshotHashAg
                 libff::alt_bn128_Fq( joPublicKeyResponse["BLSPublicKey2"].asCString() );
             publicKey.Y.c1 =
                 libff::alt_bn128_Fq( joPublicKeyResponse["BLSPublicKey3"].asCString() );
-#endif
 
 
             publicKey.Z = libff::alt_bn128_Fq2::one();
