@@ -357,22 +357,6 @@ std::string Skale::skale_getLatestSnapshotBlockNumber() {
 }
 
 #ifdef MIRAGE
-std::string Skale::skale_getLatestSnapshotBlockNumberAndTimestamp() {
-    nlohmann::json joResponse = nlohmann::json::object();
-
-    int64_t blockNumber = this->m_client.getLatestSnapshotBlockNumer();
-    if ( blockNumber > 0 ) {
-        joResponse["blockNumber"] = blockNumber;
-        auto blockHeader = this->m_client.blockInfo( blockNumber );
-        joResponse["timestamp"] = blockHeader.timestamp();
-    } else {
-        joResponse["blockNumber"] = "earliest";
-        joResponse["timestamp"] = 0;
-    }
-
-    return joResponse.dump();
-}
-
 Json::Value Skale::skale_getBLSPublicKey() {
     try {
         nlohmann::json publicKeyInfo = nlohmann::json::object();
@@ -396,7 +380,6 @@ Json::Value Skale::skale_getBLSPublicKey() {
             jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
 }
-
 #endif
 
 Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {

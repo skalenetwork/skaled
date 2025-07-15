@@ -221,10 +221,6 @@ bool SnapshotHashAgent::voteForHash() {
 
 std::tuple< dev::h256, libff::alt_bn128_G1, libff::alt_bn128_G2 > SnapshotHashAgent::askNodeForHash(
     const std::string& url, unsigned blockNumber
-#ifdef MIRAGE
-    ,
-    uint64_t blockTimestamp, int64_t nodeId
-#endif
 ) {
     jsonrpc::HttpClient* jsonRpcClient = new jsonrpc::HttpClient( url );
     SkaleClient skaleClient( *jsonRpcClient );
@@ -287,12 +283,7 @@ std::tuple< dev::h256, libff::alt_bn128_G1, libff::alt_bn128_G2 > SnapshotHashAg
     }
 }
 
-std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom( unsigned blockNumber
-#ifdef MIRAGE
-    ,
-    uint64_t blockTimestamp
-#endif
-) {
+std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom( unsigned blockNumber ) {
     libff::init_alt_bn128_params();
     std::vector< std::thread > threads;
 
@@ -302,25 +293,14 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom( un
                 continue;
             }
 
-            threads.push_back( std::thread( [this, i, blockNumber
-#ifdef MIRAGE
-                                                ,
-                                                blockTimestamp
-#endif
-            ]() {
+            threads.push_back( std::thread( [this, i, blockNumber]() {
                 try {
                     std::string nodeUrl = "http://" + this->chainParams_.getNodeByIndex( i ).ip +
                                           ':' +
                                           ( this->chainParams_.getNodeByIndex( i ).port + 3 )
                                               .convert_to< std::string >();
 
-                    auto snapshotData = askNodeForHash( nodeUrl, blockNumber
-#ifdef MIRAGE
-                        ,
-                        blockTimestamp,
-                        static_cast< int64_t >( this->chainParams_.getNodeByIndex( i ).id )
-#endif
-                    );
+                    auto snapshotData = askNodeForHash( nodeUrl, blockNumber );
                     if ( std::get< 0 >( snapshotData ).size > 0 ) {
                         const std::lock_guard< std::mutex > lock( this->hashesMutex );
 
@@ -341,12 +321,7 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom( un
             thr.join();
         }
     } else {
-        auto snapshotData = askNodeForHash( urlToDownloadSnapshotFrom_, blockNumber
-#ifdef MIRAGE
-            ,
-            blockTimestamp
-#endif
-        );
+        auto snapshotData = askNodeForHash( urlToDownloadSnapshotFrom_, blockNumber );
         this->votedHash_ = { std::get< 0 >( snapshotData ), std::get< 1 >( snapshotData ) };
         return { urlToDownloadSnapshotFrom_ };
     }

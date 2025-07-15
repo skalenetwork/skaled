@@ -73,7 +73,6 @@ public:
     Json::Value skale_getSnapshotSignature( unsigned blockNumber ) override;
     std::string skale_getLatestSnapshotBlockNumber() override;
 #ifdef MIRAGE
-    std::string skale_getLatestSnapshotBlockNumberAndTimestamp() override;
     Json::Value skale_getBLSPublicKey() override;
 #endif
     std::string skale_getLatestBlockNumber() override;

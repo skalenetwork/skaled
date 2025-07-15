@@ -871,23 +871,4 @@ Address ChainParams::getSChainNodeAddressByIndex( uint64_t _sChainIndex ) const 
     return nodeIterator->owner;
 }
 
-std::array< std::string, 4 > ChainParams::getNodeBLSPublicKeyInCurrentCommittee(
-    u256 _nodeID, uint64_t _blockTimestamp ) const {
-    uint64_t currentGroupIndex;
-    if ( _blockTimestamp > sChain.currentGroups[1].startTs ||
-         sChain.currentGroups[0].startTs == 0 ) {
-        currentGroupIndex = 1;
-    } else {
-        currentGroupIndex = 0;
-    }
-    const auto& nodes = sChain.currentGroups[currentGroupIndex].nodes;
-    auto has_node_id = [&_nodeID]( const sChainNode& node ) { return node.id == _nodeID; };
-    auto nodeIterator = find_if( nodes.begin(), nodes.end(), has_node_id );
-    if ( nodeIterator == nodes.end() ) {
-        std::string nodeIDStrRep = std::to_string( static_cast< unsigned >( _nodeID ) );
-        throw std::runtime_error( "No such nodeID - " + nodeIDStrRep + " in requested committee" );
-    }
-    return nodeIterator->blsPublicKey;
-}
-
 #endif
