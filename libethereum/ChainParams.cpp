@@ -520,7 +520,7 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
 
     s.nodes = s.currentGroups.back().nodes;
 
-    switchSyncMode();
+    switchSyncMode( s.nodes );
 #endif
 
     sChain = s;
@@ -858,7 +858,7 @@ void ChainParams::updateCurrentGroupIfNeeded( uint64_t _latestBlockTimestamp ) {
         LOG( m_loggerInfo ) << "Using group with startTs " << sChain.currentGroups[0].startTs;
         std::swap( sChain.currentGroups[0], sChain.currentGroups[1] );
         sChain.nodes = sChain.currentGroups[1].nodes;
-        switchSyncMode();
+        switchSyncMode( sChain.nodes );
     }
 }
 
@@ -885,8 +885,8 @@ bool ChainParams::isInCommittee( const std::vector< sChainNode >& _committee ) c
 // if a node is not in active committee
 // it should switch to sync mode
 // use it only after sChain.nodes was initialized / updated
-void ChainParams::switchSyncMode() {
-    if ( !isInCommittee( sChain.nodes ) ) {
+void ChainParams::switchSyncMode( const std::vector< sChainNode >& _nodes ) {
+    if ( !isInCommittee( _nodes ) ) {
         nodeInfo.syncNode = true;
     } else {
         nodeInfo.syncNode = false;

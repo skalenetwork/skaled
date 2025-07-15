@@ -222,7 +222,7 @@ private:
     mutable std::string originalJSON;
 
 #ifdef MIRAGE
-    void switchSyncMode();
+    void switchSyncMode( const std::vector< sChainNode >& _nodes );
 
     std::vector< u256 > getNodeIdsForCommittee();
 
