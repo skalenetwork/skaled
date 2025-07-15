@@ -175,8 +175,8 @@ public:
             &dev::rpc::SkaleFace::oracle_checkResultI );
 #else
         this->bindAndAddMethod( jsonrpc::Procedure( "skale_getBLSPublicKey",
-            jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, NULL ),
-        &dev::rpc::SkaleFace::skale_getBLSPublicKeyI );
+                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, NULL ),
+            &dev::rpc::SkaleFace::skale_getBLSPublicKeyI );
 #endif
 #ifdef BITE
         this->bindAndAddMethod( jsonrpc::Procedure( "bite_getCommonPublicKey",
