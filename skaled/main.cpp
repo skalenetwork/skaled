@@ -358,7 +358,8 @@ unsigned getBlockToDownladSnapshot( const std::string& nodeUrl ) {
 }
 
 std::pair< std::vector< std::string >, std::pair< dev::h256, libff::alt_bn128_G1 > >
-voteForSnapshotHash( std::unique_ptr< SnapshotHashAgent >& snapshotHashAgent, unsigned blockNumber ) {
+voteForSnapshotHash(
+    std::unique_ptr< SnapshotHashAgent >& snapshotHashAgent, unsigned blockNumber ) {
     static Logger loggerInfo{ createLogger( VerbosityInfo, "voteForSnapshotHash" ) };
 
     std::pair< dev::h256, libff::alt_bn128_G1 > votedHash;
@@ -492,7 +493,8 @@ bool downloadSnapshotFromUrl( std::shared_ptr< SnapshotManager >& snapshotManage
     libff::init_alt_bn128_params();
     std::pair< dev::h256, libff::alt_bn128_G1 > votedHash;
     std::vector< std::string > listUrlsToDownload;
-    std::tie( listUrlsToDownload, votedHash ) = voteForSnapshotHash( snapshotHashAgent, blockNumber );
+    std::tie( listUrlsToDownload, votedHash ) =
+        voteForSnapshotHash( snapshotHashAgent, blockNumber );
 
     if ( listUrlsToDownload.empty() ) {
         if ( !isRegularSnapshot )

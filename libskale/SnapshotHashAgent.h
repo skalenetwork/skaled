@@ -92,8 +92,7 @@ private:
     bool voteForHash();
     void readPublicKeyFromConfig();
     std::tuple< dev::h256, libff::alt_bn128_G1, libff::alt_bn128_G2 > askNodeForHash(
-        const std::string& url, unsigned blockNumber
-    );
+        const std::string& url, unsigned blockNumber );
     std::pair< dev::h256, libff::alt_bn128_G1 > votedHash_;
 
     size_t verifyAllData() const;

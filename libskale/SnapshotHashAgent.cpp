@@ -220,8 +220,7 @@ bool SnapshotHashAgent::voteForHash() {
 }
 
 std::tuple< dev::h256, libff::alt_bn128_G1, libff::alt_bn128_G2 > SnapshotHashAgent::askNodeForHash(
-    const std::string& url, unsigned blockNumber
-) {
+    const std::string& url, unsigned blockNumber ) {
     jsonrpc::HttpClient* jsonRpcClient = new jsonrpc::HttpClient( url );
     SkaleClient skaleClient( *jsonRpcClient );
 
@@ -283,7 +282,8 @@ std::tuple< dev::h256, libff::alt_bn128_G1, libff::alt_bn128_G2 > SnapshotHashAg
     }
 }
 
-std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom( unsigned blockNumber ) {
+std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
+    unsigned blockNumber ) {
     libff::init_alt_bn128_params();
     std::vector< std::thread > threads;
 
