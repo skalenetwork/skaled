@@ -355,8 +355,8 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         chainParams->difficulty = chainParams->getMinimumDifficulty();
         chainParams->gasLimit = chainParams->getMaxGasLimit();
         chainParams->byzantiumForkBlock = 0;
-        chainParams->externalGasDifficulty = 1;
 #ifndef MIRAGE
+        chainParams->externalGasDifficulty = 1;
         chainParams->sChain.contractStorageLimit = 0x1122334455667788UL;
 #endif
         // add random extra data to randomize genesis hash and get random DB path,
@@ -372,6 +372,7 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
 
         mgr.reset( new SnapshotManager( chainParams, boost::filesystem::path( BTRFS_DIR_PATH ) ) );
 
+#ifndef MIRAGE
         boost::filesystem::create_directory(
             boost::filesystem::path( BTRFS_DIR_PATH ) / "filestorage" / "test_dir" );
 
@@ -408,6 +409,7 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
 
         newFileHash << fileHash;
 
+#endif
         // TODO creation order with dependencies, gasPricer etc..
         auto monitor = make_shared< InstanceMonitor >( "test" );
 

@@ -197,7 +197,11 @@ void Executive::verifyTransaction( Transaction const& _transaction, time_t _comm
     const bool _allowFuture ) {
     MICROPROFILE_SCOPEI( "Executive", "verifyTransaction", MP_GAINSBORO );
 
-    if ( !_transaction.hasExternalGas() && _transaction.gasPrice() < _gasPrice ) {
+    if (
+#ifndef MIRAGE
+        !_transaction.hasExternalGas() &&
+#endif
+        _transaction.gasPrice() < _gasPrice ) {
         BOOST_THROW_EXCEPTION(
             GasPriceTooLow() << RequirementError( static_cast< bigint >( _gasPrice ),
                 static_cast< bigint >( _transaction.gasPrice() ) ) );
@@ -225,9 +229,11 @@ void Executive::verifyTransaction( Transaction const& _transaction, time_t _comm
 
         // Avoid unaffordable transactions.
         bigint gasCost = static_cast< bigint >( _transaction.gas() * _transaction.gasPrice() );
+#ifndef MIRAGE
         if ( _transaction.hasExternalGas() ) {
             gasCost = 0;
         }
+#endif
         bigint totalCost = _transaction.value() + gasCost;
         auto sender_ballance = _state.balance( _transaction.sender() );
         if ( sender_ballance < totalCost ) {
@@ -266,12 +272,19 @@ void Executive::initialize( Transaction const& _transaction ) {
 bool Executive::execute() {
     // Entry point for a user-executed transaction.
 
+#ifdef MIRAGE
+    // Pay...
+    LOG( m_loggerTrace ) << "Paying " << formatBalance( m_gasCost ) << " from sender for gas ("
+                         << m_t.gas() << " gas at " << formatBalance( m_t.gasPrice() ) << ")";
+    m_s.subBalance( m_t.sender(), m_gasCost );
+#else
     if ( !m_t.hasExternalGas() ) {
         // Pay...
         LOG( m_loggerTrace ) << "Paying " << formatBalance( m_gasCost ) << " from sender for gas ("
                              << m_t.gas() << " gas at " << formatBalance( m_t.gasPrice() ) << ")";
         m_s.subBalance( m_t.sender(), m_gasCost );
     }
+#endif
 
     assert( m_t.gas() >= ( u256 ) m_baseGasRequired );
 
@@ -352,8 +365,15 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
             m_gas = ( u256 )( _p.gas - g );
             bytes output;
             bool success;
+#ifdef MIRAGE
+            tie( success, output ) =
+                m_chainParams.executePrecompiled( _p.codeAddress, _p.data, m_envInfo.number() );
+
+#else
             tie( success, output ) = m_chainParams.executePrecompiled(
                 _p.codeAddress, _p.data, m_envInfo.number(), m_s.fs().get() );
+#endif
+
             size_t outputSize = output.size();
             m_output = owning_bytes_ref{ std::move( output ), 0, outputSize };
             if ( !success ) {

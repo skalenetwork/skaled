@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include <libdevcore/Log.h>
 #include <libdevcore/RLP.h>
 #include <libdevcore/SHA3.h>
 #include <libdevcrypto/Common.h>
@@ -212,8 +213,10 @@ public:
     /// @returns the base fee and thus the implied exchange rate of ETH to GAS.
     u256 gasPrice() const;
 
+#ifndef MIRAGE
     /// @returns the non-PoW gas
     u256 nonPowGas() const;
+#endif
 
     /// @returns the total gas to convert, paid for from sender's account. Any unused gas gets
     /// refunded once the contract is ended.
@@ -323,6 +326,7 @@ protected:
 
     static bool isZeroSignature( u256 const& _r, u256 const& _s ) { return !_r && !_s; }
 
+#ifndef MIRAGE
     /*
      * this function is provided in order for aleth tests and utilities to compile.
      * In will never be called in skaled since in skaled TransactionBase objects are never
@@ -330,7 +334,9 @@ protected:
      *
      * The function always returns zero, which means no PoW.
      */
+
     virtual u256 getExternalGas() const { return 0; }
+#endif
 
     /// Clears the signature.
     void clearSignature() { m_vrs = SignatureStruct(); }
@@ -403,6 +409,8 @@ public:
     static uint64_t howMany() { return Counter< TransactionBase >::howMany(); }
 
 protected:
+    mutable dev::Logger m_loggerDebug{ createLogger( VerbosityDebug, "TransactionBase" ) };
+
     Type m_type = NullTransaction;  ///< Is this a contract-creation transaction or a message-call
     ///< transaction?
     boost::optional< uint64_t > m_chainId;  ///< EIP155 value for calculating transaction hash

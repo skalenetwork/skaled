@@ -140,7 +140,9 @@ void ChainParams::loadConfig( string const& _json, const boost::filesystem::path
     setOptionalU256Parameter( difficultyBoundDivisor, c_difficultyBoundDivisor );
     setOptionalU256Parameter( durationLimit, c_durationLimit );
     setOptionalU256Parameter( accountInitialFunds, c_accountInitialFunds );
+#ifndef MIRAGE
     setOptionalU256Parameter( externalGasDifficulty, c_externalGasDifficulty );
+#endif
 
     if ( params.count( c_chainID ) )
         chainID = uint64_t(
@@ -148,10 +150,13 @@ void ChainParams::loadConfig( string const& _json, const boost::filesystem::path
     if ( params.count( c_networkID ) )
         networkID =
             int( u256( fromBigEndian< u256 >( fromHex( params.at( c_networkID ).get_str() ) ) ) );
+
     allowFutureBlocks = params.count( c_allowFutureBlocks );
+#ifndef MIRAGE
     if ( externalGasDifficulty == 0 ) {
         externalGasDifficulty = -1;
     }
+#endif
 
     // genesis
     string genesisStr = json_spirit::write_string( obj[c_genesis], false );

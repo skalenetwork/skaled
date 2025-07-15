@@ -58,7 +58,11 @@ SnapshotManager::SnapshotManager( std::shared_ptr< const dev::eth::ChainParams >
     const fs::path& _dataDir, const std::string& _diffsDir )
     : chainParams( _chainParams ) {
     dataDir = _dataDir;
-    coreVolumes = { dev::eth::BlockChain::getChainDirName( *chainParams ), "filestorage",
+
+    coreVolumes = { dev::eth::BlockChain::getChainDirName( *chainParams ),
+#ifndef MIRAGE
+        "filestorage",
+#endif
         "prices_" + chainParams->getSelfNodeId().str() + ".db",
         "blocks_" + chainParams->getSelfNodeId().str() + ".db" };
 
@@ -556,6 +560,8 @@ void SnapshotManager::addLastPriceToHash( unsigned _blockNumber, secp256k1_sha25
     secp256k1_sha256_write( ctx, last_price_hash.data(), last_price_hash.size );
 }
 
+
+#ifndef MIRAGE
 void SnapshotManager::proceedRegularFile(
     const boost::filesystem::path& path, secp256k1_sha256_t* ctx, bool is_checking ) const {
     if ( path.extension() == "._hash" ) {
@@ -656,6 +662,7 @@ void SnapshotManager::proceedFileStorageDirectory( const boost::filesystem::path
     }
 }
 
+
 void SnapshotManager::computeFileStorageHash( const boost::filesystem::path& _fileSystemDir,
     secp256k1_sha256_t* ctx, bool is_checking ) const {
     if ( !boost::filesystem::exists( _fileSystemDir ) ) {
@@ -665,6 +672,7 @@ void SnapshotManager::computeFileStorageHash( const boost::filesystem::path& _fi
 
     this->proceedFileStorageDirectory( _fileSystemDir, ctx, is_checking );
 }
+#endif
 
 void SnapshotManager::computeAllVolumesHash(
     unsigned _blockNumber, secp256k1_sha256_t* ctx, bool is_checking ) const {
@@ -701,10 +709,11 @@ void SnapshotManager::computeAllVolumesHash(
         this->computeDatabaseHash( content, ctx );
     }
 
+#ifndef MIRAGE
     // filestorage
     this->computeFileStorageHash(
         this->snapshotsDir / std::to_string( _blockNumber ) / "filestorage", ctx, is_checking );
-
+#endif
     // if have prices and blocks
     if ( _blockNumber && allVolumes.size() > 3 ) {
         this->addLastPriceToHash( _blockNumber, ctx );

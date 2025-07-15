@@ -268,6 +268,7 @@ static void convertBytesToString(
     _out = std::string( ( char* ) byteFilename.data(), _stringLength );
 }
 
+#ifndef MIRAGE
 static size_t stat_compute_file_size( const char* _strFileName ) {
     std::ifstream file( _strFileName, ios::binary );
     file.exceptions( std::ifstream::failbit | std::ifstream::badbit );
@@ -594,6 +595,8 @@ ETH_REGISTER_FS_PRECOMPILED( calculateFileHash )
     bytes response = toBigEndian( code );
     return { false, response };
 }
+#endif
+
 
 ETH_REGISTER_PRECOMPILED( logTextMessage )( bytesConstRef _in ) {
     try {

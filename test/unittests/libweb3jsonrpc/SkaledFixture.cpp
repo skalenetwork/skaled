@@ -867,9 +867,11 @@ void SkaledFixture::sendSingleTransferOrBatch( u256 _amount, std::shared_ptr< Sk
             transaction.forceType2Fees( _gasPrice, _gasPrice );
         }
 
+#ifndef MIRAGE
         if (usePow) {
             calculateAndSetPowGas(transaction);
         }
+#endif
 
         transaction.sign( _from->getKey() );
         CHECK( transaction.chainId() );
@@ -1081,6 +1083,7 @@ unique_ptr< WebThreeStubClient > SkaledFixture::rpcClient() const {
     return rpcClient;
 }
 
+#ifndef MIRAGE
 void SkaledFixture::calculateAndSetPowGas( Transaction& _t ) const {
 
     for ( u256 i = 1;; i++ ) {
@@ -1096,6 +1099,7 @@ void SkaledFixture::calculateAndSetPowGas( Transaction& _t ) const {
         }
     }
 }
+#endif
 
 SkaledAccount::SkaledAccount( const Secret _key, const u256 _currentTransactionCountOnChain )
     : key( _key ), currentTransactionCountOnChain( _currentTransactionCountOnChain ) {

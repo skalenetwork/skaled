@@ -39,7 +39,9 @@ class SkaleHost;
 
 namespace skale {
 class State;
+#ifndef MIRAGE
 class OverlayFS;
+#endif
 }  // namespace skale
 
 using skale::State;
@@ -56,18 +58,32 @@ struct ChainOperationParams;
 // allow call both with overlayFS and without it
 class PrecompiledExecutor {
 public:
+#ifdef MIRAGE
+    std::pair< bool, bytes > operator()( bytesConstRef _in ) const { return proxy( _in ); }
+#else
     std::pair< bool, bytes > operator()(
         bytesConstRef _in, skale::OverlayFS* _overlayFS = nullptr ) const {
         return proxy( _in, _overlayFS );
     }
+#endif
     PrecompiledExecutor() {}
+#ifdef MIRAGE
+    PrecompiledExecutor(
+        const std::function< std::pair< bool, bytes >( bytesConstRef _in ) >& _func )
+        : proxy( _func ) {}
+#else
     PrecompiledExecutor( const std::function< std::pair< bool, bytes >(
             bytesConstRef _in, skale::OverlayFS* _overlayFS ) >& _func )
         : proxy( _func ) {}
+#endif
 
 private:
+#ifdef MIRAGE
+    std::function< std::pair< bool, bytes >( bytesConstRef _in ) > proxy;
+#else
     std::function< std::pair< bool, bytes >( bytesConstRef _in, skale::OverlayFS* _overlayFS ) >
         proxy;
+#endif
 };
 
 using PrecompiledPricer = std::function< bigint(
@@ -112,6 +128,16 @@ private:
     static PrecompiledRegistrar* s_this;
 };
 
+#ifdef MIRAGE
+#define ETH_REGISTER_PRECOMPILED( Name )                                                          \
+    static std::pair< bool, bytes > __eth_registerPrecompiledFunction##Name( bytesConstRef _in ); \
+    static PrecompiledExecutor __eth_registerPrecompiledFactory##Name =                           \
+        ::dev::eth::PrecompiledRegistrar::registerExecutor(                                       \
+            #Name, PrecompiledExecutor( []( bytesConstRef _in ) -> std::pair< bool, bytes > {     \
+                return __eth_registerPrecompiledFunction##Name( _in );                            \
+            } ) );                                                                                \
+    static std::pair< bool, bytes > __eth_registerPrecompiledFunction##Name
+#else
 // ignore _overlayFS param and call registered function with 1 parameter
 // TODO: unregister on unload with a static object.
 #define ETH_REGISTER_PRECOMPILED( Name )                                                          \
@@ -131,6 +157,7 @@ private:
         ::dev::eth::PrecompiledRegistrar::registerExecutor(                           \
             #Name, PrecompiledExecutor( &__eth_registerPrecompiledFunction##Name ) ); \
     static std::pair< bool, bytes > __eth_registerPrecompiledFunction##Name
+#endif
 
 #define ETH_REGISTER_PRECOMPILED_PRICER( Name )                                                  \
     static bigint __eth_registerPricerFunction##Name(                                            \

@@ -1003,8 +1003,10 @@ BOOST_AUTO_TEST_CASE( transactionDropReceive
 
     // 1st tx
     Transaction tx1 = fixture.tx_from_json( json );
+#ifndef MIRAGE
     tx1.checkOutExternalGas(
         client->chainParams(), client->latestBlock().info().timestamp(), client->number() );
+#endif
 
     // submit it!
     tq->import( tx1 );
@@ -1071,8 +1073,11 @@ BOOST_AUTO_TEST_CASE(
 
     // 1st tx
     Transaction tx1 = fixture.tx_from_json( json );
+
+#ifndef MIRAGE
     tx1.checkOutExternalGas(
         client->chainParams(), client->latestBlock().info().timestamp(), client->number() );
+#endif
 
     // submit it!
     tq->import( tx1 );
@@ -1136,8 +1141,11 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPrice
 
     // 1st tx
     Transaction tx1 = fixture.tx_from_json( json );
+
+#ifndef MIRAGE
     tx1.checkOutExternalGas(
         client->chainParams(), client->latestBlock().info().timestamp(), client->number() );
+#endif
 
     // submit it!
     tq->import( tx1 );
@@ -1209,8 +1217,11 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive
 
     // 1st tx
     Transaction tx1 = fixture.tx_from_json( json );
+
+#ifndef MIRAGE
     tx1.checkOutExternalGas(
         client->chainParams(), client->latestBlock().info().timestamp(), client->number() );
+#endif
 
     // receive it!
     skaleHost->receiveTransaction( toJS( tx1.toBytes() ) );
@@ -1431,9 +1442,9 @@ BOOST_AUTO_TEST_CASE( biteTransactions ) {
     libBLS::TEBase::initializeIfNecessary();
     auto messageToEncrypt = libBLS::ThresholdUtils::hexCStringToBytes( dataToEncrypt.c_str() );
     auto publicKeyBytes = libBLS::ThresholdUtils::G2ToBytes( libff::alt_bn128_G2::random_element() );
-    auto cyphertext = libBLS::ThresholdEncryption::encrypt( messageToEncrypt, publicKeyBytes );
+    auto ciphertext = libBLS::ThresholdEncryption::encrypt( messageToEncrypt, publicKeyBytes );
 
-    json["data"] = std::string( "0x" ) + libBLS::ThresholdUtils::bytesToHexString( cyphertext.toBytes() );
+    json["data"] = std::string( "0x" ) + libBLS::ThresholdUtils::bytesToHexString( ciphertext.toBytes() );
 
     ts = toTransactionSkeleton( json );
     ts = client->populateTransactionWithDefaults( ts );

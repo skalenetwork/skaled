@@ -1138,17 +1138,19 @@ h256 Client::importTransaction( Transaction const& _t, TransactionBroadcast _txO
     gasBidPrice = this->gasBidPrice();
 
 
+#ifndef MIRAGE
     // We need to check external gas under mutex to be sure about current block number
     // correctness
     const_cast< Transaction& >( _t ).checkOutExternalGas(
         chainParams(), bc().info().timestamp(), number() );
+#endif
 
     Executive::verifyTransaction( _t, bc().info().timestamp(),
         bc().number() ? this->blockInfo( bc().currentHash() ) : bc().genesis(), state,
         chainParams(), 0, gasBidPrice, chainParams().isMultiTransactionModeEnabled() );
 
-    // invalid BITE transactions should not be added to txn queue
 #ifdef BITE
+    // invalid BITE transactions should not be added to txn queue
     // only validate in production setup
     if ( !chainParams().isTestSignaturesEnabled() )
         _t.checkAndValidateBITETransaction();
@@ -1212,8 +1214,11 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
                 u256 gasPrice = _gasPrice == Invalid256 ? gasBidPrice() : _gasPrice;
                 Transaction t( _value, gasPrice, gasLimit, _dest, _data, nonce );
                 t.forceSender( _from );
+
                 t.forceChainId( chainParams().getChainId() );
+#ifndef MIRAGE
                 t.ignoreExternalGas();
+#endif
                 // if we are in a call, we add to the balance of the account
                 // value needed for the call to guaranteed pass
                 // geth does a similar thing, we need to check whether it is fully compatible with
@@ -1239,7 +1244,9 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
         Transaction t( _value, gasPrice, gasLimit, _dest, _data, nonce );
         t.forceSender( _from );
         t.forceChainId( chainParams().getChainId() );
+#ifndef MIRAGE
         t.ignoreExternalGas();
+#endif
         if ( _ff == FudgeFactor::Lenient )
             temp.mutableState().addBalance( _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
         ret = temp.execute( bc().lastBlockHashes(), t, skale::Permanence::Reverted );
@@ -1297,8 +1304,10 @@ Transaction Client::createTransactionForCallOrTraceCall( const Address& _from, c
     auto from = _from ? _from : ZeroAddress;
     t.forceSender( from );
     t.forceChainId( chainParams().getChainId() );
+#ifndef MIRAGE
     // call and traceCall do not use PoW
     t.ignoreExternalGas();
+#endif
     return t;
 }
 
@@ -1334,7 +1343,9 @@ Json::Value Client::traceBlock( BlockNumber _blockNumber, Json::Value const& _js
 #endif
             auto hashString = toHexPrefixed( tx.sha3() );
             transactionLog["txHash"] = hashString;
+#ifndef MIRAGE
             tx.checkOutExternalGas( chainParams(), bc().info().timestamp(), number() );
+#endif
             auto tracer =
                 std::make_shared< AlethStandardTrace >( tx, historicBlock.author(), traceOptions );
             auto executionResult =

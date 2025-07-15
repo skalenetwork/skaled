@@ -83,8 +83,7 @@ using namespace dev::test;
 static size_t rand_port = ( srand( time( nullptr ) ), 1024 + rand() % 64000 );
 
 #ifndef MIRAGE
-static std::string const c_genesisConfigString =
-    R"(
+static std::string const c_genesisConfigString = R"(
 {
     "sealEngine": "NoProof",
     "params": {
@@ -138,8 +137,9 @@ static std::string const c_genesisConfigString =
         "0000000000000000000000000000000000000001": { "precompiled": { "name": "ecrecover", "linear": { "base": 3000, "word": 0 } } },
         "0000000000000000000000000000000000000002": { "precompiled": { "name": "sha256", "linear": { "base": 60, "word": 12 } } },
         "0000000000000000000000000000000000000003": { "precompiled": { "name": "ripemd160", "linear": { "base": 600, "word": 120 } } },
-        "0000000000000000000000000000000000000004": { "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } } },
-        "0000000000000000000000000000000000000005": {
+        "0000000000000000000000000000000000000004": { "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } } },)" +
+#ifndef MIRAGE
+        R"( "0000000000000000000000000000000000000005": {
             "precompiled": {
                 "name": "createFile",
                 "linear": {
@@ -148,7 +148,9 @@ static std::string const c_genesisConfigString =
                 },
                 "restrictAccess": ["00000000000000000000000000000000000000AA", "692a70d2e424a56d2c6c27aa97d1a86395877b3a"]
             }
-        },)"
+        },)" +
+#endif
+
     /*
 pragma solidity ^0.4.25;
 contract Caller {
@@ -255,8 +257,7 @@ static std::string const c_genesisConfigString =
          "byzantiumForkBlock": "0x00",
          "constantinopleForkBlock": "0x00",
          "istanbulForkBlock": "0x00",
-         "skaleDisableChainIdCheck": true,
-         "externalGasDifficulty": "0x1"
+         "skaleDisableChainIdCheck": true
     },
     "genesis": {
         "author" : "0x2adc25665018aa1fe0e6bc666dac8fc2697ff9ba",
@@ -301,16 +302,7 @@ static std::string const c_genesisConfigString =
         "0000000000000000000000000000000000000002": { "precompiled": { "name": "sha256", "linear": { "base": 60, "word": 12 } } },
         "0000000000000000000000000000000000000003": { "precompiled": { "name": "ripemd160", "linear": { "base": 600, "word": 120 } } },
         "0000000000000000000000000000000000000004": { "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } } },
-        "0000000000000000000000000000000000000005": {
-            "precompiled": {
-                "name": "createFile",
-                "linear": {
-                    "base": 15,
-                    "word": 0
-                },
-                "restrictAccess": ["00000000000000000000000000000000000000AA", "692a70d2e424a56d2c6c27aa97d1a86395877b3a"]
-            }
-        },)"
+        )"
     /*
 pragma solidity ^0.4.25;
 contract Caller {
@@ -462,14 +454,16 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
                 chainParams->loadConfig( output );
             } else {
                 Json::Value ret;
+                Json::FastWriter fastWriter;
                 Json::Reader().parse( _config, ret );
 #ifndef MIRAGE
                 ret["skaleConfig"]["sChain"]["contractStorageLimit"] = 106874910;
                 ret["skaleConfig"]["sChain"]["contractStoragePatchTimestamp"] = 1000;
 #endif
-                Json::FastWriter fastWriter;
                 std::string output = fastWriter.write( ret );
                 chainParams->loadConfig( output );
+
+
                 // insecure schain owner(originator) private key
                 // address is 0x5C4e11842E8be09264dc1976943571d7Af6d00F9
                 coinbase = dev::KeyPair( dev::Secret(
@@ -487,8 +481,8 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             chainParams->EIP158ForkBlock = 0;
             chainParams->constantinopleForkBlock = 0;
             chainParams->istanbulForkBlock = 0;
-            chainParams->externalGasDifficulty = 1;
 #ifndef MIRAGE
+            chainParams->externalGasDifficulty = 1;
             chainParams->sChain.contractStorageLimit = 128;
 #endif
             // 615 + 1430 is experimentally-derived block size + average extras size
@@ -656,6 +650,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
     time_t push0PatchActivationTimestamp;
 };
 
+#ifndef MIRAGE
 struct RestrictedAddressFixture : public JsonRpcFixture {
     RestrictedAddressFixture( const std::string& _config = c_genesisConfigString )
         : JsonRpcFixture( _config ) {
@@ -678,6 +673,7 @@ struct RestrictedAddressFixture : public JsonRpcFixture {
     std::string data;
     boost::filesystem::path path;
 };
+#endif
 
 string fromAscii( string _s ) {
     bytes b = asBytes( _s );
@@ -688,16 +684,30 @@ string fromAscii( string _s ) {
 #ifdef BITE
 /// Helper functions
 
-std::string formEncryptedMessageMockup( const std::string& message, const std::string& toAddress ) {
+dev::bytes formEncryptedMessageMockup( const dev::bytes& message, const dev::Address& toAddress ) {
     libBLS::TEBase::initializeIfNecessary();
-    auto finalMessageToEncrypt = message + toAddress;
-    auto messageToEncrypt =
-        libBLS::ThresholdUtils::hexCStringToBytes( finalMessageToEncrypt.c_str() );
-    auto encryptedMessage = libBLS::ThresholdEncryption::mockupEncrypt( messageToEncrypt );
-    std::string epochId = "0000000000000000";
 
-    return std::string( "0x" ) + epochId +
-           libBLS::ThresholdUtils::bytesToHexString( encryptedMessage );
+    RLPStream biteDataRlp( 2 );
+
+    biteDataRlp << message;
+    biteDataRlp << ( dev::Address::Arith ) toAddress;
+
+    auto messageToEncrypt = biteDataRlp.out();
+    auto encryptedMessage = libBLS::ThresholdEncryption::mockupEncrypt( messageToEncrypt );
+
+    u256 epochId = 0;
+
+    RLPStream bitePayloadRlpList;
+
+    RLPStream bitePayloadRlp( 2 );
+
+    bitePayloadRlp << epochId;
+    bitePayloadRlp << encryptedMessage;
+
+    bitePayloadRlpList.appendList( bitePayloadRlp.out() );
+
+    auto rlpBytes = bitePayloadRlpList.out();
+    return dev::bytes( rlpBytes.begin(), rlpBytes.end() );
 }
 
 std::string formTransactionRlp( const JsonRpcFixture& fixture, const std::string& senderAddress,
@@ -719,7 +729,21 @@ std::string formTransactionRlp( const JsonRpcFixture& fixture, const std::string
     return dev::toHexPrefixed( tx.toBytes() );
 }
 
-#endif
+std::string formBITEPayloadRlp( u256 _epochId, const dev::bytes& _encryptedBITEData ) {
+    RLPStream bitePayloadRlpList;
+
+    RLPStream bitePayloadRlp( 2 );
+
+    bitePayloadRlp << _epochId;
+    bitePayloadRlp << _encryptedBITEData;
+
+    bitePayloadRlpList.appendList( bitePayloadRlp.out() );
+
+    auto rlpBytes = bitePayloadRlpList.out();
+    return dev::toHexPrefixed( rlpBytes );
+}
+
+#endif // BITE
 
 BOOST_AUTO_TEST_SUITE( JsonRpcSuite )
 
@@ -2463,11 +2487,11 @@ BOOST_AUTO_TEST_CASE( logs ) {
         }
         else {
             std::string addrWithout0x = contractAddress.substr( 2 );
-            std::string encryptedData = formEncryptedMessageMockup("", addrWithout0x);
+            dev::bytes encryptedData = formEncryptedMessageMockup( dev::bytes(), dev::Address( addrWithout0x ) );
             // account for the nonce 0 used for contract deployment
             size_t nonce = static_cast<size_t>(i + 1);
             std::string rlp = formTransactionRlp( fixture, t["from"].asString(),
-                encryptedData, nonce, addrWithout0x);
+                dev::toHex( encryptedData ), nonce, addrWithout0x);
             txHash = fixture.rpcClient->eth_sendRawTransaction( rlp );
         }
 #else
@@ -3488,12 +3512,11 @@ BOOST_AUTO_TEST_CASE( debugGetPatchTimestamps ) {
     }
 }
 
+#ifndef MIRAGE
 BOOST_AUTO_TEST_CASE( powTxnGasLimit ) {
     Json::Value configJson;
     Json::Reader().parse( c_genesisConfigString, configJson );
-#ifndef MIRAGE
     configJson["skaleConfig"]["sChain"]["powCheckPatchTimestamp"] = 1;
-#endif
     Json::FastWriter fastWriter;
     std::string customConfigFile = fastWriter.write( configJson );
     JsonRpcFixture fixture( customConfigFile, false, false, true, false );
@@ -3527,6 +3550,7 @@ BOOST_AUTO_TEST_CASE( powTxnGasLimit ) {
     BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendTransaction( txPOW2 ),
         jsonrpc::JsonRpcException );  // block gas limit reached
 }
+#endif
 
 BOOST_AUTO_TEST_CASE( EIP1898Calls ) {
     JsonRpcFixture fixture;
@@ -4620,8 +4644,7 @@ static std::string const c_BITEConfigString =
          "byzantiumForkBlock": "0x00",
          "constantinopleForkBlock": "0x00",
          "istanbulForkBlock": "0x00",
-         "skaleDisableChainIdCheck": true,
-         "externalGasDifficulty": "0x1"
+         "skaleDisableChainIdCheck": true
     },
     "genesis": {
         "author" : "0x2adc25665018aa1fe0e6bc666dac8fc2697ff9ba",
@@ -5022,7 +5045,7 @@ revert();
 BOOST_AUTO_TEST_CASE( getCommonPublicKey ) {
     JsonRpcFixture fixture( c_BITEConfigString, false, false, true );
 
-    auto blsPublicKey = fixture.rpcClient->skale_getCommonPublicKey();
+    auto blsPublicKey = fixture.rpcClient->bite_getCommonPublicKey();
 
     BOOST_REQUIRE( blsPublicKey.size() == 256 );
 }
@@ -5034,20 +5057,19 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     string senderAddress = toJS( fixture.coinbase.address() );
     size_t nonce = 0;
     std::string biteAddress = "0x" + std::string( BITE_ADDRESS_AS_STRING );
-    std::string epoch = "0x0000000000000000";
+    u256 epochId = 0;
 
     /// Normal valid BITE transaction -> should not throw
     std::string message =
         h256::random().hex() + std::string( "5EdF1e852fdD1B0Bc47C0307EF755C76f4B9c251" );
     auto messageBytes = libBLS::ThresholdUtils::hexCStringToBytes( message.c_str() );
-    auto blsPublicKey = fixture.rpcClient->skale_getCommonPublicKey();
+    auto blsPublicKey = fixture.rpcClient->bite_getCommonPublicKey();
 
     auto encryptedMessage =
         libBLS::ThresholdEncryption::encrypt( messageBytes, libBLS::TEPublicKey( blsPublicKey ) );
     auto encryptedBytes = encryptedMessage.toBytes();
-    std::string encryptedMessageHexa = libBLS::ThresholdUtils::bytesToHexString( encryptedBytes );
 
-    std::string dataField = epoch + encryptedMessageHexa;
+    auto dataField = formBITEPayloadRlp( epochId, encryptedBytes );
 
     auto validBITETransactionRlp =
         formTransactionRlp( fixture, senderAddress, dataField, nonce, biteAddress );
@@ -5069,34 +5091,44 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
         fixture.rpcClient->eth_sendRawTransaction( validNonBITETransactionRlp ) );
 
 
-    /// No data in the data field -> data is too short - should throw an exception
+    /// No data in the data field -> data is bad formatted - should throw an exception
     auto invalidBITETransactionRlp =
         formTransactionRlp( fixture, senderAddress, "", nonce, biteAddress );
     BOOST_REQUIRE_THROW(
         fixture.client->importTransaction( Transaction(
             dev::jsToBytes( invalidBITETransactionRlp ), CheckTransaction::None, false ) ),
-        dev::eth::BITETransactionTooShort );
+        dev::eth::InvalidBITETransaction );
     BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendRawTransaction( invalidBITETransactionRlp ),
         jsonrpc::JsonRpcException );
 
+    RLPStream tooShortRlp;
+
     /// Only epoch in data field -> data is too short - should throw an exception
-    dataField = epoch;
+    RLPStream epochRlp;
+    epochRlp.appendList( 1 );
+    epochRlp << epochId;
+    dev::bytes invalidTooShortBITETxnData = tooShortRlp.appendList( epochRlp.out() ).out();
     invalidBITETransactionRlp =
-        formTransactionRlp( fixture, senderAddress, dataField, nonce, biteAddress );
+        formTransactionRlp( fixture, senderAddress,
+                            dev::toHexPrefixed( invalidTooShortBITETxnData ), nonce, biteAddress );
     BOOST_REQUIRE_THROW(
         fixture.client->importTransaction( Transaction(
             dev::jsToBytes( invalidBITETransactionRlp ), CheckTransaction::None, false ) ),
         dev::eth::BITETransactionTooShort );
     BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendRawTransaction( invalidBITETransactionRlp ),
         jsonrpc::JsonRpcException );
+    tooShortRlp.clear();
 
     /// Only epoch + key -> no data - should throw an exception
-    dataField = epoch + encryptedMessageHexa;
-    auto epochSizeBytes = 8;
-    dataField = dataField.substr(
-        0, 2 * ( epochSizeBytes + libBLS::CipheredKey::CIPHERED_KEY_SIZE_BYTES ) );
+    encryptedMessage.data = std::make_shared< dev::bytes >();
+    RLPStream epochAndKeyRlp;
+    epochAndKeyRlp.appendList( 2 );
+    epochAndKeyRlp << epochId;
+    epochAndKeyRlp << encryptedMessage.toBytes();
+    invalidTooShortBITETxnData = tooShortRlp.appendList( epochAndKeyRlp.out() ).out();
     invalidBITETransactionRlp =
-        formTransactionRlp( fixture, senderAddress, dataField, nonce, biteAddress );
+        formTransactionRlp( fixture, senderAddress,
+                            dev::toHexPrefixed( invalidTooShortBITETxnData ), nonce, biteAddress );
     BOOST_REQUIRE_THROW(
         fixture.client->importTransaction( Transaction(
             dev::jsToBytes( invalidBITETransactionRlp ), CheckTransaction::None, false ) ),
@@ -5112,17 +5144,24 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     // overwrite key part
     std::copy( randomEncryptedKeyByteArray.begin(), randomEncryptedKeyByteArray.end(),
         spoiledMessageBytes.begin() );
-    auto spoiledMessageHexa = libBLS::ThresholdUtils::bytesToHexString( spoiledMessageBytes );
-    dataField = epoch + spoiledMessageHexa;
+
+    RLPStream spoiledBITETransactionDataRlp, spoiledBITEDataRlp;
+    spoiledBITEDataRlp.appendList( 2 );
+    spoiledBITEDataRlp << epochId;
+    spoiledBITEDataRlp << spoiledMessageBytes;
+    dev::bytes invalidBITETxnData =
+            spoiledBITETransactionDataRlp.appendList( spoiledBITEDataRlp.out() ).out();
 
     invalidBITETransactionRlp =
-        formTransactionRlp( fixture, senderAddress, dataField, nonce, biteAddress );
+        formTransactionRlp( fixture, senderAddress,
+                            dev::toHexPrefixed( invalidBITETxnData ), nonce, biteAddress );
     BOOST_REQUIRE_THROW(
         fixture.client->importTransaction( Transaction(
             dev::jsToBytes( invalidBITETransactionRlp ), CheckTransaction::None, false ) ),
         dev::eth::InvalidBITETransaction );
     BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendRawTransaction( invalidBITETransactionRlp ),
         jsonrpc::JsonRpcException );
+    spoiledBITEDataRlp.clear();
 
     /// Encrypted key is not well formed -> should throw exception
     randomEncryptedKeyObj.U.X.c0 = libff::alt_bn128_Fq::random_element();
@@ -5130,11 +5169,16 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     randomEncryptedKeyByteArray = randomEncryptedKeyObj.toBytes();
     std::copy( randomEncryptedKeyByteArray.begin(), randomEncryptedKeyByteArray.end(),
         spoiledMessageBytes.begin() );
-    spoiledMessageHexa = libBLS::ThresholdUtils::bytesToHexString( spoiledMessageBytes );
-    dataField = epoch + spoiledMessageHexa;
+
+    spoiledBITEDataRlp.appendList( 2 );
+    spoiledBITEDataRlp << epochId;
+    spoiledBITEDataRlp << spoiledMessageBytes;
+    invalidBITETxnData =
+            spoiledBITETransactionDataRlp.appendList( spoiledBITEDataRlp.out() ).out();
 
     invalidBITETransactionRlp =
-        formTransactionRlp( fixture, senderAddress, dataField, nonce, biteAddress );
+        formTransactionRlp( fixture, senderAddress,
+                            dev::toHexPrefixed( invalidBITETxnData ), nonce, biteAddress );
     BOOST_REQUIRE_THROW(
         fixture.client->importTransaction( Transaction(
             dev::jsToBytes( invalidBITETransactionRlp ), CheckTransaction::None, false ) ),
@@ -5156,11 +5200,13 @@ BOOST_AUTO_TEST_CASE( BITETransactionCouldNotBeDecrypted ) {
     BOOST_REQUIRE(
         balanceBeforeU256 == dev::u256( dev::bigint( "1000000000000000000000000000000" ) ) );
 
-    // data must have the destination address at the end
-    std::string dataPlusDestAddress =
-        h256::random().hex() + std::string( "7aa5e36aa15e93d10f4f26357c30f052dacdde5f" );
-    auto messageBytes = libBLS::ThresholdUtils::hexCStringToBytes( dataPlusDestAddress.c_str() );
-    auto blsPublicKey = fixture.rpcClient->skale_getCommonPublicKey();
+    // data must have the destination address and the original message
+    RLPStream biteDataRlp( 2 );
+    biteDataRlp << ( dev::h256::Arith ) h256::random();
+    biteDataRlp << ( dev::Address::Arith ) dev::Address( "0x7aa5e36aa15e93d10f4f26357c30f052dacdde5f" );
+
+    auto messageBytes = biteDataRlp.out();
+    auto blsPublicKey = fixture.rpcClient->bite_getCommonPublicKey();
 
     auto ciphertext =
         libBLS::ThresholdEncryption::encrypt( messageBytes, libBLS::TEPublicKey( blsPublicKey ) );
@@ -5176,11 +5222,21 @@ BOOST_AUTO_TEST_CASE( BITETransactionCouldNotBeDecrypted ) {
     auto invalidEncryptedData = libBLS::ThresholdUtils::bytesToHexString( ciphertextBytes );
 
     size_t nonce = 0;
-    std::string txnDataField =
-        std::string( "0x" ) + std::string( "0000000000000000" ) + invalidEncryptedData;
+    u256 epochId = 0;
+    RLPStream bitePayloadRlpList;
+
+    RLPStream bitePayloadRlp( 2 );
+
+    bitePayloadRlp << epochId;
+    bitePayloadRlp << ciphertextBytes;
+
+    bitePayloadRlpList.appendList( bitePayloadRlp.out() );
+
+    auto rlpBytes = bitePayloadRlpList.out();
     std::string biteAddress = "0x" + std::string( BITE_ADDRESS_AS_STRING );
     std::string txnRlp = formTransactionRlp(
-        fixture, "0x7aa5e36aa15e93d10f4f26357c30f052dacdde5f", txnDataField, nonce, biteAddress );
+        fixture, "0x7aa5e36aa15e93d10f4f26357c30f052dacdde5f", dev::toHexPrefixed( rlpBytes ),
+                nonce, biteAddress );
 
     Transaction t( dev::fromHex( txnRlp ), dev::eth::CheckTransaction::None );
     auto minGasRequired = t.baseGasRequired( fixture.client->evmSchedule() );
@@ -5195,7 +5251,7 @@ BOOST_AUTO_TEST_CASE( BITETransactionCouldNotBeDecrypted ) {
                    dev::toJS( balanceBeforeU256 - minGasRequired * dev::jsToU256( gasPrice ) ) );
 
     try {
-        fixture.rpcClient->skale_getDecryptedTransactionData( invalidTxnHash );
+        fixture.rpcClient->bite_getDecryptedTransactionData( invalidTxnHash );
     } catch ( const jsonrpc::JsonRpcException& ex ) {
         std::string errorMessage =
             "Transaction with provided hash does not have any decrypted data associated with it.";
@@ -5230,22 +5286,11 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     // ---- Legacy -----
     Json::Value legacyTx;
 
-    std::string originalToAddress = "5edf1e852fdd1b0bc47c0307ef755c76f4b9c251";
+    dev::Address originalToAddress( "0x5edf1e852fdd1b0bc47c0307ef755c76f4b9c251" );
     std::string plaintext =
-        "6057361d0000000000000000000000000000000000000000000000000000000000000001";
-    // data ciphered from a single run of formEncryptedMessageMockup( plaintext, originalToAddress )
-    // since it differs each run, and the RLP-encoded tx was built outside this test case (via an
-    // external script), we need to set this manually Note that the encryptedData includes the 'To'
-    // address already
-    std::string encryptedDataPlusToAddressLegacy =
-        "0x000000000000000018d21444c96b763ccc35cf6dc410692971732b7c116a85fad673107aed41ba1400000000"
-        "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
-        "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
-        "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
-        "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
-        "0000000000000000814006826ad9ec38349c065e694a4f2dc67a3a62c3ae57aaa8989f68665548f68451f96d7f"
-        "39f82149ee39b4e530a8c766fc5adb262d6a640bde99834b15e356dcc9300a37434506225749c4229031f99b8f"
-        "3c75d7e91ef8ca0f7140aee8b2c6806c9b6f98ae43fdf3141c489159412d326ed656";
+        "0x6057361d0000000000000000000000000000000000000000000000000000000000000001";
+    std::string encryptedDataPlusToAddressLegacy = dev::toHexPrefixed(
+                formEncryptedMessageMockup( dev::fromHex( plaintext ), originalToAddress ) );
 
     // signal BITE tx
     legacyTx["to"] = toJS( "0x" + std::string( BITE_ADDRESS_AS_STRING ) );
@@ -5271,16 +5316,16 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     BOOST_REQUIRE( legacyTxReceipt["status"].asString() == std::string( "0x1" ) );
     BOOST_REQUIRE(
         legacyTxReceipt["blockNumber"].asString() == fixture.rpcClient->eth_blockNumber() );
-    BOOST_REQUIRE( legacyTxReceipt["to"].asString() == "0x" + originalToAddress );
+    BOOST_REQUIRE( legacyTxReceipt["to"].asString() == "0x" + originalToAddress.hex() );
 
     auto legacyEncryptedResponse = fixture.rpcClient->eth_getTransactionByHash( legacyHash );
     BOOST_REQUIRE(
         legacyEncryptedResponse["input"].asString() == encryptedDataPlusToAddressLegacy );
 
     auto legacyDecryptedResponse =
-        fixture.rpcClient->skale_getDecryptedTransactionData( legacyHash );
-    BOOST_REQUIRE( legacyDecryptedResponse["data"] == "0x" + plaintext );
-    BOOST_REQUIRE( legacyDecryptedResponse["to"] == "0x" + originalToAddress );
+        fixture.rpcClient->bite_getDecryptedTransactionData( legacyHash );
+    BOOST_REQUIRE( legacyDecryptedResponse["data"] == plaintext );
+    BOOST_REQUIRE( legacyDecryptedResponse["to"] == "0x" + originalToAddress.hex() );
 
 
     // ---- Type1 tx -----
@@ -5295,17 +5340,13 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
         transaction1['data'] = call to SC
     */
     std::string originalToAddressType1 = "c868af52a6549c773082a334e5ae232e0ea3b513";
-    std::string encryptedDataPlusToAddressType1 =
-        "0x000000000000000031e9725012de5c9fb4bd9991373b7506e9aff33ce23ef77a3b7230e3178dd35e00000000"
-        "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
-        "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
-        "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
-        "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
-        "000000000000000012b99a55b0791eeb7594e70b0878254e5eceaa46bf5ead569b1209107bcfd2839aa4b3b7b9"
-        "0ed519af1fe78ba7af6fd069f458414f713e453b0c851037f701f3a7ef33315bb8a994f5154d7bc61421fbfcb3"
-        "491a563592c24b75a655b38cbb712724529968d0cb2d928fb8a3c2ca09a098afd610";
-    std::string type1Tx = "0x01f901c68197808504a817c800830138809442495445204d452049274d20454e43525950544480b9015c000000000000000031e9725012de5c9fb4bd9991373b7506e9aff33ce23ef77a3b7230e3178dd35e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000012b99a55b0791eeb7594e70b0878254e5eceaa46bf5ead569b1209107bcfd2839aa4b3b7b90ed519af1fe78ba7af6fd069f458414f713e453b0c851037f701f3a7ef33315bb8a994f5154d7bc61421fbfcb3491a563592c24b75a655b38cbb712724529968d0cb2d928fb8a3c2ca09a098afd610c001a0d8ed5063c8bf675fe9d5500f26a8c66f4a7bf0bec68e734397403ec1ed1c6720a06b3c5bc9232dad1368dfff56817d1254b855557b833340de2a9cef87d037d402";
-        
+    // data ciphered from a single run of formEncryptedMessageMockup( plaintext, originalToAddress )
+    // since it differs each run, and the RLP-encoded tx was built outside this test case (via an
+    // external script), we need to set this manually Note that the encryptedData includes the 'To'
+    // address already
+    std::string encryptedDataPlusToAddressType1 = "0xf9015ff9015c80b90158a737e10f7344d3ea3f79acc118d5aee1419717dc169c99f052f596c1a5ee96a3000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e254d906056a7bbc512b6f32bf04ef37f0d8b17261eaca049040be4db8016cc10843301c5e1d7d248f6b49cc5595d204ce970008aa0f93bc66e872377cb414d02ae83c9e2ccd86e8d04d4723b296fb8571b5247d3f2ab1a7524f3646ec8210d91d27ca65346fc6370f2e586c69fdb3b550069bb747feaf3a";
+    std::string type1Tx = "0x01f901cc8197808504a817c800830138809442495445204d452049274d20454e43525950544480b90162f9015ff9015c80b90158a737e10f7344d3ea3f79acc118d5aee1419717dc169c99f052f596c1a5ee96a3000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e254d906056a7bbc512b6f32bf04ef37f0d8b17261eaca049040be4db8016cc10843301c5e1d7d248f6b49cc5595d204ce970008aa0f93bc66e872377cb414d02ae83c9e2ccd86e8d04d4723b296fb8571b5247d3f2ab1a7524f3646ec8210d91d27ca65346fc6370f2e586c69fdb3b550069bb747feaf3ac001a062fa3b9dba0afd0371123ebee6b48cf95e0119e3824a0e3903cab1a359e25ab6a075b96ceae927a47efde784ba7ea202c5b0910eb53ebe980a4945a2ed5350f855";
+
     std::string type1Hash = fixture.rpcClient->eth_sendRawTransaction( type1Tx );
 
     dev::eth::mineTransaction( *( fixture.client ), 1 );
@@ -5319,8 +5360,8 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     auto type1EncryptedResponse = fixture.rpcClient->eth_getTransactionByHash( type1Hash );
     BOOST_REQUIRE( type1EncryptedResponse["input"].asString() == encryptedDataPlusToAddressType1 );
 
-    auto type1DecryptedResponse = fixture.rpcClient->skale_getDecryptedTransactionData( type1Hash );
-    BOOST_REQUIRE( type1DecryptedResponse["data"] == "0x" + plaintext );
+    auto type1DecryptedResponse = fixture.rpcClient->bite_getDecryptedTransactionData( type1Hash );
+    BOOST_REQUIRE( type1DecryptedResponse["data"] == plaintext );
     BOOST_REQUIRE( type1DecryptedResponse["to"] == "0x" + originalToAddressType1 );
 
     // ---- Type2 tx -----
@@ -5338,7 +5379,7 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
 
     std::string originalToAddressType2 = originalToAddressType1;
     std::string encryptedDataPlusToAddressType2 = encryptedDataPlusToAddressType1;
-    std::string type2Tx = "0x02f901cc8197018504a817c7ff8504a817c800830138809442495445204d452049274d20454e43525950544480b9015c000000000000000031e9725012de5c9fb4bd9991373b7506e9aff33ce23ef77a3b7230e3178dd35e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000012b99a55b0791eeb7594e70b0878254e5eceaa46bf5ead569b1209107bcfd2839aa4b3b7b90ed519af1fe78ba7af6fd069f458414f713e453b0c851037f701f3a7ef33315bb8a994f5154d7bc61421fbfcb3491a563592c24b75a655b38cbb712724529968d0cb2d928fb8a3c2ca09a098afd610c080a02466f1c007eed8c56f1cdb63939c166c3731c96fd95604b60d2508bde1d4a514a00334c40a74e5ae2eeb8d985690bb4e242a929972d02ed884999101de8eb8aec6";
+    std::string type2Tx = "0x02f901d28197018504a817c7ff8504a817c800830138809442495445204d452049274d20454e43525950544401b90162f9015ff9015c80b90158a737e10f7344d3ea3f79acc118d5aee1419717dc169c99f052f596c1a5ee96a3000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e254d906056a7bbc512b6f32bf04ef37f0d8b17261eaca049040be4db8016cc10843301c5e1d7d248f6b49cc5595d204ce970008aa0f93bc66e872377cb414d02ae83c9e2ccd86e8d04d4723b296fb8571b5247d3f2ab1a7524f3646ec8210d91d27ca65346fc6370f2e586c69fdb3b550069bb747feaf3ac001a0aeb549a2ba544535a2b26700119af8dc4ae5c771890e7539acb264a413c5cf70a01aacd35468db86246a89cebb5a27ab3d1fafc580fdaa7bf48acc6183ff4d0526";
     std::string type2Hash = fixture.rpcClient->eth_sendRawTransaction( type2Tx );
 
 
@@ -5353,8 +5394,8 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     auto type2EncryptedResponse = fixture.rpcClient->eth_getTransactionByHash( type2Hash );
     BOOST_REQUIRE( type2EncryptedResponse["input"].asString() == encryptedDataPlusToAddressType2 );
 
-    auto type2DecryptedResponse = fixture.rpcClient->skale_getDecryptedTransactionData( type2Hash );
-    BOOST_REQUIRE( type2DecryptedResponse["data"] == "0x" + plaintext );
+    auto type2DecryptedResponse = fixture.rpcClient->bite_getDecryptedTransactionData( type2Hash );
+    BOOST_REQUIRE( type2DecryptedResponse["data"] == plaintext );
     BOOST_REQUIRE( type2DecryptedResponse["to"] == "0x" + originalToAddressType2 );
 
 
@@ -5428,7 +5469,7 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     // send txn to change state
     Json::Value store1;
     store1["to"] = toJS( "0x" + std::string( BITE_ADDRESS_AS_STRING ) );
-    store1["data"] = formEncryptedMessageMockup( dataStore1, contractAddressWithout0x );
+    store1["data"] = dev::toHexPrefixed( formEncryptedMessageMockup( dev::fromHex( dataStore1 ), dev::Address( contractAddressWithout0x ) ) );
     store1["from"] = toJS( senderAddress );
     store1["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     store1["gas"] = "111000";
@@ -5447,8 +5488,7 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     // send invalid call to the contract - txn should fail
     Json::Value txInvalidContractCall;
     txInvalidContractCall["to"] = toJS( "0x" + std::string( BITE_ADDRESS_AS_STRING ) );
-    txInvalidContractCall["data"] =
-        formEncryptedMessageMockup( dataStoreInvalid, contractAddressWithout0x );
+    txInvalidContractCall["data"] = dev::toHexPrefixed( formEncryptedMessageMockup( dev::fromHex( dataStoreInvalid ), dev::Address( contractAddressWithout0x ) ) );
     txInvalidContractCall["from"] = toJS( senderAddress );
     txInvalidContractCall["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txInvalidContractCall );
@@ -5590,7 +5630,7 @@ BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {
     fixture.client->state().getOriginalDb()->createBlockSnap( 3 );
     auto t = fixture.rpcClient->eth_getTransactionReceipt( txHash );
 #ifdef MIRAGE
-	// reward goes to the node owner, not etherbase
+    // reward goes to the node owner, not etherbase
     BOOST_REQUIRE_EQUAL( fixture.client->balanceAt( jsToAddress( etherbase ) ), etherbaseBalance - u256( 1000000 ) );
 #else
     BOOST_REQUIRE_EQUAL( fixture.client->balanceAt( jsToAddress( etherbase ) ),
@@ -6429,7 +6469,9 @@ BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthPowTransfers,
 
     fixture.verifyTransactions = false;
     fixture.threadsCountForTestTransactions = 8;
+#ifndef MIRAGE
     fixture.usePow = true;
+#endif
 
     fixture.setupFirstKey();
     fixture.deployERC20();
@@ -6458,6 +6500,7 @@ BOOST_AUTO_TEST_CASE( perf_sendManyParalelERC20Transfers,
 }
 
 
+#ifndef MIRAGE
 BOOST_FIXTURE_TEST_SUITE( RestrictedAddressSuite, RestrictedAddressFixture )
 
 BOOST_AUTO_TEST_CASE( direct_call ) {
@@ -6588,7 +6631,6 @@ BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE( FilestorageCacheSuite )
 
-#ifndef MIRAGE
 BOOST_AUTO_TEST_CASE( cached_filestorage ) {
     auto _config = c_genesisConfigString;
     Json::Value ret;
@@ -6617,7 +6659,6 @@ BOOST_AUTO_TEST_CASE( cached_filestorage ) {
 
     BOOST_REQUIRE( !boost::filesystem::exists( fixture.path ) );
 }
-#endif
 
 BOOST_AUTO_TEST_CASE( uncached_filestorage ) {
     auto _config = c_genesisConfigString;
@@ -6649,6 +6690,7 @@ BOOST_AUTO_TEST_CASE( uncached_filestorage ) {
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+#endif
 
 BOOST_FIXTURE_TEST_SUITE( GappedCacheSuite, JsonRpcFixture )
 
@@ -6682,8 +6724,9 @@ BOOST_AUTO_TEST_CASE( test_transactions ) {
                  "10000801ca0655757fd0650a65a373c48a4dc0f3d6ac5c3831aa0cc2cb863a5909dc6c25f72a07188"
                  "2ee8633466a243c0ea64dadb3120c1ca7a5cc7433c6c0b1c861a85322265" ),
         CheckTransaction::None );
+#ifndef MIRAGE
     valid.ignoreExternalGas();
-
+#endif
 
     // give it some time since testing fixture is not reliable
     // to do - move to real skaled testing
@@ -6733,7 +6776,10 @@ BOOST_AUTO_TEST_CASE( test_exceptions ) {
                  "10000801ca0655757fd0650a65a373c48a4dc0f3d6ac5c3831aa0cc2cb863a5909dc6c25f72a07188"
                  "2ee8633466a243c0ea64dadb3120c1ca7a5cc7433c6c0b1c861a85322265" ),
         CheckTransaction::None );
+
+#ifndef MIRAGE
     valid.ignoreExternalGas();
+#endif
 
     client->importTransactionsAsBlock( Transactions{ invalid, valid },
 #ifdef BITE

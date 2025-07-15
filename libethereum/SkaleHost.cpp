@@ -621,6 +621,8 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             }
 
 #endif
+
+#ifndef MIRAGE
             t.checkOutExternalGas(
                 m_client.chainParams(), latestInfo.timestamp(), m_client.number() );
 
@@ -634,7 +636,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                         m_client.chainParams(), latestInfo.timestamp(), m_client.number() );
                 }
             }
-
+#endif
             out_txns.push_back( t );
             m_debugTracer.tracepoint( "drop_good" );
             m_tq.dropGood( t );
