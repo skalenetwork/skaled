@@ -375,7 +375,17 @@ std::string Skale::skale_getLatestSnapshotBlockNumberAndTimestamp() {
 
 Json::Value Skale::skale_getBLSPublicKey() {
     try {
+        nlohmann::json publicKeyInfo = nlohmann::json::object();
+        const auto& blsPublicKey = m_client.chainParams().getSelfBlsPublicKey();
+
+        publicKeyInfo["BLSPublicKey0"] = blsPublicKey.at( 0 );
+        publicKeyInfo["BLSPublicKey1"] = blsPublicKey.at( 1 );
+        publicKeyInfo["BLSPublicKey2"] = blsPublicKey.at( 2 );
+        publicKeyInfo["BLSPublicKey3"] = blsPublicKey.at( 3 );
+
+        std::string strResponse = publicKeyInfo.dump();
         Json::Value response;
+        Json::Reader().parse( strResponse, response );
         return response;
     } catch ( Exception const& ) {
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
