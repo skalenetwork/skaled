@@ -1188,6 +1188,10 @@ BOOST_AUTO_TEST_CASE( initAndUpdateHistoricConfigFields ) {
     BOOST_REQUIRE( testClient->getHistoricNodeId( 0 ) == "26" );
     BOOST_REQUIRE( testClient->getHistoricNodeIndex( 0 ) == "3" );
 
+#ifdef MIRAGE
+    BOOST_REQUIRE( testClient->getCurrentEpochId() == 0 );
+#endif
+
     testClient->importTransactionsAsBlock( Transactions(),
 #ifdef BITE
     make_shared< DecryptedTransactionFieldsMap >(),
@@ -1213,6 +1217,10 @@ BOOST_AUTO_TEST_CASE( initAndUpdateHistoricConfigFields ) {
                    "b9afa82befc1f69533723abdb6ec2601e582b72dcfd7919338b" );
     BOOST_REQUIRE( testClient->getHistoricNodeId( 0 ) == "30" );
     BOOST_REQUIRE( testClient->getHistoricNodeIndex( 0 ) == "0" );
+
+#ifdef MIRAGE
+    BOOST_REQUIRE( testClient->getCurrentEpochId() == 1 );
+#endif
 }
 
 BOOST_AUTO_TEST_SUITE_END()

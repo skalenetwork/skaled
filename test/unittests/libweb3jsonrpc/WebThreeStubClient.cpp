@@ -1422,11 +1422,15 @@ Json::Value WebThreeStubClient::debug_getPatchTimestamps() {
 }
 
 #ifdef BITE
-std::string WebThreeStubClient::bite_getCommonPublicKey() {
+Json::Value WebThreeStubClient::bite_getCommonPublicKey() {
     Json::Value p;
     p = Json::nullValue;
     Json::Value result = this->CallMethod( "bite_getCommonPublicKey", p );
-    return result.asString();
+    if ( result.isObject() )
+        return result;
+    else
+        throw jsonrpc::JsonRpcException(
+            jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
 }
 
 Json::Value WebThreeStubClient::bite_getDecryptedTransactionData( const std::string& param1 ) {

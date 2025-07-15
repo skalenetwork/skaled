@@ -97,6 +97,10 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
 
     this->fillRotationHistory( *consensus_engine_ptr );
 
+#ifdef MIRAGE
+    consensus_engine_ptr->setEpochId( m_client.getCurrentEpochId() );
+#endif
+
     return consensus_engine_ptr;
 #else
     unsigned block_number = m_client.number();

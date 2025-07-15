@@ -576,7 +576,7 @@ std::string Skale::oracle_checkResult( std::string& receipt ) {
 #endif
 
 #ifdef BITE
-std::string Skale::bite_getCommonPublicKey() {
+Json::Value Skale::bite_getCommonPublicKey() {
     try {
         auto publicKeyArray = m_client.getCurrentBLSPublicKey();
         libff::alt_bn128_G2 publicKeyG2;
@@ -586,7 +586,10 @@ std::string Skale::bite_getCommonPublicKey() {
         publicKeyG2.Y.c0 = libff::alt_bn128_Fq( publicKeyArray[2].c_str() );
         publicKeyG2.Y.c1 = libff::alt_bn128_Fq( publicKeyArray[3].c_str() );
         libBLS::TEPublicKey publicKey( publicKeyG2 );
-        return publicKey.toString();
+        Json::Value response;
+        response["commonBLSPublicKey"] = publicKey.toString();
+        response["epochId"] = m_client.getCurrentEpochId();
+        return response;
     } catch ( Exception const& ) {
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& e ) {
