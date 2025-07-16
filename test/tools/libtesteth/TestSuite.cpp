@@ -138,11 +138,15 @@ void TestSuite::runTestWithoutFiller( boost::filesystem::path const& _file ) con
     testOutput.finishTest();
 }
 
-bool TestSuite::isFileSuffixedBy(const std::string& _file, const std::string& _suffix) const {
-    return _file.size() > _suffix.size() && _file.substr(0, _suffix.size()) == _suffix;
+bool TestSuite::isFilePrefixedBy(const std::string& _file, const std::string& _prefix) const {
+    return _file.size() > _prefix.size() && _file.substr(0, _prefix.size()) == _prefix;
 }
 
 void TestSuite::runAllTestsInFolder( string const& _testFolder ) const {
+    std::cout << "Running tests in folder: " << _testFolder << std::endl;
+
+    const std::string MIRAGE_PREFIX = "MIRAGE_";
+
     // check that destination folder test files has according Filler file in src folder
     string const filter = test::Options::get().singleTestName.empty() ?
                               string() :
@@ -150,7 +154,7 @@ void TestSuite::runAllTestsInFolder( string const& _testFolder ) const {
     vector< fs::path > const compiledFiles =
         test::getFiles( getFullPath( _testFolder ), {".json", ".yml"}, filter );
 
-    std::vector<std::string> expectedFilePrefixes = {
+    std::vector<std::string> expectedFileSuffixes = {
         c_fillerPostf + ".json",
         c_fillerPostf + ".yml",
         c_copierPostf + ".json"
@@ -158,10 +162,32 @@ void TestSuite::runAllTestsInFolder( string const& _testFolder ) const {
 
     for (auto const& file : compiledFiles) {
         std::vector<fs::path> existingFiles;
-        for (const auto& prefix : expectedFilePrefixes) {
-            fs::path expectedFile = stripExtensionAndAppendPrefix(_testFolder, file, prefix);
-            if (fs::exists(expectedFile)) {
+        
+        std::string fileNameMirage = file.stem().string();
+
+#ifdef MIRAGE
+        // get file name without MIRAGE_ prefix if it has such prefix
+        // This is useful, because there may be MIRAGE_test.json that have no MIRAGE_testFiller.json correspondence.
+        // This happens when we have run the --filltest option with MIRAGE flag, and there was only testFiller.json 
+        // (not MIRAGE_testFiller.json). This still generates MIRAGE_test.json file.
+        // In these cases, what we want is to check if there is either MIRAGE_testFiller.json or testFiller.json
+        if (isFilePrefixedBy(fileNameMirage, MIRAGE_PREFIX)) {
+            fileNameMirage = fileNameMirage.substr(MIRAGE_PREFIX.size());  // Remove "MIRAGE_" prefix
+        }
+#endif
+
+        for (const auto& suffix : expectedFileSuffixes) {
+            fs::path expectedFile = stripExtensionAndAppendSuffix(_testFolder, file, suffix);
+            fs::path expectedFileMirage = stripExtensionAndAppendSuffix(_testFolder, fileNameMirage, suffix );
+            
+            // check if either fileFiller or MIRAGE_fileFiller exists (also check for the other suffixes)
+            if (fs::exists(expectedFile) ) {
+                std::cout << "Found expected file: " << expectedFile.string() << std::endl;
                 existingFiles.push_back(expectedFile);
+            }
+            else if (fs::exists(expectedFileMirage)) {
+                std::cout << "Found expected file: " << expectedFileMirage.string() << std::endl;
+                existingFiles.push_back(expectedFileMirage);
             }
         }
 
@@ -171,7 +197,7 @@ void TestSuite::runAllTestsInFolder( string const& _testFolder ) const {
             ") that does not have a corresponding Filler.json, Filler.yml, or Copier.json file in the source folder.");
 
         // Ensure not all three files exist simultaneously
-        BOOST_REQUIRE_MESSAGE(existingFiles.size() != expectedFilePrefixes.size(),
+        BOOST_REQUIRE_MESSAGE(existingFiles.size() != expectedFileSuffixes.size(),
             "Source test file must be one of Filler.json, Filler.yml, or Copier.json, but not all three: " +
             file.filename().string());
 
@@ -191,7 +217,6 @@ void TestSuite::runAllTestsInFolder( string const& _testFolder ) const {
     if ( filter.empty() ) {
         
         const std::string DEFAULT = "D";
-        const std::string MIRAGE_PREFIX = "MIRAGE_";
         
         // Group files by their name excluding any suffixes
         // file name -> suffix -> file path
@@ -201,7 +226,7 @@ void TestSuite::runAllTestsInFolder( string const& _testFolder ) const {
             std::string fileNameWithoutPrefix;
             std::string prefix;
             
-            if (isFileSuffixedBy(fileName, MIRAGE_PREFIX)) {
+            if (isFilePrefixedBy(fileName, MIRAGE_PREFIX)) {
                 prefix = MIRAGE_PREFIX;
                 fileNameWithoutPrefix = fileName.substr(MIRAGE_PREFIX.size());
             }
@@ -232,14 +257,16 @@ void TestSuite::runAllTestsInFolder( string const& _testFolder ) const {
             }
         }
         files = filteredFiles;
-        std::cout << "Filtered test files: " << files << std::endl;
     }
+
+    std::cout << "Starting executeTest()" << std::endl;
 
     auto& testOutput = test::TestOutputHelper::get();
     testOutput.initTest( files.size() );
     for ( auto const& file : files ) {
         testOutput.showProgress();
         testOutput.setCurrentTestFile( file );
+        std::cout << "Executing test file: " << file.string() << std::endl;
         executeTest( _testFolder, file );
     }
     testOutput.finishTest();
@@ -253,8 +280,8 @@ fs::path TestSuite::getFullPath( string const& _testFolder ) const {
     return test::getTestPath() / suiteFolder() / _testFolder;
 }
 
-fs::path TestSuite::stripExtensionAndAppendPrefix( const std::string& _folder, fs::path const& _file, std::string const& _prefix) const {
-    return getFullPathFiller( _folder ) / fs::path(_file.stem().string() + _prefix);
+fs::path TestSuite::stripExtensionAndAppendSuffix( const std::string& _folder, fs::path const& _file, std::string const& _extension) const {
+    return getFullPathFiller( _folder ) / fs::path(_file.stem().string() + _extension);
 }
 
 
@@ -271,10 +298,6 @@ void TestSuite::executeTest( string const& _testFolder, fs::path const& _testFil
         BOOST_REQUIRE_MESSAGE(
             false, "Incorrect file suffix in the filler folder! " + _testFileName.string() );
 
-    // Filename of the test that would be generated
-    std::cout << "test target name: " << testname << std::endl;
-    std::cout << "test source name: " << _testFileName.string() << std::endl;
-
     fs::path boostTestPath = getFullPath( _testFolder ) / fs::path( testname + ".json" );
 
 #ifdef MIRAGE // append MIRAGE_ suffix to all filled tests
@@ -287,13 +310,12 @@ void TestSuite::executeTest( string const& _testFolder, fs::path const& _testFil
     }
 #endif
 
-    std::cout << "test output name: " << boostTestPath.string() << std::endl;
-
     // TODO: An old unmaintained way to gather execution stats needs review.
     if ( Options::get().stats )
         Listener::registerListener( Stats::get() );
 
     if ( Options::get().filltests ) {
+        std::cout << "Filling test " << std::endl;
         if ( isCopySource ) {
             clog << "Copying " << _testFileName.string() << "\n";
             clog << " TO " << boostTestPath.string() << "\n";
@@ -313,21 +335,26 @@ void TestSuite::executeTest( string const& _testFolder, fs::path const& _testFil
             if ( !Options::get().singleTest )
                 cnote << "Populating tests...";
 
-            std::cout << "test name: " << testname << std::endl;
             TestFileData fillerData = readTestFile( _testFileName );
+            std::cout << " After readtestfile" << std::endl;
             removeComments( fillerData.data );
+            std::cout << " After remove comments" << std::endl;
             json_spirit::mValue output = doTests( fillerData.data, true );
+            std::cout << " After doTests" << std::endl;
             addClientInfo( output, boostRelativeTestPath, fillerData.hash );
+            std::cout << "Writing test file " << boostTestPath.string() << "\n";
             writeFile( boostTestPath, asBytes( json_spirit::write_string( output, true ) ) );
         }
     }
+    else { // Only run the test if we are not filling tests / generating the test files
+        // Test is generated. Now run it and check that there should be no errors
+        if ( Options::get().verbosity > 1 )
+            std::cout << "TEST " << testname << ":\n";
 
-    // Test is generated. Now run it and check that there should be no errors
-    if ( Options::get().verbosity > 1 )
-        std::cout << "TEST " << testname << ":\n";
-
-    Listener::notifySuiteStarted( testname );  // Outdated logging
-    executeFile( boostTestPath );
+        Listener::notifySuiteStarted( testname );  // Outdated logging
+        std::cout << "Running test: " << boostTestPath.string() << std::endl;
+        executeFile( boostTestPath );
+    }
 }
 
 void TestSuite::executeFile( boost::filesystem::path const& _file ) const {

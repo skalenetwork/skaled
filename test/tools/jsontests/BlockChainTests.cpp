@@ -43,6 +43,8 @@ eth::Network ChainBranch::s_tempBlockchainNetwork = eth::Network::MainNetwork;
 eth::Network TestBlockChain::s_sealEngineNetwork = eth::Network::FrontierTest;
 json_spirit::mValue BlockchainTestSuite::doTests(
     json_spirit::mValue const& _input, bool _fillin ) const {
+
+        std::cout << "Inside doTests()" << std::endl;
     
     //
     // l_sergiy: IMPORTANT NOTICE: classically TransactionReceipt is 4 RLP chunks... but...
@@ -54,6 +56,7 @@ json_spirit::mValue BlockchainTestSuite::doTests(
     for ( auto const& i : _input.get_obj() ) {
         string const& testname = i.first;
         json_spirit::mObject const& inputTest = i.second.get_obj();
+        std::cout << "Testname: " << testname << std::endl;
 
         // Select test by name if --singletest is set and not filling state tests as blockchain
         if ( !Options::get().fillchain && !TestOutputHelper::get().shouldRunTest( testname ) )
@@ -107,7 +110,13 @@ json_spirit::mValue BlockchainTestSuite::doTests(
                     jObjOutput.erase( jObjOutput.find( "expect" ) );
 
                 TestOutputHelper::get().setCurrentTestName( newtestname );
+
+                std::cout << "Filling test: " << newtestname << std::endl;
+
                 jObjOutput = fillBCTest( jObjOutput );
+
+                std::cout << "Filled test: " << newtestname << std::endl;
+
                 jObjOutput["network"] = test::netIdToString( network );
                 if ( inputTest.count( "_info" ) )
                     jObjOutput["_info"] = inputTest.at( "_info" );
@@ -221,7 +230,6 @@ void ChainBranch::resetBlockchain() {
 }
 
 json_spirit::mObject fillBCTest( json_spirit::mObject const& _input ) {
-    std::cout << "FILL BC TEST\n\n" << std::endl;
 
     json_spirit::mObject output;
     string const& testName = TestOutputHelper::get().testName();
@@ -246,8 +254,12 @@ json_spirit::mObject fillBCTest( json_spirit::mObject const& _input ) {
         output["network"] = _input.at( "network" );
 
     for ( auto const& bl : _input.at( "blocks" ).get_array() ) {
-        std::cout << "Parsing block " << std::endl; 
+
         mObject const& blObjInput = bl.get_obj();
+
+        std::cout << "Doing block " << blObjInput.at( "blocknumber" ).get_str()
+                  << " for test " << testName << std::endl; 
+                  
         mObject blObj;
         if ( blObjInput.count( "blocknumber" ) > 0 ) {
             importBlockNumber = max( ( int ) toInt( blObjInput.at( "blocknumber" ) ), 1 );
@@ -292,7 +304,6 @@ json_spirit::mObject fillBCTest( json_spirit::mObject const& _input ) {
         // Import Transactions
         BOOST_REQUIRE( blObjInput.count( "transactions" ) );
         for ( auto const& txObj : blObjInput.at( "transactions" ).get_array() ) {
-            std::cout << "Importing transaction at test " << testName << "\n";
             TestTransaction transaction( txObj.get_obj() );
             block.addTransaction( transaction );
         }
@@ -434,10 +445,7 @@ void testBCTest( json_spirit::mObject const& _o ) {
         State const preState = testChain.topBlock().state();
         h256 const preHash = testChain.topBlock().blockHeader().hash();
         try {
-            std::cout << "Before" << std::endl;
-            std::cout << "RLP: " << blObj["rlp"].get_str() << std::endl;
             TestBlock blRlp( blObj["rlp"].get_str() );
-            std::cout << "Failing here" << std::endl;
             blockFromRlp = blRlp;
             if ( blObj.count( "blockHeader" ) == 0 )
                 blockFromRlp.noteDirty();  // disable blockHeader check in TestBlock
@@ -446,7 +454,6 @@ void testBCTest( json_spirit::mObject const& _o ) {
         // if exception is thrown, RLP is invalid and no blockHeader, Transaction list, or Uncle
         // list should be given
         catch ( Exception const& _e ) {
-            std::cout << "Here I am " << std::endl;
             cnote << testName + "state sync or block import did throw an exception: "
                   << diagnostic_information( _e );
             checkJsonSectionForInvalidBlock( blObj );
