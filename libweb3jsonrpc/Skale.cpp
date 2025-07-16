@@ -359,7 +359,7 @@ std::string Skale::skale_getLatestSnapshotBlockNumber() {
 #ifdef MIRAGE
 Json::Value Skale::skale_getBLSPublicKey() {
     try {
-        nlohmann::json publicKeyInfo = nlohmann::json::object();
+        Json::Value publicKeyInfo;
         const auto& blsPublicKey = m_client.chainParams().getSelfBlsPublicKey();
 
         publicKeyInfo["BLSPublicKey0"] = blsPublicKey.at( 0 );
@@ -367,10 +367,7 @@ Json::Value Skale::skale_getBLSPublicKey() {
         publicKeyInfo["BLSPublicKey2"] = blsPublicKey.at( 2 );
         publicKeyInfo["BLSPublicKey3"] = blsPublicKey.at( 3 );
 
-        std::string strResponse = publicKeyInfo.dump();
-        Json::Value response;
-        Json::Reader().parse( strResponse, response );
-        return response;
+        return publicKeyInfo;
     } catch ( Exception const& ) {
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& e ) {
