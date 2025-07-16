@@ -824,6 +824,9 @@ std::string ChainParams::getConfigForConsensus() const {
 
     js::mObject skaleConfigObj = obj["skaleConfig"].get_obj();
     js::mObject sChainObj = skaleConfigObj["sChain"].get_obj();
+    js::mObject nodeInfoObj = skaleConfigObj["nodeInfo"].get_obj();
+
+    nodeInfoObj["syncNode"] = isSyncNode();
 
     js::mArray newNodesObj;
     if ( sChainObj["nodes"].type() == json_spirit::obj_type ) {
@@ -845,6 +848,7 @@ std::string ChainParams::getConfigForConsensus() const {
 
     sChainObj["nodes"] = newNodesObj;
     skaleConfigObj["sChain"] = sChainObj;
+    skaleConfigObj["nodeInfo"] = nodeInfoObj;
     obj["skaleConfig"] = skaleConfigObj;
 
     return js::write_string( js::mValue( obj ), true );

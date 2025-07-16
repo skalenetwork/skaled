@@ -98,11 +98,6 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
 
     this->fillRotationHistory( *consensusEnginePtr );
 
-#ifdef MIRAGE
-    consensusEnginePtr->setSyncMode( m_client.chainParams().isSyncNode() );
-#endif
-
-
     return consensusEnginePtr;
 #else
     unsigned block_number = m_client.number();
