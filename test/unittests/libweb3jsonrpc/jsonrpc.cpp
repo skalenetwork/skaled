@@ -82,8 +82,8 @@ using namespace dev::test;
 
 static size_t rand_port = ( srand( time( nullptr ) ), 1024 + rand() % 64000 );
 
-static std::string const c_genesisConfigString =
-    R"(
+#ifndef MIRAGE
+static std::string const c_genesisConfigString = R"(
 {
     "sealEngine": "NoProof",
     "params": {
@@ -137,8 +137,9 @@ static std::string const c_genesisConfigString =
         "0000000000000000000000000000000000000001": { "precompiled": { "name": "ecrecover", "linear": { "base": 3000, "word": 0 } } },
         "0000000000000000000000000000000000000002": { "precompiled": { "name": "sha256", "linear": { "base": 60, "word": 12 } } },
         "0000000000000000000000000000000000000003": { "precompiled": { "name": "ripemd160", "linear": { "base": 600, "word": 120 } } },
-        "0000000000000000000000000000000000000004": { "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } } },
-        "0000000000000000000000000000000000000005": {
+        "0000000000000000000000000000000000000004": { "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } } },)" +
+#ifndef MIRAGE
+        R"( "0000000000000000000000000000000000000005": {
             "precompiled": {
                 "name": "createFile",
                 "linear": {
@@ -147,7 +148,9 @@ static std::string const c_genesisConfigString =
                 },
                 "restrictAccess": ["00000000000000000000000000000000000000AA", "692a70d2e424a56d2c6c27aa97d1a86395877b3a"]
             }
-        },)"
+        },)" +
+#endif
+
     /*
 pragma solidity ^0.4.25;
 contract Caller {
@@ -238,6 +241,159 @@ revert();
     }
 }
 )";
+#else
+static std::string const c_genesisConfigString =
+    R"(
+{
+    "sealEngine": "NoProof",
+    "params": {
+         "accountStartNonce": "0x00",
+         "maximumExtraDataSize": "0x1000000",
+         "blockReward": "0x4563918244F40000",
+         "allowFutureBlocks": true,
+         "homesteadForkBlock": "0x00",
+         "EIP150ForkBlock": "0x00",
+         "EIP158ForkBlock": "0x00",
+         "byzantiumForkBlock": "0x00",
+         "constantinopleForkBlock": "0x00",
+         "istanbulForkBlock": "0x00",
+         "skaleDisableChainIdCheck": true
+    },
+    "genesis": {
+        "author" : "0x2adc25665018aa1fe0e6bc666dac8fc2697ff9ba",
+        "difficulty" : "0x20000",
+        "gasLimit" : "0x0f4240",
+        "nonce" : "0x00",
+        "extraData" : "0x00",
+        "timestamp" : "0x00",
+        "mixHash" : "0x00",
+        "stateRoot": "0x01"
+    },
+    "skaleConfig": {
+        "nodeInfo": {
+            "nodeName": "Node1",
+            "nodeID": 1112,
+            "bindIP": "127.0.0.1",
+            "basePort": )" +
+    std::to_string( rand_port ) + R"(,
+            "logLevel": "trace",
+            "logLevelProposal": "trace",
+            "testSignatures": true
+        },
+        "sChain": {
+            "schainName": "TestChain",
+            "schainID": 1,
+            "emptyBlockIntervalMs": -1,
+            "nodeGroups": {},
+            "nodes": {
+                "1": {
+                    "group": [
+                  { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )" +
+        std::to_string( rand_port ) +
+        R"(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
+                    ]
+                },
+                "-1": {}
+            }
+        }
+    },
+    "accounts": {
+        "0000000000000000000000000000000000000001": { "precompiled": { "name": "ecrecover", "linear": { "base": 3000, "word": 0 } } },
+        "0000000000000000000000000000000000000002": { "precompiled": { "name": "sha256", "linear": { "base": 60, "word": 12 } } },
+        "0000000000000000000000000000000000000003": { "precompiled": { "name": "ripemd160", "linear": { "base": 600, "word": 120 } } },
+        "0000000000000000000000000000000000000004": { "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } } },
+        )"
+    /*
+pragma solidity ^0.4.25;
+contract Caller {
+function call() public {
+bool status;
+string memory fileName = "test";
+address sender = 0x000000000000000000000000000000AA;
+assembly{
+let ptr := mload(0x40)
+mstore(ptr, sender)
+mstore(add(ptr, 0x20), 4)
+mstore(add(ptr, 0x40), mload(add(fileName, 0x20)))
+mstore(add(ptr, 0x60), 1)
+status := call(not(0), 0x05, 0, ptr, 0x80, ptr, 32)
+}
+}
+
+function revertCall() public {
+call();
+revert();
+}
+}
+*/
+    R"("0000000000000000000000000000000000000006": {
+            "precompiled": {
+                "name": "addBalance",
+                "linear": {
+                    "base": 15,
+                    "word": 0
+                },
+                "restrictAccess": ["5c4e11842e8be09264dc1976943571d7af6d00f9"]
+            }
+        },
+        "0000000000000000000000000000000000000007": {
+            "precompiled": {
+                "name": "getIMABLSPublicKey",
+                "linear": {
+                    "base": 15,
+                    "word": 0
+                }
+            }
+        },
+        "0x5c4e11842e8be09264dc1976943571d7af6d00f9" : {
+            "balance" : "1000000000000000000000000000000"
+        },
+        "0x692a70d2e424a56d2c6c27aa97d1a86395877b3a" : {
+            "balance" : "0x00",
+            "code" : "0x6080604052600436106049576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff16806328b5e32b14604e578063f38fb65b146062575b600080fd5b348015605957600080fd5b5060606076565b005b348015606d57600080fd5b50607460ec565b005b6000606060006040805190810160405280600481526020017f7465737400000000000000000000000000000000000000000000000000000000815250915060aa905060405181815260046020820152602083015160408201526001606082015260208160808360006005600019f1935050505050565b60f26076565b600080fd00a165627a7a72305820262a5822c4fe6c154b2ef3198c7827d35fc6da59da2cea2c4f2fad9d4a5ccd5e0029",
+            "nonce" : "0x00",
+            "storage" : {
+            }
+        },
+        "0x095e7baea6a6c7c4c2dfeb977efac326af552d87" : {
+            "balance" : "0x0de0b6b3a7640000",
+            "code" : "0x6001600101600055",
+            "nonce" : "0x00",
+            "storage" : {
+            }
+        },
+        "0xC2002000000000000000000000000000000000C2": {
+            "balance": "0",
+            "code": "0x6080604052348015600f57600080fd5b506004361060325760003560e01c80639b063104146037578063cd16ecbf146062575b600080fd5b606060048036036020811015604b57600080fd5b8101908080359060200190929190505050608d565b005b608b60048036036020811015607657600080fd5b81019080803590602001909291905050506097565b005b8060018190555050565b806000819055505056fea265627a7a7231582029df540a7555533ef4b3f66bc4f9abe138b00117d1496efbfd9d035a48cd595e64736f6c634300050d0032",
+            "storage": {
+                "0x0": "0x01"
+            },
+            "nonce": "0"
+        },
+        "0xD2002000000000000000000000000000000000D2": {
+            "balance": "0",
+            "code": "0x608060405234801561001057600080fd5b50600436106100455760003560e01c806313f44d101461005557806338eada1c146100af5780634ba79dfe146100f357610046565b5b6002801461005357600080fd5b005b6100976004803603602081101561006b57600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff169060200190929190505050610137565b60405180821515815260200191505060405180910390f35b6100f1600480360360208110156100c557600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff1690602001909291905050506101f4565b005b6101356004803603602081101561010957600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff16906020019092919050505061030f565b005b60008060009054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff168273ffffffffffffffffffffffffffffffffffffffff16148061019957506101988261042b565b5b806101ed5750600160008373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060009054906101000a900460ff165b9050919050565b60008054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff163373ffffffffffffffffffffffffffffffffffffffff16146102b5576040517f08c379a00000000000000000000000000000000000000000000000000000000081526004018080602001828103825260178152602001807f43616c6c6572206973206e6f7420746865206f776e657200000000000000000081525060200191505060405180910390fd5b60018060008373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060006101000a81548160ff02191690831515021790555050565b60008054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff163373ffffffffffffffffffffffffffffffffffffffff16146103d0576040517f08c379a00000000000000000000000000000000000000000000000000000000081526004018080602001828103825260178152602001807f43616c6c6572206973206e6f7420746865206f776e657200000000000000000081525060200191505060405180910390fd5b6000600160008373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060006101000a81548160ff02191690831515021790555050565b600080823b90506000811191505091905056fea26469706673582212202aca1f7abb7d02061b58de9b559eabe1607c880fda3932bbdb2b74fa553e537c64736f6c634300060c0033",
+            "storage": {
+            },
+            "nonce": "0"
+        },
+        "0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b" : {
+            "balance" : "0x0de0b6b3a7640000",
+            "code" : "0x",
+            "nonce" : "0x00",
+            "storage" : {
+            }
+        },
+        "0xD2001300000000000000000000000000000000D4": {
+            "balance": "0",
+            "nonce": "0",
+            "storage": {},
+            "code":"0x608060405234801561001057600080fd5b506004361061004c5760003560e01c80632098776714610051578063b8bd717f1461007f578063d37165fa146100ad578063fdde8d66146100db575b600080fd5b61007d6004803603602081101561006757600080fd5b8101908080359060200190929190505050610109565b005b6100ab6004803603602081101561009557600080fd5b8101908080359060200190929190505050610136565b005b6100d9600480360360208110156100c357600080fd5b8101908080359060200190929190505050610170565b005b610107600480360360208110156100f157600080fd5b8101908080359060200190929190505050610191565b005b60005a90505b815a8203101561011e5761010f565b600080fd5b815a8203101561013257610123565b5050565b60005a90505b815a8203101561014b5761013c565b600060011461015957600080fd5b5a90505b815a8203101561016c5761015d565b5050565b60005a9050600081830390505b805a8303101561018c5761017d565b505050565b60005a90505b815a820310156101a657610197565b60016101b157600080fd5b5a90505b815a820310156101c4576101b5565b505056fea264697066735822122089b72532621e7d1849e444ee6efaad4fb8771258e6f79755083dce434e5ac94c64736f6c63430006000033"
+        }
+    }
+}
+)";
+#endif
 
 namespace {
 class TestIpcServer : public jsonrpc::AbstractServerConnector {
@@ -267,7 +423,7 @@ private:
 struct JsonRpcFixture : public TestOutputHelperFixture {
     // chain params needs to be a field of JsonRPCFixture
     // since references to it are passed to the server
-    ChainParams chainParams;
+    std::shared_ptr< ChainParams > chainParams = std::make_shared< ChainParams >();
 
 
     JsonRpcFixture( const std::string& _config = "", bool _owner = true,
@@ -295,17 +451,19 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
 #endif
                 Json::FastWriter fastWriter;
                 std::string output = fastWriter.write( ret );
-                chainParams = chainParams.loadConfig( output );
+                chainParams->loadConfig( output );
             } else {
                 Json::Value ret;
+                Json::FastWriter fastWriter;
                 Json::Reader().parse( _config, ret );
 #ifndef MIRAGE
                 ret["skaleConfig"]["sChain"]["contractStorageLimit"] = 106874910;
                 ret["skaleConfig"]["sChain"]["contractStoragePatchTimestamp"] = 1000;
 #endif
-                Json::FastWriter fastWriter;
                 std::string output = fastWriter.write( ret );
-                chainParams = chainParams.loadConfig( output );
+                chainParams->loadConfig( output );
+
+
                 // insecure schain owner(originator) private key
                 // address is 0x5C4e11842E8be09264dc1976943571d7Af6d00F9
                 coinbase = dev::KeyPair( dev::Secret(
@@ -315,64 +473,64 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
                     "0x23ABDBD3C61B5330AF61EBE8BEF582F4E5CC08E554053A718BDCE7813B9DC1FC" ) );
             }
         } else {
-            chainParams.sealEngineName = NoProof::name();
-            chainParams.allowFutureBlocks = true;
-            chainParams.difficulty = chainParams.minimumDifficulty;
-            chainParams.gasLimit = chainParams.maxGasLimit;
-            chainParams.byzantiumForkBlock = 0;
-            chainParams.EIP158ForkBlock = 0;
-            chainParams.constantinopleForkBlock = 0;
-            chainParams.istanbulForkBlock = 0;
-            chainParams.externalGasDifficulty = 1;
+            chainParams->sealEngineName = NoProof::name();
+            chainParams->allowFutureBlocks = true;
+            chainParams->difficulty = chainParams->getMinimumDifficulty();
+            chainParams->gasLimit = chainParams->getMaxGasLimit();
+            chainParams->byzantiumForkBlock = 0;
+            chainParams->EIP158ForkBlock = 0;
+            chainParams->constantinopleForkBlock = 0;
+            chainParams->istanbulForkBlock = 0;
 #ifndef MIRAGE
-            chainParams.sChain.contractStorageLimit = 128;
+            chainParams->externalGasDifficulty = 1;
+            chainParams->sChain.contractStorageLimit = 128;
 #endif
             // 615 + 1430 is experimentally-derived block size + average extras size
-            chainParams.sChain.dbStorageLimit = 320.5 * ( 615 + 1430 );
+            chainParams->sChain.dbStorageLimit = 320.5 * ( 615 + 1430 );
 #ifdef MIRAGE
-            chainParams.sChain.nodes[0].owner = jsToAddress( "0x0E7d7F1D34a502bD609542576941C3FCc087c588" );
+            chainParams->sChain.nodes[0].owner = jsToAddress( "0x0E7d7F1D34a502bD609542576941C3FCc087c588" );
 #endif
 #ifndef MIRAGE
-            chainParams.sChain
+            chainParams->sChain
                 ._patchTimestamps[static_cast< size_t >( SchainPatchEnum::ContractStoragePatch )] =
                 1;
-            chainParams.sChain._patchTimestamps[static_cast< size_t >(
+            chainParams->sChain._patchTimestamps[static_cast< size_t >(
                 SchainPatchEnum::StorageDestructionPatch )] = 1;
             powPatchActivationTimestamp = time( nullptr ) + 60;
-            chainParams.sChain
+            chainParams->sChain
                 ._patchTimestamps[static_cast< size_t >( SchainPatchEnum::CorrectForkInPowPatch )] =
                 powPatchActivationTimestamp;
             push0PatchActivationTimestamp = time( nullptr ) + 10;
-            chainParams.sChain
+            chainParams->sChain
                 ._patchTimestamps[static_cast< size_t >( SchainPatchEnum::PushZeroPatch )] =
                 push0PatchActivationTimestamp;
 #endif
-            chainParams.sChain.emptyBlockIntervalMs = _emptyBlockIntervalMs;
+            chainParams->sChain.emptyBlockIntervalMs = _emptyBlockIntervalMs;
             // add random extra data to randomize genesis hash and get random DB path,
             // so that tests can be run in parallel
             // TODO: better make it use ethemeral in-memory databases
-            chainParams.extraData = h256::random().asBytes();
-            chainParams.nodeInfo.port = chainParams.nodeInfo.port6 = rand_port;
-            chainParams.sChain.nodes[0].port = chainParams.sChain.nodes[0].port6 = rand_port;
-            chainParams.skaleDisableChainIdCheck = true;
+            chainParams->extraData = h256::random().asBytes();
+            chainParams->nodeInfo.port = chainParams->nodeInfo.port6 = rand_port;
+            chainParams->sChain.nodes[0].port = chainParams->sChain.nodes[0].port6 = rand_port;
+            chainParams->skaleDisableChainIdCheck = true;
 
             if ( params.count( "getLogsBlocksLimit" ) && stoi( params.at( "getLogsBlocksLimit" ) ) )
-                chainParams.getLogsBlocksLimit = stoi( params.at( "getLogsBlocksLimit" ) );
+                chainParams->logsBlocksLimit = stoi( params.at( "getLogsBlocksLimit" ) );
         }
-        chainParams.sChain.multiTransactionMode = _mtmEnabled;
-        chainParams.nodeInfo.syncNode = _isSyncNode;
+        chainParams->sChain.multiTransactionMode = _mtmEnabled;
+        chainParams->nodeInfo.syncNode = _isSyncNode;
 
         auto monitor = make_shared< InstanceMonitor >( "test" );
 
 
         setenv( "DATA_DIR", tempDir.path().c_str(), 1 );
-        client.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
+        client.reset( new eth::ClientTest( chainParams, ( int ) chainParams->getNetworkId(),
             shared_ptr< GasPricer >(), NULL, monitor, tempDir.path(), WithExisting::Kill ) );
 
         if ( !_generation2 )
             client->setAuthor( coinbase.address() );
         else
-            client->setAuthor( chainParams.sChain.blockAuthor );
+            client->setAuthor( chainParams->getBlockAuthor() );
 
         // wait for 1st block - because it's always empty
         std::promise< void > blockPromise;
@@ -417,7 +575,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         inject_rapidjson_handlers( serverOpts, ethFace );
 
         serverOpts.netOpts_.bindOptsStandard_.cntServers_ = 1;
-        serverOpts.netOpts_.bindOptsStandard_.strAddrHTTP4_ = chainParams.nodeInfo.ip;
+        serverOpts.netOpts_.bindOptsStandard_.strAddrHTTP4_ = chainParams->getSelfNodeIp();
         // random port
         // +3 because rand() seems to be called effectively simultaneously here and in "static"
         // section - thus giving same port for consensus
@@ -430,7 +588,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         sleep( 1 );
 
         httpClient = new jsonrpc::HttpClient(
-            "http://" + chainParams.nodeInfo.ip + ":" +
+            "http://" + chainParams->getSelfNodeIp() + ":" +
             std::to_string( serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ ) );
         httpClient->SetTimeout( 1000000000 );
 
@@ -487,6 +645,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
     time_t push0PatchActivationTimestamp;
 };
 
+#ifndef MIRAGE
 struct RestrictedAddressFixture : public JsonRpcFixture {
     RestrictedAddressFixture( const std::string& _config = c_genesisConfigString )
         : JsonRpcFixture( _config ) {
@@ -509,6 +668,7 @@ struct RestrictedAddressFixture : public JsonRpcFixture {
     std::string data;
     boost::filesystem::path path;
 };
+#endif
 
 string fromAscii( string _s ) {
     bytes b = asBytes( _s );
@@ -516,19 +676,33 @@ string fromAscii( string _s ) {
 }
 }  // namespace
 
-#ifdef MIRAGE
+#ifdef BITE
 /// Helper functions
 
-std::string formEncryptedMessageMockup( const std::string& message, const std::string& toAddress ) {
+dev::bytes formEncryptedMessageMockup( const dev::bytes& message, const dev::Address& toAddress ) {
     libBLS::TEBase::initializeIfNecessary();
-    auto finalMessageToEncrypt = message + toAddress;
-    auto messageToEncrypt =
-        libBLS::ThresholdUtils::hexCStringToBytes( finalMessageToEncrypt.c_str() );
-    auto encryptedMessage = libBLS::ThresholdEncryption::mockupEncrypt( messageToEncrypt );
-    std::string epochId = "0000000000000000";
 
-    return std::string( "0x" ) + epochId +
-           libBLS::ThresholdUtils::bytesToHexString( encryptedMessage );
+    RLPStream biteDataRlp( 2 );
+
+    biteDataRlp << message;
+    biteDataRlp << ( dev::Address::Arith ) toAddress;
+
+    auto messageToEncrypt = biteDataRlp.out();
+    auto encryptedMessage = libBLS::ThresholdEncryption::mockupEncrypt( messageToEncrypt );
+
+    u256 epochId = 0;
+
+    RLPStream bitePayloadRlpList;
+
+    RLPStream bitePayloadRlp( 2 );
+
+    bitePayloadRlp << epochId;
+    bitePayloadRlp << encryptedMessage;
+
+    bitePayloadRlpList.appendList( bitePayloadRlp.out() );
+
+    auto rlpBytes = bitePayloadRlpList.out();
+    return dev::bytes( rlpBytes.begin(), rlpBytes.end() );
 }
 
 std::string formTransactionRlp( const JsonRpcFixture& fixture, const std::string& senderAddress,
@@ -550,7 +724,21 @@ std::string formTransactionRlp( const JsonRpcFixture& fixture, const std::string
     return dev::toHexPrefixed( tx.toBytes() );
 }
 
-#endif
+std::string formBITEPayloadRlp( u256 _epochId, const dev::bytes& _encryptedBITEData ) {
+    RLPStream bitePayloadRlpList;
+
+    RLPStream bitePayloadRlp( 2 );
+
+    bitePayloadRlp << _epochId;
+    bitePayloadRlp << _encryptedBITEData;
+
+    bitePayloadRlpList.appendList( bitePayloadRlp.out() );
+
+    auto rlpBytes = bitePayloadRlpList.out();
+    return dev::toHexPrefixed( rlpBytes );
+}
+
+#endif // BITE
 
 BOOST_AUTO_TEST_SUITE( JsonRpcSuite )
 
@@ -2294,11 +2482,11 @@ BOOST_AUTO_TEST_CASE( logs ) {
         }
         else {
             std::string addrWithout0x = contractAddress.substr( 2 );
-            std::string encryptedData = formEncryptedMessageMockup("", addrWithout0x);
+            dev::bytes encryptedData = formEncryptedMessageMockup( dev::bytes(), dev::Address( addrWithout0x ) );
             // account for the nonce 0 used for contract deployment
             size_t nonce = static_cast<size_t>(i + 1);
             std::string rlp = formTransactionRlp( fixture, t["from"].asString(),
-                encryptedData, nonce, addrWithout0x);
+                dev::toHex( encryptedData ), nonce, addrWithout0x);
             txHash = fixture.rpcClient->eth_sendRawTransaction( rlp );
         }
 #else
@@ -3319,12 +3507,11 @@ BOOST_AUTO_TEST_CASE( debugGetPatchTimestamps ) {
     }
 }
 
+#ifndef MIRAGE
 BOOST_AUTO_TEST_CASE( powTxnGasLimit ) {
     Json::Value configJson;
     Json::Reader().parse( c_genesisConfigString, configJson );
-#ifndef MIRAGE
     configJson["skaleConfig"]["sChain"]["powCheckPatchTimestamp"] = 1;
-#endif
     Json::FastWriter fastWriter;
     std::string customConfigFile = fastWriter.write( configJson );
     JsonRpcFixture fixture( customConfigFile, false, false, true, false );
@@ -3358,6 +3545,7 @@ BOOST_AUTO_TEST_CASE( powTxnGasLimit ) {
     BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendTransaction( txPOW2 ),
         jsonrpc::JsonRpcException );  // block gas limit reached
 }
+#endif
 
 BOOST_AUTO_TEST_CASE( EIP1898Calls ) {
     JsonRpcFixture fixture;
@@ -4451,8 +4639,7 @@ static std::string const c_BITEConfigString =
          "byzantiumForkBlock": "0x00",
          "constantinopleForkBlock": "0x00",
          "istanbulForkBlock": "0x00",
-         "skaleDisableChainIdCheck": true,
-         "externalGasDifficulty": "0x1"
+         "skaleDisableChainIdCheck": true
     },
     "genesis": {
         "author" : "0x2adc25665018aa1fe0e6bc666dac8fc2697ff9ba",
@@ -4478,24 +4665,7 @@ static std::string const c_BITEConfigString =
     std::to_string( rand_port ) + R"(,
             "logLevel": "trace",
             "logLevelProposal": "trace",
-            "ecdsaKeyName": "NEK:d391a1af1cd9663335e0f970e59402bf16fcfe0cc421c535bf60ba618a456d68",
-            "wallets": {
-                "ima": {
-                    "keyShareName": "BLS_KEY:SCHAIN_ID:1:NODE_ID:0:DKG_ID:0",
-                    "t": 1,
-                    "n": 1,
-                    "certFile": "/skale-data/node_data/sgx_certs/sgx.crt",
-                    "keyFile": "/skale-data/node_data/sgx_certs/sgx.key",
-                    "commonBLSPublicKey0": "15959969554621958245201075983340071881770733084910870228938077786643587385029",
-                    "commonBLSPublicKey1": "7970122607051572307517094692346020360016825923464107614135327251488152616550",
-                    "commonBLSPublicKey2": "3371162264373897025322009434717052197952692496405149486989861571246537813591",
-                    "commonBLSPublicKey3": "13678625751515504401110635369790787716744686498431213713911601759809559919693",
-                    "BLSPublicKey0": "15959969554621958245201075983340071881770733084910870228938077786643587385029",
-                    "BLSPublicKey1": "7970122607051572307517094692346020360016825923464107614135327251488152616550",
-                    "BLSPublicKey2": "3371162264373897025322009434717052197952692496405149486989861571246537813591",
-                    "BLSPublicKey3": "13678625751515504401110635369790787716744686498431213713911601759809559919693"
-                }
-            }
+            "ecdsaKeyName": "NEK:d391a1af1cd9663335e0f970e59402bf16fcfe0cc421c535bf60ba618a456d68"
         },
         "sChain": {
             "schainName": "TestChain",
@@ -4519,26 +4689,46 @@ static std::string const c_BITEConfigString =
                     }
                 }
             },
-            "nodes": [
-                {
-                    "nodeID": 8,
-                    "nodeName": "test_node",
-                    "basePort": )" + std::to_string( rand_port ) + R"(,
-                    "httpRpcPort": 9568,
-                    "httpsRpcPort": 9573,
-                    "wsRpcPort": 9567,
-                    "wssRpcPort": 9572,
-                    "blsPublicKey0": "15959969554621958245201075983340071881770733084910870228938077786643587385029",
-                    "blsPublicKey1": "7970122607051572307517094692346020360016825923464107614135327251488152616550",
-                    "blsPublicKey2": "3371162264373897025322009434717052197952692496405149486989861571246537813591",
-                    "blsPublicKey3": "13678625751515504401110635369790787716744686498431213713911601759809559919693",
-                    "publicKey": "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea105a3d21845e5660bc3d4e7c82e7af1daa3baad393b1521467",
-                    "owner": "0x5112ce768917e907191557d7e9521c2590cdd3a0",
-                    "schainIndex": 1,
-                    "ip": "186.14.217.13",
-                    "publicIP": "4.127.224.50"
-                }
-            ]
+            "nodes": {
+                "1": {
+                    "blsKey": {
+                        "keyShareName": "BLS_KEY:SCHAIN_ID:1:NODE_ID:0:DKG_ID:0",
+                        "t": 1,
+                        "n": 1,
+                        "certFile": "/skale-data/node_data/sgx_certs/sgx.crt",
+                        "keyFile": "/skale-data/node_data/sgx_certs/sgx.key",
+                        "commonBLSPublicKey0": "15959969554621958245201075983340071881770733084910870228938077786643587385029",
+                        "commonBLSPublicKey1": "7970122607051572307517094692346020360016825923464107614135327251488152616550",
+                        "commonBLSPublicKey2": "3371162264373897025322009434717052197952692496405149486989861571246537813591",
+                        "commonBLSPublicKey3": "13678625751515504401110635369790787716744686498431213713911601759809559919693",
+                        "BLSPublicKey0": "15959969554621958245201075983340071881770733084910870228938077786643587385029",
+                        "BLSPublicKey1": "7970122607051572307517094692346020360016825923464107614135327251488152616550",
+                        "BLSPublicKey2": "3371162264373897025322009434717052197952692496405149486989861571246537813591",
+                        "BLSPublicKey3": "13678625751515504401110635369790787716744686498431213713911601759809559919693"
+                    },
+                    "group": [
+                        {
+                            "nodeID": 8,
+                            "nodeName": "test_node",
+                            "basePort": )" + std::to_string( rand_port ) + R"(,
+                            "httpRpcPort": 9568,
+                            "httpsRpcPort": 9573,
+                            "wsRpcPort": 9567,
+                            "wssRpcPort": 9572,
+                            "blsPublicKey0": "15959969554621958245201075983340071881770733084910870228938077786643587385029",
+                            "blsPublicKey1": "7970122607051572307517094692346020360016825923464107614135327251488152616550",
+                            "blsPublicKey2": "3371162264373897025322009434717052197952692496405149486989861571246537813591",
+                            "blsPublicKey3": "13678625751515504401110635369790787716744686498431213713911601759809559919693",
+                            "publicKey": "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea105a3d21845e5660bc3d4e7c82e7af1daa3baad393b1521467",
+                            "owner": "0x5112ce768917e907191557d7e9521c2590cdd3a0",
+                            "schainIndex": 1,
+                            "ip": "186.14.217.13",
+                            "publicIP": "4.127.224.50"
+                        }
+                    ]
+                },
+                "-1": {}
+            }
         }
     },
     "accounts": {
@@ -4620,12 +4810,13 @@ revert();
     }
 }
 )";
-#endif
+#endif // #ifndef MIRAGE
+
 
 BOOST_AUTO_TEST_CASE( getCommonPublicKey ) {
     JsonRpcFixture fixture( c_BITEConfigString, false, false, true );
 
-    auto blsPublicKey = fixture.rpcClient->skale_getCommonPublicKey();
+    auto blsPublicKey = fixture.rpcClient->bite_getCommonPublicKey();
 
     BOOST_REQUIRE( blsPublicKey.size() == 256 );
 }
@@ -4637,20 +4828,19 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     string senderAddress = toJS( fixture.coinbase.address() );
     size_t nonce = 0;
     std::string biteAddress = "0x" + std::string( BITE_ADDRESS_AS_STRING );
-    std::string epoch = "0x0000000000000000";
+    u256 epochId = 0;
 
     /// Normal valid BITE transaction -> should not throw
     std::string message =
         h256::random().hex() + std::string( "5EdF1e852fdD1B0Bc47C0307EF755C76f4B9c251" );
     auto messageBytes = libBLS::ThresholdUtils::hexCStringToBytes( message.c_str() );
-    auto blsPublicKey = fixture.rpcClient->skale_getCommonPublicKey();
+    auto blsPublicKey = fixture.rpcClient->bite_getCommonPublicKey();
 
     auto encryptedMessage =
         libBLS::ThresholdEncryption::encrypt( messageBytes, libBLS::TEPublicKey( blsPublicKey ) );
     auto encryptedBytes = encryptedMessage.toBytes();
-    std::string encryptedMessageHexa = libBLS::ThresholdUtils::bytesToHexString( encryptedBytes );
 
-    std::string dataField = epoch + encryptedMessageHexa;
+    auto dataField = formBITEPayloadRlp( epochId, encryptedBytes );
 
     auto validBITETransactionRlp =
         formTransactionRlp( fixture, senderAddress, dataField, nonce, biteAddress );
@@ -4672,34 +4862,44 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
         fixture.rpcClient->eth_sendRawTransaction( validNonBITETransactionRlp ) );
 
 
-    /// No data in the data field -> data is too short - should throw an exception
+    /// No data in the data field -> data is bad formatted - should throw an exception
     auto invalidBITETransactionRlp =
         formTransactionRlp( fixture, senderAddress, "", nonce, biteAddress );
     BOOST_REQUIRE_THROW(
         fixture.client->importTransaction( Transaction(
             dev::jsToBytes( invalidBITETransactionRlp ), CheckTransaction::None, false ) ),
-        dev::eth::BITETransactionTooShort );
+        dev::eth::InvalidBITETransaction );
     BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendRawTransaction( invalidBITETransactionRlp ),
         jsonrpc::JsonRpcException );
 
+    RLPStream tooShortRlp;
+
     /// Only epoch in data field -> data is too short - should throw an exception
-    dataField = epoch;
+    RLPStream epochRlp;
+    epochRlp.appendList( 1 );
+    epochRlp << epochId;
+    dev::bytes invalidTooShortBITETxnData = tooShortRlp.appendList( epochRlp.out() ).out();
     invalidBITETransactionRlp =
-        formTransactionRlp( fixture, senderAddress, dataField, nonce, biteAddress );
+        formTransactionRlp( fixture, senderAddress,
+                            dev::toHexPrefixed( invalidTooShortBITETxnData ), nonce, biteAddress );
     BOOST_REQUIRE_THROW(
         fixture.client->importTransaction( Transaction(
             dev::jsToBytes( invalidBITETransactionRlp ), CheckTransaction::None, false ) ),
         dev::eth::BITETransactionTooShort );
     BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendRawTransaction( invalidBITETransactionRlp ),
         jsonrpc::JsonRpcException );
+    tooShortRlp.clear();
 
     /// Only epoch + key -> no data - should throw an exception
-    dataField = epoch + encryptedMessageHexa;
-    auto epochSizeBytes = 8;
-    dataField = dataField.substr(
-        0, 2 * ( epochSizeBytes + libBLS::CipheredKey::CIPHERED_KEY_SIZE_BYTES ) );
+    encryptedMessage.data = std::make_shared< dev::bytes >();
+    RLPStream epochAndKeyRlp;
+    epochAndKeyRlp.appendList( 2 );
+    epochAndKeyRlp << epochId;
+    epochAndKeyRlp << encryptedMessage.toBytes();
+    invalidTooShortBITETxnData = tooShortRlp.appendList( epochAndKeyRlp.out() ).out();
     invalidBITETransactionRlp =
-        formTransactionRlp( fixture, senderAddress, dataField, nonce, biteAddress );
+        formTransactionRlp( fixture, senderAddress,
+                            dev::toHexPrefixed( invalidTooShortBITETxnData ), nonce, biteAddress );
     BOOST_REQUIRE_THROW(
         fixture.client->importTransaction( Transaction(
             dev::jsToBytes( invalidBITETransactionRlp ), CheckTransaction::None, false ) ),
@@ -4715,17 +4915,24 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     // overwrite key part
     std::copy( randomEncryptedKeyByteArray.begin(), randomEncryptedKeyByteArray.end(),
         spoiledMessageBytes.begin() );
-    auto spoiledMessageHexa = libBLS::ThresholdUtils::bytesToHexString( spoiledMessageBytes );
-    dataField = epoch + spoiledMessageHexa;
+
+    RLPStream spoiledBITETransactionDataRlp, spoiledBITEDataRlp;
+    spoiledBITEDataRlp.appendList( 2 );
+    spoiledBITEDataRlp << epochId;
+    spoiledBITEDataRlp << spoiledMessageBytes;
+    dev::bytes invalidBITETxnData =
+            spoiledBITETransactionDataRlp.appendList( spoiledBITEDataRlp.out() ).out();
 
     invalidBITETransactionRlp =
-        formTransactionRlp( fixture, senderAddress, dataField, nonce, biteAddress );
+        formTransactionRlp( fixture, senderAddress,
+                            dev::toHexPrefixed( invalidBITETxnData ), nonce, biteAddress );
     BOOST_REQUIRE_THROW(
         fixture.client->importTransaction( Transaction(
             dev::jsToBytes( invalidBITETransactionRlp ), CheckTransaction::None, false ) ),
         dev::eth::InvalidBITETransaction );
     BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendRawTransaction( invalidBITETransactionRlp ),
         jsonrpc::JsonRpcException );
+    spoiledBITEDataRlp.clear();
 
     /// Encrypted key is not well formed -> should throw exception
     randomEncryptedKeyObj.U.X.c0 = libff::alt_bn128_Fq::random_element();
@@ -4733,11 +4940,16 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     randomEncryptedKeyByteArray = randomEncryptedKeyObj.toBytes();
     std::copy( randomEncryptedKeyByteArray.begin(), randomEncryptedKeyByteArray.end(),
         spoiledMessageBytes.begin() );
-    spoiledMessageHexa = libBLS::ThresholdUtils::bytesToHexString( spoiledMessageBytes );
-    dataField = epoch + spoiledMessageHexa;
+
+    spoiledBITEDataRlp.appendList( 2 );
+    spoiledBITEDataRlp << epochId;
+    spoiledBITEDataRlp << spoiledMessageBytes;
+    invalidBITETxnData =
+            spoiledBITETransactionDataRlp.appendList( spoiledBITEDataRlp.out() ).out();
 
     invalidBITETransactionRlp =
-        formTransactionRlp( fixture, senderAddress, dataField, nonce, biteAddress );
+        formTransactionRlp( fixture, senderAddress,
+                            dev::toHexPrefixed( invalidBITETxnData ), nonce, biteAddress );
     BOOST_REQUIRE_THROW(
         fixture.client->importTransaction( Transaction(
             dev::jsToBytes( invalidBITETransactionRlp ), CheckTransaction::None, false ) ),
@@ -4759,11 +4971,13 @@ BOOST_AUTO_TEST_CASE( BITETransactionCouldNotBeDecrypted ) {
     BOOST_REQUIRE(
         balanceBeforeU256 == dev::u256( dev::bigint( "1000000000000000000000000000000" ) ) );
 
-    // data must have the destination address at the end
-    std::string dataPlusDestAddress =
-        h256::random().hex() + std::string( "7aa5e36aa15e93d10f4f26357c30f052dacdde5f" );
-    auto messageBytes = libBLS::ThresholdUtils::hexCStringToBytes( dataPlusDestAddress.c_str() );
-    auto blsPublicKey = fixture.rpcClient->skale_getCommonPublicKey();
+    // data must have the destination address and the original message
+    RLPStream biteDataRlp( 2 );
+    biteDataRlp << ( dev::h256::Arith ) h256::random();
+    biteDataRlp << ( dev::Address::Arith ) dev::Address( "0x7aa5e36aa15e93d10f4f26357c30f052dacdde5f" );
+
+    auto messageBytes = biteDataRlp.out();
+    auto blsPublicKey = fixture.rpcClient->bite_getCommonPublicKey();
 
     auto ciphertext =
         libBLS::ThresholdEncryption::encrypt( messageBytes, libBLS::TEPublicKey( blsPublicKey ) );
@@ -4779,11 +4993,21 @@ BOOST_AUTO_TEST_CASE( BITETransactionCouldNotBeDecrypted ) {
     auto invalidEncryptedData = libBLS::ThresholdUtils::bytesToHexString( ciphertextBytes );
 
     size_t nonce = 0;
-    std::string txnDataField =
-        std::string( "0x" ) + std::string( "0000000000000000" ) + invalidEncryptedData;
+    u256 epochId = 0;
+    RLPStream bitePayloadRlpList;
+
+    RLPStream bitePayloadRlp( 2 );
+
+    bitePayloadRlp << epochId;
+    bitePayloadRlp << ciphertextBytes;
+
+    bitePayloadRlpList.appendList( bitePayloadRlp.out() );
+
+    auto rlpBytes = bitePayloadRlpList.out();
     std::string biteAddress = "0x" + std::string( BITE_ADDRESS_AS_STRING );
     std::string txnRlp = formTransactionRlp(
-        fixture, "0x7aa5e36aa15e93d10f4f26357c30f052dacdde5f", txnDataField, nonce, biteAddress );
+        fixture, "0x7aa5e36aa15e93d10f4f26357c30f052dacdde5f", dev::toHexPrefixed( rlpBytes ),
+                nonce, biteAddress );
 
     Transaction t( dev::fromHex( txnRlp ), dev::eth::CheckTransaction::None );
     auto minGasRequired = t.baseGasRequired( fixture.client->evmSchedule() );
@@ -4798,7 +5022,7 @@ BOOST_AUTO_TEST_CASE( BITETransactionCouldNotBeDecrypted ) {
                    dev::toJS( balanceBeforeU256 - minGasRequired * dev::jsToU256( gasPrice ) ) );
 
     try {
-        fixture.rpcClient->skale_getDecryptedTransactionData( invalidTxnHash );
+        fixture.rpcClient->bite_getDecryptedTransactionData( invalidTxnHash );
     } catch ( const jsonrpc::JsonRpcException& ex ) {
         std::string errorMessage =
             "Transaction with provided hash does not have any decrypted data associated with it.";
@@ -4806,7 +5030,6 @@ BOOST_AUTO_TEST_CASE( BITETransactionCouldNotBeDecrypted ) {
     }
 
     auto receipt = fixture.rpcClient->eth_getTransactionReceipt( invalidTxnHash );
-    std::cout << "Revert reason: " << receipt["revertReason"].asString() << std::endl;
     BOOST_REQUIRE(
         receipt["revertReason"] == std::string( "Could not decrypt BITE transaction." ) );
 }
@@ -4834,22 +5057,11 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     // ---- Legacy -----
     Json::Value legacyTx;
 
-    std::string originalToAddress = "5edf1e852fdd1b0bc47c0307ef755c76f4b9c251";
+    dev::Address originalToAddress( "0x5edf1e852fdd1b0bc47c0307ef755c76f4b9c251" );
     std::string plaintext =
-        "6057361d0000000000000000000000000000000000000000000000000000000000000001";
-    // data ciphered from a single run of formEncryptedMessageMockup( plaintext, originalToAddress )
-    // since it differs each run, and the RLP-encoded tx was built outside this test case (via an
-    // external script), we need to set this manually Note that the encryptedData includes the 'To'
-    // address already
-    std::string encryptedDataPlusToAddressLegacy =
-        "0x000000000000000018d21444c96b763ccc35cf6dc410692971732b7c116a85fad673107aed41ba1400000000"
-        "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
-        "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
-        "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
-        "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
-        "0000000000000000814006826ad9ec38349c065e694a4f2dc67a3a62c3ae57aaa8989f68665548f68451f96d7f"
-        "39f82149ee39b4e530a8c766fc5adb262d6a640bde99834b15e356dcc9300a37434506225749c4229031f99b8f"
-        "3c75d7e91ef8ca0f7140aee8b2c6806c9b6f98ae43fdf3141c489159412d326ed656";
+        "0x6057361d0000000000000000000000000000000000000000000000000000000000000001";
+    std::string encryptedDataPlusToAddressLegacy = dev::toHexPrefixed(
+                formEncryptedMessageMockup( dev::fromHex( plaintext ), originalToAddress ) );
 
     // signal BITE tx
     legacyTx["to"] = toJS( "0x" + std::string( BITE_ADDRESS_AS_STRING ) );
@@ -4875,16 +5087,16 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     BOOST_REQUIRE( legacyTxReceipt["status"].asString() == std::string( "0x1" ) );
     BOOST_REQUIRE(
         legacyTxReceipt["blockNumber"].asString() == fixture.rpcClient->eth_blockNumber() );
-    BOOST_REQUIRE( legacyTxReceipt["to"].asString() == "0x" + originalToAddress );
+    BOOST_REQUIRE( legacyTxReceipt["to"].asString() == "0x" + originalToAddress.hex() );
 
     auto legacyEncryptedResponse = fixture.rpcClient->eth_getTransactionByHash( legacyHash );
     BOOST_REQUIRE(
         legacyEncryptedResponse["input"].asString() == encryptedDataPlusToAddressLegacy );
 
     auto legacyDecryptedResponse =
-        fixture.rpcClient->skale_getDecryptedTransactionData( legacyHash );
-    BOOST_REQUIRE( legacyDecryptedResponse["data"] == "0x" + plaintext );
-    BOOST_REQUIRE( legacyDecryptedResponse["to"] == "0x" + originalToAddress );
+        fixture.rpcClient->bite_getDecryptedTransactionData( legacyHash );
+    BOOST_REQUIRE( legacyDecryptedResponse["data"] == plaintext );
+    BOOST_REQUIRE( legacyDecryptedResponse["to"] == "0x" + originalToAddress.hex() );
 
 
     // ---- Type1 tx -----
@@ -4899,17 +5111,13 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
         transaction1['data'] = call to SC
     */
     std::string originalToAddressType1 = "c868af52a6549c773082a334e5ae232e0ea3b513";
-    std::string encryptedDataPlusToAddressType1 =
-        "0x000000000000000031e9725012de5c9fb4bd9991373b7506e9aff33ce23ef77a3b7230e3178dd35e00000000"
-        "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
-        "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
-        "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
-        "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
-        "000000000000000012b99a55b0791eeb7594e70b0878254e5eceaa46bf5ead569b1209107bcfd2839aa4b3b7b9"
-        "0ed519af1fe78ba7af6fd069f458414f713e453b0c851037f701f3a7ef33315bb8a994f5154d7bc61421fbfcb3"
-        "491a563592c24b75a655b38cbb712724529968d0cb2d928fb8a3c2ca09a098afd610";
-    std::string type1Tx = "0x01f901c68197808504a817c800830138809442495445204d452049274d20454e43525950544480b9015c000000000000000031e9725012de5c9fb4bd9991373b7506e9aff33ce23ef77a3b7230e3178dd35e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000012b99a55b0791eeb7594e70b0878254e5eceaa46bf5ead569b1209107bcfd2839aa4b3b7b90ed519af1fe78ba7af6fd069f458414f713e453b0c851037f701f3a7ef33315bb8a994f5154d7bc61421fbfcb3491a563592c24b75a655b38cbb712724529968d0cb2d928fb8a3c2ca09a098afd610c001a0d8ed5063c8bf675fe9d5500f26a8c66f4a7bf0bec68e734397403ec1ed1c6720a06b3c5bc9232dad1368dfff56817d1254b855557b833340de2a9cef87d037d402";
-        
+    // data ciphered from a single run of formEncryptedMessageMockup( plaintext, originalToAddress )
+    // since it differs each run, and the RLP-encoded tx was built outside this test case (via an
+    // external script), we need to set this manually Note that the encryptedData includes the 'To'
+    // address already
+    std::string encryptedDataPlusToAddressType1 = "0xf9015ff9015c80b90158a737e10f7344d3ea3f79acc118d5aee1419717dc169c99f052f596c1a5ee96a3000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e254d906056a7bbc512b6f32bf04ef37f0d8b17261eaca049040be4db8016cc10843301c5e1d7d248f6b49cc5595d204ce970008aa0f93bc66e872377cb414d02ae83c9e2ccd86e8d04d4723b296fb8571b5247d3f2ab1a7524f3646ec8210d91d27ca65346fc6370f2e586c69fdb3b550069bb747feaf3a";
+    std::string type1Tx = "0x01f901cc8197808504a817c800830138809442495445204d452049274d20454e43525950544480b90162f9015ff9015c80b90158a737e10f7344d3ea3f79acc118d5aee1419717dc169c99f052f596c1a5ee96a3000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e254d906056a7bbc512b6f32bf04ef37f0d8b17261eaca049040be4db8016cc10843301c5e1d7d248f6b49cc5595d204ce970008aa0f93bc66e872377cb414d02ae83c9e2ccd86e8d04d4723b296fb8571b5247d3f2ab1a7524f3646ec8210d91d27ca65346fc6370f2e586c69fdb3b550069bb747feaf3ac001a062fa3b9dba0afd0371123ebee6b48cf95e0119e3824a0e3903cab1a359e25ab6a075b96ceae927a47efde784ba7ea202c5b0910eb53ebe980a4945a2ed5350f855";
+
     std::string type1Hash = fixture.rpcClient->eth_sendRawTransaction( type1Tx );
 
     dev::eth::mineTransaction( *( fixture.client ), 1 );
@@ -4923,8 +5131,8 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     auto type1EncryptedResponse = fixture.rpcClient->eth_getTransactionByHash( type1Hash );
     BOOST_REQUIRE( type1EncryptedResponse["input"].asString() == encryptedDataPlusToAddressType1 );
 
-    auto type1DecryptedResponse = fixture.rpcClient->skale_getDecryptedTransactionData( type1Hash );
-    BOOST_REQUIRE( type1DecryptedResponse["data"] == "0x" + plaintext );
+    auto type1DecryptedResponse = fixture.rpcClient->bite_getDecryptedTransactionData( type1Hash );
+    BOOST_REQUIRE( type1DecryptedResponse["data"] == plaintext );
     BOOST_REQUIRE( type1DecryptedResponse["to"] == "0x" + originalToAddressType1 );
 
     // ---- Type2 tx -----
@@ -4942,7 +5150,7 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
 
     std::string originalToAddressType2 = originalToAddressType1;
     std::string encryptedDataPlusToAddressType2 = encryptedDataPlusToAddressType1;
-    std::string type2Tx = "0x02f901cc8197018504a817c7ff8504a817c800830138809442495445204d452049274d20454e43525950544480b9015c000000000000000031e9725012de5c9fb4bd9991373b7506e9aff33ce23ef77a3b7230e3178dd35e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000012b99a55b0791eeb7594e70b0878254e5eceaa46bf5ead569b1209107bcfd2839aa4b3b7b90ed519af1fe78ba7af6fd069f458414f713e453b0c851037f701f3a7ef33315bb8a994f5154d7bc61421fbfcb3491a563592c24b75a655b38cbb712724529968d0cb2d928fb8a3c2ca09a098afd610c080a02466f1c007eed8c56f1cdb63939c166c3731c96fd95604b60d2508bde1d4a514a00334c40a74e5ae2eeb8d985690bb4e242a929972d02ed884999101de8eb8aec6";
+    std::string type2Tx = "0x02f901d28197018504a817c7ff8504a817c800830138809442495445204d452049274d20454e43525950544401b90162f9015ff9015c80b90158a737e10f7344d3ea3f79acc118d5aee1419717dc169c99f052f596c1a5ee96a3000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e254d906056a7bbc512b6f32bf04ef37f0d8b17261eaca049040be4db8016cc10843301c5e1d7d248f6b49cc5595d204ce970008aa0f93bc66e872377cb414d02ae83c9e2ccd86e8d04d4723b296fb8571b5247d3f2ab1a7524f3646ec8210d91d27ca65346fc6370f2e586c69fdb3b550069bb747feaf3ac001a0aeb549a2ba544535a2b26700119af8dc4ae5c771890e7539acb264a413c5cf70a01aacd35468db86246a89cebb5a27ab3d1fafc580fdaa7bf48acc6183ff4d0526";
     std::string type2Hash = fixture.rpcClient->eth_sendRawTransaction( type2Tx );
 
 
@@ -4957,8 +5165,8 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     auto type2EncryptedResponse = fixture.rpcClient->eth_getTransactionByHash( type2Hash );
     BOOST_REQUIRE( type2EncryptedResponse["input"].asString() == encryptedDataPlusToAddressType2 );
 
-    auto type2DecryptedResponse = fixture.rpcClient->skale_getDecryptedTransactionData( type2Hash );
-    BOOST_REQUIRE( type2DecryptedResponse["data"] == "0x" + plaintext );
+    auto type2DecryptedResponse = fixture.rpcClient->bite_getDecryptedTransactionData( type2Hash );
+    BOOST_REQUIRE( type2DecryptedResponse["data"] == plaintext );
     BOOST_REQUIRE( type2DecryptedResponse["to"] == "0x" + originalToAddressType2 );
 
 
@@ -5032,7 +5240,7 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     // send txn to change state
     Json::Value store1;
     store1["to"] = toJS( "0x" + std::string( BITE_ADDRESS_AS_STRING ) );
-    store1["data"] = formEncryptedMessageMockup( dataStore1, contractAddressWithout0x );
+    store1["data"] = dev::toHexPrefixed( formEncryptedMessageMockup( dev::fromHex( dataStore1 ), dev::Address( contractAddressWithout0x ) ) );
     store1["from"] = toJS( senderAddress );
     store1["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     store1["gas"] = "111000";
@@ -5051,8 +5259,7 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     // send invalid call to the contract - txn should fail
     Json::Value txInvalidContractCall;
     txInvalidContractCall["to"] = toJS( "0x" + std::string( BITE_ADDRESS_AS_STRING ) );
-    txInvalidContractCall["data"] =
-        formEncryptedMessageMockup( dataStoreInvalid, contractAddressWithout0x );
+    txInvalidContractCall["data"] = dev::toHexPrefixed( formEncryptedMessageMockup( dev::fromHex( dataStoreInvalid ), dev::Address( contractAddressWithout0x ) ) );
     txInvalidContractCall["from"] = toJS( senderAddress );
     txInvalidContractCall["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txInvalidContractCall );
@@ -5062,7 +5269,7 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     BOOST_REQUIRE( receipt["status"] == std::string( "0x0" ) );
 }
 
-#endif
+#endif // #ifdef BITE
 
 #ifndef MIRAGE
 BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {
@@ -5117,7 +5324,7 @@ BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {
     fixture.client->state().getOriginalDb()->createBlockSnap( 3 );
     auto t = fixture.rpcClient->eth_getTransactionReceipt( txHash );
 #ifdef MIRAGE
-	// reward goes to the node owner, not etherbase
+    // reward goes to the node owner, not etherbase
     BOOST_REQUIRE_EQUAL( fixture.client->balanceAt( jsToAddress( etherbase ) ), etherbaseBalance - u256( 1000000 ) );
 #else
     BOOST_REQUIRE_EQUAL( fixture.client->balanceAt( jsToAddress( etherbase ) ),
@@ -5956,7 +6163,9 @@ BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthPowTransfers,
 
     fixture.verifyTransactions = false;
     fixture.threadsCountForTestTransactions = 8;
+#ifndef MIRAGE
     fixture.usePow = true;
+#endif
 
     fixture.setupFirstKey();
     fixture.deployERC20();
@@ -5985,6 +6194,7 @@ BOOST_AUTO_TEST_CASE( perf_sendManyParalelERC20Transfers,
 }
 
 
+#ifndef MIRAGE
 BOOST_FIXTURE_TEST_SUITE( RestrictedAddressSuite, RestrictedAddressFixture )
 
 BOOST_AUTO_TEST_CASE( direct_call ) {
@@ -6115,7 +6325,6 @@ BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE( FilestorageCacheSuite )
 
-#ifndef MIRAGE
 BOOST_AUTO_TEST_CASE( cached_filestorage ) {
     auto _config = c_genesisConfigString;
     Json::Value ret;
@@ -6144,7 +6353,6 @@ BOOST_AUTO_TEST_CASE( cached_filestorage ) {
 
     BOOST_REQUIRE( !boost::filesystem::exists( fixture.path ) );
 }
-#endif
 
 BOOST_AUTO_TEST_CASE( uncached_filestorage ) {
     auto _config = c_genesisConfigString;
@@ -6176,6 +6384,7 @@ BOOST_AUTO_TEST_CASE( uncached_filestorage ) {
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+#endif
 
 BOOST_FIXTURE_TEST_SUITE( GappedCacheSuite, JsonRpcFixture )
 
@@ -6209,8 +6418,9 @@ BOOST_AUTO_TEST_CASE( test_transactions ) {
                  "10000801ca0655757fd0650a65a373c48a4dc0f3d6ac5c3831aa0cc2cb863a5909dc6c25f72a07188"
                  "2ee8633466a243c0ea64dadb3120c1ca7a5cc7433c6c0b1c861a85322265" ),
         CheckTransaction::None );
+#ifndef MIRAGE
     valid.ignoreExternalGas();
-
+#endif
 
     // give it some time since testing fixture is not reliable
     // to do - move to real skaled testing
@@ -6260,7 +6470,10 @@ BOOST_AUTO_TEST_CASE( test_exceptions ) {
                  "10000801ca0655757fd0650a65a373c48a4dc0f3d6ac5c3831aa0cc2cb863a5909dc6c25f72a07188"
                  "2ee8633466a243c0ea64dadb3120c1ca7a5cc7433c6c0b1c861a85322265" ),
         CheckTransaction::None );
+
+#ifndef MIRAGE
     valid.ignoreExternalGas();
+#endif
 
     client->importTransactionsAsBlock( Transactions{ invalid, valid },
 #ifdef BITE

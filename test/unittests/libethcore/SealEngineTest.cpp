@@ -34,7 +34,7 @@ namespace {
 class UnsignedTransactionFixture : public TestOutputHelperFixture {
 public:
     UnsignedTransactionFixture() {
-        params.experimentalForkBlock = u256( 0x1000 );
+        params.setExperimentalForkBlock( u256( 0x1000 ) );
 
         ethash.setChainParams( params );
 

@@ -176,7 +176,7 @@ Executive::Executive( Block& _s, LastBlockHashesFace const& _lh, const u256& _ga
     unsigned _level, bool _readOnly )
     : m_s( _s.mutableState() ),
       m_envInfo( _s.info(), _lh, _s.previousInfo().timestamp(), 0,
-          _s.sealEngine()->chainParams().chainID ),
+          _s.sealEngine()->chainParams().getChainId() ),
       m_depth( _level ),
       m_readOnly( _readOnly ),
       m_chainParams( _s.sealEngine()->chainParams() ),
@@ -197,7 +197,11 @@ void Executive::verifyTransaction( Transaction const& _transaction, time_t _comm
     const bool _allowFuture ) {
     MICROPROFILE_SCOPEI( "Executive", "verifyTransaction", MP_GAINSBORO );
 
-    if ( !_transaction.hasExternalGas() && _transaction.gasPrice() < _gasPrice ) {
+    if (
+#ifndef MIRAGE
+        !_transaction.hasExternalGas() &&
+#endif
+        _transaction.gasPrice() < _gasPrice ) {
         BOOST_THROW_EXCEPTION(
             GasPriceTooLow() << RequirementError( static_cast< bigint >( _gasPrice ),
                 static_cast< bigint >( _transaction.gasPrice() ) ) );
@@ -225,9 +229,11 @@ void Executive::verifyTransaction( Transaction const& _transaction, time_t _comm
 
         // Avoid unaffordable transactions.
         bigint gasCost = static_cast< bigint >( _transaction.gas() * _transaction.gasPrice() );
+#ifndef MIRAGE
         if ( _transaction.hasExternalGas() ) {
             gasCost = 0;
         }
+#endif
         bigint totalCost = _transaction.value() + gasCost;
         auto sender_ballance = _state.balance( _transaction.sender() );
         if ( sender_ballance < totalCost ) {
@@ -266,12 +272,19 @@ void Executive::initialize( Transaction const& _transaction ) {
 bool Executive::execute() {
     // Entry point for a user-executed transaction.
 
+#ifdef MIRAGE
+    // Pay...
+    LOG( m_loggerTrace ) << "Paying " << formatBalance( m_gasCost ) << " from sender for gas ("
+                         << m_t.gas() << " gas at " << formatBalance( m_t.gasPrice() ) << ")";
+    m_s.subBalance( m_t.sender(), m_gasCost );
+#else
     if ( !m_t.hasExternalGas() ) {
         // Pay...
         LOG( m_loggerTrace ) << "Paying " << formatBalance( m_gasCost ) << " from sender for gas ("
                              << m_t.gas() << " gas at " << formatBalance( m_t.gasPrice() ) << ")";
         m_s.subBalance( m_t.sender(), m_gasCost );
     }
+#endif
 
     assert( m_t.gas() >= ( u256 ) m_baseGasRequired );
 
@@ -320,7 +333,7 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
         //        for the transaction.
         // Increment associated nonce for sender.
         if ( _p.senderAddress != MaxAddress ||
-             m_envInfo.number() < m_chainParams.constantinopleForkBlock ) {  // EIP86
+             m_envInfo.number() < m_chainParams.getConstantinopleForkBlock() ) {  // EIP86
             MICROPROFILE_SCOPEI( "Executive", "call-incNonce", MP_SEAGREEN );
             m_s.incNonce( _p.senderAddress );
         }
@@ -343,7 +356,7 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
             // https://github.com/ethereum/go-ethereum/pull/3341/files#diff-2433aa143ee4772026454b8abd76b9dd
             // We mark the account as touched here, so that is can be removed among other touched
             // empty accounts (after tx finalization)
-            if ( m_envInfo.number() >= m_chainParams.EIP158ForkBlock )
+            if ( m_envInfo.number() >= m_chainParams.getEIP158ForkBlock() )
                 m_s.addBalance( _p.codeAddress, 0 );
 
             return true;  // true actually means "all finished - nothing more to be done regarding
@@ -352,8 +365,15 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
             m_gas = ( u256 )( _p.gas - g );
             bytes output;
             bool success;
+#ifdef MIRAGE
+            tie( success, output ) =
+                m_chainParams.executePrecompiled( _p.codeAddress, _p.data, m_envInfo.number() );
+
+#else
             tie( success, output ) = m_chainParams.executePrecompiled(
                 _p.codeAddress, _p.data, m_envInfo.number(), m_s.fs().get() );
+#endif
+
             size_t outputSize = output.size();
             m_output = owning_bytes_ref{ std::move( output ), 0, outputSize };
             if ( !success ) {
@@ -412,7 +432,7 @@ bool Executive::executeCreate( Address const& _sender, u256 const& _endowment,
     u256 const& _gasPrice, u256 const& _gas, bytesConstRef _init, Address const& _origin,
     u256 const& _version ) {
     if ( _sender != MaxAddress ||
-         m_envInfo.number() < m_chainParams.experimentalForkBlock )  // EIP86
+         m_envInfo.number() < m_chainParams.getExperimentalForkBlock() )  // EIP86
         m_s.incNonce( _sender );
 
     m_savepoint = m_s.savepoint();
@@ -439,7 +459,7 @@ bool Executive::executeCreate( Address const& _sender, u256 const& _endowment,
     m_s.transferBalance( _sender, m_newAddress, _endowment );
 
     u256 newNonce = m_s.requireAccountStartNonce();
-    if ( m_envInfo.number() >= m_chainParams.EIP158ForkBlock )
+    if ( m_envInfo.number() >= m_chainParams.getEIP158ForkBlock() )
         newNonce += 1;
     m_s.setNonce( m_newAddress, newNonce );
 

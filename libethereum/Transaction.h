@@ -134,19 +134,23 @@ public:
 
     Transaction( Transaction const& ) = default;
 
+#ifndef MIRAGE
     bool hasExternalGas() const;
 
     u256 getExternalGas() const;
 
-    u256 gasPrice() const;
-
     void checkOutExternalGas(
         const ChainParams& _cp, time_t _committedBlockTimestamp, uint64_t _committedBlockNumber );
+#endif
 
+    u256 gasPrice() const;
+
+#ifndef MIRAGE
     void ignoreExternalGas() {
         m_externalGasIsChecked = true;
         m_externalGas.reset();
     }
+#endif
 
 private:
     bool m_externalGasIsChecked = false;

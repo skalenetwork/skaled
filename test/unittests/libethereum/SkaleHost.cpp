@@ -135,29 +135,29 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
                           std::map< std::string, std::string >() ) {
         dev::p2p::NetworkPreferences nprefs;
 
-        ChainParams chainParams;
-        chainParams.sealEngineName = NoProof::name();
-        chainParams.allowFutureBlocks = true;
-        chainParams.difficulty = chainParams.minimumDifficulty;
-        chainParams.gasLimit = chainParams.maxGasLimit;
-        chainParams.istanbulForkBlock = 0;
+        chainParams = std::make_shared< ChainParams >();
+        chainParams->sealEngineName = NoProof::name();
+        chainParams->allowFutureBlocks = true;
+        chainParams->difficulty = chainParams->getMinimumDifficulty();
+        chainParams->gasLimit = chainParams->getMaxGasLimit();
+        chainParams->istanbulForkBlock = 0;
         // add random extra data to randomize genesis hash and get random DB path,
         // so that tests can be run in parallel
         // TODO: better make it use ethemeral in-memory databases
-        chainParams.extraData = h256::random().asBytes();
-        chainParams.sChain.nodeGroups = { { {}, uint64_t( -1 ), { "0", "0", "1", "0" } } };
-        chainParams.nodeInfo.port = chainParams.nodeInfo.port6 = rand_port;
-        chainParams.nodeInfo.testSignatures = true;
-        chainParams.sChain.nodes[0].port = chainParams.sChain.nodes[0].port6 = rand_port;
+        chainParams->extraData = h256::random().asBytes();
+        chainParams->sChain.nodeGroups = { { {}, uint64_t( -1 ), { "0", "0", "1", "0" } } };
+        chainParams->nodeInfo.port = chainParams->nodeInfo.port6 = rand_port;
+        chainParams->nodeInfo.testSignatures = true;
+        chainParams->sChain.nodes[0].port = chainParams->sChain.nodes[0].port6 = rand_port;
 
         // not 0-timestamp genesis - to test patch
-        chainParams.timestamp = std::time( NULL ) - 5;
+        chainParams->timestamp = std::time( NULL ) - 5;
 
         if ( params.count( "multiTransactionMode" ) && stoi( params.at( "multiTransactionMode" ) ) )
-            chainParams.sChain.multiTransactionMode = true;
+            chainParams->sChain.multiTransactionMode = true;
         if ( params.count( "skipInvalidTransactionsPatchTimestamp" ) &&
              stoi( params.at( "skipInvalidTransactionsPatchTimestamp" ) ) )
-            chainParams.sChain._patchTimestamps[static_cast< size_t >(
+            chainParams->sChain._patchTimestamps[static_cast< size_t >(
                 SchainPatchEnum::SkipInvalidTransactionsPatch )] =
                 stoi( params.at( "skipInvalidTransactionsPatchTimestamp" ) );
 
@@ -169,7 +169,7 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
 
         setenv( "DATA_DIR", tempDir.path().c_str(), 1 );
         client = make_unique< Client >(
-            chainParams, chainParams.networkID, gasPricer, nullptr, monitor, tempDir.path() );
+            chainParams, chainParams->getNetworkId(), gasPricer, nullptr, monitor, tempDir.path() );
         this->tq = client->debugGetTransactionQueue();
         client->setAuthor( coinbase.address() );
 
@@ -206,6 +206,7 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
     TransactionQueue* tq;
 
     TransientDirectory tempDir;  // ! should exist before client!
+    std::shared_ptr< ChainParams > chainParams;
     unique_ptr< Client > client;
 
     dev::KeyPair coinbase{ KeyPair::create() };
@@ -894,7 +895,7 @@ BOOST_DATA_TEST_CASE(
     // 2 txn
     json["value"] = jsToDecimal( toJS( 9000 * dev::eth::szabo ) );
     json["nonce"] = 1;
-    json["gas"] = jsToDecimal( toJS( client->chainParams().gasLimit - 21000 + 1 ) );
+    json["gas"] = jsToDecimal( toJS( client->chainParams().getGasLimit() - 21000 + 1 ) );
 
     Transaction tx2 = fixture.tx_from_json( json );
 
@@ -943,7 +944,7 @@ BOOST_AUTO_TEST_CASE( gasLimitInBlockProposal ) {
 
     auto wr_state = client->state().createStateCopyAndClearCaches();
     wr_state.addBalance(
-        fixture.account2.address(), client->chainParams().gasLimit * 1000 + dev::eth::ether );
+        fixture.account2.address(), client->chainParams().getGasLimit() * 1000 + dev::eth::ether );
     wr_state.commit();
     wr_state.getOriginalDb()->createBlockSnap(2);
 
@@ -959,7 +960,7 @@ BOOST_AUTO_TEST_CASE( gasLimitInBlockProposal ) {
 
     // 2 txn
     json["from"] = toJS( account2.address() );
-    json["gas"] = jsToDecimal( toJS( client->chainParams().gasLimit - 21000 + 1 ) );
+    json["gas"] = jsToDecimal( toJS( client->chainParams().getGasLimit() - 21000 + 1 ) );
 
     Transaction tx2 = fixture.tx_from_json( json );
 
@@ -998,8 +999,10 @@ BOOST_AUTO_TEST_CASE( transactionDropReceive
 
     // 1st tx
     Transaction tx1 = fixture.tx_from_json( json );
+#ifndef MIRAGE
     tx1.checkOutExternalGas(
         client->chainParams(), client->latestBlock().info().timestamp(), client->number() );
+#endif
 
     // submit it!
     tq->import( tx1 );
@@ -1066,8 +1069,11 @@ BOOST_AUTO_TEST_CASE(
 
     // 1st tx
     Transaction tx1 = fixture.tx_from_json( json );
+
+#ifndef MIRAGE
     tx1.checkOutExternalGas(
         client->chainParams(), client->latestBlock().info().timestamp(), client->number() );
+#endif
 
     // submit it!
     tq->import( tx1 );
@@ -1131,8 +1137,11 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPrice
 
     // 1st tx
     Transaction tx1 = fixture.tx_from_json( json );
+
+#ifndef MIRAGE
     tx1.checkOutExternalGas(
         client->chainParams(), client->latestBlock().info().timestamp(), client->number() );
+#endif
 
     // submit it!
     tq->import( tx1 );
@@ -1204,8 +1213,11 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive
 
     // 1st tx
     Transaction tx1 = fixture.tx_from_json( json );
+
+#ifndef MIRAGE
     tx1.checkOutExternalGas(
         client->chainParams(), client->latestBlock().info().timestamp(), client->number() );
+#endif
 
     // receive it!
     skaleHost->receiveTransaction( toJS( tx1.toBytes() ) );
@@ -1426,9 +1438,9 @@ BOOST_AUTO_TEST_CASE( biteTransactions ) {
     libBLS::TEBase::initializeIfNecessary();
     auto messageToEncrypt = libBLS::ThresholdUtils::hexCStringToBytes( dataToEncrypt.c_str() );
     auto publicKeyBytes = libBLS::ThresholdUtils::G2ToBytes( libff::alt_bn128_G2::random_element() );
-    auto cyphertext = libBLS::ThresholdEncryption::encrypt( messageToEncrypt, publicKeyBytes );
+    auto ciphertext = libBLS::ThresholdEncryption::encrypt( messageToEncrypt, publicKeyBytes );
 
-    json["data"] = std::string( "0x" ) + libBLS::ThresholdUtils::bytesToHexString( cyphertext.toBytes() );
+    json["data"] = std::string( "0x" ) + libBLS::ThresholdUtils::bytesToHexString( ciphertext.toBytes() );
 
     ts = toTransactionSkeleton( json );
     ts = client->populateTransactionWithDefaults( ts );
@@ -1509,8 +1521,13 @@ BOOST_FIXTURE_TEST_CASE(
 #endif
                                 utcTime(), 1U ) );
 
+#ifndef MIRAGE
     REQUIRE_BLOCK_SIZE( 1, 1 );
     REQUIRE_BLOCK_TRANSACTION( 1, 0, tx1Hash );
+#else
+    ( void ) tx1Hash;
+    REQUIRE_BLOCK_SIZE( 1, 0 );
+#endif
 
     // 2 tx nonce = 0
     json["value"] = jsToDecimal( toJS( 9000 * dev::eth::szabo ) );

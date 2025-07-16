@@ -311,7 +311,7 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
             }
 
             fs::rename( db_path,
-                db_path.parent_path() / ( prefix + chainParams.nodeInfo.id.str() + ".db" ) );
+                db_path.parent_path() / ( prefix + chainParams.getSelfNodeId().str() + ".db" ) );
         }
         //// HACK END ////
 
@@ -326,9 +326,9 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
 std::array< std::string, 4 > getBLSPublicKeyToVerifySnapshot( const ChainParams& chainParams ) {
     std::array< std::string, 4 > arrayCommonPublicKey;
     bool isRotationtrigger = true;
-    if ( chainParams.sChain.nodeGroups.size() > 1 ) {
+    if ( chainParams.getNodeGroups().size() > 1 ) {
         if ( ( uint64_t ) time( NULL ) >=
-             chainParams.sChain.nodeGroups[chainParams.sChain.nodeGroups.size() - 2].finishTs ) {
+             chainParams.getNodeGroupByIndex( chainParams.getNodeGroups().size() - 2 ).finishTs ) {
             isRotationtrigger = false;
         }
     } else {
@@ -336,9 +336,10 @@ std::array< std::string, 4 > getBLSPublicKeyToVerifySnapshot( const ChainParams&
     }
     if ( isRotationtrigger ) {
         arrayCommonPublicKey =
-            chainParams.sChain.nodeGroups[chainParams.sChain.nodeGroups.size() - 2].blsPublicKey;
+            chainParams.getNodeGroupByIndex( chainParams.getNodeGroups().size() - 2 ).blsPublicKey;
     } else {
-        arrayCommonPublicKey = chainParams.sChain.nodeGroups.back().blsPublicKey;
+        arrayCommonPublicKey =
+            chainParams.getNodeGroupByIndex( chainParams.getNodeGroups().size() - 1 ).blsPublicKey;
     }
 
     return arrayCommonPublicKey;
@@ -527,15 +528,15 @@ void downloadAndProccessSnapshot( std::shared_ptr< SnapshotManager >& snapshotMa
         successfullDownload = downloadSnapshotFromUrl( snapshotManager, chainParams,
             arrayCommonPublicKey, urlToDownloadSnapshotFrom, isRegularSnapshot, true );
     else {
-        for ( size_t idx = 0; idx < chainParams.sChain.nodes.size() && !successfullDownload; ++idx )
+        for ( size_t idx = 0; idx < chainParams.getNodesCount() && !successfullDownload; ++idx )
             try {
-                if ( chainParams.nodeInfo.id == chainParams.sChain.nodes.at( idx ).id )
+                if ( chainParams.getSelfNodeId() == chainParams.getNodeByIndex( idx ).id )
                     continue;
 
                 std::string nodeUrl =
-                    std::string( "http://" ) +
-                    std::string( chainParams.sChain.nodes.at( idx ).ip ) + std::string( ":" ) +
-                    ( chainParams.sChain.nodes.at( idx ).port + 3 ).convert_to< std::string >();
+                    std::string( "http://" ) + std::string( chainParams.getNodeByIndex( idx ).ip ) +
+                    std::string( ":" ) +
+                    ( chainParams.getNodeByIndex( idx ).port + 3 ).convert_to< std::string >();
 
                 successfullDownload = downloadSnapshotFromUrl( snapshotManager, chainParams,
                     arrayCommonPublicKey, nodeUrl, isRegularSnapshot );
@@ -621,13 +622,8 @@ int main( int argc, char** argv ) {
         bool bEnabledAPIs_debug = false;
         bool bEnabledAPIs_performanceTracker = false;
 
-        const std::list< std::pair< std::string, std::string > >& listIfaceInfos4 =
-            get_machine_ip_addresses_4();  // IPv4
-        const std::list< std::pair< std::string, std::string > >& listIfaceInfos6 =
-            get_machine_ip_addresses_6();  // IPv6
-
         string strJsonAdminSessionKey;
-        ChainParams chainParams;
+        std::shared_ptr< ChainParams > chainParams = std::make_shared< ChainParams >();
         string privateChain;
 
         bool upnp = true;
@@ -1086,7 +1082,7 @@ int main( int argc, char** argv ) {
             strJsonAdminSessionKey = vm["admin"].as< string >();
 
         if ( vm.count( "skale" ) ) {
-            chainParams = ChainParams( genesisInfo( eth::Network::Skale ) );
+            chainParams.reset( new ChainParams( genesisInfo( eth::Network::Skale ) ) );
             chainConfigIsSet = true;
         }
 
@@ -1099,14 +1095,14 @@ int main( int argc, char** argv ) {
                 configJSON = contentsString( configPath.string() );
                 if ( configJSON.empty() )
                     throw std::runtime_error( "Config file probably not found" );
-                chainParams = chainParams.loadConfig( configJSON, configPath );
+                chainParams->loadConfig( configJSON, configPath );
                 chainConfigIsSet = true;
                 // TODO avoid double-parse
                 joConfig = nlohmann::json::parse( configJSON );
                 chainConfigParsed = true;
                 dev::eth::g_configAccesssor.reset(
                     new skutils::json_config_file_accessor( configPath.string() ) );
-                dev::db::DBFactory::setReopenPeriodMs( chainParams.sChain.levelDBReopenIntervalMs );
+                dev::db::DBFactory::setReopenPeriodMs( chainParams->getLevelDbReopenIntervalMs() );
             } catch ( const char* str ) {
                 LOG( loggerError ) << "Error: " << str << ": " << configPath;
                 return EX_USAGE;
@@ -1148,7 +1144,7 @@ int main( int argc, char** argv ) {
 
         if ( !chainConfigIsSet )
             // default to skale if not already set with `--config`
-            chainParams = ChainParams( genesisInfo( eth::Network::Skale ) );
+            chainParams.reset( new ChainParams( genesisInfo( eth::Network::Skale ) ) );
 
         if ( chainConfigParsed ) {
             try {
@@ -1579,8 +1575,14 @@ int main( int argc, char** argv ) {
             u.fragment( "" );
             u.set_query();
             strURL = u.str();
-            chainParams.nodeInfo.sgxServerUrl = strURL;
+            chainParams->setSgxServerUrl( strURL );
         }
+
+#ifdef MIRAGE
+        uint64_t latestBlockTs = BlockChain::getLatestBlockTimestamp( *chainParams, getDataDir() );
+        LOG( loggerInfo ) << "Latest block timestamp is: " << latestBlockTs;
+        chainParams->updateCurrentGroupIfNeeded( latestBlockTs );
+#endif
 
         std::shared_ptr< StatusAndControl > statusAndControl =
             std::make_shared< StatusAndControlFile >(
@@ -1616,10 +1618,14 @@ int main( int argc, char** argv ) {
                               << urlToDownloadSnapshotFrom;
         }
 
-        if ( chainParams.sChain.snapshotIntervalSec > 0 || downloadSnapshotFlag ) {
-            std::vector< std::string > coreVolumes = { BlockChain::getChainDirName( chainParams ),
-                "filestorage", "prices_" + chainParams.nodeInfo.id.str() + ".db",
-                "blocks_" + chainParams.nodeInfo.id.str() + ".db" };
+
+        if ( chainParams->getSnapshotIntervalSec() > 0 || downloadSnapshotFlag ) {
+            std::vector< std::string > coreVolumes = { BlockChain::getChainDirName( *chainParams ),
+#ifndef MIRAGE
+                "filestorage",
+#endif
+                "prices_" + chainParams->getSelfNodeId().str() + ".db",
+                "blocks_" + chainParams->getSelfNodeId().str() + ".db" };
             snapshotManager.reset( new SnapshotManager(
                 chainParams, getDataDir(), sharedSpace ? sharedSpace->getPath() : "" ) );
         }
@@ -1635,7 +1641,7 @@ int main( int argc, char** argv ) {
 
             try {
                 downloadAndProccessSnapshot(
-                    snapshotManager, chainParams, urlToDownloadSnapshotFrom, true );
+                    snapshotManager, *chainParams, urlToDownloadSnapshotFrom, true );
 
                 // if we dont have 0 snapshot yet
                 try {
@@ -1644,14 +1650,14 @@ int main( int argc, char** argv ) {
                     // sleep before send skale_getSnapshot again - will receive error
                     LOG( loggerInfo )
                         << std::string( "Will sleep for " )
-                        << chainParams.sChain.snapshotDownloadInactiveTimeout +
+                        << chainParams->getSnapshotDownloadInactiveTimeout() +
                                dev::rpc::Skale::snapshotDownloadFragmentMonitorThreadTimeout()
                         << std::string( " seconds before downloading 0 snapshot" );
-                    sleep( chainParams.sChain.snapshotDownloadInactiveTimeout +
+                    sleep( chainParams->getSnapshotDownloadInactiveTimeout() +
                            dev::rpc::Skale::snapshotDownloadFragmentMonitorThreadTimeout() );
 
                     downloadAndProccessSnapshot(
-                        snapshotManager, chainParams, urlToDownloadSnapshotFrom, false );
+                        snapshotManager, *chainParams, urlToDownloadSnapshotFrom, false );
                 }
 
             } catch ( std::exception& ) {
@@ -1662,10 +1668,10 @@ int main( int argc, char** argv ) {
         }  // if --download-snapshot
 
         // download 0 snapshot if needed
-        if ( chainParams.nodeInfo.syncNode ) {
+        if ( chainParams->isSyncNode() ) {
             auto bc = BlockChain( chainParams, getDataDir() );
             if ( bc.number() == 0 ) {
-                if ( chainParams.nodeInfo.syncFromCatchup && !downloadSnapshotFlag ) {
+                if ( chainParams->isSyncFromCatchupEnabled() && !downloadSnapshotFlag ) {
                     statusAndControl->setExitState( StatusAndControl::StartAgain, true );
                     statusAndControl->setExitState( StatusAndControl::StartFromSnapshot, true );
                     statusAndControl->setSubsystemRunning(
@@ -1673,7 +1679,7 @@ int main( int argc, char** argv ) {
 
                     try {
                         downloadAndProccessSnapshot(
-                            snapshotManager, chainParams, urlToDownloadSnapshotFrom, false );
+                            snapshotManager, *chainParams, urlToDownloadSnapshotFrom, false );
                         snapshotManager->restoreSnapshot( 0 );
                     } catch ( SnapshotManager::SnapshotAbsent& ) {
                         LOG( loggerWarning ) << "Snapshot for 0 block is not found";
@@ -1688,7 +1694,7 @@ int main( int argc, char** argv ) {
         statusAndControl->setExitState( StatusAndControl::StartFromSnapshot, false );
 
         // it was needed for snapshot downloading
-        if ( chainParams.sChain.snapshotIntervalSec <= 0 ) {
+        if ( chainParams->getSnapshotIntervalSec() <= 0 ) {
             snapshotManager = nullptr;
         }
 
@@ -1775,21 +1781,22 @@ int main( int argc, char** argv ) {
             Ethash::init();
             NoProof::init();
 
-            if ( chainParams.sealEngineName == Ethash::name() ) {
-                g_client.reset( new eth::EthashClient( chainParams, ( int ) chainParams.networkID,
+            if ( chainParams->getSealEngineName() == Ethash::name() ) {
+                g_client.reset( new eth::EthashClient( chainParams, chainParams->getNetworkId(),
                     shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
                     withExisting,
                     TransactionQueue::Limits{ c_transactionQueueSize, c_futureTransactionQueueSize,
                         c_transactionQueueSizeBytes, c_futureTransactionQueueSizeBytes } ) );
-            } else if ( chainParams.sealEngineName == NoProof::name() ) {
-                g_client.reset( new eth::Client( chainParams, ( int ) chainParams.networkID,
+            } else if ( chainParams->getSealEngineName() == NoProof::name() ) {
+                g_client.reset( new eth::Client( chainParams, chainParams->getNetworkId(),
                     shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
                     withExisting,
                     TransactionQueue::Limits{ c_transactionQueueSize, c_futureTransactionQueueSize,
                         c_transactionQueueSizeBytes, c_futureTransactionQueueSizeBytes } ) );
             } else
-                BOOST_THROW_EXCEPTION( ChainParamsInvalid() << errinfo_comment(
-                                           "Unknown seal engine: " + chainParams.sealEngineName ) );
+                BOOST_THROW_EXCEPTION(
+                    ChainParamsInvalid() << errinfo_comment(
+                        "Unknown seal engine: " + chainParams->getSealEngineName() ) );
 
             g_client->dbRotationPeriod(
                 ( ( clock_t )( clockDbRotationPeriodInSeconds ) ) * CLOCKS_PER_SEC );
@@ -1802,14 +1809,14 @@ int main( int argc, char** argv ) {
                 else
                     return "";
             } );
-            g_client->setAuthor( chainParams.sChain.blockAuthor );
+            g_client->setAuthor( chainParams->getBlockAuthor() );
 
             DefaultConsensusFactory cons_fact( *g_client );
             setenv( "DATA_DIR", getDataDir().c_str(), 0 );
 
             std::shared_ptr< SkaleHost > skaleHost = std::make_shared< SkaleHost >( *g_client,
                 &cons_fact, instanceMonitor, skutils::json_config_file_accessor::g_strImaMainNetURL,
-                !chainParams.nodeInfo.syncNode );
+                !chainParams->isSyncNode() );
             dev::eth::g_skaleHost = skaleHost;
 
             // XXX nested lambdas and strlen hacks..
@@ -1943,14 +1950,14 @@ int main( int argc, char** argv ) {
                     allowedDestinations.insert( _t.to );
                 return r == "yes" || r == "always";
             };
-        if ( chainParams.nodeInfo.ip.empty() ) {
+        if ( chainParams->getSelfNodeIp().empty() ) {
             LOG( loggerWarning ) << "IPv4"
                                  << " bind address is not set, will not start RPC on this protocol";
             nExplicitPortHTTP4std = nExplicitPortHTTPS4std = nExplicitPortHTTP4nfo =
                 nExplicitPortHTTPS4nfo = nExplicitPortWS4std = nExplicitPortWSS4std =
                     nExplicitPortWS4nfo = nExplicitPortWSS4nfo = -1;
         }
-        if ( chainParams.nodeInfo.ip6.empty() ) {
+        if ( chainParams->getSelfNodeIpV6().empty() ) {
             LOG( loggerWarning )
                 << "IPv6 bind address is not set, will not start RPC on this protocol";
             nExplicitPortHTTP6std = nExplicitPortHTTPS6std = nExplicitPortHTTP6nfo =
@@ -1997,8 +2004,7 @@ int main( int argc, char** argv ) {
             auto pWeb3Face = new rpc::Web3( clientVersion() );
             auto pEthFace = new rpc::Eth( configPath.string(), *g_client, *accountHolder.get() );
             auto pSkaleFace = new rpc::Skale( *g_client, sharedSpace );
-            auto pSkaleStatsFace =
-                new rpc::SkaleStats( configPath.string(), *g_client, chainParams );
+            auto pSkaleStatsFace = new rpc::SkaleStats( configPath.string(), *g_client );
             pSkaleStatsFace->isExposeAllDebugInfo_ = isExposeAllDebugInfo;
             auto pPersonalFace = bEnabledAPIs_personal ?
                                      new rpc::Personal( keyManager, *accountHolder, *g_client ) :
@@ -2380,43 +2386,52 @@ int main( int argc, char** argv ) {
                 inject_rapidjson_handlers( serverOpts, pEthFace );
                 serverOpts.fn_binary_snapshot_download_ = fn_binary_snapshot_download;
                 serverOpts.netOpts_.bindOptsStandard_.cntServers_ = cntServersStd;
-                serverOpts.netOpts_.bindOptsStandard_.strAddrHTTP4_ = chainParams.nodeInfo.ip;
+                serverOpts.netOpts_.bindOptsStandard_.strAddrHTTP4_ = chainParams->getSelfNodeIp();
                 serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ = nExplicitPortHTTP4std;
-                serverOpts.netOpts_.bindOptsStandard_.strAddrHTTP6_ = chainParams.nodeInfo.ip6;
+                serverOpts.netOpts_.bindOptsStandard_.strAddrHTTP6_ =
+                    chainParams->getSelfNodeIpV6();
                 serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP6_ = nExplicitPortHTTP6std;
-                serverOpts.netOpts_.bindOptsStandard_.strAddrHTTPS4_ = chainParams.nodeInfo.ip;
+                serverOpts.netOpts_.bindOptsStandard_.strAddrHTTPS4_ = chainParams->getSelfNodeIp();
                 serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTPS4_ = nExplicitPortHTTPS4std;
-                serverOpts.netOpts_.bindOptsStandard_.strAddrHTTPS6_ = chainParams.nodeInfo.ip6;
+                serverOpts.netOpts_.bindOptsStandard_.strAddrHTTPS6_ =
+                    chainParams->getSelfNodeIpV6();
                 serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTPS6_ = nExplicitPortHTTPS6std;
-                serverOpts.netOpts_.bindOptsStandard_.strAddrWS4_ = chainParams.nodeInfo.ip;
+                serverOpts.netOpts_.bindOptsStandard_.strAddrWS4_ = chainParams->getSelfNodeIp();
                 serverOpts.netOpts_.bindOptsStandard_.nBasePortWS4_ = nExplicitPortWS4std;
-                serverOpts.netOpts_.bindOptsStandard_.strAddrWS6_ = chainParams.nodeInfo.ip6;
+                serverOpts.netOpts_.bindOptsStandard_.strAddrWS6_ = chainParams->getSelfNodeIpV6();
                 serverOpts.netOpts_.bindOptsStandard_.nBasePortWS6_ = nExplicitPortWS6std;
-                serverOpts.netOpts_.bindOptsStandard_.strAddrWSS4_ = chainParams.nodeInfo.ip;
+                serverOpts.netOpts_.bindOptsStandard_.strAddrWSS4_ = chainParams->getSelfNodeIp();
                 serverOpts.netOpts_.bindOptsStandard_.nBasePortWSS4_ = nExplicitPortWSS4std;
-                serverOpts.netOpts_.bindOptsStandard_.strAddrWSS6_ = chainParams.nodeInfo.ip6;
+                serverOpts.netOpts_.bindOptsStandard_.strAddrWSS6_ = chainParams->getSelfNodeIpV6();
                 serverOpts.netOpts_.bindOptsStandard_.nBasePortWSS6_ = nExplicitPortWSS6std;
 
                 serverOpts.netOpts_.bindOptsInformational_.cntServers_ = cntServersNfo;
-                serverOpts.netOpts_.bindOptsInformational_.strAddrHTTP4_ = chainParams.nodeInfo.ip;
+                serverOpts.netOpts_.bindOptsInformational_.strAddrHTTP4_ =
+                    chainParams->getSelfNodeIp();
                 serverOpts.netOpts_.bindOptsInformational_.nBasePortHTTP4_ = nExplicitPortHTTP4nfo;
-                serverOpts.netOpts_.bindOptsInformational_.strAddrHTTP6_ = chainParams.nodeInfo.ip6;
+                serverOpts.netOpts_.bindOptsInformational_.strAddrHTTP6_ =
+                    chainParams->getSelfNodeIpV6();
                 serverOpts.netOpts_.bindOptsInformational_.nBasePortHTTP6_ = nExplicitPortHTTP6nfo;
-                serverOpts.netOpts_.bindOptsInformational_.strAddrHTTPS4_ = chainParams.nodeInfo.ip;
+                serverOpts.netOpts_.bindOptsInformational_.strAddrHTTPS4_ =
+                    chainParams->getSelfNodeIp();
                 serverOpts.netOpts_.bindOptsInformational_.nBasePortHTTPS4_ =
                     nExplicitPortHTTPS4nfo;
                 serverOpts.netOpts_.bindOptsInformational_.strAddrHTTPS6_ =
-                    chainParams.nodeInfo.ip6;
+                    chainParams->getSelfNodeIpV6();
                 serverOpts.netOpts_.bindOptsInformational_.nBasePortHTTPS6_ =
                     nExplicitPortHTTPS6nfo;
 
-                serverOpts.netOpts_.bindOptsInformational_.strAddrWS4_ = chainParams.nodeInfo.ip;
+                serverOpts.netOpts_.bindOptsInformational_.strAddrWS4_ =
+                    chainParams->getSelfNodeIp();
                 serverOpts.netOpts_.bindOptsInformational_.nBasePortWS4_ = nExplicitPortWS4nfo;
-                serverOpts.netOpts_.bindOptsInformational_.strAddrWS6_ = chainParams.nodeInfo.ip6;
+                serverOpts.netOpts_.bindOptsInformational_.strAddrWS6_ =
+                    chainParams->getSelfNodeIpV6();
                 serverOpts.netOpts_.bindOptsInformational_.nBasePortWS6_ = nExplicitPortWS6nfo;
-                serverOpts.netOpts_.bindOptsInformational_.strAddrWSS4_ = chainParams.nodeInfo.ip;
+                serverOpts.netOpts_.bindOptsInformational_.strAddrWSS4_ =
+                    chainParams->getSelfNodeIp();
                 serverOpts.netOpts_.bindOptsInformational_.nBasePortWSS4_ = nExplicitPortWSS4nfo;
-                serverOpts.netOpts_.bindOptsInformational_.strAddrWSS6_ = chainParams.nodeInfo.ip6;
+                serverOpts.netOpts_.bindOptsInformational_.strAddrWSS6_ =
+                    chainParams->getSelfNodeIpV6();
                 serverOpts.netOpts_.bindOptsInformational_.nBasePortWSS6_ = nExplicitPortWSS6nfo;
 
                 serverOpts.netOpts_.strPathSslKey_ = strPathSslKey;
@@ -2804,7 +2819,7 @@ int main( int argc, char** argv ) {
 
         LOG( loggerError ) << localeconv()->decimal_point;
 
-        std::string basename = "profile" + chainParams.nodeInfo.id.str();
+        std::string basename = "profile" + chainParams->getSelfNodeId().str();
         MicroProfileDumpFileImmediately(
             ( basename + ".html" ).c_str(), ( basename + ".csv" ).c_str(), nullptr );
         MicroProfileShutdown();

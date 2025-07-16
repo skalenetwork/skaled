@@ -858,7 +858,7 @@ Json::Value Eth::eth_getFilterLogs( string const& _filterId ) {
     } catch ( const TooBigResponse& ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS,
             "Log response size exceeded. Maximum allowed number of requested blocks is " +
-                to_string( this->client()->chainParams().getLogsBlocksLimit ) ) );
+                to_string( this->client()->chainParams().getLogsBlocksLimit() ) ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
@@ -886,7 +886,7 @@ Json::Value Eth::eth_getLogs( Json::Value const& _json ) {
     } catch ( const TooBigResponse& ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS,
             "Log response size exceeded. Maximum allowed number of requested blocks is " +
-                to_string( this->client()->chainParams().getLogsBlocksLimit ) ) );
+                to_string( this->client()->chainParams().getLogsBlocksLimit() ) ) );
     } catch ( const JsonRpcException& ) {
         throw;
     } catch ( ... ) {
@@ -1099,7 +1099,16 @@ string dev::rpc::exceptionToErrorMessage() {
         ret = "Transaction rejected by user.";
     } catch ( InvalidTransactionFormat const& ) {
         ret = "Invalid transaction format.";
-    } catch ( ... ) {
+    }
+#ifdef BITE
+    // BITE exceptions
+    catch ( InvalidBITETransaction const& _e ) {
+        ret = "Invalid BITE transaction format.";
+    } catch ( BITETransactionTooShort const& _e ) {
+        ret = "BITE transaction too short.";
+    }
+#endif
+    catch ( ... ) {
         ret = "Invalid RPC parameters.";
     }
     return ret;

@@ -188,6 +188,7 @@ Transaction::Transaction( const bytes& _rlp, CheckTransaction _checkSig, bool _a
     : Transaction( &_rlp, _checkSig, _allowInvalid, _eip1559Enabled,
           _invalidTransactionFormatPatchEnabled ) {}
 
+#ifndef MIRAGE
 bool Transaction::hasExternalGas() const {
     if ( !m_externalGasIsChecked ) {
         throw ExternalGasException();
@@ -202,18 +203,24 @@ u256 Transaction::getExternalGas() const {
         return u256( 0 );
     }
 }
+#endif
 
 u256 Transaction::gasPrice() const {
+#ifdef MIRAGE
+    return TransactionBase::gasPrice();
+#else
     if ( m_externalGasIsChecked && hasExternalGas() ) {
         return 0;
     } else {
         return TransactionBase::gasPrice();
     }
+#endif
 }
 
+#ifndef MIRAGE
 void Transaction::checkOutExternalGas(
     const ChainParams& _cp, time_t _committedBlockTimestamp, uint64_t _committedBlockNumber ) {
-    u256 const& difficulty = _cp.externalGasDifficulty;
+    u256 const& difficulty = _cp.getExternalGasDifficulty();
     assert( difficulty > 0 );
     if ( !isInvalid() ) {
         h256 hash;
@@ -246,6 +253,7 @@ void Transaction::checkOutExternalGas(
         m_externalGasIsChecked = true;
     }
 }
+#endif
 
 LocalisedTransaction::LocalisedTransaction( const Transaction& _t, const h256& _blockHash,
     unsigned _transactionIndex, BlockNumber _blockNumber )

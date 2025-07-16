@@ -169,7 +169,7 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
             "snapshot info request received too early, no snapshot available yet, please try later "
             "or request earlier block number";
         joResponse["timeValid"] =
-            currentSnapshotTime + m_client.chainParams().sChain.snapshotDownloadTimeout;
+            currentSnapshotTime + m_client.chainParams().getSnapshotDownloadTimeout();
         return joResponse;
     }
 
@@ -184,7 +184,7 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
     if ( m_shared_space && !m_shared_space->try_lock() ) {
         joResponse["error"] = "snapshot serialization space is occupied, please try again later";
         joResponse["timeValid"] =
-            time( NULL ) + m_client.chainParams().sChain.snapshotDownloadTimeout;
+            time( NULL ) + m_client.chainParams().getSnapshotDownloadTimeout();
         return joResponse;
     }
 
@@ -207,12 +207,12 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
          !snapshotDownloadFragmentMonitorThread->joinable() ) {
         snapshotDownloadFragmentMonitorThread.reset( new std::thread( [this]() {
             while ( ( time( NULL ) - lastSnapshotDownloadFragmentTime <
-                            m_client.chainParams().sChain.snapshotDownloadInactiveTimeout ||
+                            m_client.chainParams().getSnapshotDownloadInactiveTimeout() ||
                         time( NULL ) - currentSnapshotTime <
-                            m_client.chainParams().sChain.snapshotDownloadInactiveTimeout ) &&
+                            m_client.chainParams().getSnapshotDownloadInactiveTimeout() ) &&
                     ( time( NULL ) - currentSnapshotTime <
-                            m_client.chainParams().sChain.snapshotDownloadTimeout ||
-                        m_client.chainParams().nodeInfo.archiveMode ) ) {
+                            m_client.chainParams().getSnapshotDownloadTimeout() ||
+                        m_client.chainParams().isArchiveModeEnabled() ) ) {
                 if ( threadExitRequested )
                     break;
                 sleep( SNAPSHOT_DOWNLOAD_MONITOR_THREAD_SLEEP_MS );
@@ -357,9 +357,9 @@ std::string Skale::skale_getLatestSnapshotBlockNumber() {
 }
 
 Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
-    dev::eth::ChainParams chainParams = this->m_client.chainParams();
-    if ( !chainParams.nodeInfo.syncNode && ( chainParams.nodeInfo.keyShareName.empty() ||
-                                               chainParams.nodeInfo.sgxServerUrl.empty() ) )
+    const dev::eth::ChainParams& chainParams = this->m_client.chainParams();
+    if ( !chainParams.isSyncNode() &&
+         ( chainParams.getKeyShareName().empty() || chainParams.getSgxServerUrl().empty() ) )
         throw jsonrpc::JsonRpcException( "Snapshot signing is not enabled" );
 
     if ( blockNumber != 0 && blockNumber != this->m_client.getLatestSnapshotBlockNumer() ) {
@@ -374,8 +374,8 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
                 "Requested hash of block " + to_string( blockNumber ) + " is absent" );
 
         nlohmann::json joSignature = nlohmann::json::object();
-        if ( !chainParams.nodeInfo.syncNode ) {
-            std::string sgxServerURL = chainParams.nodeInfo.sgxServerUrl;
+        if ( !chainParams.isSyncNode() ) {
+            std::string sgxServerURL = chainParams.getSgxServerUrl();
             skutils::url u( sgxServerURL );
 
             nlohmann::json joCall = nlohmann::json::object();
@@ -385,18 +385,10 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
                 joCall["type"] = "BLSSignReq";
             nlohmann::json obj = nlohmann::json::object();
 
-            obj["keyShareName"] = chainParams.nodeInfo.keyShareName;
+            obj["keyShareName"] = chainParams.getKeyShareName();
             obj["messageHash"] = snapshotHash.hex();
-            obj["n"] = chainParams.sChain.nodes.size();
-            obj["t"] = chainParams.sChain.t;
-
-            auto it =
-                std::find_if( chainParams.sChain.nodes.begin(), chainParams.sChain.nodes.end(),
-                    [chainParams]( const dev::eth::sChainNode& schain_node ) {
-                        return schain_node.id == chainParams.nodeInfo.id;
-                    } );
-            assert( it != chainParams.sChain.nodes.end() );
-            dev::eth::sChainNode schain_node = *it;
+            obj["n"] = chainParams.getNodesCount();
+            obj["t"] = chainParams.getThresholdCount();
 
             joCall["params"] = obj;
 
@@ -538,7 +530,7 @@ Json::Value Skale::skale_getDBUsage() {
 #ifndef MIRAGE
 std::string Skale::oracle_submitRequest( std::string& request ) {
     try {
-        if ( m_client.chainParams().nodeInfo.syncNode )
+        if ( m_client.chainParams().isSyncNode() )
             throw std::runtime_error( "Oracle is disabled on this instance" );
         std::string receipt;
         std::string errorMessage;
@@ -559,7 +551,7 @@ std::string Skale::oracle_submitRequest( std::string& request ) {
 
 std::string Skale::oracle_checkResult( std::string& receipt ) {
     try {
-        if ( m_client.chainParams().nodeInfo.syncNode )
+        if ( m_client.chainParams().isSyncNode() )
             throw std::runtime_error( "Oracle is disabled on this instance" );
         std::string result;
         // this function is guaranteed not to throw exceptions
@@ -584,7 +576,7 @@ std::string Skale::oracle_checkResult( std::string& receipt ) {
 #endif
 
 #ifdef BITE
-std::string Skale::skale_getCommonPublicKey() {
+std::string Skale::bite_getCommonPublicKey() {
     try {
         auto publicKeyArray = m_client.getCurrentBLSPublicKey();
         libff::alt_bn128_G2 publicKeyG2;
@@ -603,7 +595,7 @@ std::string Skale::skale_getCommonPublicKey() {
 }
 
 // TODO - returns the data + to address (?)
-Json::Value Skale::skale_getDecryptedTransactionData( const std::string& _transactionHash ) {
+Json::Value Skale::bite_getDecryptedTransactionData( const std::string& _transactionHash ) {
     try {
         h256 h = jsToFixed< 32 >( _transactionHash );
         if ( !m_client.isKnownTransaction( h ) )

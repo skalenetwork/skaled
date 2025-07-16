@@ -50,7 +50,7 @@ vector< h256 > lastHashes( u256 _currentBlockNumber ) {
 
 int mainnetChainID() {
     static auto const c_mainnetChainID =
-        ChainParams( genesisInfo( eth::Network::MainNetworkTest ) ).chainID;
+        ChainParams( genesisInfo( eth::Network::MainNetworkTest ) ).getChainId();
     return c_mainnetChainID;
 }
 }  // namespace
@@ -260,7 +260,7 @@ std::tuple< State, ImportTest::ExecOutput, skale::ChangeLog > ImportTest::execut
     try {
         unique_ptr< SealEngineFace > se(
             ChainParams( genesisInfo( _sealEngineNetwork ) ).createSealEngine() );
-        removeEmptyAccounts = m_envInfo->number() >= se->chainParams().EIP158ForkBlock;
+        removeEmptyAccounts = m_envInfo->number() >= se->chainParams().getEIP158ForkBlock();
         if ( Options::get().jsontrace ) {
             StandardTrace st;
             st.setShowMnemonics();
@@ -426,19 +426,13 @@ void ImportTest::importTransaction( json_spirit::mObject const& _o, eth::Transac
                         defaultChainId, 
 #endif
                        Secret( _o.at( "secretKey" ).get_str() ) ) :
-                   Transaction( 
-                        toInt( _o.at( "value" ) ), 
-                        toInt( _o.at( "gasPrice" ) ),
-                        toInt( _o.at( "gasLimit" ) ), 
-                        Address( _o.at( "to" ).get_str() ),
-                        importData( _o ), 
-                        toInt( _o.at( "nonce" ) ),
-#ifdef MIRAGE
-                        defaultChainId, 
-#endif
-                        Secret( _o.at( "secretKey" ).get_str() ) );
-
+                   Transaction( toInt( _o.at( "value" ) ), toInt( _o.at( "gasPrice" ) ),
+                       toInt( _o.at( "gasLimit" ) ), Address( _o.at( "to" ).get_str() ),
+                       importData( _o ), toInt( _o.at( "nonce" ) ),
+                       Secret( _o.at( "secretKey" ).get_str() ) );
+#ifndef MIRAGE
         o_tr.ignoreExternalGas();
+#endif
     } else {
         requireJsonFields( _o, "transaction",
             {{"data", jsonVType::str_type}, {"gasLimit", jsonVType::str_type},
@@ -450,7 +444,9 @@ void ImportTest::importTransaction( json_spirit::mObject const& _o, eth::Transac
         RLP transactionRLP( transactionRLPStream.out() );
         try {
             o_tr = Transaction( transactionRLP.data(), CheckTransaction::Everything );
+#ifndef MIRAGE
             o_tr.ignoreExternalGas();
+#endif
         } catch ( InvalidSignature const& ) {
             // create unsigned transaction
             o_tr = _o.at( "to" ).get_str().empty() ?
@@ -460,7 +456,9 @@ void ImportTest::importTransaction( json_spirit::mObject const& _o, eth::Transac
                        Transaction( toInt( _o.at( "value" ) ), toInt( _o.at( "gasPrice" ) ),
                            toInt( _o.at( "gasLimit" ) ), Address( _o.at( "to" ).get_str() ),
                            importData( _o ), toInt( _o.at( "nonce" ) ) );
+#ifndef MIRAGE
             o_tr.ignoreExternalGas();
+#endif
         } catch ( Exception& _e ) {
             cnote << "invalid transaction" << boost::diagnostic_information( _e );
         }
