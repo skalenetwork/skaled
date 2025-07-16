@@ -114,7 +114,9 @@ public:
 
     Json::Value skale_stats() override;
     Json::Value skale_nodesRpcInfo() override;
+#ifndef MIRAGE
     Json::Value skale_imaInfo() override;
+#endif
 
     static void countCall( const std::string& _origin, const std::string& _method ) {
         auto iterator = statsCounters.find( getProtocol( _origin ) + _method );

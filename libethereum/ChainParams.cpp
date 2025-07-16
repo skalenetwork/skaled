@@ -870,4 +870,5 @@ Address ChainParams::getSChainNodeAddressByIndex( uint64_t _sChainIndex ) const 
     }
     return nodeIterator->owner;
 }
+
 #endif

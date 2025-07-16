@@ -1123,6 +1123,7 @@ int main( int argc, char** argv ) {
             }
         }
 
+#ifndef MIRAGE
         // for now, leave previous values in file (for case of crash)
 
         if ( vm.count( "main-net-url" ) ) {
@@ -1141,6 +1142,7 @@ int main( int argc, char** argv ) {
             LOG( loggerDebug ) << "Main Net URL is: "
                                << skutils::json_config_file_accessor::g_strImaMainNetURL;
         }
+#endif
 
         if ( !chainConfigIsSet )
             // default to skale if not already set with `--config`
@@ -1814,9 +1816,12 @@ int main( int argc, char** argv ) {
             DefaultConsensusFactory cons_fact( *g_client );
             setenv( "DATA_DIR", getDataDir().c_str(), 0 );
 
-            std::shared_ptr< SkaleHost > skaleHost = std::make_shared< SkaleHost >( *g_client,
-                &cons_fact, instanceMonitor, skutils::json_config_file_accessor::g_strImaMainNetURL,
-                !chainParams->isSyncNode() );
+            std::shared_ptr< SkaleHost > skaleHost =
+                std::make_shared< SkaleHost >( *g_client, &cons_fact, instanceMonitor,
+#ifndef MIRAGE
+                    skutils::json_config_file_accessor::g_strImaMainNetURL,
+#endif
+                    !chainParams->isSyncNode() );
             dev::eth::g_skaleHost = skaleHost;
 
             // XXX nested lambdas and strlen hacks..

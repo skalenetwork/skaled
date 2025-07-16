@@ -72,6 +72,9 @@ public:
     Json::Value skale_downloadSnapshotFragment( const Json::Value& request ) override;
     Json::Value skale_getSnapshotSignature( unsigned blockNumber ) override;
     std::string skale_getLatestSnapshotBlockNumber() override;
+#ifdef MIRAGE
+    Json::Value skale_getBLSPublicKey() override;
+#endif
     std::string skale_getLatestBlockNumber() override;
     Json::Value skale_getDBUsage() override;
 
