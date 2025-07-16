@@ -4665,6 +4665,7 @@ static std::string const c_BITEConfigString =
     std::to_string( rand_port ) + R"(,
             "logLevel": "trace",
             "logLevelProposal": "trace",
+            "testSignatures": true,
             "ecdsaKeyName": "NEK:d391a1af1cd9663335e0f970e59402bf16fcfe0cc421c535bf60ba618a456d68"
         },
         "sChain": {
