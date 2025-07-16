@@ -174,6 +174,10 @@ public:
     std::string bite_getCommonPublicKey() noexcept( false );
     Json::Value bite_getDecryptedTransactionData( const std::string& param1 ) noexcept( false );
 #endif
+
+#ifdef MIRAGE
+    Json::Value skale_getBLSPublicKey() noexcept( false );
+#endif
 };
 
 #endif  // JSONRPC_CPP_STUB_WEBTHREESTUBCLIENT_H_

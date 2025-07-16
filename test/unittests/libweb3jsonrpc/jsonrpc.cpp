@@ -336,15 +336,6 @@ revert();
                 "restrictAccess": ["5c4e11842e8be09264dc1976943571d7af6d00f9"]
             }
         },
-        "0000000000000000000000000000000000000007": {
-            "precompiled": {
-                "name": "getIMABLSPublicKey",
-                "linear": {
-                    "base": 15,
-                    "word": 0
-                }
-            }
-        },
         "0x5c4e11842e8be09264dc1976943571d7af6d00f9" : {
             "balance" : "1000000000000000000000000000000"
         },
@@ -4658,8 +4649,6 @@ static std::string const c_BITEConfigString =
             "bindIP": "0.0.0.0",
             "logLevel": "info",
             "logLevelConfig": "info",
-            "imaMessageProxySChain": "0xd2AAa00100000000000000000000000000000000",
-            "imaMessageProxyMainNet": "0x337591F78cbf2b113A57D9709511a1b6E524DdaE",
             "rotateAfterBlock": 10240,
             "basePort": )" +
     std::to_string( rand_port ) + R"(,
@@ -4820,6 +4809,17 @@ BOOST_AUTO_TEST_CASE( getCommonPublicKey ) {
     auto blsPublicKey = fixture.rpcClient->bite_getCommonPublicKey();
 
     BOOST_REQUIRE( blsPublicKey.size() == 256 );
+}
+
+BOOST_AUTO_TEST_CASE( getBLSPublicKey ) {
+    JsonRpcFixture fixture( c_BITEConfigString, false, false, true );
+
+    Json::Value blsPublicKey = fixture.rpcClient->skale_getBLSPublicKey();
+
+    BOOST_REQUIRE( blsPublicKey["BLSPublicKey0"] == "15959969554621958245201075983340071881770733084910870228938077786643587385029" );
+    BOOST_REQUIRE( blsPublicKey["BLSPublicKey1"] == "7970122607051572307517094692346020360016825923464107614135327251488152616550" );
+    BOOST_REQUIRE( blsPublicKey["BLSPublicKey2"] == "3371162264373897025322009434717052197952692496405149486989861571246537813591" );
+    BOOST_REQUIRE( blsPublicKey["BLSPublicKey3"] == "13678625751515504401110635369790787716744686498431213713911601759809559919693" );
 }
 
 BOOST_AUTO_TEST_CASE( BITETransactionCouldNotBeDecrypted ) {

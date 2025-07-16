@@ -255,8 +255,11 @@ std::tuple< dev::h256, libff::alt_bn128_G1, libff::alt_bn128_G2 > SnapshotHashAg
 
         libff::alt_bn128_G2 publicKey;
         if ( urlToDownloadSnapshotFrom_.empty() ) {
+#ifdef MIRAGE
+            Json::Value joPublicKeyResponse = skaleClient.skale_getBLSPublicKey();
+#else
             Json::Value joPublicKeyResponse = skaleClient.skale_imaInfo();
-
+#endif
             publicKey.X.c0 =
                 libff::alt_bn128_Fq( joPublicKeyResponse["BLSPublicKey0"].asCString() );
             publicKey.X.c1 =
@@ -265,6 +268,8 @@ std::tuple< dev::h256, libff::alt_bn128_G1, libff::alt_bn128_G2 > SnapshotHashAg
                 libff::alt_bn128_Fq( joPublicKeyResponse["BLSPublicKey2"].asCString() );
             publicKey.Y.c1 =
                 libff::alt_bn128_Fq( joPublicKeyResponse["BLSPublicKey3"].asCString() );
+
+
             publicKey.Z = libff::alt_bn128_Fq2::one();
         } else {
             publicKey = libff::alt_bn128_G2::one();
@@ -294,6 +299,7 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
                                           ':' +
                                           ( this->chainParams_.getNodeByIndex( i ).port + 3 )
                                               .convert_to< std::string >();
+
                     auto snapshotData = askNodeForHash( nodeUrl, blockNumber );
                     if ( std::get< 0 >( snapshotData ).size > 0 ) {
                         const std::lock_guard< std::mutex > lock( this->hashesMutex );
