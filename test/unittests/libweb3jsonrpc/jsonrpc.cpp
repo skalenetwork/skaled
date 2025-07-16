@@ -4654,7 +4654,6 @@ static std::string const c_BITEConfigString =
     std::to_string( rand_port ) + R"(,
             "logLevel": "trace",
             "logLevelProposal": "trace",
-            "testSignatures": true,
             "ecdsaKeyName": "NEK:d391a1af1cd9663335e0f970e59402bf16fcfe0cc421c535bf60ba618a456d68"
         },
         "sChain": {
@@ -4808,7 +4807,7 @@ BOOST_AUTO_TEST_CASE( getCommonPublicKey ) {
 
     auto blsPublicKey = fixture.rpcClient->bite_getCommonPublicKey();
 
-    BOOST_REQUIRE( blsPublicKey.size() == 256 );
+    BOOST_REQUIRE_EQUAL( blsPublicKey.size(), 256 );
 }
 
 BOOST_AUTO_TEST_CASE( getBLSPublicKey ) {
@@ -4816,10 +4815,147 @@ BOOST_AUTO_TEST_CASE( getBLSPublicKey ) {
 
     Json::Value blsPublicKey = fixture.rpcClient->skale_getBLSPublicKey();
 
-    BOOST_REQUIRE( blsPublicKey["BLSPublicKey0"] == "15959969554621958245201075983340071881770733084910870228938077786643587385029" );
-    BOOST_REQUIRE( blsPublicKey["BLSPublicKey1"] == "7970122607051572307517094692346020360016825923464107614135327251488152616550" );
-    BOOST_REQUIRE( blsPublicKey["BLSPublicKey2"] == "3371162264373897025322009434717052197952692496405149486989861571246537813591" );
-    BOOST_REQUIRE( blsPublicKey["BLSPublicKey3"] == "13678625751515504401110635369790787716744686498431213713911601759809559919693" );
+    BOOST_REQUIRE_EQUAL( blsPublicKey["BLSPublicKey0"], "15959969554621958245201075983340071881770733084910870228938077786643587385029" );
+    BOOST_REQUIRE_EQUAL( blsPublicKey["BLSPublicKey1"], "7970122607051572307517094692346020360016825923464107614135327251488152616550" );
+    BOOST_REQUIRE_EQUAL( blsPublicKey["BLSPublicKey2"], "3371162264373897025322009434717052197952692496405149486989861571246537813591" );
+    BOOST_REQUIRE_EQUAL( blsPublicKey["BLSPublicKey3"], "13678625751515504401110635369790787716744686498431213713911601759809559919693" );
+}
+
+BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
+    JsonRpcFixture fixture( c_BITEConfigString, false, false, true, true );
+
+    dev::eth::simulateMining( *( fixture.client ), 20 );
+    string senderAddress = toJS( fixture.coinbase.address() );
+    size_t nonce = 0;
+    std::string biteAddress = "0x" + std::string( BITE_ADDRESS_AS_STRING );
+    u256 epochId = 0;
+
+    /// Normal valid BITE transaction -> should not throw
+    std::string message =
+        h256::random().hex() + std::string( "5EdF1e852fdD1B0Bc47C0307EF755C76f4B9c251" );
+    auto messageBytes = libBLS::ThresholdUtils::hexCStringToBytes( message.c_str() );
+    auto blsPublicKey = fixture.rpcClient->bite_getCommonPublicKey();
+
+    auto encryptedMessage =
+        libBLS::ThresholdEncryption::encrypt( messageBytes, libBLS::TEPublicKey( blsPublicKey ) );
+    auto encryptedBytes = encryptedMessage.toBytes();
+
+    auto dataField = formBITEPayloadRlp( epochId, encryptedBytes );
+
+    auto validBITETransactionRlp =
+        formTransactionRlp( fixture, senderAddress, dataField, nonce, biteAddress );
+    BOOST_REQUIRE_NO_THROW( fixture.rpcClient->eth_sendRawTransaction( validBITETransactionRlp ) );
+
+
+    /// Spoiling the BITE address -> should not throw any excpetion because txn is not
+    /// BITE-formatted
+    auto spoiledBiteAddress =
+        libBLS::ThresholdUtils::hexCStringToBytes( std::string( BITE_ADDRESS_AS_STRING ).c_str() );
+    size_t idxToSpoil = rand() % 20;
+    spoiledBiteAddress[idxToSpoil]++;
+    std::string spoiledBiteAddressHex =
+        libBLS::ThresholdUtils::bytesToHexString( spoiledBiteAddress );
+
+    auto validNonBITETransactionRlp =
+        formTransactionRlp( fixture, senderAddress, dataField, nonce, spoiledBiteAddressHex );
+    BOOST_REQUIRE_NO_THROW(
+        fixture.rpcClient->eth_sendRawTransaction( validNonBITETransactionRlp ) );
+
+
+    /// No data in the data field -> data is bad formatted - should throw an exception
+    auto invalidBITETransactionRlp =
+        formTransactionRlp( fixture, senderAddress, "", nonce, biteAddress );
+    BOOST_REQUIRE_THROW(
+        fixture.client->importTransaction( Transaction(
+            dev::jsToBytes( invalidBITETransactionRlp ), CheckTransaction::None, false ) ),
+        dev::eth::InvalidBITETransaction );
+    BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendRawTransaction( invalidBITETransactionRlp ),
+        jsonrpc::JsonRpcException );
+
+    RLPStream tooShortRlp;
+
+    /// Only epoch in data field -> data is too short - should throw an exception
+    RLPStream epochRlp;
+    epochRlp.appendList( 1 );
+    epochRlp << epochId;
+    dev::bytes invalidTooShortBITETxnData = tooShortRlp.appendList( epochRlp.out() ).out();
+    invalidBITETransactionRlp =
+        formTransactionRlp( fixture, senderAddress,
+                            dev::toHexPrefixed( invalidTooShortBITETxnData ), nonce, biteAddress );
+    BOOST_REQUIRE_THROW(
+        fixture.client->importTransaction( Transaction(
+            dev::jsToBytes( invalidBITETransactionRlp ), CheckTransaction::None, false ) ),
+        dev::eth::BITETransactionTooShort );
+    BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendRawTransaction( invalidBITETransactionRlp ),
+        jsonrpc::JsonRpcException );
+    tooShortRlp.clear();
+
+    /// Only epoch + key -> no data - should throw an exception
+    encryptedMessage.data = std::make_shared< dev::bytes >();
+    RLPStream epochAndKeyRlp;
+    epochAndKeyRlp.appendList( 2 );
+    epochAndKeyRlp << epochId;
+    epochAndKeyRlp << encryptedMessage.toBytes();
+    invalidTooShortBITETxnData = tooShortRlp.appendList( epochAndKeyRlp.out() ).out();
+    invalidBITETransactionRlp =
+        formTransactionRlp( fixture, senderAddress,
+                            dev::toHexPrefixed( invalidTooShortBITETxnData ), nonce, biteAddress );
+    BOOST_REQUIRE_THROW(
+        fixture.client->importTransaction( Transaction(
+            dev::jsToBytes( invalidBITETransactionRlp ), CheckTransaction::None, false ) ),
+        dev::eth::BITETransactionTooShort );
+    BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendRawTransaction( invalidBITETransactionRlp ),
+        jsonrpc::JsonRpcException );
+
+    /// Spoiling key part of ciphertext
+    auto randomEncryptedKeyObj = libBLS::CipheredKey( libff::alt_bn128_G2::random_element(),
+        encryptedMessage.key.V, libff::alt_bn128_G1::random_element() );
+    auto randomEncryptedKeyByteArray = randomEncryptedKeyObj.toBytes();
+    auto spoiledMessageBytes = encryptedBytes;
+    // overwrite key part
+    std::copy( randomEncryptedKeyByteArray.begin(), randomEncryptedKeyByteArray.end(),
+        spoiledMessageBytes.begin() );
+
+    RLPStream spoiledBITETransactionDataRlp, spoiledBITEDataRlp;
+    spoiledBITEDataRlp.appendList( 2 );
+    spoiledBITEDataRlp << epochId;
+    spoiledBITEDataRlp << spoiledMessageBytes;
+    dev::bytes invalidBITETxnData =
+            spoiledBITETransactionDataRlp.appendList( spoiledBITEDataRlp.out() ).out();
+
+    invalidBITETransactionRlp =
+        formTransactionRlp( fixture, senderAddress,
+                            dev::toHexPrefixed( invalidBITETxnData ), nonce, biteAddress );
+    BOOST_REQUIRE_THROW(
+        fixture.client->importTransaction( Transaction(
+            dev::jsToBytes( invalidBITETransactionRlp ), CheckTransaction::None, false ) ),
+        dev::eth::InvalidBITETransaction );
+    BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendRawTransaction( invalidBITETransactionRlp ),
+        jsonrpc::JsonRpcException );
+    spoiledBITEDataRlp.clear();
+
+    /// Encrypted key is not well formed -> should throw exception
+    randomEncryptedKeyObj.U.X.c0 = libff::alt_bn128_Fq::random_element();
+    randomEncryptedKeyObj.W.Y = libff::alt_bn128_Fq::random_element();
+    randomEncryptedKeyByteArray = randomEncryptedKeyObj.toBytes();
+    std::copy( randomEncryptedKeyByteArray.begin(), randomEncryptedKeyByteArray.end(),
+        spoiledMessageBytes.begin() );
+
+    spoiledBITEDataRlp.appendList( 2 );
+    spoiledBITEDataRlp << epochId;
+    spoiledBITEDataRlp << spoiledMessageBytes;
+    invalidBITETxnData =
+            spoiledBITETransactionDataRlp.appendList( spoiledBITEDataRlp.out() ).out();
+
+    invalidBITETransactionRlp =
+        formTransactionRlp( fixture, senderAddress,
+                            dev::toHexPrefixed( invalidBITETxnData ), nonce, biteAddress );
+    BOOST_REQUIRE_THROW(
+        fixture.client->importTransaction( Transaction(
+            dev::jsToBytes( invalidBITETransactionRlp ), CheckTransaction::None, false ) ),
+        dev::eth::InvalidBITETransaction );
+    BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendRawTransaction( invalidBITETransactionRlp ),
+        jsonrpc::JsonRpcException );
 }
 
 BOOST_AUTO_TEST_CASE( BITETransactionCouldNotBeDecrypted ) {
@@ -4882,7 +5018,7 @@ BOOST_AUTO_TEST_CASE( BITETransactionCouldNotBeDecrypted ) {
 
     auto balanceAfter =
         fixture.rpcClient->eth_getBalance( "0x7aa5e36aa15e93d10f4f26357c30f052dacdde5f", "latest" );
-    BOOST_REQUIRE( balanceAfter ==
+    BOOST_REQUIRE_EQUAL( balanceAfter,
                    dev::toJS( balanceBeforeU256 - minGasRequired * dev::jsToU256( gasPrice ) ) );
 
     try {

@@ -90,7 +90,7 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
         patchTimeStamps, m_client.chainParams().getConsensusStorageLimit() );
 
     if ( !m_client.chainParams().isSyncNode() &&
-         !m_client.chainParams().isTestSignaturesEnabled() ) {
+         !m_client.chainParams().getSgxServerUrl().empty() ) {
         this->fillSgxInfo( *consensusEnginePtr );
     }
 
