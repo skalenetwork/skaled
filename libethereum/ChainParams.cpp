@@ -405,7 +405,7 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
         s.nodeGroups = nodeGroups;
     }
 
-    auto parseNodeDetails = [&keyShareName]( const auto& jsonNodeObj ) -> sChainNode {
+    auto parseNodeDetails = [testSignatures]( const auto& jsonNodeObj ) -> sChainNode {
         auto nodeConfObj = jsonNodeObj.get_obj();
         sChainNode node{};
         node.id = nodeConfObj.at( "nodeID" ).get_uint64();
@@ -429,7 +429,7 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
             node.publicKey = nodeConfObj.at( "publicKey" ).get_str();
         } catch ( ... ) {
         }
-        if ( !keyShareName.empty() ) {
+        if ( !testSignatures ) {
             try {
                 node.blsPublicKey[0] = nodeConfObj.at( "blsPublicKey0" ).get_str();
                 node.blsPublicKey[1] = nodeConfObj.at( "blsPublicKey1" ).get_str();
@@ -480,6 +480,11 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
             std::vector< sChainNode > nodes;
 
             if ( startTs > 0 ) {
+                // read nodes details
+                for ( const auto& nodeConf : it->second.get_obj().at( "group" ).get_array() ) {
+                    auto node = parseNodeDetails( nodeConf );
+                    nodes.push_back( node );
+                }
                 // read bls related info
                 if ( !testSignatures ) {
                     const js::mObject& blsKeyInfo = it->second.get_obj().at( "blsKey" ).get_obj();
@@ -488,7 +493,8 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
                     commonBLSPublicKeys[2] = blsKeyInfo.at( "commonBLSPublicKey2" ).get_str();
                     commonBLSPublicKeys[3] = blsKeyInfo.at( "commonBLSPublicKey3" ).get_str();
 
-                    if ( !syncNode ) {
+                    bool isInCommittee = this->isInCommittee( nodes );
+                    if ( isInCommittee ) {
                         keyShareName = blsKeyInfo.at( "keyShareName" ).get_str();
 
                         t = blsKeyInfo.at( "t" ).get_int();
@@ -498,11 +504,6 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
                         BLSPublicKeys[2] = blsKeyInfo.at( "BLSPublicKey2" ).get_str();
                         BLSPublicKeys[3] = blsKeyInfo.at( "BLSPublicKey3" ).get_str();
                     }
-                }
-                // now read nodes details
-                for ( const auto& nodeConf : it->second.get_obj().at( "group" ).get_array() ) {
-                    auto node = parseNodeDetails( nodeConf );
-                    nodes.push_back( node );
                 }
             } else {
                 // timestamp is set to 0 for BOOT group
@@ -518,6 +519,8 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
         std::swap( s.currentGroups[0], s.currentGroups[1] );
 
     s.nodes = s.currentGroups.back().nodes;
+
+    switchSyncMode( s.nodes );
 #endif
 
     sChain = s;
@@ -821,6 +824,9 @@ std::string ChainParams::getConfigForConsensus() const {
 
     js::mObject skaleConfigObj = obj["skaleConfig"].get_obj();
     js::mObject sChainObj = skaleConfigObj["sChain"].get_obj();
+    js::mObject nodeInfoObj = skaleConfigObj["nodeInfo"].get_obj();
+
+    nodeInfoObj["syncNode"] = isSyncNode();
 
     js::mArray newNodesObj;
     if ( sChainObj["nodes"].type() == json_spirit::obj_type ) {
@@ -842,6 +848,7 @@ std::string ChainParams::getConfigForConsensus() const {
 
     sChainObj["nodes"] = newNodesObj;
     skaleConfigObj["sChain"] = sChainObj;
+    skaleConfigObj["nodeInfo"] = nodeInfoObj;
     obj["skaleConfig"] = skaleConfigObj;
 
     return js::write_string( js::mValue( obj ), true );
@@ -855,6 +862,7 @@ void ChainParams::updateCurrentGroupIfNeeded( uint64_t _latestBlockTimestamp ) {
         LOG( m_loggerInfo ) << "Using group with startTs " << sChain.currentGroups[0].startTs;
         std::swap( sChain.currentGroups[0], sChain.currentGroups[1] );
         sChain.nodes = sChain.currentGroups[1].nodes;
+        switchSyncMode( sChain.nodes );
     }
 }
 
@@ -871,4 +879,21 @@ Address ChainParams::getSChainNodeAddressByIndex( uint64_t _sChainIndex ) const 
     return nodeIterator->owner;
 }
 
+bool ChainParams::isInCommittee( const std::vector< sChainNode >& _committee ) const {
+    u256 thisNodeId = nodeInfo.id;
+    auto it = std::find_if( _committee.begin(), _committee.end(),
+        [thisNodeId]( const sChainNode& node ) { return node.id == thisNodeId; } );
+    return it != _committee.end();
+}
+
+// if a node is not in active committee
+// it should switch to sync mode
+// use it only after sChain.nodes was initialized / updated
+void ChainParams::switchSyncMode( const std::vector< sChainNode >& _nodes ) {
+    if ( !isInCommittee( _nodes ) ) {
+        nodeInfo.syncNode = true;
+    } else {
+        nodeInfo.syncNode = false;
+    }
+}
 #endif

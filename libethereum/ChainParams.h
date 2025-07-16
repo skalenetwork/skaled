@@ -221,10 +221,16 @@ private:
 
     mutable std::string originalJSON;
 
-    Logger m_loggerDebug{ createLogger( VerbosityDebug, "ChainParams" ) };
 #ifdef MIRAGE
+    void switchSyncMode( const std::vector< sChainNode >& _nodes );
+
+    std::vector< u256 > getNodeIdsForCommittee();
+
+    bool isInCommittee( const std::vector< sChainNode >& _committee ) const;
+
     Logger m_loggerInfo{ createLogger( VerbosityInfo, "ChainParams" ) };
 #endif
+    Logger m_loggerDebug{ createLogger( VerbosityDebug, "ChainParams" ) };
 };
 
 }  // namespace dev::eth
