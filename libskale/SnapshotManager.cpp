@@ -674,8 +674,12 @@ void SnapshotManager::computeFileStorageHash( const boost::filesystem::path& _fi
 }
 #endif
 
-void SnapshotManager::computeAllVolumesHash(
-    unsigned _blockNumber, secp256k1_sha256_t* ctx, bool is_checking ) const {
+void SnapshotManager::computeAllVolumesHash( unsigned _blockNumber, secp256k1_sha256_t* ctx
+#ifndef MIRAGE
+    ,
+    bool is_checking
+#endif
+) const {
     assert( allVolumes.size() != 0 );
 
     // TODO XXX Remove volumes structure knowledge from here!!
@@ -765,7 +769,12 @@ void SnapshotManager::computeAllVolumesHash(
     //     }
 }
 
-void SnapshotManager::computeSnapshotHash( unsigned _blockNumber, bool is_checking ) {
+void SnapshotManager::computeSnapshotHash( unsigned _blockNumber
+#ifndef MIRAGE
+    ,
+    bool is_checking
+#endif
+) {
     if ( this->isSnapshotHashPresent( _blockNumber ) ) {
         return;
     }
@@ -797,7 +806,12 @@ void SnapshotManager::computeSnapshotHash( unsigned _blockNumber, bool is_checki
             batched_io::test_crash_before_commit( "SnapshotManager::doSnapshot" );
     }
 
-    this->computeAllVolumesHash( _blockNumber, &ctx, is_checking );
+    this->computeAllVolumesHash( _blockNumber, &ctx
+#ifndef MIRAGE
+        ,
+        is_checking
+#endif
+    );
 
     for ( const auto& volume : volumes ) {
         int res = btrfs.subvolume.property_set(

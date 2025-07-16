@@ -169,7 +169,12 @@ public:
     dev::h256 getSnapshotHash( unsigned _blockNumber ) const;
     std::pair< int, int > getLatestSnapshots() const;
     bool isSnapshotHashPresent( unsigned _blockNumber ) const;
-    void computeSnapshotHash( unsigned _blockNumber, bool is_checking = false );
+    void computeSnapshotHash( unsigned _blockNumber
+#ifndef MIRAGE
+        ,
+        bool is_checking = false
+#endif
+    );
 
     uint64_t getBlockTimestamp( unsigned _blockNumber ) const;
 
@@ -201,8 +206,12 @@ private:
         const boost::filesystem::path& path, secp256k1_sha256_t* ctx, bool is_checking ) const;
     void proceedDirectory( const boost::filesystem::path& path, secp256k1_sha256_t* ctx ) const;
 #endif
-    void computeAllVolumesHash(
-        unsigned _blockNumber, secp256k1_sha256_t* ctx, bool is_checking ) const;
+    void computeAllVolumesHash( unsigned _blockNumber, secp256k1_sha256_t* ctx
+#ifndef MIRAGE
+        ,
+        bool is_checking
+#endif
+    ) const;
     void computeDatabaseHash(
         const boost::filesystem::path& _dbDir, secp256k1_sha256_t* ctx ) const;
     void addLastPriceToHash( unsigned _blockNumber, secp256k1_sha256_t* ctx ) const;
