@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <shared_mutex>
+
 #include "Account.h"
 #include <json_spirit/json_spirit.h>
 #include <libdevcore/Common.h>
@@ -68,7 +70,9 @@ struct ChainParams : public ChainOperationParams {
 
     std::string getConfigForConsensus() const;
 
-    void updateCurrentGroupIfNeeded( uint64_t _latestBlockTimestamp );
+#ifdef MIRAGE
+    bool updateCurrentGroupIfNeeded( uint64_t _latestBlockTimestamp );
+#endif
 
     // ONLY FOR TESTS
     void fillDefaultTestsParameters( size_t _port );
@@ -131,13 +135,13 @@ struct ChainParams : public ChainOperationParams {
 
     std::array< std::string, 4 > getCommonBlsPublicKey() const;
 
-    std::vector< sChainNode > getSchainNodes() const { return sChain.nodes; }
+    std::vector< sChainNode > getSchainNodes() const;
 
     std::vector< NodeGroup > getNodeGroups() const { return sChain.nodeGroups; }
 
     NodeGroup getNodeGroupByIndex( size_t _idx ) const { return sChain.nodeGroups.at( _idx ); }
 
-    sChainNode getNodeByIndex( size_t _idx ) const { return sChain.nodes.at( _idx ); }
+    sChainNode getNodeByIndex( size_t _idx ) const;
 
     int64_t getLevelDbReopenIntervalMs() const { return sChain.levelDBReopenIntervalMs; }
 
@@ -153,7 +157,7 @@ struct ChainParams : public ChainOperationParams {
     Address getSChainNodeAddressByIndex( uint64_t sChainIndex ) const;
 #endif
 
-    size_t getNodesCount() const { return sChain.nodes.size(); }
+    size_t getNodesCount() const;
 
     size_t getThresholdCount() const { return sChain.t; }
 
@@ -227,6 +231,8 @@ private:
     std::vector< u256 > getNodeIdsForCommittee();
 
     bool isInCommittee( const std::vector< sChainNode >& _committee ) const;
+
+    mutable std::shared_mutex m_mutex;
 
     Logger m_loggerInfo{ createLogger( VerbosityInfo, "ChainParams" ) };
 #endif

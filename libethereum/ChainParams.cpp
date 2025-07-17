@@ -515,7 +515,10 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
         }
     }
 
-    if ( s.currentGroups[0].startTs > s.currentGroups[1].startTs )
+    // for BOOT group timestamp is set to 0
+    // invariant here - relevant group MUST BE stored under index 1
+    if ( s.currentGroups[0].startTs < s.currentGroups[1].startTs &&
+         s.currentGroups[0].startTs != 0 )
         std::swap( s.currentGroups[0], s.currentGroups[1] );
 
     s.nodes = s.currentGroups.back().nodes;
@@ -783,10 +786,32 @@ bool ChainParams::checkAdminOriginAllowed( const std::string& origin ) const {
     return false;
 }
 
+std::vector< sChainNode > ChainParams::getSchainNodes() const {
+#ifdef MIRAGE
+    std::shared_lock< std::shared_mutex > lock( m_mutex );
+#endif
+    return sChain.nodes;
+}
+
+sChainNode ChainParams::getNodeByIndex( size_t _idx ) const {
+#ifdef MIRAGE
+    std::shared_lock< std::shared_mutex > lock( m_mutex );
+#endif
+    return sChain.nodes.at( _idx );
+}
+
+size_t ChainParams::getNodesCount() const {
+#ifdef MIRAGE
+    std::shared_lock< std::shared_mutex > lock( m_mutex );
+#endif
+    return sChain.nodes.size();
+}
+
 std::array< std::string, 4 > ChainParams::getSelfBlsPublicKey() const {
 #ifndef MIRAGE
     return nodeInfo.BLSPublicKeys;
 #else
+    std::shared_lock< std::shared_mutex > lock( m_mutex );
     return sChain.currentGroups.back().BLSPublicKeys;
 #endif
 }
@@ -795,6 +820,7 @@ std::array< std::string, 4 > ChainParams::getCommonBlsPublicKey() const {
 #ifndef MIRAGE
     return nodeInfo.commonBLSPublicKeys;
 #else
+    std::shared_lock< std::shared_mutex > lock( m_mutex );
     return sChain.currentGroups.back().commonBLSPublicKeys;
 #endif
 }
@@ -803,6 +829,7 @@ std::string ChainParams::getKeyShareName() const {
 #ifndef MIRAGE
     return nodeInfo.keyShareName;
 #else
+    std::shared_lock< std::shared_mutex > lock( m_mutex );
     return sChain.currentGroups.back().keyShareName;
 #endif
 }
@@ -854,16 +881,19 @@ std::string ChainParams::getConfigForConsensus() const {
     return js::write_string( js::mValue( obj ), true );
 }
 
-void ChainParams::updateCurrentGroupIfNeeded( uint64_t _latestBlockTimestamp ) {
+bool ChainParams::updateCurrentGroupIfNeeded( uint64_t _latestBlockTimestamp ) {
     // for BOOT group timestamp is set to 0
     // invariant here - relevant group MUST BE stored under index 1
-    if ( _latestBlockTimestamp < sChain.currentGroups[1].startTs &&
-         sChain.currentGroups[0].startTs != 0 ) {
-        LOG( m_loggerInfo ) << "Using group with startTs " << sChain.currentGroups[0].startTs;
+    if ( _latestBlockTimestamp >= sChain.currentGroups[0].startTs &&
+         sChain.currentGroups[0].startTs > sChain.currentGroups[1].startTs ) {
+        std::unique_lock< std::shared_mutex > lock( m_mutex );
         std::swap( sChain.currentGroups[0], sChain.currentGroups[1] );
+        LOG( m_loggerInfo ) << "Using the group with startTs " << sChain.currentGroups[1].startTs;
         sChain.nodes = sChain.currentGroups[1].nodes;
         switchSyncMode( sChain.nodes );
+        return true;
     }
+    return false;
 }
 
 Address ChainParams::getSChainNodeAddressByIndex( uint64_t _sChainIndex ) const {

@@ -57,6 +57,10 @@ public:
 
     virtual void startService() = 0;
     virtual void stopService() = 0;
+
+#ifdef MIRAGE
+    virtual void resetServerSocket() = 0;
+#endif
 };
 
 class HttpBroadcaster : public Broadcaster {
@@ -67,6 +71,10 @@ public:
     virtual void broadcast( const std::string& _rlp );
     virtual void startService() {}
     virtual void stopService() {}
+
+#ifdef MIRAGE
+    virtual void resetServerSocket() {}
+#endif
 
 private:
     dev::eth::Client& m_client;
@@ -89,6 +97,10 @@ public:
     virtual void startService();
     virtual void stopService();
 
+#ifdef MIRAGE
+    virtual void resetServerSocket();
+#endif
+
 private:
     dev::eth::Client& m_client;
     SkaleHost& m_skaleHost;
@@ -98,6 +110,7 @@ private:
     mutable void* m_zmq_client_socket;
 
     std::string getZmqUrl( const dev::eth::sChainNode& ) const;
+
     void* server_socket() const;
     void* client_socket() const;
 
