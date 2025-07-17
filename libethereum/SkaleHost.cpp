@@ -749,7 +749,16 @@ void SkaleHost::runCommitteeRotationForConsensus() {
         // restart all services to fetch latest nodes info
         try {
             m_consensus->startAll();
+        } catch ( const std::exception& ex ) {
+            LOG( m_loggerError ) << "Error happened in startAll() after committee rotation: "
+                                 << ex.what();
+            // cleanup
+            m_exitNeeded = true;
+            m_broadcastThread.join();
+            ExitHandler::exitHandler( -1, ExitHandler::ec_termninated_by_signal );
+            return;
         } catch ( ... ) {
+            LOG( m_loggerError ) << "Unknown exception in startAll() after committee rotation";
             // cleanup
             m_exitNeeded = true;
             m_broadcastThread.join();
@@ -889,8 +898,7 @@ void SkaleHost::stopWorking() {
         m_broadcastThread.join();
 
 #ifdef MIRAGE
-    if ( m_committeeRotationMonitorThread != nullptr &&
-         m_committeeRotationMonitorThread->joinable() )
+    if ( m_committeeRotationMonitorThread != nullptr )
         m_committeeRotationMonitorThread->join();
 #endif
 
