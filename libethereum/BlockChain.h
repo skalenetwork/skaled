@@ -473,6 +473,15 @@ public:
         return 0;
     }
 
+#ifdef MIRAGE
+    bool updateGroupIfNeeded() {
+        auto latestBlockTimestamp = info().timestamp();
+        CHECK_EXPRESSION( m_params );
+        return const_cast< ChainParams* >( m_params.get() )
+            ->updateCurrentGroupIfNeeded( latestBlockTimestamp );
+    }
+#endif
+
     // simple thing to compare _bn-1's timestamp with ts
     // maybe need cahing for faster operation
     bool isPatchTimestampActiveInBlockNumber( time_t _ts, BlockNumber _bn ) const;
@@ -647,6 +656,7 @@ private:
     boost::filesystem::path m_chainPath;
 
     std::shared_ptr< const ChainParams > m_params;
+
     std::shared_ptr< SealEngineFace > m_sealEngine;  // consider shared_ptr.
     mutable SharedMutex x_genesis;
     mutable BlockHeader m_genesis;       // mutable because they're effectively memos.
