@@ -138,7 +138,7 @@ jobs:
           mkdir -p build
           cd build
           # -DCMAKE_C_FLAGS=-O3 -DCMAKE_CXX_FLAGS=-O3
-          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE ..
+          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE -DSANITIZE=address ..
           cd ..
       - name: Print ccache stats for deps
         run: |
@@ -268,7 +268,7 @@ jobs:
           mkdir -p build_historic
           cd build_historic
           # -DCMAKE_C_FLAGS=-O3 -DCMAKE_CXX_FLAGS=-O3
-          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE -DHISTORIC_STATE=1 ..
+          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE -DHISTORIC_STATE=1 -DSANITIZE=address ..
           cd ..
       - name: Build all historic
         run: |
@@ -295,7 +295,7 @@ jobs:
           export CMAKE_BUILD_TYPE=Debug
           mkdir -p build_mirage
           cd build_mirage
-          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE -DMIRAGE=1 ..
+          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE -DMIRAGE=1 -DSANITIZE=address ..
           cd ..
       - name: Build all MIRAGE
         run: |
@@ -370,7 +370,7 @@ jobs:
           mkdir -p build_mirage_historic
           cd build_mirage_historic
           # -DCMAKE_C_FLAGS=-O3 -DCMAKE_CXX_FLAGS=-O3
-          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE -DMIRAGE=1 -DHISTORIC_STATE=1 ..
+          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE -DMIRAGE=1 -DHISTORIC_STATE=1 -DSANITIZE=address ..
           cd ..
       - name: Build all MIRAGE-historic
         run: |
