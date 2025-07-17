@@ -366,7 +366,7 @@ void validateConfigJson( js::mObject const& _obj ) {
                     requireJsonFields( blsKeyInfo,
                         "ChainParams::loadConfig::skaleConfig::sChain::nodes::blsKey",
                         {
-                            { "keyShareName", { { js::str_type }, JsonFieldPresence::Required } },
+                            { "keyShareName", { { js::str_type }, JsonFieldPresence::Optional } },
                             { "t", { { js::int_type }, JsonFieldPresence::Required } },
                             { "n", { { js::int_type }, JsonFieldPresence::Required } },
                             { "commonBLSPublicKey0",
@@ -377,12 +377,12 @@ void validateConfigJson( js::mObject const& _obj ) {
                                 { { js::str_type }, JsonFieldPresence::Required } },
                             { "commonBLSPublicKey3",
                                 { { js::str_type }, JsonFieldPresence::Required } },
-                            { "BLSPublicKey0", { { js::str_type }, JsonFieldPresence::Required } },
-                            { "BLSPublicKey1", { { js::str_type }, JsonFieldPresence::Required } },
-                            { "BLSPublicKey2", { { js::str_type }, JsonFieldPresence::Required } },
-                            { "BLSPublicKey3", { { js::str_type }, JsonFieldPresence::Required } },
-                            { "certFile", { { js::str_type }, JsonFieldPresence::Required } },
-                            { "keyFile", { { js::str_type }, JsonFieldPresence::Required } },
+                            { "BLSPublicKey0", { { js::str_type }, JsonFieldPresence::Optional } },
+                            { "BLSPublicKey1", { { js::str_type }, JsonFieldPresence::Optional } },
+                            { "BLSPublicKey2", { { js::str_type }, JsonFieldPresence::Optional } },
+                            { "BLSPublicKey3", { { js::str_type }, JsonFieldPresence::Optional } },
+                            { "certFile", { { js::str_type }, JsonFieldPresence::Optional } },
+                            { "keyFile", { { js::str_type }, JsonFieldPresence::Optional } },
                         } );
                 }
                 const js::mArray& nodes = groupInfo.at( "group" ).get_array();
