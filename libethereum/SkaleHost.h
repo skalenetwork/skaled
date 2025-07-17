@@ -169,6 +169,12 @@ public:
 
     SkaleDebugInterface::handler getDebugHandler() const { return m_debugHandler; }
 
+#ifdef MIRAGE
+    bool isConsesusUpdateHappened() const { return m_consensusUpdateHappened; }
+
+    void handleConsensusUpdate() const;
+#endif
+
 private:
     std::atomic_bool working = false;
 
@@ -183,6 +189,12 @@ private:
 #endif
         uint64_t _timeStamp, uint64_t _blockID, dev::u256 _gasPrice, u256 _stateRoot,
         uint64_t _winningNodeIndex );
+
+#ifdef MIRAGE
+    void runCommitteeRotationForConsensus();
+#endif
+
+    void checkStateRoot( uint64_t _blockId, uint64_t _winningNodeIndex, u256 _stateRoot );
 
     std::thread m_broadcastThread;
     void broadcastFunc();
@@ -201,6 +213,9 @@ private:
     void penalizePeer(){};  // fake function for now
 
     std::thread m_consensusThread;
+#ifdef MIRAGE
+    std::unique_ptr< std::thread > m_committeeRotationMonitorThread;
+#endif
 
     std::atomic_bool m_exitNeeded = false;
 
@@ -215,7 +230,10 @@ private:
     std::atomic_bool m_ignoreNewBlocks = false;  // used when we need to exit at specific block
 
     bool m_broadcastEnabled;
-
+#ifdef MIRAGE
+    std::atomic_bool m_broadcastRestartNeeded = false;
+    mutable std::atomic_bool m_consensusUpdateHappened = false;
+#endif
 
     dev::Logger m_loggerError{ dev::createLogger( dev::VerbosityError, "skale-host" ) };
     dev::Logger m_loggerWarning{ dev::createLogger( dev::VerbosityWarning, "skale-host" ) };

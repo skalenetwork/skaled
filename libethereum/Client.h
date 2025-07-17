@@ -307,6 +307,10 @@ public:
         return m_snapshotAgent->createSnapshotFile( _blockNumber );
     }
 
+#ifdef MIRAGE
+    bool updateGroupIfNeeded() { return bc().updateGroupIfNeeded(); }
+#endif
+
     // set exiting time for node rotation
     void setSchainExitTime( uint64_t _timestamp ) const;
 

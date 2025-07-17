@@ -894,6 +894,7 @@ static std::string const c_genesisGeneration2ConfigString = std::string(R"(
             "imaMessageProxyMainNet": "0x337591F78cbf2b113A57D9709511a1b6E524DdaE",)" ) +
 #endif
             std::string( R"( "rotateAfterBlock": 10240,
+            "testSignatures": true,
             "ecdsaKeyName": "NEK:d391a1af1cd9663335e0f970e59402bf16fcfe0cc421c535bf60ba618a456d68",
             "wallets": {
                 "ima": {
