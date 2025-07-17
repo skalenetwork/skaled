@@ -195,7 +195,7 @@ jobs:
           export CMAKE_BUILD_TYPE=$BUILD_TYPE
           mkdir -p build
           cd build
-          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE $CMAKE_OPTS ..
+          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE $CMAKE_OPTS -DSANITIZE=address ..
           cd ..
       - name: Build all
         run: |
