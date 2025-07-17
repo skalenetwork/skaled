@@ -356,6 +356,29 @@ std::string Skale::skale_getLatestSnapshotBlockNumber() {
     return response > 0 ? std::to_string( response ) : "earliest";
 }
 
+#ifdef MIRAGE
+Json::Value Skale::skale_getBLSPublicKey() {
+    try {
+        Json::Value publicKeyInfo;
+        const auto& blsPublicKey = m_client.chainParams().getSelfBlsPublicKey();
+
+        publicKeyInfo["BLSPublicKey0"] = blsPublicKey.at( 0 );
+        publicKeyInfo["BLSPublicKey1"] = blsPublicKey.at( 1 );
+        publicKeyInfo["BLSPublicKey2"] = blsPublicKey.at( 2 );
+        publicKeyInfo["BLSPublicKey3"] = blsPublicKey.at( 3 );
+
+        return publicKeyInfo;
+    } catch ( Exception const& ) {
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+    } catch ( const std::exception& e ) {
+        throw jsonrpc::JsonRpcException( e.what() );
+    } catch ( ... ) {
+        BOOST_THROW_EXCEPTION(
+            jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
+    }
+}
+#endif
+
 Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
     const dev::eth::ChainParams& chainParams = this->m_client.chainParams();
     if ( !chainParams.isSyncNode() &&

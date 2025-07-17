@@ -86,22 +86,23 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
         m_client.chainParams().getPatchTimestamp( SchainPatchEnum::VerifyBlsSyncPatch );
 #endif  // MIRAGE
 
-    auto consensus_engine_ptr = make_unique< ConsensusEngine >( _extFace, m_client.number(), ts, 0,
+    auto consensusEnginePtr = make_unique< ConsensusEngine >( _extFace, m_client.number(), ts, 0,
         patchTimeStamps, m_client.chainParams().getConsensusStorageLimit() );
 
-    if ( m_client.chainParams().getSgxServerUrl() != "" ) {
-        this->fillSgxInfo( *consensus_engine_ptr );
+    if ( !m_client.chainParams().isSyncNode() &&
+         !m_client.chainParams().getSgxServerUrl().empty() ) {
+        this->fillSgxInfo( *consensusEnginePtr );
     }
 
-    this->fillPublicKeyInfo( *consensus_engine_ptr );
+    this->fillPublicKeyInfo( *consensusEnginePtr );
 
-    this->fillRotationHistory( *consensus_engine_ptr );
+    this->fillRotationHistory( *consensusEnginePtr );
 
 #ifdef MIRAGE
-    consensus_engine_ptr->setEpochId( m_client.getCurrentEpochId() );
+    consensusEnginePtr->setEpochId( m_client.getCurrentEpochId() );
 #endif
 
-    return consensus_engine_ptr;
+    return consensusEnginePtr;
 #else
     unsigned block_number = m_client.number();
     dev::h256 state_root =
@@ -282,7 +283,10 @@ void ConsensusExtImpl::terminateApplication() {
 }
 
 SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory,
-    std::shared_ptr< InstanceMonitor > _instanceMonitor, const std::string& _gethURL,
+    std::shared_ptr< InstanceMonitor > _instanceMonitor,
+#ifndef MIRAGE
+    const std::string& _gethURL,
+#endif
     [[maybe_unused]] bool _broadcastEnabled )
     : m_client( _client ),
       m_tq( _client.m_tq ),
@@ -335,7 +339,7 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
     try {
 #ifdef MIRAGE
         m_consensus->parseFullConfigAndCreateNode(
-            m_client.chainParams().getConfigForConsensus(), _gethURL );
+            m_client.chainParams().getConfigForConsensus(), "" );
 #else
         m_consensus->parseFullConfigAndCreateNode(
             m_client.chainParams().getOriginalJson(), _gethURL );
@@ -749,7 +753,16 @@ void SkaleHost::runCommitteeRotationForConsensus() {
         // restart all services to fetch latest nodes info
         try {
             m_consensus->startAll();
+        } catch ( const std::exception& ex ) {
+            LOG( m_loggerError ) << "Exception occurred in startAll() after committee rotation: "
+                                 << ex.what();
+            // cleanup
+            m_exitNeeded = true;
+            m_broadcastThread.join();
+            ExitHandler::exitHandler( -1, ExitHandler::ec_termninated_by_signal );
+            return;
         } catch ( ... ) {
+            LOG( m_loggerError ) << "Unknown exception in startAll() after committee rotation";
             // cleanup
             m_exitNeeded = true;
             m_broadcastThread.join();
@@ -889,8 +902,7 @@ void SkaleHost::stopWorking() {
         m_broadcastThread.join();
 
 #ifdef MIRAGE
-    if ( m_committeeRotationMonitorThread != nullptr &&
-         m_committeeRotationMonitorThread->joinable() )
+    if ( m_committeeRotationMonitorThread != nullptr )
         m_committeeRotationMonitorThread->join();
 #endif
 
