@@ -750,7 +750,7 @@ void SkaleHost::runCommitteeRotationForConsensus() {
         try {
             m_consensus->startAll();
         } catch ( const std::exception& ex ) {
-            LOG( m_loggerError ) << "Error happened in startAll() after committee rotation: "
+            LOG( m_loggerError ) << "Exception occurred in startAll() after committee rotation: "
                                  << ex.what();
             // cleanup
             m_exitNeeded = true;
