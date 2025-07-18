@@ -61,6 +61,8 @@ public:
         if (fs::exists(rotationFlagDirPath)) {
             fs::remove(rotationFlagDirPath);
         }
+
+        delete instanceMonitor;
     };
 };
 
