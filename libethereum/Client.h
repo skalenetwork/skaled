@@ -307,10 +307,12 @@ public:
         return m_snapshotAgent->createSnapshotFile( _blockNumber );
     }
 
+#ifdef BITE
+    uint64_t getCurrentEpochId() const { return historicGroupIndex.load(); }
+#endif
+
 #ifdef MIRAGE
     bool updateGroupIfNeeded() { return bc().updateGroupIfNeeded(); }
-
-    uint64_t getCurrentEpochId() const { return historicGroupIndex.load(); }
 #endif
 
     // set exiting time for node rotation
@@ -598,7 +600,7 @@ private:
     void updateHistoricGroupIndex();
 
     // which group corresponds to the current block timestamp on this node
-#ifdef MIRAGE
+#ifdef BITE
     std::atomic_uint64_t historicGroupIndex = 0;
 #else
     unsigned historicGroupIndex = 0;

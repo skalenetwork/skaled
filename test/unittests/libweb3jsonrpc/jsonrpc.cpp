@@ -5052,6 +5052,7 @@ BOOST_AUTO_TEST_CASE( getCommonPublicKey ) {
     BOOST_REQUIRE_EQUAL( epochId, fixture.client->getCurrentEpochId() );
 }
 
+#ifdef MIRAGE
 BOOST_AUTO_TEST_CASE( getBLSPublicKey ) {
     JsonRpcFixture fixture( c_BITEConfigString, false, false, true );
 
@@ -5062,6 +5063,7 @@ BOOST_AUTO_TEST_CASE( getBLSPublicKey ) {
     BOOST_REQUIRE_EQUAL( blsPublicKey["BLSPublicKey2"], "3371162264373897025322009434717052197952692496405149486989861571246537813591" );
     BOOST_REQUIRE_EQUAL( blsPublicKey["BLSPublicKey3"], "13678625751515504401110635369790787716744686498431213713911601759809559919693" );
 }
+#endif // MIRAGE
 
 BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     JsonRpcFixture fixture( c_BITEConfigString, false, false, true, true );
@@ -5524,6 +5526,7 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     BOOST_REQUIRE( receipt["status"] == std::string( "0x0" ) );
 }
 
+#ifdef MIRAGE
 BOOST_AUTO_TEST_CASE( committeeRotation ) {
     std::string _config = c_BITECommitteeRotationConfigString;
     Json::Value ret;
@@ -5600,6 +5603,7 @@ BOOST_AUTO_TEST_CASE( committeeRotation ) {
     receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE( receipt["status"] == std::string( "0x1" ) );
 }
+#endif // MIRAGE
 
 #endif // #ifdef BITE
 
