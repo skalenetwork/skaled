@@ -2854,7 +2854,8 @@ server::server( basic_network_settings* pBNS )
         onLogMessage( eWSLMT, strMessage );
     };
 }
-server::~server() {}
+server::~server() { close(); }
+
 nlohmann::json server::toJSON() const {
     nlohmann::json jo = nlohmann::json::object();
     jo["type"] = "server";
