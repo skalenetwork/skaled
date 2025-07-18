@@ -1153,7 +1153,7 @@ h256 Client::importTransaction( Transaction const& _t, TransactionBroadcast _txO
     // invalid BITE transactions should not be added to txn queue
     // only validate in production setup
     if ( !chainParams().isTestSignaturesEnabled() )
-        _t.checkAndValidateBITETransaction();
+        _t.checkAndValidateBITETransaction( historicGroupIndex );
 #endif
 
     ImportResult res;
