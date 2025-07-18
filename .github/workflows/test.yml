@@ -194,11 +194,9 @@ jobs:
               else
                 echo "Test $test_name failed with exit code $exit_code on attempt $((retry_count + 1))"
                 
-                # Check if the error was AddressSanitizer:DEADLYSIGNAL or segmentation fault
-                if echo "$output" | grep -q "AddressSanitizer:DEADLYSIGNAL" || \
-                   echo "$output" | grep -q "Segmentation fault" || \
-                   [ $exit_code -eq 139 ]; then
-                  echo "Detected crash/segfault (likely AddressSanitizer:DEADLYSIGNAL), retrying..."
+                # Check if the error was AddressSanitizer:DEADLYSIGNAL (but NOT segmentation fault)
+                if echo "$output" | grep -q "AddressSanitizer:DEADLYSIGNAL"; then
+                  echo "Detected AddressSanitizer:DEADLYSIGNAL (non-segfault), retrying..."
                   echo "Exit code: $exit_code"
                   if [ -n "$output" ]; then
                     echo "Available output: $output"
@@ -206,7 +204,12 @@ jobs:
                   retry_count=$((retry_count + 1))
                   sleep 2  # Brief pause before retry
                 else
-                  echo "Non-DEADLYSIGNAL error detected, not retrying"
+                  # For segmentation faults and other errors, don't retry but show output
+                  if echo "$output" | grep -q "Segmentation fault" || [ $exit_code -eq 139 ]; then
+                    echo "Segmentation fault detected - not retrying, showing output:"
+                  else
+                    echo "Non-retryable error detected:"
+                  fi
                   echo "=== Error output start ==="
                   echo "$output"  
                   echo "=== Error output end ==="
@@ -409,16 +412,14 @@ jobs:
               else
                 echo "Test $test_name failed with exit code $exit_code on attempt $((retry_count + 1))"
                 
-                # Check for retryable errors
+                # Check for retryable errors (only AddressSanitizer:DEADLYSIGNAL, not segfaults)
                 local should_retry=false
                 local retry_reason=""
                 
-                if echo "$output" | grep -q "AddressSanitizer:DEADLYSIGNAL"; then
+                if echo "$output" | grep -q "AddressSanitizer:DEADLYSIGNAL" && \
+                   ! echo "$output $shell_error" | grep -E "(Segmentation fault|core dumped)"; then
                   should_retry=true
                   retry_reason="AddressSanitizer:DEADLYSIGNAL"
-                elif echo "$output $shell_error" | grep -E "(Segmentation fault|core dumped)"; then
-                  should_retry=true
-                  retry_reason="Segmentation fault"
                 fi
                 
                 if [ "$should_retry" = true ]; then
@@ -426,7 +427,12 @@ jobs:
                   retry_count=$((retry_count + 1))
                   sleep 2  # Brief pause before retry
                 else
-                  echo "Non-retryable error detected"
+                  # For segmentation faults and other errors, don't retry but show output
+                  if echo "$output $shell_error" | grep -E "(Segmentation fault|core dumped)"; then
+                    echo "Segmentation fault/core dump detected - not retrying, showing output:"
+                  else
+                    echo "Non-retryable error detected:"
+                  fi
                   echo "=== Error output start ==="
                   echo "$output"
                   if [ -n "$shell_error" ]; then
