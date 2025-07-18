@@ -67,11 +67,13 @@ SkaleStats::SkaleStats( const std::string& configPath, eth::Interface& _eth )
     initStatsCounters();
     nThisNodeIndex_ = findThisNodeIndex();
     //
+#ifndef MIRAGE
     try {
         skutils::url urlMainNet = getImaMainNetURL();
     } catch ( const std::exception& ex ) {
         clog( VerbosityInfo, std::string( "IMA disabled: " ) + ex.what() );
     }  // catch
+#endif
 }
 
 int SkaleStats::findThisNodeIndex() {
@@ -386,6 +388,8 @@ Json::Value SkaleStats::skale_nodesRpcInfo() {
     }
 }
 
+
+#ifndef MIRAGE
 Json::Value SkaleStats::skale_imaInfo() {
     try {
         nlohmann::json joConfig = getConfigJSON();
@@ -476,7 +480,7 @@ Json::Value SkaleStats::skale_imaInfo() {
         throw jsonrpc::JsonRpcException( ex.what() );
     }
 }
-
+#endif
 
 void SkaleStats::initStatsCounters() {
     if ( !statsCounters.empty() > 0 ) {

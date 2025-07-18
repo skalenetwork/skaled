@@ -1440,3 +1440,20 @@ Json::Value WebThreeStubClient::bite_getDecryptedTransactionData( const std::str
             jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
 }
 #endif
+
+#ifdef MIRAGE
+Json::Value WebThreeStubClient::skale_getBLSPublicKey() {
+    Json::Value p;
+    p = Json::nullValue;
+    Json::Value result;
+
+    result = this->CallMethod( "skale_getBLSPublicKey", p );
+
+    if ( result.isObject() ) {
+        return result;
+    } else {
+        throw jsonrpc::JsonRpcException(
+            jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
+    }
+}
+#endif

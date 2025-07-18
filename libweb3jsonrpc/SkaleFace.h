@@ -90,6 +90,12 @@ class SkaleFace : public ServerInterface< SkaleFace > {
         std::string receipt = request[0u].asString();
         response = this->oracle_checkResult( receipt );
     }
+#else
+    inline virtual void skale_getBLSPublicKeyI(
+        const Json::Value& request, Json::Value& response ) {
+        ( void ) request;
+        response = this->skale_getBLSPublicKey();
+    }
 #endif
 
 #ifdef BITE
@@ -117,6 +123,8 @@ class SkaleFace : public ServerInterface< SkaleFace > {
 #ifndef MIRAGE
     virtual std::string oracle_submitRequest( std::string& request ) = 0;
     virtual std::string oracle_checkResult( std::string& receipt ) = 0;
+#else
+    virtual Json::Value skale_getBLSPublicKey() = 0;
 #endif
 
 #ifdef BITE
@@ -165,6 +173,10 @@ public:
         this->bindAndAddMethod( jsonrpc::Procedure( "oracle_checkResult",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::SkaleFace::oracle_checkResultI );
+#else
+        this->bindAndAddMethod( jsonrpc::Procedure( "skale_getBLSPublicKey",
+                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, NULL ),
+            &dev::rpc::SkaleFace::skale_getBLSPublicKeyI );
 #endif
 #ifdef BITE
         this->bindAndAddMethod( jsonrpc::Procedure( "bite_getCommonPublicKey",
