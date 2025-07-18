@@ -63,6 +63,22 @@ void checkStatus( leveldb::Status const& _status, boost::filesystem::path const&
     BOOST_THROW_EXCEPTION( ex );
 }
 
+class BloomFilterManager {
+public:
+    static const leveldb::FilterPolicy* getPolicy() {
+        static BloomFilterManager instance;
+        return instance.policy_.get();
+    }
+
+    ~BloomFilterManager() {
+        // Cleanup happens automatically with unique_ptr
+    }
+
+private:
+    BloomFilterManager() : policy_(leveldb::NewBloomFilterPolicy(10)) {}
+    std::unique_ptr<const leveldb::FilterPolicy> policy_;
+};
+
 class LevelDBWriteBatch : public WriteBatchFace {
 public:
     void insert( Slice _key, Slice _value ) override;
@@ -102,7 +118,7 @@ leveldb::Options LevelDB::defaultDBOptions() {
     leveldb::Options options;
     options.create_if_missing = true;
     options.max_open_files = c_maxOpenLeveldbFiles;
-    options.filter_policy = leveldb::NewBloomFilterPolicy( 10 );
+    options.filter_policy = BloomFilterManager::getPolicy();
     return options;
 }
 
