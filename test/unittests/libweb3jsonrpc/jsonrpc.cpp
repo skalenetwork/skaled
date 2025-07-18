@@ -5301,6 +5301,10 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     // Set chainID = 151
     std::string chainID = "0x97";
     ret["params"]["chainID"] = chainID;
+#ifndef MIRAGE
+    // set contractStorageLimit
+    ret["skaleConfig"]["sChain"]["contractStorageLimit"] = 1000000;
+#endif
 
     Json::FastWriter fastWriter;
     std::string config = fastWriter.write( ret );
