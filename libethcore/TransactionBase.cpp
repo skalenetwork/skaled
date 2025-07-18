@@ -644,7 +644,7 @@ Address TransactionBase::decryptedTo() const {
     return *m_decryptedTo;
 }
 
-void TransactionBase::checkAndValidateBITETransaction() const {
+void TransactionBase::checkAndValidateBITETransaction( uint64_t _currentEpochId ) const {
     if ( !isBite() )
         return;
 
@@ -674,11 +674,15 @@ void TransactionBase::checkAndValidateBITETransaction() const {
                                                  "elements to be in BITE payload, got " ) +
                                     std::to_string( biteTxnRlpList.size() ) ) );
 
-        // extract epochId
+        // extract and check epochId
         if ( !biteTxnRlpList[0].isInt() )
             BOOST_THROW_EXCEPTION(
                 InvalidBITETransaction() << errinfo_comment(
                     std::string( "BITE transaction's data is invalid: epochId must be an int" ) ) );
+        uint64_t epochIdFromTxn = biteTxnRlpList[0].toInt< uint64_t >();
+        if ( epochIdFromTxn != _currentEpochId )
+            BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment( std::string(
+                                       "BITE transaction's data is invalid: wrong epochId" ) ) );
 
         // Extract encrypted BITE data:
         // encrypted AES key + encrypted data

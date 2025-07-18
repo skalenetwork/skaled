@@ -541,7 +541,7 @@ dev::bytes prepareBITEDataRlp( const dev::Address& _to, const dev::bytes& _biteT
     return dev::bytes( rlpBytes.begin(), rlpBytes.end() );
 }
 
-dev::bytes prepareBITEPayloadRlp( u256 _epochId, const dev::bytes& _encryptedBITEData ) {
+dev::bytes prepareBITEPayloadRlp( uint64_t _epochId, const dev::bytes& _encryptedBITEData ) {
     RLPStream bitePayloadRlpList;
 
     RLPStream bitePayloadRlp( 2 );
@@ -556,7 +556,7 @@ dev::bytes prepareBITEPayloadRlp( u256 _epochId, const dev::bytes& _encryptedBIT
 }
 
 BOOST_AUTO_TEST_CASE( constructBITETxnFromRlp ) {
-    u256 epochId = 0;
+    uint64_t epochId = 0;
 
     libff::init_alt_bn128_params();
     libBLS::TEPublicKey publicKey( libff::alt_bn128_G2::random_element() );
@@ -578,7 +578,7 @@ BOOST_AUTO_TEST_CASE( constructBITETxnFromRlp ) {
     Transaction validBITETxn(
         validBITETxnRlp, dev::eth::CheckTransaction::Everything, false, true, true );
     BOOST_REQUIRE( validBITETxn.isBite() );
-    BOOST_REQUIRE_NO_THROW( validBITETxn.checkAndValidateBITETransaction(); );
+    BOOST_REQUIRE_NO_THROW( validBITETxn.checkAndValidateBITETransaction( epochId ) );
 
     auto baseGasRequiredForValidBITETxn = validBITETxn.baseGasRequired( IstanbulSchedule );
 
@@ -590,12 +590,16 @@ BOOST_AUTO_TEST_CASE( constructBITETxnFromRlp ) {
     Transaction validNonBITETxn(
         validNonBITETxnRlp, dev::eth::CheckTransaction::Everything, false, true, true );
     BOOST_REQUIRE( !validNonBITETxn.isBite() );
-    BOOST_REQUIRE_NO_THROW( validNonBITETxn.checkAndValidateBITETransaction() );
+    BOOST_REQUIRE_NO_THROW( validNonBITETxn.checkAndValidateBITETransaction( epochId ) );
 
     auto baseGasRequiredForValidNonBITETxn = validNonBITETxn.baseGasRequired( IstanbulSchedule );
     BOOST_REQUIRE_GT( baseGasRequiredForValidBITETxn, baseGasRequiredForValidNonBITETxn );
     BOOST_REQUIRE( baseGasRequiredForValidBITETxn - baseGasRequiredForValidNonBITETxn ==
                    IstanbulSchedule.BITETxnCost );
+
+    // wrong epochId
+    BOOST_REQUIRE_THROW( validBITETxn.checkAndValidateBITETransaction( epochId + 1 ),
+                         dev::eth::InvalidBITETransaction );
 
     // Invalid ciphered key
     encryptedMessage.key = libBLS::CipheredKey( libff::alt_bn128_G2::random_element(), encryptedMessage.key.V, libff::alt_bn128_G1::random_element() );
@@ -604,7 +608,7 @@ BOOST_AUTO_TEST_CASE( constructBITETxnFromRlp ) {
     Transaction invalidBITETxn(
         invalidBITETxnRlp, dev::eth::CheckTransaction::Everything, false, true, true );
     BOOST_REQUIRE_THROW(
-        invalidBITETxn.checkAndValidateBITETransaction(), dev::eth::InvalidBITETransaction );
+        invalidBITETxn.checkAndValidateBITETransaction( epochId ), dev::eth::InvalidBITETransaction );
 
     RLPStream tooShortRlp;
 
@@ -617,7 +621,7 @@ BOOST_AUTO_TEST_CASE( constructBITETxnFromRlp ) {
         createTestTransactionRlp( invalidTooShortBITETxnData, biteAddress );
     Transaction invalidTooShortBITETxn(
         invalidTooShortBITETxnRlp, dev::eth::CheckTransaction::Everything, false, true, true );
-    BOOST_REQUIRE_THROW( invalidTooShortBITETxn.checkAndValidateBITETransaction(),
+    BOOST_REQUIRE_THROW( invalidTooShortBITETxn.checkAndValidateBITETransaction( epochId ),
         dev::eth::BITETransactionTooShort );
     tooShortRlp.clear();
     
@@ -632,7 +636,7 @@ BOOST_AUTO_TEST_CASE( constructBITETxnFromRlp ) {
             createTestTransactionRlp( invalidTooShortBITETxnData, biteAddress );
     invalidTooShortBITETxn = Transaction(
         invalidTooShortBITETxnRlp, dev::eth::CheckTransaction::Everything, false, true, true );
-    BOOST_REQUIRE_THROW( invalidTooShortBITETxn.checkAndValidateBITETransaction(),
+    BOOST_REQUIRE_THROW( invalidTooShortBITETxn.checkAndValidateBITETransaction( epochId ),
         dev::eth::BITETransactionTooShort );
     tooShortRlp.clear();
 
@@ -647,7 +651,7 @@ BOOST_AUTO_TEST_CASE( constructBITETxnFromRlp ) {
     invalidTooShortBITETxnRlp = createTestTransactionRlp( invalidTooShortBITETxnData, biteAddress );
     invalidTooShortBITETxn = Transaction(
         invalidTooShortBITETxnRlp, dev::eth::CheckTransaction::Everything, false, true, true );
-    BOOST_REQUIRE_THROW( invalidTooShortBITETxn.checkAndValidateBITETransaction(),
+    BOOST_REQUIRE_THROW( invalidTooShortBITETxn.checkAndValidateBITETransaction( epochId ),
         dev::eth::BITETransactionTooShort );
 }
 #endif
