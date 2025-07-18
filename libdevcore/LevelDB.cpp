@@ -70,13 +70,11 @@ public:
         return instance.policy_.get();
     }
 
-    ~BloomFilterManager() {
-        // Cleanup happens automatically with unique_ptr
-    }
+    ~BloomFilterManager() {}
 
 private:
-    BloomFilterManager() : policy_(leveldb::NewBloomFilterPolicy(10)) {}
-    std::unique_ptr<const leveldb::FilterPolicy> policy_;
+    BloomFilterManager() : policy_( leveldb::NewBloomFilterPolicy( 10 ) ) {}
+    std::unique_ptr< const leveldb::FilterPolicy > policy_;
 };
 
 class LevelDBWriteBatch : public WriteBatchFace {
@@ -189,8 +187,8 @@ LevelDB::~LevelDB() {
     m_snapManager.closeAllOpenSnaps( m_db, m_dbReopenId );
     if ( m_db )
         m_db.reset();
-    if ( m_options.filter_policy )
-        delete m_options.filter_policy;
+    // if ( m_options.filter_policy )
+    //     delete m_options.filter_policy;
 }
 
 std::string LevelDB::lookup( Slice _key ) const {
