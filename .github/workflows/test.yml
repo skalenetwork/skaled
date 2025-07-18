@@ -173,23 +173,12 @@ jobs:
               
               # Run the test and capture both stdout and stderr to a temporary file
               local temp_output="/tmp/testeth_output_${test_name}_$$"
-              local temp_script="/tmp/testeth_script_${test_name}_$$"
-              
-              # Create a wrapper script to capture shell error messages too
-              cat > "$temp_script" << 'SCRIPT_EOF'
-              #!/bin/bash
-              exec ./testeth --report_level=detailed -t "$1" -- --express 2>&1
-              SCRIPT_EOF
-              chmod +x "$temp_script"
               
               # Run the test and capture all output including shell messages
               set +e  # Temporarily disable exit on error
-              "$temp_script" "$test_name" > "$temp_output" 2>&1
+              ./testeth --report_level=detailed -t "$test_name" -- --express > "$temp_output" 2>&1
               local exit_code=$?
               set -e  # Re-enable exit on error
-              
-              # Clean up script
-              rm -f "$temp_script"
               
               # Read the output from the temporary file
               local output=""
