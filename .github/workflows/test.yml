@@ -171,24 +171,35 @@ jobs:
             while [ $retry_count -lt $max_retries ]; do
               echo "Running test $test_name (attempt $((retry_count + 1))/$max_retries)"
               
-              # Run the test and capture both stdout and stderr to a variable
-              local output
-              output=$(./testeth --report_level=detailed -t "$test_name" -- --express 2>&1)
+              # Run the test and capture both stdout and stderr to a temporary file
+              local temp_output="/tmp/testeth_output_${test_name}_$$"
+              ./testeth --report_level=detailed -t "$test_name" -- --express &> "$temp_output"
               local exit_code=$?
+              
+              # Read the output from the temporary file
+              local output=""
+              if [ -f "$temp_output" ]; then
+                output=$(cat "$temp_output")
+                rm -f "$temp_output"
+              fi
               
               if [ $exit_code -eq 0 ]; then
                 touch "/tmp/tests/${test_name}Passed"
                 echo "Test $test_name passed on attempt $((retry_count + 1))"
                 return 0
               else
+                echo "Test $test_name failed with exit code $exit_code on attempt $((retry_count + 1))"
+                
                 # Check if the error was AddressSanitizer:DEADLYSIGNAL
                 if echo "$output" | grep -q "AddressSanitizer:DEADLYSIGNAL"; then
-                  echo "Test $test_name failed with AddressSanitizer:DEADLYSIGNAL on attempt $((retry_count + 1)), retrying..."
+                  echo "Detected AddressSanitizer:DEADLYSIGNAL, retrying..."
                   retry_count=$((retry_count + 1))
                   sleep 2  # Brief pause before retry
                 else
-                  echo "Test $test_name failed with non-DEADLYSIGNAL error on attempt $((retry_count + 1)), not retrying"
-                  echo "Error output: $output"
+                  echo "Non-DEADLYSIGNAL error detected, not retrying"
+                  echo "=== Error output start ==="
+                  echo "$output"
+                  echo "=== Error output end ==="
                   return $exit_code
                 fi
               fi
@@ -358,24 +369,35 @@ jobs:
             while [ $retry_count -lt $max_retries ]; do
               echo "Running test $test_name (attempt $((retry_count + 1))/$max_retries)"
               
-              # Run the test and capture both stdout and stderr to a variable
-              local output
-              output=$(./testeth --report_level=detailed -t "$test_name" -- --express 2>&1)
+              # Run the test and capture both stdout and stderr to a temporary file
+              local temp_output="/tmp/testeth_output_${test_name}_$$"
+              ./testeth --report_level=detailed -t "$test_name" -- --express &> "$temp_output"
               local exit_code=$?
+              
+              # Read the output from the temporary file
+              local output=""
+              if [ -f "$temp_output" ]; then
+                output=$(cat "$temp_output")
+                rm -f "$temp_output"
+              fi
               
               if [ $exit_code -eq 0 ]; then
                 touch "/tmp/tests/${test_name}Passed"
                 echo "Test $test_name passed on attempt $((retry_count + 1))"
                 return 0
               else
+                echo "Test $test_name failed with exit code $exit_code on attempt $((retry_count + 1))"
+                
                 # Check if the error was AddressSanitizer:DEADLYSIGNAL
                 if echo "$output" | grep -q "AddressSanitizer:DEADLYSIGNAL"; then
-                  echo "Test $test_name failed with AddressSanitizer:DEADLYSIGNAL on attempt $((retry_count + 1)), retrying..."
+                  echo "Detected AddressSanitizer:DEADLYSIGNAL, retrying..."
                   retry_count=$((retry_count + 1))
                   sleep 2  # Brief pause before retry
                 else
-                  echo "Test $test_name failed with non-DEADLYSIGNAL error on attempt $((retry_count + 1)), not retrying"
-                  echo "Error output: $output"
+                  echo "Non-DEADLYSIGNAL error detected, not retrying"
+                  echo "=== Error output start ==="
+                  echo "$output"
+                  echo "=== Error output end ==="
                   return $exit_code
                 fi
               fi
