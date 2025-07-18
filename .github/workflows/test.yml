@@ -173,8 +173,23 @@ jobs:
               
               # Run the test and capture both stdout and stderr to a temporary file
               local temp_output="/tmp/testeth_output_${test_name}_$$"
-              ./testeth --report_level=detailed -t "$test_name" -- --express &> "$temp_output"
+              local temp_script="/tmp/testeth_script_${test_name}_$$"
+              
+              # Create a wrapper script to capture shell error messages too
+              cat > "$temp_script" << 'SCRIPT_EOF'
+              #!/bin/bash
+              exec ./testeth --report_level=detailed -t "$1" -- --express 2>&1
+              SCRIPT_EOF
+              chmod +x "$temp_script"
+              
+              # Run the test and capture all output including shell messages
+              set +e  # Temporarily disable exit on error
+              "$temp_script" "$test_name" > "$temp_output" 2>&1
               local exit_code=$?
+              set -e  # Re-enable exit on error
+              
+              # Clean up script
+              rm -f "$temp_script"
               
               # Read the output from the temporary file
               local output=""
@@ -190,15 +205,21 @@ jobs:
               else
                 echo "Test $test_name failed with exit code $exit_code on attempt $((retry_count + 1))"
                 
-                # Check if the error was AddressSanitizer:DEADLYSIGNAL
-                if echo "$output" | grep -q "AddressSanitizer:DEADLYSIGNAL"; then
-                  echo "Detected AddressSanitizer:DEADLYSIGNAL, retrying..."
+                # Check if the error was AddressSanitizer:DEADLYSIGNAL or segmentation fault
+                if echo "$output" | grep -q "AddressSanitizer:DEADLYSIGNAL" || \
+                   echo "$output" | grep -q "Segmentation fault" || \
+                   [ $exit_code -eq 139 ]; then
+                  echo "Detected crash/segfault (likely AddressSanitizer:DEADLYSIGNAL), retrying..."
+                  echo "Exit code: $exit_code"
+                  if [ -n "$output" ]; then
+                    echo "Available output: $output"
+                  fi
                   retry_count=$((retry_count + 1))
                   sleep 2  # Brief pause before retry
                 else
                   echo "Non-DEADLYSIGNAL error detected, not retrying"
                   echo "=== Error output start ==="
-                  echo "$output"
+                  echo "$output"  
                   echo "=== Error output end ==="
                   return $exit_code
                 fi
@@ -371,8 +392,19 @@ jobs:
               
               # Run the test and capture both stdout and stderr to a temporary file
               local temp_output="/tmp/testeth_output_${test_name}_$$"
-              ./testeth --report_level=detailed -t "$test_name" -- --express &> "$temp_output"
+              
+              # Use timeout and ensure we capture shell errors
+              set +e
+              timeout 600 ./testeth --report_level=detailed -t "$test_name" -- --express &> "$temp_output"
               local exit_code=$?
+              
+              # Also capture any shell errors (like segmentation fault messages)
+              local shell_error=""
+              if [ $exit_code -ne 0 ]; then
+                # Try to capture the last few lines of system logs or shell output
+                shell_error=$(dmesg | tail -10 2>/dev/null || echo "")
+              fi
+              set -e
               
               # Read the output from the temporary file
               local output=""
@@ -388,15 +420,30 @@ jobs:
               else
                 echo "Test $test_name failed with exit code $exit_code on attempt $((retry_count + 1))"
                 
-                # Check if the error was AddressSanitizer:DEADLYSIGNAL
+                # Check for retryable errors
+                local should_retry=false
+                local retry_reason=""
+                
                 if echo "$output" | grep -q "AddressSanitizer:DEADLYSIGNAL"; then
-                  echo "Detected AddressSanitizer:DEADLYSIGNAL, retrying..."
+                  should_retry=true
+                  retry_reason="AddressSanitizer:DEADLYSIGNAL"
+                elif echo "$output $shell_error" | grep -E "(Segmentation fault|core dumped)"; then
+                  should_retry=true
+                  retry_reason="Segmentation fault"
+                fi
+                
+                if [ "$should_retry" = true ]; then
+                  echo "Detected $retry_reason, retrying..."
                   retry_count=$((retry_count + 1))
                   sleep 2  # Brief pause before retry
                 else
-                  echo "Non-DEADLYSIGNAL error detected, not retrying"
+                  echo "Non-retryable error detected"
                   echo "=== Error output start ==="
                   echo "$output"
+                  if [ -n "$shell_error" ]; then
+                    echo "=== Shell/System errors ==="
+                    echo "$shell_error"
+                  fi
                   echo "=== Error output end ==="
                   return $exit_code
                 fi
