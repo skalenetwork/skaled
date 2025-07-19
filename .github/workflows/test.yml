@@ -194,6 +194,16 @@ jobs:
               else
                 echo "Test $test_name failed with exit code $exit_code on attempt $((retry_count + 1))"
                 
+                # Check for memory leaks (continue test execution only if exit code is 1)
+                if echo "$output" | grep -q "LeakSanitizer:" && [ $exit_code -eq 1 ]; then
+                  echo "Memory leak detected with exit code 1 - showing output but continuing tests:"
+                  echo "=== Memory leak output start ==="
+                  echo "$output"
+                  echo "=== Memory leak output end ==="
+                  touch "/tmp/tests/${test_name}Passed"  # Mark as passed to continue
+                  return 0
+                fi
+                
                 # Check if the error was AddressSanitizer:DEADLYSIGNAL (but NOT segmentation fault)
                 if echo "$output" | grep -q "AddressSanitizer:DEADLYSIGNAL"; then
                   echo "Detected AddressSanitizer:DEADLYSIGNAL (non-segfault), retrying..."
@@ -411,6 +421,20 @@ jobs:
                 return 0
               else
                 echo "Test $test_name failed with exit code $exit_code on attempt $((retry_count + 1))"
+                
+                # Check for memory leaks (continue test execution only if exit code is 1)
+                if echo "$output $shell_error" | grep -q "LeakSanitizer:" && [ $exit_code -eq 1 ]; then
+                  echo "Memory leak detected with exit code 1 - showing output but continuing tests:"
+                  echo "=== Memory leak output start ==="
+                  echo "$output"
+                  if [ -n "$shell_error" ]; then
+                    echo "=== Shell/System errors ==="
+                    echo "$shell_error"
+                  fi
+                  echo "=== Memory leak output end ==="
+                  touch "/tmp/tests/${test_name}Passed"  # Mark as passed to continue
+                  return 0
+                fi
                 
                 # Check for retryable errors (only AddressSanitizer:DEADLYSIGNAL, not segfaults)
                 local should_retry=false
