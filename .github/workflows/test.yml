@@ -368,7 +368,7 @@ jobs:
               
               # Run the test and capture all output including shell messages
               set +e  # Temporarily disable exit on error
-              ./testeth --report_level=detailed -t "$test_name" -- --express > "$temp_output" 2>&1
+              ./testeth --report_level=detailed -t "$test_name" -- --verbosity 5 --express > "$temp_output" 2>&1
               local exit_code=$?
               set -e  # Re-enable exit on error
               
