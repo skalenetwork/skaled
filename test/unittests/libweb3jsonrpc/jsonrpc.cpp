@@ -6253,8 +6253,6 @@ BOOST_AUTO_TEST_CASE( skip_invalid_transactions ) {
     h256 h3 = fixture.client->importTransaction( tx3 );  // ok
     h256 h1 = fixture.client->importTransaction( tx1 );  // ok
 
-    sleep(3);
-
     dev::eth::mineTransaction( *( fixture.client ), 1 );
     cout << "Balance3: "
          << fixture.rpcClient->eth_getBalance(

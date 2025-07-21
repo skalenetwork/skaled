@@ -138,7 +138,7 @@ jobs:
           mkdir -p build
           cd build
           # -DCMAKE_C_FLAGS=-O3 -DCMAKE_CXX_FLAGS=-O3
-          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE -DSANITIZE=address ..
+          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE ..
           cd ..
       - name: Print ccache stats for deps
         run: |
@@ -163,74 +163,7 @@ jobs:
           cd build/test
           export NO_NTP_CHECK=1
           export NO_ULIMIT_CHECK=1
-          function run_test() { 
-            local test_name="$1"
-            local max_retries=5
-            local retry_count=0
-            
-            while [ $retry_count -lt $max_retries ]; do
-              echo "Running test $test_name (attempt $((retry_count + 1))/$max_retries)"
-              
-              # Run the test and capture both stdout and stderr to a temporary file
-              local temp_output="/tmp/testeth_output_${test_name}_$$"
-              
-              # Run the test and capture all output including shell messages
-              set +e  # Temporarily disable exit on error
-              ./testeth --report_level=detailed -t "$test_name" -- --express > "$temp_output" 2>&1
-              local exit_code=$?
-              set -e  # Re-enable exit on error
-              
-              # Read the output from the temporary file
-              local output=""
-              if [ -f "$temp_output" ]; then
-                output=$(cat "$temp_output")
-                rm -f "$temp_output"
-              fi
-              
-              if [ $exit_code -eq 0 ]; then
-                touch "/tmp/tests/${test_name}Passed"
-                echo "Test $test_name passed on attempt $((retry_count + 1))"
-                return 0
-              else
-                echo "Test $test_name failed with exit code $exit_code on attempt $((retry_count + 1))"
-                
-                # Check for memory leaks (continue test execution only if exit code is 1)
-                if echo "$output" | grep -q "LeakSanitizer:" && [ $exit_code -eq 1 ]; then
-                  echo "Memory leak detected with exit code 1 - showing output but continuing tests:"
-                  echo "=== Memory leak output start ==="
-                  echo "$output"
-                  echo "=== Memory leak output end ==="
-                  touch "/tmp/tests/${test_name}Passed"  # Mark as passed to continue
-                  return 0
-                fi
-                
-                # Check if the error was AddressSanitizer:DEADLYSIGNAL (but NOT segmentation fault)
-                if echo "$output" | grep -q "AddressSanitizer:DEADLYSIGNAL"; then
-                  echo "Detected AddressSanitizer:DEADLYSIGNAL (non-segfault), retrying..."
-                  echo "Exit code: $exit_code"
-                  if [ -n "$output" ]; then
-                    echo "Available output: $output"
-                  fi
-                  retry_count=$((retry_count + 1))
-                  sleep 2  # Brief pause before retry
-                else
-                  # For segmentation faults and other errors, don't retry but show output
-                  if echo "$output" | grep -q "Segmentation fault" || [ $exit_code -eq 139 ]; then
-                    echo "Segmentation fault detected - not retrying, showing output:"
-                  else
-                    echo "Non-retryable error detected:"
-                  fi
-                  echo "=== Error output start ==="
-                  echo "$output"  
-                  echo "=== Error output end ==="
-                  return $exit_code
-                fi
-              fi
-            done
-            
-            echo "Test $test_name failed after $max_retries attempts"
-            return 1
-          }                    
+          function run_test() { ./testeth --report_level=detailed -t "$1" -- --express && touch "/tmp/tests/${1}Passed"; }                    
           run_test TransitionTests 
           run_test TransactionTests 
           run_test VMTests 
@@ -335,7 +268,7 @@ jobs:
           mkdir -p build_historic
           cd build_historic
           # -DCMAKE_C_FLAGS=-O3 -DCMAKE_CXX_FLAGS=-O3
-          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE -DHISTORIC_STATE=1 -DSANITIZE=address ..
+          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE -DHISTORIC_STATE=1 ..
           cd ..
       - name: Build all historic
         run: |
@@ -350,80 +283,10 @@ jobs:
           ccache --show-stats
       - name: Testeth historic
         run : |
-          mkdir -p /tmp/tests/
-          sudo rm -rf /tmp/tests/*
           cd build_historic/test
           export NO_NTP_CHECK=1
           export NO_ULIMIT_CHECK=1
-          function run_test() { 
-            local test_name="$1"
-            local max_retries=5
-            local retry_count=0
-            
-            while [ $retry_count -lt $max_retries ]; do
-              echo "Running test $test_name (attempt $((retry_count + 1))/$max_retries)"
-              
-              # Run the test and capture both stdout and stderr to a temporary file
-              local temp_output="/tmp/testeth_output_${test_name}_$$"
-              
-              # Run the test and capture all output including shell messages
-              set +e  # Temporarily disable exit on error
-              ./testeth --report_level=detailed -t "$test_name" -- --verbosity 5 --express > "$temp_output" 2>&1
-              local exit_code=$?
-              set -e  # Re-enable exit on error
-              
-              # Read the output from the temporary file
-              local output=""
-              if [ -f "$temp_output" ]; then
-                output=$(cat "$temp_output")
-                rm -f "$temp_output"
-              fi
-              
-              if [ $exit_code -eq 0 ]; then
-                touch "/tmp/tests/${test_name}Passed"
-                echo "Test $test_name passed on attempt $((retry_count + 1))"
-                return 0
-              else
-                echo "Test $test_name failed with exit code $exit_code on attempt $((retry_count + 1))"
-                
-                # Check for memory leaks (continue test execution only if exit code is 1)
-                if echo "$output" | grep -q "LeakSanitizer:" && [ $exit_code -eq 1 ]; then
-                  echo "Memory leak detected with exit code 1 - showing output but continuing tests:"
-                  echo "=== Memory leak output start ==="
-                  echo "$output"
-                  echo "=== Memory leak output end ==="
-                  touch "/tmp/tests/${test_name}Passed"  # Mark as passed to continue
-                  return 0
-                fi
-                
-                # Check if the error was AddressSanitizer:DEADLYSIGNAL (but NOT segmentation fault)
-                if echo "$output" | grep -q "AddressSanitizer:DEADLYSIGNAL"; then
-                  echo "Detected AddressSanitizer:DEADLYSIGNAL (non-segfault), retrying..."
-                  echo "Exit code: $exit_code"
-                  if [ -n "$output" ]; then
-                    echo "Available output: $output"
-                  fi
-                  retry_count=$((retry_count + 1))
-                  sleep 2  # Brief pause before retry
-                else
-                  # For segmentation faults and other errors, don't retry but show output
-                  if echo "$output" | grep -q "Segmentation fault" || [ $exit_code -eq 139 ]; then
-                    echo "Segmentation fault detected - not retrying, showing output:"
-                  else
-                    echo "Non-retryable error detected:"
-                  fi
-                  echo "=== Error output start ==="
-                  echo "$output"  
-                  echo "=== Error output end ==="
-                  return $exit_code
-                fi
-              fi
-            done
-            
-            echo "Test $test_name failed after $max_retries attempts"
-            return 1
-          }                    
-          run_test JsonRpcSuite
+          ./testeth -t JsonRpcSuite -- --express --verbosity 4
       
       - name: Configure all MIRAGE
         run: |
@@ -432,7 +295,7 @@ jobs:
           export CMAKE_BUILD_TYPE=Debug
           mkdir -p build_mirage
           cd build_mirage
-          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE -DMIRAGE=1 -DSANITIZE=address ..
+          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE -DMIRAGE=1 ..
           cd ..
       - name: Build all MIRAGE
         run: |
@@ -454,94 +317,7 @@ jobs:
           export NO_ULIMIT_CHECK=1
           export NO_NTP_CHECK=1
           export NO_ULIMIT_CHECK=1
-          function run_test() { 
-            local test_name="$1"
-            local max_retries=5
-            local retry_count=0
-            
-            while [ $retry_count -lt $max_retries ]; do
-              echo "Running test $test_name (attempt $((retry_count + 1))/$max_retries)"
-              
-              # Run the test and capture both stdout and stderr to a temporary file
-              local temp_output="/tmp/testeth_output_${test_name}_$$"
-              
-              # Use timeout and ensure we capture shell errors
-              set +e
-              timeout 600 ./testeth --report_level=detailed -t "$test_name" -- --express &> "$temp_output"
-              local exit_code=$?
-              
-              # Also capture any shell errors (like segmentation fault messages)
-              local shell_error=""
-              if [ $exit_code -ne 0 ]; then
-                # Try to capture the last few lines of system logs or shell output
-                shell_error=$(dmesg | tail -10 2>/dev/null || echo "")
-              fi
-              set -e
-              
-              # Read the output from the temporary file
-              local output=""
-              if [ -f "$temp_output" ]; then
-                output=$(cat "$temp_output")
-                rm -f "$temp_output"
-              fi
-              
-              if [ $exit_code -eq 0 ]; then
-                touch "/tmp/tests/${test_name}Passed"
-                echo "Test $test_name passed on attempt $((retry_count + 1))"
-                return 0
-              else
-                echo "Test $test_name failed with exit code $exit_code on attempt $((retry_count + 1))"
-                
-                # Check for memory leaks (continue test execution only if exit code is 1)
-                if echo "$output $shell_error" | grep -q "LeakSanitizer:" && [ $exit_code -eq 1 ]; then
-                  echo "Memory leak detected with exit code 1 - showing output but continuing tests:"
-                  echo "=== Memory leak output start ==="
-                  echo "$output"
-                  if [ -n "$shell_error" ]; then
-                    echo "=== Shell/System errors ==="
-                    echo "$shell_error"
-                  fi
-                  echo "=== Memory leak output end ==="
-                  touch "/tmp/tests/${test_name}Passed"  # Mark as passed to continue
-                  return 0
-                fi
-                
-                # Check for retryable errors (only AddressSanitizer:DEADLYSIGNAL, not segfaults)
-                local should_retry=false
-                local retry_reason=""
-                
-                if echo "$output" | grep -q "AddressSanitizer:DEADLYSIGNAL" && \
-                   ! echo "$output $shell_error" | grep -E "(Segmentation fault|core dumped)"; then
-                  should_retry=true
-                  retry_reason="AddressSanitizer:DEADLYSIGNAL"
-                fi
-                
-                if [ "$should_retry" = true ]; then
-                  echo "Detected $retry_reason, retrying..."
-                  retry_count=$((retry_count + 1))
-                  sleep 2  # Brief pause before retry
-                else
-                  # For segmentation faults and other errors, don't retry but show output
-                  if echo "$output $shell_error" | grep -E "(Segmentation fault|core dumped)"; then
-                    echo "Segmentation fault/core dump detected - not retrying, showing output:"
-                  else
-                    echo "Non-retryable error detected:"
-                  fi
-                  echo "=== Error output start ==="
-                  echo "$output"
-                  if [ -n "$shell_error" ]; then
-                    echo "=== Shell/System errors ==="
-                    echo "$shell_error"
-                  fi
-                  echo "=== Error output end ==="
-                  return $exit_code
-                fi
-              fi
-            done
-            
-            echo "Test $test_name failed after $max_retries attempts"
-            return 1
-          }                    
+          function run_test() { ./testeth --report_level=detailed -t "$1" -- --express && touch "/tmp/tests/${1}Passed"; }                    
           run_test TransitionTests 
           run_test TransactionTests 
           run_test VMTests 
@@ -594,7 +370,7 @@ jobs:
           mkdir -p build_mirage_historic
           cd build_mirage_historic
           # -DCMAKE_C_FLAGS=-O3 -DCMAKE_CXX_FLAGS=-O3
-          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE -DMIRAGE=1 -DHISTORIC_STATE=1 -DSANITIZE=address ..
+          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE -DMIRAGE=1 -DHISTORIC_STATE=1 ..
           cd ..
       - name: Build all MIRAGE-historic
         run: |
@@ -609,77 +385,7 @@ jobs:
           ccache --show-stats
       - name: Testeth historic
         run : |
-          mkdir -p /tmp/tests/
-          sudo rm -rf /tmp/tests/*
           cd build_mirage_historic/test
           export NO_NTP_CHECK=1
           export NO_ULIMIT_CHECK=1
-          function run_test() { 
-            local test_name="$1"
-            local max_retries=5
-            local retry_count=0
-            
-            while [ $retry_count -lt $max_retries ]; do
-              echo "Running test $test_name (attempt $((retry_count + 1))/$max_retries)"
-              
-              # Run the test and capture both stdout and stderr to a temporary file
-              local temp_output="/tmp/testeth_output_${test_name}_$$"
-              
-              # Run the test and capture all output including shell messages
-              set +e  # Temporarily disable exit on error
-              ./testeth --report_level=detailed -t "$test_name" -- --express > "$temp_output" 2>&1
-              local exit_code=$?
-              set -e  # Re-enable exit on error
-              
-              # Read the output from the temporary file
-              local output=""
-              if [ -f "$temp_output" ]; then
-                output=$(cat "$temp_output")
-                rm -f "$temp_output"
-              fi
-              
-              if [ $exit_code -eq 0 ]; then
-                touch "/tmp/tests/${test_name}Passed"
-                echo "Test $test_name passed on attempt $((retry_count + 1))"
-                return 0
-              else
-                echo "Test $test_name failed with exit code $exit_code on attempt $((retry_count + 1))"
-                
-                # Check for memory leaks (continue test execution only if exit code is 1)
-                if echo "$output" | grep -q "LeakSanitizer:" && [ $exit_code -eq 1 ]; then
-                  echo "Memory leak detected with exit code 1 - showing output but continuing tests:"
-                  echo "=== Memory leak output start ==="
-                  echo "$output"
-                  echo "=== Memory leak output end ==="
-                  touch "/tmp/tests/${test_name}Passed"  # Mark as passed to continue
-                  return 0
-                fi
-                
-                # Check if the error was AddressSanitizer:DEADLYSIGNAL (but NOT segmentation fault)
-                if echo "$output" | grep -q "AddressSanitizer:DEADLYSIGNAL"; then
-                  echo "Detected AddressSanitizer:DEADLYSIGNAL (non-segfault), retrying..."
-                  echo "Exit code: $exit_code"
-                  if [ -n "$output" ]; then
-                    echo "Available output: $output"
-                  fi
-                  retry_count=$((retry_count + 1))
-                  sleep 2  # Brief pause before retry
-                else
-                  # For segmentation faults and other errors, don't retry but show output
-                  if echo "$output" | grep -q "Segmentation fault" || [ $exit_code -eq 139 ]; then
-                    echo "Segmentation fault detected - not retrying, showing output:"
-                  else
-                    echo "Non-retryable error detected:"
-                  fi
-                  echo "=== Error output start ==="
-                  echo "$output"  
-                  echo "=== Error output end ==="
-                  return $exit_code
-                fi
-              fi
-            done
-            
-            echo "Test $test_name failed after $max_retries attempts"
-            return 1
-          }                    
-          run_test JsonRpcSuite
+          ./testeth -t JsonRpcSuite -- --express --verbosity 4
