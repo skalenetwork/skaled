@@ -5034,11 +5034,25 @@ revert();
 BOOST_AUTO_TEST_CASE( getCommonPublicKey ) {
     JsonRpcFixture fixture( c_BITEConfigString, false, false, true );
 
-    auto blsPublicKey = fixture.rpcClient->bite_getCommonPublicKey();
+    Json::Value biteInfo = fixture.rpcClient->bite_getCommonPublicKey();
+
+    std::string blsPublicKey = biteInfo["commonBLSPublicKey"].asString();
+    uint64_t epochId = biteInfo["epochId"].asUInt64();
+
+    auto commonPublicKeyFromConfig = fixture.client->chainParams().getCommonBlsPublicKey();
+    libff::alt_bn128_G2 commonPublicKey;
+    commonPublicKey.X.c0 = libff::alt_bn128_Fq( commonPublicKeyFromConfig[0].c_str() );
+    commonPublicKey.X.c1 = libff::alt_bn128_Fq( commonPublicKeyFromConfig[1].c_str() );
+    commonPublicKey.Y.c0 = libff::alt_bn128_Fq( commonPublicKeyFromConfig[2].c_str() );
+    commonPublicKey.Y.c1 = libff::alt_bn128_Fq( commonPublicKeyFromConfig[3].c_str() );
+    commonPublicKey.Z = libff::alt_bn128_Fq2::one();
 
     BOOST_REQUIRE_EQUAL( blsPublicKey.size(), 256 );
+    BOOST_REQUIRE_EQUAL( libBLS::TEPublicKey( blsPublicKey ).getPublicKeyRaw(), commonPublicKey );
+    BOOST_REQUIRE_EQUAL( epochId, fixture.client->getCurrentEpochId() );
 }
 
+#ifdef MIRAGE
 BOOST_AUTO_TEST_CASE( getBLSPublicKey ) {
     JsonRpcFixture fixture( c_BITEConfigString, false, false, true );
 
@@ -5049,6 +5063,7 @@ BOOST_AUTO_TEST_CASE( getBLSPublicKey ) {
     BOOST_REQUIRE_EQUAL( blsPublicKey["BLSPublicKey2"], "3371162264373897025322009434717052197952692496405149486989861571246537813591" );
     BOOST_REQUIRE_EQUAL( blsPublicKey["BLSPublicKey3"], "13678625751515504401110635369790787716744686498431213713911601759809559919693" );
 }
+#endif // MIRAGE
 
 BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     JsonRpcFixture fixture( c_BITEConfigString, false, false, true, true );
@@ -5057,13 +5072,15 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     string senderAddress = toJS( fixture.coinbase.address() );
     size_t nonce = 0;
     std::string biteAddress = "0x" + std::string( BITE_ADDRESS_AS_STRING );
-    u256 epochId = 0;
 
     /// Normal valid BITE transaction -> should not throw
     std::string message =
         h256::random().hex() + std::string( "5EdF1e852fdD1B0Bc47C0307EF755C76f4B9c251" );
     auto messageBytes = libBLS::ThresholdUtils::hexCStringToBytes( message.c_str() );
-    auto blsPublicKey = fixture.rpcClient->bite_getCommonPublicKey();
+
+    auto biteInfo = fixture.rpcClient->bite_getCommonPublicKey();
+    auto blsPublicKey = biteInfo["commonBLSPublicKey"].asString();
+    u256 epochId = biteInfo["epochId"].asUInt64();
 
     auto encryptedMessage =
         libBLS::ThresholdEncryption::encrypt( messageBytes, libBLS::TEPublicKey( blsPublicKey ) );
@@ -5074,7 +5091,6 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     auto validBITETransactionRlp =
         formTransactionRlp( fixture, senderAddress, dataField, nonce, biteAddress );
     BOOST_REQUIRE_NO_THROW( fixture.rpcClient->eth_sendRawTransaction( validBITETransactionRlp ) );
-
 
     /// Spoiling the BITE address -> should not throw any excpetion because txn is not
     /// BITE-formatted
@@ -5090,9 +5106,19 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     BOOST_REQUIRE_NO_THROW(
         fixture.rpcClient->eth_sendRawTransaction( validNonBITETransactionRlp ) );
 
+    /// Provide wrong epochId -> txn is not validated - should throw an exception
+    auto dataFieldWrongEpochId = formBITEPayloadRlp( epochId + 1, encryptedBytes );
+    auto invalidBITETransactionRlp =
+        formTransactionRlp( fixture, senderAddress, dataFieldWrongEpochId, nonce, biteAddress );
+    BOOST_REQUIRE_THROW(
+        fixture.client->importTransaction( Transaction(
+            dev::jsToBytes( invalidBITETransactionRlp ), CheckTransaction::None, false ) ),
+        dev::eth::InvalidBITETransaction );
+    BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendRawTransaction( invalidBITETransactionRlp ),
+        jsonrpc::JsonRpcException );
 
     /// No data in the data field -> data is bad formatted - should throw an exception
-    auto invalidBITETransactionRlp =
+    invalidBITETransactionRlp =
         formTransactionRlp( fixture, senderAddress, "", nonce, biteAddress );
     BOOST_REQUIRE_THROW(
         fixture.client->importTransaction( Transaction(
@@ -5206,7 +5232,10 @@ BOOST_AUTO_TEST_CASE( BITETransactionCouldNotBeDecrypted ) {
     biteDataRlp << ( dev::Address::Arith ) dev::Address( "0x7aa5e36aa15e93d10f4f26357c30f052dacdde5f" );
 
     auto messageBytes = biteDataRlp.out();
-    auto blsPublicKey = fixture.rpcClient->bite_getCommonPublicKey();
+
+    auto biteInfo = fixture.rpcClient->bite_getCommonPublicKey();
+    auto blsPublicKey = biteInfo["commonBLSPublicKey"].asString();
+    u256 epochId = biteInfo["epochId"].asUInt64();
 
     auto ciphertext =
         libBLS::ThresholdEncryption::encrypt( messageBytes, libBLS::TEPublicKey( blsPublicKey ) );
@@ -5222,7 +5251,6 @@ BOOST_AUTO_TEST_CASE( BITETransactionCouldNotBeDecrypted ) {
     auto invalidEncryptedData = libBLS::ThresholdUtils::bytesToHexString( ciphertextBytes );
 
     size_t nonce = 0;
-    u256 epochId = 0;
     RLPStream bitePayloadRlpList;
 
     RLPStream bitePayloadRlp( 2 );
@@ -5273,6 +5301,10 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     // Set chainID = 151
     std::string chainID = "0x97";
     ret["params"]["chainID"] = chainID;
+#ifndef MIRAGE
+    // set contractStorageLimit
+    ret["skaleConfig"]["sChain"]["contractStorageLimit"] = 1000000;
+#endif
 
     Json::FastWriter fastWriter;
     std::string config = fastWriter.write( ret );
@@ -5498,6 +5530,7 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     BOOST_REQUIRE( receipt["status"] == std::string( "0x0" ) );
 }
 
+#ifdef MIRAGE
 BOOST_AUTO_TEST_CASE( committeeRotation ) {
     std::string _config = c_BITECommitteeRotationConfigString;
     Json::Value ret;
@@ -5574,6 +5607,7 @@ BOOST_AUTO_TEST_CASE( committeeRotation ) {
     receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE( receipt["status"] == std::string( "0x1" ) );
 }
+#endif // MIRAGE
 
 #endif // #ifdef BITE
 

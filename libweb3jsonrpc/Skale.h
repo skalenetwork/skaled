@@ -84,7 +84,7 @@ public:
 #endif
 
 #ifdef BITE
-    std::string bite_getCommonPublicKey() override;
+    Json::Value bite_getCommonPublicKey() override;
     Json::Value bite_getDecryptedTransactionData( const std::string& request ) override;
 #endif
 
