@@ -2046,7 +2046,7 @@ then
 				echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
 				eval git clone https://github.com/facebook/folly.git --recursive
                                 cd folly
-                                eval git checkout 5c8fc1b622422a1c73f46d6fb51ac1164d8efb0f
+                                eval git checkout 5d415b5
                                 cd ..
                                 echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
                                 eval tar -czf folly-from-git.tar.gz ./folly
