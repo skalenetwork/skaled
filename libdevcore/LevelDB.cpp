@@ -187,8 +187,6 @@ LevelDB::~LevelDB() {
     m_snapManager.closeAllOpenSnaps( m_db, m_dbReopenId );
     if ( m_db )
         m_db.reset();
-    // if ( m_options.filter_policy )
-    //     delete m_options.filter_policy;
 }
 
 std::string LevelDB::lookup( Slice _key ) const {
