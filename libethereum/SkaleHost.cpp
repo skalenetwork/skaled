@@ -98,7 +98,7 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
 
     this->fillRotationHistory( *consensusEnginePtr );
 
-#ifdef MIRAGE
+#ifdef BITE
     consensusEnginePtr->setEpochId( m_client.getCurrentEpochId() );
 #endif
 
