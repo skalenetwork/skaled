@@ -622,7 +622,7 @@ BOOST_AUTO_TEST_CASE( constructBITETxnFromRlp ) {
     Transaction invalidTooShortBITETxn(
         invalidTooShortBITETxnRlp, dev::eth::CheckTransaction::Everything, false, true, true );
     BOOST_REQUIRE_THROW( invalidTooShortBITETxn.checkAndValidateBITETransaction( epochId ),
-        dev::eth::BITETransactionTooShort );
+        dev::eth::InvalidBITETransaction );
     tooShortRlp.clear();
     
     // Missing data & To address

@@ -662,27 +662,42 @@ void TransactionBase::checkAndValidateBITETransaction( uint64_t _currentEpochId 
                 InvalidBITETransaction() << errinfo_comment(
                     std::string( "BITE transaction's data is invalid: RLP must be a list" ) ) );
 
-        if ( rlpEncodedBITETxn.itemCount() == 0 || !rlpEncodedBITETxn.toList()[0].isList() )
+        if ( rlpEncodedBITETxn.itemCount() == 0 )
             BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment( std::string(
-                                       "BITE transaction's data is invalid: wrong RLP format" ) ) );
+                                       "BITE transaction's data is invalid: empty RLP list" ) ) );
 
-        RLPs biteTxnRlpList = rlpEncodedBITETxn.toList()[0].toList();
-        if ( biteTxnRlpList.size() != 2 )
-            BOOST_THROW_EXCEPTION(
-                BITETransactionTooShort()
-                << errinfo_comment( std::string( "BITE transaction's data is too short: expected 2 "
-                                                 "elements to be in BITE payload, got " ) +
-                                    std::to_string( biteTxnRlpList.size() ) ) );
+        // BITE transaction can include 1 or 2 payloads, find the one with correct epochId
+        RLP selectedPayload;
+        bool foundValidPayload = false;
 
-        // extract and check epochId
-        if ( !biteTxnRlpList[0].isInt() )
-            BOOST_THROW_EXCEPTION(
-                InvalidBITETransaction() << errinfo_comment(
-                    std::string( "BITE transaction's data is invalid: epochId must be an int" ) ) );
-        uint64_t epochIdFromTxn = biteTxnRlpList[0].toInt< uint64_t >();
-        if ( epochIdFromTxn != _currentEpochId )
-            BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment( std::string(
-                                       "BITE transaction's data is invalid: wrong epochId" ) ) );
+        for ( size_t i = 0; i < rlpEncodedBITETxn.itemCount(); ++i ) {
+            RLP candidate = rlpEncodedBITETxn[i];
+
+            if ( !candidate.isList() )
+                continue;
+
+            RLPs candidateList = candidate.toList();
+            if ( candidateList.size() != 2 )
+                continue;
+
+            if ( !candidateList[0].isInt() )
+                continue;
+
+            uint64_t epochIdFromCandidate = candidateList[0].toInt< uint64_t >();
+            if ( epochIdFromCandidate == _currentEpochId ) {
+                selectedPayload = candidate;
+                foundValidPayload = true;
+                break;
+            }
+        }
+
+        if ( !foundValidPayload )
+            BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment(
+                                       std::string( "BITE transaction's data is invalid: no "
+                                                    "payload found with matching epochId " ) +
+                                       std::to_string( _currentEpochId ) ) );
+
+        RLPs biteTxnRlpList = selectedPayload.toList();
 
         // Extract encrypted BITE data:
         // encrypted AES key + encrypted data
