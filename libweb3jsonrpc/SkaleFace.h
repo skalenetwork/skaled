@@ -180,7 +180,7 @@ public:
 #endif
 #ifdef BITE
         this->bindAndAddMethod( jsonrpc::Procedure( "bite_getCommonPublicKey",
-                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, NULL ),
+                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, NULL ),
             &dev::rpc::SkaleFace::bite_getCommonPublicKeyI );
         this->bindAndAddMethod(
             jsonrpc::Procedure( "bite_getDecryptedTransactionData", jsonrpc::PARAMS_BY_POSITION,

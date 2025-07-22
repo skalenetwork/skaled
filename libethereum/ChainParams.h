@@ -190,6 +190,10 @@ struct ChainParams : public ChainOperationParams {
         return sChain.nodeGroups.at( _historicGroupIndex ).nodes.at( _nodeId ).publicKey;
     }
 
+    uint64_t getHistoricGroupFinishTs( unsigned _historicGroupIndex ) const {
+        return sChain.nodeGroups.at( _historicGroupIndex ).finishTs;
+    }
+
     // SNAPSHOTS GETTERS
 
     int getSnapshotIntervalSec() const { return sChain.snapshotIntervalSec; }

@@ -1181,15 +1181,23 @@ BOOST_AUTO_TEST_CASE( initAndUpdateHistoricConfigFields ) {
         "7375214420811287025501422512322868338311819657776589198925786170409964211914"
     };
 
+    std::array< std::string, 4 > imaBLSPublicKeyAfterBlock = {
+        "10860211539819517237363395256510340030868592687836950245163587507107792195621",
+        "2419969454136313127863904023626922181546178935031521540751337209075607503568",
+        "3399776985251727272800732947224655319335094876742988846345707000254666193993",
+        "16982202412630419037827505223148517434545454619191931299977913428346639096984"
+    };
+
     BOOST_REQUIRE( testClient->getCurrentBLSPublicKey() == imaBLSPublicKeyOnStartUp );
-    BOOST_REQUIRE( testClient->getHistoricNodePublicKey( 0 ) ==
-                   "0x3a581d62b12232dade30c3710215a271984841657449d1f474295a13737b778266f57e298f123"
-                   "ae80cbab7cc35ead1b62a387556f94b326d5c65d4a7aa2abcba" );
-    BOOST_REQUIRE( testClient->getHistoricNodeId( 0 ) == "26" );
-    BOOST_REQUIRE( testClient->getHistoricNodeIndex( 0 ) == "3" );
+    BOOST_REQUIRE_EQUAL( testClient->getHistoricNodePublicKey( 0 ) , "0x3a581d62b12232dade30c3710215a271984841657449d1f474295a13737b778266f57e298f123ae80cbab7cc35ead1b62a387556f94b326d5c65d4a7aa2abcba" );
+    BOOST_REQUIRE_EQUAL( testClient->getHistoricNodeId( 0 ), "26" );
+    BOOST_REQUIRE_EQUAL( testClient->getHistoricNodeIndex( 0 ), "3" );
 
 #ifdef MIRAGE
-    BOOST_REQUIRE( testClient->getCurrentEpochId() == 0 );
+    BOOST_REQUIRE_EQUAL( testClient->getCurrentEpochId(), 0 );
+    auto nextCommitteeBITEInfo = testClient->getNextCommitteeBITEInfo();
+    BOOST_REQUIRE( nextCommitteeBITEInfo.first == imaBLSPublicKeyAfterBlock );
+    BOOST_REQUIRE_EQUAL( nextCommitteeBITEInfo.second, 1 );
 #endif
 
     testClient->importTransactionsAsBlock( Transactions(),
@@ -1204,22 +1212,13 @@ BOOST_AUTO_TEST_CASE( initAndUpdateHistoricConfigFields ) {
 
     sleep( 3 );
 
-    std::array< std::string, 4 > imaBLSPublicKeyAfterBlock = {
-        "10860211539819517237363395256510340030868592687836950245163587507107792195621",
-        "2419969454136313127863904023626922181546178935031521540751337209075607503568",
-        "3399776985251727272800732947224655319335094876742988846345707000254666193993",
-        "16982202412630419037827505223148517434545454619191931299977913428346639096984"
-    };
-
     BOOST_REQUIRE( testClient->getCurrentBLSPublicKey() == imaBLSPublicKeyAfterBlock );
-    BOOST_REQUIRE( testClient->getHistoricNodePublicKey( 0 ) ==
-                   "0x6180cde2cbbcc6b6a17efec4503a7d4316f8612f411ee171587089f770335f484003ad236c534"
-                   "b9afa82befc1f69533723abdb6ec2601e582b72dcfd7919338b" );
-    BOOST_REQUIRE( testClient->getHistoricNodeId( 0 ) == "30" );
-    BOOST_REQUIRE( testClient->getHistoricNodeIndex( 0 ) == "0" );
+    BOOST_REQUIRE_EQUAL( testClient->getHistoricNodePublicKey( 0 ), "0x6180cde2cbbcc6b6a17efec4503a7d4316f8612f411ee171587089f770335f484003ad236c534b9afa82befc1f69533723abdb6ec2601e582b72dcfd7919338b" );
+    BOOST_REQUIRE_EQUAL( testClient->getHistoricNodeId( 0 ), "30" );
+    BOOST_REQUIRE_EQUAL( testClient->getHistoricNodeIndex( 0 ), "0" );
 
 #ifdef MIRAGE
-    BOOST_REQUIRE( testClient->getCurrentEpochId() == 1 );
+    BOOST_REQUIRE_EQUAL( testClient->getCurrentEpochId(), 1 );
 #endif
 }
 

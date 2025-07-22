@@ -1426,7 +1426,7 @@ Json::Value WebThreeStubClient::bite_getCommonPublicKey() {
     Json::Value p;
     p = Json::nullValue;
     Json::Value result = this->CallMethod( "bite_getCommonPublicKey", p );
-    if ( result.isObject() )
+    if ( result.isArray() )
         return result;
     else
         throw jsonrpc::JsonRpcException(

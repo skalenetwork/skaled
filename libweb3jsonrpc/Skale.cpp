@@ -601,17 +601,30 @@ std::string Skale::oracle_checkResult( std::string& receipt ) {
 #ifdef BITE
 Json::Value Skale::bite_getCommonPublicKey() {
     try {
+        auto stringArrayToBLSPublicKey = []( const std::array< std::string, 4 >& publicKeyArray ) {
+            libff::alt_bn128_G2 publicKeyG2;
+            publicKeyG2.Z = libff::alt_bn128_Fq2::one();
+            publicKeyG2.X.c0 = libff::alt_bn128_Fq( publicKeyArray[0].c_str() );
+            publicKeyG2.X.c1 = libff::alt_bn128_Fq( publicKeyArray[1].c_str() );
+            publicKeyG2.Y.c0 = libff::alt_bn128_Fq( publicKeyArray[2].c_str() );
+            publicKeyG2.Y.c1 = libff::alt_bn128_Fq( publicKeyArray[3].c_str() );
+            libBLS::TEPublicKey publicKey( publicKeyG2 );
+            return publicKey;
+        };
         auto publicKeyArray = m_client.getCurrentBLSPublicKey();
-        libff::alt_bn128_G2 publicKeyG2;
-        publicKeyG2.Z = libff::alt_bn128_Fq2::one();
-        publicKeyG2.X.c0 = libff::alt_bn128_Fq( publicKeyArray[0].c_str() );
-        publicKeyG2.X.c1 = libff::alt_bn128_Fq( publicKeyArray[1].c_str() );
-        publicKeyG2.Y.c0 = libff::alt_bn128_Fq( publicKeyArray[2].c_str() );
-        publicKeyG2.Y.c1 = libff::alt_bn128_Fq( publicKeyArray[3].c_str() );
-        libBLS::TEPublicKey publicKey( publicKeyG2 );
-        Json::Value response;
-        response["commonBLSPublicKey"] = publicKey.toString();
-        response["epochId"] = m_client.getCurrentEpochId();
+
+        Json::Value response = Json::arrayValue;
+        response[0]["commonBLSPublicKey"] = stringArrayToBLSPublicKey( publicKeyArray ).toString();
+        response[0]["epochId"] = m_client.getCurrentEpochId();
+#ifdef MIRAGE
+        if ( m_client.isCommitteeRotationSoon() ) {
+            auto nextCommitteeBITEInfo = m_client.getNextCommitteeBITEInfo();
+            response[1]["commonBLSPublicKey"] =
+                stringArrayToBLSPublicKey( nextCommitteeBITEInfo.first ).toString();
+            response[1]["epochId"] = nextCommitteeBITEInfo.second;
+        }
+#endif  // MIRAGE
+
         return response;
     } catch ( Exception const& ) {
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
@@ -632,7 +645,7 @@ Json::Value Skale::bite_getDecryptedTransactionData( const std::string& _transac
         auto rcp = m_client.localisedTransactionReceipt( h );
         if ( rcp.gasUsed() == 0 )
             return std::string();
-#endif
+#endif  // HISTORIC_STATE
 
         auto decryptedData = m_client.decryptedTransactionData( h );
         if ( !decryptedData ) {
@@ -654,7 +667,7 @@ Json::Value Skale::bite_getDecryptedTransactionData( const std::string& _transac
             jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
 }
-#endif
+#endif  // BITE
 
 namespace snapshot {
 

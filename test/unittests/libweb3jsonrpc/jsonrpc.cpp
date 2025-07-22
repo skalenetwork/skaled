@@ -4862,12 +4862,28 @@ static std::string const c_BITECommitteeRotationConfigString =
                             "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea105a3d21845e5660bc3d4e7c82e7af1daa3baad393b1521467"
                         ]
                     },
-                    "finish_ts": null,
+                    "finish_ts": 1,
                     "bls_public_key": {
                         "blsPublicKey0": "15959969554621958245201075983340071881770733084910870228938077786643587385029",
                         "blsPublicKey1": "7970122607051572307517094692346020360016825923464107614135327251488152616550",
                         "blsPublicKey2": "3371162264373897025322009434717052197952692496405149486989861571246537813591",
                         "blsPublicKey3": "13678625751515504401110635369790787716744686498431213713911601759809559919693"
+                    }
+                },
+                "1": {
+                    "nodes": {
+                        "8": [
+                            1,
+                            8,
+                            "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea105a3d21845e5660bc3d4e7c82e7af1daa3baad393b1521467"
+                        ]
+                    },
+                    "finish_ts": null,
+                    "bls_public_key": {
+                        "blsPublicKey0": "3842742177969966091367527274107524613106077736353521259727282251005583743182",
+                        "blsPublicKey1": "3497912824016228906558906422247670474553186446469877598411863912329082553081",
+                        "blsPublicKey2": "8173996886448941320370434854289578123609627835954133538412363037981850950343",
+                        "blsPublicKey3": "20979370720689475348670582375026949105497642726992863932315517524004804784155"
                     }
                 }
             },
@@ -5036,8 +5052,9 @@ BOOST_AUTO_TEST_CASE( getCommonPublicKey ) {
 
     Json::Value biteInfo = fixture.rpcClient->bite_getCommonPublicKey();
 
-    std::string blsPublicKey = biteInfo["commonBLSPublicKey"].asString();
-    uint64_t epochId = biteInfo["epochId"].asUInt64();
+    BOOST_REQUIRE( biteInfo.isArray() );
+    std::string blsPublicKey = biteInfo[0]["commonBLSPublicKey"].asString();
+    uint64_t epochId = biteInfo[0]["epochId"].asUInt64();
 
     auto commonPublicKeyFromConfig = fixture.client->chainParams().getCommonBlsPublicKey();
     libff::alt_bn128_G2 commonPublicKey;
@@ -5079,8 +5096,8 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     auto messageBytes = libBLS::ThresholdUtils::hexCStringToBytes( message.c_str() );
 
     auto biteInfo = fixture.rpcClient->bite_getCommonPublicKey();
-    auto blsPublicKey = biteInfo["commonBLSPublicKey"].asString();
-    u256 epochId = biteInfo["epochId"].asUInt64();
+    auto blsPublicKey = biteInfo[0]["commonBLSPublicKey"].asString();
+    u256 epochId = biteInfo[0]["epochId"].asUInt64();
 
     auto encryptedMessage =
         libBLS::ThresholdEncryption::encrypt( messageBytes, libBLS::TEPublicKey( blsPublicKey ) );
@@ -5234,8 +5251,8 @@ BOOST_AUTO_TEST_CASE( BITETransactionCouldNotBeDecrypted ) {
     auto messageBytes = biteDataRlp.out();
 
     auto biteInfo = fixture.rpcClient->bite_getCommonPublicKey();
-    auto blsPublicKey = biteInfo["commonBLSPublicKey"].asString();
-    u256 epochId = biteInfo["epochId"].asUInt64();
+    auto blsPublicKey = biteInfo[0]["commonBLSPublicKey"].asString();
+    u256 epochId = biteInfo[0]["epochId"].asUInt64();
 
     auto ciphertext =
         libBLS::ThresholdEncryption::encrypt( messageBytes, libBLS::TEPublicKey( blsPublicKey ) );
@@ -5562,6 +5579,21 @@ BOOST_AUTO_TEST_CASE( committeeRotation ) {
     ret["skaleConfig"]["sChain"]["nodes"][std::to_string( firstGroupTs )] = firstGroupObject;
     ret["skaleConfig"]["sChain"]["nodes"][std::to_string( secondGroupTs )] = secondGroupObject;
 
+    ret["skaleConfig"]["sChain"]["nodeGroups"]["0"]["finish_ts"] = secondGroupTs;
+
+    auto blsPublicKeyStringToStringArray = [](const std::string& publicKeyStr) {
+        libBLS::TEPublicKey publicKey( publicKeyStr );
+        auto rawPublicKey = publicKey.getPublicKeyRaw();
+        std::vector< std::string > publicKeyVector = libBLS::ThresholdUtils::G2ToString( rawPublicKey, 10 );
+        std::array< std::string, 4 > publicKeyArray;
+        
+        for (size_t i = 0; i < 4; ++i) {
+            publicKeyArray[i] = publicKeyVector[i];
+        }
+        
+        return publicKeyArray;
+    };
+
     Json::FastWriter fastWriter;
     std::string config = fastWriter.write( ret );
     JsonRpcFixture fixture( config, false, false, true );
@@ -5583,6 +5615,15 @@ BOOST_AUTO_TEST_CASE( committeeRotation ) {
     auto latestBlockTs = fixture.client->blockChain().info().timestamp();
     BOOST_REQUIRE( latestBlockTs < secondGroupTs && latestBlockTs > firstGroupTs );
     BOOST_REQUIRE( fixture.client->chainParams().getCommonBlsPublicKey() == firstGroupCommonPublicKey );
+    BOOST_REQUIRE( fixture.client->isCommitteeRotationSoon() );
+
+    auto biteInfo = fixture.rpcClient->bite_getCommonPublicKey();
+    BOOST_REQUIRE( biteInfo.isArray() );
+    BOOST_REQUIRE_EQUAL( biteInfo.size(), 2 );
+    BOOST_REQUIRE( blsPublicKeyStringToStringArray( biteInfo[0]["commonBLSPublicKey"].asString() ) == firstGroupCommonPublicKey );
+    BOOST_REQUIRE_EQUAL( biteInfo[0]["epochId"].asUInt64(), 0 );
+    BOOST_REQUIRE( blsPublicKeyStringToStringArray( biteInfo[1]["commonBLSPublicKey"].asString() ) == secondGroupCommonPublicKey );
+    BOOST_REQUIRE_EQUAL( biteInfo[1]["epochId"].asUInt64(), 1 );
 
     while ( latestBlockTs++ < secondGroupTs )
         sleep( 1 );
@@ -5595,6 +5636,11 @@ BOOST_AUTO_TEST_CASE( committeeRotation ) {
 
     BOOST_REQUIRE( latestBlockTs >= secondGroupTs );
     BOOST_REQUIRE( fixture.client->chainParams().getCommonBlsPublicKey() == secondGroupCommonPublicKey );
+
+    biteInfo = fixture.rpcClient->bite_getCommonPublicKey();
+    BOOST_REQUIRE_EQUAL( biteInfo.size(), 1 );
+    BOOST_REQUIRE( blsPublicKeyStringToStringArray( biteInfo[0]["commonBLSPublicKey"].asString() ) == secondGroupCommonPublicKey );
+    BOOST_REQUIRE_EQUAL( biteInfo[0]["epochId"].asUInt64(), 1 );
 
     // HACK: currently on committee rotation skaled calls exitGracefully in consensus
     // it interferes with exit procedure
