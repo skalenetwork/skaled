@@ -638,7 +638,11 @@ BOOST_FIXTURE_TEST_CASE( SnapshotHashingTest, SnapshotHashingFixture,
 
     mgr->doSnapshot( 3 );
 
+#ifndef MIRAGE    
     mgr->computeSnapshotHash( 3, true );
+#else
+    mgr->computeSnapshotHash( 3 );
+#endif
 
     BOOST_REQUIRE( mgr->isSnapshotHashPresent( 3 ) );
 
