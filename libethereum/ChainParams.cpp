@@ -405,7 +405,11 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
         s.nodeGroups = nodeGroups;
     }
 
-    auto parseNodeDetails = [testSignatures]( const auto& jsonNodeObj ) -> sChainNode {
+    auto parseNodeDetails = [
+#ifdef MIRAGE
+                                this,
+#endif
+                                testSignatures]( const auto& jsonNodeObj ) -> sChainNode {
         auto nodeConfObj = jsonNodeObj.get_obj();
         sChainNode node{};
         node.id = nodeConfObj.at( "nodeID" ).get_uint64();
@@ -413,6 +417,8 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
         try {
             node.owner = jsToAddress( nodeConfObj.at( "owner" ).get_str() );
         } catch ( ... ) {
+            LOG( m_loggerWarning )
+                << "Node " << node.id << ": owner is not set, using zero address as fallback";
             node.owner = ZeroAddress;
         }
 #endif

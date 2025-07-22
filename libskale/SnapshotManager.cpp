@@ -563,7 +563,7 @@ void SnapshotManager::addLastPriceToHash( unsigned _blockNumber, secp256k1_sha25
 
 #ifndef MIRAGE
 void SnapshotManager::proceedRegularFile(
-    const boost::filesystem::path& path, secp256k1_sha256_t* ctx, bool is_checking ) const {
+    const boost::filesystem::path& path, secp256k1_sha256_t* ctx, bool isChecking ) const {
     if ( path.extension() == "._hash" ) {
         return;
     }
@@ -571,7 +571,7 @@ void SnapshotManager::proceedRegularFile(
     std::string relativePath = path.string().substr( path.string().find( "filestorage" ) );
 
     std::string fileHashPathStr = path.string() + "._hash";
-    if ( !is_checking ) {
+    if ( !isChecking ) {
         dev::h256 fileHash;
         if ( !boost::filesystem::exists( fileHashPathStr ) ) {
             // file has not been downloaded fully
@@ -640,7 +640,7 @@ void SnapshotManager::proceedDirectory(
 }
 
 void SnapshotManager::proceedFileStorageDirectory( const boost::filesystem::path& _fileSystemDir,
-    secp256k1_sha256_t* ctx, bool is_checking ) const {
+    secp256k1_sha256_t* ctx, bool isChecking ) const {
     boost::filesystem::recursive_directory_iterator directory_it( _fileSystemDir ), end;
 
     std::vector< boost::filesystem::path > contents;
@@ -655,7 +655,7 @@ void SnapshotManager::proceedFileStorageDirectory( const boost::filesystem::path
 
     for ( auto& content : contents ) {
         if ( boost::filesystem::is_regular_file( content ) ) {
-            proceedRegularFile( content, ctx, is_checking );
+            proceedRegularFile( content, ctx, isChecking );
         } else {
             proceedDirectory( content, ctx );
         }
@@ -664,20 +664,20 @@ void SnapshotManager::proceedFileStorageDirectory( const boost::filesystem::path
 
 
 void SnapshotManager::computeFileStorageHash( const boost::filesystem::path& _fileSystemDir,
-    secp256k1_sha256_t* ctx, bool is_checking ) const {
+    secp256k1_sha256_t* ctx, bool isChecking ) const {
     if ( !boost::filesystem::exists( _fileSystemDir ) ) {
         throw std::logic_error( "filestorage btrfs subvolume was corrupted - " +
                                 _fileSystemDir.string() + " doesn't exist" );
     }
 
-    this->proceedFileStorageDirectory( _fileSystemDir, ctx, is_checking );
+    this->proceedFileStorageDirectory( _fileSystemDir, ctx, isChecking );
 }
 #endif
 
 void SnapshotManager::computeAllVolumesHash( unsigned _blockNumber, secp256k1_sha256_t* ctx
 #ifndef MIRAGE
     ,
-    bool is_checking
+    bool isChecking
 #endif
 ) const {
     assert( allVolumes.size() != 0 );
@@ -716,7 +716,7 @@ void SnapshotManager::computeAllVolumesHash( unsigned _blockNumber, secp256k1_sh
 #ifndef MIRAGE
     // filestorage
     this->computeFileStorageHash(
-        this->snapshotsDir / std::to_string( _blockNumber ) / "filestorage", ctx, is_checking );
+        this->snapshotsDir / std::to_string( _blockNumber ) / "filestorage", ctx, isChecking );
 #endif
     // if have prices and blocks
     if ( _blockNumber && allVolumes.size() > 3 ) {
@@ -772,7 +772,7 @@ void SnapshotManager::computeAllVolumesHash( unsigned _blockNumber, secp256k1_sh
 void SnapshotManager::computeSnapshotHash( unsigned _blockNumber
 #ifndef MIRAGE
     ,
-    bool is_checking
+    bool isChecking
 #endif
 ) {
     if ( this->isSnapshotHashPresent( _blockNumber ) ) {
@@ -809,7 +809,7 @@ void SnapshotManager::computeSnapshotHash( unsigned _blockNumber
     this->computeAllVolumesHash( _blockNumber, &ctx
 #ifndef MIRAGE
         ,
-        is_checking
+        isChecking
 #endif
     );
 
