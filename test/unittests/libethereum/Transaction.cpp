@@ -668,17 +668,14 @@ BOOST_AUTO_TEST_CASE( constructBITETxnWithTwoPayloads ) {
     std::string data = dev::h256::random().hex();
     dev::bytes messageBytes = prepareBITEDataRlp( toAddress, dev::fromHex( data ) );
 
-    // Create encrypted message for first payload
     auto encryptedMessage1 = libBLS::ThresholdEncryption::encrypt( messageBytes, publicKey );
     auto encryptedBITEDataBytes1 = encryptedMessage1.toBytes();
 
-    // Create encrypted message for second payload  
     auto encryptedMessage2 = libBLS::ThresholdEncryption::encrypt( messageBytes, publicKey );
     auto encryptedBITEDataBytes2 = encryptedMessage2.toBytes();
 
-    // Create RLP with two payloads having different epochIds
     RLPStream bitePayloadRlpList;
-    bitePayloadRlpList.appendList( 2 ); // Two payloads
+    bitePayloadRlpList.appendList( 2 );
 
     // First payload with epochId1
     RLPStream bitePayload1;
@@ -707,14 +704,11 @@ BOOST_AUTO_TEST_CASE( constructBITETxnWithTwoPayloads ) {
 
     BOOST_REQUIRE( twoPayloadBITETxn.isBite() );
 
-    // Should not crash and should successfully validate with epochId1
     BOOST_REQUIRE_NO_THROW( twoPayloadBITETxn.checkAndValidateBITETransaction( currentEpochId ) );
 
-    // Should throw when validating with an epochId that's not in any payload
     BOOST_REQUIRE_THROW( twoPayloadBITETxn.checkAndValidateBITETransaction( epochId1 + epochId2 + 1 ),
                          dev::eth::InvalidBITETransaction );
 
-    // Should not crash and should successfully validate with epochId2
     BOOST_REQUIRE_NO_THROW( twoPayloadBITETxn.checkAndValidateBITETransaction( epochId2 ) );
 }
 #endif
