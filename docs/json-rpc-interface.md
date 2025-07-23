@@ -1104,7 +1104,6 @@ A JSON array of 1 or 2 objects. Each object contains:
 #### Notes
 - If the node is in a catch-up state, it may return outdated information
 - During committee rotation (scheduled for the next 3 minutes), two epoch keys are returned
-- Clients should use the appropriate epoch key when encrypting BITE transactions
 
 ### `bite_getDecryptedTransactionData`
 #### Description
