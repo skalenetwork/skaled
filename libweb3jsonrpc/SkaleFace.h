@@ -99,10 +99,10 @@ class SkaleFace : public ServerInterface< SkaleFace > {
 #endif
 
 #ifdef BITE
-    inline virtual void bite_getCommonPublicKeyI(
+    inline virtual void bite_getCommitteesInfoI(
         const Json::Value& request, Json::Value& response ) {
         ( void ) request;
-        response = this->bite_getCommonPublicKey();
+        response = this->bite_getCommitteesInfo();
     }
 
     inline virtual void bite_getDecryptedTransactionDataI(
@@ -128,7 +128,7 @@ class SkaleFace : public ServerInterface< SkaleFace > {
 #endif
 
 #ifdef BITE
-    virtual Json::Value bite_getCommonPublicKey() = 0;
+    virtual Json::Value bite_getCommitteesInfo() = 0;
     virtual Json::Value bite_getDecryptedTransactionData( const std::string& request ) = 0;
 #endif
 
@@ -179,9 +179,9 @@ public:
             &dev::rpc::SkaleFace::skale_getBLSPublicKeyI );
 #endif
 #ifdef BITE
-        this->bindAndAddMethod( jsonrpc::Procedure( "bite_getCommonPublicKey",
+        this->bindAndAddMethod( jsonrpc::Procedure( "bite_getCommitteesInfo",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, NULL ),
-            &dev::rpc::SkaleFace::bite_getCommonPublicKeyI );
+            &dev::rpc::SkaleFace::bite_getCommitteesInfoI );
         this->bindAndAddMethod(
             jsonrpc::Procedure( "bite_getDecryptedTransactionData", jsonrpc::PARAMS_BY_POSITION,
                 jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_STRING, NULL ),

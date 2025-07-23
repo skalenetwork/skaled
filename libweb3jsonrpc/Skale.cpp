@@ -599,7 +599,7 @@ std::string Skale::oracle_checkResult( std::string& receipt ) {
 #endif
 
 #ifdef BITE
-Json::Value Skale::bite_getCommonPublicKey() {
+Json::Value Skale::bite_getCommitteesInfo() {
     try {
         auto stringArrayToBLSPublicKey = []( const std::array< std::string, 4 >& publicKeyArray ) {
             libff::alt_bn128_G2 publicKeyG2;

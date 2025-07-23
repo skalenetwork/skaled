@@ -1422,10 +1422,10 @@ Json::Value WebThreeStubClient::debug_getPatchTimestamps() {
 }
 
 #ifdef BITE
-Json::Value WebThreeStubClient::bite_getCommonPublicKey() {
+Json::Value WebThreeStubClient::bite_getCommitteesInfo() {
     Json::Value p;
     p = Json::nullValue;
-    Json::Value result = this->CallMethod( "bite_getCommonPublicKey", p );
+    Json::Value result = this->CallMethod( "bite_getCommitteesInfo", p );
     if ( result.isArray() )
         return result;
     else

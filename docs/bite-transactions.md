@@ -33,6 +33,6 @@ Decrypted data fields are passed from consensus to `skaled` and later used durin
 
 # New JSON-RPC Methods
 
-1. **`bite_getCommonPublicKey`** - Returns a JSON object containing the current common `BLS` public key for a chain from a given node as a 128-byte hexadecimal string and current epoch ID. If committee rotation is scheduled for the next 3 minutes, a node returns 2 sets of data (`commonBLSPublicKey` + `epochId`). Note that if a node is in a catch-up state, it may return outdated information.
+1. **`bite_getCommitteesInfo`** - Returns a JSON object containing the current common `BLS` public key for a chain from a given node as a 128-byte hexadecimal string and current epoch ID. If committee rotation is scheduled for the next 3 minutes, a node returns 2 sets of data (`commonBLSPublicKey` + `epochId`). Note that if a node is in a catch-up state, it may return outdated information.
 
 2. **`bite_getDecryptedTransactionData`** - Receives a transaction hash as an input parameter and returns the decrypted `data` and `to` fields associated with the given transaction. If such a transaction does not exist or does not have any decrypted data associated with it, the method throws an error.

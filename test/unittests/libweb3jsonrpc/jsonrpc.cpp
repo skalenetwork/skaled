@@ -5050,7 +5050,7 @@ revert();
 BOOST_AUTO_TEST_CASE( getCommonPublicKey ) {
     JsonRpcFixture fixture( c_BITEConfigString, false, false, true );
 
-    Json::Value biteInfo = fixture.rpcClient->bite_getCommonPublicKey();
+    Json::Value biteInfo = fixture.rpcClient->bite_getCommitteesInfo();
 
     BOOST_REQUIRE( biteInfo.isArray() );
     std::string blsPublicKey = biteInfo[0]["commonBLSPublicKey"].asString();
@@ -5095,7 +5095,7 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
         h256::random().hex() + std::string( "5EdF1e852fdD1B0Bc47C0307EF755C76f4B9c251" );
     auto messageBytes = libBLS::ThresholdUtils::hexCStringToBytes( message.c_str() );
 
-    auto biteInfo = fixture.rpcClient->bite_getCommonPublicKey();
+    auto biteInfo = fixture.rpcClient->bite_getCommitteesInfo();
     auto blsPublicKey = biteInfo[0]["commonBLSPublicKey"].asString();
     u256 epochId = biteInfo[0]["epochId"].asUInt64();
 
@@ -5250,7 +5250,7 @@ BOOST_AUTO_TEST_CASE( BITETransactionCouldNotBeDecrypted ) {
 
     auto messageBytes = biteDataRlp.out();
 
-    auto biteInfo = fixture.rpcClient->bite_getCommonPublicKey();
+    auto biteInfo = fixture.rpcClient->bite_getCommitteesInfo();
     auto blsPublicKey = biteInfo[0]["commonBLSPublicKey"].asString();
     u256 epochId = biteInfo[0]["epochId"].asUInt64();
 
@@ -5617,7 +5617,7 @@ BOOST_AUTO_TEST_CASE( committeeRotation ) {
     BOOST_REQUIRE( fixture.client->chainParams().getCommonBlsPublicKey() == firstGroupCommonPublicKey );
     BOOST_REQUIRE( fixture.client->isCommitteeRotationSoon() );
 
-    auto biteInfo = fixture.rpcClient->bite_getCommonPublicKey();
+    auto biteInfo = fixture.rpcClient->bite_getCommitteesInfo();
     BOOST_REQUIRE( biteInfo.isArray() );
     BOOST_REQUIRE_EQUAL( biteInfo.size(), 2 );
     BOOST_REQUIRE( blsPublicKeyStringToStringArray( biteInfo[0]["commonBLSPublicKey"].asString() ) == firstGroupCommonPublicKey );
@@ -5637,7 +5637,7 @@ BOOST_AUTO_TEST_CASE( committeeRotation ) {
     BOOST_REQUIRE( latestBlockTs >= secondGroupTs );
     BOOST_REQUIRE( fixture.client->chainParams().getCommonBlsPublicKey() == secondGroupCommonPublicKey );
 
-    biteInfo = fixture.rpcClient->bite_getCommonPublicKey();
+    biteInfo = fixture.rpcClient->bite_getCommitteesInfo();
     BOOST_REQUIRE_EQUAL( biteInfo.size(), 1 );
     BOOST_REQUIRE( blsPublicKeyStringToStringArray( biteInfo[0]["commonBLSPublicKey"].asString() ) == secondGroupCommonPublicKey );
     BOOST_REQUIRE_EQUAL( biteInfo[0]["epochId"].asUInt64(), 1 );
