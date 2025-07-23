@@ -674,14 +674,22 @@ void TransactionBase::checkAndValidateBITETransaction( uint64_t _currentEpochId 
             RLP candidate = rlpEncodedBITETxn[i];
 
             if ( !candidate.isList() )
-                continue;
+                BOOST_THROW_EXCEPTION(
+                    InvalidBITETransaction() << errinfo_comment( std::string(
+                        "BITE transaction's data is invalid: payload RLP must be a list" ) ) );
 
             RLPs candidateList = candidate.toList();
             if ( candidateList.size() != 2 )
-                continue;
+                BOOST_THROW_EXCEPTION(
+                    BITETransactionTooShort() << errinfo_comment(
+                        std::string( "BITE transaction's data is too short: expected 2 "
+                                     "elements to be in BITE payload, got " ) +
+                        std::to_string( candidateList.size() ) ) );
 
             if ( !candidateList[0].isInt() )
-                continue;
+                BOOST_THROW_EXCEPTION(
+                    InvalidBITETransaction() << errinfo_comment( std::string(
+                        "BITE transaction's data is invalid: epochId must be an int" ) ) );
 
             uint64_t epochIdFromCandidate = candidateList[0].toInt< uint64_t >();
             if ( epochIdFromCandidate == _currentEpochId ) {
