@@ -447,7 +447,12 @@ bool tryDownloadSnapshot( std::shared_ptr< SnapshotManager >& snapshotManager,
             downloadSnapshot( blockNumber, snapshotManager, urlToDownloadSnapshot, chainParams );
 
             try {
-                snapshotManager->computeSnapshotHash( blockNumber, true );
+                snapshotManager->computeSnapshotHash( blockNumber
+#ifndef MIRAGE
+                    ,
+                    true
+#endif
+                );
             } catch ( const std::exception& ) {
                 std::throw_with_nested( std::runtime_error(
                     std::string( "FATAL:" ) +
