@@ -117,7 +117,6 @@ PrecompiledContract createPrecompiledContract( js::mObject const& _precompiled )
         cwarn << "Couldn't create a precompiled contract account. Missing a pricer called:" << n;
         throw;
     } catch ( ExecutorNotFound const& ) {
-        // Oh dear - missing a plugin?
         cwarn << "Couldn't create a precompiled contract account. Missing an executor called:" << n;
         throw;
     }
@@ -212,11 +211,18 @@ AccountMap dev::eth::jsonToAccountMap( std::string const& _json, u256 const& _de
                  shouldNotExists )  // defined only shouldNotExists field
                 ret[a] = Account( 0, 0 );
         }
-
-        if ( o_precompiled && accountMaskJson.count( c_precompiled ) ) {
-            js::mObject p = accountMaskJson.at( c_precompiled ).get_obj();
-            o_precompiled->insert( make_pair( a, createPrecompiledContract( p ) ) );
+#ifdef MIRAGE
+        try {
+#endif
+            if ( o_precompiled && accountMaskJson.count( c_precompiled ) ) {
+                js::mObject p = accountMaskJson.at( c_precompiled ).get_obj();
+                o_precompiled->insert( make_pair( a, createPrecompiledContract( p ) ) );
+            }
+#ifdef MIRAGE
+        } catch ( ExecutorNotFound const& ) {
+            cwarn << "Precompiled contract skipped due to missing executor";
         }
+#endif
     }
 
     return ret;
