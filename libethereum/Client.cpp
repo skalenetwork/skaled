@@ -614,7 +614,7 @@ bool Client::isCommitteeRotationSoon() const {
 
     if ( getCommitteeStartTs( currentGroupIndex + 1 ) > bc().info().timestamp() &&
          getCommitteeStartTs( currentGroupIndex + 1 ) - bc().info().timestamp() <
-             MIN_ROTATION_INTERVAL )
+             MIN_COMMITTEE_ROTATION_INTERVAL_SEC )
         return true;
     return false;
 }

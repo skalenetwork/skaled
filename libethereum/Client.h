@@ -612,7 +612,7 @@ private:
     // which group corresponds to the current block timestamp on this node
 #ifdef BITE
     std::atomic_uint64_t historicGroupIndex = 0;
-    static constexpr uint64_t MIN_ROTATION_INTERVAL = 3 * 60;  // 180 sec
+    static constexpr uint64_t MIN_COMMITTEE_ROTATION_INTERVAL_SEC = 3 * 60;  // 180 sec
 #else
     unsigned historicGroupIndex = 0;
 #endif
