@@ -162,15 +162,9 @@ namespace eth {
 #elif EVM_JUMP_DISPATCH
 
 #ifndef MIRAGE
-#define OPCODES_5C_5E      \
-    &&BEGINDATA,           \
-    &&BEGINSUB,            \
-    &&INVALID,
+#define OPCODES_5C_5E &&BEGINDATA, &&BEGINSUB, &&INVALID,
 #else
-#define OPCODES_5C_5E      \
-    &&TLOAD,               \
-    &&TSTORE,              \
-    &&MCOPY,
+#define OPCODES_5C_5E &&TLOAD, &&TSTORE, &&MCOPY,
 #endif
 
 #define INIT_CASES                              \
@@ -268,9 +262,8 @@ namespace eth {
         &&MSIZE,                                \
         &&GAS,                                  \
         &&JUMPDEST,                             \
-        OPCODES_5C_5E                           \
-        &&PUSH0, /* EIP-3855  */                \
-        &&PUSH1, /* 60, */                      \
+        OPCODES_5C_5E && PUSH0, /* EIP-3855  */ \
+        &&PUSH1,                /* 60, */       \
         &&PUSH2,                                \
         &&PUSH3,                                \
         &&PUSH4,                                \

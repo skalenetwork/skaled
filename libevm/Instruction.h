@@ -94,9 +94,9 @@ enum class Instruction : uint8_t {
     GAS,         ///< get the amount of available gas
     JUMPDEST,    ///< set a potential jump destination
 #ifdef MIRAGE
-    TLOAD = 0x5c,  // EIP-1153
-	TSTORE = 0x5d, // EIP-1153
-	MCOPY = 0x5e,  // EIP-5656
+    TLOAD = 0x5c,   // EIP-1153
+    TSTORE = 0x5d,  // EIP-1153
+    MCOPY = 0x5e,   // EIP-5656
 #endif
     PUSH0 = 0x5f,  // EIP-3855
     PUSH1 = 0x60,  ///< place 1 byte item on stack

@@ -495,7 +495,9 @@ string Eth::eth_call( TransactionSkeleton& t, string const&
 
 #ifdef MIRAGE
     if ( er.excepted == dev::eth::TransactionException::UnsupportedDencunOpcode ) {
-        strRevertReason = "Contract uses unsupported Dencun opcode. Please ensure it is compiled for EVM <= Shanghai";
+        strRevertReason =
+            "Contract uses unsupported Dencun opcode. Please ensure it is compiled for EVM <= "
+            "Shanghai";
 
         if ( !er.output.empty() ) {
             Json::Value output = toJS( er.output );
@@ -539,7 +541,9 @@ string Eth::eth_estimateGas( Json::Value const& _json ) {
 
 #ifdef MIRAGE
         if ( result.second.excepted == dev::eth::TransactionException::UnsupportedDencunOpcode ) {
-            strRevertReason = "Contract uses unsupported Dencun opcode. Please ensure it is compiled for EVM <= Shanghai";
+            strRevertReason =
+                "Contract uses unsupported Dencun opcode. Please ensure it is compiled for EVM <= "
+                "Shanghai";
 
             if ( !result.second.output.empty() ) {
                 Json::Value output = toJS( result.second.output );
