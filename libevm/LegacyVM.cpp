@@ -797,22 +797,14 @@ void LegacyVM::interpretCases() {
             throwUnsupportedDencunOpcode();
         }
         CONTINUE
+#endif
 
-        CASE( JUMPTO ) CASE( JUMPIF ) CASE( JUMPV ) CASE( JUMPSUB ) CASE( JUMPSUBV )
-            CASE( RETURNSUB ) CASE( GETLOCAL ) CASE( PUTLOCAL ) {
-            ON_OP();
-            throwBadInstruction();
-        }
-        CONTINUE
-#else
         CASE( JUMPTO ) CASE( JUMPIF ) CASE( JUMPV ) CASE( JUMPSUB ) CASE( JUMPSUBV )
             CASE( RETURNSUB ) CASE( BEGINSUB ) CASE( BEGINDATA ) CASE( GETLOCAL ) CASE( PUTLOCAL ) {
             ON_OP();
             throwBadInstruction();
         }
         CONTINUE
-#endif
-
 #endif
 
 #if EIP_616
