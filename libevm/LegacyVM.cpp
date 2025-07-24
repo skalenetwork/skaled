@@ -795,6 +795,16 @@ void LegacyVM::interpretCases() {
         CONTINUE
 #endif
 
+#ifdef MIRAGE
+        CASE( TLOAD ) 
+        CASE( TSTORE ) 
+        CASE( MCOPY ) {
+            ON_OP();
+            throwBadInstruction();
+        }
+        CONTINUE
+#endif
+
 #if EIP_616
 
         CASE( XADD ) {

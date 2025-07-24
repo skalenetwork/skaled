@@ -161,6 +161,18 @@ namespace eth {
 //
 #elif EVM_JUMP_DISPATCH
 
+#ifndef MIRAGE
+#define OPCODES_5C_5E      \
+    &&BEGINDATA,           \
+    &&BEGINSUB,            \
+    &&INVALID,
+#else
+#define OPCODES_5C_5E      \
+    &&TLOAD,               \
+    &&TSTORE,              \
+    &&MCOPY,
+#endif
+
 #define INIT_CASES                              \
                                                 \
     static const void* const jumpTable[256] = { \
@@ -256,9 +268,7 @@ namespace eth {
         &&MSIZE,                                \
         &&GAS,                                  \
         &&JUMPDEST,                             \
-        &&BEGINDATA,                            \
-        &&BEGINSUB,                             \
-        &&INVALID,                              \
+        OPCODES_5C_5E                           \
         &&PUSH0, /* EIP-3855  */                \
         &&PUSH1, /* 60, */                      \
         &&PUSH2,                                \
