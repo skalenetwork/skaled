@@ -906,6 +906,14 @@ bool ChainParams::updateCurrentGroupIfNeeded( uint64_t _latestBlockTimestamp ) {
     return false;
 }
 
+CurrentGroup ChainParams::getNewestGroup() const {
+    size_t newestIndex = 0;
+    if ( sChain.currentGroups[1].startTs >= sChain.currentGroups[0].startTs ) {
+        newestIndex = 1;
+    }
+    return sChain.currentGroups[newestIndex];
+}
+
 Address ChainParams::getSChainNodeAddressByIndex( uint64_t _sChainIndex ) const {
     const auto& sChainNodes = sChain.nodes;
     auto has_schain_index = [&_sChainIndex]( const sChainNode& node ) {

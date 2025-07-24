@@ -286,6 +286,10 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
     unsigned blockNumber ) {
     libff::init_alt_bn128_params();
     std::vector< std::thread > threads;
+    LOG( m_loggerInfo ) << "NODE0 " << this->chainParams_.getNodeByIndex( 0 ).id;
+    LOG( m_loggerInfo ) << "NODE1 " << this->chainParams_.getNodeByIndex( 1 ).id;
+    LOG( m_loggerInfo ) << "NODE2 " << this->chainParams_.getNodeByIndex( 2 ).id;
+    LOG( m_loggerInfo ) << "NODE3 " << this->chainParams_.getNodeByIndex( 3 ).id;
 
     if ( urlToDownloadSnapshotFrom_.empty() ) {
         for ( size_t i = 0; i < this->n_; ++i ) {

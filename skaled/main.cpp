@@ -259,6 +259,30 @@ unsigned getLatestSnapshotBlockNumber( const std::string& strURLWeb3 ) {
     return block_number;
 }
 
+#ifdef MIRAGE
+uint64_t fetchLatestBlockTimestamp( const std::string& url ) {
+    skutils::rest::client cli( skutils::rest::g_nClientConnectionTimeoutMS );
+    if ( !cli.open( url ) ) {
+        throw std::runtime_error( "REST failed to connect to server" );
+    }
+    nlohmann::json request = nlohmann::json::object();
+    nlohmann::json params = request["jsonrpc"] = "2.0";
+    request["method"] = "eth_getBlockByNumber";
+    request["params"] = nlohmann::json::array( { "latest", false } );
+    skutils::rest::data_t response = cli.call( request );
+    if ( !response.err_s_.empty() )
+        throw std::runtime_error( "Error during eth_getBlockByNumber call: " + response.err_s_ );
+    if ( response.empty() )
+
+        throw std::runtime_error( "Empty response from eth_getBlockByNumber call" );
+    nlohmann::json responseData = nlohmann::json::parse( response.s_ );
+
+    auto result = responseData["result"];
+    std::string timestampStringRep = result["timestamp"].get< std::string >();
+    return jsToInt( timestampStringRep );
+}
+#endif
+
 void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >& snapshotManager,
     const std::string& strURLWeb3, const ChainParams& chainParams ) {
     static Logger loggerInfo{ createLogger( VerbosityInfo, "downloadSnapshot" ) };
@@ -526,6 +550,31 @@ bool downloadSnapshotFromUrl( std::shared_ptr< SnapshotManager >& snapshotManage
 
     return successfullDownload;
 }
+
+#ifdef MIRAGE
+uint64_t fetchLatestBlockTimestampFromNodes( const std::vector< sChainNode >& nodes ) {
+    static Logger loggerWarning{ createLogger(
+        VerbosityWarning, "fetchLatestBlockTimestampFromNodes" ) };
+    uint64_t timestamp = 0;
+    for ( auto& node : nodes ) {
+        std::string nodeUrl = std::string( "http://" ) + std::string( node.ip ) +
+                              std::string( ":" ) + ( node.port + 3 ).convert_to< std::string >();
+
+        try {
+            timestamp = fetchLatestBlockTimestamp( nodeUrl );
+        } catch ( ... ) {
+            LOG( loggerWarning ) << "Could not fetch latest block timestamp from " << nodeUrl;
+        }
+
+        if ( timestamp > 0 ) {
+            break;
+        }
+    }
+    if ( !timestamp ) {
+        throw std::runtime_error( "Could not fetch current block timestamp from provided nodes " );
+    }
+}
+#endif
 
 void downloadAndProccessSnapshot( std::shared_ptr< SnapshotManager >& snapshotManager,
     const ChainParams& chainParams, const std::string& urlToDownloadSnapshotFrom,
@@ -1593,12 +1642,6 @@ int main( int argc, char** argv ) {
             chainParams->setSgxServerUrl( strURL );
         }
 
-#ifdef MIRAGE
-        uint64_t latestBlockTs = BlockChain::getLatestBlockTimestamp( *chainParams, getDataDir() );
-        LOG( loggerInfo ) << "Latest block timestamp is: " << latestBlockTs;
-        chainParams->updateCurrentGroupIfNeeded( latestBlockTs );
-#endif
-
         std::shared_ptr< StatusAndControl > statusAndControl =
             std::make_shared< StatusAndControlFile >(
                 boost::filesystem::path( configPath ).remove_filename() );
@@ -1646,6 +1689,16 @@ int main( int argc, char** argv ) {
         }
 
         if ( downloadSnapshotFlag ) {
+#ifdef MIRAGE
+            // To process correct signatures we fetch current block timestamp
+            // from one of the nodes and temporarily changing current group
+
+            CurrentGroup latestGroup = chainParams->getNewestGroup();
+
+            uint64_t fetchedCurrentBlockTimetamp =
+                fetchLatestBlockTimestampFromNodes( latestGroup.nodes );
+            chainParams->updateCurrentGroupIfNeeded( fetchedCurrentBlockTimetamp );
+#endif
             statusAndControl->setExitState( StatusAndControl::StartAgain, true );
             statusAndControl->setExitState( StatusAndControl::StartFromSnapshot, true );
             statusAndControl->setSubsystemRunning( StatusAndControl::SnapshotDownloader, true );
@@ -1702,6 +1755,12 @@ int main( int argc, char** argv ) {
                 }
             }
         }
+
+#ifdef MIRAGE
+        uint64_t latestBlockTs = BlockChain::getLatestBlockTimestamp( *chainParams, getDataDir() );
+        LOG( loggerInfo ) << "Latest block timestamp is: " << latestBlockTs;
+        chainParams->updateCurrentGroupIfNeeded( latestBlockTs );
+#endif
 
         statusAndControl->setSubsystemRunning( StatusAndControl::SnapshotDownloader, false );
 
