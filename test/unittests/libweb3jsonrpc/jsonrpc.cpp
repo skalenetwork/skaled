@@ -5087,8 +5087,15 @@ BOOST_AUTO_TEST_CASE( dencunOpcodesInConstructor ) {
     string txHash = fixture.rpcClient->eth_sendTransaction( create );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
+    try {
+        fixture.rpcClient->eth_estimateGas( create, "latest" );
+    } catch ( jsonrpc::JsonRpcException& ex ) {
+        BOOST_CHECK_EQUAL( ex.GetCode(), 3 );
+        BOOST_CHECK_EQUAL( ex.GetMessage(), "Contract uses unsupported Dencun opcode. Please ensure it is compiled for EVM <= Shanghai" );
+    }
+
     auto txReceipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
-    BOOST_REQUIRE( txReceipt["status"].asString() == std::string( "0x0" ) );
+    BOOST_REQUIRE_EQUAL( txReceipt["status"].asString(), std::string( "0x0" ) );
     BOOST_REQUIRE_EQUAL( txReceipt["revertReason"].asString(), std::string( "Contract uses unsupported Dencun opcode. Please ensure it is compiled for EVM <= Shanghai" ) );
 }
 

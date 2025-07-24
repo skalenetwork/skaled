@@ -551,7 +551,8 @@ string Eth::eth_estimateGas( Json::Value const& _json ) {
                     JsonRpcException( REVERT_RPC_ERROR_CODE, strRevertReason, output ) );
             }
 
-            throw std::logic_error( strRevertReason );
+            BOOST_THROW_EXCEPTION(
+                JsonRpcException( REVERT_RPC_ERROR_CODE, strRevertReason ) );
         }
 #endif
 
