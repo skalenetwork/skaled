@@ -1155,6 +1155,14 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
     }
 #endif
 
+#ifdef MIRAGE
+    if (res.excepted == dev::eth::TransactionException::UnsupportedDencunOpcode ) {
+        strRevertReason = "Contract uses unsupported Dencun opcode. Please ensure it is compiled for EVM <= Shanghai";
+        std::string strOut = "Error message from State::execute(): " + strRevertReason;
+        LOG( m_loggerDebug ) << strOut;
+    }
+#endif
+
     bool removeEmptyAccounts = false;
     switch ( _p ) {
     case Permanence::Reverted:

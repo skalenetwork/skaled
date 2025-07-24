@@ -493,6 +493,19 @@ string Eth::eth_call( TransactionSkeleton& t, string const&
         throw std::logic_error( strRevertReason );
     }
 
+#ifdef MIRAGE
+    if ( er.excepted == dev::eth::TransactionException::UnsupportedDencunOpcode ) {
+        strRevertReason = "Contract uses unsupported Dencun opcode. Please ensure it is compiled for EVM <= Shanghai";
+
+        if ( !er.output.empty() ) {
+            Json::Value output = toJS( er.output );
+            BOOST_THROW_EXCEPTION(
+                JsonRpcException( REVERT_RPC_ERROR_CODE, strRevertReason, output ) );
+        }
+
+        throw std::logic_error( strRevertReason );
+    }
+#endif
 
     string callResult = toJS( er.output );
 
@@ -523,6 +536,21 @@ string Eth::eth_estimateGas( Json::Value const& _json ) {
 
             throw std::logic_error( strRevertReason );
         }
+
+#ifdef MIRAGE
+        if ( result.second.excepted == dev::eth::TransactionException::UnsupportedDencunOpcode ) {
+            strRevertReason = "Contract uses unsupported Dencun opcode. Please ensure it is compiled for EVM <= Shanghai";
+
+            if ( !result.second.output.empty() ) {
+                Json::Value output = toJS( result.second.output );
+                BOOST_THROW_EXCEPTION(
+                    JsonRpcException( REVERT_RPC_ERROR_CODE, strRevertReason, output ) );
+            }
+
+            throw std::logic_error( strRevertReason );
+        }
+#endif
+
         return toJS( result.first );
     } catch ( std::logic_error& error ) {
         throw error;
