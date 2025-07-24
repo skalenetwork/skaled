@@ -602,8 +602,10 @@ bool Executive::go( OnOpFunc const& _onOp ) {
 bool Executive::finalize() {
     MICROPROFILE_SCOPEI( "Executive", "finalize", MP_PAPAYAWHIP );
     if ( m_ext ) {
+#ifndef MIRAGE
         // Accumulate refunds for suicides.
         m_ext->sub.refunds += m_ext->evmSchedule().suicideRefundGas * m_ext->sub.suicides.size();
+#endif
 
         // Refunds must be applied before the miner gets the fees.
         assert( m_ext->sub.refunds >= 0 );
@@ -620,9 +622,11 @@ bool Executive::finalize() {
     }
 
     // Suicides...
+#ifndef MIRAGE
     if ( m_ext )
         for ( auto a : m_ext->sub.suicides )
             m_s.kill( a );
+#endif
 
     // Logs..
     if ( m_ext )
