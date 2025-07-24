@@ -798,8 +798,9 @@ void LegacyVM::interpretCases() {
 #endif
 
         CASE( JUMPTO )
-        CASE( JUMPIF ) CASE( JUMPV ) CASE( JUMPSUB ) CASE( JUMPSUBV ) CASE( RETURNSUB )
-            CASE( BEGINSUB ) CASE( BEGINDATA ) CASE( GETLOCAL ) CASE( PUTLOCAL ) {
+        CASE( JUMPIF )
+        CASE( JUMPV ) CASE( JUMPSUB ) CASE( JUMPSUBV ) CASE( RETURNSUB ) CASE( BEGINSUB )
+            CASE( BEGINDATA ) CASE( GETLOCAL ) CASE( PUTLOCAL ) {
             ON_OP();
             throwBadInstruction();
         }

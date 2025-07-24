@@ -505,8 +505,7 @@ string Eth::eth_call( TransactionSkeleton& t, string const&
                 JsonRpcException( REVERT_RPC_ERROR_CODE, strRevertReason, output ) );
         }
 
-        BOOST_THROW_EXCEPTION(
-            JsonRpcException( REVERT_RPC_ERROR_CODE, strRevertReason ) );
+        BOOST_THROW_EXCEPTION( JsonRpcException( REVERT_RPC_ERROR_CODE, strRevertReason ) );
     }
 #endif
 
@@ -552,8 +551,7 @@ string Eth::eth_estimateGas( Json::Value const& _json ) {
                     JsonRpcException( REVERT_RPC_ERROR_CODE, strRevertReason, output ) );
             }
 
-            BOOST_THROW_EXCEPTION(
-                JsonRpcException( REVERT_RPC_ERROR_CODE, strRevertReason ) );
+            BOOST_THROW_EXCEPTION( JsonRpcException( REVERT_RPC_ERROR_CODE, strRevertReason ) );
         }
 #endif
 
