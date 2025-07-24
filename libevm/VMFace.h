@@ -39,6 +39,10 @@ ETH_SIMPLE_EXCEPTION_VM( BufferOverrun );
 ETH_SIMPLE_EXCEPTION_VM( StorageOverflow );
 ETH_SIMPLE_EXCEPTION_VM( InvalidContractDeployer );
 
+#ifdef MIRAGE
+ETH_SIMPLE_EXCEPTION_VM( UnsupportedDencunOpcode );
+#endif
+
 /// Reports VM internal error. This is not based on VMException because it must be handled
 /// differently than defined consensus exceptions.
 struct InternalVMError : Exception {};

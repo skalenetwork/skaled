@@ -787,6 +787,24 @@ void LegacyVM::interpretCases() {
         }
         NEXT
 #else
+
+
+#ifdef MIRAGE
+        CASE( TLOAD ) 
+        CASE( TSTORE ) 
+        CASE( MCOPY ) {
+            ON_OP();
+            throwUnsupportedDencunOpcode();
+        }
+        CONTINUE
+
+        CASE( JUMPTO ) CASE( JUMPIF ) CASE( JUMPV ) CASE( JUMPSUB ) CASE( JUMPSUBV )
+            CASE( RETURNSUB ) CASE( GETLOCAL ) CASE( PUTLOCAL ) {
+            ON_OP();
+            throwBadInstruction();
+        }
+        CONTINUE
+#else
         CASE( JUMPTO ) CASE( JUMPIF ) CASE( JUMPV ) CASE( JUMPSUB ) CASE( JUMPSUBV )
             CASE( RETURNSUB ) CASE( BEGINSUB ) CASE( BEGINDATA ) CASE( GETLOCAL ) CASE( PUTLOCAL ) {
             ON_OP();
@@ -795,14 +813,6 @@ void LegacyVM::interpretCases() {
         CONTINUE
 #endif
 
-#ifdef MIRAGE
-        CASE( TLOAD ) 
-        CASE( TSTORE ) 
-        CASE( MCOPY ) {
-            ON_OP();
-            throwBadInstruction();
-        }
-        CONTINUE
 #endif
 
 #if EIP_616

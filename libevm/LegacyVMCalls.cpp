@@ -56,6 +56,13 @@ void LegacyVM::throwDisallowedStateChange() {
     BOOST_THROW_EXCEPTION( DisallowedStateChange() );
 }
 
+#ifdef MIRAGE
+void LegacyVM::throwUnsupportedDencunOpcode()
+{
+    BOOST_THROW_EXCEPTION( UnsupportedDencunOpcode() );
+}
+#endif
+
 // throwBadStack is called from fetchInstruction() -> adjustStack()
 // its the only exception that can happen before ON_OP() log is done for an opcode case in VM.cpp
 // so the call to m_onFail is needed here
