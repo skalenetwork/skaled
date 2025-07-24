@@ -35,6 +35,7 @@
 #include <libconsensus/libBLS/threshold_encryption/ThresholdEncryption.h>
 using namespace std;
 #include <libconsensus/node/ConsensusInterface.h>
+#include <SkaleCommon.h>
 
 using namespace dev;
 using namespace dev::eth;
@@ -559,17 +560,13 @@ void TransactionBase::checkLowS() const {
         BOOST_THROW_EXCEPTION( InvalidSignature() );
 }
 
-void TransactionBase::checkChainId( uint64_t chainId, bool disableChainIdCheck ) const {
-#ifdef MIRAGE
-    assert( !disableChainIdCheck );
-#endif
+void TransactionBase::checkChainId( uint64_t chainId ) const {
 
-    if ( !disableChainIdCheck ) {
-        if ( !m_chainId.has_value() ) {
-            BOOST_THROW_EXCEPTION( InvalidTransactionFormat() );
-        }
+    if ( !m_chainId.has_value() ) {
+        BOOST_THROW_EXCEPTION( InvalidTransactionFormat() );
     }
-    if ( m_chainId.has_value() && m_chainId != chainId )
+    
+    if ( m_chainId != chainId )
         BOOST_THROW_EXCEPTION( InvalidSignature() );
 }
 

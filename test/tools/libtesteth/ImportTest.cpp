@@ -393,6 +393,10 @@ void ImportTest::importState( json_spirit::mObject const& _o, State& _state ) {
 }
 
 void ImportTest::importTransaction( json_spirit::mObject const& _o, eth::Transaction& o_tr ) {
+#ifdef MIRAGE
+    u256 defaultChainId { 1 }; // default 1 chainId for mirage txs only - pre-EIP155 not allowed
+#endif
+
     if ( _o.count( "secretKey" ) > 0 ) {
         requireJsonFields( _o, "transaction",
             {{"data", jsonVType::str_type}, {"gasLimit", jsonVType::str_type},
@@ -412,9 +416,7 @@ void ImportTest::importTransaction( json_spirit::mObject const& _o, eth::Transac
         if ( bigint( _o.at( "value" ).get_str() ) >= c_max256plus1 )
             BOOST_THROW_EXCEPTION( ValueTooLarge() << errinfo_comment(
                                        "Transaction 'value' is equal or greater than 2**256" ) );
-#ifdef MIRAGE
-        u256 defaultChainId { 0 }; // default 0 chainId for mirage txs only - pre-EIP155 not allowed
-#endif
+
         o_tr = _o.at( "to" ).get_str().empty() ?
                    Transaction( 
                         toInt( _o.at( "value" ) ), 
@@ -426,10 +428,17 @@ void ImportTest::importTransaction( json_spirit::mObject const& _o, eth::Transac
                         defaultChainId, 
 #endif
                        Secret( _o.at( "secretKey" ).get_str() ) ) :
-                   Transaction( toInt( _o.at( "value" ) ), toInt( _o.at( "gasPrice" ) ),
-                       toInt( _o.at( "gasLimit" ) ), Address( _o.at( "to" ).get_str() ),
-                       importData( _o ), toInt( _o.at( "nonce" ) ),
-                       Secret( _o.at( "secretKey" ).get_str() ) );
+                   Transaction( 
+                        toInt( _o.at( "value" ) ), 
+                        toInt( _o.at( "gasPrice" ) ),
+                        toInt( _o.at( "gasLimit" ) ), 
+                        Address( _o.at( "to" ).get_str() ),
+                        importData( _o ), 
+                        toInt( _o.at( "nonce" ) ),
+#ifdef MIRAGE
+                        defaultChainId,
+#endif
+                        Secret( _o.at( "secretKey" ).get_str() ) );
 #ifndef MIRAGE
         o_tr.ignoreExternalGas();
 #endif
@@ -450,12 +459,27 @@ void ImportTest::importTransaction( json_spirit::mObject const& _o, eth::Transac
         } catch ( InvalidSignature const& ) {
             // create unsigned transaction
             o_tr = _o.at( "to" ).get_str().empty() ?
-                       Transaction( toInt( _o.at( "value" ) ), toInt( _o.at( "gasPrice" ) ),
-                           toInt( _o.at( "gasLimit" ) ), importData( _o ),
-                           toInt( _o.at( "nonce" ) ) ) :
-                       Transaction( toInt( _o.at( "value" ) ), toInt( _o.at( "gasPrice" ) ),
-                           toInt( _o.at( "gasLimit" ) ), Address( _o.at( "to" ).get_str() ),
-                           importData( _o ), toInt( _o.at( "nonce" ) ) );
+                       Transaction( 
+                            toInt( _o.at( "value" ) ), 
+                            toInt( _o.at( "gasPrice" ) ),
+                            toInt( _o.at( "gasLimit" ) ), 
+                            importData( _o ),
+                            toInt( _o.at( "nonce" ) )
+#ifdef MIRAGE
+                            , defaultChainId
+#endif
+                            ) :
+                       Transaction( 
+                            toInt( _o.at( "value" ) ), 
+                            toInt( _o.at( "gasPrice" ) ),
+                            toInt( _o.at( "gasLimit" ) ), 
+                            Address( _o.at( "to" ).get_str() ),
+                            importData( _o ), 
+                            toInt( _o.at( "nonce" ) ) 
+#ifdef MIRAGE
+                            , defaultChainId
+#endif
+                        );
 #ifndef MIRAGE
             o_tr.ignoreExternalGas();
 #endif

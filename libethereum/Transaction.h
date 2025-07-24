@@ -101,9 +101,18 @@ public:
     Transaction( u256 const& _value, u256 const& _gasPrice, u256 const& _gas, Address const& _dest,
         bytes const& _data, u256 const& _nonce, const u256& _chainId, Secret const& _secret );
 
+    /// Constructs an unsigned message-call transaction.
+    Transaction( u256 const& _value, u256 const& _gasPrice, u256 const& _gas, Address const& _dest,
+        bytes const& _data, u256 const& _nonce, const u256& _chainId );
+
     /// Constructs a signed contract-creation transaction.
     Transaction( u256 const& _value, u256 const& _gasPrice, u256 const& _gas, bytes const& _data,
         u256 const& _nonce, const u256& _chainId, Secret const& _secret );
+
+    /// Constructs a unsigned contract-creation transaction.
+    Transaction( u256 const& _value, u256 const& _gasPrice, u256 const& _gas, bytes const& _data,
+        u256 const& _nonce, const u256& _chainId );
+
 
 #endif // does not include chainId
 
@@ -111,13 +120,13 @@ public:
     Transaction( u256 const& _value, u256 const& _gasPrice, u256 const& _gas, Address const& _dest,
         bytes const& _data, u256 const& _nonce, Secret const& _secret );
 
-    /// Constructs a signed contract-creation transaction.
-    Transaction( u256 const& _value, u256 const& _gasPrice, u256 const& _gas, bytes const& _data,
-        u256 const& _nonce, Secret const& _secret );
-
     /// Constructs an unsigned message-call transaction.
     Transaction( u256 const& _value, u256 const& _gasPrice, u256 const& _gas, Address const& _dest,
         bytes const& _data, u256 const& _nonce = Invalid256 );
+
+    /// Constructs a signed contract-creation transaction.
+    Transaction( u256 const& _value, u256 const& _gasPrice, u256 const& _gas, bytes const& _data,
+        u256 const& _nonce, Secret const& _secret );
 
     /// Constructs an unsigned contract-creation transaction.
     Transaction( u256 const& _value, u256 const& _gasPrice, u256 const& _gas, bytes const& _data,

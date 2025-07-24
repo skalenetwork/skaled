@@ -91,6 +91,36 @@ bigint calculateMiningReward( time_t _committedBlockTimestamp, u256 const& _blNu
  */
 json_spirit::mObject fillBCTest( json_spirit::mObject const& _input );
 
+/**
+ * @brief Processes a single block from a Filler.json test file
+ *
+ * This function processes a single block from the input JSON, handling transactions, uncles,
+ * and expected states.
+ *
+ * @param testName The name of the test being executed.
+ * @param ignoreBlockchainHistory Test global config that allows treating each block as the first block
+ * @param genesisBlock The genesis block of the blockchain.
+ *
+ * @param importBlockNumber The current block number being imported.
+ * @param testChain The TestBlockChain instance to which the block belongs.
+ * @param chainMap A map of chain branches.
+ * 
+ * @param blObjInput The input JSON object for the block.
+ */
+json_spirit::mObject processBlock(
+    std::string const& testName,                    // Immutable global configs
+    bool ignoreBlockchainHistory,
+    TestBlock const& genesisBlock,
+
+    size_t& importBlockNumber,                       // Mutable global state
+    TestBlockChain& testChain,
+    std::map<std::string, ChainBranch*>& chainMap,
+
+    json_spirit::mObject const& blObjInput           // Immutable block data
+);
+
+json_spirit::mObject extractFieldsOfInterest( json_spirit::mObject const& _fillerTestBlock );
+
 void testBCTest( json_spirit::mObject const& _o );
 
 }  // namespace test

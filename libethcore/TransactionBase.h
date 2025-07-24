@@ -70,6 +70,18 @@ public:
         sign( _secret );
     }
 
+    /// Constructs a unsigned message-call transaction
+    TransactionBase( u256 const& _value, u256 const& _gasPrice, u256 const& _gas,
+        Address const& _dest, bytes const& _data, u256 const& _nonce, u256 const& _chainId )
+        : m_nonce( _nonce ),
+            m_value( _value ),
+            m_gasPrice( _gasPrice ),
+            m_gas( _gas ),
+            m_data( _data ),
+            m_type( MessageCall ),
+            m_chainId( _chainId ),
+            m_receiveAddress( _dest ) {}
+
     /// Constructs a signed contract-creation transaction.
     TransactionBase( u256 const& _value, u256 const& _gasPrice, u256 const& _gas,
         bytes const& _data, u256 const& _nonce, u256 const& _chainId, Secret const& _secret )
@@ -82,6 +94,17 @@ public:
             m_chainId( _chainId ) {
         sign( _secret );
     }
+
+    /// Constructs a usigned contract-creation transaction.
+    TransactionBase( u256 const& _value, u256 const& _gasPrice, u256 const& _gas,
+        bytes const& _data, u256 const& _nonce, u256 const& _chainId )
+        : m_nonce( _nonce ),
+            m_value( _value ),
+            m_gasPrice( _gasPrice ),
+            m_gas( _gas ),
+            m_data( _data ),
+            m_type( ContractCreation ),
+            m_chainId( _chainId ) {}
 
 #endif
 
@@ -214,10 +237,19 @@ public:
     /// @throws InvalidSValue if the signature has an invalid S value.
     void checkLowS() const;
 
-    /// @throws InvalidSValue if the chain id is neither -4 nor equal to @a chainId
-    /// Note that "-4" is the chain ID of the pre-155 rules, which should also be considered valid
-    /// after EIP155
-    void checkChainId( uint64_t chainId, bool disableChainIdCheck ) const;
+    
+    /**
+     * @brief Checks if the provided chain ID matches the expected value.
+     *
+     * This function validates the given chainId against the chain ID associated with the transaction.
+     * If the chainId does not match, it throws an exception.
+     *
+     * @param chainId The chain ID to be checked.
+     * @throws `InvalidTransactionFormat` If the transaction does not have a chainId set.
+     * This should only happen if we call 'checkChainId' for pre-EIP155 transactions.
+     * @throws `InvalidSignature` If the chainId does not match the expected value.
+     */
+    void checkChainId( uint64_t chainId ) const;
 
     /// @returns true if transaction is non-null.
     explicit operator bool() const { return m_type != NullTransaction && m_type != Invalid; }

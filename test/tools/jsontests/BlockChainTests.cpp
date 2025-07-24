@@ -229,10 +229,186 @@ void ChainBranch::resetBlockchain() {
     dev::test::TestBlockChain::s_sealEngineNetwork = s_tempBlockchainNetwork;
 }
 
-json_spirit::mObject fillBCTest( json_spirit::mObject const& _input ) {
+json_spirit::mObject extractFieldsOfInterest( json_spirit::mObject const& _fillerTestBlock ) {
+    mObject blObj;
+    if ( _fillerTestBlock.count( "blocknumber" ) > 0 ) {
+        blObj["blocknumber"] = _fillerTestBlock.at( "blocknumber" );
+    }
+    if ( _fillerTestBlock.count( "chainname" ) > 0 ) {
+        blObj["chainname"] = _fillerTestBlock.at( "chainname" );
+    }
+    if ( _fillerTestBlock.count( "chainnetwork" ) > 0 ) {
+        blObj["chainnetwork"] = _fillerTestBlock.at( "chainnetwork" );
+    }
 
-    json_spirit::mObject output;
+    // Copy expectException* fields
+    for ( auto const& field : _fillerTestBlock ) {
+        if ( field.first.substr( 0, 15 ) == "expectException" ) {
+            blObj[field.first] = field.second;
+        }
+    }
+
+    return blObj;
+}
+
+
+json_spirit::mObject processBlock( std::string const& testName, bool ignoreBlockchainHistory,
+    TestBlock const& genesisBlock, size_t& importBlockNumber, TestBlockChain& testChain,
+    std::map<std::string, ChainBranch*>& chainMap, json_spirit::mObject const& blObjInput ) {
+
+    BOOST_REQUIRE( blObjInput.count( "transactions" ) );
+    
+    std::string chainname = "default";
+    std::string chainnetwork = "default";
+
+    mObject blObj = extractFieldsOfInterest( blObjInput );
+
+    importBlockNumber = blObj.count( "blocknumber" ) > 0
+        ? max( ( int ) toInt( blObj.at( "blocknumber" ) ), 1 )
+        : importBlockNumber + 1; 
+
+    if ( blObj.count( "chainname" ) > 0 )
+        chainname = blObj.at( "chainname" ).get_str();
+
+    if ( blObj.count( "chainnetwork" ) > 0 )
+        chainnetwork = blObj.at( "chainnetwork" ).get_str();
+
+
+    if ( chainMap.count( chainname ) > 0 ) {
+        if ( ignoreBlockchainHistory ) {
+            ChainBranch::forceBlockchain( chainnetwork );
+            chainMap[chainname]->reset();
+            ChainBranch::resetBlockchain();
+            chainMap[chainname]->restoreFromHistory( importBlockNumber );
+        }
+    } else {
+        ChainBranch::forceBlockchain( chainnetwork );
+        chainMap[chainname] = new ChainBranch( genesisBlock );
+        ChainBranch::resetBlockchain();
+    }
+
+    TestBlock block;
+    TestBlockChain& blockchain = chainMap[chainname]->blockchain;
+    vector< TestBlock >& importedBlocks = chainMap[chainname]->importedBlocks;
+
+    // Import Transactions
+    for ( auto const& txObj : blObjInput.at( "transactions" ).get_array() ) {
+        std::cout << " Adding tx " << std::endl;
+        TestTransaction transaction( txObj.get_obj() );
+        block.addTransaction( transaction );
+    }
+
+    // Import Uncles
+    for ( auto const& uHObj : blObjInput.at( "uncleHeaders" ).get_array() ) {
+        cnote << "Generating uncle block at test " << testName;
+        TestBlock uncle;
+        mObject uncleHeaderObj = uHObj.get_obj();
+        string uncleChainName = chainname;
+        if ( uncleHeaderObj.count( "chainname" ) > 0 )
+            uncleChainName = uncleHeaderObj["chainname"].get_str();
+
+        overwriteUncleHeaderForTest(
+            uncleHeaderObj, uncle, block.uncles(), *chainMap[uncleChainName] );
+        block.addUncle( uncle );
+    }
+
+    vector< TestBlock > validUncles = blockchain.syncUncles( block.uncles() );
+    block.setUncles( validUncles );
+
+    if ( blObjInput.count( "blockHeaderPremine" ) )
+        overwriteBlockHeaderForTest(
+            blObjInput.at( "blockHeaderPremine" ).get_obj(), block, *chainMap[chainname] );
+
+    cnote << "Mining block '" << importBlockNumber << "' for chain '" << chainname
+            << "' at test '" << testName << "'";
+
+    block.mine( blockchain );
+
+    // Check the next expected nonce for the coinbase (block author) after mining this block
+
+    // Address coinbase;
+    // if (!block.testTransactions().empty()) {
+    //     coinbase = block.testTransactions().front().transaction().sender();
+    //     // Get the state after mining the block
+    //     const State& postState = block.state();
+    //     // Get the next expected nonce for the coinbase address
+    //     u256 nextExpectedNonce = postState.getNonce( coinbase );
+    //     std::cout << "Next expected nonce for coinbase " << toString(coinbase) << ": " << nextExpectedNonce << std::endl;
+    // }
+
+    cnote << "Block mined with...";
+    cnote << "Transactions: " << block.transactionQueue().topTransactions( 100 ).size();
+    cnote << "Uncles: " << block.uncles().size();
+
+    // gets the same reference of TransactionQueue as the original block
+    TestBlock alterBlock( block );
+    checkBlocks( block, alterBlock, testName );
+
+    if ( blObjInput.count( "blockHeader" ) )
+        overwriteBlockHeaderForTest(
+            blObjInput.at( "blockHeader" ).get_obj(), alterBlock, *chainMap[chainname] );
+
+    blObj["rlp"] = toHexPrefixed( alterBlock.bytes() );
+    blObj["blockHeader"] = writeBlockHeaderToJson( alterBlock.blockHeader() );
+
+    mArray aUncleList;
+    for ( auto const& uncle : alterBlock.uncles() ) {
+        mObject uncleHeaderObj = writeBlockHeaderToJson( uncle.blockHeader() );
+        aUncleList.push_back( uncleHeaderObj );
+    }
+    blObj["uncleHeaders"] = aUncleList;
+    blObj["transactions"] = writeTransactionsToJson( alterBlock.transactionQueue() );
+
+    compareBlocks( block, alterBlock );
+    try {
+        if ( blObjInput.count( "expectException" ) )
+            BOOST_ERROR( "Deprecated expectException field! " + testName );
+
+        std::cout << "Adding block" << std::endl;
+
+        blockchain.addBlock( alterBlock );
+        std::cout << "After block added" << std::endl;
+
+        if ( testChain.addBlock( alterBlock ) )
+            cnote << "The most recent best Block now is " << importBlockNumber << "in chain"
+                    << chainname << "at test " << testName;
+        
+        std::cout << "After block added to Test chain " << std::endl;
+
+        bool isException =
+            ( blObjInput.count(
+                    "expectException" +
+                    test::netIdToString( test::TestBlockChain::s_sealEngineNetwork ) ) ||
+                blObjInput.count( "expectExceptionALL" ) );
+        BOOST_REQUIRE_MESSAGE(
+            !isException, "block import expected exception, but no exception was thrown!" );
+
+        if ( ignoreBlockchainHistory) {
+            importedBlocks.push_back( alterBlock );
+            importedBlocks.back().clearState();  // close the state as it wont be needed. too
+                                                    // many open states would lead to exception.
+        }
+    } catch ( Exception const& _e ) {
+        cnote << testName + "block import throw an exception: " << diagnostic_information( _e );
+        checkExpectedException( blObj, _e );
+        eraseJsonSectionForInvalidBlock( blObj );
+    } catch ( std::exception const& _e ) {
+        cnote << testName + "block import throw an exception: " << _e.what();
+        cout << testName + "block import thrown std exeption\n";
+        eraseJsonSectionForInvalidBlock( blObj );
+    } catch ( ... ) {
+        cout << testName + "block import thrown unknown exeption\n";
+        eraseJsonSectionForInvalidBlock( blObj );
+    }
+
+    return blObj;
+}
+
+
+json_spirit::mObject fillBCTest( json_spirit::mObject const& _input ) {
+    BOOST_REQUIRE( _input.count( "blocks" ) );
     string const& testName = TestOutputHelper::get().testName();
+    
     TestBlock genesisBlock(
         _input.at( "genesisBlockHeader" ).get_obj(), _input.at( "pre" ).get_obj() );
     genesisBlock.setBlockHeader( genesisBlock.blockHeader() );
@@ -240,157 +416,36 @@ json_spirit::mObject fillBCTest( json_spirit::mObject const& _input ) {
     TestBlockChain testChain( genesisBlock );
     assert( testChain.getInterface().isKnown( genesisBlock.blockHeader().hash( WithSeal ) ) );
 
+    bool ignoreBlockchainHistory = _input.count( "noBlockChainHistory" ) == 0;
+    bool hasNetwork = _input.count( "network" ) > 0;
+
+    json_spirit::mObject output;
     output["genesisBlockHeader"] = writeBlockHeaderToJson( genesisBlock.blockHeader() );
     output["genesisRLP"] = toHexPrefixed( genesisBlock.bytes() );
-    BOOST_REQUIRE( _input.count( "blocks" ) );
+    if ( hasNetwork ) output["network"] = _input.at( "network" );
 
     mArray blArray;
     size_t importBlockNumber = 0;
-    string chainname = "default";
-    string chainnetwork = "default";
-    std::map< string, ChainBranch* > chainMap = {{chainname, new ChainBranch( genesisBlock )}};
 
-    if ( _input.count( "network" ) > 0 )
-        output["network"] = _input.at( "network" );
+    TestBlock genesisBlockCopy(
+        _input.at( "genesisBlockHeader" ).get_obj(), _input.at( "pre" ).get_obj() );
+    genesisBlockCopy.setBlockHeader( genesisBlockCopy.blockHeader() );
+    std::map< string, ChainBranch* > chainMap = {{"default", new ChainBranch( genesisBlockCopy )}};
 
+    // Run through all blocks from Filler.json test file
     for ( auto const& bl : _input.at( "blocks" ).get_array() ) {
 
-        mObject const& blObjInput = bl.get_obj();
+        auto block = processBlock(
+            testName,
+            ignoreBlockchainHistory,
+            genesisBlock,
+            importBlockNumber,
+            testChain,
+            chainMap,
+            bl.get_obj()
+        );
 
-        std::cout << "Doing block " << blObjInput.at( "blocknumber" ).get_str()
-                  << " for test " << testName << std::endl; 
-                  
-        mObject blObj;
-        if ( blObjInput.count( "blocknumber" ) > 0 ) {
-            importBlockNumber = max( ( int ) toInt( blObjInput.at( "blocknumber" ) ), 1 );
-            blObj["blocknumber"] = blObjInput.at( "blocknumber" );
-        } else
-            importBlockNumber++;
-
-        if ( blObjInput.count( "chainname" ) > 0 ) {
-            chainname = blObjInput.at( "chainname" ).get_str();
-            blObj["chainname"] = blObjInput.at( "chainname" );
-        } else
-            chainname = "default";
-
-        if ( blObjInput.count( "chainnetwork" ) > 0 ) {
-            chainnetwork = blObjInput.at( "chainnetwork" ).get_str();
-            blObj["chainnetwork"] = blObjInput.at( "chainnetwork" );
-        } else
-            chainnetwork = "default";
-
-        // Copy expectException* fields
-        for ( auto const& field : blObjInput )
-            if ( field.first.substr( 0, 15 ) == "expectException" )
-                blObj[field.first] = field.second;
-
-        if ( chainMap.count( chainname ) > 0 ) {
-            if ( _input.count( "noBlockChainHistory" ) == 0 ) {
-                ChainBranch::forceBlockchain( chainnetwork );
-                chainMap[chainname]->reset();
-                ChainBranch::resetBlockchain();
-                chainMap[chainname]->restoreFromHistory( importBlockNumber );
-            }
-        } else {
-            ChainBranch::forceBlockchain( chainnetwork );
-            chainMap[chainname] = new ChainBranch( genesisBlock );
-            ChainBranch::resetBlockchain();
-        }
-
-        TestBlock block;
-        TestBlockChain& blockchain = chainMap[chainname]->blockchain;
-        vector< TestBlock >& importedBlocks = chainMap[chainname]->importedBlocks;
-
-        // Import Transactions
-        BOOST_REQUIRE( blObjInput.count( "transactions" ) );
-        for ( auto const& txObj : blObjInput.at( "transactions" ).get_array() ) {
-            TestTransaction transaction( txObj.get_obj() );
-            block.addTransaction( transaction );
-        }
-
-        // Import Uncles
-        for ( auto const& uHObj : blObjInput.at( "uncleHeaders" ).get_array() ) {
-            cnote << "Generating uncle block at test " << testName;
-            TestBlock uncle;
-            mObject uncleHeaderObj = uHObj.get_obj();
-            string uncleChainName = chainname;
-            if ( uncleHeaderObj.count( "chainname" ) > 0 )
-                uncleChainName = uncleHeaderObj["chainname"].get_str();
-
-            overwriteUncleHeaderForTest(
-                uncleHeaderObj, uncle, block.uncles(), *chainMap[uncleChainName] );
-            block.addUncle( uncle );
-        }
-
-        vector< TestBlock > validUncles = blockchain.syncUncles( block.uncles() );
-        block.setUncles( validUncles );
-
-        if ( blObjInput.count( "blockHeaderPremine" ) )
-            overwriteBlockHeaderForTest(
-                blObjInput.at( "blockHeaderPremine" ).get_obj(), block, *chainMap[chainname] );
-
-        cnote << "Mining block '" << importBlockNumber << "' for chain '" << chainname
-              << "' at test '" << testName << "'";
-        block.mine( blockchain );
-        cnote << "Block mined with...";
-        cnote << "Transactions: " << block.transactionQueue().topTransactions( 100 ).size();
-        cnote << "Uncles: " << block.uncles().size();
-
-        TestBlock alterBlock( block );
-        checkBlocks( block, alterBlock, testName );
-
-        if ( blObjInput.count( "blockHeader" ) )
-            overwriteBlockHeaderForTest(
-                blObjInput.at( "blockHeader" ).get_obj(), alterBlock, *chainMap[chainname] );
-
-        blObj["rlp"] = toHexPrefixed( alterBlock.bytes() );
-        blObj["blockHeader"] = writeBlockHeaderToJson( alterBlock.blockHeader() );
-
-        mArray aUncleList;
-        for ( auto const& uncle : alterBlock.uncles() ) {
-            mObject uncleHeaderObj = writeBlockHeaderToJson( uncle.blockHeader() );
-            aUncleList.push_back( uncleHeaderObj );
-        }
-        blObj["uncleHeaders"] = aUncleList;
-        blObj["transactions"] = writeTransactionsToJson( alterBlock.transactionQueue() );
-
-        compareBlocks( block, alterBlock );
-        try {
-            if ( blObjInput.count( "expectException" ) )
-                BOOST_ERROR( "Deprecated expectException field! " + testName );
-
-            blockchain.addBlock( alterBlock );
-            if ( testChain.addBlock( alterBlock ) )
-                cnote << "The most recent best Block now is " << importBlockNumber << "in chain"
-                      << chainname << "at test " << testName;
-
-            bool isException =
-                ( blObjInput.count(
-                      "expectException" +
-                      test::netIdToString( test::TestBlockChain::s_sealEngineNetwork ) ) ||
-                    blObjInput.count( "expectExceptionALL" ) );
-            BOOST_REQUIRE_MESSAGE(
-                !isException, "block import expected exception, but no exception was thrown!" );
-
-            if ( _input.count( "noBlockChainHistory" ) == 0 ) {
-                importedBlocks.push_back( alterBlock );
-                importedBlocks.back().clearState();  // close the state as it wont be needed. too
-                                                     // many open states would lead to exception.
-            }
-        } catch ( Exception const& _e ) {
-            cnote << testName + "block import throw an exception: " << diagnostic_information( _e );
-            checkExpectedException( blObj, _e );
-            eraseJsonSectionForInvalidBlock( blObj );
-        } catch ( std::exception const& _e ) {
-            cnote << testName + "block import throw an exception: " << _e.what();
-            cout << testName + "block import thrown std exeption\n";
-            eraseJsonSectionForInvalidBlock( blObj );
-        } catch ( ... ) {
-            cout << testName + "block import thrown unknown exeption\n";
-            eraseJsonSectionForInvalidBlock( blObj );
-        }
-
-        blArray.push_back( blObj );  // json data
+        blArray.push_back( block );  // json data
     }                                // each blocks
 
     if ( _input.count( "expect" ) > 0 ) {

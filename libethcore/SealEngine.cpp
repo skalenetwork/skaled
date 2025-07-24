@@ -119,10 +119,22 @@ void SealEngineFace::verifyTransaction( ChainOperationParams const& _chainParams
 
     MICROPROFILE_SCOPEI( "SealEngineFace", "verifyTransaction", MP_ORCHID );
 
-#ifndef MIRAGE
-    if ( ( _ir & ImportRequirements::TransactionSignatures ) &&
-         _header.number() < _chainParams.getEIP158ForkBlock() && _t.isReplayProtected() )
-        BOOST_THROW_EXCEPTION( InvalidSignature() );
+#ifdef MIRAGE
+    if ( _ir & ImportRequirements::TransactionSignatures ) {
+        _t.checkChainId( _chainParams.getChainId() );
+    }
+#else
+    if ( _ir & ImportRequirements::TransactionSignatures && _t.isReplayProtected() ) {
+        // pre EIP-155 transaction -> should not be replay protected
+        if (_header.number() < _chainParams.getEIP158ForkBlock() ) {
+            BOOST_THROW_EXCEPTION( InvalidSignature() );
+        }
+        // post EIP-155 transaction -> should have matching chainId 
+        // (only for chains that require the check)
+        else if (!_chainParams.isChainIdCheckDisabled()) {
+            _t.checkChainId( _chainParams.getChainId() );
+        }
+    }
 #endif
 
     if ( ( _ir & ImportRequirements::TransactionSignatures ) &&
@@ -156,13 +168,6 @@ void SealEngineFace::verifyTransaction( ChainOperationParams const& _chainParams
                                    static_cast< bigint >( _header.gasLimit() - _gasUsed ),
                                    static_cast< bigint >( gas ),
                                    string( "_gasUsed + (bigint)_t.gas() > _header.gasLimit()" ) ) );
-
-    if ( _ir & ImportRequirements::TransactionSignatures ) {
-        if ( _header.number() >= _chainParams.getEIP158ForkBlock() ) {
-            uint64_t chainID = _chainParams.getChainId();
-            _t.checkChainId( chainID, _chainParams.isChainIdCheckDisabled() );
-        }  // if
-    }
 }
 
 SealEngineFace* SealEngineRegistrar::create( ChainOperationParams const& _params ) {

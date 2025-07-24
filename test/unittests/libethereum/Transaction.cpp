@@ -129,7 +129,9 @@ BOOST_AUTO_TEST_CASE(
         "1ba048b55bfa915ac795c431978d8a6a992b628d557da5ff759b307d495a36649353a0efffd310ac743f371de3"
         "b9f7f9cb56c0b28ad43601b4ab949f53faa07bd2c804" );
     Transaction tx( txRlp, CheckTransaction::None );
-    tx.checkChainId( 1234, true );  // any chain ID is accepted for not replay protected tx
+
+    // v field is 27 -> is a pre-EIP tx -> will not have the chainId field set
+    BOOST_REQUIRE_THROW( tx.checkChainId( 1234 ) , InvalidTransactionFormat);
 
     BOOST_REQUIRE( tx.toBytes() == txRlp );
 
@@ -159,7 +161,7 @@ BOOST_AUTO_TEST_CASE(
         "0021a098ff921201554726367d2be8c804a7ff89ccf285ebc57dff8ae4c44b9c19ac4aa01887321be575c8095f"
         "789dd4c743dfe42c1820f9231f98a962b210e3ac2452a3" );
     Transaction tx1{ txRlp1, CheckTransaction::None };
-    tx1.checkChainId( std::numeric_limits< uint64_t >::max(), false );
+    tx1.checkChainId( std::numeric_limits< uint64_t >::max() );
 
     // recoveryID = 1, v = 36893488147419103266
     auto txRlp2 = fromHex(
@@ -167,7 +169,7 @@ BOOST_AUTO_TEST_CASE(
         "0022a098ff921201554726367d2be8c804a7ff89ccf285ebc57dff8ae4c44b9c19ac4aa01887321be575c8095f"
         "789dd4c743dfe42c1820f9231f98a962b210e3ac2452a3" );
     Transaction tx2{ txRlp2, CheckTransaction::None };
-    tx2.checkChainId( std::numeric_limits< uint64_t >::max(), false );
+    tx2.checkChainId( std::numeric_limits< uint64_t >::max() );
 
     txRlp1 = fromHex(
         "0x01f8d888ffffffffffffffff808504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b01"
@@ -176,7 +178,7 @@ BOOST_AUTO_TEST_CASE(
         "00000000000000000000000000000000000701a0e236de02b843139aebfce593d680c06ce79cfd2f2e7f9dcac9"
         "fe23b38060591aa0734952245446ad42e47ec996c9a7b02973cbc8dd944c9622714416b2bef122f4" );
     tx1 = Transaction{ txRlp1, CheckTransaction::None, false, true };
-    tx1.checkChainId( std::numeric_limits< uint64_t >::max(), false );
+    tx1.checkChainId( std::numeric_limits< uint64_t >::max() );
 
     txRlp1 = fromHex(
         "0x02f8de88ffffffffffffffff808504a817c8008504a817c800827530947d36af85a184e220a656525fcbb9a6"
@@ -186,7 +188,7 @@ BOOST_AUTO_TEST_CASE(
         "b48b58f59da6201234e3f9ce75a0467f18ca2b64f3642cb37e7d5470bbac5fbc62c66b23a0ff955b994803fcf3"
         "74" );
     tx1 = Transaction{ txRlp1, CheckTransaction::None, false, true };
-    tx1.checkChainId( std::numeric_limits< uint64_t >::max(), false );
+    tx1.checkChainId( std::numeric_limits< uint64_t >::max() );
 }
 
 BOOST_AUTO_TEST_CASE( TransactionChainIDBiggerThan64Bit ) {
@@ -233,8 +235,8 @@ BOOST_AUTO_TEST_CASE( TransactionReplayProtected ) {
         "a028ef61340bd939bc2195fe537567866003e1a15d3c71ff63e1590620aa636276a067cbe9d8997f761aecb703"
         "304b3800ccf555c9f3dc64214b297fb1966a3b6d83" );
     Transaction tx( txRlp, CheckTransaction::None );
-    tx.checkChainId( 1, false );
-    BOOST_REQUIRE_THROW( tx.checkChainId( 123, false ), InvalidSignature );
+    tx.checkChainId( 1 );
+    BOOST_REQUIRE_THROW( tx.checkChainId( 123 ), InvalidSignature );
 
     auto txBytes = tx.toBytes( IncludeSignature::WithSignature );
     BOOST_REQUIRE( txBytes == txRlp );
@@ -246,8 +248,8 @@ BOOST_AUTO_TEST_CASE( TransactionReplayProtected ) {
         "3eaf481958e22fc39bd1d526eb9255be1e6625614f02ca939e51c3d7e64bcaa05f675640c04bb050d27bd1f39c"
         "07b6ff742311b04dab760bb3bc206054332879" );
     tx = Transaction( txRlp, CheckTransaction::None, false, true );
-    tx.checkChainId( 151, false );
-    BOOST_REQUIRE_THROW( tx.checkChainId( 123, false ), InvalidSignature );
+    tx.checkChainId( 151 );
+    BOOST_REQUIRE_THROW( tx.checkChainId( 123 ), InvalidSignature );
 
     BOOST_REQUIRE( tx.toBytes() == txRlp );
 
@@ -258,8 +260,8 @@ BOOST_AUTO_TEST_CASE( TransactionReplayProtected ) {
         "00000780a0f1a407dfc1a9f782001d89f617e9b3a2f295378533784fb39960dea60beea2d0a05ac3da2946554b"
         "a3d5721850f4f89ee7a0c38e4acab7130908e7904d13174388" );
     tx = Transaction( txRlp, CheckTransaction::None, false, true );
-    tx.checkChainId( 151, false );
-    BOOST_REQUIRE_THROW( tx.checkChainId( 123, false ), InvalidSignature );
+    tx.checkChainId( 151 );
+    BOOST_REQUIRE_THROW( tx.checkChainId( 123 ), InvalidSignature );
 
     BOOST_REQUIRE( tx.toBytes() == txRlp );
 }
