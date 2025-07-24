@@ -573,6 +573,7 @@ uint64_t fetchLatestBlockTimestampFromNodes( const std::vector< sChainNode >& no
     if ( !timestamp ) {
         throw std::runtime_error( "Could not fetch current block timestamp from provided nodes " );
     }
+    return timestamp;
 }
 #endif
 
