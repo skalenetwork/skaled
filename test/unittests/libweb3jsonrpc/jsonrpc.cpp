@@ -5063,6 +5063,35 @@ BOOST_AUTO_TEST_CASE( getBLSPublicKey ) {
     BOOST_REQUIRE_EQUAL( blsPublicKey["BLSPublicKey2"], "3371162264373897025322009434717052197952692496405149486989861571246537813591" );
     BOOST_REQUIRE_EQUAL( blsPublicKey["BLSPublicKey3"], "13678625751515504401110635369790787716744686498431213713911601759809559919693" );
 }
+
+BOOST_AUTO_TEST_CASE( dencunOpcodesInConstructor ) {
+    JsonRpcFixture fixture( c_BITEConfigString, false, false, true );
+
+    // contract TLoadInConstructor {
+
+    //     constructor(uint256 _input) {
+    //         assembly {
+    //             let val := tload(0x0)
+    //             sstore(0x0, val)
+    //         }
+    //     }
+    // }
+
+    string compiled = "6080604052348015600e575f5ffd5b505f5c805f555060ac8060205f395ff3fe6080604052348015600e575f5ffd5b50600436106026575f3560e01c80636d619daa14602a575b5f5ffd5b60306044565b604051603b9190605f565b60405180910390f35b5f5481565b5f819050919050565b6059816049565b82525050565b5f60208201905060705f8301846052565b9291505056fea26469706673582212201a73df3522b78621c03ab2198ced2428e80055f4b32dc9b71881cb75acf3788e64736f6c634300081e0033";
+    auto senderAddress = fixture.coinbase.address();
+
+    Json::Value create;
+    create["from"] = toJS( senderAddress );
+    create["code"] = compiled;
+    create["gas"] = "900000";
+    string txHash = fixture.rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    auto txReceipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE( txReceipt["status"].asString() == std::string( "0x0" ) );
+    BOOST_REQUIRE_EQUAL( txReceipt["revertReason"].asString(), std::string( "Contract uses unsupported Dencun opcode. Please ensure it is compiled for EVM <= Shanghai" ) );
+}
+
 #endif // MIRAGE
 
 BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
