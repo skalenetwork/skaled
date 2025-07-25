@@ -393,6 +393,10 @@ public:
 
     bool isChainIdCheckDisabled() const { return skaleDisableChainIdCheck; }
 
+#ifdef MIRAGE
+    bool getAllowPreEIP155Txns() const { return allowPreEIP155Txns; }
+#endif
+
     /// General chain params.
 protected:
     /// The chain sealer name: e.g. Ethash, NoProof, BasicAuthority
@@ -441,9 +445,16 @@ protected:
     NodeInfo nodeInfo;
     SChain sChain;
     u256 accountInitialFunds = 0;
-#ifndef MIRAGE
+
+#ifdef MIRAGE
+    // Allow pre-EIP155 transactions by default (if not present in config file)
+    // This is to allow backward compatibility with old tests (avoid regenerating them)
+    // New tests should have this set to false in config file
+    bool allowPreEIP155Txns = true;
+#else
     u256 externalGasDifficulty = ~u256( 0 );
 #endif
+
     typedef std::vector< std::string > vecAdminOrigins_t;
     vecAdminOrigins_t vecAdminOrigins;  // wildcard based folters for IP addresses
     int logsBlocksLimit = -1;

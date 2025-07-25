@@ -44,8 +44,6 @@ eth::Network TestBlockChain::s_sealEngineNetwork = eth::Network::FrontierTest;
 json_spirit::mValue BlockchainTestSuite::doTests(
     json_spirit::mValue const& _input, bool _fillin ) const {
 
-        std::cout << "Inside doTests()" << std::endl;
-    
     //
     // l_sergiy: IMPORTANT NOTICE: classically TransactionReceipt is 4 RLP chunks... but...
     // we need 5thh dynamic chunk to store "revert reason" string
@@ -56,7 +54,6 @@ json_spirit::mValue BlockchainTestSuite::doTests(
     for ( auto const& i : _input.get_obj() ) {
         string const& testname = i.first;
         json_spirit::mObject const& inputTest = i.second.get_obj();
-        std::cout << "Testname: " << testname << std::endl;
 
         // Select test by name if --singletest is set and not filling state tests as blockchain
         if ( !Options::get().fillchain && !TestOutputHelper::get().shouldRunTest( testname ) )
@@ -111,11 +108,7 @@ json_spirit::mValue BlockchainTestSuite::doTests(
 
                 TestOutputHelper::get().setCurrentTestName( newtestname );
 
-                std::cout << "Filling test: " << newtestname << std::endl;
-
                 jObjOutput = fillBCTest( jObjOutput );
-
-                std::cout << "Filled test: " << newtestname << std::endl;
 
                 jObjOutput["network"] = test::netIdToString( network );
                 if ( inputTest.count( "_info" ) )
@@ -293,7 +286,6 @@ json_spirit::mObject processBlock( std::string const& testName, bool ignoreBlock
 
     // Import Transactions
     for ( auto const& txObj : blObjInput.at( "transactions" ).get_array() ) {
-        std::cout << " Adding tx " << std::endl;
         TestTransaction transaction( txObj.get_obj() );
         block.addTransaction( transaction );
     }
@@ -325,17 +317,6 @@ json_spirit::mObject processBlock( std::string const& testName, bool ignoreBlock
     block.mine( blockchain );
 
     // Check the next expected nonce for the coinbase (block author) after mining this block
-
-    // Address coinbase;
-    // if (!block.testTransactions().empty()) {
-    //     coinbase = block.testTransactions().front().transaction().sender();
-    //     // Get the state after mining the block
-    //     const State& postState = block.state();
-    //     // Get the next expected nonce for the coinbase address
-    //     u256 nextExpectedNonce = postState.getNonce( coinbase );
-    //     std::cout << "Next expected nonce for coinbase " << toString(coinbase) << ": " << nextExpectedNonce << std::endl;
-    // }
-
     cnote << "Block mined with...";
     cnote << "Transactions: " << block.transactionQueue().topTransactions( 100 ).size();
     cnote << "Uncles: " << block.uncles().size();
@@ -364,17 +345,11 @@ json_spirit::mObject processBlock( std::string const& testName, bool ignoreBlock
         if ( blObjInput.count( "expectException" ) )
             BOOST_ERROR( "Deprecated expectException field! " + testName );
 
-        std::cout << "Adding block" << std::endl;
-
         blockchain.addBlock( alterBlock );
-        std::cout << "After block added" << std::endl;
-
         if ( testChain.addBlock( alterBlock ) )
             cnote << "The most recent best Block now is " << importBlockNumber << "in chain"
                     << chainname << "at test " << testName;
         
-        std::cout << "After block added to Test chain " << std::endl;
-
         bool isException =
             ( blObjInput.count(
                     "expectException" +

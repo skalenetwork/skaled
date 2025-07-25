@@ -608,7 +608,6 @@ ImportRoute BlockChain::import( VerifiedBlockRef const& _block, State& _state, b
 
     // All ok - insert into DB
     bytes const receipts = blockReceipts.rlp();
-    std::cout << " Here at the end " << std::endl;
     return insertBlockAndExtras(
         _block, ref( receipts ), &blockBloomFull, totalDifficulty, performanceLogger );
 }

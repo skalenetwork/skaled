@@ -449,12 +449,8 @@ void TransactionBase::sign( Secret const& _priv ) {
         m_vrs = sigStruct;
 }
 
-/// `_forEip155hash` is only used for non mirage builds
 void TransactionBase::streamLegacyTransaction(
     RLPStream& _s, IncludeSignature _sig, bool _forEip155hash ) const {
-#ifdef MIRAGE
-    assert( m_chainId.has_value() );
-#endif
 
     _s.appendList( ( _sig || _forEip155hash ? 3 : 0 ) + 6 );
     _s << m_nonce << m_gasPrice << m_gas;
@@ -477,11 +473,7 @@ void TransactionBase::streamLegacyTransaction(
         }
         _s << ( u256 ) m_vrs->r << ( u256 ) m_vrs->s;
     } 
-#ifdef MIRAGE
-    else
-#else
     else if ( _forEip155hash )
-#endif
         _s << *m_chainId << 0 << 0;
 }
 

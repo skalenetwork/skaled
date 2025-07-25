@@ -121,7 +121,35 @@ void SealEngineFace::verifyTransaction( ChainOperationParams const& _chainParams
 
 #ifdef MIRAGE
     if ( _ir & ImportRequirements::TransactionSignatures ) {
-        _t.checkChainId( _chainParams.getChainId() );
+        bool allowPreEIP155Txns = _chainParams.getAllowPreEIP155Txns();
+
+        // Allow valid pre EIP-155 transactions (should not be replay protected)
+        // this check is used for backward compatibility with old tests
+        // New tests should have this set to false in config file
+        if ( allowPreEIP155Txns ) {
+            bool isReplayProtected = _t.isReplayProtected();
+            bool canOnlyBePreEIP155 = _header.number() < _chainParams.getEIP158ForkBlock();
+            if ( canOnlyBePreEIP155 && isReplayProtected) {
+                BOOST_THROW_EXCEPTION( InvalidSignature() );
+            }
+            if ( isReplayProtected && !_chainParams.isChainIdCheckDisabled() ) {
+                _t.checkChainId( _chainParams.getChainId() );
+           }
+        }
+        // Do not allow pre EIP-155 transactions
+
+        // received transaction is not replay protected (is preEIP-155)
+        else if (!_t.isReplayProtected() ) {
+            BOOST_THROW_EXCEPTION( InvalidSignature() );
+        }
+
+        // received transaction is replay protected (is postEIP-155) & we need to check chainId
+        else if ( !_chainParams.isChainIdCheckDisabled() ) {
+            _t.checkChainId( _chainParams.getChainId() );
+        }
+
+        // All other cases -> received tx is replay protected (post-EIP-155), and we
+        // don't want to check chainId - valid by default
     }
 #else
     if ( _ir & ImportRequirements::TransactionSignatures && _t.isReplayProtected() ) {
