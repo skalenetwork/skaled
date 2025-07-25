@@ -332,8 +332,7 @@ revert();
                 "linear": {
                     "base": 15,
                     "word": 0
-                },
-                "restrictAccess": ["5c4e11842e8be09264dc1976943571d7af6d00f9"]
+                }
             }
         },
         "0x5c4e11842e8be09264dc1976943571d7af6d00f9" : {
