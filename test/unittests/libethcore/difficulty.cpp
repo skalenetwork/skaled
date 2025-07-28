@@ -57,7 +57,7 @@ void fillDifficulty( boost::filesystem::path const& _testFileFullName, Ethash& _
             for ( int blockNumber = 100000; blockNumber < 5000000; blockNumber += 100000 ) {
                 testN++;
                 string testName = "DifficultyTest" + toString( testN );
-                if ( !test::TestOutputHelper::get().shouldRunTest( testName ) )
+                if ( !test::TestOutputHelper::get().checkTest( testName ) )
                     continue;
 
                 // A random timestamp up to year 3048.
@@ -114,7 +114,7 @@ void testDifficulty( fs::path const& _testFileFullName, Ethash& _sealEngine ) {
     for ( auto& i : v.get_obj() ) {
         js::mObject o = i.second.get_obj();
         string testname = i.first;
-        if ( !test::TestOutputHelper::get().shouldRunTest( testname ) )
+        if ( !test::TestOutputHelper::get().checkTest( testname ) )
             continue;
 
         BOOST_REQUIRE_MESSAGE(

@@ -69,7 +69,7 @@ json_spirit::mValue StateTestSuite::doTests(
                 TestOutputHelper::get().testFile().string() +
                     " contains a test with a different name '" + testname + "'" );
 
-        if ( !TestOutputHelper::get().shouldRunTest( testname ) )
+        if ( !TestOutputHelper::get().checkTest( testname ) )
             continue;
 
         BOOST_REQUIRE_MESSAGE( inputTest.count( "env" ) > 0, testname + " env not set!" );

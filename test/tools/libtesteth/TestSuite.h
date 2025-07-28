@@ -57,7 +57,6 @@ public:
     void runAllTestsInFolder( std::string const& _testFolder ) const;
 
     // Execute Filler.json or Copier.json test file in a given folder
-    // If `fillertests` flag is passed, then it only generates the test.json file. It does not run it.
     void executeTest(
         std::string const& _testFolder, boost::filesystem::path const& _jsonFileName ) const;
 
@@ -73,17 +72,7 @@ public:
     void executeTests( const std::string& _name, boost::filesystem::path const& _testPathAppendix,
         boost::filesystem::path const& _fillerPathAppendix,
         std::function< json_spirit::mValue( json_spirit::mValue const&, bool ) > doTests ) const;
-
-    /**
-     * @brief Builds absolute path for the test folder, strips the file extension,
-     *        and appends a prefix to the file name.
-     */
-    boost::filesystem::path stripExtensionAndAppendSuffix(const std::string& _folder, boost::filesystem::path const& _file, std::string const& _suffix) const;
-    
-    bool isFilePrefixedBy(const std::string& _file, const std::string& _suffix) const;
-
 };
-
 
 }  // namespace test
 }  // namespace dev

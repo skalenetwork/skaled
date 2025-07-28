@@ -64,8 +64,6 @@ private:
     static eth::Network s_tempBlockchainNetwork;
 };
 
-
-
 // Functions that working with test json
 void compareBlocks( TestBlock const& _a, TestBlock const& _b );
 mArray writeTransactionsToJson( TransactionQueue const& _txsQueue );
@@ -81,46 +79,7 @@ void checkBlocks(
     TestBlock const& _blockFromFields, TestBlock const& _blockFromRlp, string const& _testname );
 bigint calculateMiningReward( time_t _committedBlockTimestamp, u256 const& _blNumber, u256 const& _unNumber1, u256 const& _unNumber2,
     ChainOperationParams const& _cp );
-
-/**
- * @brief Processes blockchain test data and generates the output JSON object.
- *
- * This function takes input JSON data representing a blockchain test, processes it, and generates
- * the corresponding output JSON object. It handles the genesis block, chain branches, blocks,
- * transactions, uncles, and expected states, ensuring proper validation and exception handling.
- */
 json_spirit::mObject fillBCTest( json_spirit::mObject const& _input );
-
-/**
- * @brief Processes a single block from a Filler.json test file
- *
- * This function processes a single block from the input JSON, handling transactions, uncles,
- * and expected states.
- *
- * @param testName The name of the test being executed.
- * @param ignoreBlockchainHistory Test global config that allows treating each block as the first block
- * @param genesisBlock The genesis block of the blockchain.
- *
- * @param importBlockNumber The current block number being imported.
- * @param testChain The TestBlockChain instance to which the block belongs.
- * @param chainMap A map of chain branches.
- * 
- * @param blObjInput The input JSON object for the block.
- */
-json_spirit::mObject processBlock(
-    std::string const& testName,                    // Immutable global configs
-    bool ignoreBlockchainHistory,
-    TestBlock const& genesisBlock,
-
-    size_t& importBlockNumber,                       // Mutable global state
-    TestBlockChain& testChain,
-    std::map<std::string, ChainBranch*>& chainMap,
-
-    json_spirit::mObject const& blObjInput           // Immutable block data
-);
-
-json_spirit::mObject extractFieldsOfInterest( json_spirit::mObject const& _fillerTestBlock );
-
 void testBCTest( json_spirit::mObject const& _o );
 
 }  // namespace test
