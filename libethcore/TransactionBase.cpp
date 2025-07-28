@@ -154,12 +154,7 @@ void TransactionBase::fillFromBytesLegacy(
                     BOOST_THROW_EXCEPTION( InvalidSignature() );
                 m_chainId = static_cast< uint64_t >( chainId );
             }
-#ifdef MIRAGE
-            else // reject pre-EIP-155 txs
-#else
-            else if ( v != 27 && v != 28 ) 
-#endif
-            {
+            else if ( v != 27 && v != 28 ) {
                 BOOST_THROW_EXCEPTION( InvalidSignature() ); 
             }
                 
@@ -559,7 +554,9 @@ void TransactionBase::checkChainId( uint64_t chainId ) const {
     }
     
     if ( m_chainId != chainId )
-        BOOST_THROW_EXCEPTION( InvalidSignature() );
+        BOOST_THROW_EXCEPTION( InvalidSignature() 
+            << errinfo_txHash(sha3())
+        );
 }
 
 int64_t TransactionBase::baseGasRequired(
@@ -595,13 +592,7 @@ h256 TransactionBase::sha3( IncludeSignature _sig ) const {
     if ( !isInvalid() ) {
         RLPStream s;
 
-        streamRLP( s, _sig, 
-#ifdef MIRAGE
-            true
-#else
-            isReplayProtected() && _sig == WithoutSignature
-#endif
-        );
+        streamRLP( s, _sig, isReplayProtected() && _sig == WithoutSignature);
 
         input = s.out();
         if ( m_txType != TransactionType::Legacy )

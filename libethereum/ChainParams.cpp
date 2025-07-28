@@ -144,7 +144,7 @@ void ChainParams::loadConfig( string const& _json, const boost::filesystem::path
 #ifdef MIRAGE
     allowPreEIP155Txns = params.count(c_allowPreEIP155Txns) 
         ? params[c_allowPreEIP155Txns].get_bool() 
-        : false;
+        : true;
 #else
     setOptionalU256Parameter( externalGasDifficulty, c_externalGasDifficulty );
 #endif

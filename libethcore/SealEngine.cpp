@@ -19,6 +19,7 @@
 
 #include "SealEngine.h"
 #include "TransactionBase.h"
+#include "Exceptions.h"
 
 #include <libethereum/SchainPatch.h>
 
@@ -119,37 +120,32 @@ void SealEngineFace::verifyTransaction( ChainOperationParams const& _chainParams
 
     MICROPROFILE_SCOPEI( "SealEngineFace", "verifyTransaction", MP_ORCHID );
 
+    bool needToCheckChainId = !_chainParams.isChainIdCheckDisabled();
+
 #ifdef MIRAGE
-    if ( _ir & ImportRequirements::TransactionSignatures ) {
-        bool allowPreEIP155Txns = _chainParams.getAllowPreEIP155Txns();
+    if (_ir & ImportRequirements::TransactionSignatures) {
+        const bool allowPreEIP155Txns = _chainParams.getAllowPreEIP155Txns();
+        const bool isPreEIP155 = !_t.isReplayProtected();
+        const bool beforeEIP155 = _header.number() < _chainParams.getEIP158ForkBlock();
 
-        // Allow valid pre EIP-155 transactions (should not be replay protected)
-        // this check is used for backward compatibility with old tests
-        // New tests should have this set to false in config file
-        if ( allowPreEIP155Txns ) {
-            bool isReplayProtected = _t.isReplayProtected();
-            bool canOnlyBePreEIP155 = _header.number() < _chainParams.getEIP158ForkBlock();
-            if ( canOnlyBePreEIP155 && isReplayProtected) {
-                BOOST_THROW_EXCEPTION( InvalidSignature() );
-            }
-            if ( isReplayProtected && !_chainParams.isChainIdCheckDisabled() ) {
-                _t.checkChainId( _chainParams.getChainId() );
-           }
-        }
-        // Do not allow pre EIP-155 transactions
-
-        // received transaction is not replay protected (is preEIP-155)
-        else if (!_t.isReplayProtected() ) {
-            BOOST_THROW_EXCEPTION( InvalidSignature() );
+        // Case 1: Replay-protected tx before EIP-155 is invalid
+        if (allowPreEIP155Txns && !isPreEIP155 && beforeEIP155) {
+            BOOST_THROW_EXCEPTION(PreEIP155ReplayProtectionViolation()
+                << errinfo_blockNumber(_header.number())
+                << errinfo_txHash(_t.sha3()));
         }
 
-        // received transaction is replay protected (is postEIP-155) & we need to check chainId
-        else if ( !_chainParams.isChainIdCheckDisabled() ) {
-            _t.checkChainId( _chainParams.getChainId() );
+        // Case 2: Pre-EIP-155 tx not allowed
+        if (!allowPreEIP155Txns && isPreEIP155) {
+            BOOST_THROW_EXCEPTION(PreEIP155LegacyTransactionNotAllowed()
+                << errinfo_blockNumber(_header.number())
+                << errinfo_txHash(_t.sha3()));
         }
 
-        // All other cases -> received tx is replay protected (post-EIP-155), and we
-        // don't want to check chainId - valid by default
+        // Case 3: Valid EIP-155 tx that requires chainId check
+        if (!isPreEIP155 && needToCheckChainId) {
+            _t.checkChainId(_chainParams.getChainId());
+        }
     }
 #else
     if ( _ir & ImportRequirements::TransactionSignatures && _t.isReplayProtected() ) {
@@ -159,7 +155,7 @@ void SealEngineFace::verifyTransaction( ChainOperationParams const& _chainParams
         }
         // post EIP-155 transaction -> should have matching chainId 
         // (only for chains that require the check)
-        else if (!_chainParams.isChainIdCheckDisabled()) {
+        else if (needToCheckChainId) {
             _t.checkChainId( _chainParams.getChainId() );
         }
     }
