@@ -34,8 +34,8 @@
 
 #include <libconsensus/libBLS/threshold_encryption/ThresholdEncryption.h>
 using namespace std;
-#include <libconsensus/node/ConsensusInterface.h>
 #include <SkaleCommon.h>
+#include <libconsensus/node/ConsensusInterface.h>
 
 using namespace dev;
 using namespace dev::eth;
@@ -153,11 +153,10 @@ void TransactionBase::fillFromBytesLegacy(
                 if ( chainId > std::numeric_limits< uint64_t >::max() )
                     BOOST_THROW_EXCEPTION( InvalidSignature() );
                 m_chainId = static_cast< uint64_t >( chainId );
+            } else if ( v != 27 && v != 28 ) {
+                BOOST_THROW_EXCEPTION( InvalidSignature() );
             }
-            else if ( v != 27 && v != 28 ) {
-                BOOST_THROW_EXCEPTION( InvalidSignature() ); 
-            }
-                
+
             // ifdef MIRAGE, then chainId is always set at this point - will fall into first branch
             auto const recoveryID = m_chainId.has_value() ?
                                         _byte_{ v - ( u256{ *m_chainId } * 2 + 35 ) } :
@@ -446,7 +445,6 @@ void TransactionBase::sign( Secret const& _priv ) {
 
 void TransactionBase::streamLegacyTransaction(
     RLPStream& _s, IncludeSignature _sig, bool _forEip155hash ) const {
-
     _s.appendList( ( _sig || _forEip155hash ? 3 : 0 ) + 6 );
     _s << m_nonce << m_gasPrice << m_gas;
     if ( m_type == MessageCall )
@@ -462,13 +460,11 @@ void TransactionBase::streamLegacyTransaction(
         if ( hasZeroSignature() )
             _s << ( m_chainId.has_value() ? *m_chainId : 0 );
         else {
-
             uint64_t const vOffset = m_chainId.has_value() ? *m_chainId * 2 + 35 : 27;
             _s << ( m_vrs->v + vOffset );
         }
         _s << ( u256 ) m_vrs->r << ( u256 ) m_vrs->s;
-    } 
-    else if ( _forEip155hash )
+    } else if ( _forEip155hash )
         _s << *m_chainId << 0 << 0;
 }
 
@@ -486,9 +482,9 @@ void TransactionBase::streamType1Transaction( RLPStream& _s, IncludeSignature _s
     _s << accessListToRLPs( m_accessList );
 
     if ( _sig ) {
-        _s << static_cast<u256>( m_vrs->v );
-        _s << static_cast<u256>( m_vrs->r );
-        _s << static_cast<u256>( m_vrs->s );
+        _s << static_cast< u256 >( m_vrs->v );
+        _s << static_cast< u256 >( m_vrs->r );
+        _s << static_cast< u256 >( m_vrs->s );
     }
 }
 
@@ -506,9 +502,9 @@ void TransactionBase::streamType2Transaction( RLPStream& _s, IncludeSignature _s
     _s << accessListToRLPs( m_accessList );
 
     if ( _sig ) {
-        _s << static_cast<u256>( m_vrs->v );
-        _s << static_cast<u256>( m_vrs->r );
-        _s << static_cast<u256>( m_vrs->s );
+        _s << static_cast< u256 >( m_vrs->v );
+        _s << static_cast< u256 >( m_vrs->r );
+        _s << static_cast< u256 >( m_vrs->s );
     }
 }
 
@@ -548,15 +544,12 @@ void TransactionBase::checkLowS() const {
 }
 
 void TransactionBase::checkChainId( uint64_t chainId ) const {
-
     if ( !m_chainId.has_value() ) {
         BOOST_THROW_EXCEPTION( InvalidTransactionFormat() );
     }
-    
+
     if ( m_chainId != chainId )
-        BOOST_THROW_EXCEPTION( InvalidSignature() 
-            << errinfo_txHash(sha3())
-        );
+        BOOST_THROW_EXCEPTION( InvalidSignature() << errinfo_txHash( sha3() ) );
 }
 
 int64_t TransactionBase::baseGasRequired(
@@ -592,7 +585,7 @@ h256 TransactionBase::sha3( IncludeSignature _sig ) const {
     if ( !isInvalid() ) {
         RLPStream s;
 
-        streamRLP( s, _sig, isReplayProtected() && _sig == WithoutSignature);
+        streamRLP( s, _sig, isReplayProtected() && _sig == WithoutSignature );
 
         input = s.out();
         if ( m_txType != TransactionType::Legacy )

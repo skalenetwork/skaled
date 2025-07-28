@@ -42,9 +42,9 @@ using errinfo_ethashResult = boost::error_info< struct tag_ethashResult, std::tu
 using errinfo_importResult = boost::error_info< struct tag_importResult, ImportResult >;
 using BadFieldError = boost::tuple< errinfo_field, errinfo_data >;
 // block number
-using errinfo_blockNumber = boost::error_info<struct tag_blockNumber, u256>;
+using errinfo_blockNumber = boost::error_info< struct tag_blockNumber, u256 >;
 // transaction hash
-using errinfo_txHash      = boost::error_info<struct tag_txHash, h256>;
+using errinfo_txHash = boost::error_info< struct tag_txHash, h256 >;
 
 DEV_SIMPLE_EXCEPTION( OutOfGasBase );
 DEV_SIMPLE_EXCEPTION( OutOfGasIntrinsic );

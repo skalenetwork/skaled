@@ -105,9 +105,8 @@ Json::Value toJson( dev::eth::Transaction const& _t, std::pair< h256, unsigned >
             if ( _t.isReplayProtected() )
                 res["v"] = toJS( 2 * _t.chainId() + 35 + _t.signature().v );
             else
-                res["v"] = toJS( 27 + _t.signature().v );   
-        }
-        else
+                res["v"] = toJS( 27 + _t.signature().v );
+        } else
             res["v"] = toJS( _t.signature().v );
         res["r"] = toJS( _t.signature().r );
         res["s"] = toJS( _t.signature().s );
@@ -360,9 +359,8 @@ Json::Value toJson( dev::eth::Transaction const& _t ) {
             if ( _t.isReplayProtected() )
                 res["v"] = toJS( 2 * _t.chainId() + 35 + _t.signature().v );
             else
-                res["v"] = toJS( 27 + _t.signature().v );   
-        }
-        else
+                res["v"] = toJS( 27 + _t.signature().v );
+        } else
             res["v"] = toJS( _t.signature().v );
         res["type"] = toJS( int( _t.txType() ) );
         if ( _t.txType() != dev::eth::TransactionType::Legacy ) {
@@ -417,9 +415,8 @@ Json::Value toJson( dev::eth::LocalisedTransaction const& _t ) {
             if ( _t.isReplayProtected() )
                 res["v"] = toJS( 2 * _t.chainId() + 35 + _t.signature().v );
             else
-                res["v"] = toJS( 27 + _t.signature().v );   
-        }
-        else
+                res["v"] = toJS( 27 + _t.signature().v );
+        } else
             res["v"] = toJS( _t.signature().v );
         res["r"] = toJS( _t.signature().r.hex() );
         res["s"] = toJS( _t.signature().s.hex() );

@@ -1063,24 +1063,26 @@ Json::Value Eth::eth_fetchQueuedTransactions( string const& _accountId ) {
 }
 
 /// Helper function to parse boost exception error info
-template <typename Tag, typename T>
-void appendErrorInfo(std::ostringstream& oss, const boost::exception& e, const std::string& label) {
-    if (auto info = boost::get_error_info<Tag>(e)) {
+template < typename Tag, typename T >
+void appendErrorInfo(
+    std::ostringstream& oss, const boost::exception& e, const std::string& label ) {
+    if ( auto info = boost::get_error_info< Tag >( e ) ) {
         oss << " " << label << ": " << *info << "\n";
     }
 }
 
-template <typename ExceptionT>
-std::string formatBoostException(const ExceptionT& e, std::string const& customErrorMessage = "") {
+template < typename ExceptionT >
+std::string formatBoostException(
+    const ExceptionT& e, std::string const& customErrorMessage = "" ) {
     std::ostringstream oss;
-    if (!customErrorMessage.empty()) {
+    if ( !customErrorMessage.empty() ) {
         oss << customErrorMessage << "\n";
     } else {
-        oss << boost::core::demangle(typeid(e).name()) << "\n";
+        oss << boost::core::demangle( typeid( e ).name() ) << "\n";
     }
 
-    appendErrorInfo<errinfo_blockNumber, uint64_t>(oss, e, "Block number");
-    appendErrorInfo<errinfo_txHash, std::string>(oss, e, "Transaction hash");
+    appendErrorInfo< errinfo_blockNumber, uint64_t >( oss, e, "Block number" );
+    appendErrorInfo< errinfo_txHash, std::string >( oss, e, "Transaction hash" );
     // Add other known fields as needed
 
     return oss.str();
@@ -1135,14 +1137,12 @@ string dev::rpc::exceptionToErrorMessage() {
     }
 #endif
     catch ( PreEIP155ReplayProtectionViolation const& e ) {
-        ret = formatBoostException(e, "Replay-protected transaction not allowed before EIP-155 activation.");
-    }
-    catch ( PreEIP155LegacyTransactionNotAllowed const& e ) {
-        ret = formatBoostException(e, "Pre-EIP155 Legacy transactions not allowed.");
-    }
-    catch ( ... ) {
+        ret = formatBoostException(
+            e, "Replay-protected transaction not allowed before EIP-155 activation." );
+    } catch ( PreEIP155LegacyTransactionNotAllowed const& e ) {
+        ret = formatBoostException( e, "Pre-EIP155 Legacy transactions not allowed." );
+    } catch ( ... ) {
         ret = "Invalid RPC parameters.";
     }
     return ret;
 }
-

@@ -52,7 +52,7 @@ public:
     /// Constructs a transaction from a transaction skeleton & optional secret.
     TransactionBase( TransactionSkeleton const& _ts, Secret const& _s = Secret() );
 
-   
+
 #ifdef MIRAGE
 
     /// Constructs a signed message-call transaction
@@ -60,13 +60,13 @@ public:
         Address const& _dest, bytes const& _data, u256 const& _nonce, u256 const& _chainId,
         Secret const& _secret )
         : m_nonce( _nonce ),
-            m_value( _value ),
-            m_gasPrice( _gasPrice ),
-            m_gas( _gas ),
-            m_data( _data ),
-            m_type( MessageCall ),
-            m_chainId( _chainId ),
-            m_receiveAddress( _dest ) {
+          m_value( _value ),
+          m_gasPrice( _gasPrice ),
+          m_gas( _gas ),
+          m_data( _data ),
+          m_type( MessageCall ),
+          m_chainId( _chainId ),
+          m_receiveAddress( _dest ) {
         sign( _secret );
     }
 
@@ -74,24 +74,24 @@ public:
     TransactionBase( u256 const& _value, u256 const& _gasPrice, u256 const& _gas,
         Address const& _dest, bytes const& _data, u256 const& _nonce, u256 const& _chainId )
         : m_nonce( _nonce ),
-            m_value( _value ),
-            m_gasPrice( _gasPrice ),
-            m_gas( _gas ),
-            m_data( _data ),
-            m_type( MessageCall ),
-            m_chainId( _chainId ),
-            m_receiveAddress( _dest ) {}
+          m_value( _value ),
+          m_gasPrice( _gasPrice ),
+          m_gas( _gas ),
+          m_data( _data ),
+          m_type( MessageCall ),
+          m_chainId( _chainId ),
+          m_receiveAddress( _dest ) {}
 
     /// Constructs a signed contract-creation transaction.
     TransactionBase( u256 const& _value, u256 const& _gasPrice, u256 const& _gas,
         bytes const& _data, u256 const& _nonce, u256 const& _chainId, Secret const& _secret )
         : m_nonce( _nonce ),
-            m_value( _value ),
-            m_gasPrice( _gasPrice ),
-            m_gas( _gas ),
-            m_data( _data ),
-            m_type( ContractCreation ),
-            m_chainId( _chainId ) {
+          m_value( _value ),
+          m_gasPrice( _gasPrice ),
+          m_gas( _gas ),
+          m_data( _data ),
+          m_type( ContractCreation ),
+          m_chainId( _chainId ) {
         sign( _secret );
     }
 
@@ -99,12 +99,12 @@ public:
     TransactionBase( u256 const& _value, u256 const& _gasPrice, u256 const& _gas,
         bytes const& _data, u256 const& _nonce, u256 const& _chainId )
         : m_nonce( _nonce ),
-            m_value( _value ),
-            m_gasPrice( _gasPrice ),
-            m_gas( _gas ),
-            m_data( _data ),
-            m_type( ContractCreation ),
-            m_chainId( _chainId ) {}
+          m_value( _value ),
+          m_gasPrice( _gasPrice ),
+          m_gas( _gas ),
+          m_data( _data ),
+          m_type( ContractCreation ),
+          m_chainId( _chainId ) {}
 
 #endif
 
@@ -112,12 +112,12 @@ public:
     TransactionBase( u256 const& _value, u256 const& _gasPrice, u256 const& _gas,
         Address const& _dest, bytes const& _data, u256 const& _nonce, Secret const& _secret )
         : m_nonce( _nonce ),
-            m_value( _value ),
-            m_gasPrice( _gasPrice ),
-            m_gas( _gas ),
-            m_data( _data ),
-            m_type( MessageCall ),
-            m_receiveAddress( _dest ) {
+          m_value( _value ),
+          m_gasPrice( _gasPrice ),
+          m_gas( _gas ),
+          m_data( _data ),
+          m_type( MessageCall ),
+          m_receiveAddress( _dest ) {
         sign( _secret );
     }
 
@@ -126,11 +126,11 @@ public:
     TransactionBase( u256 const& _value, u256 const& _gasPrice, u256 const& _gas,
         bytes const& _data, u256 const& _nonce, Secret const& _secret )
         : m_nonce( _nonce ),
-            m_value( _value ),
-            m_gasPrice( _gasPrice ),
-            m_gas( _gas ),
-            m_data( _data ),
-            m_type( ContractCreation ) {
+          m_value( _value ),
+          m_gasPrice( _gasPrice ),
+          m_gas( _gas ),
+          m_data( _data ),
+          m_type( ContractCreation ) {
         sign( _secret );
     }
 
@@ -237,12 +237,12 @@ public:
     /// @throws InvalidSValue if the signature has an invalid S value.
     void checkLowS() const;
 
-    
+
     /**
      * @brief Checks if the provided chain ID matches the expected value.
      *
-     * This function validates the given chainId against the chain ID associated with the transaction.
-     * If the chainId does not match, it throws an exception.
+     * This function validates the given chainId against the chain ID associated with the
+     * transaction. If the chainId does not match, it throws an exception.
      *
      * @param chainId The chain ID to be checked.
      * @throws `InvalidTransactionFormat` If the transaction does not have a chainId set.
@@ -345,9 +345,9 @@ public:
         return m_chainId.has_value();
     }
 
-    uint64_t chainId() const { 
+    uint64_t chainId() const {
         assert( m_chainId.has_value() );
-        return m_chainId.get(); 
+        return m_chainId.get();
     }
 
     /// @returns the signature of the transaction (the signature has the sender encoded in it)
