@@ -1694,7 +1694,8 @@ int main( int argc, char** argv ) {
                 chainParams, getDataDir(), sharedSpace ? sharedSpace->getPath() : "" ) );
         }
 
-        if ( downloadSnapshotFlag ) {
+        bool dataDirEmpty = isDataDirEmpty();
+        if ( downloadSnapshotFlag && dataDirEmpty ) {
 #ifdef MIRAGE
             // To process correct signatures we fetch current block timestamp
             // from one of the nodes and temporarily changing current group
