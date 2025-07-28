@@ -332,8 +332,7 @@ revert();
                 "linear": {
                     "base": 15,
                     "word": 0
-                },
-                "restrictAccess": ["5c4e11842e8be09264dc1976943571d7af6d00f9"]
+                }
             }
         },
         "0x5c4e11842e8be09264dc1976943571d7af6d00f9" : {
@@ -5063,6 +5062,124 @@ BOOST_AUTO_TEST_CASE( getBLSPublicKey ) {
     BOOST_REQUIRE_EQUAL( blsPublicKey["BLSPublicKey2"], "3371162264373897025322009434717052197952692496405149486989861571246537813591" );
     BOOST_REQUIRE_EQUAL( blsPublicKey["BLSPublicKey3"], "13678625751515504401110635369790787716744686498431213713911601759809559919693" );
 }
+
+BOOST_AUTO_TEST_CASE( dencunOpcodesInConstructor ) {
+    JsonRpcFixture fixture( c_BITEConfigString, false, false, true );
+
+    // contract TLoadInConstructor {
+
+    //     constructor(uint256 _input) {
+    //         assembly {
+    //             let val := tload(0x0)
+    //             sstore(0x0, val)
+    //         }
+    //     }
+    // }
+
+    string compiled = "6080604052348015600e575f5ffd5b505f5c805f555060ac8060205f395ff3fe6080604052348015600e575f5ffd5b50600436106026575f3560e01c80636d619daa14602a575b5f5ffd5b60306044565b604051603b9190605f565b60405180910390f35b5f5481565b5f819050919050565b6059816049565b82525050565b5f60208201905060705f8301846052565b9291505056fea26469706673582212201a73df3522b78621c03ab2198ced2428e80055f4b32dc9b71881cb75acf3788e64736f6c634300081e0033";
+    auto senderAddress = fixture.coinbase.address();
+
+    Json::Value create;
+    create["from"] = toJS( senderAddress );
+    create["code"] = compiled;
+    create["gas"] = "900000";
+    string txHash = fixture.rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    try {
+        fixture.rpcClient->eth_estimateGas( create, "latest" );
+    } catch ( jsonrpc::JsonRpcException& ex ) {
+        BOOST_CHECK_EQUAL( ex.GetCode(), 3 );
+        BOOST_CHECK_EQUAL( ex.GetMessage(), "Contract uses unsupported Dencun opcode. Please ensure it is compiled for EVM <= Shanghai" );
+    }
+
+    auto txReceipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE_EQUAL( txReceipt["status"].asString(), std::string( "0x0" ) );
+    BOOST_REQUIRE_EQUAL( txReceipt["revertReason"].asString(), std::string( "Contract uses unsupported Dencun opcode. Please ensure it is compiled for EVM <= Shanghai" ) );
+}
+
+BOOST_AUTO_TEST_CASE( dencunOpcodesInTransaction ) {
+    JsonRpcFixture fixture( c_BITEConfigString, false, false, true );
+
+    // contract DencunContract {
+    //     uint256 public storedValue;
+    
+    //     function test(uint256 _input) external {
+    //         assembly {
+    //             tstore(0x0, _input)
+    
+    //             let val := tload(0x0)
+    
+    //             sstore(0x0, val)
+    //         }
+    //     }
+    
+    //     function mcopyTest() public pure returns (uint256) {
+    //         uint256[] memory source = new uint256[](3);
+    //         source[0] = 10;
+    //         source[1] = 20;
+    //         source[2] = 30;
+    
+    //         uint256[] memory destination = new uint256[](3);
+    
+    //         assembly {
+    //             let length := mul(3, 32) // 3 elements * 32 bytes each
+    
+    //             mcopy(destination, add(source, 32), length)
+    //         }
+    
+    //         return destination[0];
+    //     }
+    // }
+
+    string compiled = "6080604052348015600e575f5ffd5b506102f58061001c5f395ff3fe608060405234801561000f575f5ffd5b506004361061003f575f3560e01c806325c696111461004357806329e99f07146100615780636d619daa1461007d575b5f5ffd5b61004b61009b565b60405161005891906101f3565b60405180910390f35b61007b6004803603810190610076919061023a565b6101ca565b005b6100856101d6565b60405161009291906101f3565b60405180910390f35b5f5f600367ffffffffffffffff8111156100b8576100b7610265565b5b6040519080825280602002602001820160405280156100e65781602001602082028036833780820191505090505b509050600a815f815181106100fe576100fd610292565b5b6020026020010181815250506014816001815181106101205761011f610292565b5b602002602001018181525050601e8160028151811061014257610141610292565b5b6020026020010181815250505f600367ffffffffffffffff81111561016a57610169610265565b5b6040519080825280602002602001820160405280156101985781602001602082028036833780820191505090505b50905060206003028060208401835e50805f815181106101bb576101ba610292565b5b60200260200101519250505090565b805f5d5f5c805f555050565b5f5481565b5f819050919050565b6101ed816101db565b82525050565b5f6020820190506102065f8301846101e4565b92915050565b5f5ffd5b610219816101db565b8114610223575f5ffd5b50565b5f8135905061023481610210565b92915050565b5f6020828403121561024f5761024e61020c565b5b5f61025c84828501610226565b91505092915050565b7f4e487b71000000000000000000000000000000000000000000000000000000005f52604160045260245ffd5b7f4e487b71000000000000000000000000000000000000000000000000000000005f52603260045260245ffdfea2646970667358221220879e6b5abbaea0d21b84075bdae00106284ac238ab5826f8e7e6519d744550b464736f6c634300081e0033";
+    auto senderAddress = fixture.coinbase.address();
+
+    Json::Value create;
+    create["from"] = toJS( senderAddress );
+    create["code"] = compiled;
+    create["gas"] = "900000";
+    string txHash = fixture.rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    auto txReceipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    std::string contractAddress = txReceipt["contractAddress"].asString();
+
+    // Call DencunContract.test(111)
+    Json::Value sampleTx;
+    sampleTx["data"] = "0x29e99f07000000000000000000000000000000000000000000000000000000000000006f";
+    sampleTx["to"] = contractAddress;
+
+    try {
+        fixture.rpcClient->eth_estimateGas( sampleTx, "latest" );
+    } catch ( jsonrpc::JsonRpcException& ex ) {
+        BOOST_CHECK_EQUAL( ex.GetCode(), 3 );
+        BOOST_CHECK_EQUAL( ex.GetMessage(), "Contract uses unsupported Dencun opcode. Please ensure it is compiled for EVM <= Shanghai" );
+    }
+
+    try {
+        fixture.rpcClient->eth_call( sampleTx, "latest" );
+    } catch ( jsonrpc::JsonRpcException& ex ) {
+        BOOST_CHECK_EQUAL( ex.GetCode(), 3 );
+        BOOST_CHECK_EQUAL( ex.GetMessage(), "Contract uses unsupported Dencun opcode. Please ensure it is compiled for EVM <= Shanghai" );
+    }
+
+    txHash = fixture.rpcClient->eth_sendTransaction( sampleTx );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    txReceipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE_EQUAL( txReceipt["status"].asString(), std::string( "0x0" ) );
+    BOOST_REQUIRE_EQUAL( txReceipt["revertReason"].asString(), std::string( "Contract uses unsupported Dencun opcode. Please ensure it is compiled for EVM <= Shanghai" ) );
+
+    // Call DencunContract.mcopyTest()
+    sampleTx["data"] = "0x25c69611"; 
+    txHash = fixture.rpcClient->eth_sendTransaction( sampleTx );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    txReceipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE_EQUAL( txReceipt["status"].asString(), std::string( "0x0" ) );
+    BOOST_REQUIRE_EQUAL( txReceipt["revertReason"].asString(), std::string( "Contract uses unsupported Dencun opcode. Please ensure it is compiled for EVM <= Shanghai" ) );
+}
+
 #endif // MIRAGE
 
 BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
