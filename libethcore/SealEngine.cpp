@@ -125,12 +125,12 @@ void SealEngineFace::verifyTransaction( ChainOperationParams const& _chainParams
         const bool beforeEIP155 = _header.number() < _chainParams.getEIP158ForkBlock();
         const bool needToEnforceChainId = !_chainParams.isChainIdCheckDisabled();
         const bool hasZeroSignature = _t.hasZeroSignature();
-        const bool beforeExperimentalFork = 
+        const bool beforeExperimentalFork =
             _header.number() < _chainParams.getExperimentalForkBlock();
-            
+
 #ifdef MIRAGE
         const bool allowPreEIP155Txns = _chainParams.getAllowPreEIP155Txns();
-        
+
         // Pre-EIP-155 tx not allowed
         if ( !allowPreEIP155Txns && isPreEIP155 ) {
             BOOST_THROW_EXCEPTION( PreEIP155LegacyTransactionNotAllowed()
@@ -140,18 +140,19 @@ void SealEngineFace::verifyTransaction( ChainOperationParams const& _chainParams
 #endif
         if ( beforeEIP155 && !isPreEIP155 ) {
             BOOST_THROW_EXCEPTION( PreEIP155ReplayProtectionViolation()
-                                << errinfo_blockNumber( _header.number() )
-                                << errinfo_txHash( _t.sha3() ) );
+                                   << errinfo_blockNumber( _header.number() )
+                                   << errinfo_txHash( _t.sha3() ) );
         }
 
         if ( beforeExperimentalFork && hasZeroSignature ) {
             BOOST_THROW_EXCEPTION( InvalidSignature() );
         }
 
-        if ( (!beforeEIP155 && needToEnforceChainId) ||
-             (!beforeEIP155 && !needToEnforceChainId && !isPreEIP155)) { // !isPreEIP155 = has chainId
+        if ( ( !beforeEIP155 && needToEnforceChainId ) ||
+             ( !beforeEIP155 && !needToEnforceChainId && !isPreEIP155 ) ) {  // !isPreEIP155 = has
+                                                                             // chainId
             _t.checkChainId( _chainParams.getChainId() );
-        }        
+        }
     }
 
     if ( ( _ir & ImportRequirements::TransactionBasic ) &&
