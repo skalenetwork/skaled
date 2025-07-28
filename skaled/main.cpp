@@ -270,11 +270,13 @@ uint64_t fetchLatestBlockTimestamp( const std::string& url ) {
     request["method"] = "eth_getBlockByNumber";
     request["params"] = nlohmann::json::array( { "latest", false } );
     skutils::rest::data_t response = cli.call( request );
+
     if ( !response.err_s_.empty() )
         throw std::runtime_error( "Error during eth_getBlockByNumber call: " + response.err_s_ );
-    if ( response.empty() )
 
+    if ( response.empty() )
         throw std::runtime_error( "Empty response from eth_getBlockByNumber call" );
+
     nlohmann::json responseData = nlohmann::json::parse( response.s_ );
 
     auto result = responseData["result"];
@@ -555,11 +557,13 @@ bool downloadSnapshotFromUrl( std::shared_ptr< SnapshotManager >& snapshotManage
 uint64_t fetchLatestBlockTimestampFromNodes( const std::vector< sChainNode >& nodes ) {
     static Logger loggerWarning{ createLogger(
         VerbosityWarning, "fetchLatestBlockTimestampFromNodes" ) };
+    static Logger loggerInfo{ createLogger( VerbosityInfo, "fetchLatestBlockTimestampFromNodes" ) };
+
     uint64_t timestamp = 0;
     for ( auto& node : nodes ) {
         std::string nodeUrl = std::string( "http://" ) + std::string( node.ip ) +
                               std::string( ":" ) + ( node.port + 3 ).convert_to< std::string >();
-
+        LOG( loggerInfo ) << "Trying to fetch latest block timestamp from " << nodeUrl;
         try {
             timestamp = fetchLatestBlockTimestamp( nodeUrl );
         } catch ( ... ) {
@@ -573,6 +577,7 @@ uint64_t fetchLatestBlockTimestampFromNodes( const std::vector< sChainNode >& no
     if ( !timestamp ) {
         throw std::runtime_error( "Could not fetch current block timestamp from provided nodes " );
     }
+    LOG( loggerInfo ) << "Successfully fetched latest block timestamp";
     return timestamp;
 }
 #endif
@@ -1758,6 +1763,10 @@ int main( int argc, char** argv ) {
         }
 
 #ifdef MIRAGE
+
+        // Configuring current group if it is regular syncing from catchup.
+        // Setting back correct group if it starting from snapshot mode.
+
         uint64_t latestBlockTs = BlockChain::getLatestBlockTimestamp( *chainParams, getDataDir() );
         LOG( loggerInfo ) << "Latest block timestamp is: " << latestBlockTs;
         chainParams->updateCurrentGroupIfNeeded( latestBlockTs );
