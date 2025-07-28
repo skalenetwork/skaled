@@ -120,50 +120,39 @@ void SealEngineFace::verifyTransaction( ChainOperationParams const& _chainParams
 
     MICROPROFILE_SCOPEI( "SealEngineFace", "verifyTransaction", MP_ORCHID );
 
-    bool needToCheckChainId = !_chainParams.isChainIdCheckDisabled();
-
-#ifdef MIRAGE
     if ( _ir & ImportRequirements::TransactionSignatures ) {
-        const bool allowPreEIP155Txns = _chainParams.getAllowPreEIP155Txns();
         const bool isPreEIP155 = !_t.isReplayProtected();
         const bool beforeEIP155 = _header.number() < _chainParams.getEIP158ForkBlock();
-
-        // Case 1: Replay-protected tx before EIP-155 is invalid
-        if ( allowPreEIP155Txns && !isPreEIP155 && beforeEIP155 ) {
-            BOOST_THROW_EXCEPTION( PreEIP155ReplayProtectionViolation()
-                                   << errinfo_blockNumber( _header.number() )
-                                   << errinfo_txHash( _t.sha3() ) );
-        }
-
-        // Case 2: Pre-EIP-155 tx not allowed
+        const bool needToEnforceChainId = !_chainParams.isChainIdCheckDisabled();
+        const bool hasZeroSignature = _t.hasZeroSignature();
+        const bool beforeExperimentalFork = 
+            _header.number() < _chainParams.getExperimentalForkBlock();
+            
+#ifdef MIRAGE
+        const bool allowPreEIP155Txns = _chainParams.getAllowPreEIP155Txns();
+        
+        // Pre-EIP-155 tx not allowed
         if ( !allowPreEIP155Txns && isPreEIP155 ) {
             BOOST_THROW_EXCEPTION( PreEIP155LegacyTransactionNotAllowed()
                                    << errinfo_blockNumber( _header.number() )
                                    << errinfo_txHash( _t.sha3() ) );
         }
-
-        // Case 3: Valid EIP-155 tx that requires chainId check
-        if ( !isPreEIP155 && needToCheckChainId ) {
-            _t.checkChainId( _chainParams.getChainId() );
+#endif
+        if ( beforeEIP155 && !isPreEIP155 ) {
+            BOOST_THROW_EXCEPTION( PreEIP155ReplayProtectionViolation()
+                                << errinfo_blockNumber( _header.number() )
+                                << errinfo_txHash( _t.sha3() ) );
         }
-    }
-#else
-    if ( _ir & ImportRequirements::TransactionSignatures && _t.isReplayProtected() ) {
-        // pre EIP-155 transaction -> should not be replay protected
-        if ( _header.number() < _chainParams.getEIP158ForkBlock() ) {
+
+        if ( beforeExperimentalFork && hasZeroSignature ) {
             BOOST_THROW_EXCEPTION( InvalidSignature() );
         }
-        // post EIP-155 transaction -> should have matching chainId
-        // (only for chains that require the check)
-        else if ( needToCheckChainId ) {
-            _t.checkChainId( _chainParams.getChainId() );
-        }
-    }
-#endif
 
-    if ( ( _ir & ImportRequirements::TransactionSignatures ) &&
-         _header.number() < _chainParams.getExperimentalForkBlock() && _t.hasZeroSignature() )
-        BOOST_THROW_EXCEPTION( InvalidSignature() );
+        if ( (!beforeEIP155 && needToEnforceChainId) ||
+             (!beforeEIP155 && !needToEnforceChainId && !isPreEIP155)) { // !isPreEIP155 = has chainId
+            _t.checkChainId( _chainParams.getChainId() );
+        }        
+    }
 
     if ( ( _ir & ImportRequirements::TransactionBasic ) &&
          _header.number() >= _chainParams.getExperimentalForkBlock() && _t.hasZeroSignature() &&
