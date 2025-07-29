@@ -5181,7 +5181,7 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
 
     /// Spoiling key part of ciphertext
     auto randomEncryptedKeyObj = libBLS::CipheredKey( libff::alt_bn128_G2::random_element(),
-        encryptedMessage.key.V, libff::alt_bn128_G1::random_element() );
+        encryptedMessage.keys[0].V, libff::alt_bn128_G1::random_element() );
     auto randomEncryptedKeyByteArray = randomEncryptedKeyObj.toBytes();
     auto spoiledMessageBytes = encryptedBytes;
     // overwrite key part
