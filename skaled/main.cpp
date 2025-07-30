@@ -676,8 +676,9 @@ void doSnapshotDownload( const std::shared_ptr< ChainParams >& chainParams,
     std::shared_ptr< StatusAndControl >& statusAndControl,
     const std::string& urlToDownloadSnapshotFrom,
     std::shared_ptr< SnapshotManager >& snapshotManager,
-    std::shared_ptr< SharedSpace >& sharedSpace ) {
+    std::shared_ptr< SharedSpace >& sharedSpace, bool zeroSnapshotOnly = false ) {
     static Logger loggerInfo{ createLogger( VerbosityInfo, "doSnapshotDownload" ) };
+    static Logger loggerWarning{ createLogger( VerbosityWarning, "doSnapshotDownload" ) };
 #ifdef MIRAGE
     // To process correct signatures we fetch current block timestamp
     // from one of the nodes and temporarily changing current group
@@ -687,37 +688,42 @@ void doSnapshotDownload( const std::shared_ptr< ChainParams >& chainParams,
     uint64_t fetchedCurrentBlockTimetamp = fetchLatestBlockTimestampFromNodes( latestGroup.nodes );
     chainParams->updateCurrentGroupIfNeeded( fetchedCurrentBlockTimetamp );
 #endif
+
     statusAndControl->setExitState( StatusAndControl::StartAgain, true );
     statusAndControl->setExitState( StatusAndControl::StartFromSnapshot, true );
     statusAndControl->setSubsystemRunning( StatusAndControl::SnapshotDownloader, true );
 
-    std::unique_ptr< std::lock_guard< SharedSpace > > sharedSpace_lock;
-    if ( sharedSpace )
-        sharedSpace_lock.reset( new std::lock_guard< SharedSpace >( *sharedSpace ) );
+    if ( !zeroSnapshotOnly ) {
+        std::unique_ptr< std::lock_guard< SharedSpace > > sharedSpace_lock;
+        if ( sharedSpace )
+            sharedSpace_lock.reset( new std::lock_guard< SharedSpace >( *sharedSpace ) );
 
-    try {
-        downloadAndProccessSnapshot(
-            snapshotManager, *chainParams, urlToDownloadSnapshotFrom, true );
-
-        // if we dont have 0 snapshot yet
         try {
-            snapshotManager->isSnapshotHashPresent( 0 );
-        } catch ( SnapshotManager::SnapshotAbsent& ex ) {
-            // sleep before send skale_getSnapshot again - will receive error
-            LOG( loggerInfo ) << std::string( "Will sleep for " )
-                              << chainParams->getSnapshotDownloadInactiveTimeout() +
-                                     dev::rpc::Skale::snapshotDownloadFragmentMonitorThreadTimeout()
-                              << std::string( " seconds before downloading 0 snapshot" );
-            sleep( chainParams->getSnapshotDownloadInactiveTimeout() +
-                   dev::rpc::Skale::snapshotDownloadFragmentMonitorThreadTimeout() );
-
             downloadAndProccessSnapshot(
-                snapshotManager, *chainParams, urlToDownloadSnapshotFrom, false );
-        }
+                snapshotManager, *chainParams, urlToDownloadSnapshotFrom, true );
 
+        } catch ( std::exception& ) {
+            std::throw_with_nested( std::runtime_error(
+                std::string( " Fatal error in downloadAndProccessSnapshot! Will exit " ) ) );
+        }
+    }
+    // if we dont have 0 snapshot yet
+    try {
+        snapshotManager->isSnapshotHashPresent( 0 );
+    } catch ( SnapshotManager::SnapshotAbsent& ex ) {
+        // sleep before send skale_getSnapshot again - will receive error
+        LOG( loggerInfo ) << std::string( "Will sleep for " )
+                          << chainParams->getSnapshotDownloadInactiveTimeout() +
+                                 dev::rpc::Skale::snapshotDownloadFragmentMonitorThreadTimeout()
+                          << std::string( " seconds before downloading 0 snapshot" );
+        sleep( chainParams->getSnapshotDownloadInactiveTimeout() +
+               dev::rpc::Skale::snapshotDownloadFragmentMonitorThreadTimeout() );
+
+        downloadAndProccessSnapshot(
+            snapshotManager, *chainParams, urlToDownloadSnapshotFrom, false );
     } catch ( std::exception& ) {
-        std::throw_with_nested( std::runtime_error(
-            std::string( " Fatal error in downloadAndProccessSnapshot! Will exit " ) ) );
+        std::throw_with_nested( std::runtime_error( std::string(
+            " Fatal error in downloadAndProccessSnapshot for zero block! Will exit " ) ) );
     }
 }
 
@@ -1800,7 +1806,7 @@ int main( int argc, char** argv ) {
         if ( downloadSnapshotFlag ) {
             if ( dataDirEmpty ) {
                 doSnapshotDownload( chainParams, statusAndControl, urlToDownloadSnapshotFrom,
-                    snapshotManager, sharedSpace );
+                    snapshotManager, sharedSpace, false );
             } else {
                 LOG( loggerInfo )
                     << "Skipping snapshot downloading since data directroy is not empty";
@@ -1811,19 +1817,10 @@ int main( int argc, char** argv ) {
         if ( chainParams->isSyncNode() && !dataDirEmpty ) {
             auto bc = BlockChain( chainParams, getDataDir() );
             if ( bc.number() == 0 ) {
+                // zeroSnapshotOnly is set to true
                 if ( chainParams->isSyncFromCatchupEnabled() && !downloadSnapshotFlag ) {
-                    statusAndControl->setExitState( StatusAndControl::StartAgain, true );
-                    statusAndControl->setExitState( StatusAndControl::StartFromSnapshot, true );
-                    statusAndControl->setSubsystemRunning(
-                        StatusAndControl::SnapshotDownloader, true );
-
-                    try {
-                        downloadAndProccessSnapshot(
-                            snapshotManager, *chainParams, urlToDownloadSnapshotFrom, false );
-                        snapshotManager->restoreSnapshot( 0 );
-                    } catch ( SnapshotManager::SnapshotAbsent& ) {
-                        LOG( loggerWarning ) << "Snapshot for 0 block is not found";
-                    }
+                    doSnapshotDownload( chainParams, statusAndControl, urlToDownloadSnapshotFrom,
+                        snapshotManager, sharedSpace, true );
                 }
             }
         }
