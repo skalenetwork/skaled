@@ -665,7 +665,7 @@ void TransactionBase::checkAndValidateBITETransaction( uint64_t _currentEpochId 
         if ( rlpEncodedBITETxn.itemCount() < 2 || rlpEncodedBITETxn.itemCount() > 3 )
             BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment(
                                        std::string( "BITE transaction's data is invalid: RLP list "
-                                                    "should have exactly 1 or 2 elements, got: " ) +
+                                                    "should have exactly 2 or 3 elements, got: " ) +
                                        std::to_string( rlpEncodedBITETxn.itemCount() ) ) );
 
         // encrypted data always goes last
@@ -704,6 +704,13 @@ void TransactionBase::checkAndValidateBITETransaction( uint64_t _currentEpochId 
         try {
             // check that ciphertext is valid
             libBLS::Ciphertext ciphertext = libBLS::Ciphertext::fromBytes( encryptedBITEData );
+            // it txn is submitted with N epochIds, it should have AES key encrypted N times with
+            // BLS public keys
+            if ( ciphertext.getKeys().size() != rlpEncodedBITETxn.itemCount() - 1 )
+                BOOST_THROW_EXCEPTION(
+                    InvalidBITETransaction() << errinfo_comment( std::string(
+                        "BITE transaction's data is invalid: number of epochIds submitted does not "
+                        "equal to number of encrypted AES keys" ) ) );
             // validate encrypted AES keys
             for ( const auto& cipheredkey : ciphertext.getKeys() )
                 libBLS::ThresholdEncryption::validateEncryption( cipheredkey );
