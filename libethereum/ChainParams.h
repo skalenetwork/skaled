@@ -155,6 +155,7 @@ struct ChainParams : public ChainOperationParams {
 
 #ifdef MIRAGE
     Address getSChainNodeAddressByIndex( uint64_t sChainIndex ) const;
+    CurrentGroup getNewestGroup() const;
 #endif
 
     size_t getNodesCount() const;

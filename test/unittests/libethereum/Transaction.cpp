@@ -414,6 +414,13 @@ BOOST_AUTO_TEST_CASE( transactionExceptionOutput ) {
         "Error output TransactionException::InvalidContractDeployer" );
     buffer.str( std::string() );
 
+#ifdef MIRAGE 
+    buffer << TransactionException::UnsupportedDencunOpcode;
+    BOOST_CHECK_MESSAGE( buffer.str() == "UnsupportedDencunOpcode",
+        "Error output TransactionException::UnsupportedDencunOpcode" );
+    buffer.str( std::string() );
+#endif
+
     buffer << TransactionException( -1 );
     BOOST_CHECK_MESSAGE(
         buffer.str() == "Unknown", "Error output TransactionException::StackUnderflow" );
