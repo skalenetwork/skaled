@@ -262,36 +262,78 @@ unsigned getLatestSnapshotBlockNumber( const std::string& strURLWeb3 ) {
 
 #ifdef MIRAGE
 uint64_t fetchLatestBlockTimestamp( const std::string& url ) {
+    static Logger loggerInfo{ createLogger( VerbosityInfo, "fetchLatestBlockTimestamp" ) };
+
     skutils::rest::client cli( skutils::rest::g_nClientConnectionTimeoutMS );
     if ( !cli.open( url ) ) {
-        throw std::runtime_error( "REST failed to connect to server" );
+        throw std::runtime_error( "REST failed to connect to server: " + url );
     }
-    // Executing eth_getBlockByNumber call
+
+    // Create JSON-RPC request
     nlohmann::json request = nlohmann::json::object();
-    nlohmann::json params = request["jsonrpc"] = "2.0";
+    request["jsonrpc"] = "2.0";
     request["method"] = "eth_getBlockByNumber";
     request["params"] = nlohmann::json::array( { "latest", false } );
+
+    LOG( loggerInfo ) << "Sending eth_getBlockByNumber request to " << url;
     skutils::rest::data_t response = cli.call( request );
 
-    // Checking response
-    if ( !response.err_s_.empty() )
-        throw std::runtime_error( "Error during eth_getBlockByNumber call: " + response.err_s_ );
+    // Response validation
+    if ( !response.err_s_.empty() ) {
+        throw std::runtime_error( "RPC call error for " + url + ": " + response.err_s_ );
+    }
 
-    if ( response.empty() )
-        throw std::runtime_error( "Empty response from eth_getBlockByNumber call" );
+    if ( response.empty() ) {
+        throw std::runtime_error( "Empty response from " + url );
+    }
 
-    nlohmann::json responseData = nlohmann::json::parse( response.s_ );
+    nlohmann::json responseData;
+    try {
+        responseData = nlohmann::json::parse( response.s_ );
+    } catch ( const nlohmann::json::parse_error& ex ) {
+        throw std::runtime_error( "JSON parse error from " + url + ": " + ex.what() );
+    }
 
-    // Parsing response data
+    // Check for JSON-RPC error
+    if ( responseData.contains( "error" ) ) {
+        auto error = responseData["error"];
+        std::string error_msg = "JSON-RPC error from " + url + ": ";
+        if ( error.contains( "message" ) ) {
+            error_msg += error["message"].get< std::string >();
+        }
+        if ( error.contains( "code" ) ) {
+            error_msg += " (code: " + std::to_string( error["code"].get< int >() ) + ")";
+        }
+        throw std::runtime_error( error_msg );
+    }
+
+    // Validate response data
     if ( !responseData.contains( "result" ) ) {
-        throw std::runtime_error( "Malformed response from eth_getBlockByNumber call" );
+        throw std::runtime_error( "Missing 'result' field in response from " + url );
     }
-    if ( !responseData["result"].contains( "timestamp" ) ) {
-        throw std::runtime_error( "No timestamp field in eth_getBlockByNumber call result" );
-    }
+
     auto result = responseData["result"];
+    if ( result.is_null() ) {
+        throw std::runtime_error( "Block result is null from " + url );
+    }
+
+    if ( !result.contains( "timestamp" ) ) {
+        throw std::runtime_error( "Missing 'timestamp' field in block data from " + url );
+    }
+
     std::string timestampStringRep = result["timestamp"].get< std::string >();
-    return jsToInt( timestampStringRep );
+
+    // Converting timestamp to uint64_t
+    uint64_t timestamp;
+    try {
+        timestamp = jsToInt( timestampStringRep );
+    } catch ( const std::exception& ex ) {
+        throw std::runtime_error( "Failed to parse timestamp '" + timestampStringRep + "' from " +
+                                  url + ": " + ex.what() );
+    }
+
+    LOG( loggerInfo ) << "Successfully fetched timestamp " << timestamp << " from " << url;
+    return timestamp;
 }
 #endif
 
