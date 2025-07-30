@@ -624,13 +624,14 @@ uint64_t fetchLatestBlockTimestampFromNodes( const std::vector< sChainNode >& no
         }
 
         if ( timestamp > 0 ) {
+            LOG( loggerInfo ) << "Successfully fetched latest block timestamp  " << timestamp
+                              << " from " << nodeUrl;
             break;
         }
     }
     if ( !timestamp ) {
         throw std::runtime_error( "Could not fetch current block timestamp from provided nodes " );
     }
-    LOG( loggerInfo ) << "Successfully fetched latest block timestamp";
     return timestamp;
 }
 #endif
@@ -684,7 +685,6 @@ void doSnapshotDownload( const std::shared_ptr< ChainParams >& chainParams,
     // from one of the nodes and temporarily changing current group
 
     CurrentGroup latestGroup = chainParams->getNewestGroup();
-
     uint64_t fetchedCurrentBlockTimetamp = fetchLatestBlockTimestampFromNodes( latestGroup.nodes );
     chainParams->updateCurrentGroupIfNeeded( fetchedCurrentBlockTimetamp );
 #endif
