@@ -698,6 +698,7 @@ BOOST_AUTO_TEST_CASE( constructBITETxnWithTwoPayloads ) {
 
     BOOST_REQUIRE_NO_THROW( twoPayloadBITETxn.checkAndValidateBITETransaction( currentEpochId ) );
 
+    // should throw because currentEpochId doesn't match
     BOOST_REQUIRE_THROW( twoPayloadBITETxn.checkAndValidateBITETransaction( epochId1 + epochId2 + 1 ),
                          dev::eth::InvalidBITETransaction );
 
@@ -728,7 +729,7 @@ BOOST_AUTO_TEST_CASE( constructBITETxnWithTwoPayloads ) {
     BOOST_REQUIRE_THROW( threeEpochBITETxn.checkAndValidateBITETransaction( epochId3 ), dev::eth::InvalidBITETransaction );
 
     // Number of epochIds != number of keys used to encrypt
-    // 2 epoch IDs but message encrypted with 1 keys (mismatch)
+    // 2 epochIds submitted but message encrypted only with 1 key
     libBLS::TEPublicKey publicKey3( libff::alt_bn128_G2::random_element() );
 
     auto encryptedMessage1Key = libBLS::ThresholdEncryption::encrypt( messageBytes, publicKey3 );
@@ -738,7 +739,7 @@ BOOST_AUTO_TEST_CASE( constructBITETxnWithTwoPayloads ) {
     mismatchPayload.appendList( 3 );
     mismatchPayload << epochId1;
     mismatchPayload << epochId2;
-    mismatchPayload << encryptedBITEDataBytes1Key; // 1 key but 2 epoch IDs
+    mismatchPayload << encryptedBITEDataBytes1Key; // 1 key but 2 epochIds
 
     auto mismatchRlpBytes = mismatchPayload.out();
     dev::bytes mismatchBITETxnData = dev::bytes( mismatchRlpBytes.begin(), mismatchRlpBytes.end() );
@@ -749,13 +750,13 @@ BOOST_AUTO_TEST_CASE( constructBITETxnWithTwoPayloads ) {
 
     BOOST_REQUIRE( mismatchBITETxn.isBite() );
     
-    // Should throw due to mismatch between a number of epoch IDs and encryption keys
+    // Should throw due to mismatch between a number of epochIds and encryption keys
     BOOST_REQUIRE_THROW( mismatchBITETxn.checkAndValidateBITETransaction( epochId1 ),
                          dev::eth::InvalidBITETransaction );
     BOOST_REQUIRE_THROW( mismatchBITETxn.checkAndValidateBITETransaction( epochId2 ),
                          dev::eth::InvalidBITETransaction );
 
-    // Test case: 2 epochIds submitted, but one key in ciphertext is corrupt
+    // 2 epochIds submitted, but one key in ciphertext is corrupt
     auto corruptEncryptedMessage = libBLS::ThresholdEncryption::encrypt( messageBytes, { publicKey1, publicKey2 } );
     
     // Corrupt the first key by replacing it with a random one

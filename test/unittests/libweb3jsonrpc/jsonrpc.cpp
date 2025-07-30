@@ -688,16 +688,12 @@ dev::bytes formEncryptedMessageMockup( const dev::bytes& message, const dev::Add
 
     u256 epochId = 0;
 
-    RLPStream bitePayloadRlpList;
-
     RLPStream bitePayloadRlp( 2 );
 
     bitePayloadRlp << epochId;
     bitePayloadRlp << encryptedMessage;
 
-    bitePayloadRlpList.appendList( bitePayloadRlp.out() );
-
-    auto rlpBytes = bitePayloadRlpList.out();
+    auto rlpBytes = bitePayloadRlp.out();
     return dev::bytes( rlpBytes.begin(), rlpBytes.end() );
 }
 
@@ -721,16 +717,12 @@ std::string formTransactionRlp( const JsonRpcFixture& fixture, const std::string
 }
 
 std::string formBITEPayloadRlp( u256 _epochId, const dev::bytes& _encryptedBITEData ) {
-    RLPStream bitePayloadRlpList;
-
     RLPStream bitePayloadRlp( 2 );
 
     bitePayloadRlp << _epochId;
     bitePayloadRlp << _encryptedBITEData;
 
-    bitePayloadRlpList.appendList( bitePayloadRlp.out() );
-
-    auto rlpBytes = bitePayloadRlpList.out();
+    auto rlpBytes = bitePayloadRlp.out();
     return dev::toHexPrefixed( rlpBytes );
 }
 
@@ -5147,28 +5139,26 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     RLPStream tooShortRlp;
 
     /// Only epoch in data field -> data is too short - should throw an exception
-    RLPStream epochRlp;
-    epochRlp.appendList( 1 );
-    epochRlp << epochId;
-    dev::bytes invalidTooShortBITETxnData = tooShortRlp.appendList( epochRlp.out() ).out();
+    tooShortRlp.appendList( 1 );
+    tooShortRlp << epochId;
+    dev::bytes invalidTooShortBITETxnData = tooShortRlp.out();
     invalidBITETransactionRlp =
         formTransactionRlp( fixture, senderAddress,
                             dev::toHexPrefixed( invalidTooShortBITETxnData ), nonce, biteAddress );
     BOOST_REQUIRE_THROW(
         fixture.client->importTransaction( Transaction(
             dev::jsToBytes( invalidBITETransactionRlp ), CheckTransaction::None, false ) ),
-        dev::eth::BITETransactionTooShort );
+        dev::eth::InvalidBITETransaction );
     BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendRawTransaction( invalidBITETransactionRlp ),
         jsonrpc::JsonRpcException );
     tooShortRlp.clear();
 
     /// Only epoch + key -> no data - should throw an exception
     encryptedMessage.data = std::make_shared< dev::bytes >();
-    RLPStream epochAndKeyRlp;
-    epochAndKeyRlp.appendList( 2 );
-    epochAndKeyRlp << epochId;
-    epochAndKeyRlp << encryptedMessage.toBytes();
-    invalidTooShortBITETxnData = tooShortRlp.appendList( epochAndKeyRlp.out() ).out();
+    tooShortRlp.appendList( 2 );
+    tooShortRlp << epochId;
+    tooShortRlp << encryptedMessage.toBytes();
+    invalidTooShortBITETxnData = tooShortRlp.out();
     invalidBITETransactionRlp =
         formTransactionRlp( fixture, senderAddress,
                             dev::toHexPrefixed( invalidTooShortBITETxnData ), nonce, biteAddress );
@@ -5188,12 +5178,11 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     std::copy( randomEncryptedKeyByteArray.begin(), randomEncryptedKeyByteArray.end(),
         spoiledMessageBytes.begin() );
 
-    RLPStream spoiledBITETransactionDataRlp, spoiledBITEDataRlp;
+    RLPStream spoiledBITEDataRlp;
     spoiledBITEDataRlp.appendList( 2 );
     spoiledBITEDataRlp << epochId;
     spoiledBITEDataRlp << spoiledMessageBytes;
-    dev::bytes invalidBITETxnData =
-            spoiledBITETransactionDataRlp.appendList( spoiledBITEDataRlp.out() ).out();
+    dev::bytes invalidBITETxnData = spoiledBITEDataRlp.out();
 
     invalidBITETransactionRlp =
         formTransactionRlp( fixture, senderAddress,
@@ -5216,8 +5205,7 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     spoiledBITEDataRlp.appendList( 2 );
     spoiledBITEDataRlp << epochId;
     spoiledBITEDataRlp << spoiledMessageBytes;
-    invalidBITETxnData =
-            spoiledBITETransactionDataRlp.appendList( spoiledBITEDataRlp.out() ).out();
+    invalidBITETxnData = spoiledBITEDataRlp.out();
 
     invalidBITETransactionRlp =
         formTransactionRlp( fixture, senderAddress,
@@ -5228,6 +5216,96 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
         dev::eth::InvalidBITETransaction );
     BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendRawTransaction( invalidBITETransactionRlp ),
         jsonrpc::JsonRpcException );
+
+    // now send BITE txn with multiple epochIds / encryptedAESKeys
+    libBLS::TEPublicKey publicKey2( libff::alt_bn128_G2::random_element() );
+    u256 epochId2 = epochId + 5;
+
+    encryptedMessage = libBLS::ThresholdEncryption::encrypt( messageBytes, { libBLS::TEPublicKey( blsPublicKey ), publicKey2 } );
+    auto encryptedBITEDataBytes = encryptedMessage.toBytes();
+
+    // Create payload with 2 epoch ids
+    RLPStream bitePayload;
+    bitePayload.appendList( 3 );
+    bitePayload << epochId;
+    bitePayload << epochId2;
+    bitePayload << encryptedBITEDataBytes;
+
+    auto rlpBytes = bitePayload.out();
+    dev::bytes twoPayloadBITETxnData = dev::bytes( rlpBytes.begin(), rlpBytes.end() );
+
+    validBITETransactionRlp =
+            formTransactionRlp( fixture, senderAddress,
+                                dev::toHexPrefixed( twoPayloadBITETxnData ), nonce, biteAddress );
+    BOOST_REQUIRE_NO_THROW( fixture.rpcClient->eth_sendRawTransaction( validBITETransactionRlp ) );
+
+    // 3 epochIds submitted in transaction
+    uint64_t epochId3 = 15;
+
+    RLPStream threeEpochPayload;
+    threeEpochPayload.appendList( 4 );
+    threeEpochPayload << epochId;
+    threeEpochPayload << epochId2;
+    threeEpochPayload << epochId3;
+    threeEpochPayload << encryptedBITEDataBytes;
+
+    auto threeEpochRlpBytes = threeEpochPayload.out();
+    dev::bytes threeEpochBITETxnData = dev::bytes( threeEpochRlpBytes.begin(), threeEpochRlpBytes.end() );
+
+    std::string threeEpochBITETxnRlp =
+            formTransactionRlp( fixture, senderAddress,
+                                dev::toHexPrefixed( threeEpochBITETxnData ), nonce, biteAddress );
+    BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendRawTransaction( threeEpochBITETxnRlp ),
+                         jsonrpc::JsonRpcException );
+
+    // Number of epochIds != number of keys used to encrypt
+    // 2 epochIds submitted but message encrypted only with 1 key
+    libBLS::TEPublicKey publicKey3( libff::alt_bn128_G2::random_element() );
+
+    auto encryptedMessage1Key = libBLS::ThresholdEncryption::encrypt( messageBytes, publicKey3 );
+    auto encryptedBITEDataBytes1Key = encryptedMessage1Key.toBytes();
+
+    RLPStream mismatchPayload;
+    mismatchPayload.appendList( 3 );
+    mismatchPayload << epochId;
+    mismatchPayload << epochId2;
+    mismatchPayload << encryptedBITEDataBytes1Key; // 1 key but 2 epochIds
+
+    auto mismatchRlpBytes = mismatchPayload.out();
+    dev::bytes mismatchBITETxnData = dev::bytes( mismatchRlpBytes.begin(), mismatchRlpBytes.end() );
+
+    std::string mismatchBITETxnRlp =
+            formTransactionRlp( fixture, senderAddress,
+                                dev::toHexPrefixed( mismatchBITETxnData ), nonce, biteAddress );
+    BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendRawTransaction( mismatchBITETxnRlp ),
+                         jsonrpc::JsonRpcException );
+
+    // 2 epochIds submitted, but one key in ciphertext is corrupt
+    auto corruptEncryptedMessage = libBLS::ThresholdEncryption::encrypt( messageBytes, { libBLS::TEPublicKey( blsPublicKey ), publicKey2 } );
+
+    // Corrupt the first key by replacing it with a random one
+    corruptEncryptedMessage.keys[0] = libBLS::CipheredKey(
+        libff::alt_bn128_G2::random_element(),
+        corruptEncryptedMessage.keys[0].V,
+        libff::alt_bn128_G1::random_element()
+    );
+
+    auto corruptEncryptedBITEDataBytes = corruptEncryptedMessage.toBytes();
+
+    RLPStream corruptPayload;
+    corruptPayload.appendList( 3 );
+    corruptPayload << epochId;
+    corruptPayload << epochId2;
+    corruptPayload << corruptEncryptedBITEDataBytes;
+
+    auto corruptRlpBytes = corruptPayload.out();
+    dev::bytes corruptBITETxnData = dev::bytes( corruptRlpBytes.begin(), corruptRlpBytes.end() );
+
+    std::string corruptBITETxnRlp =
+            formTransactionRlp( fixture, senderAddress,
+                                dev::toHexPrefixed( corruptBITETxnData ), nonce, biteAddress );
+    BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendRawTransaction( corruptBITETxnRlp ),
+                         jsonrpc::JsonRpcException );
 }
 
 BOOST_AUTO_TEST_CASE( BITETransactionCouldNotBeDecrypted ) {
@@ -5268,16 +5346,13 @@ BOOST_AUTO_TEST_CASE( BITETransactionCouldNotBeDecrypted ) {
     auto invalidEncryptedData = libBLS::ThresholdUtils::bytesToHexString( ciphertextBytes );
 
     size_t nonce = 0;
-    RLPStream bitePayloadRlpList;
 
     RLPStream bitePayloadRlp( 2 );
 
     bitePayloadRlp << epochId;
     bitePayloadRlp << ciphertextBytes;
 
-    bitePayloadRlpList.appendList( bitePayloadRlp.out() );
-
-    auto rlpBytes = bitePayloadRlpList.out();
+    auto rlpBytes = bitePayloadRlp.out();
     std::string biteAddress = "0x" + std::string( BITE_ADDRESS_AS_STRING );
     std::string txnRlp = formTransactionRlp(
         fixture, "0x7aa5e36aa15e93d10f4f26357c30f052dacdde5f", dev::toHexPrefixed( rlpBytes ),
@@ -5376,7 +5451,6 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     BOOST_REQUIRE( legacyDecryptedResponse["data"] == plaintext );
     BOOST_REQUIRE( legacyDecryptedResponse["to"] == "0x" + originalToAddress.hex() );
 
-
     // ---- Type1 tx -----
     /*
         transaction1['nonce'] = 0
@@ -5393,8 +5467,8 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     // since it differs each run, and the RLP-encoded tx was built outside this test case (via an
     // external script), we need to set this manually Note that the encryptedData includes the 'To'
     // address already
-    std::string encryptedDataPlusToAddressType1 = "0xf9015ff9015c80b90158a737e10f7344d3ea3f79acc118d5aee1419717dc169c99f052f596c1a5ee96a3000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e254d906056a7bbc512b6f32bf04ef37f0d8b17261eaca049040be4db8016cc10843301c5e1d7d248f6b49cc5595d204ce970008aa0f93bc66e872377cb414d02ae83c9e2ccd86e8d04d4723b296fb8571b5247d3f2ab1a7524f3646ec8210d91d27ca65346fc6370f2e586c69fdb3b550069bb747feaf3a";
-    std::string type1Tx = "0x01f901cc8197808504a817c800830138809442495445204d452049274d20454e43525950544480b90162f9015ff9015c80b90158a737e10f7344d3ea3f79acc118d5aee1419717dc169c99f052f596c1a5ee96a3000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e254d906056a7bbc512b6f32bf04ef37f0d8b17261eaca049040be4db8016cc10843301c5e1d7d248f6b49cc5595d204ce970008aa0f93bc66e872377cb414d02ae83c9e2ccd86e8d04d4723b296fb8571b5247d3f2ab1a7524f3646ec8210d91d27ca65346fc6370f2e586c69fdb3b550069bb747feaf3ac001a062fa3b9dba0afd0371123ebee6b48cf95e0119e3824a0e3903cab1a359e25ab6a075b96ceae927a47efde784ba7ea202c5b0910eb53ebe980a4945a2ed5350f855";
+    std::string encryptedDataPlusToAddressType1 = "0xf9015c80b90158264719c808c1f8e475ac4572183ce0a62e3ddaa23c09e0bdb468d34b50d1c4810000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000a4d7fef6f5cd1714f12cf6c41d60ec88828acfbaf6c74aa99ee55c12113583e4b6b84ac3a0d44ba84cf2a8201b0a559412e56d9b3a57d4a3d05da59845f387a0d8ee1fe3aeda3d893abddecd7e9579f05e5cca025b9fa6c013535a08f5880397ecf78ef826932a2af4ca00bc8c8a624ce6c2223d1ac0772";
+    std::string type1Tx = "0x01f901c98197808504a817c800830138809442495445204d452049274d20454e43525950544480b9015ff9015c80b90158264719c808c1f8e475ac4572183ce0a62e3ddaa23c09e0bdb468d34b50d1c4810000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000a4d7fef6f5cd1714f12cf6c41d60ec88828acfbaf6c74aa99ee55c12113583e4b6b84ac3a0d44ba84cf2a8201b0a559412e56d9b3a57d4a3d05da59845f387a0d8ee1fe3aeda3d893abddecd7e9579f05e5cca025b9fa6c013535a08f5880397ecf78ef826932a2af4ca00bc8c8a624ce6c2223d1ac0772c080a022c91e0a17db4148acd3d0f309bfdcde85cb09e9a91617f4aef3b70aa53abd15a006b50475b09d2e55a0cd0ebdaf418e23fc5fc7ab920eebbf93bb472cf4835e9c";
 
     std::string type1Hash = fixture.rpcClient->eth_sendRawTransaction( type1Tx );
 
@@ -5428,7 +5502,7 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
 
     std::string originalToAddressType2 = originalToAddressType1;
     std::string encryptedDataPlusToAddressType2 = encryptedDataPlusToAddressType1;
-    std::string type2Tx = "0x02f901d28197018504a817c7ff8504a817c800830138809442495445204d452049274d20454e43525950544401b90162f9015ff9015c80b90158a737e10f7344d3ea3f79acc118d5aee1419717dc169c99f052f596c1a5ee96a3000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e254d906056a7bbc512b6f32bf04ef37f0d8b17261eaca049040be4db8016cc10843301c5e1d7d248f6b49cc5595d204ce970008aa0f93bc66e872377cb414d02ae83c9e2ccd86e8d04d4723b296fb8571b5247d3f2ab1a7524f3646ec8210d91d27ca65346fc6370f2e586c69fdb3b550069bb747feaf3ac001a0aeb549a2ba544535a2b26700119af8dc4ae5c771890e7539acb264a413c5cf70a01aacd35468db86246a89cebb5a27ab3d1fafc580fdaa7bf48acc6183ff4d0526";
+    std::string type2Tx = "0x02f901cf8197018504a817c7ff8504a817c800830138809442495445204d452049274d20454e43525950544480b9015ff9015c80b90158264719c808c1f8e475ac4572183ce0a62e3ddaa23c09e0bdb468d34b50d1c4810000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000a4d7fef6f5cd1714f12cf6c41d60ec88828acfbaf6c74aa99ee55c12113583e4b6b84ac3a0d44ba84cf2a8201b0a559412e56d9b3a57d4a3d05da59845f387a0d8ee1fe3aeda3d893abddecd7e9579f05e5cca025b9fa6c013535a08f5880397ecf78ef826932a2af4ca00bc8c8a624ce6c2223d1ac0772c001a052ebf146e74c71514a7458dde445a28d0da7bd8d96fc132888d91d656122510ea0131d375a1d7f9133232c1b7612fc71cee2803203e808701e3528d39e5b75c95a";
     std::string type2Hash = fixture.rpcClient->eth_sendRawTransaction( type2Tx );
 
 
