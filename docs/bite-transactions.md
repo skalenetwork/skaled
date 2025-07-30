@@ -4,7 +4,7 @@ The BITE (Blockchain Integrated Threshold Encryption) protocol is an extension o
 
 # Ciphertext Format
 
-Every encrypted transaction's data is RLP encoded as `RLP([[epochId, encryptedData]])`, where:
+Every encrypted transaction's data is RLP encoded as `RLP([epochId, encryptedData])`, where:
 
 1. **`EPOCH_ID`** - The number of the epoch when a transaction is sent. The number is incremented with every committee rotation.
 
@@ -13,7 +13,7 @@ Every encrypted transaction's data is RLP encoded as `RLP([[epochId, encryptedDa
 
 - **Encrypted Original Data** - The original data encrypted with an `AES` key. Includes the plaintext `TO` address. Its size depends on the original data size.
 
-3. **Committee Rotation Best Practice**: When two epoch keys are returned (during committee rotation), if you use SKALE-unsupported client libraries it is recommended to encrypt your message twice - once with each BLS public key - and include both encrypted payloads in a single transaction. This ensures the transaction will not be lost during the committee transition period. The transaction data should be structured as `RLP([[epochId1, encryptedData1], [epochId2, encryptedData2]])` where each payload contains the same original message encrypted with the corresponding epoch's public key.
+3. **Committee Rotation Best Practice**: When two epoch keys are provided (during committee rotation), it is recommended to encrypt your message using `encryptMessageDualKey`, passing two BLS public keys into it. This ensures the transaction will not be lost during the committee transition period. The transaction data should be structured as `RLP([epochId1, epochId2, encryptedData])` where `encryptedData` is a payload containing the original message encrypted with an AES key and the AES key encrypted with 2 BLS public keys.
 
 # Transaction Flow
 
