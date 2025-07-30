@@ -1747,7 +1747,7 @@ int main( int argc, char** argv ) {
         }  // if --download-snapshot
 
         // download 0 snapshot if needed
-        if ( chainParams->isSyncNode() ) {
+        if ( chainParams->isSyncNode() && !dataDirEmpty ) {
             auto bc = BlockChain( chainParams, getDataDir() );
             if ( bc.number() == 0 ) {
                 if ( chainParams->isSyncFromCatchupEnabled() && !downloadSnapshotFlag ) {
