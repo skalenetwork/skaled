@@ -26,8 +26,8 @@
 #include <libethcore/Common.h>
 #include <libethcore/Counter.h>
 
-#include <boost/optional.hpp>
 #include <SkaleCommon.h>
+#include <boost/optional.hpp>
 
 namespace dev {
 namespace eth {
@@ -347,7 +347,8 @@ public:
     }
 
     uint64_t chainId() const {
-        CHECK_STATE2( m_chainId.has_value(), "Transaction does not have chainId set. Cannot get chain ID." );
+        CHECK_STATE2(
+            m_chainId.has_value(), "Transaction does not have chainId set. Cannot get chain ID." );
         return m_chainId.get();
     }
 
