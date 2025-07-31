@@ -608,7 +608,7 @@ Address Client::getWinningNodeAddressByIndex( uint64_t _winningNodeIndex ) {
 
 bool Client::isCommitteeRotationSoon() const {
     auto currentGroupIndex = historicGroupIndex.load();
-    if ( currentGroupIndex == chainParams().getNodeGroups().size() )
+    if ( currentGroupIndex + 1 >= chainParams().getNodeGroups().size() )
         // there is no next group thus no rotation
         return false;
 
@@ -621,7 +621,7 @@ bool Client::isCommitteeRotationSoon() const {
 
 std::pair< std::array< std::string, 4 >, uint64_t > Client::getNextCommitteeBITEInfo() const {
     auto currentGroupIndex = historicGroupIndex.load();
-    if ( currentGroupIndex == chainParams().getNodeGroups().size() )
+    if ( currentGroupIndex + 1 >= chainParams().getNodeGroups().size() )
         throw std::out_of_range( "Couldn't get next committee info" );
     return { chainParams().getBlsPublicKeyForHistoricGroup( currentGroupIndex + 1 ),
         currentGroupIndex + 1 };
