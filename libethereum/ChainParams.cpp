@@ -410,12 +410,22 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
         s.nodeGroups = nodeGroups;
     }
 
-    auto parseNodeDetails = [testSignatures]( const auto& jsonNodeObj ) -> sChainNode {
+    auto parseNodeDetails = [
+#ifdef MIRAGE
+                                this,
+#endif
+                                testSignatures]( const auto& jsonNodeObj ) -> sChainNode {
         auto nodeConfObj = jsonNodeObj.get_obj();
         sChainNode node{};
         node.id = nodeConfObj.at( "nodeID" ).get_uint64();
 #ifdef MIRAGE
-        node.owner = jsToAddress( nodeConfObj.at( "owner" ).get_str() );
+        try {
+            node.owner = jsToAddress( nodeConfObj.at( "owner" ).get_str() );
+        } catch ( ... ) {
+            LOG( m_loggerWarning )
+                << "Node " << node.id << ": owner is not set, using zero address as fallback";
+            node.owner = ZeroAddress;
+        }
 #endif
         node.ip = nodeConfObj.at( "ip" ).get_str();
         node.port = nodeConfObj.at( "basePort" ).get_uint64();
@@ -899,6 +909,14 @@ bool ChainParams::updateCurrentGroupIfNeeded( uint64_t _latestBlockTimestamp ) {
         return true;
     }
     return false;
+}
+
+CurrentGroup ChainParams::getNewestGroup() const {
+    size_t newestIndex = 0;
+    if ( sChain.currentGroups[1].startTs >= sChain.currentGroups[0].startTs ) {
+        newestIndex = 1;
+    }
+    return sChain.currentGroups[newestIndex];
 }
 
 Address ChainParams::getSChainNodeAddressByIndex( uint64_t _sChainIndex ) const {

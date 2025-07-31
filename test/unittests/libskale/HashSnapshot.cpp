@@ -460,8 +460,8 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         rpcServer->addConnector( ipcServer );
         ipcServer->StartListening();
 
-        auto client = new TestIpcClient( *ipcServer );
-        rpcClient = unique_ptr< WebThreeStubClient >( new WebThreeStubClient( *client ) );
+        testIpcClient = new TestIpcClient( *ipcServer );
+        rpcClient = unique_ptr< WebThreeStubClient >( new WebThreeStubClient( *testIpcClient ) );
     }
 
     ~SnapshotHashingFixture() {
@@ -476,6 +476,9 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         assert( rv == 0 );
         rv = system( ( "rm " + BTRFS_FILE_PATH ).c_str() );
         assert( rv == 0 );
+
+        if ( testIpcClient )
+            delete testIpcClient;
     }
 
     string sendingRawShouldFail( string const& _t ) {
@@ -499,6 +502,7 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
     KeyManager keyManager{ KeyManager::defaultPath(), SecretStore::defaultPath() };
     unique_ptr< ModularServer<> > rpcServer;
     unique_ptr< WebThreeStubClient > rpcClient;
+    TestIpcClient* testIpcClient;
     std::string adminSession;
     unique_ptr< SnapshotManager > mgr;
 };
@@ -634,7 +638,11 @@ BOOST_FIXTURE_TEST_CASE( SnapshotHashingTest, SnapshotHashingFixture,
 
     mgr->doSnapshot( 3 );
 
+#ifndef MIRAGE    
     mgr->computeSnapshotHash( 3, true );
+#else
+    mgr->computeSnapshotHash( 3 );
+#endif
 
     BOOST_REQUIRE( mgr->isSnapshotHashPresent( 3 ) );
 

@@ -231,7 +231,7 @@ public:
 
     bool isBite() const { return m_isBITETxn; }
 
-    void checkAndValidateBITETransaction() const;
+    void checkAndValidateBITETransaction( uint64_t _epochId ) const;
 #endif
 
     /// @throws TransactionIsUnsigned if signature was not initialized

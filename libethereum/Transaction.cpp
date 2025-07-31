@@ -74,6 +74,10 @@ TransactionException dev::eth::toTransactionException( Exception const& _e ) {
         return TransactionException::StackUnderflow;
     if ( !!dynamic_cast< InvalidContractDeployer const* >( &_e ) )
         return TransactionException::InvalidContractDeployer;
+#ifdef MIRAGE
+    if ( !!dynamic_cast< UnsupportedDencunOpcode const* >( &_e ) )
+        return TransactionException::UnsupportedDencunOpcode;
+#endif
     return TransactionException::Unknown;
 }
 
@@ -136,6 +140,11 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, TransactionException con
     case TransactionException::WouldNotBeInBlock:
         _out << "WouldNotBeInBlock";
         break;
+#ifdef MIRAGE
+    case TransactionException::UnsupportedDencunOpcode:
+        _out << "UnsupportedDencunOpcode";
+        break;
+#endif
     default:
         _out << "Unknown";
         break;

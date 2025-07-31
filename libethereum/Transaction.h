@@ -59,6 +59,10 @@ enum class TransactionException {
     ,
     InvalidBITEAESData
 #endif
+#ifdef MIRAGE
+    ,
+    UnsupportedDencunOpcode
+#endif
 };
 
 enum class CodeDeposit { None = 0, Failed, Success };

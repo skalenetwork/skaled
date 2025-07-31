@@ -2854,7 +2854,10 @@ server::server( basic_network_settings* pBNS )
         onLogMessage( eWSLMT, strMessage );
     };
 }
-server::~server() {}
+server::~server() {
+    close();
+}
+
 nlohmann::json server::toJSON() const {
     nlohmann::json jo = nlohmann::json::object();
     jo["type"] = "server";
@@ -2967,7 +2970,7 @@ bool server::onPeerRegister( peer_ptr_t pPeer ) {
     try {
         pPeer->opened_ = true;
         // hdl_t hdl = pPeer->hdl();
-        pPeer->ref_retain();  // mormal, typically first/last ref
+        pPeer->ref_retain();  // normal, typically first/last ref
         if ( onPeerRegister_ )
             onPeerRegister_( pPeer );
         pPeer->onPeerRegister();

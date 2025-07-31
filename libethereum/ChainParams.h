@@ -153,6 +153,11 @@ struct ChainParams : public ChainOperationParams {
 
     bool isSyncFromCatchupEnabled() const { return nodeInfo.syncFromCatchup; }
 
+#ifdef MIRAGE
+    Address getSChainNodeAddressByIndex( uint64_t sChainIndex ) const;
+    CurrentGroup getNewestGroup() const;
+#endif
+
     size_t getNodesCount() const;
 
     size_t getThresholdCount() const { return sChain.t; }
@@ -231,6 +236,7 @@ private:
     mutable std::shared_mutex m_mutex;
 
     Logger m_loggerInfo{ createLogger( VerbosityInfo, "ChainParams" ) };
+    Logger m_loggerWarning{ createLogger( VerbosityWarning, "ChainParams" ) };
 #endif
     Logger m_loggerDebug{ createLogger( VerbosityDebug, "ChainParams" ) };
 };

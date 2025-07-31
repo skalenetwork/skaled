@@ -307,6 +307,10 @@ public:
         return m_snapshotAgent->createSnapshotFile( _blockNumber );
     }
 
+#ifdef BITE
+    uint64_t getCurrentEpochId() const { return historicGroupIndex.load(); }
+#endif
+
 #ifdef MIRAGE
     bool updateGroupIfNeeded() { return bc().updateGroupIfNeeded(); }
 #endif
@@ -596,7 +600,11 @@ private:
     void updateHistoricGroupIndex();
 
     // which group corresponds to the current block timestamp on this node
+#ifdef BITE
+    std::atomic_uint64_t historicGroupIndex = 0;
+#else
     unsigned historicGroupIndex = 0;
+#endif
 
 public:
     FILE* performance_fd;
