@@ -718,7 +718,13 @@ void doSnapshotDownload( const std::shared_ptr< ChainParams >& chainParams,
                           << std::string( " seconds before downloading 0 snapshot" );
         sleep( chainParams->getSnapshotDownloadInactiveTimeout() +
                dev::rpc::Skale::snapshotDownloadFragmentMonitorThreadTimeout() );
+#ifdef MIRAGE
+        // Fetch timestamp and update group again
+        // since the group may change during previous requests
 
+        fetchedCurrentBlockTimetamp = fetchLatestBlockTimestampFromNodes( latestGroup.nodes );
+        chainParams->updateCurrentGroupIfNeeded( fetchedCurrentBlockTimetamp );
+#endif
         downloadAndProccessSnapshot(
             snapshotManager, *chainParams, urlToDownloadSnapshotFrom, false );
     } catch ( std::exception& ) {
