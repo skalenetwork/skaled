@@ -2,16 +2,6 @@
 
 The BITE (Blockchain Integrated Threshold Encryption) protocol is an extension of the SKALE provably secure consensus protocol. Nodes participating in a SKALE consensus committee share a common threshold encryption (TE) public key and possess a set of TE private key shares. The size of the SKALE committee is typically `3t + 1`, where `t` is an integer. A user can encrypt plaintext `P` using the TE public key. To decrypt the resulting ciphertext `C`, a threshold decryption protocol must be executed by a supermajority of `2t + 1` nodes. During the protocol, each node uses its private key share to generate a decryption share, which it then broadcasts to its peers. A total of `2t + 1` decryption shares are required to reconstruct the original plaintext `P`. For example, if the committee size is 100, at least 67 nodes must cooperate to recover `P`.
 
-# Ciphertext Format
-
-Each encrypted transaction's data is RLP-encoded as `RLP([EPOCH_ID, ENCRYPTED_BITE_DATA])`, where:
-
-1. **`EPOCH_ID`** – The identifier of the epoch during which the transaction is submitted. This value increments with each committee rotation.
-
-2. **`ENCRYPTED_ORIGINAL_DATA`** – The original data encrypted by a client. Can be split as follows:
-    - **`Encrypted AES Key`** - The AES key encrypted using the `Threshold Encryption` algorithm. This is of fixed size, always 224 bytes, and consists of three parts of sizes 128 bytes, 32 bytes, and 64 bytes, respectively. If two keys are present, then they are keys using committees before and after rotation. If one key is present, it is just the key before the rotation. In case of 2 keys, `skaled` will proceed with the first key if `EPOCH_ID` matches the current epoch ID, and will proceed with the second key and epoch ID `EPOCH_ID + 1` otherwise.
-    - **`Encrypted Original Data`** - The original data encrypted with an AES key. Includes the plaintext `TO` address. Its size depends on the original data size.
-
 # Transaction Flow
 
 1. The transaction is encrypted by a client and sent to the blockchain.
@@ -25,6 +15,16 @@ Each encrypted transaction's data is RLP-encoded as `RLP([EPOCH_ID, ENCRYPTED_BI
 5. Consensus passes to `skaled` the list of transactions with encrypted data along with the list of the decrypted `data` and `to` fields for corresponding transactions.
 
 6. Transactions are validated once again on the `skaled` side. When a BITE transaction is executed inside the EVM, `skaled` swaps the encrypted data with the decrypted data, as well as the `BITE_MAGIC_ADDRESS` in the `to` field with the original plaintext destination address.
+
+# Ciphertext Format
+
+Each encrypted transaction's data is RLP-encoded as `RLP([EPOCH_ID, ENCRYPTED_BITE_DATA])`, where:
+
+1. **`EPOCH_ID`** – The identifier of the epoch during which the transaction is submitted. This value increments with each committee rotation.
+
+2. **`ENCRYPTED_ORIGINAL_DATA`** – The original data encrypted by a client. Can be split as follows:
+    - **`Encrypted AES Key`** - The AES key encrypted using the `Threshold Encryption` algorithm. This is of fixed size, always 224 bytes, and consists of three parts of sizes 128 bytes, 32 bytes, and 64 bytes, respectively. If two keys are present, then they are keys using committees before and after rotation. If one key is present, it is just the key before the rotation. In case of 2 keys, `skaled` will proceed with the first key if `EPOCH_ID` matches the current epoch ID, and will proceed with the second key and epoch ID `EPOCH_ID + 1` otherwise.
+    - **`Encrypted Original Data`** - The original data encrypted with an AES key. Includes the plaintext `TO` address. Its size depends on the original data size.
 
 # Storing in the Database
 
