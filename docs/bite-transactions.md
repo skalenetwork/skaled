@@ -4,16 +4,21 @@ The BITE (Blockchain Integrated Threshold Encryption) protocol is an extension o
 
 # Ciphertext Format
 
-Every encrypted transaction's data is RLP encoded as `RLP([EPOCH_ID, ENCRYPTED_AEA_KEY1, ENCRYPTED_AES_KEY2, ENCRYPTED_ORIDIGINAl_DATA ])` or `RLP([EPOCH_ID, ENCRYPTED_AEA_KEY1, ENCRYPTED_AES_KEY2, ENCRYPTED_ORIGINAL_DATA])` , where:
+Each encrypted transaction’s data is RLP-encoded as either  
+`RLP([EPOCH_ID, ENCRYPTED_AES_KEY1, ENCRYPTED_AES_KEY2, ENCRYPTED_ORIGINAL_DATA])`  
+or, in the simpler case,  
+`RLP([EPOCH_ID, ENCRYPTED_AES_KEY1, ENCRYPTED_ORIGINAL_DATA])`,  
+where:
 
-1. **`EPOCH_ID`** - The ID of the epoch when a transaction is sent. The number is incremented with every committee rotation.
+1. **`EPOCH_ID`** – The identifier of the epoch during which the transaction is submitted. This value increments with each committee rotation.
 
-2. **** - The original data encrypted by a client. Can be split as follows:
-- **ENCRYPTED_AEA_KEY1**, **ENCRYPTED_AEA_KEY2** - The `AES` key encrypted using the `Threshold Encryption` algorithm. This is of fixed size, always 224 bytes, and consists of three parts of sizes 128 bytes, 32 bytes, and 64 bytes, respectively. If two `epochId` values are provided in the transaction's data RLP, it should have 2 encrypted AES key objects submitted as well - the same AES key encrypted using the `Threshold Encryption` algorithm with 2 BLS public keys.
+2. **Encrypted Payload** – The original data encrypted by the client. It consists of the following components:
 
-- **ENCRYPTED_ORIGINAL_DATA** - The original data encrypted with an `AES` key. Includes the plaintext `TO` address. Its size depends on the original data size.
+   - **`ENCRYPTED_AES_KEY1`**, **`ENCRYPTED_AES_KEY2`** – The AES key encrypted using a threshold encryption scheme (e.g., BLS-based). Each encrypted AES key has a fixed size of 224 bytes, composed of three segments: 128 bytes, 32 bytes, and 64 bytes.  
+     If two `EPOCH_ID` values are present in the transaction RLP data, then both `ENCRYPTED_AES_KEY1` and `ENCRYPTED_AES_KEY2` must be included—each representing the same AES key encrypted using different BLS public keys corresponding to the two epochs.
 
-3. **Committee Rotation Best Practice**: When two epoch keys are provided (during committee rotation), it is recommended to encrypt your message using two BLS public keys. This ensures the transaction will not be lost during the committee transition period. The transaction data should be structured as `RLP([epochId1, epochId2, encryptedData])` where `encryptedData` is a payload containing the original message encrypted with an AES key and the AES key encrypted with 2 BLS public keys.
+   - **`ENCRYPTED_ORIGINAL_DATA`** – The user’s original data, encrypted with the AES key. This includes fields such as the plaintext `TO` address. Its size varies depending on the size of the original payload.
+
 
 # Transaction Flow
 
