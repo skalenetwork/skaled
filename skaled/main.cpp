@@ -25,7 +25,6 @@
  * Ethereum client.
  */
 
-#include "libdevcore/Log.h"
 #include <signal.h>
 #include <fstream>
 #include <iostream>
