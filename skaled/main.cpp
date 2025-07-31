@@ -1790,7 +1790,8 @@ int main( int argc, char** argv ) {
                               << urlToDownloadSnapshotFrom;
         }
 
-
+        // Checking that data dir is empty before doing creating initial layout
+        bool dataDirEmpty = isDataDirEmpty();
         if ( chainParams->getSnapshotIntervalSec() > 0 || downloadSnapshotFlag ) {
             std::vector< std::string > coreVolumes = { BlockChain::getChainDirName( *chainParams ),
 #ifndef MIRAGE
@@ -1801,8 +1802,6 @@ int main( int argc, char** argv ) {
             snapshotManager.reset( new SnapshotManager(
                 chainParams, getDataDir(), sharedSpace ? sharedSpace->getPath() : "" ) );
         }
-
-        bool dataDirEmpty = isDataDirEmpty();
         if ( downloadSnapshotFlag ) {
             if ( dataDirEmpty ) {
                 doSnapshotDownload( chainParams, statusAndControl, urlToDownloadSnapshotFrom,
