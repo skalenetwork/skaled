@@ -27,6 +27,7 @@
 #include <libethcore/Counter.h>
 
 #include <boost/optional.hpp>
+#include <SkaleCommon.h>
 
 namespace dev {
 namespace eth {
@@ -273,7 +274,7 @@ public:
     /// @returns the amount of ETH to be transferred by this (message-call) transaction, in Wei.
     /// Synonym for endowment().
     u256 value() const {
-        assert( !isInvalid() );
+        CHECK_STATE2( !isInvalid(), "Transaction is invalid. Cannot get value." );
         return m_value;
     }
 
@@ -292,19 +293,19 @@ public:
     /// @returns the receiving address of the message-call transaction (undefined for
     /// contract-creation transactions).
     Address receiveAddress() const {
-        assert( !isInvalid() );
+        CHECK_STATE2( !isInvalid(), "Transaction is invalid. Cannot get receive address." );
         return m_receiveAddress;
     }
 
     /// Synonym for receiveAddress().
     Address to() const {
-        assert( !isInvalid() );
+        CHECK_STATE2( !isInvalid(), "Transaction is invalid. Cannot get to address." );
         return m_receiveAddress;
     }
 
     /// Synonym for safeSender().
     Address from() const {
-        assert( !isInvalid() );
+        CHECK_STATE2( !isInvalid(), "Transaction is invalid. Cannot get from address." );
         return safeSender();
     }
 
@@ -313,7 +314,7 @@ public:
 
     /// @returns the transaction-count of the sender.
     u256 nonce() const {
-        assert( !isInvalid() );
+        CHECK_STATE2( !isInvalid(), "Transaction is invalid. Cannot get nonce." );
         return m_nonce;
     }
 
@@ -327,7 +328,7 @@ public:
 
     /// Sets the nonce to the given value. Clears any signature.
     void setNonce( u256 const& _n ) {
-        assert( !isInvalid() );
+        CHECK_STATE2( !isInvalid(), "Transaction is invalid. Cannot set nonce." );
         clearSignature();
         m_nonce = _n;
     }
@@ -341,12 +342,12 @@ public:
     /// @returns true if the transaction uses EIP155 replay protection
     /// Only used for non-mirage builds - as mirage builds reject any pre-EIP155 transactions
     bool isReplayProtected() const {
-        assert( !isInvalid() );
+        CHECK_STATE2( !isInvalid(), "Transaction is invalid. Cannot check replay protection." );
         return m_chainId.has_value();
     }
 
     uint64_t chainId() const {
-        assert( m_chainId.has_value() );
+        CHECK_STATE2( m_chainId.has_value(), "Transaction does not have chainId set. Cannot get chain ID." );
         return m_chainId.get();
     }
 
@@ -358,7 +359,7 @@ public:
 
     /// @returns amount of gas required for the basic payment.
     int64_t baseGasRequired( EVMSchedule const& _es ) const {
-        assert( !isInvalid() );
+        CHECK_STATE2( !isInvalid(), "Transaction is invalid. Cannot get base gas required." );
         return baseGasRequired( isCreation(), &m_data, _es
 #ifdef BITE
             ,

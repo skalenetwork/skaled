@@ -435,7 +435,7 @@ SignatureStruct const& TransactionBase::signature() const {
 }
 
 void TransactionBase::sign( Secret const& _priv ) {
-    assert( !isInvalid() );
+    CHECK_STATE2( !isInvalid(), "Transaction is invalid. Cannot sign transaction." );
 
     auto sig = dev::sign( _priv, sha3( WithoutSignature ) );
     SignatureStruct sigStruct = *( SignatureStruct const* ) &sig;
@@ -602,7 +602,7 @@ h256 TransactionBase::sha3( IncludeSignature _sig ) const {
 }
 
 u256 TransactionBase::gasPrice() const {
-    assert( !isInvalid() );
+    CHECK_STATE2( !isInvalid(), "Transaction is invalid. Cannot get gas price." );
     return m_gasPrice;
 }
 
@@ -611,7 +611,7 @@ u256 TransactionBase::gas() const {
      * instead the logic has been moved to the gas() function of TransactionBase
      * this has been done in order to address the problem of switching "virtual" on/off
      */
-    assert( !isInvalid() );
+    CHECK_STATE2( !isInvalid(), "Transaction is invalid. Cannot get gas." );
 #ifdef MIRAGE
     return m_gas;
 #else
