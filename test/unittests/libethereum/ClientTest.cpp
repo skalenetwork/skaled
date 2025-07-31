@@ -146,6 +146,8 @@ public:
         m_ethereum.reset( new eth::ClientTest( chainParams, ( int ) chainParams->getNetworkId(),
             shared_ptr< GasPricer >(), NULL, monitor, m_tmpDir.path(), WithExisting::Kill ) );
 
+        m_ethereum->setAuthor( coinbase.address() );
+
         //        m_ethereum.reset(
         //            new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr<
         //            GasPricer >(),
@@ -160,8 +162,6 @@ public:
         m_ethereum->startWorking();
 
         block_promise.get_future().wait();
-
-        m_ethereum->setAuthor( coinbase.address() );
 
         accountHolder.reset( new FixedAccountHolder( [&]() { return m_ethereum.get(); }, {} ) );
         accountHolder->setAccounts( { coinbase } );
@@ -553,6 +553,9 @@ BOOST_AUTO_TEST_CASE( transactionWithData ) {
 
     bytes data = jsToBytes( "0x11223344556600770000" );
 
+    while ( testClient->number() < 1 )
+        usleep( 100 );
+
     u256 estimate =
         testClient->estimateGas( addr, 0, addr, data, 10000000, 1000000, GasEstimationCallback() )
             .first;
@@ -590,6 +593,9 @@ BOOST_AUTO_TEST_CASE( constantConsumption ) {
     // data to call method spendGas(50000)
     bytes data =
         jsToBytes( "0x815b8ab4000000000000000000000000000000000000000000000000000000000000c350" );
+
+    while ( testClient->number() < 1 )
+        usleep( 100 );
 
     u256 estimate = testClient
                         ->estimateGas( from, 0, contractAddress, data, 10000000, 1000000,
@@ -629,6 +635,9 @@ BOOST_AUTO_TEST_CASE( linearConsumption ) {
 
     // data to call method spendHalfOfGas()
     bytes data = jsToBytes( "0x8273f754" );
+
+    while ( testClient->number() < 1 )
+        usleep( 100 );
 
     u256 estimate = testClient
                         ->estimateGas( from, 0, contractAddress, data, 10000000, 1000000,
@@ -670,6 +679,10 @@ BOOST_AUTO_TEST_CASE( exceedsGasLimit ) {
         jsToBytes( "0x815b8ab4000000000000000000000000000000000000000000000000000000000000c350" );
 
     int64_t maxGas = 50000;
+
+    while ( testClient->number() < 1 )
+        usleep( 100 );
+
     u256 estimate = testClient
                         ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
                             GasEstimationCallback() )
@@ -706,6 +719,10 @@ BOOST_AUTO_TEST_CASE( runsInterference ) {
         jsToBytes( "0x6057361d0000000000000000000000000000000000000000000000000000000000000016" );
 
     int64_t maxGas = 50000;
+
+    while ( testClient->number() < 1 )
+        usleep( 100 );
+
     u256 estimate = testClient
                         ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
                             GasEstimationCallback() )
@@ -746,6 +763,9 @@ BOOST_AUTO_TEST_CASE( consumptionWithRefunds ) {
 
     u256 balance = testClient->balanceAt( from );
     BOOST_CHECK( balance > 0 );
+
+    while ( testClient->number() < 1 )
+        usleep( 100 );
 
     u256 estimate = testClient
                         ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
@@ -805,6 +825,10 @@ BOOST_AUTO_TEST_CASE( consumptionWithRefunds2 ) {
         jsToBytes( "0xd82cf7900000000000000000000000000000000000000000000000000000000000000003" );
 
     int64_t maxGas = 100000;
+
+    while ( testClient->number() < 1 )
+        usleep( 100 );
+
     u256 estimate = testClient
                         ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
                             GasEstimationCallback() )
@@ -851,6 +875,10 @@ BOOST_AUTO_TEST_CASE( nonLinearConsumption ) {
         jsToBytes( "0xd37165fa00000000000000000000000000000000000000000000000000000000000186a0" );
 
     int64_t maxGas = 100000;
+
+    while ( testClient->number() < 1 )
+        usleep( 100 );
+
     u256 estimate = testClient
                         ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
                             GasEstimationCallback() )
@@ -919,6 +947,10 @@ BOOST_AUTO_TEST_CASE( consumptionWithReverts ) {
     // data to call method testRequire(50000)
     bytes data =
         jsToBytes( "0xb8bd717f000000000000000000000000000000000000000000000000000000000000c350" );
+
+    while ( testClient->number() < 1 )
+        usleep( 100 );
+
     u256 estimate = testClient
                         ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
                             GasEstimationCallback() )
