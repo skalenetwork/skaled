@@ -5832,6 +5832,7 @@ BOOST_AUTO_TEST_CASE( committeeRotation ) {
     BOOST_REQUIRE_EQUAL( biteInfo.size(), 1 );
     BOOST_REQUIRE( blsPublicKeyStringToStringArray( biteInfo[0]["commonBLSPublicKey"].asString() ) == secondGroupCommonPublicKey );
     BOOST_REQUIRE_EQUAL( biteInfo[0]["epochId"].asUInt64(), 1 );
+    BOOST_REQUIRE( !fixture.client->isCommitteeRotationSoon() );
 
     // HACK: currently on committee rotation skaled calls exitGracefully in consensus
     // it interferes with exit procedure
