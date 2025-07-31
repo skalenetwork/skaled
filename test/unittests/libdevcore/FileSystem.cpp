@@ -40,7 +40,6 @@ BOOST_AUTO_TEST_CASE(
 
     try {
         originalDataDir = getDataDir();
-        std::cout << "HEREC" << tempDir << std::endl;
         setDataDir( tempDir );
 
         BOOST_CHECK( isDataDirEmpty() );
