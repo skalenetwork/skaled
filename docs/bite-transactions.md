@@ -4,24 +4,19 @@ The BITE (Blockchain Integrated Threshold Encryption) protocol is an extension o
 
 # Ciphertext Format
 
-Each encrypted transaction’s data is RLP-encoded as either  `RLP([EPOCH_ID, ENCRYPTED_AES_KEY1, ENCRYPTED_AES_KEY2, ENCRYPTED_ORIGINAL_DATA])`  
-or, in the simpler case,  
-`RLP([EPOCH_ID, ENCRYPTED_AES_KEY1, ENCRYPTED_ORIGINAL_DATA])`,  
-where:
+Each encrypted transaction's data is RLP-encoded as `RLP([EPOCH_ID, ENCRYPTED_BITE_DATA])`, where:
 
 1. **`EPOCH_ID`** – The identifier of the epoch during which the transaction is submitted. This value increments with each committee rotation.
 
-2.   **`ENCRYPTED_AES_KEY1`**, **`ENCRYPTED_AES_KEY2`** – The AES key encrypted using a threshold encryption scheme (e.g., BLS-based). Each encrypted AES key has a fixed size of 224 bytes, composed of three segments: 128 bytes, 32 bytes, and 64 bytes.  
-     If two keys are present then the are keys using committees before and after rotation. If one key is present, it is just the key before the rotation.
-
-   3. **`ENCRYPTED_ORIGINAL_DATA`** – The user’s original data, encrypted with the AES key. This includes fields such as the plaintext `TO` address. Its size varies depending on the size of the original payload.
-
+2. **`ENCRYPTED_ORIGINAL_DATA`** – The original data encrypted by a client. Can be split as follows:
+    - **`Encrypted AES Key`** - The AES key encrypted using the `Threshold Encryption` algorithm. This is of fixed size, always 224 bytes, and consists of three parts of sizes 128 bytes, 32 bytes, and 64 bytes, respectively. If two keys are present, then they are keys using committees before and after rotation. If one key is present, it is just the key before the rotation. In case of 2 keys, `skaled` will proceed with the first key if `EPOCH_ID` matches the current epoch ID, and will proceed with the second key and epoch ID `EPOCH_ID + 1` otherwise.
+    - **`Encrypted Original Data`** - The original data encrypted with an AES key. Includes the plaintext `TO` address. Its size depends on the original data size.
 
 # Transaction Flow
 
 1. The transaction is encrypted by a client and sent to the blockchain.
 
-2. The transaction is validated and added to the transaction queue. If the `TO` field of the transaction matches the `BITE_MAGIC_ADDRESS`, then the transaction's data is expected to be encrypted and to include the original plaintext `TO` destination address. Otherwise, it is processed as a normal transaction. If the `TO` field matches the `BITE_MAGIC_ADDRESS` but the data field is not RLP encoded, does not match the `EPOCH_ID`, or the cipher cannot be validated, it should be rejected.
+2. The transaction is validated and added to the transaction queue. If the `TO` field of the transaction matches the `BITE_MAGIC_ADDRESS`, then the transaction's data is expected to be encrypted and to include the original plaintext `TO` destination address. Otherwise, it is processed as a normal transaction. If the `TO` field matches the `BITE_MAGIC_ADDRESS` but the data field is not RLP encoded, does not match the `EPOCH_ID`, or the cipher cannot be validated, it should be rejected. If the transaction's `EPOCH_ID` doesn't match but it has 2 encrypted AES keys in the payload, this transaction is considered to be sent for epoch `EPOCH_ID + 1`. 
 
 3. If a malicious party includes an invalid BITE transaction in their proposal, such a proposal should be rejected.
 
