@@ -5341,11 +5341,10 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     encryptedMessage = libBLS::ThresholdEncryption::encrypt( messageBytes, { libBLS::TEPublicKey( blsPublicKey ), publicKey2 } );
     auto encryptedBITEDataBytes = encryptedMessage.toBytes();
 
-    // Create payload with 2 epoch ids
+    // Create payload with 2 encrypted AES keys
     RLPStream bitePayload;
-    bitePayload.appendList( 3 );
+    bitePayload.appendList( 2 );
     bitePayload << epochId;
-    bitePayload << epochId2;
     bitePayload << encryptedBITEDataBytes;
 
     auto rlpBytes = bitePayload.out();
@@ -5356,37 +5355,34 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
                                 dev::toHexPrefixed( twoPayloadBITETxnData ), nonce, biteAddress );
     BOOST_REQUIRE_NO_THROW( fixture.rpcClient->eth_sendRawTransaction( validBITETransactionRlp ) );
 
-    // 3 epochIds submitted in transaction
-    uint64_t epochId3 = 15;
+    // 3 elements in payload is not allowed
 
-    RLPStream threeEpochPayload;
-    threeEpochPayload.appendList( 4 );
-    threeEpochPayload << epochId;
-    threeEpochPayload << epochId2;
-    threeEpochPayload << epochId3;
-    threeEpochPayload << encryptedBITEDataBytes;
+    RLPStream threeElementsPayload;
+    threeElementsPayload.appendList( 3 );
+    threeElementsPayload << epochId;
+    threeElementsPayload << epochId2;
+    threeElementsPayload << encryptedBITEDataBytes;
 
-    auto threeEpochRlpBytes = threeEpochPayload.out();
-    dev::bytes threeEpochBITETxnData = dev::bytes( threeEpochRlpBytes.begin(), threeEpochRlpBytes.end() );
+    auto threeElementsRlpBytes = threeElementsPayload.out();
+    dev::bytes threeElementsBITETxnData = dev::bytes( threeElementsRlpBytes.begin(),
+                                                      threeElementsRlpBytes.end() );
 
-    std::string threeEpochBITETxnRlp =
+    std::string threeElementsBITETxnRlp =
             formTransactionRlp( fixture, senderAddress,
-                                dev::toHexPrefixed( threeEpochBITETxnData ), nonce, biteAddress );
-    BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendRawTransaction( threeEpochBITETxnRlp ),
+                                dev::toHexPrefixed( threeElementsBITETxnData ), nonce, biteAddress );
+    BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendRawTransaction( threeElementsBITETxnRlp ),
                          jsonrpc::JsonRpcException );
 
-    // Number of epochIds != number of keys used to encrypt
-    // 2 epochIds submitted but message encrypted only with 1 key
+    // epochId doesn't match and only 1 encrypted AES keys
     libBLS::TEPublicKey publicKey3( libff::alt_bn128_G2::random_element() );
 
     auto encryptedMessage1Key = libBLS::ThresholdEncryption::encrypt( messageBytes, publicKey3 );
     auto encryptedBITEDataBytes1Key = encryptedMessage1Key.toBytes();
 
     RLPStream mismatchPayload;
-    mismatchPayload.appendList( 3 );
-    mismatchPayload << epochId;
+    mismatchPayload.appendList( 2 );
     mismatchPayload << epochId2;
-    mismatchPayload << encryptedBITEDataBytes1Key; // 1 key but 2 epochIds
+    mismatchPayload << encryptedBITEDataBytes1Key;
 
     auto mismatchRlpBytes = mismatchPayload.out();
     dev::bytes mismatchBITETxnData = dev::bytes( mismatchRlpBytes.begin(), mismatchRlpBytes.end() );
@@ -5397,7 +5393,7 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendRawTransaction( mismatchBITETxnRlp ),
                          jsonrpc::JsonRpcException );
 
-    // 2 epochIds submitted, but one key in ciphertext is corrupt
+    // 2 encrypted AES keys submitted, but one key is corrupt
     auto corruptEncryptedMessage = libBLS::ThresholdEncryption::encrypt( messageBytes, { libBLS::TEPublicKey( blsPublicKey ), publicKey2 } );
 
     // Corrupt the first key by replacing it with a random one
@@ -5410,9 +5406,8 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     auto corruptEncryptedBITEDataBytes = corruptEncryptedMessage.toBytes();
 
     RLPStream corruptPayload;
-    corruptPayload.appendList( 3 );
+    corruptPayload.appendList( 2 );
     corruptPayload << epochId;
-    corruptPayload << epochId2;
     corruptPayload << corruptEncryptedBITEDataBytes;
 
     auto corruptRlpBytes = corruptPayload.out();
