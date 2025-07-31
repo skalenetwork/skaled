@@ -11,10 +11,8 @@ where:
 
 1. **`EPOCH_ID`** – The identifier of the epoch during which the transaction is submitted. This value increments with each committee rotation.
 
-2. 
-
-   - **`ENCRYPTED_AES_KEY1`**, **`ENCRYPTED_AES_KEY2`** – The AES key encrypted using a threshold encryption scheme (e.g., BLS-based). Each encrypted AES key has a fixed size of 224 bytes, composed of three segments: 128 bytes, 32 bytes, and 64 bytes.  
-     If two `EPOCH_ID` values are present in the transaction RLP data, then both `ENCRYPTED_AES_KEY1` and `ENCRYPTED_AES_KEY2` must be included—each representing the same AES key encrypted using different BLS public keys corresponding to the two epochs.
+2.   **`ENCRYPTED_AES_KEY1`**, **`ENCRYPTED_AES_KEY2`** – The AES key encrypted using a threshold encryption scheme (e.g., BLS-based). Each encrypted AES key has a fixed size of 224 bytes, composed of three segments: 128 bytes, 32 bytes, and 64 bytes.  
+     If two keys are present then the are keys using committees before and after rotation. If one key is present, it is just the key before the rotation.
 
    3. **`ENCRYPTED_ORIGINAL_DATA`** – The user’s original data, encrypted with the AES key. This includes fields such as the plaintext `TO` address. Its size varies depending on the size of the original payload.
 
