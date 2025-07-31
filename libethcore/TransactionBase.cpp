@@ -683,8 +683,8 @@ void TransactionBase::checkAndValidateBITETransaction( uint64_t _currentEpochId 
         // read epochId
         if ( !rlpEncodedBITETxn[0].isInt() )
             BOOST_THROW_EXCEPTION(
-                InvalidBITETransaction() << errinfo_comment( std::string(
-                    "BITE transaction's data is invalid: epochId must be an int" ) ) );
+                InvalidBITETransaction() << errinfo_comment(
+                    std::string( "BITE transaction's data is invalid: epochId must be an int" ) ) );
         uint64_t epochIdCandidate = rlpEncodedBITETxn[0].toInt< uint64_t >();
         // if a txn was sent before rotation it may have previous epochId: currentEpochId - 1
         if ( _currentEpochId != epochIdCandidate && _currentEpochId != epochIdCandidate + 1 )
@@ -698,7 +698,7 @@ void TransactionBase::checkAndValidateBITETransaction( uint64_t _currentEpochId 
             libBLS::Ciphertext ciphertext = libBLS::Ciphertext::fromBytes( encryptedBITEData );
             // if currentEpochId = epochIdCandidate + 1, then ciphertext must have
             // 2 encrypted AES keys assosiated with it
-            if ( epochIdCandidate != _currentEpochId && ciphertext.getKeys().size() != 2  )
+            if ( epochIdCandidate != _currentEpochId && ciphertext.getKeys().size() != 2 )
                 BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment(
                                            std::string( "BITE transaction's data is invalid: no "
                                                         "payload found with matching epochId " ) +
