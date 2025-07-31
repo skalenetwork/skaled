@@ -22,8 +22,8 @@ Each encrypted transaction's data is RLP-encoded as `RLP([EPOCH_ID, ENCRYPTED_BI
 
 1. **`EPOCH_ID`** – The identifier of the epoch during which the transaction is submitted. This value increments with each committee rotation.
 
-2. **`ENCRYPTED_ORIGINAL_DATA`** – The original data encrypted by a client. Can be split as follows:
-    - **`Encrypted AES Key`** - The AES key encrypted using the `Threshold Encryption` algorithm. This is of fixed size, always 224 bytes, and consists of three parts of sizes 128 bytes, 32 bytes, and 64 bytes, respectively. If two keys are present, then they are keys using committees before and after rotation. If one key is present, it is just the key before the rotation. In case of 2 keys, `skaled` will proceed with the first key if `EPOCH_ID` matches the current epoch ID, and will proceed with the second key and epoch ID `EPOCH_ID + 1` otherwise.
+2. **`ENCRYPTED_BITE_DATA`** – The original data encrypted by a client. Can be split as follows:
+    - **`Encrypted AES Key(s)`** - The AES key(s) encrypted using the `Threshold Encryption` algorithm. Each key is of fixed size, always 224 bytes, and consists of three parts of sizes 128 bytes, 32 bytes, and 64 bytes, respectively. If two keys are present, then they are keys using committees before and after rotation. If one key is present, it is just the key before the rotation. In case of 2 keys, `skaled` will proceed with the first key if `EPOCH_ID` matches the current epoch ID, and will proceed with the second key and epoch ID `EPOCH_ID + 1` otherwise.
     - **`Encrypted Original Data`** - The original data encrypted with an AES key. Includes the plaintext `TO` address. Its size depends on the original data size.
 
 # Storing in the Database
