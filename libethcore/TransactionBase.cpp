@@ -657,55 +657,55 @@ void TransactionBase::checkAndValidateBITETransaction( uint64_t _currentEpochId 
                                        "BITE transaction's data must be RLP encoded" ) ) );
         }
 
+        // RLP structure: [epochId1, encryptedBITEData]
+        // encryptedBITEData may optionally have 1 or 2 encrypted AES keys assosiated with it
+
         if ( !rlpEncodedBITETxn.isList() )
             BOOST_THROW_EXCEPTION(
                 InvalidBITETransaction() << errinfo_comment(
                     std::string( "BITE transaction's data is invalid: RLP must be a list" ) ) );
 
-        if ( rlpEncodedBITETxn.itemCount() == 0 || !rlpEncodedBITETxn.toList()[0].isList() )
-            BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment( std::string(
-                                       "BITE transaction's data is invalid: wrong RLP format" ) ) );
+        if ( rlpEncodedBITETxn.itemCount() != 2 )
+            BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment(
+                                       std::string( "BITE transaction's data is invalid: RLP list "
+                                                    "should have exactly 2 elements, got: " ) +
+                                       std::to_string( rlpEncodedBITETxn.itemCount() ) ) );
 
-        RLPs biteTxnRlpList = rlpEncodedBITETxn.toList()[0].toList();
-        if ( biteTxnRlpList.size() != 2 )
-            BOOST_THROW_EXCEPTION(
-                BITETransactionTooShort()
-                << errinfo_comment( std::string( "BITE transaction's data is too short: expected 2 "
-                                                 "elements to be in BITE payload, got " ) +
-                                    std::to_string( biteTxnRlpList.size() ) ) );
-
-        // extract and check epochId
-        if ( !biteTxnRlpList[0].isInt() )
-            BOOST_THROW_EXCEPTION(
-                InvalidBITETransaction() << errinfo_comment(
-                    std::string( "BITE transaction's data is invalid: epochId must be an int" ) ) );
-        uint64_t epochIdFromTxn = biteTxnRlpList[0].toInt< uint64_t >();
-        if ( epochIdFromTxn != _currentEpochId )
-            BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment( std::string(
-                                       "BITE transaction's data is invalid: wrong epochId" ) ) );
-
-        // Extract encrypted BITE data:
-        // encrypted AES key + encrypted data
-        if ( !biteTxnRlpList[1].isData() )
-            BOOST_THROW_EXCEPTION(
-                InvalidBITETransaction() << errinfo_comment( std::string(
-                    "BITE transaction's data is invalid: bite data must be a byte array" ) ) );
-        dev::bytes encryptedBITEData = biteTxnRlpList[1].toBytes();
+        // read encrypted data
+        dev::bytes encryptedBITEData = rlpEncodedBITETxn[1].toBytes();
         if ( encryptedBITEData.size() < BITE_CIPHERTEXT_MIN_LEN )
             BOOST_THROW_EXCEPTION(
                 BITETransactionTooShort() << errinfo_comment(
-                    std::string( "BITE transaction's data is invalid: wrong encrypted "
-                                 "data size: expected at least " ) +
+                    std::string( "BITE transaction's data size must be at least " ) +
                     std::to_string( BITE_CIPHERTEXT_MIN_LEN ) + std::string( ", got " ) +
                     std::to_string( encryptedBITEData.size() ) ) );
+
+        // read epochId
+        if ( !rlpEncodedBITETxn[0].isInt() )
+            BOOST_THROW_EXCEPTION(
+                InvalidBITETransaction() << errinfo_comment(
+                    std::string( "BITE transaction's data is invalid: epochId must be an int" ) ) );
+        uint64_t epochIdCandidate = rlpEncodedBITETxn[0].toInt< uint64_t >();
+        // if a txn was sent before rotation it may have previous epochId: currentEpochId - 1
+        if ( _currentEpochId != epochIdCandidate && _currentEpochId != epochIdCandidate + 1 )
+            BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment(
+                                       std::string( "BITE transaction's data is invalid: no "
+                                                    "payload found with matching epochId " ) +
+                                       std::to_string( _currentEpochId ) ) );
 
         try {
             // check that ciphertext is valid
             libBLS::Ciphertext ciphertext = libBLS::Ciphertext::fromBytes( encryptedBITEData );
-
-            // validate encrypted AES key
-            libBLS::CipheredKey cipheredkey = ciphertext.key;
-            libBLS::ThresholdEncryption::validateEncryption( cipheredkey );
+            // if currentEpochId = epochIdCandidate + 1, then ciphertext must have
+            // 2 encrypted AES keys assosiated with it
+            if ( epochIdCandidate != _currentEpochId && ciphertext.getKeys().size() != 2 )
+                BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment(
+                                           std::string( "BITE transaction's data is invalid: no "
+                                                        "payload found with matching epochId " ) +
+                                           std::to_string( _currentEpochId ) ) );
+            // validate encrypted AES keys
+            for ( const auto& cipheredkey : ciphertext.getKeys() )
+                libBLS::ThresholdEncryption::validateEncryption( cipheredkey );
         } catch ( libBLS::ThresholdUtils::IncorrectInput& ex ) {
             BOOST_THROW_EXCEPTION(
                 InvalidBITETransaction() << errinfo_comment(

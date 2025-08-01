@@ -605,6 +605,27 @@ Address Client::getWinningNodeAddressByIndex( uint64_t _winningNodeIndex ) {
         return Block::DEFAULT_BLOCK_OWNER_ADDRESS;
     }
 }
+
+bool Client::isCommitteeRotationSoon() const {
+    auto currentGroupIndex = historicGroupIndex.load();
+    if ( currentGroupIndex + 1 >= chainParams().getNodeGroups().size() )
+        // there is no next group thus no rotation
+        return false;
+
+    if ( getCommitteeStartTs( currentGroupIndex + 1 ) > bc().info().timestamp() &&
+         getCommitteeStartTs( currentGroupIndex + 1 ) - bc().info().timestamp() <
+             MIN_COMMITTEE_ROTATION_INTERVAL_SEC )
+        return true;
+    return false;
+}
+
+std::pair< std::array< std::string, 4 >, uint64_t > Client::getNextCommitteeBITEInfo() const {
+    auto currentGroupIndex = historicGroupIndex.load();
+    if ( currentGroupIndex + 1 >= chainParams().getNodeGroups().size() )
+        throw std::out_of_range( "Couldn't get next committee info" );
+    return { chainParams().getBlsPublicKeyForHistoricGroup( currentGroupIndex + 1 ),
+        currentGroupIndex + 1 };
+}
 #endif
 
 size_t Client::syncTransactions(

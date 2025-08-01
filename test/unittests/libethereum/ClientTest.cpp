@@ -146,6 +146,8 @@ public:
         m_ethereum.reset( new eth::ClientTest( chainParams, ( int ) chainParams->getNetworkId(),
             shared_ptr< GasPricer >(), NULL, monitor, m_tmpDir.path(), WithExisting::Kill ) );
 
+        m_ethereum->setAuthor( coinbase.address() );
+
         //        m_ethereum.reset(
         //            new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr<
         //            GasPricer >(),
@@ -160,8 +162,6 @@ public:
         m_ethereum->startWorking();
 
         block_promise.get_future().wait();
-
-        m_ethereum->setAuthor( coinbase.address() );
 
         accountHolder.reset( new FixedAccountHolder( [&]() { return m_ethereum.get(); }, {} ) );
         accountHolder->setAccounts( { coinbase } );
@@ -553,6 +553,9 @@ BOOST_AUTO_TEST_CASE( transactionWithData ) {
 
     bytes data = jsToBytes( "0x11223344556600770000" );
 
+    while ( testClient->number() < 1 )
+        usleep( 100 );
+
     u256 estimate =
         testClient->estimateGas( addr, 0, addr, data, 10000000, 1000000, GasEstimationCallback() )
             .first;
@@ -590,6 +593,9 @@ BOOST_AUTO_TEST_CASE( constantConsumption ) {
     // data to call method spendGas(50000)
     bytes data =
         jsToBytes( "0x815b8ab4000000000000000000000000000000000000000000000000000000000000c350" );
+
+    while ( testClient->number() < 1 )
+        usleep( 100 );
 
     u256 estimate = testClient
                         ->estimateGas( from, 0, contractAddress, data, 10000000, 1000000,
@@ -629,6 +635,9 @@ BOOST_AUTO_TEST_CASE( linearConsumption ) {
 
     // data to call method spendHalfOfGas()
     bytes data = jsToBytes( "0x8273f754" );
+
+    while ( testClient->number() < 1 )
+        usleep( 100 );
 
     u256 estimate = testClient
                         ->estimateGas( from, 0, contractAddress, data, 10000000, 1000000,
@@ -670,6 +679,10 @@ BOOST_AUTO_TEST_CASE( exceedsGasLimit ) {
         jsToBytes( "0x815b8ab4000000000000000000000000000000000000000000000000000000000000c350" );
 
     int64_t maxGas = 50000;
+
+    while ( testClient->number() < 1 )
+        usleep( 100 );
+
     u256 estimate = testClient
                         ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
                             GasEstimationCallback() )
@@ -706,6 +719,10 @@ BOOST_AUTO_TEST_CASE( runsInterference ) {
         jsToBytes( "0x6057361d0000000000000000000000000000000000000000000000000000000000000016" );
 
     int64_t maxGas = 50000;
+
+    while ( testClient->number() < 1 )
+        usleep( 100 );
+
     u256 estimate = testClient
                         ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
                             GasEstimationCallback() )
@@ -746,6 +763,9 @@ BOOST_AUTO_TEST_CASE( consumptionWithRefunds ) {
 
     u256 balance = testClient->balanceAt( from );
     BOOST_CHECK( balance > 0 );
+
+    while ( testClient->number() < 1 )
+        usleep( 100 );
 
     u256 estimate = testClient
                         ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
@@ -805,6 +825,10 @@ BOOST_AUTO_TEST_CASE( consumptionWithRefunds2 ) {
         jsToBytes( "0xd82cf7900000000000000000000000000000000000000000000000000000000000000003" );
 
     int64_t maxGas = 100000;
+
+    while ( testClient->number() < 1 )
+        usleep( 100 );
+
     u256 estimate = testClient
                         ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
                             GasEstimationCallback() )
@@ -851,6 +875,10 @@ BOOST_AUTO_TEST_CASE( nonLinearConsumption ) {
         jsToBytes( "0xd37165fa00000000000000000000000000000000000000000000000000000000000186a0" );
 
     int64_t maxGas = 100000;
+
+    while ( testClient->number() < 1 )
+        usleep( 100 );
+
     u256 estimate = testClient
                         ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
                             GasEstimationCallback() )
@@ -919,6 +947,10 @@ BOOST_AUTO_TEST_CASE( consumptionWithReverts ) {
     // data to call method testRequire(50000)
     bytes data =
         jsToBytes( "0xb8bd717f000000000000000000000000000000000000000000000000000000000000c350" );
+
+    while ( testClient->number() < 1 )
+        usleep( 100 );
+
     u256 estimate = testClient
                         ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
                             GasEstimationCallback() )
@@ -1181,15 +1213,23 @@ BOOST_AUTO_TEST_CASE( initAndUpdateHistoricConfigFields ) {
         "7375214420811287025501422512322868338311819657776589198925786170409964211914"
     };
 
+    std::array< std::string, 4 > imaBLSPublicKeyAfterBlock = {
+        "10860211539819517237363395256510340030868592687836950245163587507107792195621",
+        "2419969454136313127863904023626922181546178935031521540751337209075607503568",
+        "3399776985251727272800732947224655319335094876742988846345707000254666193993",
+        "16982202412630419037827505223148517434545454619191931299977913428346639096984"
+    };
+
     BOOST_REQUIRE( testClient->getCurrentBLSPublicKey() == imaBLSPublicKeyOnStartUp );
-    BOOST_REQUIRE( testClient->getHistoricNodePublicKey( 0 ) ==
-                   "0x3a581d62b12232dade30c3710215a271984841657449d1f474295a13737b778266f57e298f123"
-                   "ae80cbab7cc35ead1b62a387556f94b326d5c65d4a7aa2abcba" );
-    BOOST_REQUIRE( testClient->getHistoricNodeId( 0 ) == "26" );
-    BOOST_REQUIRE( testClient->getHistoricNodeIndex( 0 ) == "3" );
+    BOOST_REQUIRE_EQUAL( testClient->getHistoricNodePublicKey( 0 ) , "0x3a581d62b12232dade30c3710215a271984841657449d1f474295a13737b778266f57e298f123ae80cbab7cc35ead1b62a387556f94b326d5c65d4a7aa2abcba" );
+    BOOST_REQUIRE_EQUAL( testClient->getHistoricNodeId( 0 ), "26" );
+    BOOST_REQUIRE_EQUAL( testClient->getHistoricNodeIndex( 0 ), "3" );
 
 #ifdef MIRAGE
-    BOOST_REQUIRE( testClient->getCurrentEpochId() == 0 );
+    BOOST_REQUIRE_EQUAL( testClient->getCurrentEpochId(), 0 );
+    auto nextCommitteeBITEInfo = testClient->getNextCommitteeBITEInfo();
+    BOOST_REQUIRE( nextCommitteeBITEInfo.first == imaBLSPublicKeyAfterBlock );
+    BOOST_REQUIRE_EQUAL( nextCommitteeBITEInfo.second, 1 );
 #endif
 
     testClient->importTransactionsAsBlock( Transactions(),
@@ -1204,22 +1244,13 @@ BOOST_AUTO_TEST_CASE( initAndUpdateHistoricConfigFields ) {
 
     sleep( 3 );
 
-    std::array< std::string, 4 > imaBLSPublicKeyAfterBlock = {
-        "10860211539819517237363395256510340030868592687836950245163587507107792195621",
-        "2419969454136313127863904023626922181546178935031521540751337209075607503568",
-        "3399776985251727272800732947224655319335094876742988846345707000254666193993",
-        "16982202412630419037827505223148517434545454619191931299977913428346639096984"
-    };
-
     BOOST_REQUIRE( testClient->getCurrentBLSPublicKey() == imaBLSPublicKeyAfterBlock );
-    BOOST_REQUIRE( testClient->getHistoricNodePublicKey( 0 ) ==
-                   "0x6180cde2cbbcc6b6a17efec4503a7d4316f8612f411ee171587089f770335f484003ad236c534"
-                   "b9afa82befc1f69533723abdb6ec2601e582b72dcfd7919338b" );
-    BOOST_REQUIRE( testClient->getHistoricNodeId( 0 ) == "30" );
-    BOOST_REQUIRE( testClient->getHistoricNodeIndex( 0 ) == "0" );
+    BOOST_REQUIRE_EQUAL( testClient->getHistoricNodePublicKey( 0 ), "0x6180cde2cbbcc6b6a17efec4503a7d4316f8612f411ee171587089f770335f484003ad236c534b9afa82befc1f69533723abdb6ec2601e582b72dcfd7919338b" );
+    BOOST_REQUIRE_EQUAL( testClient->getHistoricNodeId( 0 ), "30" );
+    BOOST_REQUIRE_EQUAL( testClient->getHistoricNodeIndex( 0 ), "0" );
 
 #ifdef MIRAGE
-    BOOST_REQUIRE( testClient->getCurrentEpochId() == 1 );
+    BOOST_REQUIRE_EQUAL( testClient->getCurrentEpochId(), 1 );
 #endif
 }
 
