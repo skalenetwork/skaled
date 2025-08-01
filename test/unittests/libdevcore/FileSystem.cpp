@@ -17,7 +17,7 @@
     along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 /** @file FileSystem.cpp
- * @date 2024
+ * @date 2025
  * FileSystem test functions.
  */
 
@@ -63,8 +63,7 @@ BOOST_AUTO_TEST_CASE(
         std::ofstream ofs2( notADir.string() );
         ofs2 << "not a directory";
         ofs2.close();
-        BOOST_CHECK( !isDataDirEmpty() );
-
+        BOOST_CHECK_THROW( isDataDirEmpty(), std::runtime_error );
     } catch ( ... ) {
         if ( fs::exists( tempDir ) ) {
             fs::remove_all( tempDir );

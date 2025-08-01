@@ -78,11 +78,12 @@ bool dev::isDataDirEmpty( string _prefix ) {
         if ( !fs::exists( dataDir ) ) {
             return true;
         }
-
-        if ( !fs::is_directory( dataDir ) ) {
-            return false;
+        if ( fs::is_directory( dataDir ) ) {
+            return fs::is_empty( dataDir );
+        } else {
+            throw runtime_error( "Provided path exists and is not a directory" );
         }
-        return fs::is_empty( dataDir );
+
     } catch ( const fs::filesystem_error& ) {
         return false;
     }
