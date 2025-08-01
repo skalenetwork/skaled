@@ -74,18 +74,15 @@ fs::path dev::getDataDir( string _prefix ) {
 bool dev::isDataDirEmpty( string _prefix ) {
     fs::path dataDir = getDataDir( _prefix );
 
-    if ( !fs::exists( dataDir ) ) {
-        return true;
-    }
-
-    if ( !fs::is_directory( dataDir ) ) {
-        return false;
-    }
-
     try {
-        fs::directory_iterator begin( dataDir );
-        fs::directory_iterator end;
-        return begin == end;
+        if ( !fs::exists( dataDir ) ) {
+            return true;
+        }
+
+        if ( !fs::is_directory( dataDir ) ) {
+            return false;
+        }
+        return fs::is_empty( dataDir );
     } catch ( const fs::filesystem_error& ) {
         return false;
     }

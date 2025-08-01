@@ -34,7 +34,7 @@ namespace fs = boost::filesystem;
 BOOST_FIXTURE_TEST_SUITE( FileSystemTests, TestOutputHelperFixture )
 
 BOOST_AUTO_TEST_CASE(
-    isDataDirEmpty_tests, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+    isDataDirEmpty_test, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     fs::path tempDir = fs::temp_directory_path() / fs::unique_path();
     fs::path originalDataDir;
 

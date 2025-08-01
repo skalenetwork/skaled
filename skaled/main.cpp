@@ -684,8 +684,8 @@ void doSnapshotDownload( const std::shared_ptr< ChainParams >& chainParams,
     // from one of the nodes and temporarily changing current group
 
     CurrentGroup latestGroup = chainParams->getNewestGroup();
-    uint64_t fetchedCurrentBlockTimetamp = fetchLatestBlockTimestampFromNodes( latestGroup.nodes );
-    chainParams->updateCurrentGroupIfNeeded( fetchedCurrentBlockTimetamp );
+    uint64_t fetchedCurrentBlockTimestamp = fetchLatestBlockTimestampFromNodes( latestGroup.nodes );
+    chainParams->updateCurrentGroupIfNeeded( fetchedCurrentBlockTimestamp );
 #endif
 
     statusAndControl->setExitState( StatusAndControl::StartAgain, true );
@@ -721,8 +721,8 @@ void doSnapshotDownload( const std::shared_ptr< ChainParams >& chainParams,
         // Fetch timestamp and update group again
         // since the group may change during previous requests
 
-        fetchedCurrentBlockTimetamp = fetchLatestBlockTimestampFromNodes( latestGroup.nodes );
-        chainParams->updateCurrentGroupIfNeeded( fetchedCurrentBlockTimetamp );
+        fetchedCurrentBlockTimestamp = fetchLatestBlockTimestampFromNodes( latestGroup.nodes );
+        chainParams->updateCurrentGroupIfNeeded( fetchedCurrentBlockTimestamp );
 #endif
         downloadAndProccessSnapshot(
             snapshotManager, *chainParams, urlToDownloadSnapshotFrom, false );
