@@ -451,7 +451,7 @@ dev::h256 SnapshotManager::getSnapshotHash( unsigned block_number ) const {
         ( this->snapshotsDir / std::to_string( block_number ) / this->snapshotHashFileName )
             .string();
 
-    if ( !isSnapshotHashPresent( block_number ) ) {
+    if ( !checkSnapshotFolderAndSnapshotHash( block_number ) ) {
         BOOST_THROW_EXCEPTION( SnapshotManager::CannotRead( hashFile ) );
     }
 
@@ -467,7 +467,7 @@ dev::h256 SnapshotManager::getSnapshotHash( unsigned block_number ) const {
     return hash;
 }
 
-bool SnapshotManager::isSnapshotHashPresent( unsigned _blockNumber ) const {
+bool SnapshotManager::checkSnapshotFolderAndSnapshotHash( unsigned _blockNumber ) const {
     fs::path snapshot_dir = snapshotsDir / to_string( _blockNumber );
 
     try {
@@ -775,7 +775,7 @@ void SnapshotManager::computeSnapshotHash( unsigned _blockNumber
     bool isChecking
 #endif
 ) {
-    if ( this->isSnapshotHashPresent( _blockNumber ) ) {
+    if ( this->checkSnapshotFolderAndSnapshotHash( _blockNumber ) ) {
         return;
     }
 

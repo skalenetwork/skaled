@@ -472,7 +472,7 @@ bool checkLocalSnapshot( std::shared_ptr< SnapshotManager >& snapshotManager, un
     static Logger loggerWarning{ createLogger( VerbosityWarning, "checkLocalSnapshot" ) };
 
     try {
-        if ( snapshotManager->isSnapshotHashPresent( blockNumber ) ) {
+        if ( snapshotManager->checkSnapshotFolderAndSnapshotHash( blockNumber ) ) {
             LOG( loggerInfo ) << "Snapshot for block " << blockNumber << " already present locally";
 
             dev::h256 calculated_hash = snapshotManager->getSnapshotHash( blockNumber );
@@ -701,14 +701,14 @@ void doSnapshotDownload( const std::shared_ptr< ChainParams >& chainParams,
             downloadAndProccessSnapshot(
                 snapshotManager, *chainParams, urlToDownloadSnapshotFrom, true );
 
-        } catch ( std::exception& ) {
+        } catch ( std::exception& e ) {
             std::throw_with_nested( std::runtime_error(
-                std::string( " Fatal error in downloadAndProccessSnapshot! Will exit " ) ) );
+                std::string( "Fatal error in downloadAndProccessSnapshot: " ) + e.what() ) );
         }
     }
     // if we dont have 0 snapshot yet
     try {
-        snapshotManager->isSnapshotHashPresent( 0 );
+        snapshotManager->checkSnapshotFolderAndSnapshotHash( 0 );
     } catch ( SnapshotManager::SnapshotAbsent& ex ) {
         // sleep before send skale_getSnapshot again - will receive error
         LOG( loggerInfo ) << std::string( "Will sleep for " )
