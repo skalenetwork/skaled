@@ -96,6 +96,8 @@ struct ChainParams : public ChainOperationParams {
 
     bool updateCurrentGroupIfNeeded( uint64_t _latestBlockTimestamp );
 
+    CurrentGroup getNewestGroup() const;
+
 #else
 
     u256 getExternalGasDifficulty() const { return externalGasDifficulty; }
@@ -152,11 +154,6 @@ struct ChainParams : public ChainOperationParams {
     bool isArchiveModeEnabled() const { return nodeInfo.archiveMode; }
 
     bool isSyncFromCatchupEnabled() const { return nodeInfo.syncFromCatchup; }
-
-#ifdef MIRAGE
-    Address getSChainNodeAddressByIndex( uint64_t sChainIndex ) const;
-    CurrentGroup getNewestGroup() const;
-#endif
 
     size_t getNodesCount() const;
 
