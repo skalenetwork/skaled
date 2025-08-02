@@ -171,7 +171,7 @@ public:
     Json::Value debug_getPatchTimestamps() noexcept( false );
 
 #ifdef BITE
-    Json::Value bite_getCommonPublicKey() noexcept( false );
+    Json::Value bite_getCommitteesInfo() noexcept( false );
     Json::Value bite_getDecryptedTransactionData( const std::string& param1 ) noexcept( false );
 #endif
 

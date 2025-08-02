@@ -687,16 +687,12 @@ dev::bytes formEncryptedMessageMockup( const dev::bytes& message, const dev::Add
 
     u256 epochId = 0;
 
-    RLPStream bitePayloadRlpList;
-
     RLPStream bitePayloadRlp( 2 );
 
     bitePayloadRlp << epochId;
     bitePayloadRlp << encryptedMessage;
 
-    bitePayloadRlpList.appendList( bitePayloadRlp.out() );
-
-    auto rlpBytes = bitePayloadRlpList.out();
+    auto rlpBytes = bitePayloadRlp.out();
     return dev::bytes( rlpBytes.begin(), rlpBytes.end() );
 }
 
@@ -720,16 +716,12 @@ std::string formTransactionRlp( const JsonRpcFixture& fixture, const std::string
 }
 
 std::string formBITEPayloadRlp( u256 _epochId, const dev::bytes& _encryptedBITEData ) {
-    RLPStream bitePayloadRlpList;
-
     RLPStream bitePayloadRlp( 2 );
 
     bitePayloadRlp << _epochId;
     bitePayloadRlp << _encryptedBITEData;
 
-    bitePayloadRlpList.appendList( bitePayloadRlp.out() );
-
-    auto rlpBytes = bitePayloadRlpList.out();
+    auto rlpBytes = bitePayloadRlp.out();
     return dev::toHexPrefixed( rlpBytes );
 }
 
@@ -4943,12 +4935,28 @@ static std::string const c_BITECommitteeRotationConfigString =
                             "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea105a3d21845e5660bc3d4e7c82e7af1daa3baad393b1521467"
                         ]
                     },
-                    "finish_ts": null,
+                    "finish_ts": 1,
                     "bls_public_key": {
                         "blsPublicKey0": "15959969554621958245201075983340071881770733084910870228938077786643587385029",
                         "blsPublicKey1": "7970122607051572307517094692346020360016825923464107614135327251488152616550",
                         "blsPublicKey2": "3371162264373897025322009434717052197952692496405149486989861571246537813591",
                         "blsPublicKey3": "13678625751515504401110635369790787716744686498431213713911601759809559919693"
+                    }
+                },
+                "1": {
+                    "nodes": {
+                        "8": [
+                            1,
+                            8,
+                            "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea105a3d21845e5660bc3d4e7c82e7af1daa3baad393b1521467"
+                        ]
+                    },
+                    "finish_ts": null,
+                    "bls_public_key": {
+                        "blsPublicKey0": "3842742177969966091367527274107524613106077736353521259727282251005583743182",
+                        "blsPublicKey1": "3497912824016228906558906422247670474553186446469877598411863912329082553081",
+                        "blsPublicKey2": "8173996886448941320370434854289578123609627835954133538412363037981850950343",
+                        "blsPublicKey3": "20979370720689475348670582375026949105497642726992863932315517524004804784155"
                     }
                 }
             },
@@ -5115,10 +5123,11 @@ revert();
 BOOST_AUTO_TEST_CASE( getCommonPublicKey ) {
     JsonRpcFixture fixture( c_BITEConfigString, false, false, true );
 
-    Json::Value biteInfo = fixture.rpcClient->bite_getCommonPublicKey();
+    Json::Value biteInfo = fixture.rpcClient->bite_getCommitteesInfo();
 
-    std::string blsPublicKey = biteInfo["commonBLSPublicKey"].asString();
-    uint64_t epochId = biteInfo["epochId"].asUInt64();
+    BOOST_REQUIRE( biteInfo.isArray() );
+    std::string blsPublicKey = biteInfo[0]["commonBLSPublicKey"].asString();
+    uint64_t epochId = biteInfo[0]["epochId"].asUInt64();
 
     auto commonPublicKeyFromConfig = fixture.client->chainParams().getCommonBlsPublicKey();
     libff::alt_bn128_G2 commonPublicKey;
@@ -5277,9 +5286,9 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
         h256::random().hex() + std::string( "5EdF1e852fdD1B0Bc47C0307EF755C76f4B9c251" );
     auto messageBytes = libBLS::ThresholdUtils::hexCStringToBytes( message.c_str() );
 
-    auto biteInfo = fixture.rpcClient->bite_getCommonPublicKey();
-    auto blsPublicKey = biteInfo["commonBLSPublicKey"].asString();
-    u256 epochId = biteInfo["epochId"].asUInt64();
+    auto biteInfo = fixture.rpcClient->bite_getCommitteesInfo();
+    auto blsPublicKey = biteInfo[0]["commonBLSPublicKey"].asString();
+    u256 epochId = biteInfo[0]["epochId"].asUInt64();
 
     auto encryptedMessage =
         libBLS::ThresholdEncryption::encrypt( messageBytes, libBLS::TEPublicKey( blsPublicKey ) );
@@ -5329,28 +5338,26 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     RLPStream tooShortRlp;
 
     /// Only epoch in data field -> data is too short - should throw an exception
-    RLPStream epochRlp;
-    epochRlp.appendList( 1 );
-    epochRlp << epochId;
-    dev::bytes invalidTooShortBITETxnData = tooShortRlp.appendList( epochRlp.out() ).out();
+    tooShortRlp.appendList( 1 );
+    tooShortRlp << epochId;
+    dev::bytes invalidTooShortBITETxnData = tooShortRlp.out();
     invalidBITETransactionRlp =
         formTransactionRlp( fixture, senderAddress,
                             dev::toHexPrefixed( invalidTooShortBITETxnData ), nonce, biteAddress );
     BOOST_REQUIRE_THROW(
         fixture.client->importTransaction( Transaction(
             dev::jsToBytes( invalidBITETransactionRlp ), CheckTransaction::None, false ) ),
-        dev::eth::BITETransactionTooShort );
+        dev::eth::InvalidBITETransaction );
     BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendRawTransaction( invalidBITETransactionRlp ),
         jsonrpc::JsonRpcException );
     tooShortRlp.clear();
 
     /// Only epoch + key -> no data - should throw an exception
     encryptedMessage.data = std::make_shared< dev::bytes >();
-    RLPStream epochAndKeyRlp;
-    epochAndKeyRlp.appendList( 2 );
-    epochAndKeyRlp << epochId;
-    epochAndKeyRlp << encryptedMessage.toBytes();
-    invalidTooShortBITETxnData = tooShortRlp.appendList( epochAndKeyRlp.out() ).out();
+    tooShortRlp.appendList( 2 );
+    tooShortRlp << epochId;
+    tooShortRlp << encryptedMessage.toBytes();
+    invalidTooShortBITETxnData = tooShortRlp.out();
     invalidBITETransactionRlp =
         formTransactionRlp( fixture, senderAddress,
                             dev::toHexPrefixed( invalidTooShortBITETxnData ), nonce, biteAddress );
@@ -5363,19 +5370,18 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
 
     /// Spoiling key part of ciphertext
     auto randomEncryptedKeyObj = libBLS::CipheredKey( libff::alt_bn128_G2::random_element(),
-        encryptedMessage.key.V, libff::alt_bn128_G1::random_element() );
+        encryptedMessage.keys[0].V, libff::alt_bn128_G1::random_element() );
     auto randomEncryptedKeyByteArray = randomEncryptedKeyObj.toBytes();
     auto spoiledMessageBytes = encryptedBytes;
     // overwrite key part
     std::copy( randomEncryptedKeyByteArray.begin(), randomEncryptedKeyByteArray.end(),
         spoiledMessageBytes.begin() );
 
-    RLPStream spoiledBITETransactionDataRlp, spoiledBITEDataRlp;
+    RLPStream spoiledBITEDataRlp;
     spoiledBITEDataRlp.appendList( 2 );
     spoiledBITEDataRlp << epochId;
     spoiledBITEDataRlp << spoiledMessageBytes;
-    dev::bytes invalidBITETxnData =
-            spoiledBITETransactionDataRlp.appendList( spoiledBITEDataRlp.out() ).out();
+    dev::bytes invalidBITETxnData = spoiledBITEDataRlp.out();
 
     invalidBITETransactionRlp =
         formTransactionRlp( fixture, senderAddress,
@@ -5398,8 +5404,7 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     spoiledBITEDataRlp.appendList( 2 );
     spoiledBITEDataRlp << epochId;
     spoiledBITEDataRlp << spoiledMessageBytes;
-    invalidBITETxnData =
-            spoiledBITETransactionDataRlp.appendList( spoiledBITEDataRlp.out() ).out();
+    invalidBITETxnData = spoiledBITEDataRlp.out();
 
     invalidBITETransactionRlp =
         formTransactionRlp( fixture, senderAddress,
@@ -5410,6 +5415,91 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
         dev::eth::InvalidBITETransaction );
     BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendRawTransaction( invalidBITETransactionRlp ),
         jsonrpc::JsonRpcException );
+
+    // now send BITE txn with multiple epochIds / encryptedAESKeys
+    libBLS::TEPublicKey publicKey2( libff::alt_bn128_G2::random_element() );
+    u256 epochId2 = epochId + 5;
+
+    encryptedMessage = libBLS::ThresholdEncryption::encrypt( messageBytes, { libBLS::TEPublicKey( blsPublicKey ), publicKey2 } );
+    auto encryptedBITEDataBytes = encryptedMessage.toBytes();
+
+    // Create payload with 2 encrypted AES keys
+    RLPStream bitePayload;
+    bitePayload.appendList( 2 );
+    bitePayload << epochId;
+    bitePayload << encryptedBITEDataBytes;
+
+    auto rlpBytes = bitePayload.out();
+    dev::bytes twoPayloadBITETxnData = dev::bytes( rlpBytes.begin(), rlpBytes.end() );
+
+    validBITETransactionRlp =
+            formTransactionRlp( fixture, senderAddress,
+                                dev::toHexPrefixed( twoPayloadBITETxnData ), nonce, biteAddress );
+    BOOST_REQUIRE_NO_THROW( fixture.rpcClient->eth_sendRawTransaction( validBITETransactionRlp ) );
+
+    // 3 elements in payload is not allowed
+
+    RLPStream threeElementsPayload;
+    threeElementsPayload.appendList( 3 );
+    threeElementsPayload << epochId;
+    threeElementsPayload << epochId2;
+    threeElementsPayload << encryptedBITEDataBytes;
+
+    auto threeElementsRlpBytes = threeElementsPayload.out();
+    dev::bytes threeElementsBITETxnData = dev::bytes( threeElementsRlpBytes.begin(),
+                                                      threeElementsRlpBytes.end() );
+
+    std::string threeElementsBITETxnRlp =
+            formTransactionRlp( fixture, senderAddress,
+                                dev::toHexPrefixed( threeElementsBITETxnData ), nonce, biteAddress );
+    BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendRawTransaction( threeElementsBITETxnRlp ),
+                         jsonrpc::JsonRpcException );
+
+    // epochId doesn't match and only 1 encrypted AES keys
+    libBLS::TEPublicKey publicKey3( libff::alt_bn128_G2::random_element() );
+
+    auto encryptedMessage1Key = libBLS::ThresholdEncryption::encrypt( messageBytes, publicKey3 );
+    auto encryptedBITEDataBytes1Key = encryptedMessage1Key.toBytes();
+
+    RLPStream mismatchPayload;
+    mismatchPayload.appendList( 2 );
+    mismatchPayload << epochId2;
+    mismatchPayload << encryptedBITEDataBytes1Key;
+
+    auto mismatchRlpBytes = mismatchPayload.out();
+    dev::bytes mismatchBITETxnData = dev::bytes( mismatchRlpBytes.begin(), mismatchRlpBytes.end() );
+
+    std::string mismatchBITETxnRlp =
+            formTransactionRlp( fixture, senderAddress,
+                                dev::toHexPrefixed( mismatchBITETxnData ), nonce, biteAddress );
+    BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendRawTransaction( mismatchBITETxnRlp ),
+                         jsonrpc::JsonRpcException );
+
+    // 2 encrypted AES keys submitted, but one key is corrupt
+    auto corruptEncryptedMessage = libBLS::ThresholdEncryption::encrypt( messageBytes, { libBLS::TEPublicKey( blsPublicKey ), publicKey2 } );
+
+    // Corrupt the first key by replacing it with a random one
+    corruptEncryptedMessage.keys[0] = libBLS::CipheredKey(
+        libff::alt_bn128_G2::random_element(),
+        corruptEncryptedMessage.keys[0].V,
+        libff::alt_bn128_G1::random_element()
+    );
+
+    auto corruptEncryptedBITEDataBytes = corruptEncryptedMessage.toBytes();
+
+    RLPStream corruptPayload;
+    corruptPayload.appendList( 2 );
+    corruptPayload << epochId;
+    corruptPayload << corruptEncryptedBITEDataBytes;
+
+    auto corruptRlpBytes = corruptPayload.out();
+    dev::bytes corruptBITETxnData = dev::bytes( corruptRlpBytes.begin(), corruptRlpBytes.end() );
+
+    std::string corruptBITETxnRlp =
+            formTransactionRlp( fixture, senderAddress,
+                                dev::toHexPrefixed( corruptBITETxnData ), nonce, biteAddress );
+    BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendRawTransaction( corruptBITETxnRlp ),
+                         jsonrpc::JsonRpcException );
 }
 
 BOOST_AUTO_TEST_CASE( BITETransactionCouldNotBeDecrypted ) {
@@ -5432,9 +5522,9 @@ BOOST_AUTO_TEST_CASE( BITETransactionCouldNotBeDecrypted ) {
 
     auto messageBytes = biteDataRlp.out();
 
-    auto biteInfo = fixture.rpcClient->bite_getCommonPublicKey();
-    auto blsPublicKey = biteInfo["commonBLSPublicKey"].asString();
-    u256 epochId = biteInfo["epochId"].asUInt64();
+    auto biteInfo = fixture.rpcClient->bite_getCommitteesInfo();
+    auto blsPublicKey = biteInfo[0]["commonBLSPublicKey"].asString();
+    u256 epochId = biteInfo[0]["epochId"].asUInt64();
 
     auto ciphertext =
         libBLS::ThresholdEncryption::encrypt( messageBytes, libBLS::TEPublicKey( blsPublicKey ) );
@@ -5450,16 +5540,13 @@ BOOST_AUTO_TEST_CASE( BITETransactionCouldNotBeDecrypted ) {
     auto invalidEncryptedData = libBLS::ThresholdUtils::bytesToHexString( ciphertextBytes );
 
     size_t nonce = 0;
-    RLPStream bitePayloadRlpList;
 
     RLPStream bitePayloadRlp( 2 );
 
     bitePayloadRlp << epochId;
     bitePayloadRlp << ciphertextBytes;
 
-    bitePayloadRlpList.appendList( bitePayloadRlp.out() );
-
-    auto rlpBytes = bitePayloadRlpList.out();
+    auto rlpBytes = bitePayloadRlp.out();
     std::string biteAddress = "0x" + std::string( BITE_ADDRESS_AS_STRING );
     std::string txnRlp = formTransactionRlp(
         fixture, "0x7aa5e36aa15e93d10f4f26357c30f052dacdde5f", dev::toHexPrefixed( rlpBytes ),
@@ -5558,7 +5645,6 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     BOOST_REQUIRE( legacyDecryptedResponse["data"] == plaintext );
     BOOST_REQUIRE( legacyDecryptedResponse["to"] == "0x" + originalToAddress.hex() );
 
-
     // ---- Type1 tx -----
     /*
         transaction1['nonce'] = 0
@@ -5575,8 +5661,8 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     // since it differs each run, and the RLP-encoded tx was built outside this test case (via an
     // external script), we need to set this manually Note that the encryptedData includes the 'To'
     // address already
-    std::string encryptedDataPlusToAddressType1 = "0xf9015ff9015c80b90158a737e10f7344d3ea3f79acc118d5aee1419717dc169c99f052f596c1a5ee96a3000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e254d906056a7bbc512b6f32bf04ef37f0d8b17261eaca049040be4db8016cc10843301c5e1d7d248f6b49cc5595d204ce970008aa0f93bc66e872377cb414d02ae83c9e2ccd86e8d04d4723b296fb8571b5247d3f2ab1a7524f3646ec8210d91d27ca65346fc6370f2e586c69fdb3b550069bb747feaf3a";
-    std::string type1Tx = "0x01f901cc8197808504a817c800830138809442495445204d452049274d20454e43525950544480b90162f9015ff9015c80b90158a737e10f7344d3ea3f79acc118d5aee1419717dc169c99f052f596c1a5ee96a3000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e254d906056a7bbc512b6f32bf04ef37f0d8b17261eaca049040be4db8016cc10843301c5e1d7d248f6b49cc5595d204ce970008aa0f93bc66e872377cb414d02ae83c9e2ccd86e8d04d4723b296fb8571b5247d3f2ab1a7524f3646ec8210d91d27ca65346fc6370f2e586c69fdb3b550069bb747feaf3ac001a062fa3b9dba0afd0371123ebee6b48cf95e0119e3824a0e3903cab1a359e25ab6a075b96ceae927a47efde784ba7ea202c5b0910eb53ebe980a4945a2ed5350f855";
+    std::string encryptedDataPlusToAddressType1 = "0xf9015d80b901590192084354e0f043e108c255d159de7360e5a972bacdbaf3257420f66478d79b930000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005b87049973afc70916c3588f2e5bcdd65acdc73f544d201979b4ce8307815fda7281e032402b0e1d82ccc830046e5de0c7a2e8f9fd4ea6dcd9e85230a5f278373f5c873b1ed1bae995c74899927c92b8e2b41af3adfba46def6b857a4e74b7595e2bb9c84773ba4a1167fc73bd17ca65334d12eaf9401897";
+    std::string type1Tx = "0x01f901ca8197808504a817c800830138809442495445204d452049274d20454e43525950544480b90160f9015d80b901590192084354e0f043e108c255d159de7360e5a972bacdbaf3257420f66478d79b930000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005b87049973afc70916c3588f2e5bcdd65acdc73f544d201979b4ce8307815fda7281e032402b0e1d82ccc830046e5de0c7a2e8f9fd4ea6dcd9e85230a5f278373f5c873b1ed1bae995c74899927c92b8e2b41af3adfba46def6b857a4e74b7595e2bb9c84773ba4a1167fc73bd17ca65334d12eaf9401897c001a05b144ba5643c7ff31cfefdeaf4043e222c0c32f5c849c21598f89e82abdea07fa048762844d57807403777d655dec566230266759e173c187e4cecebfa4579ea66";
 
     std::string type1Hash = fixture.rpcClient->eth_sendRawTransaction( type1Tx );
 
@@ -5610,7 +5696,7 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
 
     std::string originalToAddressType2 = originalToAddressType1;
     std::string encryptedDataPlusToAddressType2 = encryptedDataPlusToAddressType1;
-    std::string type2Tx = "0x02f901d28197018504a817c7ff8504a817c800830138809442495445204d452049274d20454e43525950544401b90162f9015ff9015c80b90158a737e10f7344d3ea3f79acc118d5aee1419717dc169c99f052f596c1a5ee96a3000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e254d906056a7bbc512b6f32bf04ef37f0d8b17261eaca049040be4db8016cc10843301c5e1d7d248f6b49cc5595d204ce970008aa0f93bc66e872377cb414d02ae83c9e2ccd86e8d04d4723b296fb8571b5247d3f2ab1a7524f3646ec8210d91d27ca65346fc6370f2e586c69fdb3b550069bb747feaf3ac001a0aeb549a2ba544535a2b26700119af8dc4ae5c771890e7539acb264a413c5cf70a01aacd35468db86246a89cebb5a27ab3d1fafc580fdaa7bf48acc6183ff4d0526";
+    std::string type2Tx = "0x02f901d08197018504a817c7ff8504a817c800830138809442495445204d452049274d20454e43525950544480b90160f9015d80b901590192084354e0f043e108c255d159de7360e5a972bacdbaf3257420f66478d79b930000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005b87049973afc70916c3588f2e5bcdd65acdc73f544d201979b4ce8307815fda7281e032402b0e1d82ccc830046e5de0c7a2e8f9fd4ea6dcd9e85230a5f278373f5c873b1ed1bae995c74899927c92b8e2b41af3adfba46def6b857a4e74b7595e2bb9c84773ba4a1167fc73bd17ca65334d12eaf9401897c080a0c8512955420b554abcde1ea13d67bef9a38bf541938a8b915c514722821481f2a03f3ca19e2513078f058462c622bd07ea0b6f15b5bc28998bcc79c59c3c0400db";
     std::string type2Hash = fixture.rpcClient->eth_sendRawTransaction( type2Tx );
 
 
@@ -5761,6 +5847,21 @@ BOOST_AUTO_TEST_CASE( committeeRotation ) {
     ret["skaleConfig"]["sChain"]["nodes"][std::to_string( firstGroupTs )] = firstGroupObject;
     ret["skaleConfig"]["sChain"]["nodes"][std::to_string( secondGroupTs )] = secondGroupObject;
 
+    ret["skaleConfig"]["sChain"]["nodeGroups"]["0"]["finish_ts"] = secondGroupTs;
+
+    auto blsPublicKeyStringToStringArray = [](const std::string& publicKeyStr) {
+        libBLS::TEPublicKey publicKey( publicKeyStr );
+        auto rawPublicKey = publicKey.getPublicKeyRaw();
+        std::vector< std::string > publicKeyVector = libBLS::ThresholdUtils::G2ToString( rawPublicKey, 10 );
+        std::array< std::string, 4 > publicKeyArray;
+        
+        for (size_t i = 0; i < 4; ++i) {
+            publicKeyArray[i] = publicKeyVector[i];
+        }
+        
+        return publicKeyArray;
+    };
+
     Json::FastWriter fastWriter;
     std::string config = fastWriter.write( ret );
     JsonRpcFixture fixture( config, false, false, true );
@@ -5782,6 +5883,15 @@ BOOST_AUTO_TEST_CASE( committeeRotation ) {
     auto latestBlockTs = fixture.client->blockChain().info().timestamp();
     BOOST_REQUIRE( latestBlockTs < secondGroupTs && latestBlockTs > firstGroupTs );
     BOOST_REQUIRE( fixture.client->chainParams().getCommonBlsPublicKey() == firstGroupCommonPublicKey );
+    BOOST_REQUIRE( fixture.client->isCommitteeRotationSoon() );
+
+    auto biteInfo = fixture.rpcClient->bite_getCommitteesInfo();
+    BOOST_REQUIRE( biteInfo.isArray() );
+    BOOST_REQUIRE_EQUAL( biteInfo.size(), 2 );
+    BOOST_REQUIRE( blsPublicKeyStringToStringArray( biteInfo[0]["commonBLSPublicKey"].asString() ) == firstGroupCommonPublicKey );
+    BOOST_REQUIRE_EQUAL( biteInfo[0]["epochId"].asUInt64(), 0 );
+    BOOST_REQUIRE( blsPublicKeyStringToStringArray( biteInfo[1]["commonBLSPublicKey"].asString() ) == secondGroupCommonPublicKey );
+    BOOST_REQUIRE_EQUAL( biteInfo[1]["epochId"].asUInt64(), 1 );
 
     while ( latestBlockTs++ < secondGroupTs )
         sleep( 1 );
@@ -5794,6 +5904,12 @@ BOOST_AUTO_TEST_CASE( committeeRotation ) {
 
     BOOST_REQUIRE( latestBlockTs >= secondGroupTs );
     BOOST_REQUIRE( fixture.client->chainParams().getCommonBlsPublicKey() == secondGroupCommonPublicKey );
+
+    biteInfo = fixture.rpcClient->bite_getCommitteesInfo();
+    BOOST_REQUIRE_EQUAL( biteInfo.size(), 1 );
+    BOOST_REQUIRE( blsPublicKeyStringToStringArray( biteInfo[0]["commonBLSPublicKey"].asString() ) == secondGroupCommonPublicKey );
+    BOOST_REQUIRE_EQUAL( biteInfo[0]["epochId"].asUInt64(), 1 );
+    BOOST_REQUIRE( !fixture.client->isCommitteeRotationSoon() );
 
     // HACK: currently on committee rotation skaled calls exitGracefully in consensus
     // it interferes with exit procedure
