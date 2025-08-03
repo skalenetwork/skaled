@@ -168,7 +168,7 @@ public:
 
     dev::h256 getSnapshotHash( unsigned _blockNumber ) const;
     std::pair< int, int > getLatestSnapshots() const;
-    bool isSnapshotHashPresent( unsigned _blockNumber ) const;
+    bool checkSnapshotFolderAndSnapshotHash( unsigned _blockNumber ) const;
     void computeSnapshotHash( unsigned _blockNumber
 #ifndef MIRAGE
         ,

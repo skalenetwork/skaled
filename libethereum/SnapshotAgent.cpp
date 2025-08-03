@@ -43,7 +43,7 @@ void SnapshotAgent::init( unsigned _currentBlockNumber, int64_t _timestampOfBloc
         last_snapshot_creation_time =
             this->m_snapshotManager->getBlockTimestamp( latest_snapshots.second );
 
-        if ( !m_snapshotManager->isSnapshotHashPresent( latest_snapshots.second ) )
+        if ( !m_snapshotManager->checkSnapshotFolderAndSnapshotHash( latest_snapshots.second ) )
             startHashComputingThread();
 
         // one snapshot
@@ -62,7 +62,7 @@ void SnapshotAgent::init( unsigned _currentBlockNumber, int64_t _timestampOfBloc
         last_snapshot_creation_time =
             this->m_snapshotManager->getBlockTimestamp( latest_snapshots.second );
 
-        if ( !m_snapshotManager->isSnapshotHashPresent( latest_snapshots.second ) )
+        if ( !m_snapshotManager->checkSnapshotFolderAndSnapshotHash( latest_snapshots.second ) )
             startHashComputingThread();
 
         // no snapshots yet
@@ -93,7 +93,8 @@ void SnapshotAgent::finishHashComputingAndUpdateHashesIfNeeded( int64_t _timesta
         // but hash cannot be absent
         auto latest_snapshots = this->m_snapshotManager->getLatestSnapshots();
         if ( latest_snapshots.second ) {
-            assert( m_snapshotManager->isSnapshotHashPresent( latest_snapshots.second ) );
+            assert(
+                m_snapshotManager->checkSnapshotFolderAndSnapshotHash( latest_snapshots.second ) );
             this->last_snapshoted_block_with_hash = latest_snapshots.second;
             m_snapshotManager->leaveNLastSnapshots( 2 );
         }
@@ -134,7 +135,7 @@ void SnapshotAgent::doSnapshotIfNeeded( unsigned _currentBlockNumber, int64_t _t
     // start if thread is free and there is work
     if ( ( m_snapshotHashComputing == nullptr || !m_snapshotHashComputing->joinable() ) &&
          latest_snapshots.second &&
-         !m_snapshotManager->isSnapshotHashPresent( latest_snapshots.second ) ) {
+         !m_snapshotManager->checkSnapshotFolderAndSnapshotHash( latest_snapshots.second ) ) {
         startHashComputingThread();
 
     }  // if thread
