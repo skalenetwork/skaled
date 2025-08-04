@@ -618,6 +618,12 @@ bool Executive::finalize() {
         m_s.addBalance( m_t.sender(), m_gas * m_t.gasPrice() );
 
         u256 feesEarned = ( m_t.gas() - m_gas ) * m_t.gasPrice();
+#ifdef MIRAGE
+        // block gas limit (max feesEarned value) is 256M currently
+        // no overflow here
+        feesEarned = feesEarned *
+                     static_cast< u256 >( m_ext->evmSchedule().shareOfFeesToReward * 1000 ) / 1000;
+#endif
         m_s.addBalance( m_envInfo.author(), feesEarned );
     }
 

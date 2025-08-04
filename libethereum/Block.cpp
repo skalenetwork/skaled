@@ -35,6 +35,9 @@
 #include <libethcore/Exceptions.h>
 #include <libethcore/SealEngine.h>
 #include <libevm/VMFactory.h>
+#ifdef MIRAGE
+#include <libskale/BlockRewardsActivationPatch.h>
+#endif
 #include <libskale/SkipInvalidTransactionsPatch.h>
 #include <boost/filesystem.hpp>
 #include <ctime>
@@ -578,7 +581,8 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
     }
 #ifdef MIRAGE
     auto lastRewardedBlockNumber = m_state.getLastRewardedBlockNumber();
-    if ( lastRewardedBlockNumber < m_currentBlock.number() ) {
+    if ( BlockRewardsActivationPatch::isEnabled() &&
+         lastRewardedBlockNumber < m_currentBlock.number() ) {
         auto blockTimestamp = m_currentBlock.timestamp();
         auto reward = _bc.sealEngine()->blockReward( blockTimestamp, m_currentBlock.number() );
         rewardBlockAuthorForNonDefaultBlock( reward );

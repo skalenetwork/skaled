@@ -28,6 +28,10 @@
 #include <libdevcore/CommonData.h>
 #include <libdevcore/Log.h>
 
+#ifdef MIRAGE
+#include <libskale/BlockRewardsActivationPatch.h>
+#endif
+
 #include <skutils/utils.h>
 
 using namespace std;
@@ -92,7 +96,8 @@ EVMSchedule const ChainOperationParams::makeEvmSchedule(
         result = PushZeroPatch::makeSchedule( result );
 
 #ifdef MIRAGE
-    result.blockRewardOverwrite = { 5 * ether };
+    if ( BlockRewardsActivationPatch::isEnabled() )
+        result = BlockRewardsActivationPatch::makeSchedule( result );
 #endif
 
     return result;

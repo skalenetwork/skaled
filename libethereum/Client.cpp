@@ -52,6 +52,10 @@
 #include <libhistoric/TraceOptions.h>
 #endif
 
+#ifdef MIRAGE
+#include <libskale/BlockRewardsActivationPatch.h>
+#endif
+
 #include <libethereum/SchainPatch.h>
 #include <libskale/TotalStorageUsedPatch.h>
 
@@ -342,6 +346,9 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     TotalStorageUsedPatch::init( this );
     // HACK Needed to set env var for consensus
     AmsterdamFixPatch::isEnabled( *this );
+#ifdef MIRAGE
+    BlockRewardsActivationPatch::init( this );
+#endif
 
     initCPUUSage();
 

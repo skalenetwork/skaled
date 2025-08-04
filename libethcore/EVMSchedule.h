@@ -91,6 +91,12 @@ struct EVMSchedule {
     unsigned BITETxnCost = 21000;
 #endif
 
+#ifdef MIRAGE
+    // at network start transaction fees will not be distributed to block authors / stakers
+    // later this number will be changed
+    double shareOfFeesToReward = 0;
+#endif
+
     boost::optional< u256 > blockRewardOverwrite;
 
     bool staticCallDepthLimit() const { return !eip150Mode; }
