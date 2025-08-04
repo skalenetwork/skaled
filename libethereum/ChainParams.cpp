@@ -140,7 +140,11 @@ void ChainParams::loadConfig( string const& _json, const boost::filesystem::path
     setOptionalU256Parameter( difficultyBoundDivisor, c_difficultyBoundDivisor );
     setOptionalU256Parameter( durationLimit, c_durationLimit );
     setOptionalU256Parameter( accountInitialFunds, c_accountInitialFunds );
-#ifndef MIRAGE
+
+#ifdef MIRAGE
+    allowPreEIP155Txns =
+        params.count( c_allowPreEIP155Txns ) ? params[c_allowPreEIP155Txns].get_bool() : true;
+#else
     setOptionalU256Parameter( externalGasDifficulty, c_externalGasDifficulty );
 #endif
 
@@ -152,6 +156,7 @@ void ChainParams::loadConfig( string const& _json, const boost::filesystem::path
             int( u256( fromBigEndian< u256 >( fromHex( params.at( c_networkID ).get_str() ) ) ) );
 
     allowFutureBlocks = params.count( c_allowFutureBlocks );
+
 #ifndef MIRAGE
     if ( externalGasDifficulty == 0 ) {
         externalGasDifficulty = -1;

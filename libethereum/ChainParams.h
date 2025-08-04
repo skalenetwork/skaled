@@ -70,10 +70,6 @@ struct ChainParams : public ChainOperationParams {
 
     std::string getConfigForConsensus() const;
 
-#ifdef MIRAGE
-    bool updateCurrentGroupIfNeeded( uint64_t _latestBlockTimestamp );
-#endif
-
     // ONLY FOR TESTS
     void fillDefaultTestsParameters( size_t _port );
     void setArchiveMode() { nodeInfo.archiveMode = true; }
@@ -95,8 +91,18 @@ struct ChainParams : public ChainOperationParams {
 
     std::string getSchainName() const { return sChain.name; }
 
-#ifndef MIRAGE
+#ifdef MIRAGE
+    Address getSChainNodeAddressByIndex( uint64_t sChainIndex ) const;
+
+    bool updateCurrentGroupIfNeeded( uint64_t _latestBlockTimestamp );
+
+    CurrentGroup getNewestGroup() const;
+
+#else
+
     u256 getExternalGasDifficulty() const { return externalGasDifficulty; }
+
+    s256 getContractStorageLimit() const { return sChain.contractStorageLimit; }
 #endif
 
     u256 getGasLimit() const { return gasLimit; }
@@ -115,10 +121,6 @@ struct ChainParams : public ChainOperationParams {
 
 #ifdef HISTORIC_STATE
     int64_t getMaxHistoricStateDbSize() const { return sChain.maxHistoricStateDbSize; }
-#endif
-
-#ifndef MIRAGE
-    s256 getContractStorageLimit() const { return sChain.contractStorageLimit; }
 #endif
 
     // GENERAL NODE GETTERS
@@ -152,11 +154,6 @@ struct ChainParams : public ChainOperationParams {
     bool isArchiveModeEnabled() const { return nodeInfo.archiveMode; }
 
     bool isSyncFromCatchupEnabled() const { return nodeInfo.syncFromCatchup; }
-
-#ifdef MIRAGE
-    Address getSChainNodeAddressByIndex( uint64_t sChainIndex ) const;
-    CurrentGroup getNewestGroup() const;
-#endif
 
     size_t getNodesCount() const;
 

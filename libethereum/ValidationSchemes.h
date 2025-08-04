@@ -85,6 +85,7 @@ extern std::string const c_skaleConfig;
 extern std::string const c_stateRoot;
 extern std::string const c_accountInitialFunds;
 extern std::string const c_externalGasDifficulty;
+extern std::string const c_allowPreEIP155Txns;
 
 // Validate config.json that contains chain params and genesis state
 void validateConfigJson( json_spirit::mObject const& _obj );

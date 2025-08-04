@@ -101,12 +101,12 @@ Json::Value toJson( dev::eth::Transaction const& _t, std::pair< h256, unsigned >
         res["blockHash"] = toJS( _location.first );
         res["transactionIndex"] = toJS( _location.second );
         res["blockNumber"] = toJS( _blockNumber );
-        if ( _t.txType() == dev::eth::TransactionType::Legacy )
+        if ( _t.txType() == dev::eth::TransactionType::Legacy ) {
             if ( _t.isReplayProtected() )
                 res["v"] = toJS( 2 * _t.chainId() + 35 + _t.signature().v );
             else
                 res["v"] = toJS( 27 + _t.signature().v );
-        else
+        } else
             res["v"] = toJS( _t.signature().v );
         res["r"] = toJS( _t.signature().r );
         res["s"] = toJS( _t.signature().s );
@@ -355,12 +355,12 @@ Json::Value toJson( dev::eth::Transaction const& _t ) {
         res["nonce"] = toJS( _t.nonce() );
         res["r"] = toJS( _t.signature().r );
         res["s"] = toJS( _t.signature().s );
-        if ( _t.txType() == dev::eth::TransactionType::Legacy )
+        if ( _t.txType() == dev::eth::TransactionType::Legacy ) {
             if ( _t.isReplayProtected() )
                 res["v"] = toJS( 2 * _t.chainId() + 35 + _t.signature().v );
             else
                 res["v"] = toJS( 27 + _t.signature().v );
-        else
+        } else
             res["v"] = toJS( _t.signature().v );
         res["type"] = toJS( int( _t.txType() ) );
         if ( _t.txType() != dev::eth::TransactionType::Legacy ) {
@@ -411,12 +411,12 @@ Json::Value toJson( dev::eth::LocalisedTransaction const& _t ) {
         res["to"] = _t.isCreation() ? Json::Value() : toJS( _t.receiveAddress() );
         res["transactionIndex"] = toJS( _t.transactionIndex() );
         res["value"] = toJS( _t.value() );
-        if ( _t.txType() == dev::eth::TransactionType::Legacy )
+        if ( _t.txType() == dev::eth::TransactionType::Legacy ) {
             if ( _t.isReplayProtected() )
                 res["v"] = toJS( 2 * _t.chainId() + 35 + _t.signature().v );
             else
                 res["v"] = toJS( 27 + _t.signature().v );
-        else
+        } else
             res["v"] = toJS( _t.signature().v );
         res["r"] = toJS( _t.signature().r.hex() );
         res["s"] = toJS( _t.signature().s.hex() );
