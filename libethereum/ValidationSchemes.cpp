@@ -335,6 +335,7 @@ void validateConfigJson( js::mObject const& _obj ) {
                 { "blsPublicKey2", { { js::str_type }, JsonFieldPresence::Optional } },
                 { "blsPublicKey3", { { js::str_type }, JsonFieldPresence::Optional } },
                 { "owner", { { js::str_type }, JsonFieldPresence::Optional } },
+                { "rewardWalletAddress", { { js::str_type }, JsonFieldPresence::Optional } },
                 { "blockAuthor", { { js::str_type }, JsonFieldPresence::Optional } } } );
     };
 #ifndef MIRAGE

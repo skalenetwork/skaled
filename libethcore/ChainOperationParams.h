@@ -170,6 +170,7 @@ public:
     u256 id;
 #ifdef MIRAGE
     Address owner;
+    Address rewardWalletAddress;
 #endif
     std::string ip;
     u256 port;
@@ -256,8 +257,8 @@ public:
         // delete this explicitly!!
 #ifdef MIRAGE
         sChainNode me = { u256( 1 ), jsToAddress( "0x0000000000000000000000000000000000000000" ),
-            "127.0.0.11", u256( 11111 ), "::1", u256( 11111 ), u256( 1 ), "0xfa",
-            { "0", "1", "0", "1" } };
+            jsToAddress( "0x0000000000000000000000000000000000000000" ), "127.0.0.11",
+            u256( 11111 ), "::1", u256( 11111 ), u256( 1 ), "0xfa", { "0", "1", "0", "1" } };
 #else
         sChainNode me = { u256( 1 ), "127.0.0.11", u256( 11111 ), "::1", u256( 11111 ), u256( 1 ),
             "0xfa", { "0", "1", "0", "1" } };
