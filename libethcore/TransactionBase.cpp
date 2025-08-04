@@ -34,6 +34,7 @@
 
 #include <libconsensus/libBLS/threshold_encryption/ThresholdEncryption.h>
 using namespace std;
+#include <SkaleCommon.h>
 #include <libconsensus/node/ConsensusInterface.h>
 
 using namespace dev;
@@ -152,13 +153,15 @@ void TransactionBase::fillFromBytesLegacy(
                 if ( chainId > std::numeric_limits< uint64_t >::max() )
                     BOOST_THROW_EXCEPTION( InvalidSignature() );
                 m_chainId = static_cast< uint64_t >( chainId );
-            } else if ( v != 27 && v != 28 )
+            } else if ( v != 27 && v != 28 ) {
                 BOOST_THROW_EXCEPTION( InvalidSignature() );
-            // else leave m_chainId as is (unitialized)
+            }
 
+            // ifdef MIRAGE, then chainId is always set at this point - will fall into first branch
             auto const recoveryID = m_chainId.has_value() ?
                                         _byte_{ v - ( u256{ *m_chainId } * 2 + 35 ) } :
                                         _byte_{ v - 27 };
+
             m_vrs = SignatureStruct{ r, s, recoveryID };
 
             if ( _checkSig >= CheckTransaction::Cheap && !m_vrs->isValid() )
@@ -432,7 +435,7 @@ SignatureStruct const& TransactionBase::signature() const {
 }
 
 void TransactionBase::sign( Secret const& _priv ) {
-    assert( !isInvalid() );
+    CHECK_STATE2( !isInvalid(), "Transaction is invalid. Cannot sign transaction." );
 
     auto sig = dev::sign( _priv, sha3( WithoutSignature ) );
     SignatureStruct sigStruct = *( SignatureStruct const* ) &sig;
@@ -478,8 +481,11 @@ void TransactionBase::streamType1Transaction( RLPStream& _s, IncludeSignature _s
 
     _s << accessListToRLPs( m_accessList );
 
-    if ( _sig )
-        _s << ( u256 ) m_vrs->v << ( u256 ) m_vrs->r << ( u256 ) m_vrs->s;
+    if ( _sig ) {
+        _s << static_cast< u256 >( m_vrs->v );
+        _s << static_cast< u256 >( m_vrs->r );
+        _s << static_cast< u256 >( m_vrs->s );
+    }
 }
 
 void TransactionBase::streamType2Transaction( RLPStream& _s, IncludeSignature _sig ) const {
@@ -495,8 +501,11 @@ void TransactionBase::streamType2Transaction( RLPStream& _s, IncludeSignature _s
 
     _s << accessListToRLPs( m_accessList );
 
-    if ( _sig )
-        _s << ( u256 ) m_vrs->v << ( u256 ) m_vrs->r << ( u256 ) m_vrs->s;
+    if ( _sig ) {
+        _s << static_cast< u256 >( m_vrs->v );
+        _s << static_cast< u256 >( m_vrs->r );
+        _s << static_cast< u256 >( m_vrs->s );
+    }
 }
 
 void TransactionBase::streamRLP( RLPStream& _s, IncludeSignature _sig, bool _forEip155hash ) const {
@@ -534,14 +543,13 @@ void TransactionBase::checkLowS() const {
         BOOST_THROW_EXCEPTION( InvalidSignature() );
 }
 
-void TransactionBase::checkChainId( uint64_t chainId, bool disableChainIdCheck ) const {
-    if ( !disableChainIdCheck ) {
-        if ( !m_chainId.has_value() ) {
-            BOOST_THROW_EXCEPTION( InvalidTransactionFormat() );
-        }
+void TransactionBase::checkChainId( uint64_t chainId ) const {
+    if ( !m_chainId.has_value() ) {
+        BOOST_THROW_EXCEPTION( InvalidTransactionFormat() );
     }
-    if ( m_chainId.has_value() && m_chainId != chainId )
-        BOOST_THROW_EXCEPTION( InvalidSignature() );
+
+    if ( m_chainId != chainId )
+        BOOST_THROW_EXCEPTION( InvalidSignature() << errinfo_txHash( sha3() ) );
 }
 
 int64_t TransactionBase::baseGasRequired(
@@ -576,7 +584,8 @@ h256 TransactionBase::sha3( IncludeSignature _sig ) const {
     dev::bytes input;
     if ( !isInvalid() ) {
         RLPStream s;
-        streamRLP( s, _sig, !isInvalid() && isReplayProtected() && _sig == WithoutSignature );
+
+        streamRLP( s, _sig, isReplayProtected() && _sig == WithoutSignature );
 
         input = s.out();
         if ( m_txType != TransactionType::Legacy )
@@ -593,7 +602,7 @@ h256 TransactionBase::sha3( IncludeSignature _sig ) const {
 }
 
 u256 TransactionBase::gasPrice() const {
-    assert( !isInvalid() );
+    CHECK_STATE2( !isInvalid(), "Transaction is invalid. Cannot get gas price." );
     return m_gasPrice;
 }
 
@@ -602,7 +611,7 @@ u256 TransactionBase::gas() const {
      * instead the logic has been moved to the gas() function of TransactionBase
      * this has been done in order to address the problem of switching "virtual" on/off
      */
-    assert( !isInvalid() );
+    CHECK_STATE2( !isInvalid(), "Transaction is invalid. Cannot get gas." );
 #ifdef MIRAGE
     return m_gas;
 #else

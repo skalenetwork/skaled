@@ -98,6 +98,7 @@ string const c_stateRoot = "stateRoot";
 string const c_accountInitialFunds = "accountInitialFunds";
 
 string const c_externalGasDifficulty = "externalGasDifficulty";
+string const c_allowPreEIP155Txns = "allowPreEIP155Txns";
 
 void validateConfigJson( js::mObject const& _obj ) {
     requireJsonFields( _obj, "ChainParams::loadConfig",

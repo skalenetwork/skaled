@@ -1016,6 +1016,88 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorDuplicateTransaction ) {
         "Same transaction already exists in the pending transaction queue." );
 }
 
+#ifdef MIRAGE
+
+/**
+ * Auxiliar function to mine a block to gather balance,
+ * and build a signed legacy pre-EIP155 transaction.
+ * Used to test acceptance vs. rejection of pre-EIP155 transactions
+ */
+Json::Value buildSignedTransaction( JsonRpcFixture& fixture ) {
+    auto receiver = KeyPair::create();
+    auto senderAddress = fixture.coinbase.address();
+
+    // Mine to generate a non-zero account balance
+    const size_t blocksToMine = 1;
+    const u256 blockReward = 5 * dev::eth::ether;
+    dev::eth::simulateMining( *( fixture.client ), blocksToMine );
+    BOOST_CHECK_EQUAL( blockReward, fixture.client->balanceAt( senderAddress ) );
+
+    Json::Value sampleTx;
+    sampleTx["to"] = toJS( receiver.address() );
+    sampleTx["from"] = toJS( senderAddress );
+    sampleTx["gas"] = "100000";
+    sampleTx["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    sampleTx["value"] = jsToDecimal( toJS( 10000 * dev::eth::szabo ) );
+    sampleTx["data"] = "0x0";
+    sampleTx["nonce"] = 0;
+
+    return fixture.rpcClient->eth_signTransaction( sampleTx );
+};
+
+BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_acceptPreEIP155Txns_configOmitted ) {
+    std::string _config = c_genesisConfigString;
+    Json::Value ret;
+    Json::Reader().parse( _config, ret );
+    Json::FastWriter fastWriter;
+    
+    // 'allowPreEIP155Txns' field is not set -> should be allowed by default
+    std::string config = fastWriter.write( ret );
+    JsonRpcFixture fixture( config );
+    auto signedTx = buildSignedTransaction( fixture );
+    std::string txHash = fixture.rpcClient->eth_sendRawTransaction( signedTx["raw"].asString() );
+    BOOST_REQUIRE( !txHash.empty() );
+}
+
+BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_acceptPreEIP155Txns_configTrue ) {
+    std::string _config = c_genesisConfigString;
+    Json::Value ret;
+    Json::Reader().parse( _config, ret );
+    Json::FastWriter fastWriter;
+    
+    // 'allowPreEIP155Txns' field is set to true -> should be allowed
+    ret["params"]["allowPreEIP155Txns"] = true;
+    std::string config = fastWriter.write( ret );
+    JsonRpcFixture fixture( config );
+    auto signedTx = buildSignedTransaction( fixture );
+    std::string txHash = fixture.rpcClient->eth_sendRawTransaction( signedTx["raw"].asString() );
+    BOOST_REQUIRE( !txHash.empty() );
+}
+
+BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_rejectPreEIP155Txns_configFalse ) {
+    std::string _config = c_genesisConfigString;
+    Json::Value ret;
+    Json::Reader().parse( _config, ret );
+    Json::FastWriter fastWriter;
+
+    // 'allowPreEIP155Txns' field is set to false -> should be rejected
+    ret["params"]["allowPreEIP155Txns"] = false;
+    std::string config = fastWriter.write( ret );
+    JsonRpcFixture fixture( config );
+    auto signedTx = buildSignedTransaction( fixture );
+
+    std::cout << "Raw transaction: " << signedTx["raw"].asString() << std::endl;
+    BOOST_REQUIRE_THROW(
+        fixture.rpcClient->eth_sendRawTransaction( signedTx["raw"].asString() ),
+        jsonrpc::JsonRpcException 
+    );
+}
+
+#endif
+
+
+
+
 BOOST_AUTO_TEST_CASE( send_raw_tx_sync ) {
     // Enable sync mode
     JsonRpcFixture fixture( c_genesisConfigString, true, true, true, false, true );
