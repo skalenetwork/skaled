@@ -13,7 +13,7 @@ When reviewing code in pull requests:
 
 ### General Style
 
-- Line length must not exceed 100 characters.
+- In code files, line length must not exceed 100 characters. For documentation and other file types, follow their respective conventions.
 - Function length must be ≤ 100 lines.
 - All comments and code must be written in English with correct spelling.
 - Comments must be professional and clearly explain the code’s logic or behavior.
