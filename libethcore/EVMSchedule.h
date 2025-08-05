@@ -93,9 +93,9 @@ struct EVMSchedule {
 
 #ifdef MIRAGE
     // at network start transaction fees will not be distributed to block authors / stakers
-    // later this number will be changed
+    // this number will be changed in later patches
     double shareOfFeesToReward = 0;
-    // block rewards are disabled initially and will be enabled later
+    // block rewards are disabled initially and will be enabled in later patches
     u256 blockRewardOverwrite = 0;
 #else
     boost::optional< u256 > blockRewardOverwrite;
