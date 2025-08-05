@@ -16,13 +16,17 @@ public:
         client = _client;
     }
 
-    static bool isEnabled();
+    static bool isEnabled( uint64_t _chainId );
 
     static dev::eth::EVMSchedule makeSchedule( const dev::eth::EVMSchedule& _base );
+
+    static dev::Address getMagicAddress();
 
 private:
     static dev::eth::Client* client;
     static const dev::Address blockRewardsActivationPatchAddress;
+    static const dev::Address testBlockRewardsActivationPatchAddress;
+    static constexpr uint64_t fairChainId = 937;  // 0x3a9
 };
 
 #endif  // BLOCKREWARDSACTIVATIONPATCH_H

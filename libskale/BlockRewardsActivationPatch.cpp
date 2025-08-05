@@ -1,12 +1,22 @@
 #include <libethereum/Client.h>
 #include <libskale/BlockRewardsActivationPatch.h>
 
-const dev::Address BlockRewardsActivationPatch::blockRewardsActivationPatchAddress =
-    dev::eth::toAddress( "0xE8E4Ea98530Bfe86f841E258fd6F3FD5c210c68f" );
 dev::eth::Client* BlockRewardsActivationPatch::client;
 
-bool BlockRewardsActivationPatch::isEnabled() {
-    return client->countAt( blockRewardsActivationPatchAddress ) != 0;
+const dev::Address BlockRewardsActivationPatch::blockRewardsActivationPatchAddress =
+    dev::eth::toAddress( "0xE8E4Ea98530Bfe86f841E258fd6F3FD5c210c68f" );
+const dev::Address BlockRewardsActivationPatch::testBlockRewardsActivationPatchAddress =
+    dev::eth::toAddress( "0x5339Ef05428d1b87f4e2F2db64E782c68E9cDA56" );
+
+dev::Address BlockRewardsActivationPatch::getMagicAddress() {
+    return std::getenv( "TEST_BLOCK_REWARDS_ACTIVATION" ) ? testBlockRewardsActivationPatchAddress :
+                                                            blockRewardsActivationPatchAddress;
+}
+
+bool BlockRewardsActivationPatch::isEnabled( uint64_t _chainId ) {
+    if ( _chainId != fairChainId )
+        return true;
+    return client->countAt( getMagicAddress() ) != 0;
 }
 
 dev::eth::EVMSchedule BlockRewardsActivationPatch::makeSchedule(

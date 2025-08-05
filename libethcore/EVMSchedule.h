@@ -95,9 +95,11 @@ struct EVMSchedule {
     // at network start transaction fees will not be distributed to block authors / stakers
     // later this number will be changed
     double shareOfFeesToReward = 0;
-#endif
-
+    // block rewards are disabled initially and will be enabled later
+    u256 blockRewardOverwrite = 0;
+#else
     boost::optional< u256 > blockRewardOverwrite;
+#endif
 
     bool staticCallDepthLimit() const { return !eip150Mode; }
     bool suicideChargesNewAccountGas() const { return eip150Mode; }

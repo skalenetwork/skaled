@@ -317,7 +317,9 @@ public:
         time_t _committedBlockTimestamp, u256 const& _workingBlockNumber ) const;
     u256 blockReward( EVMSchedule const& _schedule ) const;
     u256 blockReward( time_t _committedBlockTimestamp, u256 const& _workingBlockNumber ) const;
+#ifndef MIRAGE
     void setBlockReward( u256 const& _newBlockReward );
+#endif
 
     time_t getPatchTimestamp( SchainPatchEnum _patchEnum ) const;
 
@@ -402,7 +404,9 @@ protected:
     /// The chain sealer name: e.g. Ethash, NoProof, BasicAuthority
     std::string sealEngineName = "NoProof";
 
+#ifndef MIRAGE
     u256 m_blockReward;
+#endif
 
     u256 maximumExtraDataSize = 1024;
     u256 accountStartNonce = 0;

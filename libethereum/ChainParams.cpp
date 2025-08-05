@@ -98,7 +98,10 @@ void ChainParams::loadConfig( string const& _json, const boost::filesystem::path
     maximumExtraDataSize =
         u256( fromBigEndian< u256 >( fromHex( params[c_maximumExtraDataSize].get_str() ) ) );
     tieBreakingGas = params.count( c_tieBreakingGas ) ? params[c_tieBreakingGas].get_bool() : true;
+    // block rewards for FAIR are set in EVMSchedule
+#ifndef MIRAGE
     setBlockReward( u256( fromBigEndian< u256 >( fromHex( params[c_blockReward].get_str() ) ) ) );
+#endif
     skaleDisableChainIdCheck = params.count( c_skaleDisableChainIdCheck ) ?
                                    params[c_skaleDisableChainIdCheck].get_bool() :
                                    false;
