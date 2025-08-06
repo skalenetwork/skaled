@@ -91,9 +91,9 @@ EVMSchedule const ChainOperationParams::makeEvmSchedule(
     else if ( _workingBlockNumber >= EIP150ForkBlock )
         result = EIP150Schedule;
     else if ( _workingBlockNumber >= homesteadForkBlock )
-        return HomesteadSchedule;
+        result = HomesteadSchedule;
     else
-        return FrontierSchedule;
+        result = FrontierSchedule;
 
     // 2 based on previous - decide by timestamp
     if ( PushZeroPatch::isEnabledWhen( _committedBlockTimestamp ) )
