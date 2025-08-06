@@ -930,7 +930,7 @@ CurrentGroup ChainParams::getNewestGroup() const {
     return sChain.currentGroups[newestIndex];
 }
 
-Address ChainParams::getSChainNodeAddressByIndex( uint64_t _sChainIndex ) const {
+Address ChainParams::getSChainNodeBeneficiaryAddressByIndex( uint64_t _sChainIndex ) const {
     const auto& sChainNodes = sChain.nodes;
     auto has_schain_index = [&_sChainIndex]( const sChainNode& node ) {
         return node.sChainIndex == _sChainIndex;
@@ -940,10 +940,10 @@ Address ChainParams::getSChainNodeAddressByIndex( uint64_t _sChainIndex ) const 
         std::string sChainIndexStringRep = std::to_string( _sChainIndex );
         throw std::runtime_error( "No such sChainIndex -" + sChainIndexStringRep + " in config" );
     }
-    if ( nodeIterator->rewardWalletAddress != ZeroAddress ) {
-        return nodeIterator->rewardWalletAddress;
-    } else {
+    if ( nodeIterator->rewardWalletAddress == ZeroAddress ) {
         return nodeIterator->owner;
+    } else {
+        return nodeIterator->rewardWalletAddress;
     }
 }
 

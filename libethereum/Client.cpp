@@ -600,7 +600,7 @@ size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
 #ifdef MIRAGE
 Address Client::getWinningNodeAddressByIndex( uint64_t _winningNodeIndex ) {
     if ( _winningNodeIndex > 0 ) {
-        return bc().chainParams().getSChainNodeAddressByIndex( _winningNodeIndex );
+        return bc().chainParams().getSChainNodeBeneficiaryAddressByIndex( _winningNodeIndex );
     } else {
         return Block::DEFAULT_BLOCK_OWNER_ADDRESS;
     }
