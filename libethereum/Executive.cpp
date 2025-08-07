@@ -61,7 +61,6 @@ std::string dumpStorage( ExtVM const& _ext ) {
     return o.str();
 }
 
-
 }  // namespace
 
 StandardTrace::StandardTrace() : m_trace( Json::arrayValue ) {}
@@ -617,14 +616,12 @@ bool Executive::finalize() {
     if ( m_t ) {
         m_s.addBalance( m_t.sender(), m_gas * m_t.gasPrice() );
 
-        u256 feesEarned = ( m_t.gas() - m_gas ) * m_t.gasPrice();
+        u256 baseFeesEarned = ( m_t.gas() - m_gas ) * m_t.gasPrice();
 #ifdef MIRAGE
         EVMSchedule currentBlockSchedule = m_chainParams.makeEvmSchedule(
             m_envInfo.committedBlockTimestamp(), m_envInfo.number() );
-        // block gas limit (max feesEarned value) is 256M currently
-        // no overflow here
-        feesEarned = feesEarned *
-                     static_cast< u256 >( currentBlockSchedule.shareOfFeesToReward * 1000 ) / 1000;
+        u256 feesEarned = dev::calculateShareWithPrecision(
+            baseFeesEarned, currentBlockSchedule.shareOfFeesToReward );
 #endif
         m_s.addBalance( m_envInfo.author(), feesEarned );
     }
