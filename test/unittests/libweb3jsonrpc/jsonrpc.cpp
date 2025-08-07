@@ -4479,7 +4479,7 @@ BOOST_AUTO_TEST_CASE( block_author_balance ) {
     Json::Value ret;
     Json::Reader().parse( _config, ret );
     // Set FAIR chainID
-    std::string chainID = "0x3a9";
+    std::string chainID = "0x3a6";
     ret["params"]["chainID"] = chainID;
 
     Json::FastWriter fastWriter;
