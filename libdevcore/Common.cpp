@@ -234,7 +234,7 @@ std::atomic_int ExitHandler::s_nStopSignal{ 0 };
 std::atomic_bool ExitHandler::s_bStop{ false };
 
 
-size_t countSignificantDecimals( double _value, double _epsilon) {
+size_t countSignificantDecimals( double _value, double _epsilon ) {
     // check if _value is an integer number
     if ( std::abs( _value - std::round( _value ) ) < _epsilon )
         return 0;
