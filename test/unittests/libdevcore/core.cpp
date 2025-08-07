@@ -128,4 +128,92 @@ BOOST_AUTO_TEST_CASE( BMPBN ) {
     cc::_on_ = bPrev;
 }
 
+BOOST_AUTO_TEST_CASE( countSignificantDecimals ) {
+    // Test integer values (should return 0)
+    BOOST_CHECK_EQUAL( dev::countSignificantDecimals( 1.0 ), 0 );
+    BOOST_CHECK_EQUAL( dev::countSignificantDecimals( 10.0 ), 0 );
+    BOOST_CHECK_EQUAL( dev::countSignificantDecimals( 0.0 ), 0 );
+    BOOST_CHECK_EQUAL( dev::countSignificantDecimals( -5.0 ), 0 );
+    
+    // Test simple decimal values
+    BOOST_CHECK_EQUAL( dev::countSignificantDecimals( 0.1 ), 1 );
+    BOOST_CHECK_EQUAL( dev::countSignificantDecimals( 0.5 ), 1 );
+    BOOST_CHECK_EQUAL( dev::countSignificantDecimals( 0.9 ), 1 );
+    
+    // Test two decimal places
+    BOOST_CHECK_EQUAL( dev::countSignificantDecimals( 0.01 ), 2 );
+    BOOST_CHECK_EQUAL( dev::countSignificantDecimals( 0.25 ), 2 );
+    BOOST_CHECK_EQUAL( dev::countSignificantDecimals( 0.75 ), 2 );
+    BOOST_CHECK_EQUAL( dev::countSignificantDecimals( 0.99 ), 2 );
+    
+    // Test three decimal places
+    BOOST_CHECK_EQUAL( dev::countSignificantDecimals( 0.001 ), 3 );
+    BOOST_CHECK_EQUAL( dev::countSignificantDecimals( 0.125 ), 3 );
+    BOOST_CHECK_EQUAL( dev::countSignificantDecimals( 0.375 ), 3 );
+    
+    // Test mixed integer and decimal parts
+    BOOST_CHECK_EQUAL( dev::countSignificantDecimals( 1.5 ), 1 );
+    BOOST_CHECK_EQUAL( dev::countSignificantDecimals( 10.25 ), 2 );
+    BOOST_CHECK_EQUAL( dev::countSignificantDecimals( 100.125 ), 3 );
+    
+    // Test negative values
+    BOOST_CHECK_EQUAL( dev::countSignificantDecimals( -0.5 ), 1 );
+    BOOST_CHECK_EQUAL( dev::countSignificantDecimals( -0.25 ), 2 );
+    BOOST_CHECK_EQUAL( dev::countSignificantDecimals( -1.125 ), 3 );
+    
+    // Test very small values
+    BOOST_CHECK_EQUAL( dev::countSignificantDecimals( 0.0001 ), 4 );
+    BOOST_CHECK_EQUAL( dev::countSignificantDecimals( 0.00001 ), 5 );
+    
+    // Test values that should be considered integers due to epsilon
+    BOOST_CHECK_EQUAL( dev::countSignificantDecimals( 1.0000000001 ), 0 );
+    BOOST_CHECK_EQUAL( dev::countSignificantDecimals( 0.9999999999 ), 0 );
+}
+
+BOOST_AUTO_TEST_CASE( calculateShareWithPrecision ) {
+    // Test with integer share (should behave like simple multiplication)
+    dev::u256 base = 1000;
+    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( base, 1.0 ), base );
+    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( base, 0.0 ), 0 );
+    
+    // Test with simple decimal shares
+    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( base, 0.5 ), 500 );
+    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( base, 0.1 ), 100 );
+    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( base, 0.9 ), 900 );
+    
+    // Test with two decimal places
+    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( base, 0.25 ), 250 );
+    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( base, 0.75 ), 750 );
+    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( base, 0.01 ), 10 );
+    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( base, 0.99 ), 990 );
+    
+    // Test with three decimal places
+    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( base, 0.125 ), 125 );
+    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( base, 0.375 ), 375 );
+    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( base, 0.001 ), 1 );
+    
+    // Test with larger base values
+    dev::u256 largeBase = dev::u256("1000000000000000000"); // 10^18
+    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( largeBase, 0.5 ), 
+                      dev::u256("500000000000000000") );
+    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( largeBase, 0.25 ), 
+                      dev::u256("250000000000000000") );
+    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( largeBase, 0.001 ), 
+                      dev::u256("1000000000000000") );
+    
+    // Test edge cases
+    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( 0, 0.5 ), 0 );
+    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( 1, 0.5 ), 0 ); // Due to integer division
+    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( 2, 0.5 ), 1 );
+    
+    // Test precision preservation
+    dev::u256 preciseBase = 10000;
+    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( preciseBase, 0.0625 ), 625 ); // 1/16
+    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( preciseBase, 0.3125 ), 3125 ); // 5/16
+    
+    // Test with very small shares
+    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( dev::u256("1000000"), 0.0001 ), 100 );
+    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( dev::u256("10000000"), 0.00001 ), 100 );
+}
+
 BOOST_AUTO_TEST_SUITE_END()

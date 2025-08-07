@@ -233,4 +233,27 @@ std::atomic< ExitHandler::exit_code_t > ExitHandler::s_ec = ExitHandler::ec_succ
 std::atomic_int ExitHandler::s_nStopSignal{ 0 };
 std::atomic_bool ExitHandler::s_bStop{ false };
 
+
+size_t countSignificantDecimals( double _value, double _epsilon) {
+    // check if _value is an integer number
+    if ( std::abs( _value - std::round( _value ) ) < _epsilon )
+        return 0;
+
+    size_t count = 0;
+    double fractional = _value - std::floor( _value );
+
+    while ( std::abs( fractional - std::round( fractional ) ) > _epsilon && count < 15 ) {
+        fractional *= 10;
+        ++count;
+    }
+
+    return count;
+}
+
+u256 calculateShareWithPrecision( const u256& _base, double _share ) {
+    size_t significantDecimals = dev::countSignificantDecimals( _share );
+    u256 precision = static_cast< u256 >( std::pow( 10, significantDecimals ) );
+    return _base * static_cast< u256 >( _share * precision.convert_to< uint64_t >() ) / precision;
+}
+
 }  // namespace dev
