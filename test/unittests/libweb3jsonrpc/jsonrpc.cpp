@@ -4454,7 +4454,7 @@ BOOST_AUTO_TEST_CASE( getZeroBlock ) {
 
 #ifdef MIRAGE
 BOOST_AUTO_TEST_CASE( block_author_balance_owner ) {
-    // when rewardWalletAddress is ndoe defined
+    // when rewardWalletAddress is not defined
 
     JsonRpcFixture fixture( c_genesisConfigString, false, false, true );
     string etherbase = fixture.rpcClient->eth_coinbase();
@@ -4521,7 +4521,7 @@ BOOST_AUTO_TEST_CASE( block_author_balance_reward_wallet ) {
 
     nlohmann::json configJson = nlohmann::json::parse(c_genesisConfigString);
 
-    // Remove rewardWalletAddress from the first node in group "1"
+    // Add rewardWalletAddress to the first node in group "1"
     configJson["skaleConfig"]["sChain"]["nodes"]["1"]["group"][0]["rewardWalletAddress"] = node_reward_wallet;
 
     auto noRewardWalletAddressConfig = configJson.dump();
