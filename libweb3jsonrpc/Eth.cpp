@@ -47,8 +47,13 @@ using namespace dev;
 using namespace eth;
 using namespace dev::rpc;
 
+#ifndef MIRAGE
 const uint64_t MAX_CALL_CACHE_ENTRIES = 1024;
 const uint64_t MAX_RECEIPT_CACHE_ENTRIES = 1024;
+#else
+const uint64_t MAX_CALL_CACHE_ENTRIES = 4096;
+const uint64_t MAX_RECEIPT_CACHE_ENTRIES = 4096;
+#endif
 const u256 MAX_BLOCK_RANGE = 1024;
 
 // Geth compatible error code for a revert

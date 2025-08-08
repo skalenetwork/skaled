@@ -7,7 +7,11 @@ namespace db {
 
 using namespace batched_io;
 
+#ifdef MIRAGE
+const uint64_t MAX_HISTORIC_STATE_LRU_CACHE_ENTRIES = 4096;
+#else
 const uint64_t MAX_HISTORIC_STATE_LRU_CACHE_ENTRIES = 1024;
+#endif
 
 RotatingHistoricState::RotatingHistoricState(
     std::shared_ptr< BatchedRotatingHistoricDbIO > ioBackend_ )
