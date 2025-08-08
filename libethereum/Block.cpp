@@ -35,9 +35,6 @@
 #include <libethcore/Exceptions.h>
 #include <libethcore/SealEngine.h>
 #include <libevm/VMFactory.h>
-#ifdef MIRAGE
-#include <libskale/BlockRewardsActivationPatch.h>
-#endif
 #include <libskale/SkipInvalidTransactionsPatch.h>
 #include <boost/filesystem.hpp>
 #include <ctime>
