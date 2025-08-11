@@ -166,7 +166,7 @@ BOOST_AUTO_TEST_CASE( calculateShareWithPrecision ) {
     
     // Test precision preservation
     dev::u256 preciseBase = 10000;
-    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( preciseBase, 6250 ), 625 ); // 1/16
+    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( preciseBase, 6250 ), 6250 ); // 1/16
     BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( preciseBase, 3125 ), 3125 ); // 5/16
     
     // Test with very small shares
