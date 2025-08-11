@@ -131,46 +131,41 @@ BOOST_AUTO_TEST_CASE( BMPBN ) {
 BOOST_AUTO_TEST_CASE( calculateShareWithPrecision ) {
     // Test with integer share (should behave like simple multiplication)
     dev::u256 base = 1000;
-    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( base, 10000 ), base );
+    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( base, 1000 ), base );
     BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( base, 0 ), 0 );
     
     // Test with simple decimal shares
-    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( base, 5000 ), 500 );
-    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( base, 1000 ), 100 );
-    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( base, 9000 ), 900 );
+    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( base, 500 ), 500 );
+    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( base, 100 ), 100 );
+    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( base, 900 ), 900 );
     
     // Test with two decimal places
-    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( base, 2500 ), 250 );
-    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( base, 7500 ), 750 );
-    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( base, 100 ), 10 );
-    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( base, 9900 ), 990 );
+    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( base, 250 ), 250 );
+    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( base, 750 ), 750 );
+    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( base, 10 ), 10 );
+    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( base, 990 ), 990 );
     
     // Test with three decimal places
-    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( base, 1250 ), 125 );
-    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( base, 3750 ), 375 );
-    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( base, 10 ), 1 );
+    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( base, 125 ), 125 );
+    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( base, 375 ), 375 );
+    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( base, 1 ), 1 );
     
     // Test with larger base values
     dev::u256 largeBase = dev::u256("1000000000000000000"); // 10^18
-    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( largeBase, 5000 ),
+    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( largeBase, 500 ),
                       dev::u256("500000000000000000") );
-    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( largeBase, 2500 ),
+    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( largeBase, 250 ),
                       dev::u256("250000000000000000") );
-    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( largeBase, 10 ),
+    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( largeBase, 1 ),
                       dev::u256("1000000000000000") );
     
     // Test edge cases
-    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( 0, 5000 ), 0 );
-    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( 1, 5000 ), 0 ); // Due to integer division
-    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( 2, 5000 ), 1 );
-    
-    // Test precision preservation
-    dev::u256 preciseBase = 10000;
-    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( preciseBase, 6250 ), 6250 ); // 1/16
-    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( preciseBase, 3125 ), 3125 ); // 5/16
+    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( 0, 500 ), 0 );
+    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( 1, 500 ), 0 ); // Due to integer division
+    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( 2, 500 ), 1 );
     
     // Test with very small shares
-    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( dev::u256("1000000"), 1 ), 100 );
+    BOOST_CHECK_EQUAL( dev::calculateShareWithPrecision( dev::u256("1000000"), 1 ), 1000 );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

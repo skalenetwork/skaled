@@ -235,7 +235,7 @@ std::atomic_bool ExitHandler::s_bStop{ false };
 
 
 u256 calculateShareWithPrecision( const u256& _base, size_t _sharePromile ) {
-    return _base * _sharePromile / 10000;
+    return _base * _sharePromile / 1000;
 }
 
 }  // namespace dev

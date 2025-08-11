@@ -23,6 +23,6 @@ dev::eth::EVMSchedule BlockRewardsActivationPatch::makeSchedule(
     const dev::eth::EVMSchedule& _base ) {
     dev::eth::EVMSchedule ret = _base;
     ret.blockRewardOverwrite = { 5 * dev::eth::ether };
-    ret.shareOfTransactionFeeToRewardPromille = 5000;
+    ret.shareOfTransactionFeeToRewardPromille = 500;
     return ret;
 }
