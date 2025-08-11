@@ -94,7 +94,7 @@ struct EVMSchedule {
 #ifdef MIRAGE
     // at network start transaction fees will not be distributed to block authors / stakers
     // this number will be changed in later patches
-    size_t shareOfTransactionFeeToRewardPromile = 0;
+    size_t shareOfTransactionFeeToRewardPromille = 0;
     // block rewards are disabled initially and will be enabled in later patches
     u256 blockRewardOverwrite = 0;
 #else

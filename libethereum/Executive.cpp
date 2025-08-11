@@ -621,7 +621,7 @@ bool Executive::finalize() {
         EVMSchedule currentBlockSchedule = m_chainParams.makeEvmSchedule(
             m_envInfo.committedBlockTimestamp(), m_envInfo.number() );
         feesEarned = dev::calculateShareWithPrecision(
-            feesEarned, currentBlockSchedule.shareOfTransactionFeeToRewardPromile );
+            feesEarned, currentBlockSchedule.shareOfTransactionFeeToRewardPromille );
 #endif
         m_s.addBalance( m_envInfo.author(), feesEarned );
     }
