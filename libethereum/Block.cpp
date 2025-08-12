@@ -1024,10 +1024,16 @@ ExecutionResult Block::execute( LastBlockHashesFace const& _lh, Transaction cons
 void Block::rewardAllForNonDefaultBlock(
     const dev::Address& _stakingContractAddress, u256 const& _blockReward ) {
     // if staking contract is set to ZeroAddress, full reward goes to block author
-    size_t blockAuthorSharePromile = _stakingContractAddress == dev::ZeroAddress ? 1000 : sealEngine()->evmSchedule( m_previousBlock.timestamp(), m_currentBlock.number() ).shareOfBlockRewardToBlockAuthorPromille;
+    size_t blockAuthorSharePromile =
+        _stakingContractAddress == dev::ZeroAddress ?
+            1000 :
+            sealEngine()
+                ->evmSchedule( m_previousBlock.timestamp(), m_currentBlock.number() )
+                .shareOfBlockRewardToBlockAuthorPromille;
 
     // calculate block author's share
-    u256 blockAuthorReward = dev::calculateShareWithPrecision( _blockReward, blockAuthorSharePromile );
+    u256 blockAuthorReward =
+        dev::calculateShareWithPrecision( _blockReward, blockAuthorSharePromile );
     // calculate amount to be sent to staking contract
     u256 stakingContractReward = _blockReward - blockAuthorReward;
 
