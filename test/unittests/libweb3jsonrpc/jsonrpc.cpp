@@ -4485,17 +4485,16 @@ BOOST_AUTO_TEST_CASE( block_author_balance ) {
     std::string config = fastWriter.write( ret );
     JsonRpcFixture fixture( config, false, false, true );
 
+    string etherbase = fixture.rpcClient->eth_coinbase();
+
     BOOST_REQUIRE( !BlockRewardsActivationPatch::isEnabled( fixture.client->chainId() ) );
 
     // checksumed address: 0x0E7d7F1D34a502bD609542576941C3FCc087c588
     auto node_owner = "0x0e7d7f1d34a502bd609542576941c3fcc087c588";
-    auto node_owner_address = jsToAddress( node_owner );
 
     auto etherbase_address = jsToAddress( etherbase );
 
     u256 etherbaseBalance = fixture.client->balanceAt( etherbase_address );
-
-    auto authorInitialBalance = fixture.client->balanceAt( node_owner_address );
 
     // mine blocks without transactions
     dev::eth::simulateMining( *( fixture.client ), 10 );
@@ -4635,9 +4634,6 @@ BOOST_AUTO_TEST_CASE( block_author_balance_reward_wallet ) {
                 fixture.client->latestBlock().info().timestamp(), fixture.client->number() );
     auto feeForTx = jsToU256( sampleTx["gasPrice"].asString() ) * jsToU256( txData["gasUsed"].asString() );
     feeForTx = dev::calculateShareWithPrecision( feeForTx, fixture.client->evmSchedule().shareOfTransactionFeeToRewardPromille );
-        fixture.client->latestBlock().info().timestamp(), fixture.client->number() );
-    auto feeForTx =
-        jsToU256( sampleTx["gasPrice"].asString() ) * jsToU256( txData["gasUsed"].asString() );
     auto expectedBalanceChange = ( blockNumber - initialBlockNumber ) * totalReward + feeForTx;
 
     BOOST_REQUIRE_EQUAL(
