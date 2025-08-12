@@ -142,7 +142,6 @@ static std::string const c_genesisConfigString = R"(
         "0000000000000000000000000000000000000002": { "precompiled": { "name": "sha256", "linear": { "base": 60, "word": 12 } } },
         "0000000000000000000000000000000000000003": { "precompiled": { "name": "ripemd160", "linear": { "base": 600, "word": 120 } } },
         "0000000000000000000000000000000000000004": { "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } } },)" +
-#ifndef MIRAGE
         R"( "0000000000000000000000000000000000000005": {
             "precompiled": {
                 "name": "createFile",
@@ -153,7 +152,6 @@ static std::string const c_genesisConfigString = R"(
                 "restrictAccess": ["00000000000000000000000000000000000000AA", "692a70d2e424a56d2c6c27aa97d1a86395877b3a"]
             }
         },)" +
-#endif
 
     /*
 pragma solidity ^0.4.25;
@@ -4472,6 +4470,7 @@ BOOST_AUTO_TEST_CASE( getZeroBlock ) {
 
 #ifdef MIRAGE
 BOOST_AUTO_TEST_CASE( block_author_balance ) {
+    // when rewardWalletAddress is not defined
     // for testBlockRewardsActivationPatchAddress
     setenv( "TEST_BLOCK_REWARDS_ACTIVATION", "1", 1 );
 
@@ -4484,18 +4483,25 @@ BOOST_AUTO_TEST_CASE( block_author_balance ) {
 
     Json::FastWriter fastWriter;
     std::string config = fastWriter.write( ret );
-    JsonRpcFixture fixture( config );
+    JsonRpcFixture fixture( config, false, false, true );
 
     BOOST_REQUIRE( !BlockRewardsActivationPatch::isEnabled( fixture.client->chainId() ) );
 
-    string etherbase = fixture.rpcClient->eth_coinbase();
+    // checksumed address: 0x0E7d7F1D34a502bD609542576941C3FCc087c588
+    auto node_owner = "0x0e7d7f1d34a502bd609542576941c3fcc087c588";
+    auto node_owner_address = jsToAddress( node_owner );
 
-    u256 etherbaseBalance = fixture.client->balanceAt( jsToAddress( etherbase ) );
+    auto etherbase_address = jsToAddress( etherbase );
+
+    u256 etherbaseBalance = fixture.client->balanceAt( etherbase_address );
+
+    auto authorInitialBalance = fixture.client->balanceAt( node_owner_address );
 
     // mine blocks without transactions
     dev::eth::simulateMining( *( fixture.client ), 10 );
-    sleep(3);
-    etherbaseBalance = fixture.client->balanceAt( jsToAddress( etherbase ) );
+    sleep( 3 );
+    etherbaseBalance = fixture.client->balanceAt( etherbase_address );
+
     BOOST_REQUIRE_GT( etherbaseBalance, 0 );
 
     // mine transaction not from testBlockRewardsActivationPatchAddress - block rewards should stay disabled
@@ -4565,15 +4571,78 @@ BOOST_AUTO_TEST_CASE( block_author_balance ) {
     auto author = fixture.rpcClient->eth_getBlockByNumber( blockNumAsString, false )["author"];
     auto blockNumber = jsToU256( blockNumAsString );
 
-    BOOST_REQUIRE( author != etherbase );
+    BOOST_REQUIRE( author == node_owner );
+
     auto totalReward = fixture.client->chainParams().blockReward(
-                fixture.client->latestBlock().info().timestamp(), fixture.client->number() );
-    auto feeForTx = jsToU256( sampleTx["gasPrice"].asString() ) * jsToU256( txData["gasUsed"].asString() );
+        fixture.client->latestBlock().info().timestamp(), fixture.client->number() );
+    auto feeForTx =
+        jsToU256( sampleTx["gasPrice"].asString() ) * jsToU256( txData["gasUsed"].asString() );
     feeForTx = dev::calculateShareWithPrecision( feeForTx, fixture.client->evmSchedule().shareOfTransactionFeeToRewardPromille );
     auto expectedBalanceChange = ( blockNumber - initialBlockNumber ) * totalReward + feeForTx;
 
     BOOST_REQUIRE_EQUAL(
-                fixture.client->balanceAt( jsToAddress( author.asString() ) ) - authorInitialBalance, expectedBalanceChange );
+        fixture.client->balanceAt( jsToAddress( author.asString() ) ) - authorInitialBalance,
+        expectedBalanceChange );
+}
+
+BOOST_AUTO_TEST_CASE( block_author_balance_reward_wallet ) {
+    // when rewardWalletAddress is defined
+
+    // checksumed address: 0xfa3fe33E351a7c60039E59D923e417A6362D1C3E
+    auto node_reward_wallet = "0xfa3fe33e351a7c60039e59d923e417a6362d1c3e";
+    auto node_reward_wallet_address = jsToAddress( node_reward_wallet );
+
+    nlohmann::json configJson = nlohmann::json::parse(c_genesisConfigString);
+
+    // Add rewardWalletAddress to the first node in group "1"
+    configJson["skaleConfig"]["sChain"]["nodes"]["1"]["group"][0]["rewardWalletAddress"] = node_reward_wallet;
+
+    auto noRewardWalletAddressConfig = configJson.dump();
+    JsonRpcFixture fixture( noRewardWalletAddressConfig, false, false, true );
+
+    auto authorInitialBalance = fixture.client->balanceAt( node_reward_wallet_address );
+
+    auto initialBlockNumber = jsToU256( fixture.rpcClient->eth_blockNumber() );
+
+    // mine block without transactions
+    dev::eth::simulateMining( *( fixture.client ), 1 );
+    sleep( 3 );
+
+    // mine transaction
+    Json::Value sampleTx;
+    sampleTx["value"] = 1000000;
+    sampleTx["data"] = toJS( bytes() );
+    sampleTx["from"] = fixture.coinbase.address().hex();
+    sampleTx["to"] = fixture.account2.address().hex();
+    sampleTx["gasPrice"] = 1000000000000;
+    std::string txHash = fixture.rpcClient->eth_sendTransaction( sampleTx );
+    BOOST_REQUIRE( !txHash.empty() );
+
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    fixture.client->state().getOriginalDb()->createBlockSnap( 2 );
+    BOOST_REQUIRE_EQUAL( fixture.client->balanceAt( fixture.account2.address() ), u256( 1000000 ) );
+
+    auto txData = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+
+    auto blockNumAsString = fixture.rpcClient->eth_blockNumber();
+
+    auto author = fixture.rpcClient->eth_getBlockByNumber( blockNumAsString, false )["author"];
+    auto blockNumber = jsToU256( blockNumAsString );
+    BOOST_REQUIRE( author == node_reward_wallet );
+
+    auto totalReward = fixture.client->chainParams().blockReward(
+                fixture.client->latestBlock().info().timestamp(), fixture.client->number() );
+    auto feeForTx = jsToU256( sampleTx["gasPrice"].asString() ) * jsToU256( txData["gasUsed"].asString() );
+    feeForTx = dev::calculateShareWithPrecision( feeForTx, fixture.client->evmSchedule().shareOfTransactionFeeToRewardPromille );
+        fixture.client->latestBlock().info().timestamp(), fixture.client->number() );
+    auto feeForTx =
+        jsToU256( sampleTx["gasPrice"].asString() ) * jsToU256( txData["gasUsed"].asString() );
+    auto expectedBalanceChange = ( blockNumber - initialBlockNumber ) * totalReward + feeForTx;
+
+    BOOST_REQUIRE_EQUAL(
+        fixture.client->balanceAt( jsToAddress( author.asString() ) ) - authorInitialBalance,
+        expectedBalanceChange );
 }
 #endif // MIRAGE
 
