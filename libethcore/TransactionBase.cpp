@@ -706,15 +706,15 @@ void TransactionBase::checkAndValidateBITETransaction( uint64_t _currentEpochId 
             // check that ciphertext is valid
             libBLS::Ciphertext ciphertext = libBLS::Ciphertext::fromBytes( encryptedBITEData );
             // if currentEpochId = epochIdCandidate + 1, then ciphertext must have
-            // 2 encrypted AES keys assosiated with it
+            // 2 encrypted AES keys associated with it
             if ( epochIdCandidate != _currentEpochId && ciphertext.getKeys().size() != 2 )
                 BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment(
                                            std::string( "BITE transaction's data is invalid: no "
                                                         "payload found with matching epochId " ) +
                                            std::to_string( _currentEpochId ) ) );
             // validate encrypted AES keys
-            for ( const auto& cipheredkey : ciphertext.getKeys() )
-                libBLS::ThresholdEncryption::validateEncryption( cipheredkey );
+            for ( const auto& cipheredKey : ciphertext.getKeys() )
+                libBLS::ThresholdEncryption::validateEncryption( cipheredKey );
         } catch ( libBLS::ThresholdUtils::IncorrectInput& ex ) {
             BOOST_THROW_EXCEPTION(
                 InvalidBITETransaction() << errinfo_comment(
