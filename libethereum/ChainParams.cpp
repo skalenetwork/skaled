@@ -429,6 +429,7 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
                 << "Node " << node.id << ": owner is not set, using zero address as fallback";
             node.owner = ZeroAddress;
         }
+
         try {
             node.rewardWalletAddress =
                 jsToAddress( nodeConfObj.at( "rewardWalletAddress" ).get_str() );
@@ -438,8 +439,6 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
                 << ": rewardWalletAddress is not set, using zero address as fallback";
             node.rewardWalletAddress = ZeroAddress;
         }
-
-
 #endif
         node.ip = nodeConfObj.at( "ip" ).get_str();
         node.port = nodeConfObj.at( "basePort" ).get_uint64();
@@ -489,9 +488,10 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
             s.nodes.push_back( node );
         }
         s.t = t;
-        s.currentGroups[1] = { s.nodes, 1, keyShareName, BLSPublicKeys, commonBLSPublicKeys };
+        s.currentGroups[1] = { s.nodes, 1, keyShareName, BLSPublicKeys, commonBLSPublicKeys,
+            dev::ZeroAddress };
         // make it default
-        s.currentGroups[0] = { {}, 0, "", {}, {} };
+        s.currentGroups[0] = { {}, 0, "", {}, {}, dev::Address() };
     } else {
         auto nodesObjects = sChainObj.at( "nodes" ).get_obj();
         if ( nodesObjects.size() != c_currentGroupsSize )
@@ -505,6 +505,8 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
             } catch ( const std::exception& ) {
                 BOOST_THROW_EXCEPTION( runtime_error( "Invalid startTs in nodes section." ) );
             }
+
+            dev::Address stakingContractAddress = dev::ZeroAddress;
 
             std::vector< sChainNode > nodes;
 
@@ -534,12 +536,16 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
                         BLSPublicKeys[3] = blsKeyInfo.at( "BLSPublicKey3" ).get_str();
                     }
                 }
+                // read staking contract address
+                stakingContractAddress =
+                    dev::Address( it->second.get_obj().at( "stakingContractAddress" ).get_str() );
             } else {
                 // timestamp is set to 0 for BOOT group
                 startTs = 0;
             }
             s.currentGroups[std::distance( nodesObjects.begin(), it )] = { nodes,
-                ( uint64_t ) startTs, keyShareName, BLSPublicKeys, commonBLSPublicKeys };
+                ( uint64_t ) startTs, keyShareName, BLSPublicKeys, commonBLSPublicKeys,
+                stakingContractAddress };
             s.t = t;
         }
     }

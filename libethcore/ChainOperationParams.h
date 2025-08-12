@@ -206,6 +206,7 @@ struct CurrentGroup {
     std::string keyShareName;
     std::array< std::string, 4 > BLSPublicKeys;
     std::array< std::string, 4 > commonBLSPublicKeys;
+    dev::Address stakingContractAddress;
 };
 
 using CurrentGroups = std::array< CurrentGroup, c_currentGroupsSize >;
@@ -265,10 +266,7 @@ public:
 #endif
         nodes.push_back( me );
 #ifdef MIRAGE
-        currentGroups[0] = {
-            nodes,
-            1,
-            "",
+        currentGroups[0] = { nodes, 1, "",
             { "1085704699902305713594457076223282948137075635957851808699051999328"
               "5655852781",
                 "11559732032986387107991004021392285783925812861821192530917403151452391805634",
@@ -279,11 +277,8 @@ public:
                 "11559732032986387107991004021392285783925812861821192530917403151452391805634",
                 "8495653923123431417604973247489272438418190587263600148770280649306958101930",
                 "4082367875863433681332203403145435568316851327593401208105741076214120093531" },
-        };
-        currentGroups[1] = {
-            nodes,
-            2,
-            "",
+            dev::ZeroAddress };
+        currentGroups[1] = { nodes, 2, "",
             { "1085704699902305713594457076223282948137075635957851808699051999328"
               "5655852781",
                 "11559732032986387107991004021392285783925812861821192530917403151452391805634",
@@ -294,7 +289,7 @@ public:
                 "11559732032986387107991004021392285783925812861821192530917403151452391805634",
                 "8495653923123431417604973247489272438418190587263600148770280649306958101930",
                 "4082367875863433681332203403145435568316851327593401208105741076214120093531" },
-        };
+            dev::ZeroAddress };
 #endif
     }
 };
@@ -398,6 +393,12 @@ public:
 
 #ifdef MIRAGE
     bool getAllowPreEIP155Txns() const { return allowPreEIP155Txns; }
+
+    // only called from the block execution thread
+    // no mutex needed
+    Address getStakingContractAddress() const {
+        return sChain.currentGroups.back().stakingContractAddress;
+    }
 #endif
 
     /// General chain params.

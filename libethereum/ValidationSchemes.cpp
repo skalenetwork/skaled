@@ -362,7 +362,9 @@ void validateConfigJson( js::mObject const& _obj ) {
                 const js::mObject& groupInfo = nodeGroup.second.get_obj();
                 requireJsonFields( groupInfo, "ChainParams::loadConfig::skaleConfig::sChain::nodes",
                     { { "group", { { js::array_type }, JsonFieldPresence::Required } },
-                        { "blsKey", { { js::obj_type }, JsonFieldPresence::Optional } } } );
+                        { "blsKey", { { js::obj_type }, JsonFieldPresence::Optional } },
+                        { "stakingContractAddress",
+                            { { js::str_type }, JsonFieldPresence::Optional } } } );
                 if ( groupInfo.count( "blsKey" ) ) {
                     const js::mObject& blsKeyInfo = groupInfo.at( "blsKey" ).get_obj();
                     requireJsonFields( blsKeyInfo,
