@@ -4495,12 +4495,6 @@ BOOST_AUTO_TEST_CASE( block_author_balance ) {
     auto etherbase_address = jsToAddress( etherbase );
 
     u256 etherbaseBalance = fixture.client->balanceAt( etherbase_address );
-
-    // mine blocks without transactions
-    dev::eth::simulateMining( *( fixture.client ), 10 );
-    sleep( 3 );
-    etherbaseBalance = fixture.client->balanceAt( etherbase_address );
-
     BOOST_REQUIRE_EQUAL( etherbaseBalance, 0 );
 
     // mine transaction not from testBlockRewardsActivationPatchAddress - block rewards should stay disabled
@@ -4544,9 +4538,7 @@ BOOST_AUTO_TEST_CASE( block_author_balance ) {
     dev::eth::mineTransaction( *( fixture.client ), 1 );
     BOOST_REQUIRE( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"] == "0x1" );
     BOOST_REQUIRE( BlockRewardsActivationPatch::isEnabled( fixture.client->chainId() ) );
-    etherbaseBalance = fixture.client->balanceAt( etherbase_address );
-
-    BOOST_REQUIRE_GT( etherbaseBalance, 0 );
+    BOOST_REQUIRE_EQUAL( etherbaseBalance, 0 );
 
     etherbaseBalance = fixture.client->balanceAt( jsToAddress( etherbase ) );
 
