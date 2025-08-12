@@ -1023,26 +1023,21 @@ ExecutionResult Block::execute( LastBlockHashesFace const& _lh, Transaction cons
 #ifdef MIRAGE
 void Block::rewardAllForNonDefaultBlock(
     const dev::Address& _stakingContractAddress, u256 const& _blockReward ) {
+    // if staking contract is set to ZeroAddress, full reward goes to block author
+    size_t blockAuthorSharePromile = _stakingContractAddress == dev::ZeroAddress ? 1000 : sealEngine()->evmSchedule( m_previousBlock.timestamp(), m_currentBlock.number() ).shareOfBlockRewardToBlockAuthorPromille;
+
     // calculate block author's share
-    u256 blockAuthorReward = dev::calculateShareWithPrecision(
-        _blockReward, sealEngine()
-                          ->evmSchedule( m_previousBlock.timestamp(), m_currentBlock.number() )
-                          .shareOfBlockRewardToBlockAuthorPromille );
+    u256 blockAuthorReward = dev::calculateShareWithPrecision( _blockReward, blockAuthorSharePromile );
     // calculate amount to be sent to staking contract
     u256 stakingContractReward = _blockReward - blockAuthorReward;
-
-    std::cout << "BLOCK AUTHOR REWARD: " << _blockReward << '\n'
-              << "STAKING CONTRACT REWARD: " << stakingContractReward << '\n';
 
     // only distribute rewards for non-default blocks
     if ( m_currentBlock.author() != DEFAULT_BLOCK_OWNER_ADDRESS ) {
         // send to block author
         m_state.addBalance( m_currentBlock.author(), blockAuthorReward );
 
-        // send to staking contract if it is non-empty
-        if ( _stakingContractAddress != dev::ZeroAddress ) {
-            m_state.addBalance( _stakingContractAddress, stakingContractReward );
-        }
+        // send to staking contract
+        m_state.addBalance( _stakingContractAddress, stakingContractReward );
     }
 }
 
