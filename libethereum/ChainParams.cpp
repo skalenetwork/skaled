@@ -426,6 +426,17 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
                 << "Node " << node.id << ": owner is not set, using zero address as fallback";
             node.owner = ZeroAddress;
         }
+        try {
+            node.rewardWalletAddress =
+                jsToAddress( nodeConfObj.at( "rewardWalletAddress" ).get_str() );
+        } catch ( ... ) {
+            LOG( m_loggerWarning )
+                << "Node " << node.id
+                << ": rewardWalletAddress is not set, using zero address as fallback";
+            node.rewardWalletAddress = ZeroAddress;
+        }
+
+
 #endif
         node.ip = nodeConfObj.at( "ip" ).get_str();
         node.port = nodeConfObj.at( "basePort" ).get_uint64();
@@ -919,7 +930,7 @@ CurrentGroup ChainParams::getNewestGroup() const {
     return sChain.currentGroups[newestIndex];
 }
 
-Address ChainParams::getSChainNodeAddressByIndex( uint64_t _sChainIndex ) const {
+Address ChainParams::getSChainNodeBeneficiaryAddressByIndex( uint64_t _sChainIndex ) const {
     const auto& sChainNodes = sChain.nodes;
     auto has_schain_index = [&_sChainIndex]( const sChainNode& node ) {
         return node.sChainIndex == _sChainIndex;
@@ -929,7 +940,11 @@ Address ChainParams::getSChainNodeAddressByIndex( uint64_t _sChainIndex ) const 
         std::string sChainIndexStringRep = std::to_string( _sChainIndex );
         throw std::runtime_error( "No such sChainIndex -" + sChainIndexStringRep + " in config" );
     }
-    return nodeIterator->owner;
+    if ( nodeIterator->rewardWalletAddress == ZeroAddress ) {
+        return nodeIterator->owner;
+    } else {
+        return nodeIterator->rewardWalletAddress;
+    }
 }
 
 bool ChainParams::isInCommittee( const std::vector< sChainNode >& _committee ) const {

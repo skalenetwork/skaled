@@ -551,11 +551,11 @@ size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
 
 #ifdef MIRAGE
     // get winning node address
-    Address _winningNodeAddress = getWinningNodeAddressByIndex( _winningNodeIndex );
+    Address winningNodeAddressToReward = getWinningNodeAddressByIndex( _winningNodeIndex );
     {
         DEV_WRITE_GUARDED( x_working )
         // set block author as winning node address
-        m_working.safeSetAuthor( _winningNodeAddress );
+        m_working.safeSetAuthor( winningNodeAddressToReward );
     }
 #endif
 
@@ -587,8 +587,8 @@ size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
         updateHistoricGroupIndex();
 
 #ifdef MIRAGE
-    LOG( m_loggerInfo ) << "Winner for block " << number() << ": " << _winningNodeAddress
-                        << " (index " << _winningNodeIndex << ")";
+    LOG( m_loggerInfo ) << "Reward receiver for block " << number() << ": "
+                        << winningNodeAddressToReward << " (index " << _winningNodeIndex << ")";
 #endif
     m_snapshotAgent->doSnapshotIfNeeded( number(), _timestamp );
 
@@ -600,7 +600,7 @@ size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
 #ifdef MIRAGE
 Address Client::getWinningNodeAddressByIndex( uint64_t _winningNodeIndex ) {
     if ( _winningNodeIndex > 0 ) {
-        return bc().chainParams().getSChainNodeAddressByIndex( _winningNodeIndex );
+        return bc().chainParams().getSChainNodeBeneficiaryAddressByIndex( _winningNodeIndex );
     } else {
         return Block::DEFAULT_BLOCK_OWNER_ADDRESS;
     }
