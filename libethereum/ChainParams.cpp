@@ -537,8 +537,11 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
                     }
                 }
                 // read staking contract address
-                stakingContractAddress =
-                    dev::Address( it->second.get_obj().at( "stakingContractAddress" ).get_str() );
+                try {
+                    stakingContractAddress = dev::Address(
+                        it->second.get_obj().at( "stakingContractAddress" ).get_str() );
+                } catch ( ... ) {
+                }
             } else {
                 // timestamp is set to 0 for BOOT group
                 startTs = 0;

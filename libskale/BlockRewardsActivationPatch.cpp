@@ -14,8 +14,14 @@ dev::Address BlockRewardsActivationPatch::getMagicAddress() {
 }
 
 bool BlockRewardsActivationPatch::isEnabled( uint64_t _chainId ) {
-    if ( _chainId != fairChainId )
+    if ( _chainId != fairChainId ) {
+        // means that we are in tests or testnet environment
+        if ( client )
+            // we are on testnet. enable only after first committee rotation
+            return client->getCurrentEpochId() > 0;
         return true;
+    }
+    // we are on mainnet
     return client->countAt( getMagicAddress() ) != 0;
 }
 
