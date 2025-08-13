@@ -4648,10 +4648,14 @@ BOOST_AUTO_TEST_CASE( block_author_balance_reward_wallet ) {
     BOOST_REQUIRE( author == node_reward_wallet );
 
     auto totalReward = fixture.client->chainParams().blockReward(
-                fixture.client->latestBlock().info().timestamp(), fixture.client->number() );
+        fixture.client->latestBlock().info().timestamp(), fixture.client->number() );
+    auto blockAuthorReward =
+            dev::calculateShareWithPrecision( totalReward,
+                fixture.client->evmSchedule().shareOfBlockRewardToBlockAuthorPromille );
+
     auto feeForTx = jsToU256( sampleTx["gasPrice"].asString() ) * jsToU256( txData["gasUsed"].asString() );
     feeForTx = dev::calculateShareWithPrecision( feeForTx, fixture.client->evmSchedule().shareOfTransactionFeeToRewardPromille );
-    auto expectedBalanceChange = ( blockNumber - initialBlockNumber ) * totalReward + feeForTx;
+    auto expectedBalanceChange = ( blockNumber - initialBlockNumber ) * blockAuthorReward + feeForTx;
 
     BOOST_REQUIRE_EQUAL(
         fixture.client->balanceAt( jsToAddress( author.asString() ) ) - authorInitialBalance,
