@@ -5435,7 +5435,6 @@ BOOST_AUTO_TEST_CASE( dencunOpcodesInTransaction ) {
 BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     JsonRpcFixture fixture( c_BITEConfigString, false, false, true, true );
 
-    dev::eth::simulateMining( *( fixture.client ), 20 );
     string senderAddress = toJS( fixture.coinbase.address() );
     size_t nonce = 0;
     std::string biteAddress = "0x" + std::string( BITE_ADDRESS_AS_STRING );
@@ -5664,7 +5663,6 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
 BOOST_AUTO_TEST_CASE( BITETransactionCouldNotBeDecrypted ) {
     JsonRpcFixture fixture( c_BITEConfigString, false, false, true, true );
 
-    dev::eth::simulateMining( *( fixture.client ), 20 );
     string senderAddress = toJS( fixture.coinbase.address() );
 
     // address 0x7aa5e36aa15e93d10f4f26357c30f052dacdde5f is preset in config
@@ -6024,8 +6022,6 @@ BOOST_AUTO_TEST_CASE( committeeRotation ) {
     Json::FastWriter fastWriter;
     std::string config = fastWriter.write( ret );
     JsonRpcFixture fixture( config, false, false, true );
-
-    dev::eth::simulateMining( *( fixture.client ), 20 );
 
     Json::Value txRefill;
     txRefill["to"] = "0xc868AF52a6549c773082A334E5AE232e0Ea3B513";
