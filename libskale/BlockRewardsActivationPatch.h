@@ -1,5 +1,4 @@
-#ifndef BLOCKREWARDSACTIVATIONPATCH_H
-#define BLOCKREWARDSACTIVATIONPATCH_H
+#pragma once
 
 #include <libethereum/SchainPatch.h>
 
