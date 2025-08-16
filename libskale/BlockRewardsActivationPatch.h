@@ -27,5 +27,3 @@ private:
     static const dev::Address testBlockRewardsActivationPatchAddress;
     static constexpr uint64_t fairChainId = 934;  // 0x3a6
 };
-
-#endif  // BLOCKREWARDSACTIVATIONPATCH_H
