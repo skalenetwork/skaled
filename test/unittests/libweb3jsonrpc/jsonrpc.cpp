@@ -4524,7 +4524,7 @@ BOOST_AUTO_TEST_CASE( block_author_balance ) {
     dev::eth::mineTransaction( *( fixture.client ), 1 );
     BOOST_REQUIRE( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"] == "0x1" );
     BOOST_REQUIRE( !BlockRewardsActivationPatch::isEnabled( fixture.client->chainId() ) );
-    // staking contract balance only geets changed when block rewards are activated
+    // staking contract balance only gets changed when block rewards are activated
     BOOST_REQUIRE_EQUAL( fixture.client->balanceAt( stakingContractAddress ), 0 );
     etherbaseBalance = fixture.client->balanceAt( etherbase_address );
     BOOST_REQUIRE_EQUAL( etherbaseBalance, 0 );

@@ -393,12 +393,6 @@ public:
 
 #ifdef MIRAGE
     bool getAllowPreEIP155Txns() const { return allowPreEIP155Txns; }
-
-    // only called from the block execution thread
-    // no mutex needed
-    Address getStakingContractAddress() const {
-        return sChain.currentGroups.back().stakingContractAddress;
-    }
 #endif
 
     /// General chain params.

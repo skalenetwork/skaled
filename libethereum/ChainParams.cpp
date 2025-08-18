@@ -882,6 +882,11 @@ void ChainParams::fillDefaultTestsParameters( size_t _port ) {
 }
 
 #ifdef MIRAGE
+Address ChainParams::getStakingContractAddress() const {
+    std::shared_lock< std::shared_mutex > lock( m_mutex );
+    return sChain.currentGroups.back().stakingContractAddress;
+}
+
 std::string ChainParams::getConfigForConsensus() const {
     js::mValue val;
     json_spirit::read_string_or_throw( getOriginalJson(), val );
