@@ -5688,9 +5688,10 @@ BOOST_AUTO_TEST_CASE( BITETransactionCouldNotBeDecrypted ) {
     auto ciphertextBytes = ciphertext.toBytes();
 
     // spoil random element in decryptedData
-    // only tamper the data part | --- KEY ---- | | --- Data - tamper this part ----|
+    // only tamper the data part
+    // | -- Number of keys --| | --- KEY ---- | | --- Data - tamper this part ----|
     size_t idxToSpoil =
-        libBLS::CipheredKey::CIPHERED_KEY_SIZE_BYTES +
+        1 + libBLS::CipheredKey::CIPHERED_KEY_SIZE_BYTES +
         rand() % ( ciphertextBytes.size() - libBLS::CipheredKey::CIPHERED_KEY_SIZE_BYTES );
     ciphertextBytes[idxToSpoil]++;
 

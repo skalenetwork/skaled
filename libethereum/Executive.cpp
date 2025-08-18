@@ -620,6 +620,8 @@ bool Executive::finalize() {
 #ifdef MIRAGE
         EVMSchedule currentBlockSchedule = m_chainParams.makeEvmSchedule(
             m_envInfo.committedBlockTimestamp(), m_envInfo.number() );
+        // calculate share of transaction fees to reward
+        // the rest is effectively burnt
         feesEarned = dev::calculateShareWithPrecision(
             feesEarned, currentBlockSchedule.shareOfTransactionFeeToRewardPromille );
 #endif
