@@ -34,5 +34,6 @@ dev::eth::EVMSchedule BlockRewardsActivationPatch::makeSchedule(
     dev::eth::EVMSchedule ret = _base;
     ret.blockRewardOverwrite = { 5 * dev::eth::ether };
     ret.shareOfTransactionFeeToRewardPromille = 500;  // 50%
+    ret.shareOfBlockRewardToBlockAuthorPromille = 500;  // 50%
     return ret;
 }

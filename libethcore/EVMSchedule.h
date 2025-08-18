@@ -100,8 +100,7 @@ struct EVMSchedule {
     u256 blockRewardOverwrite = 0;
 
     // block rewards should be split between block author and staking contract
-    // initially rewards are split equally
-    size_t shareOfBlockRewardToBlockAuthorPromille = 500;
+    size_t shareOfBlockRewardToBlockAuthorPromille = 1000;
 #else
     boost::optional< u256 > blockRewardOverwrite;
 #endif
