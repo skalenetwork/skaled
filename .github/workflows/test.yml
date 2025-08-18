@@ -354,7 +354,7 @@ jobs:
           run_test memDB 
           run_test OverlayDBTests 
           run_test AccountHolderTest 
-          run_test ClientTests 
+          run_test ClientTests
           run_test JsonRpcSuite   
           run_test SingleConsensusTests  
           run_test ConsensusTests

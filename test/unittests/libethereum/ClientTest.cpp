@@ -25,6 +25,7 @@
 #include <libethashseal/GenesisInfo.h>
 #include <libethereum/ChainParams.h>
 #include <libethereum/ClientTest.h>
+#include <libethereum/SchainPatch.h>
 #include <libp2p/Network.h>
 #include <libskale/SnapshotManager.h>
 #include <libweb3jsonrpc/AccountHolder.h>
@@ -553,7 +554,7 @@ BOOST_AUTO_TEST_CASE( transactionWithData ) {
 
     bytes data = jsToBytes( "0x11223344556600770000" );
 
-    while ( testClient->number() < 1 )
+    while ( !CorrectForkInPowPatch::isEnabledInWorkingBlock() )
         usleep( 100 );
 
     u256 estimate =
@@ -594,7 +595,7 @@ BOOST_AUTO_TEST_CASE( constantConsumption ) {
     bytes data =
         jsToBytes( "0x815b8ab4000000000000000000000000000000000000000000000000000000000000c350" );
 
-    while ( testClient->number() < 1 )
+    while ( !CorrectForkInPowPatch::isEnabledInWorkingBlock() )
         usleep( 100 );
 
     u256 estimate = testClient
@@ -636,7 +637,7 @@ BOOST_AUTO_TEST_CASE( linearConsumption ) {
     // data to call method spendHalfOfGas()
     bytes data = jsToBytes( "0x8273f754" );
 
-    while ( testClient->number() < 1 )
+    while ( !CorrectForkInPowPatch::isEnabledInWorkingBlock() )
         usleep( 100 );
 
     u256 estimate = testClient
@@ -680,7 +681,7 @@ BOOST_AUTO_TEST_CASE( exceedsGasLimit ) {
 
     int64_t maxGas = 50000;
 
-    while ( testClient->number() < 1 )
+    while ( !CorrectForkInPowPatch::isEnabledInWorkingBlock() )
         usleep( 100 );
 
     u256 estimate = testClient
@@ -720,7 +721,7 @@ BOOST_AUTO_TEST_CASE( runsInterference ) {
 
     int64_t maxGas = 50000;
 
-    while ( testClient->number() < 1 )
+    while ( !CorrectForkInPowPatch::isEnabledInWorkingBlock() )
         usleep( 100 );
 
     u256 estimate = testClient
@@ -764,7 +765,7 @@ BOOST_AUTO_TEST_CASE( consumptionWithRefunds ) {
     u256 balance = testClient->balanceAt( from );
     BOOST_CHECK( balance > 0 );
 
-    while ( testClient->number() < 1 )
+    while ( !CorrectForkInPowPatch::isEnabledInWorkingBlock() )
         usleep( 100 );
 
     u256 estimate = testClient
@@ -826,7 +827,7 @@ BOOST_AUTO_TEST_CASE( consumptionWithRefunds2 ) {
 
     int64_t maxGas = 100000;
 
-    while ( testClient->number() < 1 )
+    while ( !CorrectForkInPowPatch::isEnabledInWorkingBlock() )
         usleep( 100 );
 
     u256 estimate = testClient
@@ -876,7 +877,7 @@ BOOST_AUTO_TEST_CASE( nonLinearConsumption ) {
 
     int64_t maxGas = 100000;
 
-    while ( testClient->number() < 1 )
+    while ( !CorrectForkInPowPatch::isEnabledInWorkingBlock() )
         usleep( 100 );
 
     u256 estimate = testClient
@@ -948,7 +949,7 @@ BOOST_AUTO_TEST_CASE( consumptionWithReverts ) {
     bytes data =
         jsToBytes( "0xb8bd717f000000000000000000000000000000000000000000000000000000000000c350" );
 
-    while ( testClient->number() < 1 )
+    while ( !CorrectForkInPowPatch::isEnabledInWorkingBlock() )
         usleep( 100 );
 
     u256 estimate = testClient
