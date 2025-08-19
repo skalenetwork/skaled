@@ -14,8 +14,18 @@ dev::Address BlockRewardsActivationPatch::getMagicAddress() {
 }
 
 bool BlockRewardsActivationPatch::isEnabled( uint64_t _chainId ) {
-    if ( _chainId != fairChainId )
+    if ( _chainId != fairChainId ) {
+        // means that we are in unit test or testnet environment
+        // always enable for unit tests by default
+        // check epochId for testnet
+        if ( client ) {
+            if ( !client->chainParams().isTestSignaturesEnabled() )
+                // we are on testnet. enable only after first committee rotation
+                return client->getCurrentEpochId() > 0;
+        }
         return true;
+    }
+    // we are on mainnet
     return client->countAt( getMagicAddress() ) != 0;
 }
 
@@ -23,6 +33,7 @@ dev::eth::EVMSchedule BlockRewardsActivationPatch::makeSchedule(
     const dev::eth::EVMSchedule& _base ) {
     dev::eth::EVMSchedule ret = _base;
     ret.blockRewardOverwrite = { 5 * dev::eth::ether };
-    ret.shareOfTransactionFeeToRewardPromille = 500;
+    ret.shareOfTransactionFeeToRewardPromille = 500;    // 50%
+    ret.shareOfBlockRewardToBlockAuthorPromille = 500;  // 50%
     return ret;
 }

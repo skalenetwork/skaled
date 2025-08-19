@@ -579,9 +579,9 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
 #ifdef MIRAGE
     auto lastRewardedBlockNumber = m_state.getLastRewardedBlockNumber();
     if ( lastRewardedBlockNumber < m_currentBlock.number() ) {
-        auto blockTimestamp = m_currentBlock.timestamp();
+        auto blockTimestamp = m_previousBlock.timestamp();
         auto reward = _bc.sealEngine()->blockReward( blockTimestamp, m_currentBlock.number() );
-        rewardBlockAuthorForNonDefaultBlock( reward );
+        rewardAllForNonDefaultBlock( _bc.chainParams().getStakingContractAddress(), reward );
         m_state.safeSetLastRewardedBlockNumber( m_currentBlock.number() );
         bool removeEmptyAccounts =
             m_currentBlock.number() >= _bc.chainParams().getEIP158ForkBlock();
@@ -852,7 +852,7 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
     DEV_TIMED_ABOVE( "applyRewards", 500 )
 
 #ifdef MIRAGE
-    rewardBlockAuthorForNonDefaultBlock(
+    rewardAllForNonDefaultBlock( _bc.chainParams().getStakingContractAddress(),
         _bc.sealEngine()->blockReward( m_currentBlock.timestamp(), m_currentBlock.number() ) );
 #else
     applyRewards( rewarded,
@@ -1021,9 +1021,28 @@ ExecutionResult Block::execute( LastBlockHashesFace const& _lh, Transaction cons
 }
 
 #ifdef MIRAGE
-void Block::rewardBlockAuthorForNonDefaultBlock( u256 const& _blockReward ) {
+void Block::rewardAllForNonDefaultBlock(
+    const dev::Address& _stakingContractAddress, u256 const& _blockReward ) {
+    // if staking contract is set to ZeroAddress, full reward goes to block author
+    auto evmSchedule =
+        sealEngine()->evmSchedule( m_previousBlock.timestamp(), m_currentBlock.number() );
+    size_t blockAuthorSharePromille = evmSchedule.shareOfBlockRewardToBlockAuthorPromille;
+    if ( _stakingContractAddress == dev::ZeroAddress )
+        blockAuthorSharePromille = 1000;
+
+    // calculate block author's share
+    u256 blockAuthorReward =
+        dev::calculateShareWithPrecision( _blockReward, blockAuthorSharePromille );
+    // calculate amount to be sent to staking contract
+    u256 stakingContractReward = _blockReward - blockAuthorReward;
+
+    // only distribute rewards for non-default blocks
     if ( m_currentBlock.author() != DEFAULT_BLOCK_OWNER_ADDRESS ) {
-        m_state.addBalance( m_currentBlock.author(), _blockReward );
+        // send to block author
+        m_state.addBalance( m_currentBlock.author(), blockAuthorReward );
+
+        // send to staking contract
+        m_state.addBalance( _stakingContractAddress, stakingContractReward );
     }
 }
 

@@ -159,6 +159,10 @@ struct ChainParams : public ChainOperationParams {
 
     size_t getThresholdCount() const { return sChain.t; }
 
+#ifdef MIRAGE
+    Address getStakingContractAddress() const;
+#endif
+
     // SGX GETTERS
 
     bool isTestSignaturesEnabled() const { return nodeInfo.testSignatures; }
