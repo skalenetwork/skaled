@@ -91,7 +91,19 @@ struct EVMSchedule {
     unsigned BITETxnCost = 21000;
 #endif
 
+#ifdef MIRAGE
+    // at network start transaction fees will not be distributed to block authors / stakers
+    // this number will be changed in later patches
+    size_t shareOfTransactionFeeToRewardPromille = 0;
+
+    // block rewards are disabled initially and will be enabled in later patches
+    u256 blockRewardOverwrite = 0;
+
+    // block rewards should be split between block author and staking contract
+    size_t shareOfBlockRewardToBlockAuthorPromille = 1000;
+#else
     boost::optional< u256 > blockRewardOverwrite;
+#endif
 
     bool staticCallDepthLimit() const { return !eip150Mode; }
     bool suicideChargesNewAccountGas() const { return eip150Mode; }
@@ -129,7 +141,9 @@ static const EVMSchedule ByzantiumSchedule = [] {
     schedule.haveRevert = true;
     schedule.haveReturnData = true;
     schedule.haveStaticCall = true;
+#ifndef MIRAGE
     schedule.blockRewardOverwrite = { 3 * ether };
+#endif
     return schedule;
 }();
 
@@ -139,7 +153,9 @@ static const EVMSchedule ConstantinopleSchedule = [] {
     schedule.haveBitwiseShifting = true;
     schedule.haveExtcodehash = true;
     schedule.eip1283Mode = true;
+#ifndef MIRAGE
     schedule.blockRewardOverwrite = { 2 * ether };
+#endif
     return schedule;
 }();
 

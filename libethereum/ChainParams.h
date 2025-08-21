@@ -92,7 +92,7 @@ struct ChainParams : public ChainOperationParams {
     std::string getSchainName() const { return sChain.name; }
 
 #ifdef MIRAGE
-    Address getSChainNodeAddressByIndex( uint64_t sChainIndex ) const;
+    Address getSChainNodeBeneficiaryAddressByIndex( uint64_t sChainIndex ) const;
 
     bool updateCurrentGroupIfNeeded( uint64_t _latestBlockTimestamp );
 
@@ -158,6 +158,10 @@ struct ChainParams : public ChainOperationParams {
     size_t getNodesCount() const;
 
     size_t getThresholdCount() const { return sChain.t; }
+
+#ifdef MIRAGE
+    Address getStakingContractAddress() const;
+#endif
 
     // SGX GETTERS
 
