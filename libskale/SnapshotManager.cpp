@@ -534,7 +534,7 @@ void SnapshotManager::addLastPriceToHash( unsigned _blockNumber, secp256k1_sha25
         this->snapshotsDir / std::to_string( _blockNumber ) / coreVolumes.at( pricesDbVolumeIndex );
     if ( boost::filesystem::exists( prices_path ) ) {
         boost::filesystem::directory_iterator it( prices_path ), end;
-        std::string last_price_str;
+        std::string last_price_str = "";
         std::string last_price_key = "1.0:" + std::to_string( _blockNumber );
         while ( it != end ) {
             dev::db::LevelDB::LevelDBOptions options;
