@@ -28,7 +28,7 @@
 #include <libdevcore/CommonData.h>
 #include <libdevcore/Log.h>
 
-#ifdef MIRAGE
+#ifdef FAIR
 #include <libskale/BlockRewardsActivationPatch.h>
 #endif
 
@@ -59,7 +59,7 @@ time_t SChain::getPatchTimestamp( SchainPatchEnum _patchEnum ) const {
 
 ChainOperationParams::ChainOperationParams()
     :
-#ifndef MIRAGE
+#ifndef FAIR
       m_blockReward( "0x4563918244F40000" ),
 #endif
       minGasLimit( 0x1388 ),
@@ -99,7 +99,7 @@ EVMSchedule const ChainOperationParams::makeEvmSchedule(
     if ( PushZeroPatch::isEnabledWhen( _committedBlockTimestamp ) )
         result = PushZeroPatch::makeSchedule( result );
 
-#ifdef MIRAGE
+#ifdef FAIR
     if ( BlockRewardsActivationPatch::isEnabled( chainID ) )
         result = BlockRewardsActivationPatch::makeSchedule( result );
 #endif
@@ -108,7 +108,7 @@ EVMSchedule const ChainOperationParams::makeEvmSchedule(
 }
 
 u256 ChainOperationParams::blockReward( EVMSchedule const& _schedule ) const {
-#ifndef MIRAGE
+#ifndef FAIR
     if ( _schedule.blockRewardOverwrite )
         return *_schedule.blockRewardOverwrite;
     else
@@ -124,7 +124,7 @@ u256 ChainOperationParams::blockReward(
     return blockReward( schedule );
 }
 
-#ifndef MIRAGE
+#ifndef FAIR
 void ChainOperationParams::setBlockReward( u256 const& _newBlockReward ) {
     m_blockReward = _newBlockReward;
 }

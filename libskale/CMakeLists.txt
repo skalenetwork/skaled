@@ -16,7 +16,7 @@ set(sources
     SkipInvalidTransactionsPatch.cpp
 )
 
-if (NOT DEFINED MIRAGE)
+if (NOT DEFINED FAIR)
     list(APPEND sources OverlayFS.cpp)
 endif()
 
@@ -36,7 +36,7 @@ set(headers
     SkipInvalidTransactionsPatch.h
 )
 
-if (NOT DEFINED MIRAGE)
+if (NOT DEFINED FAIR)
     list(APPEND headers OverlayFS.h)
 else()
     list(APPEND sources BlockRewardsActivationPatch.cpp)

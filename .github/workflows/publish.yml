@@ -18,8 +18,8 @@ jobs:
     outputs:
       version_orig: ${{ steps.set-version.outputs.version_orig }}
       version_historic: ${{ steps.set-version.outputs.version_historic }}
-      version_mirage: ${{ steps.set-version.outputs.version_mirage }}
-      version_mirage_historic: ${{ steps.set-version.outputs.version_mirage_historic }}
+      version_fair: ${{ steps.set-version.outputs.version_fair }}
+      version_fair_historic: ${{ steps.set-version.outputs.version_fair_historic }}
       release_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
       - name: Checkout repository
@@ -39,13 +39,13 @@ jobs:
           ( test $BRANCH = "stable" && export PRERELEASE=false ) || export PRERELEASE=true
           echo "VERSION_ORIG=$VERSION" >> $GITHUB_ENV
           echo "VERSION_HISTORIC=$VERSION-historic" >> $GITHUB_ENV
-          echo "VERSION_MIRAGE=$VERSION-mirage" >> $GITHUB_ENV
+          echo "VERSION_FAIR=$VERSION-fair" >> $GITHUB_ENV
           echo "PRERELEASE=$PRERELEASE" >> $GITHUB_ENV
 
           echo "::set-output name=version_orig::$VERSION"
           echo "::set-output name=version_historic::$VERSION-historic"
-          echo "::set-output name=version_mirage::$VERSION-mirage"
-          echo "::set-output name=version_mirage_historic::$VERSION-mirage-historic"
+          echo "::set-output name=version_fair::$VERSION-fair"
+          echo "::set-output name=version_fair_historic::$VERSION-fair-historic"
           
       - name: Create GitHub Release
         id: create_release
@@ -82,26 +82,26 @@ jobs:
       use_plain_version: true
     secrets: inherit
   
-  build-mirage:
+  build-fair:
     needs: configure
     uses: ./.github/workflows/setup-build-publish.yml
     with:
       branch_name: ${{ github.ref_name }}
-      image_version: ${{ needs.configure.outputs.version_mirage }}
+      image_version: ${{ needs.configure.outputs.version_fair }}
       build_type: "RelWithDebInfo"
-      node_type: mirage
+      node_type: fair
       release_url: ${{ needs.configure.outputs.release_url }}
       use_plain_version: true
     secrets: inherit
   
-  build-mirage-historic:
+  build-fair-historic:
     needs: configure
     uses: ./.github/workflows/setup-build-publish.yml
     with:
       branch_name: ${{ github.ref_name }}
-      image_version: ${{ needs.configure.outputs.version_mirage_historic }}
+      image_version: ${{ needs.configure.outputs.version_fair_historic }}
       build_type: "RelWithDebInfo"
-      node_type: mirage-historic
+      node_type: fair-historic
       release_url: ${{ needs.configure.outputs.release_url }}
       use_plain_version: true
     secrets: inherit
@@ -122,18 +122,18 @@ jobs:
       version: ${{ needs.build-historic.outputs.version }}
     secrets: inherit
   
-  functional-tests-mirage:
+  functional-tests-fair:
     uses: ./.github/workflows/functional-tests.yml
-    name: Functional testing for mirage build
-    needs: build-mirage
+    name: Functional testing for fair build
+    needs: build-fair
     with:
-      version: ${{ needs.build-mirage.outputs.version }}
+      version: ${{ needs.build-fair.outputs.version }}
     secrets: inherit
   
-  functional-tests-mirage-historic:
+  functional-tests-fair-historic:
     uses: ./.github/workflows/functional-tests.yml
-    name: Functional testing for mirage-historic build
-    needs: build-mirage-historic
+    name: Functional testing for fair-historic build
+    needs: build-fair-historic
     with:
-      version: ${{ needs.build-mirage-historic.outputs.version }}
+      version: ${{ needs.build-fair-historic.outputs.version }}
     secrets: inherit

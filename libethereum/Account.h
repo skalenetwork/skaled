@@ -114,7 +114,7 @@ public:
     /// Explicit constructor for wierd cases of construction or a contract account.
     Account( u256 _nonce, u256 _balance, StorageRoot _contractRoot, h256 _codeHash,
         u256 const& _version, Changedness _c
-#ifndef MIRAGE
+#ifndef FAIR
         ,
         s256 _storageUsed = 0
 #endif
@@ -125,7 +125,7 @@ public:
           m_balance( _balance ),
           m_codeHash( _codeHash ),
           m_version( _version ),
-#ifndef MIRAGE
+#ifndef FAIR
           m_storageUsed( _storageUsed ),
 #endif
           m_storageRoot( _contractRoot ) {
@@ -241,7 +241,7 @@ public:
 
     u256 version() const { return m_version; }
 
-#ifndef MIRAGE
+#ifndef FAIR
     s256 const& storageUsed() const { return m_storageUsed; }
 
     void updateStorageUsage( const s256& _value ) {
@@ -307,7 +307,7 @@ private:
     /// Value for m_codeHash when this account is having its code determined.
     static const h256 c_contractConceptionCodeHash;
 
-#ifndef MIRAGE
+#ifndef FAIR
     // is only valuable if account has code
     s256 m_storageUsed = 0;
 #endif

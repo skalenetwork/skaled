@@ -255,7 +255,7 @@ std::tuple< dev::h256, libff::alt_bn128_G1, libff::alt_bn128_G2 > SnapshotHashAg
 
         libff::alt_bn128_G2 publicKey;
         if ( urlToDownloadSnapshotFrom_.empty() ) {
-#ifdef MIRAGE
+#ifdef FAIR
             Json::Value joPublicKeyResponse = skaleClient.skale_getBLSPublicKey();
 #else
             Json::Value joPublicKeyResponse = skaleClient.skale_imaInfo();

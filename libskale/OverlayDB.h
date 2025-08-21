@@ -80,7 +80,7 @@ public:
     void setLegacyPartialTransactionReceipts( const dev::bytes& _newReceipt );
     void cleanupLegacyTransactionReceipts();
 
-#ifdef MIRAGE
+#ifdef FAIR
     std::uint64_t hexToUint64( const std::string& hexValue );
     void setLastRewardedBlockNumber( const dev::eth::BlockNumber _blockNumber );
     dev::eth::BlockNumber getLastRewardedBlockNumber();

@@ -33,7 +33,7 @@ namespace dev {
 
 namespace db {
 
-#ifdef MIRAGE
+#ifdef FAIR
 const static std::string LATEST_BLOCK_TIMESTAMP_KEY = "LATEST_BLOCK_TIMESTAMP";
 #endif
 

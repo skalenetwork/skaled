@@ -360,7 +360,7 @@ pair< TransactionReceipts, bool > Block::sync(
     ret.second = ( transactions.size() == c_maxSyncTransactions );  // say there's more to the
                                                                     // caller if we hit the limit
 
-#ifndef MIRAGE
+#ifndef FAIR
     for ( Transaction& transaction : transactions ) {
         transaction.checkOutExternalGas( _bc.chainParams(), _bc.info().timestamp(), _bc.number() );
     }
@@ -378,7 +378,7 @@ pair< TransactionReceipts, bool > Block::sync(
                     if ( t.gasPrice() >= _gp.ask( *this ) ) {
                         //						Timer t;
                         execute( _bc.lastBlockHashes(), t, Permanence::Uncommitted );
-#ifdef MIRAGE
+#ifdef FAIR
                         ret.first = m_receipts;
 #else
                         ret.first.push_back( m_receipts.back() );
@@ -521,7 +521,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
 
 
             if ( !tr.isInvalid() &&
-#ifndef MIRAGE
+#ifndef FAIR
                  !tr.hasExternalGas() &&
 #endif
                  tr.gasPrice() < _gasPrice ) {
@@ -576,7 +576,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
             LOG( m_loggerError ) << "FAILED transaction after consensus! " << ex.what();
         }
     }
-#ifdef MIRAGE
+#ifdef FAIR
     auto lastRewardedBlockNumber = m_state.getLastRewardedBlockNumber();
     if ( lastRewardedBlockNumber < m_currentBlock.number() ) {
         auto blockTimestamp = m_previousBlock.timestamp();
@@ -720,7 +720,7 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
     unsigned i = 0;
     DEV_TIMED_ABOVE( "txExec", 500 ) for ( Transaction const& tr : _block.transactions ) {
         try {
-#ifndef MIRAGE
+#ifndef FAIR
             const_cast< Transaction& >( tr ).checkOutExternalGas(
                 _bc.chainParams(), _bc.info().timestamp(), _bc.number() );
 #endif
@@ -851,7 +851,7 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
     assert( _bc.sealEngine() );
     DEV_TIMED_ABOVE( "applyRewards", 500 )
 
-#ifdef MIRAGE
+#ifdef FAIR
     rewardAllForNonDefaultBlock( _bc.chainParams().getStakingContractAddress(),
         _bc.sealEngine()->blockReward( m_currentBlock.timestamp(), m_currentBlock.number() ) );
 #else
@@ -1020,7 +1020,7 @@ ExecutionResult Block::execute( LastBlockHashesFace const& _lh, Transaction cons
     return resultReceipt.first;
 }
 
-#ifdef MIRAGE
+#ifdef FAIR
 void Block::rewardAllForNonDefaultBlock(
     const dev::Address& _stakingContractAddress, u256 const& _blockReward ) {
     // if staking contract is set to ZeroAddress, full reward goes to block author
@@ -1161,7 +1161,7 @@ void Block::commitToSeal(
 
     // Apply rewards last of all.
     assert( _bc.sealEngine() );
-#ifndef MIRAGE
+#ifndef FAIR
     applyRewards( uncleBlockHeaders,
         _bc.sealEngine()->blockReward( previousInfo().timestamp(), m_currentBlock.number() ) );
 #endif

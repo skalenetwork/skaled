@@ -60,7 +60,7 @@ SnapshotManager::SnapshotManager( std::shared_ptr< const dev::eth::ChainParams >
     dataDir = _dataDir;
 
     coreVolumes = { dev::eth::BlockChain::getChainDirName( *chainParams ),
-#ifndef MIRAGE
+#ifndef FAIR
         "filestorage",
 #endif
         "prices_" + chainParams->getSelfNodeId().str() + ".db",
@@ -561,7 +561,7 @@ void SnapshotManager::addLastPriceToHash( unsigned _blockNumber, secp256k1_sha25
 }
 
 
-#ifndef MIRAGE
+#ifndef FAIR
 void SnapshotManager::proceedRegularFile(
     const boost::filesystem::path& path, secp256k1_sha256_t* ctx, bool isChecking ) const {
     if ( path.extension() == "._hash" ) {
@@ -675,7 +675,7 @@ void SnapshotManager::computeFileStorageHash( const boost::filesystem::path& _fi
 #endif
 
 void SnapshotManager::computeAllVolumesHash( unsigned _blockNumber, secp256k1_sha256_t* ctx
-#ifndef MIRAGE
+#ifndef FAIR
     ,
     bool isChecking
 #endif
@@ -713,7 +713,7 @@ void SnapshotManager::computeAllVolumesHash( unsigned _blockNumber, secp256k1_sh
         this->computeDatabaseHash( content, ctx );
     }
 
-#ifndef MIRAGE
+#ifndef FAIR
     // filestorage
     this->computeFileStorageHash(
         this->snapshotsDir / std::to_string( _blockNumber ) / "filestorage", ctx, isChecking );
@@ -770,7 +770,7 @@ void SnapshotManager::computeAllVolumesHash( unsigned _blockNumber, secp256k1_sh
 }
 
 void SnapshotManager::computeSnapshotHash( unsigned _blockNumber
-#ifndef MIRAGE
+#ifndef FAIR
     ,
     bool isChecking
 #endif
@@ -807,7 +807,7 @@ void SnapshotManager::computeSnapshotHash( unsigned _blockNumber
     }
 
     this->computeAllVolumesHash( _blockNumber, &ctx
-#ifndef MIRAGE
+#ifndef FAIR
         ,
         isChecking
 #endif

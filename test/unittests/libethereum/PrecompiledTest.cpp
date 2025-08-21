@@ -31,7 +31,7 @@
 #include <libethereum/TransactionQueue.h>
 #include <test/tools/libtesteth/TestHelper.h>
 #include <boost/test/unit_test.hpp>
-#ifndef MIRAGE
+#ifndef FAIR
 #include <libskale/OverlayFS.h>
 #endif
 #include <libethereum/SchainPatch.h>
@@ -1695,11 +1695,11 @@ static std::string const genesisInfoSkaleConfigTest = R"(
 }
 )";
 
-#ifndef MIRAGE
+#ifndef FAIR
 BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     Json::Value ret;
     Json::Reader().parse( genesisInfoSkaleConfigTest, ret );
-#ifndef MIRAGE
+#ifndef FAIR
     ret["skaleConfig"]["sChain"]["contractStorageLimit"] = 32000;
 #endif
     Json::FastWriter fastWriter;

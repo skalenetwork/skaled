@@ -381,10 +381,10 @@ json_spirit::mObject fillBCTest( json_spirit::mObject const& _input ) {
         AccountMaskMap expectStateMap;
         State stateExpect = State();
         ImportTest::importState( _input.at( "expect" ).get_obj(), stateExpect, expectStateMap );
-#ifdef MIRAGE
+#ifdef FAIR
         unordered_set< Address > owners;
         owners.insert( testChain.topBlock().blockHeader().author() );
-        if ( ImportTest::compareStatesMIRAGE(
+        if ( ImportTest::compareStatesFAIR(
                  stateExpect, testChain.topBlock().state(), owners, expectStateMap, WhenError::Throw ) )
             cerr << testName << "\n";
 #else
@@ -545,16 +545,16 @@ void testBCTest( json_spirit::mObject const& _o ) {
     //        blocks!");
 
     State postState = State();  // Compare post states
-#ifndef MIRAGE
+#ifndef FAIR
     postState.setStorageLimit(1000000000);
 #endif
     BOOST_REQUIRE( ( _o.count( "postState" ) > 0 ) );
     ImportTest::importState( _o.at( "postState" ).get_obj(), postState );
-#ifdef MIRAGE
+#ifdef FAIR
     unordered_set< Address > owners;
     owners.insert( testChain.topBlock().blockHeader().author() );
-    ImportTest::compareStatesMIRAGE( postState, testChain.topBlock().state(), owners );
-    ImportTest::compareStatesMIRAGE( postState, blockchain.topBlock().state(), owners );
+    ImportTest::compareStatesFAIR( postState, testChain.topBlock().state(), owners );
+    ImportTest::compareStatesFAIR( postState, blockchain.topBlock().state(), owners );
 #else
     ImportTest::compareStates( postState, testChain.topBlock().state() );
     ImportTest::compareStates( postState, blockchain.topBlock().state() );

@@ -52,7 +52,7 @@
 #include <libhistoric/TraceOptions.h>
 #endif
 
-#ifdef MIRAGE
+#ifdef FAIR
 #include <libskale/BlockRewardsActivationPatch.h>
 #endif
 
@@ -257,7 +257,7 @@ void Client::initStateFromDiskOrGenesis() {
 
     m_state = State( chainParams().getAccountStartNonce(), m_dbPath, bc().genesisHash(),
         BaseState::PreExisting, chainParams().getAccountInitialFunds()
-#ifndef MIRAGE
+#ifndef FAIR
                                     ,
         chainParams().getContractStorageLimit()
 #endif
@@ -346,7 +346,7 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     TotalStorageUsedPatch::init( this );
     // HACK Needed to set env var for consensus
     AmsterdamFixPatch::isEnabled( *this );
-#ifdef MIRAGE
+#ifdef FAIR
     BlockRewardsActivationPatch::init( this );
 #endif
 
@@ -543,7 +543,7 @@ size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
     const std::shared_ptr< DecryptedTransactionFieldsMap >& _decryptedTransactionDataFields,
 #endif
     u256 _gasPrice,
-#ifdef MIRAGE
+#ifdef FAIR
     uint64_t _winningNodeIndex,
 #endif
     uint64_t _timestamp ) {
@@ -556,7 +556,7 @@ size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
     }
     m_snapshotAgent->finishHashComputingAndUpdateHashesIfNeeded( _timestamp );
 
-#ifdef MIRAGE
+#ifdef FAIR
     // get winning node address
     Address winningNodeAddressToReward = getWinningNodeAddressByIndex( _winningNodeIndex );
     {
@@ -593,7 +593,7 @@ size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
     if ( chainParams().getNodeGroups().size() > 0 )
         updateHistoricGroupIndex();
 
-#ifdef MIRAGE
+#ifdef FAIR
     LOG( m_loggerInfo ) << "Reward receiver for block " << number() << ": "
                         << winningNodeAddressToReward << " (index " << _winningNodeIndex << ")";
 #endif
@@ -604,7 +604,7 @@ size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
     return cntSucceeded;
 }
 
-#ifdef MIRAGE
+#ifdef FAIR
 Address Client::getWinningNodeAddressByIndex( uint64_t _winningNodeIndex ) {
     if ( _winningNodeIndex > 0 ) {
         return bc().chainParams().getSChainNodeBeneficiaryAddressByIndex( _winningNodeIndex );
@@ -1166,7 +1166,7 @@ h256 Client::importTransaction( Transaction const& _t, TransactionBroadcast _txO
     gasBidPrice = this->gasBidPrice();
 
 
-#ifndef MIRAGE
+#ifndef FAIR
     // We need to check external gas under mutex to be sure about current block number
     // correctness
     const_cast< Transaction& >( _t ).checkOutExternalGas(
@@ -1244,7 +1244,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
                 t.forceSender( _from );
 
                 t.forceChainId( chainParams().getChainId() );
-#ifndef MIRAGE
+#ifndef FAIR
                 t.ignoreExternalGas();
 #endif
                 // if we are in a call, we add to the balance of the account
@@ -1272,7 +1272,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
         Transaction t( _value, gasPrice, gasLimit, _dest, _data, nonce );
         t.forceSender( _from );
         t.forceChainId( chainParams().getChainId() );
-#ifndef MIRAGE
+#ifndef FAIR
         t.ignoreExternalGas();
 #endif
         if ( _ff == FudgeFactor::Lenient )
@@ -1332,7 +1332,7 @@ Transaction Client::createTransactionForCallOrTraceCall( const Address& _from, c
     auto from = _from ? _from : ZeroAddress;
     t.forceSender( from );
     t.forceChainId( chainParams().getChainId() );
-#ifndef MIRAGE
+#ifndef FAIR
     // call and traceCall do not use PoW
     t.ignoreExternalGas();
 #endif
@@ -1371,7 +1371,7 @@ Json::Value Client::traceBlock( BlockNumber _blockNumber, Json::Value const& _js
 #endif
             auto hashString = toHexPrefixed( tx.sha3() );
             transactionLog["txHash"] = hashString;
-#ifndef MIRAGE
+#ifndef FAIR
             tx.checkOutExternalGas( chainParams(), bc().info().timestamp(), number() );
 #endif
             auto tracer =
@@ -1464,7 +1464,7 @@ std::pair< uint64_t, uint64_t > Client::getBlocksDbUsage() const {
     return { dev::getDirSize( blocksDbPath ), pieceUsageBytes };
 }
 
-#ifndef MIRAGE
+#ifndef FAIR
 std::pair< uint64_t, uint64_t > Client::getStateDbUsage() const {
     uint64_t contractStorageUsed = m_state.storageUsedTotal().convert_to< uint64_t >();
     fs::path stateDbPath = m_dbPath / BlockChain::getChainDirName( chainParams() ) /
@@ -1498,7 +1498,7 @@ uint64_t Client::getHistoricRootsDbUsage() const {
 #endif  // HISTORIC_STATE
 
 
-#ifndef MIRAGE
+#ifndef FAIR
 uint64_t Client::submitOracleRequest(
     const string& _spec, string& _receipt, string& _errorMessage ) {
     assert( m_skaleHost );
