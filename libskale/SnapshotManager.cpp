@@ -524,8 +524,14 @@ void SnapshotManager::computeDatabaseHash(
 void SnapshotManager::addLastPriceToHash( unsigned _blockNumber, secp256k1_sha256_t* ctx ) const {
     dev::u256 last_price = 0;
     // manually open DB
+    size_t pricesDbVolumeIndex;
+#ifdef MIRAGE
+    pricesDbVolumeIndex = 1;
+#else
+    pricesDbVolumeIndex = 2;
+#endif
     boost::filesystem::path prices_path =
-        this->snapshotsDir / std::to_string( _blockNumber ) / coreVolumes[2];
+        this->snapshotsDir / std::to_string( _blockNumber ) / coreVolumes.at( pricesDbVolumeIndex );
     if ( boost::filesystem::exists( prices_path ) ) {
         boost::filesystem::directory_iterator it( prices_path ), end;
         std::string last_price_str;
@@ -718,8 +724,15 @@ void SnapshotManager::computeAllVolumesHash( unsigned _blockNumber, secp256k1_sh
     this->computeFileStorageHash(
         this->snapshotsDir / std::to_string( _blockNumber ) / "filestorage", ctx, isChecking );
 #endif
+
+    size_t minNumberOfVolumes;
+#ifdef MIRAGE
+    minNumberOfVolumes = 2;
+#else
+    minNumberOfVolumes = 3;
+#endif
     // if have prices and blocks
-    if ( _blockNumber && allVolumes.size() > 3 ) {
+    if ( _blockNumber && allVolumes.size() > minNumberOfVolumes ) {
         this->addLastPriceToHash( _blockNumber, ctx );
     }
 
