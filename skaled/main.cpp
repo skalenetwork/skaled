@@ -726,6 +726,10 @@ void doSnapshotDownload( const std::shared_ptr< ChainParams >& chainParams,
 #endif
         downloadAndProccessSnapshot(
             snapshotManager, *chainParams, urlToDownloadSnapshotFrom, false );
+        if ( zeroSnapshotOnly ) {
+            // Restoring here since we do not restore it during latest snapshot download
+            snapshotManager->restoreSnapshot( 0 );
+        }
     } catch ( std::exception& ) {
         std::throw_with_nested( std::runtime_error( std::string(
             " Fatal error in downloadAndProccessSnapshot for zero block! Will exit " ) ) );
@@ -1818,7 +1822,7 @@ int main( int argc, char** argv ) {
         }  // if --download-snapshot
 
         // download 0 snapshot if needed
-        if ( chainParams->isSyncNode() && !dataDirEmpty ) {
+        if ( chainParams->isSyncNode() && dataDirEmpty ) {
             auto bc = BlockChain( chainParams, getDataDir() );
             if ( bc.number() == 0 ) {
                 // zeroSnapshotOnly is set to true
