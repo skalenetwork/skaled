@@ -568,6 +568,7 @@ bool downloadSnapshotFromUrl( std::shared_ptr< SnapshotManager >& snapshotManage
     const std::string& urlToDownloadSnapshotFrom, bool isRegularSnapshot,
     bool forceDownload = false ) {
     static Logger loggerWarning{ createLogger( VerbosityWarning, "downloadSnapshotFromUrl" ) };
+    static Logger loggerInfo{ createLogger( VerbosityInfo, "downloadSnapshotFromUrl" ) };
 
     unsigned blockNumber = 0;
     if ( isRegularSnapshot )
@@ -601,6 +602,10 @@ bool downloadSnapshotFromUrl( std::shared_ptr< SnapshotManager >& snapshotManage
     successfullDownload = tryDownloadSnapshot( snapshotManager, chainParams, listUrlsToDownload,
         votedHash, blockNumber, isRegularSnapshot );
 
+    if ( successfullDownload ) {
+        LOG( loggerInfo ) << "Snapshot download success for block "
+                          << std::to_string( blockNumber );
+    }
     return successfullDownload;
 }
 
