@@ -300,14 +300,15 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
                                           ( this->chainParams_.getNodeByIndex( i ).port + 3 )
                                               .convert_to< std::string >();
 
-                    auto snapshotData = askNodeForHash( nodeUrl, blockNumber );
-                    if ( std::get< 0 >( snapshotData ) != dev::h256() ) {
+                    auto [snapshotHash, snapshotSignature, nodePublicKey] =
+                        askNodeForHash( nodeUrl, blockNumber );
+                    if ( snapshotHash != dev::h256() ) {
                         const std::lock_guard< std::mutex > lock( this->hashesMutex );
 
                         this->isReceived_.at( i ) = true;
-                        this->hashes_.at( i ) = std::get< 0 >( snapshotData );
-                        this->signatures_.at( i ) = std::get< 1 >( snapshotData );
-                        this->public_keys_.at( i ) = std::get< 2 >( snapshotData );
+                        this->hashes_.at( i ) = snapshotHash;
+                        this->signatures_.at( i ) = snapshotSignature;
+                        this->public_keys_.at( i ) = nodePublicKey;
                     }
                 } catch ( std::exception& ex ) {
                     LOG( m_loggerError )
