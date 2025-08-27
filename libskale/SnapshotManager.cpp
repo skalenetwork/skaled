@@ -155,7 +155,7 @@ void SnapshotManager::doSnapshot( unsigned _blockNumber ) {
 // exceptions:
 // - not found/cannot read
 void SnapshotManager::restoreSnapshot( unsigned _blockNumber ) {
-    LOG( m_loggerInfo ) << "Restoring snapshot made for block" << _blockNumber;
+    LOG( m_loggerInfo ) << "Restoring snapshot made for block " << _blockNumber;
     try {
         if ( !fs::exists( snapshotsDir / to_string( _blockNumber ) ) )
             throw SnapshotAbsent( _blockNumber );
