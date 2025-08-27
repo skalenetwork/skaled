@@ -322,8 +322,9 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
             thr.join();
         }
     } else {
-        auto snapshotData = askNodeForHash( urlToDownloadSnapshotFrom_, blockNumber );
-        this->votedHash_ = { std::get< 0 >( snapshotData ), std::get< 1 >( snapshotData ) };
+        auto [snapshotHash, snapshotSignature, nodeBlsPublicKey] =
+            askNodeForHash( urlToDownloadSnapshotFrom_, blockNumber );
+        this->votedHash_ = { snapshotHash, snapshotSignature };
         return { urlToDownloadSnapshotFrom_ };
     }
 
