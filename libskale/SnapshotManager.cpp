@@ -525,11 +525,15 @@ void SnapshotManager::computeDatabaseHash(
 void SnapshotManager::addLastPriceToHash( unsigned _blockNumber, secp256k1_sha256_t* ctx ) const {
     dev::u256 last_price = 0;
     // manually open DB
+    std::string pricesDbName = "prices_" + chainParams->getSelfNodeId().str() + ".db";
+    auto pricesDbVolumeIt = std::find( coreVolumes.begin(), coreVolumes.end(), pricesDbName );
+    if ( pricesDbVolumeIt == coreVolumes.end() )
+        throw std::runtime_error( "No btrfs module prices_db" );
     boost::filesystem::path prices_path =
-        this->snapshotsDir / std::to_string( _blockNumber ) / coreVolumes[2];
+        this->snapshotsDir / std::to_string( _blockNumber ) / *pricesDbVolumeIt;
     if ( boost::filesystem::exists( prices_path ) ) {
         boost::filesystem::directory_iterator it( prices_path ), end;
-        std::string last_price_str;
+        std::string last_price_str = "";
         std::string last_price_key = "1.0:" + std::to_string( _blockNumber );
         while ( it != end ) {
             dev::db::LevelDB::LevelDBOptions options;
@@ -719,8 +723,9 @@ void SnapshotManager::computeAllVolumesHash( unsigned _blockNumber, secp256k1_sh
     this->computeFileStorageHash(
         this->snapshotsDir / std::to_string( _blockNumber ) / "filestorage", ctx, isChecking );
 #endif
-    // if have prices and blocks
-    if ( _blockNumber && allVolumes.size() > 3 ) {
+
+    // only if snapshot number > 0
+    if ( _blockNumber ) {
         this->addLastPriceToHash( _blockNumber, ctx );
     }
 
