@@ -1827,14 +1827,12 @@ int main( int argc, char** argv ) {
         }  // if --download-snapshot
 
         // download 0 snapshot if needed
+        auto bc = BlockChain( chainParams, getDataDir() );
         if ( chainParams->isSyncNode() && dataDirEmpty ) {
-            auto bc = BlockChain( chainParams, getDataDir() );
-            if ( bc.number() == 0 ) {
-                // zeroSnapshotOnly is set to true
-                if ( chainParams->isSyncFromCatchupEnabled() && !downloadSnapshotFlag ) {
-                    doSnapshotDownload( chainParams, statusAndControl, urlToDownloadSnapshotFrom,
-                        snapshotManager, sharedSpace, true );
-                }
+            if ( chainParams->isSyncFromCatchupEnabled() && !downloadSnapshotFlag ) {
+                // Syncing from catchup, so zeroSnapshotOnly = true
+                doSnapshotDownload( chainParams, statusAndControl, urlToDownloadSnapshotFrom,
+                    snapshotManager, sharedSpace, true );
             }
         }
 
