@@ -158,7 +158,7 @@ BOOST_AUTO_TEST_SUITE( BtrfsTestSuite,
     *boost::unit_test::precondition( dev::test::option_all_tests ) )
 
 BOOST_FIXTURE_TEST_CASE( SimplePositiveTest, BtrfsFixture,
-    
+
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     std::shared_ptr< dev::eth::ChainParams > chainParams( new dev::eth::ChainParams{} );
     SnapshotManager mgr( chainParams, fs::path( BTRFS_DIR_PATH ) );
@@ -350,11 +350,10 @@ BOOST_FIXTURE_TEST_CASE( RestoreTest, BtrfsFixture,
 
     BOOST_REQUIRE_NO_THROW( mgr.restoreSnapshot( 2 ) );
 
-#ifndef FAIR
     BOOST_REQUIRE_EQUAL(
         0, btrfs.subvolume._delete(
-               ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" / "filestorage" ).c_str() ) );
-#endif
+               ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" / dev::eth::BlockChain::getChainDirName( *chainParams ) ).c_str() ) );
+
     BOOST_REQUIRE_THROW( mgr.restoreSnapshot( 2 ), SnapshotManager::CannotPerformBtrfsOperation );
 }
 
@@ -440,7 +439,7 @@ BOOST_FIXTURE_TEST_CASE( ImportTest, BtrfsFixture,
 }
 
 BOOST_FIXTURE_TEST_CASE( SnapshotRotationTest, BtrfsFixture,
-    
+
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     std::shared_ptr< dev::eth::ChainParams > chainParams( new dev::eth::ChainParams{} );
     SnapshotManager mgr( chainParams, fs::path( BTRFS_DIR_PATH ) );
@@ -462,7 +461,7 @@ BOOST_FIXTURE_TEST_CASE( SnapshotRotationTest, BtrfsFixture,
 }
 
 BOOST_FIXTURE_TEST_CASE( DiffRotationTest, BtrfsFixture,
-    
+
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     std::shared_ptr< dev::eth::ChainParams > chainParams( new dev::eth::ChainParams{} );
     SnapshotManager mgr( chainParams, fs::path( BTRFS_DIR_PATH ) );
@@ -493,7 +492,7 @@ BOOST_FIXTURE_TEST_CASE( DiffRotationTest, BtrfsFixture,
 }
 
 BOOST_FIXTURE_TEST_CASE( RemoveSnapshotTest, BtrfsFixture,
-    
+
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     std::shared_ptr< dev::eth::ChainParams > chainParams( new dev::eth::ChainParams{} );
     SnapshotManager mgr( chainParams, fs::path( BTRFS_DIR_PATH ) );
