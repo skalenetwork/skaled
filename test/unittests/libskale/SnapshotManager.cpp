@@ -350,11 +350,10 @@ BOOST_FIXTURE_TEST_CASE( RestoreTest, BtrfsFixture,
 
     BOOST_REQUIRE_NO_THROW( mgr.restoreSnapshot( 2 ) );
 
-#ifndef MIRAGE
     BOOST_REQUIRE_EQUAL(
         0, btrfs.subvolume._delete(
-               ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" / "filestorage" ).c_str() ) );
-#endif
+               ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" / dev::eth::BlockChain::getChainDirName( *chainParams ) ).c_str() ) );
+
     BOOST_REQUIRE_THROW( mgr.restoreSnapshot( 2 ), SnapshotManager::CannotPerformBtrfsOperation );
 }
 
