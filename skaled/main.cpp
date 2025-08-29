@@ -1826,1189 +1826,1165 @@ int main( int argc, char** argv ) {
             }
         }  // if --download-snapshot
 
-        // download 0 snapshot if needed
-        if ( chainParams->isSyncNode() && dataDirEmpty ) {
-            if ( chainParams->isSyncFromCatchupEnabled() && !downloadSnapshotFlag ) {
-                // Syncing from catchup, so zeroSnapshotOnly = true
-                doSnapshotDownload( chainParams, statusAndControl, urlToDownloadSnapshotFrom,
-                    snapshotManager, sharedSpace, true );
-            }
+        // Download 0 snapshot if needed
+        // Using old state of dataDirEmpty,
+        // since the datadir may be initialized during snapshotManager reset
+        if ( chainParams->isSyncFromCatchupEnabled() && dataDirEmpty && !downloadSnapshotFlag ) {
+            // Syncing from catchup, so zeroSnapshotOnly = true
+            doSnapshotDownload( chainParams, statusAndControl, urlToDownloadSnapshotFrom,
+                snapshotManager, sharedSpace, true );
         }
+    }
 
 #ifdef MIRAGE
 
-        // Configuring current group if it is regular syncing from catchup.
-        // Setting back correct group if it starting from snapshot mode.
+    // Configuring current group if it is regular syncing from catchup.
+    // Setting back correct group if it starting from snapshot mode.
 
-        uint64_t latestBlockTs = BlockChain::getLatestBlockTimestamp( *chainParams, getDataDir() );
-        LOG( loggerInfo ) << "Latest block timestamp is: " << latestBlockTs;
-        chainParams->updateCurrentGroupIfNeeded( latestBlockTs );
+    uint64_t latestBlockTs = BlockChain::getLatestBlockTimestamp( *chainParams, getDataDir() );
+    LOG( loggerInfo ) << "Latest block timestamp is: " << latestBlockTs;
+    chainParams->updateCurrentGroupIfNeeded( latestBlockTs );
 #endif
 
-        statusAndControl->setSubsystemRunning( StatusAndControl::SnapshotDownloader, false );
+    statusAndControl->setSubsystemRunning( StatusAndControl::SnapshotDownloader, false );
 
-        statusAndControl->setExitState( StatusAndControl::StartAgain, true );
-        statusAndControl->setExitState( StatusAndControl::StartFromSnapshot, false );
+    statusAndControl->setExitState( StatusAndControl::StartAgain, true );
+    statusAndControl->setExitState( StatusAndControl::StartFromSnapshot, false );
 
-        // it was needed for snapshot downloading
-        if ( chainParams->getSnapshotIntervalSec() <= 0 ) {
-            snapshotManager = nullptr;
+    // it was needed for snapshot downloading
+    if ( chainParams->getSnapshotIntervalSec() <= 0 ) {
+        snapshotManager = nullptr;
+    }
+
+    time_t startTimestamp = 0;
+    if ( vm.count( "start-timestamp" ) ) {
+        startTimestamp = vm["start-timestamp"].as< time_t >();
+    }
+
+    if ( time( NULL ) < startTimestamp ) {
+        statusAndControl->setSubsystemRunning( StatusAndControl::WaitingForTimestamp, true );
+        LOG( loggerInfo ) << "\nWill start at localtime " << ctime( &startTimestamp );
+        do
+            sleep( 1 );
+        while ( time( NULL ) < startTimestamp );
+        statusAndControl->setSubsystemRunning( StatusAndControl::WaitingForTimestamp, false );
+    }
+
+    if ( loggingOptions.verbosity > 0 )
+        LOG( loggerInfo ) << "skaled, a C++ Skale client";
+
+    m.execute();
+
+    fs::path secretsPath = SecretStore::defaultPath();
+    KeyManager keyManager( KeyManager::defaultPath(), secretsPath );
+    for ( auto const& s : passwordsToNote )
+        keyManager.notePassword( s );
+
+    string logbuf;
+    std::string additional;
+
+    auto getPassword = [&]( string const& prompt ) {
+        bool s = g_silence;
+        g_silence = true;
+        cout << "\n";
+        string ret = dev::getPassword( prompt );
+        g_silence = s;
+        return ret;
+    };
+    auto getResponse = [&]( string const& prompt, unordered_set< string > const& acceptable ) {
+        bool s = g_silence;
+        g_silence = true;
+        string ret;
+        while ( true ) {
+            cout << prompt;
+            getline( cin, ret );
+            if ( acceptable.count( ret ) )
+                break;
+            cout << "Invalid response: " << ret << "\n";
         }
+        g_silence = s;
+        return ret;
+    };
+    auto getAccountPassword = [&]( Address const& a ) {
+        return getPassword( "Enter password for address " + keyManager.accountName( a ) + " (" +
+                            a.abridged() + "; hint:" + keyManager.passwordHint( a ) + "): " );
+    };
 
-        time_t startTimestamp = 0;
-        if ( vm.count( "start-timestamp" ) ) {
-            startTimestamp = vm["start-timestamp"].as< time_t >();
-        }
+    auto netPrefs = publicIP.empty() ? NetworkPreferences( listenIP, listenPort, upnp ) :
+                                       NetworkPreferences( publicIP, listenIP, listenPort, upnp );
+    netPrefs.discovery = false;
+    netPrefs.pin = false;
 
-        if ( time( NULL ) < startTimestamp ) {
-            statusAndControl->setSubsystemRunning( StatusAndControl::WaitingForTimestamp, true );
-            LOG( loggerInfo ) << "\nWill start at localtime " << ctime( &startTimestamp );
-            do
-                sleep( 1 );
-            while ( time( NULL ) < startTimestamp );
-            statusAndControl->setSubsystemRunning( StatusAndControl::WaitingForTimestamp, false );
-        }
+    auto nodesState = contents( getDataDir() / fs::path( "network.rlp" ) );
+    auto caps = set< string >{ "eth" };
 
-        if ( loggingOptions.verbosity > 0 )
-            LOG( loggerInfo ) << "skaled, a C++ Skale client";
+    //    dev::WebThreeDirect web3( WebThreeDirect::composeClientVersion( "skaled" ),
+    //    getDataDir(),
+    //    "",
+    //        chainParams, withExisting, nodeMode == NodeMode::Full ? caps : set< string >(),
+    //        false
+    //        );
 
-        m.execute();
+    std::shared_ptr< GasPricer > gasPricer;
 
-        fs::path secretsPath = SecretStore::defaultPath();
-        KeyManager keyManager( KeyManager::defaultPath(), secretsPath );
-        for ( auto const& s : passwordsToNote )
-            keyManager.notePassword( s );
+    auto rotationFlagDirPath = configPath.parent_path();
+    auto instanceMonitor = make_shared< InstanceMonitor >( rotationFlagDirPath, statusAndControl );
+    SkaleDebugInterface debugInterface;
 
-        string logbuf;
-        std::string additional;
+    if ( getDataDir().size() )
+        Defaults::setDBPath( getDataDir() );
+    if ( nodeMode == NodeMode::Full && caps.count( "eth" ) ) {
+        Ethash::init();
+        NoProof::init();
 
-        auto getPassword = [&]( string const& prompt ) {
-            bool s = g_silence;
-            g_silence = true;
-            cout << "\n";
-            string ret = dev::getPassword( prompt );
-            g_silence = s;
-            return ret;
-        };
-        auto getResponse = [&]( string const& prompt, unordered_set< string > const& acceptable ) {
-            bool s = g_silence;
-            g_silence = true;
-            string ret;
-            while ( true ) {
-                cout << prompt;
-                getline( cin, ret );
-                if ( acceptable.count( ret ) )
-                    break;
-                cout << "Invalid response: " << ret << "\n";
-            }
-            g_silence = s;
-            return ret;
-        };
-        auto getAccountPassword = [&]( Address const& a ) {
-            return getPassword( "Enter password for address " + keyManager.accountName( a ) + " (" +
-                                a.abridged() + "; hint:" + keyManager.passwordHint( a ) + "): " );
-        };
+        if ( chainParams->getSealEngineName() == Ethash::name() ) {
+            g_client.reset( new eth::EthashClient( chainParams, chainParams->getNetworkId(),
+                shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
+                withExisting,
+                TransactionQueue::Limits{ c_transactionQueueSize, c_futureTransactionQueueSize,
+                    c_transactionQueueSizeBytes, c_futureTransactionQueueSizeBytes } ) );
+        } else if ( chainParams->getSealEngineName() == NoProof::name() ) {
+            g_client.reset( new eth::Client( chainParams, chainParams->getNetworkId(),
+                shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
+                withExisting,
+                TransactionQueue::Limits{ c_transactionQueueSize, c_futureTransactionQueueSize,
+                    c_transactionQueueSizeBytes, c_futureTransactionQueueSizeBytes } ) );
+        } else
+            BOOST_THROW_EXCEPTION(
+                ChainParamsInvalid()
+                << errinfo_comment( "Unknown seal engine: " + chainParams->getSealEngineName() ) );
 
-        auto netPrefs = publicIP.empty() ?
-                            NetworkPreferences( listenIP, listenPort, upnp ) :
-                            NetworkPreferences( publicIP, listenIP, listenPort, upnp );
-        netPrefs.discovery = false;
-        netPrefs.pin = false;
+        g_client->dbRotationPeriod(
+            ( ( clock_t )( clockDbRotationPeriodInSeconds ) ) * CLOCKS_PER_SEC );
 
-        auto nodesState = contents( getDataDir() / fs::path( "network.rlp" ) );
-        auto caps = set< string >{ "eth" };
+        // XXX nested lambdas and strlen hacks..
+        auto client_debug_handler = g_client->getDebugHandler();
+        debugInterface.add_handler( [client_debug_handler]( const std::string& arg ) -> string {
+            if ( arg.find( "Client " ) == 0 )
+                return client_debug_handler( arg.substr( 7 ) );
+            else
+                return "";
+        } );
+        g_client->setAuthor( chainParams->getBlockAuthor() );
 
-        //    dev::WebThreeDirect web3( WebThreeDirect::composeClientVersion( "skaled" ),
-        //    getDataDir(),
-        //    "",
-        //        chainParams, withExisting, nodeMode == NodeMode::Full ? caps : set< string >(),
-        //        false
-        //        );
+        DefaultConsensusFactory cons_fact( *g_client );
+        setenv( "DATA_DIR", getDataDir().c_str(), 0 );
 
-        std::shared_ptr< GasPricer > gasPricer;
-
-        auto rotationFlagDirPath = configPath.parent_path();
-        auto instanceMonitor =
-            make_shared< InstanceMonitor >( rotationFlagDirPath, statusAndControl );
-        SkaleDebugInterface debugInterface;
-
-        if ( getDataDir().size() )
-            Defaults::setDBPath( getDataDir() );
-        if ( nodeMode == NodeMode::Full && caps.count( "eth" ) ) {
-            Ethash::init();
-            NoProof::init();
-
-            if ( chainParams->getSealEngineName() == Ethash::name() ) {
-                g_client.reset( new eth::EthashClient( chainParams, chainParams->getNetworkId(),
-                    shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
-                    withExisting,
-                    TransactionQueue::Limits{ c_transactionQueueSize, c_futureTransactionQueueSize,
-                        c_transactionQueueSizeBytes, c_futureTransactionQueueSizeBytes } ) );
-            } else if ( chainParams->getSealEngineName() == NoProof::name() ) {
-                g_client.reset( new eth::Client( chainParams, chainParams->getNetworkId(),
-                    shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
-                    withExisting,
-                    TransactionQueue::Limits{ c_transactionQueueSize, c_futureTransactionQueueSize,
-                        c_transactionQueueSizeBytes, c_futureTransactionQueueSizeBytes } ) );
-            } else
-                BOOST_THROW_EXCEPTION(
-                    ChainParamsInvalid() << errinfo_comment(
-                        "Unknown seal engine: " + chainParams->getSealEngineName() ) );
-
-            g_client->dbRotationPeriod(
-                ( ( clock_t )( clockDbRotationPeriodInSeconds ) ) * CLOCKS_PER_SEC );
-
-            // XXX nested lambdas and strlen hacks..
-            auto client_debug_handler = g_client->getDebugHandler();
-            debugInterface.add_handler( [client_debug_handler]( const std::string& arg ) -> string {
-                if ( arg.find( "Client " ) == 0 )
-                    return client_debug_handler( arg.substr( 7 ) );
-                else
-                    return "";
-            } );
-            g_client->setAuthor( chainParams->getBlockAuthor() );
-
-            DefaultConsensusFactory cons_fact( *g_client );
-            setenv( "DATA_DIR", getDataDir().c_str(), 0 );
-
-            std::shared_ptr< SkaleHost > skaleHost =
-                std::make_shared< SkaleHost >( *g_client, &cons_fact, instanceMonitor,
+        std::shared_ptr< SkaleHost > skaleHost =
+            std::make_shared< SkaleHost >( *g_client, &cons_fact, instanceMonitor,
 #ifndef MIRAGE
-                    skutils::json_config_file_accessor::g_strImaMainNetURL,
+                skutils::json_config_file_accessor::g_strImaMainNetURL,
 #endif
-                    !chainParams->isSyncNode() );
-            dev::eth::g_skaleHost = skaleHost;
+                !chainParams->isSyncNode() );
+        dev::eth::g_skaleHost = skaleHost;
 
-            // XXX nested lambdas and strlen hacks..
-            auto skaleHost_debug_handler = skaleHost->getDebugHandler();
-            debugInterface.add_handler(
-                [skaleHost_debug_handler]( const std::string& arg ) -> string {
-                    if ( arg.find( "SkaleHost " ) == 0 )
-                        return skaleHost_debug_handler( arg.substr( 10 ) );
-                    else
-                        return "";
-                } );
+        // XXX nested lambdas and strlen hacks..
+        auto skaleHost_debug_handler = skaleHost->getDebugHandler();
+        debugInterface.add_handler( [skaleHost_debug_handler]( const std::string& arg ) -> string {
+            if ( arg.find( "SkaleHost " ) == 0 )
+                return skaleHost_debug_handler( arg.substr( 10 ) );
+            else
+                return "";
+        } );
 
-            gasPricer = std::make_shared< ConsensusGasPricer >( *skaleHost );
+        gasPricer = std::make_shared< ConsensusGasPricer >( *skaleHost );
 
-            g_client->setGasPricer( gasPricer );
-            g_client->injectSkaleHost( skaleHost );
+        g_client->setGasPricer( gasPricer );
+        g_client->injectSkaleHost( skaleHost );
 
-            skale_get_buildinfo();
-            g_client->setExtraData( dev::bytes{ 's', 'k', 'a', 'l', 'e' } );
+        skale_get_buildinfo();
+        g_client->setExtraData( dev::bytes{ 's', 'k', 'a', 'l', 'e' } );
 
-            // this must be last! (or client will be mining blocks before this!)
-            g_client->startWorking();
+        // this must be last! (or client will be mining blocks before this!)
+        g_client->startWorking();
 
-            statusAndControl->setSubsystemRunning( StatusAndControl::Blockchain, true );
-        }
+        statusAndControl->setSubsystemRunning( StatusAndControl::Blockchain, true );
+    }
 
-        try {
-            if ( keyManager.exists() ) {
-                if ( !keyManager.load( masterPassword ) && masterSet ) {
-                    while ( true ) {
-                        masterPassword = getPassword( "Please enter your MASTER password: " );
-                        if ( keyManager.load( masterPassword ) )
-                            break;
-                        cout << "The password you entered is incorrect. If you have forgotten your "
-                                "password, and you wish to start afresh, manually remove the file: "
-                             << ( getDataDir( "ethereum" ) / fs::path( "keys.info" ) ).string()
-                             << "\n";
-                    }
+    try {
+        if ( keyManager.exists() ) {
+            if ( !keyManager.load( masterPassword ) && masterSet ) {
+                while ( true ) {
+                    masterPassword = getPassword( "Please enter your MASTER password: " );
+                    if ( keyManager.load( masterPassword ) )
+                        break;
+                    cout << "The password you entered is incorrect. If you have forgotten your "
+                            "password, and you wish to start afresh, manually remove the file: "
+                         << ( getDataDir( "ethereum" ) / fs::path( "keys.info" ) ).string() << "\n";
                 }
-            } else {
-                if ( masterSet )
-                    keyManager.create( masterPassword );
-                else
-                    keyManager.create( std::string() );
             }
+        } else {
+            if ( masterSet )
+                keyManager.create( masterPassword );
+            else
+                keyManager.create( std::string() );
+        }
+    } catch ( ... ) {
+        LOG( loggerError ) << "Error initializing key manager: "
+                           << boost::current_exception_diagnostic_information();
+        return 1;
+    }
+
+    for ( auto const& presale : presaleImports )
+        importPresale( keyManager, presale,
+            [&]() { return getPassword( "Enter your wallet password for " + presale + ": " ); } );
+
+    for ( auto const& s : toImport ) {
+        keyManager.import( s, "Imported key (UNSAFE)" );
+    }
+
+    if ( nodeMode == NodeMode::Full ) {
+        g_client->setSealer( m.minerType() );
+        if ( networkID != NoNetworkID )
+            g_client->setNetworkId( networkID );
+    }
+
+    LOG( loggerInfo ) << "Mining Beneficiary: " << g_client->author();
+
+    unique_ptr< rpc::SessionManager > sessionManager;
+    unique_ptr< SimpleAccountHolder > accountHolder;
+
+    AddressHash allowedDestinations;
+
+    std::string autoAuthAnswer;
+
+    // First, get "aa" from config.json
+    // Second, get it from command line parameter (higher priority source)
+    std::string strAA;
+    if ( chainConfigParsed ) {
+        try {
+            strAA = joConfig["skaleConfig"]["nodeInfo"]["aa"].get< std::string >();
         } catch ( ... ) {
-            LOG( loggerError ) << "Error initializing key manager: "
-                               << boost::current_exception_diagnostic_information();
-            return 1;
+            strAA.clear();
         }
-
-        for ( auto const& presale : presaleImports )
-            importPresale( keyManager, presale, [&]() {
-                return getPassword( "Enter your wallet password for " + presale + ": " );
-            } );
-
-        for ( auto const& s : toImport ) {
-            keyManager.import( s, "Imported key (UNSAFE)" );
+    }
+    if ( vm.count( "aa" ) )
+        strAA = vm["aa"].as< string >();
+    if ( !strAA.empty() ) {
+        if ( strAA == "yes" || strAA == "no" || strAA == "always" )
+            autoAuthAnswer = strAA;
+        else {
+            LOG( loggerError ) << "Bad "
+                               << "--aa"
+                               << " option: " << strAA;
+            return EX_USAGE;
         }
+        LOG( loggerDebug ) << "Auto-answer mode is set to: " << strAA;
+    }
 
-        if ( nodeMode == NodeMode::Full ) {
-            g_client->setSealer( m.minerType() );
-            if ( networkID != NoNetworkID )
-                g_client->setNetworkId( networkID );
-        }
+    std::function< bool( TransactionSkeleton const&, bool ) > authenticator;
 
-        LOG( loggerInfo ) << "Mining Beneficiary: " << g_client->author();
+    if ( autoAuthAnswer == "yes" || autoAuthAnswer == "always" )
+        authenticator = [&]( TransactionSkeleton const& _t, bool ) -> bool {
+            if ( autoAuthAnswer == "always" )
+                allowedDestinations.insert( _t.to );
+            return true;
+        };
+    else if ( autoAuthAnswer == "no" )
+        authenticator = []( TransactionSkeleton const&, bool ) -> bool { return false; };
+    else
+        authenticator = [&]( TransactionSkeleton const& _t, bool isProxy ) -> bool {
+            // "unlockAccount" functionality is done in the AccountHolder.
+            if ( !alwaysConfirm || allowedDestinations.count( _t.to ) )
+                return true;
 
-        unique_ptr< rpc::SessionManager > sessionManager;
-        unique_ptr< SimpleAccountHolder > accountHolder;
+            string r = getResponse(
+                _t.userReadable(
+                    isProxy,
+                    [&]( TransactionSkeleton const& _t ) -> pair< bool, string > {
+                        h256 contractCodeHash = g_client->postState().codeHash( _t.to );
+                        if ( contractCodeHash == EmptySHA3 )
+                            return std::make_pair( false, std::string() );
+                        // TODO: actually figure out the natspec. we'll need the
+                        // natspec database here though.
+                        return std::make_pair( true, std::string() );
+                    },
+                    [&]( Address const& _a ) { return _a.hex(); } ) +
+                    "\nEnter yes/no/always (always to this address): ",
+                { "yes", "n", "N", "no", "NO", "always" } );
+            if ( r == "always" )
+                allowedDestinations.insert( _t.to );
+            return r == "yes" || r == "always";
+        };
+    if ( chainParams->getSelfNodeIp().empty() ) {
+        LOG( loggerWarning ) << "IPv4"
+                             << " bind address is not set, will not start RPC on this protocol";
+        nExplicitPortHTTP4std = nExplicitPortHTTPS4std = nExplicitPortHTTP4nfo =
+            nExplicitPortHTTPS4nfo = nExplicitPortWS4std = nExplicitPortWSS4std =
+                nExplicitPortWS4nfo = nExplicitPortWSS4nfo = -1;
+    }
+    if ( chainParams->getSelfNodeIpV6().empty() ) {
+        LOG( loggerWarning ) << "IPv6 bind address is not set, will not start RPC on this protocol";
+        nExplicitPortHTTP6std = nExplicitPortHTTPS6std = nExplicitPortHTTP6nfo =
+            nExplicitPortHTTPS6nfo = nExplicitPortWS6std = nExplicitPortWSS6std =
+                nExplicitPortWS6nfo = nExplicitPortWSS6nfo = -1;
+    }
+    if ( is_ipc || nExplicitPortHTTP4std > 0 || nExplicitPortHTTPS4std > 0 ||
+         nExplicitPortHTTP6std > 0 || nExplicitPortHTTPS6std > 0 || nExplicitPortHTTP4nfo > 0 ||
+         nExplicitPortHTTPS4nfo > 0 || nExplicitPortHTTP6nfo > 0 || nExplicitPortHTTPS6nfo > 0 ||
+         nExplicitPortWS4std > 0 || nExplicitPortWSS4std > 0 || nExplicitPortWS6std > 0 ||
+         nExplicitPortWSS6std > 0 || nExplicitPortWS4nfo > 0 || nExplicitPortWSS4nfo > 0 ||
+         nExplicitPortWS6nfo > 0 || nExplicitPortWSS6nfo > 0 ) {
+        using FullServer = ModularServer< rpc::EthFace,
+            rpc::SkaleFace,   /// skale
+            rpc::SkaleStats,  /// skaleStats
+            rpc::NetFace, rpc::Web3Face, rpc::PersonalFace, rpc::AdminEthFace,
+            // SKALE rpc::AdminNetFace,
+            rpc::DebugFace, rpc::SkalePerformanceTracker, rpc::TracingFace, rpc::TestFace >;
 
-        AddressHash allowedDestinations;
+        sessionManager.reset( new rpc::SessionManager() );
+        accountHolder.reset( new SimpleAccountHolder(
+            [&]() { return g_client.get(); }, getAccountPassword, keyManager, authenticator ) );
 
-        std::string autoAuthAnswer;
+        std::string argv_string;
+        {  // block
+            ostringstream ss;
+            for ( int i = 1; i < argc; ++i )
+                ss << argv[i] << " ";
+            argv_string = ss.str();
+        }  // block
 
-        // First, get "aa" from config.json
-        // Second, get it from command line parameter (higher priority source)
-        std::string strAA;
         if ( chainConfigParsed ) {
             try {
-                strAA = joConfig["skaleConfig"]["nodeInfo"]["aa"].get< std::string >();
+                isExposeAllDebugInfo =
+                    joConfig["skaleConfig"]["nodeInfo"]["expose-all-debug-info"].get< bool >();
             } catch ( ... ) {
-                strAA.clear();
             }
         }
-        if ( vm.count( "aa" ) )
-            strAA = vm["aa"].as< string >();
-        if ( !strAA.empty() ) {
-            if ( strAA == "yes" || strAA == "no" || strAA == "always" )
-                autoAuthAnswer = strAA;
-            else {
-                LOG( loggerError ) << "Bad "
-                                   << "--aa"
-                                   << " option: " << strAA;
-                return EX_USAGE;
+        if ( vm.count( "expose-all-debug-info" ) )
+            isExposeAllDebugInfo = true;
+
+
+        auto pNetFace = new rpc::Net( chainParams );
+        auto pWeb3Face = new rpc::Web3( clientVersion() );
+        auto pEthFace = new rpc::Eth( configPath.string(), *g_client, *accountHolder.get() );
+        auto pSkaleFace = new rpc::Skale( *g_client, sharedSpace );
+        auto pSkaleStatsFace = new rpc::SkaleStats( configPath.string(), *g_client );
+        pSkaleStatsFace->isExposeAllDebugInfo_ = isExposeAllDebugInfo;
+        auto pPersonalFace = bEnabledAPIs_personal ?
+                                 new rpc::Personal( keyManager, *accountHolder, *g_client ) :
+                                 nullptr;
+        auto pAdminEthFace = bEnabledAPIs_admin ? new rpc::AdminEth( *g_client, *gasPricer.get(),
+                                                      keyManager, *sessionManager.get() ) :
+                                                  nullptr;
+
+        auto pDebugFace = bEnabledAPIs_debug ?
+                              new rpc::Debug( *g_client, &debugInterface, argv_string ) :
+                              nullptr;
+        SkaleDebugInterface::g_isEnabled = bEnabledAPIs_debug;
+
+#ifdef HISTORIC_STATE
+        // tracing interface is always enabled for the historic state nodes
+        auto pTracingFace = new rpc::Tracing( *g_client, argv_string );
+#else
+        // tracing interface is only enabled for the historic state nodes
+        auto pTracingFace = nullptr;
+#endif
+
+
+        auto pPerformanceTrackerFace = bEnabledAPIs_performanceTracker ?
+                                           new rpc::SkalePerformanceTracker( configPath.string() ) :
+                                           nullptr;
+
+        g_jsonrpcIpcServer.reset( new FullServer( pEthFace, pSkaleFace, pSkaleStatsFace, pNetFace,
+            pWeb3Face, pPersonalFace, pAdminEthFace, pDebugFace, pPerformanceTrackerFace,
+            pTracingFace, nullptr ) );
+
+        if ( is_ipc ) {
+            try {
+                auto ipcConnector = new IpcServer( "geth" );
+                g_jsonrpcIpcServer->addConnector( ipcConnector );
+                if ( !ipcConnector->StartListening() ) {
+                    LOG( loggerError ) << "Cannot start listening for RPC requests on ipc port: "
+                                       << strerror( errno );
+                    return EX_IOERR;
+                }  // error
+            } catch ( const std::exception& ex ) {
+                LOG( loggerError )
+                    << "Cannot start listening for RPC requests on ipc port: " << ex.what();
+                return EX_IOERR;
+            }  // catch
+        }      // if ( is_ipc )
+
+        auto fnCheckPort = [&]( int& nPort, const char* strCommandLineKey ) -> bool {
+            if ( nPort <= 0 || nPort >= 65536 ) {
+                LOG( loggerError ) << "WARNING: No valid port value provided with "
+                                   << std::string( "--" ) + strCommandLineKey << "="
+                                   << "number";
+                return false;
             }
-            LOG( loggerDebug ) << "Auto-answer mode is set to: " << strAA;
+            return true;
+        };
+        if ( !fnCheckPort( nExplicitPortHTTP4std, "http-port" ) ) {
+            // return EX_USAGE;
         }
-
-        std::function< bool( TransactionSkeleton const&, bool ) > authenticator;
-
-        if ( autoAuthAnswer == "yes" || autoAuthAnswer == "always" )
-            authenticator = [&]( TransactionSkeleton const& _t, bool ) -> bool {
-                if ( autoAuthAnswer == "always" )
-                    allowedDestinations.insert( _t.to );
-                return true;
-            };
-        else if ( autoAuthAnswer == "no" )
-            authenticator = []( TransactionSkeleton const&, bool ) -> bool { return false; };
-        else
-            authenticator = [&]( TransactionSkeleton const& _t, bool isProxy ) -> bool {
-                // "unlockAccount" functionality is done in the AccountHolder.
-                if ( !alwaysConfirm || allowedDestinations.count( _t.to ) )
-                    return true;
-
-                string r = getResponse(
-                    _t.userReadable(
-                        isProxy,
-                        [&]( TransactionSkeleton const& _t ) -> pair< bool, string > {
-                            h256 contractCodeHash = g_client->postState().codeHash( _t.to );
-                            if ( contractCodeHash == EmptySHA3 )
-                                return std::make_pair( false, std::string() );
-                            // TODO: actually figure out the natspec. we'll need the
-                            // natspec database here though.
-                            return std::make_pair( true, std::string() );
-                        },
-                        [&]( Address const& _a ) { return _a.hex(); } ) +
-                        "\nEnter yes/no/always (always to this address): ",
-                    { "yes", "n", "N", "no", "NO", "always" } );
-                if ( r == "always" )
-                    allowedDestinations.insert( _t.to );
-                return r == "yes" || r == "always";
-            };
-        if ( chainParams->getSelfNodeIp().empty() ) {
-            LOG( loggerWarning ) << "IPv4"
-                                 << " bind address is not set, will not start RPC on this protocol";
-            nExplicitPortHTTP4std = nExplicitPortHTTPS4std = nExplicitPortHTTP4nfo =
-                nExplicitPortHTTPS4nfo = nExplicitPortWS4std = nExplicitPortWSS4std =
-                    nExplicitPortWS4nfo = nExplicitPortWSS4nfo = -1;
+        if ( !fnCheckPort( nExplicitPortHTTP4nfo, "info-http-port" ) ) {
+            // return EX_USAGE;
         }
-        if ( chainParams->getSelfNodeIpV6().empty() ) {
-            LOG( loggerWarning )
-                << "IPv6 bind address is not set, will not start RPC on this protocol";
-            nExplicitPortHTTP6std = nExplicitPortHTTPS6std = nExplicitPortHTTP6nfo =
-                nExplicitPortHTTPS6nfo = nExplicitPortWS6std = nExplicitPortWSS6std =
-                    nExplicitPortWS6nfo = nExplicitPortWSS6nfo = -1;
+        if ( !fnCheckPort( nExplicitPortHTTP6std, "http-port6" ) ) {
+            // return EX_USAGE;
         }
-        if ( is_ipc || nExplicitPortHTTP4std > 0 || nExplicitPortHTTPS4std > 0 ||
-             nExplicitPortHTTP6std > 0 || nExplicitPortHTTPS6std > 0 || nExplicitPortHTTP4nfo > 0 ||
+        if ( !fnCheckPort( nExplicitPortHTTP6nfo, "info-http-port6" ) ) {
+            // return EX_USAGE;
+        }
+        if ( !fnCheckPort( nExplicitPortHTTPS4std, "https-port" ) ) {
+            // return EX_USAGE;
+        }
+        if ( !fnCheckPort( nExplicitPortHTTPS4nfo, "info-https-port" ) ) {
+            // return EX_USAGE;
+        }
+        if ( !fnCheckPort( nExplicitPortHTTPS6std, "https-port6" ) ) {
+            // return EX_USAGE;
+        }
+        if ( !fnCheckPort( nExplicitPortHTTPS6nfo, "info-https-port6" ) ) {
+            // return EX_USAGE;
+        }
+        if ( !fnCheckPort( nExplicitPortWS4std, "ws-port" ) ) {
+            // return EX_USAGE;
+        }
+        if ( !fnCheckPort( nExplicitPortWS4nfo, "info-ws-port" ) ) {
+            // return EX_USAGE;
+        }
+        if ( !fnCheckPort( nExplicitPortWS6std, "ws-port6" ) ) {
+            // return EX_USAGE;
+        }
+        if ( !fnCheckPort( nExplicitPortWS6nfo, "info-ws-port6" ) ) {
+            // return EX_USAGE;
+        }
+        if ( !fnCheckPort( nExplicitPortWSS4std, "wss-port" ) ) {
+            // return EX_USAGE;
+        }
+        if ( !fnCheckPort( nExplicitPortWSS4nfo, "info-wss-port" ) ) {
+            // return EX_USAGE;
+        }
+        if ( !fnCheckPort( nExplicitPortWSS6std, "wss-port6" ) ) {
+            // return EX_USAGE;
+        }
+        if ( !fnCheckPort( nExplicitPortWSS6nfo, "info-wss-port6" ) ) {
+            // return EX_USAGE;
+        }
+        if ( nExplicitPortHTTP4std > 0 || nExplicitPortHTTPS4std > 0 || nExplicitPortHTTP6std > 0 ||
+             nExplicitPortHTTPS6std > 0 || nExplicitPortHTTP4nfo > 0 ||
              nExplicitPortHTTPS4nfo > 0 || nExplicitPortHTTP6nfo > 0 ||
              nExplicitPortHTTPS6nfo > 0 || nExplicitPortWS4std > 0 || nExplicitPortWSS4std > 0 ||
              nExplicitPortWS6std > 0 || nExplicitPortWSS6std > 0 || nExplicitPortWS4nfo > 0 ||
              nExplicitPortWSS4nfo > 0 || nExplicitPortWS6nfo > 0 || nExplicitPortWSS6nfo > 0 ) {
-            using FullServer = ModularServer< rpc::EthFace,
-                rpc::SkaleFace,   /// skale
-                rpc::SkaleStats,  /// skaleStats
-                rpc::NetFace, rpc::Web3Face, rpc::PersonalFace, rpc::AdminEthFace,
-                // SKALE rpc::AdminNetFace,
-                rpc::DebugFace, rpc::SkalePerformanceTracker, rpc::TracingFace, rpc::TestFace >;
+            LOG( loggerDebug ) << "....RPC params:";
+            //
+            auto fnPrintPort = [&]( const int& nPort, const char* strDescription ) -> void {
+                static const size_t nAlign = 35;
+                size_t nDescLen = strnlen( strDescription, 1024 );
+                std::string strDots;
+                for ( ; ( strDots.size() + nDescLen ) < nAlign; )
+                    strDots += ".";
+                LOG( loggerDebug ) << "...." << strDescription << strDots << " "
+                                   << ( ( nPort >= 0 ) ? std::to_string( nPort ) : "off" );
+            };
+            fnPrintPort( nExplicitPortHTTP4std, "HTTP/4/std port" );
+            fnPrintPort( nExplicitPortHTTP4nfo, "HTTP/4/nfo port" );
+            fnPrintPort( nExplicitPortHTTP6std, "HTTP/6/std port" );
+            fnPrintPort( nExplicitPortHTTP6nfo, "HTTP/6/nfo port" );
+            fnPrintPort( nExplicitPortHTTPS4std, "HTTPS/4/std port" );
+            fnPrintPort( nExplicitPortHTTPS4nfo, "HTTPS/4/nfo port" );
+            fnPrintPort( nExplicitPortHTTPS6std, "HTTPS/6/std port" );
+            fnPrintPort( nExplicitPortHTTPS6nfo, "HTTPS/6/nfo port" );
+            fnPrintPort( nExplicitPortWS4std, "WS/4/std port" );
+            fnPrintPort( nExplicitPortWS4nfo, "WS/4/nfo port" );
+            fnPrintPort( nExplicitPortWS6std, "WS/6/std port" );
+            fnPrintPort( nExplicitPortWS6nfo, "WS/6/nfo port" );
+            fnPrintPort( nExplicitPortWSS4std, "WSS/4/std port" );
+            fnPrintPort( nExplicitPortWSS4nfo, "WSS/4/nfo port" );
+            fnPrintPort( nExplicitPortWSS6std, "WSS/6/std port" );
+            fnPrintPort( nExplicitPortWSS6nfo, "WSS/6/nfo port" );
+            //
+            std::string strPathSslKey, strPathSslCert, strPathSslCA;
+            bool bHaveSSL = false;
+            if ( ( nExplicitPortHTTPS4std > 0 || nExplicitPortHTTPS6std > 0 ||
+                     nExplicitPortHTTPS4nfo > 0 || nExplicitPortHTTPS6nfo > 0 ||
+                     nExplicitPortWSS4std > 0 || nExplicitPortWSS6std > 0 ||
+                     nExplicitPortWSS4nfo > 0 || nExplicitPortWSS6nfo > 0 ) &&
+                 vm.count( "ssl-key" ) > 0 && vm.count( "ssl-cert" ) > 0 ) {
+                strPathSslKey = vm["ssl-key"].as< std::string >();
+                strPathSslCert = vm["ssl-cert"].as< std::string >();
+                if ( ( !strPathSslKey.empty() ) && ( !strPathSslCert.empty() ) )
+                    bHaveSSL = true;
+                if ( vm.count( "ssl-ca" ) > 0 )
+                    strPathSslCA = vm["ssl-ca"].as< std::string >();
+            }
 
-            sessionManager.reset( new rpc::SessionManager() );
-            accountHolder.reset( new SimpleAccountHolder(
-                [&]() { return g_client.get(); }, getAccountPassword, keyManager, authenticator ) );
 
-            std::string argv_string;
-            {  // block
-                ostringstream ss;
-                for ( int i = 1; i < argc; ++i )
-                    ss << argv[i] << " ";
-                argv_string = ss.str();
-            }  // block
+            double lfExecutionDurationMaxForPerformanceWarning = SkaleServerOverride::
+                g_lfDefaultExecutionDurationMaxForPerformanceWarning;  // in seconds, default 1
+                                                                       // second
+            if ( vm.count( "performance-warning-duration" ) > 0 ) {
+                lfExecutionDurationMaxForPerformanceWarning = vm["ssl-key"].as< double >();
+                if ( lfExecutionDurationMaxForPerformanceWarning < 0.0 )
+                    lfExecutionDurationMaxForPerformanceWarning = 0.0;
+            }
+
+            skutils::task::performance::tracker_ptr pTracker =
+                skutils::task::performance::get_default_tracker();
+            if ( vm.count( "performance-timeline-enable" ) > 0 )
+                pTracker->set_enabled( true );
+            if ( vm.count( "performance-timeline-disable" ) > 0 )
+                pTracker->set_enabled( false );
+            if ( vm.count( "performance-timeline-max-items" ) > 0 ) {
+                size_t maxItemCount = vm["performance-timeline-max-items"].as< size_t >();
+                pTracker->set_safe_max_item_count( maxItemCount );
+            }
+            LOG( loggerDebug ) << "....Performance timeline tracker............. "
+                               << ( pTracker->is_enabled() ?
+                                          std::to_string( pTracker->get_safe_max_item_count() ) :
+                                          "off" );
+
+            if ( !bHaveSSL )
+                nExplicitPortHTTPS4std = nExplicitPortHTTPS6std = nExplicitPortHTTPS4nfo =
+                    nExplicitPortHTTPS6nfo = nExplicitPortWSS4std = nExplicitPortWSS6std =
+                        nExplicitPortWSS4nfo = nExplicitPortWSS6nfo = -1;
+            if ( bHaveSSL ) {
+                LOG( loggerDebug )
+                    << "....SSL key is............................... " << strPathSslKey;
+                LOG( loggerDebug )
+                    << "....SSL certificate is....................... " << strPathSslCert;
+                LOG( loggerDebug )
+                    << "....SSL CA is................................ " << strPathSslCA;
+            }
+            //
+            //
+            size_t maxConnections = 0,
+                   max_http_handler_queues = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__,
+                   cntServersStd = 1, cntServersNfo = 0, cntInBatch = 128;
+            bool is_async_http_transfer_mode = true;
+            int32_t pg_threads = 0;
+            int32_t pg_threads_limit = 0;
+
+            // First, get "max-connections" true/false from config.json
+            // Second, get it from command line parameter (higher priority source)
+            if ( chainConfigParsed ) {
+                try {
+                    maxConnections =
+                        joConfig["skaleConfig"]["nodeInfo"]["max-connections"].get< size_t >();
+                } catch ( ... ) {
+                    maxConnections = 0;
+                }
+            }
+            if ( vm.count( "max-connections" ) )
+                maxConnections = vm["max-connections"].as< size_t >();
+            //
+            // First, get "max-http-queues" true/false from config.json
+            // Second, get it from command line parameter (higher priority source)
+            if ( chainConfigParsed ) {
+                try {
+                    max_http_handler_queues =
+                        joConfig["skaleConfig"]["nodeInfo"]["max-http-queues"].get< size_t >();
+                } catch ( ... ) {
+                    max_http_handler_queues = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__;
+                }
+            }
+            if ( vm.count( "max-http-queues" ) )
+                max_http_handler_queues = vm["max-http-queues"].as< size_t >();
+
+            // First, get "max-http-queues" true/false from config.json
+            // Second, get it from command line parameter (higher priority source)
+            if ( chainConfigParsed ) {
+                try {
+                    is_async_http_transfer_mode =
+                        joConfig["skaleConfig"]["nodeInfo"]["async-http-transfer-mode"]
+                            .get< bool >();
+                } catch ( ... ) {
+                    is_async_http_transfer_mode = true;
+                }
+            }
+            if ( vm.count( "async-http-transfer-mode" ) )
+                is_async_http_transfer_mode = true;
+            if ( vm.count( "sync-http-transfer-mode" ) )
+                is_async_http_transfer_mode = false;
 
             if ( chainConfigParsed ) {
                 try {
-                    isExposeAllDebugInfo =
-                        joConfig["skaleConfig"]["nodeInfo"]["expose-all-debug-info"].get< bool >();
-                } catch ( ... ) {
-                }
-            }
-            if ( vm.count( "expose-all-debug-info" ) )
-                isExposeAllDebugInfo = true;
-
-
-            auto pNetFace = new rpc::Net( chainParams );
-            auto pWeb3Face = new rpc::Web3( clientVersion() );
-            auto pEthFace = new rpc::Eth( configPath.string(), *g_client, *accountHolder.get() );
-            auto pSkaleFace = new rpc::Skale( *g_client, sharedSpace );
-            auto pSkaleStatsFace = new rpc::SkaleStats( configPath.string(), *g_client );
-            pSkaleStatsFace->isExposeAllDebugInfo_ = isExposeAllDebugInfo;
-            auto pPersonalFace = bEnabledAPIs_personal ?
-                                     new rpc::Personal( keyManager, *accountHolder, *g_client ) :
-                                     nullptr;
-            auto pAdminEthFace = bEnabledAPIs_admin ?
-                                     new rpc::AdminEth( *g_client, *gasPricer.get(), keyManager,
-                                         *sessionManager.get() ) :
-                                     nullptr;
-
-            auto pDebugFace = bEnabledAPIs_debug ?
-                                  new rpc::Debug( *g_client, &debugInterface, argv_string ) :
-                                  nullptr;
-            SkaleDebugInterface::g_isEnabled = bEnabledAPIs_debug;
-
-#ifdef HISTORIC_STATE
-            // tracing interface is always enabled for the historic state nodes
-            auto pTracingFace = new rpc::Tracing( *g_client, argv_string );
-#else
-            // tracing interface is only enabled for the historic state nodes
-            auto pTracingFace = nullptr;
-#endif
-
-
-            auto pPerformanceTrackerFace =
-                bEnabledAPIs_performanceTracker ?
-                    new rpc::SkalePerformanceTracker( configPath.string() ) :
-                    nullptr;
-
-            g_jsonrpcIpcServer.reset( new FullServer( pEthFace, pSkaleFace, pSkaleStatsFace,
-                pNetFace, pWeb3Face, pPersonalFace, pAdminEthFace, pDebugFace,
-                pPerformanceTrackerFace, pTracingFace, nullptr ) );
-
-            if ( is_ipc ) {
-                try {
-                    auto ipcConnector = new IpcServer( "geth" );
-                    g_jsonrpcIpcServer->addConnector( ipcConnector );
-                    if ( !ipcConnector->StartListening() ) {
-                        LOG( loggerError )
-                            << "Cannot start listening for RPC requests on ipc port: "
-                            << strerror( errno );
-                        return EX_IOERR;
-                    }  // error
-                } catch ( const std::exception& ex ) {
-                    LOG( loggerError )
-                        << "Cannot start listening for RPC requests on ipc port: " << ex.what();
-                    return EX_IOERR;
-                }  // catch
-            }      // if ( is_ipc )
-
-            auto fnCheckPort = [&]( int& nPort, const char* strCommandLineKey ) -> bool {
-                if ( nPort <= 0 || nPort >= 65536 ) {
-                    LOG( loggerError ) << "WARNING: No valid port value provided with "
-                                       << std::string( "--" ) + strCommandLineKey << "="
-                                       << "number";
-                    return false;
-                }
-                return true;
-            };
-            if ( !fnCheckPort( nExplicitPortHTTP4std, "http-port" ) ) {
-                // return EX_USAGE;
-            }
-            if ( !fnCheckPort( nExplicitPortHTTP4nfo, "info-http-port" ) ) {
-                // return EX_USAGE;
-            }
-            if ( !fnCheckPort( nExplicitPortHTTP6std, "http-port6" ) ) {
-                // return EX_USAGE;
-            }
-            if ( !fnCheckPort( nExplicitPortHTTP6nfo, "info-http-port6" ) ) {
-                // return EX_USAGE;
-            }
-            if ( !fnCheckPort( nExplicitPortHTTPS4std, "https-port" ) ) {
-                // return EX_USAGE;
-            }
-            if ( !fnCheckPort( nExplicitPortHTTPS4nfo, "info-https-port" ) ) {
-                // return EX_USAGE;
-            }
-            if ( !fnCheckPort( nExplicitPortHTTPS6std, "https-port6" ) ) {
-                // return EX_USAGE;
-            }
-            if ( !fnCheckPort( nExplicitPortHTTPS6nfo, "info-https-port6" ) ) {
-                // return EX_USAGE;
-            }
-            if ( !fnCheckPort( nExplicitPortWS4std, "ws-port" ) ) {
-                // return EX_USAGE;
-            }
-            if ( !fnCheckPort( nExplicitPortWS4nfo, "info-ws-port" ) ) {
-                // return EX_USAGE;
-            }
-            if ( !fnCheckPort( nExplicitPortWS6std, "ws-port6" ) ) {
-                // return EX_USAGE;
-            }
-            if ( !fnCheckPort( nExplicitPortWS6nfo, "info-ws-port6" ) ) {
-                // return EX_USAGE;
-            }
-            if ( !fnCheckPort( nExplicitPortWSS4std, "wss-port" ) ) {
-                // return EX_USAGE;
-            }
-            if ( !fnCheckPort( nExplicitPortWSS4nfo, "info-wss-port" ) ) {
-                // return EX_USAGE;
-            }
-            if ( !fnCheckPort( nExplicitPortWSS6std, "wss-port6" ) ) {
-                // return EX_USAGE;
-            }
-            if ( !fnCheckPort( nExplicitPortWSS6nfo, "info-wss-port6" ) ) {
-                // return EX_USAGE;
-            }
-            if ( nExplicitPortHTTP4std > 0 || nExplicitPortHTTPS4std > 0 ||
-                 nExplicitPortHTTP6std > 0 || nExplicitPortHTTPS6std > 0 ||
-                 nExplicitPortHTTP4nfo > 0 || nExplicitPortHTTPS4nfo > 0 ||
-                 nExplicitPortHTTP6nfo > 0 || nExplicitPortHTTPS6nfo > 0 ||
-                 nExplicitPortWS4std > 0 || nExplicitPortWSS4std > 0 || nExplicitPortWS6std > 0 ||
-                 nExplicitPortWSS6std > 0 || nExplicitPortWS4nfo > 0 || nExplicitPortWSS4nfo > 0 ||
-                 nExplicitPortWS6nfo > 0 || nExplicitPortWSS6nfo > 0 ) {
-                LOG( loggerDebug ) << "....RPC params:";
-                //
-                auto fnPrintPort = [&]( const int& nPort, const char* strDescription ) -> void {
-                    static const size_t nAlign = 35;
-                    size_t nDescLen = strnlen( strDescription, 1024 );
-                    std::string strDots;
-                    for ( ; ( strDots.size() + nDescLen ) < nAlign; )
-                        strDots += ".";
-                    LOG( loggerDebug ) << "...." << strDescription << strDots << " "
-                                       << ( ( nPort >= 0 ) ? std::to_string( nPort ) : "off" );
-                };
-                fnPrintPort( nExplicitPortHTTP4std, "HTTP/4/std port" );
-                fnPrintPort( nExplicitPortHTTP4nfo, "HTTP/4/nfo port" );
-                fnPrintPort( nExplicitPortHTTP6std, "HTTP/6/std port" );
-                fnPrintPort( nExplicitPortHTTP6nfo, "HTTP/6/nfo port" );
-                fnPrintPort( nExplicitPortHTTPS4std, "HTTPS/4/std port" );
-                fnPrintPort( nExplicitPortHTTPS4nfo, "HTTPS/4/nfo port" );
-                fnPrintPort( nExplicitPortHTTPS6std, "HTTPS/6/std port" );
-                fnPrintPort( nExplicitPortHTTPS6nfo, "HTTPS/6/nfo port" );
-                fnPrintPort( nExplicitPortWS4std, "WS/4/std port" );
-                fnPrintPort( nExplicitPortWS4nfo, "WS/4/nfo port" );
-                fnPrintPort( nExplicitPortWS6std, "WS/6/std port" );
-                fnPrintPort( nExplicitPortWS6nfo, "WS/6/nfo port" );
-                fnPrintPort( nExplicitPortWSS4std, "WSS/4/std port" );
-                fnPrintPort( nExplicitPortWSS4nfo, "WSS/4/nfo port" );
-                fnPrintPort( nExplicitPortWSS6std, "WSS/6/std port" );
-                fnPrintPort( nExplicitPortWSS6nfo, "WSS/6/nfo port" );
-                //
-                std::string strPathSslKey, strPathSslCert, strPathSslCA;
-                bool bHaveSSL = false;
-                if ( ( nExplicitPortHTTPS4std > 0 || nExplicitPortHTTPS6std > 0 ||
-                         nExplicitPortHTTPS4nfo > 0 || nExplicitPortHTTPS6nfo > 0 ||
-                         nExplicitPortWSS4std > 0 || nExplicitPortWSS6std > 0 ||
-                         nExplicitPortWSS4nfo > 0 || nExplicitPortWSS6nfo > 0 ) &&
-                     vm.count( "ssl-key" ) > 0 && vm.count( "ssl-cert" ) > 0 ) {
-                    strPathSslKey = vm["ssl-key"].as< std::string >();
-                    strPathSslCert = vm["ssl-cert"].as< std::string >();
-                    if ( ( !strPathSslKey.empty() ) && ( !strPathSslCert.empty() ) )
-                        bHaveSSL = true;
-                    if ( vm.count( "ssl-ca" ) > 0 )
-                        strPathSslCA = vm["ssl-ca"].as< std::string >();
-                }
-
-
-                double lfExecutionDurationMaxForPerformanceWarning = SkaleServerOverride::
-                    g_lfDefaultExecutionDurationMaxForPerformanceWarning;  // in seconds, default 1
-                                                                           // second
-                if ( vm.count( "performance-warning-duration" ) > 0 ) {
-                    lfExecutionDurationMaxForPerformanceWarning = vm["ssl-key"].as< double >();
-                    if ( lfExecutionDurationMaxForPerformanceWarning < 0.0 )
-                        lfExecutionDurationMaxForPerformanceWarning = 0.0;
-                }
-
-                skutils::task::performance::tracker_ptr pTracker =
-                    skutils::task::performance::get_default_tracker();
-                if ( vm.count( "performance-timeline-enable" ) > 0 )
-                    pTracker->set_enabled( true );
-                if ( vm.count( "performance-timeline-disable" ) > 0 )
-                    pTracker->set_enabled( false );
-                if ( vm.count( "performance-timeline-max-items" ) > 0 ) {
-                    size_t maxItemCount = vm["performance-timeline-max-items"].as< size_t >();
-                    pTracker->set_safe_max_item_count( maxItemCount );
-                }
-                LOG( loggerDebug )
-                    << "....Performance timeline tracker............. "
-                    << ( pTracker->is_enabled() ?
-                               std::to_string( pTracker->get_safe_max_item_count() ) :
-                               "off" );
-
-                if ( !bHaveSSL )
-                    nExplicitPortHTTPS4std = nExplicitPortHTTPS6std = nExplicitPortHTTPS4nfo =
-                        nExplicitPortHTTPS6nfo = nExplicitPortWSS4std = nExplicitPortWSS6std =
-                            nExplicitPortWSS4nfo = nExplicitPortWSS6nfo = -1;
-                if ( bHaveSSL ) {
-                    LOG( loggerDebug )
-                        << "....SSL key is............................... " << strPathSslKey;
-                    LOG( loggerDebug )
-                        << "....SSL certificate is....................... " << strPathSslCert;
-                    LOG( loggerDebug )
-                        << "....SSL CA is................................ " << strPathSslCA;
-                }
-                //
-                //
-                size_t maxConnections = 0,
-                       max_http_handler_queues = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__,
-                       cntServersStd = 1, cntServersNfo = 0, cntInBatch = 128;
-                bool is_async_http_transfer_mode = true;
-                int32_t pg_threads = 0;
-                int32_t pg_threads_limit = 0;
-
-                // First, get "max-connections" true/false from config.json
-                // Second, get it from command line parameter (higher priority source)
-                if ( chainConfigParsed ) {
-                    try {
-                        maxConnections =
-                            joConfig["skaleConfig"]["nodeInfo"]["max-connections"].get< size_t >();
-                    } catch ( ... ) {
-                        maxConnections = 0;
-                    }
-                }
-                if ( vm.count( "max-connections" ) )
-                    maxConnections = vm["max-connections"].as< size_t >();
-                //
-                // First, get "max-http-queues" true/false from config.json
-                // Second, get it from command line parameter (higher priority source)
-                if ( chainConfigParsed ) {
-                    try {
-                        max_http_handler_queues =
-                            joConfig["skaleConfig"]["nodeInfo"]["max-http-queues"].get< size_t >();
-                    } catch ( ... ) {
-                        max_http_handler_queues =
-                            __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__;
-                    }
-                }
-                if ( vm.count( "max-http-queues" ) )
-                    max_http_handler_queues = vm["max-http-queues"].as< size_t >();
-
-                // First, get "max-http-queues" true/false from config.json
-                // Second, get it from command line parameter (higher priority source)
-                if ( chainConfigParsed ) {
-                    try {
-                        is_async_http_transfer_mode =
-                            joConfig["skaleConfig"]["nodeInfo"]["async-http-transfer-mode"]
-                                .get< bool >();
-                    } catch ( ... ) {
-                        is_async_http_transfer_mode = true;
-                    }
-                }
-                if ( vm.count( "async-http-transfer-mode" ) )
-                    is_async_http_transfer_mode = true;
-                if ( vm.count( "sync-http-transfer-mode" ) )
-                    is_async_http_transfer_mode = false;
-
-                if ( chainConfigParsed ) {
-                    try {
-                        pg_threads =
-                            joConfig["skaleConfig"]["nodeInfo"]["pg-threads"].get< int32_t >();
-                        if ( pg_threads < 0 )
-                            pg_threads = 0;
-                    } catch ( ... ) {
+                    pg_threads = joConfig["skaleConfig"]["nodeInfo"]["pg-threads"].get< int32_t >();
+                    if ( pg_threads < 0 )
                         pg_threads = 0;
-                    }
-                    try {
-                        pg_threads_limit = joConfig["skaleConfig"]["nodeInfo"]["pg-threads-limit"]
-                                               .get< int32_t >();
-                        if ( pg_threads_limit < 0 )
-                            pg_threads_limit = 0;
-                    } catch ( ... ) {
-                        pg_threads_limit = 0;
-                    }
-                    try {
-                        bool is_pg_trace =
-                            joConfig["skaleConfig"]["nodeInfo"]["pg-trace"].get< bool >();
-                        skutils::http_pg::pg_logging_set( is_pg_trace );
-                    } catch ( ... ) {
-                    }
-                }
-                if ( vm.count( "pg-threads" ) )
-                    pg_threads = vm["pg-threads"].as< int32_t >();
-                if ( vm.count( "pg-threads-limit" ) )
-                    pg_threads_limit = vm["pg-threads-limit"].as< int32_t >();
-                if ( vm.count( "pg-trace" ) )
-                    skutils::http_pg::pg_logging_set( true );
-
-                // First, get "acceptors"/"info-acceptors" true/false from config.json
-                // Second, get it from command line parameter (higher priority source)
-                if ( chainConfigParsed ) {
-                    try {
-                        cntServersStd =
-                            joConfig["skaleConfig"]["nodeInfo"]["acceptors"].get< size_t >();
-                    } catch ( ... ) {
-                        cntServersStd = 1;
-                    }
-                    try {
-                        cntServersNfo =
-                            joConfig["skaleConfig"]["nodeInfo"]["info-acceptors"].get< size_t >();
-                    } catch ( ... ) {
-                        cntServersNfo = 0;
-                    }
-                }
-                if ( vm.count( "acceptors" ) )
-                    cntServersStd = vm["acceptors"].as< size_t >();
-                if ( cntServersStd < 1 )
-                    cntServersStd = 1;
-                if ( vm.count( "info-acceptors" ) )
-                    cntServersNfo = vm["info-acceptors"].as< size_t >();
-
-                // First, get "acceptors"/"info-acceptors" true/false from config.json
-                // Second, get it from command line parameter (higher priority source)
-                if ( chainConfigParsed ) {
-                    try {
-                        cntInBatch =
-                            joConfig["skaleConfig"]["nodeInfo"]["max-batch"].get< size_t >();
-                    } catch ( ... ) {
-                        cntInBatch = 128;
-                    }
-                }
-                if ( vm.count( "max-batch" ) )
-                    cntInBatch = vm["max-batch"].as< size_t >();
-                if ( cntInBatch < 1 )
-                    cntInBatch = 1;
-
-                // First, get "ws-mode" true/false from config.json
-                // Second, get it from command line parameter (higher priority source)
-                if ( chainConfigParsed ) {
-                    try {
-                        std::string s =
-                            joConfig["skaleConfig"]["nodeInfo"]["ws-mode"].get< std::string >();
-                        skutils::ws::nlws::g_default_srvmode = skutils::ws::nlws::str2srvmode( s );
-                    } catch ( ... ) {
-                    }
-                }
-                if ( vm.count( "ws-mode" ) ) {
-                    std::string s = vm["ws-mode"].as< std::string >();
-                    skutils::ws::nlws::g_default_srvmode = skutils::ws::nlws::str2srvmode( s );
-                }
-
-                // First, get "ws-log" true/false from config.json
-                // Second, get it from command line parameter (higher priority source)
-                if ( chainConfigParsed ) {
-                    try {
-                        std::string s =
-                            joConfig["skaleConfig"]["nodeInfo"]["ws-log"].get< std::string >();
-                        skutils::ws::g_eWSLL = skutils::ws::str2wsll( s );
-                    } catch ( ... ) {
-                    }
-                }
-                if ( vm.count( "ws-log" ) ) {
-                    std::string s = vm["ws-log"].as< std::string >();
-                    skutils::ws::g_eWSLL = skutils::ws::str2wsll( s );
-                }
-
-                LOG( loggerDebug )
-                    << "....WS mode.................................. "
-                    << skutils::ws::nlws::srvmode2str( skutils::ws::nlws::g_default_srvmode );
-                LOG( loggerDebug ) << "....WS logging............................... "
-                                   << skutils::ws::wsll2str( skutils::ws::g_eWSLL );
-                LOG( loggerDebug )
-                    << "....Max RPC connections...................... "
-                    << ( ( maxConnections > 0 ) ? std::to_string( maxConnections ) : "disabled" );
-                LOG( loggerDebug ) << "....Max HTTP queues.......................... "
-                                   << ( ( max_http_handler_queues > 0 ) ?
-                                              std::to_string( max_http_handler_queues ) :
-                                              "default" );
-                LOG( loggerDebug ) << "....Asynchronous HTTP........................ "
-                                   << ( is_async_http_transfer_mode ? "yes" : "no" );
-                LOG( loggerDebug )
-                    << "....Proxygen threads......................... " << pg_threads;
-                LOG( loggerDebug )
-                    << "....Proxygen threads limit................... " << pg_threads_limit;
-
-                //
-                LOG( loggerDebug )
-                    << "....Max count in batch JSON RPC request...... " << cntInBatch;
-                LOG( loggerDebug )
-                    << "....Parallel RPC connection acceptors........ " << cntServersStd;
-                LOG( loggerDebug )
-                    << "....Parallel informational RPC acceptors..... " << cntServersNfo;
-                SkaleServerOverride::fn_binary_snapshot_download_t fn_binary_snapshot_download =
-                    [=]( const nlohmann::json& joRequest ) -> std::vector< uint8_t > {
-                    return pSkaleFace->impl_skale_downloadSnapshotFragmentBinary( joRequest );
-                };
-
-                //
-                SkaleServerOverride::opts_t serverOpts;
-                inject_rapidjson_handlers( serverOpts, pEthFace );
-                serverOpts.fn_binary_snapshot_download_ = fn_binary_snapshot_download;
-                serverOpts.netOpts_.bindOptsStandard_.cntServers_ = cntServersStd;
-                serverOpts.netOpts_.bindOptsStandard_.strAddrHTTP4_ = chainParams->getSelfNodeIp();
-                serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ = nExplicitPortHTTP4std;
-                serverOpts.netOpts_.bindOptsStandard_.strAddrHTTP6_ =
-                    chainParams->getSelfNodeIpV6();
-                serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP6_ = nExplicitPortHTTP6std;
-                serverOpts.netOpts_.bindOptsStandard_.strAddrHTTPS4_ = chainParams->getSelfNodeIp();
-                serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTPS4_ = nExplicitPortHTTPS4std;
-                serverOpts.netOpts_.bindOptsStandard_.strAddrHTTPS6_ =
-                    chainParams->getSelfNodeIpV6();
-                serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTPS6_ = nExplicitPortHTTPS6std;
-                serverOpts.netOpts_.bindOptsStandard_.strAddrWS4_ = chainParams->getSelfNodeIp();
-                serverOpts.netOpts_.bindOptsStandard_.nBasePortWS4_ = nExplicitPortWS4std;
-                serverOpts.netOpts_.bindOptsStandard_.strAddrWS6_ = chainParams->getSelfNodeIpV6();
-                serverOpts.netOpts_.bindOptsStandard_.nBasePortWS6_ = nExplicitPortWS6std;
-                serverOpts.netOpts_.bindOptsStandard_.strAddrWSS4_ = chainParams->getSelfNodeIp();
-                serverOpts.netOpts_.bindOptsStandard_.nBasePortWSS4_ = nExplicitPortWSS4std;
-                serverOpts.netOpts_.bindOptsStandard_.strAddrWSS6_ = chainParams->getSelfNodeIpV6();
-                serverOpts.netOpts_.bindOptsStandard_.nBasePortWSS6_ = nExplicitPortWSS6std;
-
-                serverOpts.netOpts_.bindOptsInformational_.cntServers_ = cntServersNfo;
-                serverOpts.netOpts_.bindOptsInformational_.strAddrHTTP4_ =
-                    chainParams->getSelfNodeIp();
-                serverOpts.netOpts_.bindOptsInformational_.nBasePortHTTP4_ = nExplicitPortHTTP4nfo;
-                serverOpts.netOpts_.bindOptsInformational_.strAddrHTTP6_ =
-                    chainParams->getSelfNodeIpV6();
-                serverOpts.netOpts_.bindOptsInformational_.nBasePortHTTP6_ = nExplicitPortHTTP6nfo;
-                serverOpts.netOpts_.bindOptsInformational_.strAddrHTTPS4_ =
-                    chainParams->getSelfNodeIp();
-                serverOpts.netOpts_.bindOptsInformational_.nBasePortHTTPS4_ =
-                    nExplicitPortHTTPS4nfo;
-                serverOpts.netOpts_.bindOptsInformational_.strAddrHTTPS6_ =
-                    chainParams->getSelfNodeIpV6();
-                serverOpts.netOpts_.bindOptsInformational_.nBasePortHTTPS6_ =
-                    nExplicitPortHTTPS6nfo;
-
-                serverOpts.netOpts_.bindOptsInformational_.strAddrWS4_ =
-                    chainParams->getSelfNodeIp();
-                serverOpts.netOpts_.bindOptsInformational_.nBasePortWS4_ = nExplicitPortWS4nfo;
-                serverOpts.netOpts_.bindOptsInformational_.strAddrWS6_ =
-                    chainParams->getSelfNodeIpV6();
-                serverOpts.netOpts_.bindOptsInformational_.nBasePortWS6_ = nExplicitPortWS6nfo;
-                serverOpts.netOpts_.bindOptsInformational_.strAddrWSS4_ =
-                    chainParams->getSelfNodeIp();
-                serverOpts.netOpts_.bindOptsInformational_.nBasePortWSS4_ = nExplicitPortWSS4nfo;
-                serverOpts.netOpts_.bindOptsInformational_.strAddrWSS6_ =
-                    chainParams->getSelfNodeIpV6();
-                serverOpts.netOpts_.bindOptsInformational_.nBasePortWSS6_ = nExplicitPortWSS6nfo;
-
-                serverOpts.netOpts_.strPathSslKey_ = strPathSslKey;
-                serverOpts.netOpts_.strPathSslCert_ = strPathSslCert;
-                serverOpts.netOpts_.strPathSslCA_ = strPathSslCA;
-                serverOpts.lfExecutionDurationMaxForPerformanceWarning_ =
-                    lfExecutionDurationMaxForPerformanceWarning;
-                try {
-                    static const char* g_arrVarNamesToTryEthERC20[] = {
-                        "EthERC20",
-                        "ethERC20Address",
-                    };
-                    for ( size_t idxVar = 0; idxVar < sizeof( g_arrVarNamesToTryEthERC20 ) /
-                                                          sizeof( g_arrVarNamesToTryEthERC20[0] );
-                          ++idxVar ) {
-                        const char* strVarName = g_arrVarNamesToTryEthERC20[idxVar];
-                        serverOpts.strEthErc20Address_ =
-                            joConfig["skaleConfig"]["contractSettings"]["IMA"][strVarName]
-                                .get< std::string >();
-                        serverOpts.strEthErc20Address_ =
-                            skutils::tools::trim_copy( serverOpts.strEthErc20Address_ );
-                        if ( !serverOpts.strEthErc20Address_.empty() )
-                            break;
-                    }
-                    if ( serverOpts.strEthErc20Address_.empty() )
-                        throw std::runtime_error(
-                            "\"ethERC20Address\" was not found in config JSON" );
-                    LOG( loggerDebug )
-                        << "\"ethERC20Address\" is " + serverOpts.strEthErc20Address_;
                 } catch ( ... ) {
-                    serverOpts.strEthErc20Address_ = "0xd3cdbc1b727b2ed91b8ad21333841d2e96f255af";
-                    LOG( loggerWarning )
-                        << "WARNING: \"ethERC20Address\" was not found in config JSON, assuming " +
-                               serverOpts.strEthErc20Address_;
+                    pg_threads = 0;
                 }
-                auto skale_server_connector =
-                    new SkaleServerOverride( chainParams, g_client.get(), serverOpts );
-                //
-                // unddos
-                if ( joConfig.count( "unddos" ) > 0 ) {
-                    nlohmann::json joUnDdosSettings = joConfig["unddos"];
-                    skale_server_connector->unddos_.load_settings_from_json( joUnDdosSettings );
-                } else {
-                    LOG( loggerWarning ) << "No DDOS config found. DDOS Disabled";
-                    skale_server_connector->unddos_.disable_ddos();  // auto-init
+                try {
+                    pg_threads_limit =
+                        joConfig["skaleConfig"]["nodeInfo"]["pg-threads-limit"].get< int32_t >();
+                    if ( pg_threads_limit < 0 )
+                        pg_threads_limit = 0;
+                } catch ( ... ) {
+                    pg_threads_limit = 0;
                 }
+                try {
+                    bool is_pg_trace =
+                        joConfig["skaleConfig"]["nodeInfo"]["pg-trace"].get< bool >();
+                    skutils::http_pg::pg_logging_set( is_pg_trace );
+                } catch ( ... ) {
+                }
+            }
+            if ( vm.count( "pg-threads" ) )
+                pg_threads = vm["pg-threads"].as< int32_t >();
+            if ( vm.count( "pg-threads-limit" ) )
+                pg_threads_limit = vm["pg-threads-limit"].as< int32_t >();
+            if ( vm.count( "pg-trace" ) )
+                skutils::http_pg::pg_logging_set( true );
 
-                skale_server_connector->max_http_handler_queues_ = max_http_handler_queues;
-                skale_server_connector->is_async_http_transfer_mode_ = is_async_http_transfer_mode;
-                skale_server_connector->maxCountInBatchJsonRpcRequest_ = cntInBatch;
-                skale_server_connector->pg_threads_ = pg_threads;
-                skale_server_connector->pg_threads_limit_ = pg_threads_limit;
+            // First, get "acceptors"/"info-acceptors" true/false from config.json
+            // Second, get it from command line parameter (higher priority source)
+            if ( chainConfigParsed ) {
+                try {
+                    cntServersStd =
+                        joConfig["skaleConfig"]["nodeInfo"]["acceptors"].get< size_t >();
+                } catch ( ... ) {
+                    cntServersStd = 1;
+                }
+                try {
+                    cntServersNfo =
+                        joConfig["skaleConfig"]["nodeInfo"]["info-acceptors"].get< size_t >();
+                } catch ( ... ) {
+                    cntServersNfo = 0;
+                }
+            }
+            if ( vm.count( "acceptors" ) )
+                cntServersStd = vm["acceptors"].as< size_t >();
+            if ( cntServersStd < 1 )
+                cntServersStd = 1;
+            if ( vm.count( "info-acceptors" ) )
+                cntServersNfo = vm["info-acceptors"].as< size_t >();
 
-                if ( pg_threads > 0 ) {
-                    LOG( loggerInfo ) << "Count of threads in proxygen server: " << pg_threads;
-                } else {
-                    LOG( loggerWarning )
-                        << "Count of threads in proxygen server is not defined in config. "
-                           "Using default value of 10 from the mainnet";
-                    pg_threads = 10;
-                    pg_threads_limit = 10;
+            // First, get "acceptors"/"info-acceptors" true/false from config.json
+            // Second, get it from command line parameter (higher priority source)
+            if ( chainConfigParsed ) {
+                try {
+                    cntInBatch = joConfig["skaleConfig"]["nodeInfo"]["max-batch"].get< size_t >();
+                } catch ( ... ) {
+                    cntInBatch = 128;
                 }
+            }
+            if ( vm.count( "max-batch" ) )
+                cntInBatch = vm["max-batch"].as< size_t >();
+            if ( cntInBatch < 1 )
+                cntInBatch = 1;
 
-                //
-                pSkaleStatsFace->setProvider( skale_server_connector );
-                skale_server_connector->setConsumer( pSkaleStatsFace );
-                //
-                skale_server_connector->opts_.isTraceCalls_ = bTraceJsonRpcCalls;
-                skale_server_connector->opts_.isTraceSpecialCalls_ = bTraceJsonRpcSpecialCalls;
+            // First, get "ws-mode" true/false from config.json
+            // Second, get it from command line parameter (higher priority source)
+            if ( chainConfigParsed ) {
+                try {
+                    std::string s =
+                        joConfig["skaleConfig"]["nodeInfo"]["ws-mode"].get< std::string >();
+                    skutils::ws::nlws::g_default_srvmode = skutils::ws::nlws::str2srvmode( s );
+                } catch ( ... ) {
+                }
+            }
+            if ( vm.count( "ws-mode" ) ) {
+                std::string s = vm["ws-mode"].as< std::string >();
+                skutils::ws::nlws::g_default_srvmode = skutils::ws::nlws::str2srvmode( s );
+            }
 
-                skale_server_connector->max_connection_set( maxConnections );
-                g_jsonrpcIpcServer->addConnector( skale_server_connector );
-                if ( !skale_server_connector->StartListening() ) {  // TODO Will it delete itself?
-                    LOG( loggerError ) << "FATAL: Failed to start JSON RPC, will exit...";
-                    return EX_IOERR;
+            // First, get "ws-log" true/false from config.json
+            // Second, get it from command line parameter (higher priority source)
+            if ( chainConfigParsed ) {
+                try {
+                    std::string s =
+                        joConfig["skaleConfig"]["nodeInfo"]["ws-log"].get< std::string >();
+                    skutils::ws::g_eWSLL = skutils::ws::str2wsll( s );
+                } catch ( ... ) {
                 }
-                int nStatHTTP4std = skale_server_connector->getServerPortStatusProxygenHTTP(
-                    4, e_server_mode_t::esm_standard );
-                int nStatHTTP4nfo = skale_server_connector->getServerPortStatusProxygenHTTP(
-                    4, e_server_mode_t::esm_informational );
-                int nStatHTTP6std = skale_server_connector->getServerPortStatusProxygenHTTP(
-                    6, e_server_mode_t::esm_standard );
-                int nStatHTTP6nfo = skale_server_connector->getServerPortStatusProxygenHTTP(
-                    6, e_server_mode_t::esm_informational );
-                int nStatHTTPS4std = skale_server_connector->getServerPortStatusProxygenHTTPS(
-                    4, e_server_mode_t::esm_standard );
-                int nStatHTTPS4nfo = skale_server_connector->getServerPortStatusProxygenHTTPS(
-                    4, e_server_mode_t::esm_informational );
-                int nStatHTTPS6std = skale_server_connector->getServerPortStatusProxygenHTTPS(
-                    6, e_server_mode_t::esm_standard );
-                int nStatHTTPS6nfo = skale_server_connector->getServerPortStatusProxygenHTTPS(
-                    6, e_server_mode_t::esm_informational );
-                int nStatWS4std = skale_server_connector->getServerPortStatusWS(
-                    4, e_server_mode_t::esm_standard );
-                int nStatWS4nfo = skale_server_connector->getServerPortStatusWS(
-                    4, e_server_mode_t::esm_informational );
-                int nStatWS6std = skale_server_connector->getServerPortStatusWS(
-                    6, e_server_mode_t::esm_standard );
-                int nStatWS6nfo = skale_server_connector->getServerPortStatusWS(
-                    6, e_server_mode_t::esm_informational );
-                int nStatWSS4std = skale_server_connector->getServerPortStatusWSS(
-                    4, e_server_mode_t::esm_standard );
-                int nStatWSS4nfo = skale_server_connector->getServerPortStatusWSS(
-                    4, e_server_mode_t::esm_informational );
-                int nStatWSS6std = skale_server_connector->getServerPortStatusWSS(
-                    6, e_server_mode_t::esm_standard );
-                int nStatWSS6nfo = skale_server_connector->getServerPortStatusWSS(
-                    6, e_server_mode_t::esm_informational );
-                static const size_t g_cntWaitAttempts = 30;
-                static const std::chrono::milliseconds g_waitAttempt =
-                    std::chrono::milliseconds( 100 );
-                if ( nExplicitPortHTTP4std > 0 ) {
-                    for ( size_t idxWaitAttempt = 0;
-                          nStatHTTP4std < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                          ( !ExitHandler::shouldExit() );
-                          ++idxWaitAttempt ) {
-                        if ( idxWaitAttempt == 0 )
-                            LOG( loggerDebug ) << "Waiting for HTTP/4/std start... ";
-                        std::this_thread::sleep_for( g_waitAttempt );
-                        nStatHTTP4std = skale_server_connector->getServerPortStatusProxygenHTTP(
-                            4, e_server_mode_t::esm_standard );
-                    }
-                }
-                if ( nExplicitPortHTTP4nfo > 0 ) {
-                    for ( size_t idxWaitAttempt = 0;
-                          nStatHTTP4nfo < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                          ( !ExitHandler::shouldExit() );
-                          ++idxWaitAttempt ) {
-                        if ( idxWaitAttempt == 0 )
-                            LOG( loggerDebug ) << "Waiting for HTTP/4/nfo start... ";
-                        std::this_thread::sleep_for( g_waitAttempt );
-                        nStatHTTP4nfo = skale_server_connector->getServerPortStatusProxygenHTTP(
-                            4, e_server_mode_t::esm_informational );
-                    }
-                }
-                if ( nExplicitPortHTTP6std > 0 ) {
-                    for ( size_t idxWaitAttempt = 0;
-                          nStatHTTP6std < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                          ( !ExitHandler::shouldExit() );
-                          ++idxWaitAttempt ) {
-                        if ( idxWaitAttempt == 0 )
-                            LOG( loggerDebug ) << "Waiting for HTTP/6/std start... ";
-                        std::this_thread::sleep_for( g_waitAttempt );
-                        nStatHTTP6std = skale_server_connector->getServerPortStatusProxygenHTTP(
-                            6, e_server_mode_t::esm_standard );
-                    }
-                }
-                if ( nExplicitPortHTTP6nfo > 0 ) {
-                    for ( size_t idxWaitAttempt = 0;
-                          nStatHTTP6nfo < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                          ( !ExitHandler::shouldExit() );
-                          ++idxWaitAttempt ) {
-                        if ( idxWaitAttempt == 0 )
-                            LOG( loggerDebug ) << "Waiting for HTTP/6/nfo start... ";
-                        std::this_thread::sleep_for( g_waitAttempt );
-                        nStatHTTP6nfo = skale_server_connector->getServerPortStatusProxygenHTTP(
-                            6, e_server_mode_t::esm_informational );
-                    }
-                }
-                if ( nExplicitPortHTTPS4std > 0 ) {
-                    for ( size_t idxWaitAttempt = 0;
-                          nStatHTTPS4std < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                          ( !ExitHandler::shouldExit() );
-                          ++idxWaitAttempt ) {
-                        if ( idxWaitAttempt == 0 )
-                            LOG( loggerDebug ) << "Waiting for HTTPS/4/std start... ";
-                        std::this_thread::sleep_for( g_waitAttempt );
-                        nStatHTTPS4std = skale_server_connector->getServerPortStatusProxygenHTTPS(
-                            4, e_server_mode_t::esm_standard );
-                    }
-                }
-                if ( nExplicitPortHTTPS4nfo > 0 ) {
-                    for ( size_t idxWaitAttempt = 0;
-                          nStatHTTPS4nfo < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                          ( !ExitHandler::shouldExit() );
-                          ++idxWaitAttempt ) {
-                        if ( idxWaitAttempt == 0 )
-                            LOG( loggerDebug ) << "Waiting for HTTPS/4/nfo start... ";
-                        std::this_thread::sleep_for( g_waitAttempt );
-                        nStatHTTPS4nfo = skale_server_connector->getServerPortStatusProxygenHTTPS(
-                            4, e_server_mode_t::esm_informational );
-                    }
-                }
-                if ( nExplicitPortHTTPS6std > 0 ) {
-                    for ( size_t idxWaitAttempt = 0;
-                          nStatHTTPS6std < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                          ( !ExitHandler::shouldExit() );
-                          ++idxWaitAttempt ) {
-                        if ( idxWaitAttempt == 0 )
-                            LOG( loggerDebug ) << "Waiting for HTTPS/6/std start... ";
-                        std::this_thread::sleep_for( g_waitAttempt );
-                        nStatHTTPS6std = skale_server_connector->getServerPortStatusProxygenHTTPS(
-                            6, e_server_mode_t::esm_standard );
-                    }
-                }
-                if ( nExplicitPortHTTPS6nfo > 0 ) {
-                    for ( size_t idxWaitAttempt = 0;
-                          nStatHTTPS6nfo < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                          ( !ExitHandler::shouldExit() );
-                          ++idxWaitAttempt ) {
-                        if ( idxWaitAttempt == 0 )
-                            LOG( loggerDebug ) << "Waiting for HTTPS/6/nfo"
-                                               << " start... ";
-                        std::this_thread::sleep_for( g_waitAttempt );
-                        nStatHTTPS6nfo = skale_server_connector->getServerPortStatusProxygenHTTPS(
-                            6, e_server_mode_t::esm_informational );
-                    }
-                }
-                if ( nExplicitPortWS4std > 0 ) {
-                    for ( size_t idxWaitAttempt = 0;
-                          nStatWS4std < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                          ( !ExitHandler::shouldExit() );
-                          ++idxWaitAttempt ) {
-                        if ( idxWaitAttempt == 0 )
-                            LOG( loggerDebug ) << "Waiting for WS/4/std start... ";
-                        std::this_thread::sleep_for( g_waitAttempt );
-                        nStatWS4std = skale_server_connector->getServerPortStatusWS(
-                            4, e_server_mode_t::esm_standard );
-                    }
-                }
-                if ( nExplicitPortWS4nfo > 0 ) {
-                    for ( size_t idxWaitAttempt = 0;
-                          nStatWS4nfo < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                          ( !ExitHandler::shouldExit() );
-                          ++idxWaitAttempt ) {
-                        if ( idxWaitAttempt == 0 )
-                            LOG( loggerDebug ) << "Waiting for WS/4/nfo start... ";
-                        std::this_thread::sleep_for( g_waitAttempt );
-                        nStatWS4nfo = skale_server_connector->getServerPortStatusWS(
-                            4, e_server_mode_t::esm_informational );
-                    }
-                }
-                if ( nExplicitPortWS6std > 0 ) {
-                    for ( size_t idxWaitAttempt = 0;
-                          nStatWS6std < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                          ( !ExitHandler::shouldExit() );
-                          ++idxWaitAttempt ) {
-                        if ( idxWaitAttempt == 0 )
-                            LOG( loggerDebug ) << "Waiting for WS/6/std start... ";
-                        std::this_thread::sleep_for( g_waitAttempt );
-                        nStatWS6std = skale_server_connector->getServerPortStatusWS(
-                            6, e_server_mode_t::esm_standard );
-                    }
-                }
-                if ( nExplicitPortWS6nfo > 0 ) {
-                    for ( size_t idxWaitAttempt = 0;
-                          nStatWS6nfo < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                          ( !ExitHandler::shouldExit() );
-                          ++idxWaitAttempt ) {
-                        if ( idxWaitAttempt == 0 )
-                            LOG( loggerDebug ) << "Waiting for WS/6/nfo start... ";
-                        std::this_thread::sleep_for( g_waitAttempt );
-                        nStatWS6nfo = skale_server_connector->getServerPortStatusWS(
-                            6, e_server_mode_t::esm_informational );
-                    }
-                }
-                if ( nExplicitPortWSS4std > 0 ) {
-                    for ( size_t idxWaitAttempt = 0;
-                          nStatWSS4std < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                          ( !ExitHandler::shouldExit() );
-                          ++idxWaitAttempt ) {
-                        if ( idxWaitAttempt == 0 )
-                            LOG( loggerDebug ) << "Waiting for WSS/4/std start... ";
-                        nStatWSS4std = skale_server_connector->getServerPortStatusWSS(
-                            4, e_server_mode_t::esm_standard );
-                    }
-                }
-                if ( nExplicitPortWSS4nfo > 0 ) {
-                    for ( size_t idxWaitAttempt = 0;
-                          nStatWSS4nfo < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                          ( !ExitHandler::shouldExit() );
-                          ++idxWaitAttempt ) {
-                        if ( idxWaitAttempt == 0 )
-                            LOG( loggerDebug ) << "Waiting for WSS/4/nfo start... ";
-                        nStatWSS4nfo = skale_server_connector->getServerPortStatusWSS(
-                            4, e_server_mode_t::esm_informational );
-                    }
-                }
-                if ( nExplicitPortWSS6std > 0 ) {
-                    for ( size_t idxWaitAttempt = 0;
-                          nStatWSS6std < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                          ( !ExitHandler::shouldExit() );
-                          ++idxWaitAttempt ) {
-                        if ( idxWaitAttempt == 0 )
-                            LOG( loggerDebug ) << "Waiting for WSS/6/std start... ";
-                        nStatWSS6std = skale_server_connector->getServerPortStatusWSS(
-                            6, e_server_mode_t::esm_standard );
-                    }
-                }
-                if ( nExplicitPortWSS6nfo > 0 ) {
-                    for ( size_t idxWaitAttempt = 0;
-                          nStatWSS6nfo < 0 && idxWaitAttempt < g_cntWaitAttempts &&
-                          ( !ExitHandler::shouldExit() );
-                          ++idxWaitAttempt ) {
-                        if ( idxWaitAttempt == 0 )
-                            LOG( loggerDebug ) << "Waiting for WSS/6/nfo start... ";
-                        nStatWSS6nfo = skale_server_connector->getServerPortStatusWSS(
-                            6, e_server_mode_t::esm_informational );
-                    }
-                }
-                LOG( loggerDebug ) << "....RPC status:";
-                auto fnPrintStatus = [&loggerDebug]( const int& nPort, const int& nStat,
-                                         const char* strDescription ) -> void {
-                    static const size_t nAlign = 35;
-                    size_t nDescLen = strnlen( strDescription, 1024 );
-                    std::string strDots;
-                    for ( ; ( strDots.size() + nDescLen ) < nAlign; )
-                        strDots += ".";
-                    LOG( loggerDebug )
-                        << "...." << strDescription << strDots
-                        << ( ( nStat >= 0 ) ? ( ( nPort > 0 ) ? std::to_string( nStat ) :
-                                                                "still starting..." ) :
-                                              "off" );
+            }
+            if ( vm.count( "ws-log" ) ) {
+                std::string s = vm["ws-log"].as< std::string >();
+                skutils::ws::g_eWSLL = skutils::ws::str2wsll( s );
+            }
+
+            LOG( loggerDebug ) << "....WS mode.................................. "
+                               << skutils::ws::nlws::srvmode2str(
+                                      skutils::ws::nlws::g_default_srvmode );
+            LOG( loggerDebug ) << "....WS logging............................... "
+                               << skutils::ws::wsll2str( skutils::ws::g_eWSLL );
+            LOG( loggerDebug ) << "....Max RPC connections...................... "
+                               << ( ( maxConnections > 0 ) ? std::to_string( maxConnections ) :
+                                                             "disabled" );
+            LOG( loggerDebug ) << "....Max HTTP queues.......................... "
+                               << ( ( max_http_handler_queues > 0 ) ?
+                                          std::to_string( max_http_handler_queues ) :
+                                          "default" );
+            LOG( loggerDebug ) << "....Asynchronous HTTP........................ "
+                               << ( is_async_http_transfer_mode ? "yes" : "no" );
+            LOG( loggerDebug ) << "....Proxygen threads......................... " << pg_threads;
+            LOG( loggerDebug ) << "....Proxygen threads limit................... "
+                               << pg_threads_limit;
+
+            //
+            LOG( loggerDebug ) << "....Max count in batch JSON RPC request...... " << cntInBatch;
+            LOG( loggerDebug ) << "....Parallel RPC connection acceptors........ " << cntServersStd;
+            LOG( loggerDebug ) << "....Parallel informational RPC acceptors..... " << cntServersNfo;
+            SkaleServerOverride::fn_binary_snapshot_download_t fn_binary_snapshot_download =
+                [=]( const nlohmann::json& joRequest ) -> std::vector< uint8_t > {
+                return pSkaleFace->impl_skale_downloadSnapshotFragmentBinary( joRequest );
+            };
+
+            //
+            SkaleServerOverride::opts_t serverOpts;
+            inject_rapidjson_handlers( serverOpts, pEthFace );
+            serverOpts.fn_binary_snapshot_download_ = fn_binary_snapshot_download;
+            serverOpts.netOpts_.bindOptsStandard_.cntServers_ = cntServersStd;
+            serverOpts.netOpts_.bindOptsStandard_.strAddrHTTP4_ = chainParams->getSelfNodeIp();
+            serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ = nExplicitPortHTTP4std;
+            serverOpts.netOpts_.bindOptsStandard_.strAddrHTTP6_ = chainParams->getSelfNodeIpV6();
+            serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP6_ = nExplicitPortHTTP6std;
+            serverOpts.netOpts_.bindOptsStandard_.strAddrHTTPS4_ = chainParams->getSelfNodeIp();
+            serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTPS4_ = nExplicitPortHTTPS4std;
+            serverOpts.netOpts_.bindOptsStandard_.strAddrHTTPS6_ = chainParams->getSelfNodeIpV6();
+            serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTPS6_ = nExplicitPortHTTPS6std;
+            serverOpts.netOpts_.bindOptsStandard_.strAddrWS4_ = chainParams->getSelfNodeIp();
+            serverOpts.netOpts_.bindOptsStandard_.nBasePortWS4_ = nExplicitPortWS4std;
+            serverOpts.netOpts_.bindOptsStandard_.strAddrWS6_ = chainParams->getSelfNodeIpV6();
+            serverOpts.netOpts_.bindOptsStandard_.nBasePortWS6_ = nExplicitPortWS6std;
+            serverOpts.netOpts_.bindOptsStandard_.strAddrWSS4_ = chainParams->getSelfNodeIp();
+            serverOpts.netOpts_.bindOptsStandard_.nBasePortWSS4_ = nExplicitPortWSS4std;
+            serverOpts.netOpts_.bindOptsStandard_.strAddrWSS6_ = chainParams->getSelfNodeIpV6();
+            serverOpts.netOpts_.bindOptsStandard_.nBasePortWSS6_ = nExplicitPortWSS6std;
+
+            serverOpts.netOpts_.bindOptsInformational_.cntServers_ = cntServersNfo;
+            serverOpts.netOpts_.bindOptsInformational_.strAddrHTTP4_ = chainParams->getSelfNodeIp();
+            serverOpts.netOpts_.bindOptsInformational_.nBasePortHTTP4_ = nExplicitPortHTTP4nfo;
+            serverOpts.netOpts_.bindOptsInformational_.strAddrHTTP6_ =
+                chainParams->getSelfNodeIpV6();
+            serverOpts.netOpts_.bindOptsInformational_.nBasePortHTTP6_ = nExplicitPortHTTP6nfo;
+            serverOpts.netOpts_.bindOptsInformational_.strAddrHTTPS4_ =
+                chainParams->getSelfNodeIp();
+            serverOpts.netOpts_.bindOptsInformational_.nBasePortHTTPS4_ = nExplicitPortHTTPS4nfo;
+            serverOpts.netOpts_.bindOptsInformational_.strAddrHTTPS6_ =
+                chainParams->getSelfNodeIpV6();
+            serverOpts.netOpts_.bindOptsInformational_.nBasePortHTTPS6_ = nExplicitPortHTTPS6nfo;
+
+            serverOpts.netOpts_.bindOptsInformational_.strAddrWS4_ = chainParams->getSelfNodeIp();
+            serverOpts.netOpts_.bindOptsInformational_.nBasePortWS4_ = nExplicitPortWS4nfo;
+            serverOpts.netOpts_.bindOptsInformational_.strAddrWS6_ = chainParams->getSelfNodeIpV6();
+            serverOpts.netOpts_.bindOptsInformational_.nBasePortWS6_ = nExplicitPortWS6nfo;
+            serverOpts.netOpts_.bindOptsInformational_.strAddrWSS4_ = chainParams->getSelfNodeIp();
+            serverOpts.netOpts_.bindOptsInformational_.nBasePortWSS4_ = nExplicitPortWSS4nfo;
+            serverOpts.netOpts_.bindOptsInformational_.strAddrWSS6_ =
+                chainParams->getSelfNodeIpV6();
+            serverOpts.netOpts_.bindOptsInformational_.nBasePortWSS6_ = nExplicitPortWSS6nfo;
+
+            serverOpts.netOpts_.strPathSslKey_ = strPathSslKey;
+            serverOpts.netOpts_.strPathSslCert_ = strPathSslCert;
+            serverOpts.netOpts_.strPathSslCA_ = strPathSslCA;
+            serverOpts.lfExecutionDurationMaxForPerformanceWarning_ =
+                lfExecutionDurationMaxForPerformanceWarning;
+            try {
+                static const char* g_arrVarNamesToTryEthERC20[] = {
+                    "EthERC20",
+                    "ethERC20Address",
                 };
-                fnPrintStatus( nExplicitPortHTTP4std, nStatHTTP4std, "HTTP/4std" );
-                fnPrintStatus( nExplicitPortHTTP4nfo, nStatHTTP4nfo, "HTTP/4nfo" );
-                fnPrintStatus( nExplicitPortHTTP6std, nStatHTTP6std, "HTTP/6std" );
-                fnPrintStatus( nExplicitPortHTTP6nfo, nStatHTTP6nfo, "HTTP/6nfo" );
-                fnPrintStatus( nExplicitPortHTTPS4std, nStatHTTPS4std, "HTTPS/4std" );
-                fnPrintStatus( nExplicitPortHTTPS4nfo, nStatHTTPS4nfo, "HTTPS/4nfo" );
-                fnPrintStatus( nExplicitPortHTTPS6std, nStatHTTPS6std, "HTTPS/6std" );
-                fnPrintStatus( nExplicitPortHTTPS6nfo, nStatHTTPS6nfo, "HTTPS/6nfo" );
-                fnPrintStatus( nExplicitPortWS4std, nStatWS4std, "WS/4std" );
-                fnPrintStatus( nExplicitPortWS4nfo, nStatWS4nfo, "WS/4nfo" );
-                fnPrintStatus( nExplicitPortWS6std, nStatWS6std, "WS/6std" );
-                fnPrintStatus( nExplicitPortWS6nfo, nStatWS6nfo, "WS/6nfo" );
-                fnPrintStatus( nExplicitPortWSS4std, nStatWS4std, "WSS/4std" );
-                fnPrintStatus( nExplicitPortWSS4nfo, nStatWS4nfo, "WSS/4nfo" );
-                fnPrintStatus( nExplicitPortWSS6std, nStatWS6std, "WSS/6std" );
-                fnPrintStatus( nExplicitPortWSS6nfo, nStatWS6nfo, "WSS/6nfo" );
-            }  // if ( nExplicitPort ......
+                for ( size_t idxVar = 0; idxVar < sizeof( g_arrVarNamesToTryEthERC20 ) /
+                                                      sizeof( g_arrVarNamesToTryEthERC20[0] );
+                      ++idxVar ) {
+                    const char* strVarName = g_arrVarNamesToTryEthERC20[idxVar];
+                    serverOpts.strEthErc20Address_ =
+                        joConfig["skaleConfig"]["contractSettings"]["IMA"][strVarName]
+                            .get< std::string >();
+                    serverOpts.strEthErc20Address_ =
+                        skutils::tools::trim_copy( serverOpts.strEthErc20Address_ );
+                    if ( !serverOpts.strEthErc20Address_.empty() )
+                        break;
+                }
+                if ( serverOpts.strEthErc20Address_.empty() )
+                    throw std::runtime_error( "\"ethERC20Address\" was not found in config JSON" );
+                LOG( loggerDebug ) << "\"ethERC20Address\" is " + serverOpts.strEthErc20Address_;
+            } catch ( ... ) {
+                serverOpts.strEthErc20Address_ = "0xd3cdbc1b727b2ed91b8ad21333841d2e96f255af";
+                LOG( loggerWarning )
+                    << "WARNING: \"ethERC20Address\" was not found in config JSON, assuming " +
+                           serverOpts.strEthErc20Address_;
+            }
+            auto skale_server_connector =
+                new SkaleServerOverride( chainParams, g_client.get(), serverOpts );
+            //
+            // unddos
+            if ( joConfig.count( "unddos" ) > 0 ) {
+                nlohmann::json joUnDdosSettings = joConfig["unddos"];
+                skale_server_connector->unddos_.load_settings_from_json( joUnDdosSettings );
+            } else {
+                LOG( loggerWarning ) << "No DDOS config found. DDOS Disabled";
+                skale_server_connector->unddos_.disable_ddos();  // auto-init
+            }
 
-            statusAndControl->setSubsystemRunning( StatusAndControl::Rpc, true );
+            skale_server_connector->max_http_handler_queues_ = max_http_handler_queues;
+            skale_server_connector->is_async_http_transfer_mode_ = is_async_http_transfer_mode;
+            skale_server_connector->maxCountInBatchJsonRpcRequest_ = cntInBatch;
+            skale_server_connector->pg_threads_ = pg_threads;
+            skale_server_connector->pg_threads_limit_ = pg_threads_limit;
 
-            if ( strJsonAdminSessionKey.empty() )
-                strJsonAdminSessionKey = sessionManager->newSession(
-                    rpc::SessionPermissions{ { rpc::Privilege::Admin } } );
-            else
-                sessionManager->addSession(
-                    strJsonAdminSessionKey, rpc::SessionPermissions{ { rpc::Privilege::Admin } } );
+            if ( pg_threads > 0 ) {
+                LOG( loggerInfo ) << "Count of threads in proxygen server: " << pg_threads;
+            } else {
+                LOG( loggerWarning )
+                    << "Count of threads in proxygen server is not defined in config. "
+                       "Using default value of 10 from the mainnet";
+                pg_threads = 10;
+                pg_threads_limit = 10;
+            }
 
-        }  // if ( is_ipc || nExplicitPort...
+            //
+            pSkaleStatsFace->setProvider( skale_server_connector );
+            skale_server_connector->setConsumer( pSkaleStatsFace );
+            //
+            skale_server_connector->opts_.isTraceCalls_ = bTraceJsonRpcCalls;
+            skale_server_connector->opts_.isTraceSpecialCalls_ = bTraceJsonRpcSpecialCalls;
 
-        if ( bEnabledShutdownViaWeb3 ) {
-            LOG( loggerWarning ) << "Enabling programmatic shutdown via Web3...";
-            dev::rpc::Skale::enableWeb3Shutdown( true );
-            dev::rpc::Skale::onShutdownInvoke(
-                []() { ExitHandler::exitHandler( -1, ExitHandler::ec_web3_request ); } );
-            LOG( loggerWarning ) << "Done, programmatic shutdown via Web3 is enabled";
-        } else {
-            LOG( loggerDebug ) << "Disabling programmatic shutdown via Web3...";
-            dev::rpc::Skale::enableWeb3Shutdown( false );
-            LOG( loggerDebug ) << "Done, programmatic shutdown via Web3 is disabled";
-        }
+            skale_server_connector->max_connection_set( maxConnections );
+            g_jsonrpcIpcServer->addConnector( skale_server_connector );
+            if ( !skale_server_connector->StartListening() ) {  // TODO Will it delete itself?
+                LOG( loggerError ) << "FATAL: Failed to start JSON RPC, will exit...";
+                return EX_IOERR;
+            }
+            int nStatHTTP4std = skale_server_connector->getServerPortStatusProxygenHTTP(
+                4, e_server_mode_t::esm_standard );
+            int nStatHTTP4nfo = skale_server_connector->getServerPortStatusProxygenHTTP(
+                4, e_server_mode_t::esm_informational );
+            int nStatHTTP6std = skale_server_connector->getServerPortStatusProxygenHTTP(
+                6, e_server_mode_t::esm_standard );
+            int nStatHTTP6nfo = skale_server_connector->getServerPortStatusProxygenHTTP(
+                6, e_server_mode_t::esm_informational );
+            int nStatHTTPS4std = skale_server_connector->getServerPortStatusProxygenHTTPS(
+                4, e_server_mode_t::esm_standard );
+            int nStatHTTPS4nfo = skale_server_connector->getServerPortStatusProxygenHTTPS(
+                4, e_server_mode_t::esm_informational );
+            int nStatHTTPS6std = skale_server_connector->getServerPortStatusProxygenHTTPS(
+                6, e_server_mode_t::esm_standard );
+            int nStatHTTPS6nfo = skale_server_connector->getServerPortStatusProxygenHTTPS(
+                6, e_server_mode_t::esm_informational );
+            int nStatWS4std =
+                skale_server_connector->getServerPortStatusWS( 4, e_server_mode_t::esm_standard );
+            int nStatWS4nfo = skale_server_connector->getServerPortStatusWS(
+                4, e_server_mode_t::esm_informational );
+            int nStatWS6std =
+                skale_server_connector->getServerPortStatusWS( 6, e_server_mode_t::esm_standard );
+            int nStatWS6nfo = skale_server_connector->getServerPortStatusWS(
+                6, e_server_mode_t::esm_informational );
+            int nStatWSS4std =
+                skale_server_connector->getServerPortStatusWSS( 4, e_server_mode_t::esm_standard );
+            int nStatWSS4nfo = skale_server_connector->getServerPortStatusWSS(
+                4, e_server_mode_t::esm_informational );
+            int nStatWSS6std =
+                skale_server_connector->getServerPortStatusWSS( 6, e_server_mode_t::esm_standard );
+            int nStatWSS6nfo = skale_server_connector->getServerPortStatusWSS(
+                6, e_server_mode_t::esm_informational );
+            static const size_t g_cntWaitAttempts = 30;
+            static const std::chrono::milliseconds g_waitAttempt = std::chrono::milliseconds( 100 );
+            if ( nExplicitPortHTTP4std > 0 ) {
+                for ( size_t idxWaitAttempt = 0;
+                      nStatHTTP4std < 0 && idxWaitAttempt < g_cntWaitAttempts &&
+                      ( !ExitHandler::shouldExit() );
+                      ++idxWaitAttempt ) {
+                    if ( idxWaitAttempt == 0 )
+                        LOG( loggerDebug ) << "Waiting for HTTP/4/std start... ";
+                    std::this_thread::sleep_for( g_waitAttempt );
+                    nStatHTTP4std = skale_server_connector->getServerPortStatusProxygenHTTP(
+                        4, e_server_mode_t::esm_standard );
+                }
+            }
+            if ( nExplicitPortHTTP4nfo > 0 ) {
+                for ( size_t idxWaitAttempt = 0;
+                      nStatHTTP4nfo < 0 && idxWaitAttempt < g_cntWaitAttempts &&
+                      ( !ExitHandler::shouldExit() );
+                      ++idxWaitAttempt ) {
+                    if ( idxWaitAttempt == 0 )
+                        LOG( loggerDebug ) << "Waiting for HTTP/4/nfo start... ";
+                    std::this_thread::sleep_for( g_waitAttempt );
+                    nStatHTTP4nfo = skale_server_connector->getServerPortStatusProxygenHTTP(
+                        4, e_server_mode_t::esm_informational );
+                }
+            }
+            if ( nExplicitPortHTTP6std > 0 ) {
+                for ( size_t idxWaitAttempt = 0;
+                      nStatHTTP6std < 0 && idxWaitAttempt < g_cntWaitAttempts &&
+                      ( !ExitHandler::shouldExit() );
+                      ++idxWaitAttempt ) {
+                    if ( idxWaitAttempt == 0 )
+                        LOG( loggerDebug ) << "Waiting for HTTP/6/std start... ";
+                    std::this_thread::sleep_for( g_waitAttempt );
+                    nStatHTTP6std = skale_server_connector->getServerPortStatusProxygenHTTP(
+                        6, e_server_mode_t::esm_standard );
+                }
+            }
+            if ( nExplicitPortHTTP6nfo > 0 ) {
+                for ( size_t idxWaitAttempt = 0;
+                      nStatHTTP6nfo < 0 && idxWaitAttempt < g_cntWaitAttempts &&
+                      ( !ExitHandler::shouldExit() );
+                      ++idxWaitAttempt ) {
+                    if ( idxWaitAttempt == 0 )
+                        LOG( loggerDebug ) << "Waiting for HTTP/6/nfo start... ";
+                    std::this_thread::sleep_for( g_waitAttempt );
+                    nStatHTTP6nfo = skale_server_connector->getServerPortStatusProxygenHTTP(
+                        6, e_server_mode_t::esm_informational );
+                }
+            }
+            if ( nExplicitPortHTTPS4std > 0 ) {
+                for ( size_t idxWaitAttempt = 0;
+                      nStatHTTPS4std < 0 && idxWaitAttempt < g_cntWaitAttempts &&
+                      ( !ExitHandler::shouldExit() );
+                      ++idxWaitAttempt ) {
+                    if ( idxWaitAttempt == 0 )
+                        LOG( loggerDebug ) << "Waiting for HTTPS/4/std start... ";
+                    std::this_thread::sleep_for( g_waitAttempt );
+                    nStatHTTPS4std = skale_server_connector->getServerPortStatusProxygenHTTPS(
+                        4, e_server_mode_t::esm_standard );
+                }
+            }
+            if ( nExplicitPortHTTPS4nfo > 0 ) {
+                for ( size_t idxWaitAttempt = 0;
+                      nStatHTTPS4nfo < 0 && idxWaitAttempt < g_cntWaitAttempts &&
+                      ( !ExitHandler::shouldExit() );
+                      ++idxWaitAttempt ) {
+                    if ( idxWaitAttempt == 0 )
+                        LOG( loggerDebug ) << "Waiting for HTTPS/4/nfo start... ";
+                    std::this_thread::sleep_for( g_waitAttempt );
+                    nStatHTTPS4nfo = skale_server_connector->getServerPortStatusProxygenHTTPS(
+                        4, e_server_mode_t::esm_informational );
+                }
+            }
+            if ( nExplicitPortHTTPS6std > 0 ) {
+                for ( size_t idxWaitAttempt = 0;
+                      nStatHTTPS6std < 0 && idxWaitAttempt < g_cntWaitAttempts &&
+                      ( !ExitHandler::shouldExit() );
+                      ++idxWaitAttempt ) {
+                    if ( idxWaitAttempt == 0 )
+                        LOG( loggerDebug ) << "Waiting for HTTPS/6/std start... ";
+                    std::this_thread::sleep_for( g_waitAttempt );
+                    nStatHTTPS6std = skale_server_connector->getServerPortStatusProxygenHTTPS(
+                        6, e_server_mode_t::esm_standard );
+                }
+            }
+            if ( nExplicitPortHTTPS6nfo > 0 ) {
+                for ( size_t idxWaitAttempt = 0;
+                      nStatHTTPS6nfo < 0 && idxWaitAttempt < g_cntWaitAttempts &&
+                      ( !ExitHandler::shouldExit() );
+                      ++idxWaitAttempt ) {
+                    if ( idxWaitAttempt == 0 )
+                        LOG( loggerDebug ) << "Waiting for HTTPS/6/nfo"
+                                           << " start... ";
+                    std::this_thread::sleep_for( g_waitAttempt );
+                    nStatHTTPS6nfo = skale_server_connector->getServerPortStatusProxygenHTTPS(
+                        6, e_server_mode_t::esm_informational );
+                }
+            }
+            if ( nExplicitPortWS4std > 0 ) {
+                for ( size_t idxWaitAttempt = 0;
+                      nStatWS4std < 0 && idxWaitAttempt < g_cntWaitAttempts &&
+                      ( !ExitHandler::shouldExit() );
+                      ++idxWaitAttempt ) {
+                    if ( idxWaitAttempt == 0 )
+                        LOG( loggerDebug ) << "Waiting for WS/4/std start... ";
+                    std::this_thread::sleep_for( g_waitAttempt );
+                    nStatWS4std = skale_server_connector->getServerPortStatusWS(
+                        4, e_server_mode_t::esm_standard );
+                }
+            }
+            if ( nExplicitPortWS4nfo > 0 ) {
+                for ( size_t idxWaitAttempt = 0;
+                      nStatWS4nfo < 0 && idxWaitAttempt < g_cntWaitAttempts &&
+                      ( !ExitHandler::shouldExit() );
+                      ++idxWaitAttempt ) {
+                    if ( idxWaitAttempt == 0 )
+                        LOG( loggerDebug ) << "Waiting for WS/4/nfo start... ";
+                    std::this_thread::sleep_for( g_waitAttempt );
+                    nStatWS4nfo = skale_server_connector->getServerPortStatusWS(
+                        4, e_server_mode_t::esm_informational );
+                }
+            }
+            if ( nExplicitPortWS6std > 0 ) {
+                for ( size_t idxWaitAttempt = 0;
+                      nStatWS6std < 0 && idxWaitAttempt < g_cntWaitAttempts &&
+                      ( !ExitHandler::shouldExit() );
+                      ++idxWaitAttempt ) {
+                    if ( idxWaitAttempt == 0 )
+                        LOG( loggerDebug ) << "Waiting for WS/6/std start... ";
+                    std::this_thread::sleep_for( g_waitAttempt );
+                    nStatWS6std = skale_server_connector->getServerPortStatusWS(
+                        6, e_server_mode_t::esm_standard );
+                }
+            }
+            if ( nExplicitPortWS6nfo > 0 ) {
+                for ( size_t idxWaitAttempt = 0;
+                      nStatWS6nfo < 0 && idxWaitAttempt < g_cntWaitAttempts &&
+                      ( !ExitHandler::shouldExit() );
+                      ++idxWaitAttempt ) {
+                    if ( idxWaitAttempt == 0 )
+                        LOG( loggerDebug ) << "Waiting for WS/6/nfo start... ";
+                    std::this_thread::sleep_for( g_waitAttempt );
+                    nStatWS6nfo = skale_server_connector->getServerPortStatusWS(
+                        6, e_server_mode_t::esm_informational );
+                }
+            }
+            if ( nExplicitPortWSS4std > 0 ) {
+                for ( size_t idxWaitAttempt = 0;
+                      nStatWSS4std < 0 && idxWaitAttempt < g_cntWaitAttempts &&
+                      ( !ExitHandler::shouldExit() );
+                      ++idxWaitAttempt ) {
+                    if ( idxWaitAttempt == 0 )
+                        LOG( loggerDebug ) << "Waiting for WSS/4/std start... ";
+                    nStatWSS4std = skale_server_connector->getServerPortStatusWSS(
+                        4, e_server_mode_t::esm_standard );
+                }
+            }
+            if ( nExplicitPortWSS4nfo > 0 ) {
+                for ( size_t idxWaitAttempt = 0;
+                      nStatWSS4nfo < 0 && idxWaitAttempt < g_cntWaitAttempts &&
+                      ( !ExitHandler::shouldExit() );
+                      ++idxWaitAttempt ) {
+                    if ( idxWaitAttempt == 0 )
+                        LOG( loggerDebug ) << "Waiting for WSS/4/nfo start... ";
+                    nStatWSS4nfo = skale_server_connector->getServerPortStatusWSS(
+                        4, e_server_mode_t::esm_informational );
+                }
+            }
+            if ( nExplicitPortWSS6std > 0 ) {
+                for ( size_t idxWaitAttempt = 0;
+                      nStatWSS6std < 0 && idxWaitAttempt < g_cntWaitAttempts &&
+                      ( !ExitHandler::shouldExit() );
+                      ++idxWaitAttempt ) {
+                    if ( idxWaitAttempt == 0 )
+                        LOG( loggerDebug ) << "Waiting for WSS/6/std start... ";
+                    nStatWSS6std = skale_server_connector->getServerPortStatusWSS(
+                        6, e_server_mode_t::esm_standard );
+                }
+            }
+            if ( nExplicitPortWSS6nfo > 0 ) {
+                for ( size_t idxWaitAttempt = 0;
+                      nStatWSS6nfo < 0 && idxWaitAttempt < g_cntWaitAttempts &&
+                      ( !ExitHandler::shouldExit() );
+                      ++idxWaitAttempt ) {
+                    if ( idxWaitAttempt == 0 )
+                        LOG( loggerDebug ) << "Waiting for WSS/6/nfo start... ";
+                    nStatWSS6nfo = skale_server_connector->getServerPortStatusWSS(
+                        6, e_server_mode_t::esm_informational );
+                }
+            }
+            LOG( loggerDebug ) << "....RPC status:";
+            auto fnPrintStatus = [&loggerDebug]( const int& nPort, const int& nStat,
+                                     const char* strDescription ) -> void {
+                static const size_t nAlign = 35;
+                size_t nDescLen = strnlen( strDescription, 1024 );
+                std::string strDots;
+                for ( ; ( strDots.size() + nDescLen ) < nAlign; )
+                    strDots += ".";
+                LOG( loggerDebug )
+                    << "...." << strDescription << strDots
+                    << ( ( nStat >= 0 ) ?
+                               ( ( nPort > 0 ) ? std::to_string( nStat ) : "still starting..." ) :
+                               "off" );
+            };
+            fnPrintStatus( nExplicitPortHTTP4std, nStatHTTP4std, "HTTP/4std" );
+            fnPrintStatus( nExplicitPortHTTP4nfo, nStatHTTP4nfo, "HTTP/4nfo" );
+            fnPrintStatus( nExplicitPortHTTP6std, nStatHTTP6std, "HTTP/6std" );
+            fnPrintStatus( nExplicitPortHTTP6nfo, nStatHTTP6nfo, "HTTP/6nfo" );
+            fnPrintStatus( nExplicitPortHTTPS4std, nStatHTTPS4std, "HTTPS/4std" );
+            fnPrintStatus( nExplicitPortHTTPS4nfo, nStatHTTPS4nfo, "HTTPS/4nfo" );
+            fnPrintStatus( nExplicitPortHTTPS6std, nStatHTTPS6std, "HTTPS/6std" );
+            fnPrintStatus( nExplicitPortHTTPS6nfo, nStatHTTPS6nfo, "HTTPS/6nfo" );
+            fnPrintStatus( nExplicitPortWS4std, nStatWS4std, "WS/4std" );
+            fnPrintStatus( nExplicitPortWS4nfo, nStatWS4nfo, "WS/4nfo" );
+            fnPrintStatus( nExplicitPortWS6std, nStatWS6std, "WS/6std" );
+            fnPrintStatus( nExplicitPortWS6nfo, nStatWS6nfo, "WS/6nfo" );
+            fnPrintStatus( nExplicitPortWSS4std, nStatWS4std, "WSS/4std" );
+            fnPrintStatus( nExplicitPortWSS4nfo, nStatWS4nfo, "WSS/4nfo" );
+            fnPrintStatus( nExplicitPortWSS6std, nStatWS6std, "WSS/6std" );
+            fnPrintStatus( nExplicitPortWSS6nfo, nStatWS6nfo, "WSS/6nfo" );
+        }  // if ( nExplicitPort ......
 
-        if ( g_client ) {
-            unsigned int n = g_client->blockChain().details().number;
-            unsigned int mining = 0;
-            while ( !ExitHandler::shouldExit() )
-                stopSealingAfterXBlocks( g_client.get(), n, mining );
-        } else {
-            while ( !ExitHandler::shouldExit() )
-                this_thread::sleep_for( chrono::milliseconds( 1000 ) );
-        }
+        statusAndControl->setSubsystemRunning( StatusAndControl::Rpc, true );
 
-        if ( statusAndControl ) {
-            statusAndControl->setExitState( StatusAndControl::StartAgain,
-                ( ExitHandler::requestedExitCode() != ExitHandler::ec_success ) );
-            statusAndControl->setExitState( StatusAndControl::StartFromSnapshot,
-                ( ExitHandler::requestedExitCode() == ExitHandler::ec_state_root_mismatch ) );
-            statusAndControl->setExitState( StatusAndControl::ClearDataDir,
-                ( ExitHandler::requestedExitCode() == ExitHandler::ec_state_root_mismatch ) );
-        }  // if
+        if ( strJsonAdminSessionKey.empty() )
+            strJsonAdminSessionKey =
+                sessionManager->newSession( rpc::SessionPermissions{ { rpc::Privilege::Admin } } );
+        else
+            sessionManager->addSession(
+                strJsonAdminSessionKey, rpc::SessionPermissions{ { rpc::Privilege::Admin } } );
 
-        if ( g_jsonrpcIpcServer.get() ) {
-            g_jsonrpcIpcServer->StopListening();
-            g_jsonrpcIpcServer.reset( nullptr );
-            statusAndControl->setSubsystemRunning( StatusAndControl::Rpc, false );
-        }
-        if ( g_client ) {
-            g_client->stopWorking();
-            statusAndControl->setSubsystemRunning( StatusAndControl::Blockchain, false );
-            g_client.reset( nullptr );
-        }
+    }  // if ( is_ipc || nExplicitPort...
 
-        LOG( loggerError ) << localeconv()->decimal_point;
-
-        std::string basename = "profile" + chainParams->getSelfNodeId().str();
-        MicroProfileDumpFileImmediately(
-            ( basename + ".html" ).c_str(), ( basename + ".csv" ).c_str(), nullptr );
-        MicroProfileShutdown();
-
-        ExitHandler::exit_code_t ec = ExitHandler::requestedExitCode();
-        if ( ec != ExitHandler::ec_success ) {
-            LOG( loggerError ) << "Exiting main with code " << int( ec ) << "...";
-        }
-        return int( ec );
-    } catch ( const Client::CreationException& ex ) {
-        // cannot use loggerError - not in scope
-        LOG( loggerError ) << dev::nested_exception_what( ex );
-        // TODO close microprofile!!
-        g_client.reset( nullptr );
-        return int( ExitHandler::ec_failure );
-    } catch ( const SkaleHost::CreationException& ex ) {
-        LOG( loggerError ) << dev::nested_exception_what( ex );
-        // TODO close microprofile!!
-        g_client.reset( nullptr );
-        return int( ExitHandler::ec_failure );
-    } catch ( const std::exception& ex ) {
-        LOG( loggerError ) << "CRITICAL " << dev::nested_exception_what( ex );
-        LOG( loggerError ) << "\n" << skutils::signal::generate_stack_trace();
-        g_client.reset( nullptr );
-        return int( ExitHandler::ec_failure );
-    } catch ( ... ) {
-        LOG( loggerError ) << "CRITICAL unknown error";
-        LOG( loggerError ) << "\n" << skutils::signal::generate_stack_trace();
-        g_client.reset( nullptr );
-        return int( ExitHandler::ec_failure );
+    if ( bEnabledShutdownViaWeb3 ) {
+        LOG( loggerWarning ) << "Enabling programmatic shutdown via Web3...";
+        dev::rpc::Skale::enableWeb3Shutdown( true );
+        dev::rpc::Skale::onShutdownInvoke(
+            []() { ExitHandler::exitHandler( -1, ExitHandler::ec_web3_request ); } );
+        LOG( loggerWarning ) << "Done, programmatic shutdown via Web3 is enabled";
+    } else {
+        LOG( loggerDebug ) << "Disabling programmatic shutdown via Web3...";
+        dev::rpc::Skale::enableWeb3Shutdown( false );
+        LOG( loggerDebug ) << "Done, programmatic shutdown via Web3 is disabled";
     }
+
+    if ( g_client ) {
+        unsigned int n = g_client->blockChain().details().number;
+        unsigned int mining = 0;
+        while ( !ExitHandler::shouldExit() )
+            stopSealingAfterXBlocks( g_client.get(), n, mining );
+    } else {
+        while ( !ExitHandler::shouldExit() )
+            this_thread::sleep_for( chrono::milliseconds( 1000 ) );
+    }
+
+    if ( statusAndControl ) {
+        statusAndControl->setExitState( StatusAndControl::StartAgain,
+            ( ExitHandler::requestedExitCode() != ExitHandler::ec_success ) );
+        statusAndControl->setExitState( StatusAndControl::StartFromSnapshot,
+            ( ExitHandler::requestedExitCode() == ExitHandler::ec_state_root_mismatch ) );
+        statusAndControl->setExitState( StatusAndControl::ClearDataDir,
+            ( ExitHandler::requestedExitCode() == ExitHandler::ec_state_root_mismatch ) );
+    }  // if
+
+    if ( g_jsonrpcIpcServer.get() ) {
+        g_jsonrpcIpcServer->StopListening();
+        g_jsonrpcIpcServer.reset( nullptr );
+        statusAndControl->setSubsystemRunning( StatusAndControl::Rpc, false );
+    }
+    if ( g_client ) {
+        g_client->stopWorking();
+        statusAndControl->setSubsystemRunning( StatusAndControl::Blockchain, false );
+        g_client.reset( nullptr );
+    }
+
+    LOG( loggerError ) << localeconv()->decimal_point;
+
+    std::string basename = "profile" + chainParams->getSelfNodeId().str();
+    MicroProfileDumpFileImmediately(
+        ( basename + ".html" ).c_str(), ( basename + ".csv" ).c_str(), nullptr );
+    MicroProfileShutdown();
+
+    ExitHandler::exit_code_t ec = ExitHandler::requestedExitCode();
+    if ( ec != ExitHandler::ec_success ) {
+        LOG( loggerError ) << "Exiting main with code " << int( ec ) << "...";
+    }
+    return int( ec );
+}
+catch ( const Client::CreationException& ex ) {
+    // cannot use loggerError - not in scope
+    LOG( loggerError ) << dev::nested_exception_what( ex );
+    // TODO close microprofile!!
+    g_client.reset( nullptr );
+    return int( ExitHandler::ec_failure );
+}
+catch ( const SkaleHost::CreationException& ex ) {
+    LOG( loggerError ) << dev::nested_exception_what( ex );
+    // TODO close microprofile!!
+    g_client.reset( nullptr );
+    return int( ExitHandler::ec_failure );
+}
+catch ( const std::exception& ex ) {
+    LOG( loggerError ) << "CRITICAL " << dev::nested_exception_what( ex );
+    LOG( loggerError ) << "\n" << skutils::signal::generate_stack_trace();
+    g_client.reset( nullptr );
+    return int( ExitHandler::ec_failure );
+}
+catch ( ... ) {
+    LOG( loggerError ) << "CRITICAL unknown error";
+    LOG( loggerError ) << "\n" << skutils::signal::generate_stack_trace();
+    g_client.reset( nullptr );
+    return int( ExitHandler::ec_failure );
+}
 }
