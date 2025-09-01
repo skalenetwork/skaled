@@ -1828,10 +1828,9 @@ int main( int argc, char** argv ) {
 
         // download 0 snapshot if needed
         if ( chainParams->isSyncFromCatchupEnabled() && dataDirEmpty && !downloadSnapshotFlag ) {
-                // Syncing from catchup, so zeroSnapshotOnly = true
-                doSnapshotDownload( chainParams, statusAndControl, urlToDownloadSnapshotFrom,
-                    snapshotManager, sharedSpace, true );
-            }
+            // Syncing from catchup, so zeroSnapshotOnly = true
+            doSnapshotDownload( chainParams, statusAndControl, urlToDownloadSnapshotFrom,
+                snapshotManager, sharedSpace, true );
         }
 
 #ifdef MIRAGE
