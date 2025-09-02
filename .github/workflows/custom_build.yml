@@ -24,6 +24,14 @@ on:
         - RelWithDebInfo
         - Release
         default: RelWithDebInfo
+      run_historic_build:
+        description: 'Run historic build'
+        type: choice
+        options:
+          - true
+          - false
+        required: false
+        default: false
 
 jobs:
   core_build:
@@ -39,6 +47,7 @@ jobs:
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
   historic_build:
+    if: ${{ github.event.inputs.run_historic_build == 'true' }}
     uses: ./.github/workflows/setup-build-publish.yml
     with:
       image_version: ${{ github.event.inputs.image_version }}
