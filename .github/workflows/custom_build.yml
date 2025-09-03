@@ -19,19 +19,24 @@ on:
         description: 'Build type of skaled binary'
         type: choice
         required: true
-        options: 
-        - Debug
-        - RelWithDebInfo
-        - Release
+          options: 
+          - Debug
+          - RelWithDebInfo
+          - Release
         default: RelWithDebInfo
-      run_historic_build:
-        description: 'Run historic build'
-        type: boolean
+      build_type:
+        description: 'Build type'
+        type: choice
+        options: 
+        - Core
+        - Core+Historic
+        - Historic
         required: false
-        default: false
+        default: Core
 
 jobs:
   core_build:
+    if: github.event.inputs.build_type != 'Historic'
     uses: ./.github/workflows/setup-build-publish.yml
     with:
       image_version: ${{ github.event.inputs.image_version }}
@@ -44,7 +49,7 @@ jobs:
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
   historic_build:
-    if: github.event.inputs.run_historic_build == 'true'
+    if: github.event.inputs.build_type != 'Core'
     uses: ./.github/workflows/setup-build-publish.yml
     with:
       image_version: ${{ github.event.inputs.image_version }}
