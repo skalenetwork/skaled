@@ -44,7 +44,7 @@ jobs:
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
   historic_build:
-    if: github.event.inputs.run_historic_build == true
+    if: github.event.inputs.run_historic_build
     uses: ./.github/workflows/setup-build-publish.yml
     with:
       image_version: ${{ github.event.inputs.image_version }}
