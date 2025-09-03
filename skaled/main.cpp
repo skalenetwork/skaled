@@ -508,13 +508,13 @@ bool tryDownloadSnapshot( std::shared_ptr< SnapshotManager >& snapshotManager,
     if ( isRegularSnapshot )
         snapshotManager->cleanup();
 
-    bool successfullDownload = false;
+    bool successfulDownload = false;
 
     size_t n_found = listUrlsToDownload.size();
 
     size_t shift = rand() % n_found;
 
-    for ( size_t cnt = 0; cnt < n_found && !successfullDownload; ++cnt )
+    for ( size_t cnt = 0; cnt < n_found && !successfulDownload; ++cnt )
         try {
             size_t i = ( shift + cnt ) % n_found;
 
@@ -539,13 +539,13 @@ bool tryDownloadSnapshot( std::shared_ptr< SnapshotManager >& snapshotManager,
             dev::h256 calculated_hash = snapshotManager->getSnapshotHash( blockNumber );
 
             if ( calculated_hash == votedHash.first ) {
-                successfullDownload = true;
+                successfulDownload = true;
                 if ( isRegularSnapshot ) {
                     snapshotManager->restoreSnapshot( blockNumber );
                     LOG( loggerInfo )
                         << "Snapshot restore success for block " << to_string( blockNumber );
                 }
-                return successfullDownload;
+                return successfulDownload;
             } else {
                 LOG( loggerWarning ) << "tryDownloadSnapshot"
                                      << "Downloaded snapshot with incorrect hash! Incoming hash "
@@ -568,6 +568,7 @@ bool downloadSnapshotFromUrl( std::shared_ptr< SnapshotManager >& snapshotManage
     const std::string& urlToDownloadSnapshotFrom, bool isRegularSnapshot,
     bool forceDownload = false ) {
     static Logger loggerWarning{ createLogger( VerbosityWarning, "downloadSnapshotFromUrl" ) };
+    static Logger loggerInfo{ createLogger( VerbosityInfo, "downloadSnapshotFromUrl" ) };
 
     unsigned blockNumber = 0;
     if ( isRegularSnapshot )
@@ -594,14 +595,18 @@ bool downloadSnapshotFromUrl( std::shared_ptr< SnapshotManager >& snapshotManage
         return false;
     }
 
-    bool successfullDownload = checkLocalSnapshot( snapshotManager, blockNumber, votedHash.first );
-    if ( successfullDownload )
-        return successfullDownload;
+    bool successfulDownload = checkLocalSnapshot( snapshotManager, blockNumber, votedHash.first );
+    if ( successfulDownload )
+        return successfulDownload;
 
-    successfullDownload = tryDownloadSnapshot( snapshotManager, chainParams, listUrlsToDownload,
+    successfulDownload = tryDownloadSnapshot( snapshotManager, chainParams, listUrlsToDownload,
         votedHash, blockNumber, isRegularSnapshot );
 
-    return successfullDownload;
+    if ( successfulDownload ) {
+        LOG( loggerInfo ) << "Snapshot download success for block "
+                          << std::to_string( blockNumber );
+    }
+    return successfulDownload;
 }
 
 #ifdef FAIR
@@ -643,13 +648,13 @@ void downloadAndProccessSnapshot( std::shared_ptr< SnapshotManager >& snapshotMa
     std::array< std::string, 4 > arrayCommonPublicKey =
         getBLSPublicKeyToVerifySnapshot( chainParams );
 
-    bool successfullDownload = false;
+    bool successfulDownload = false;
 
     if ( !urlToDownloadSnapshotFrom.empty() )
-        successfullDownload = downloadSnapshotFromUrl( snapshotManager, chainParams,
+        successfulDownload = downloadSnapshotFromUrl( snapshotManager, chainParams,
             arrayCommonPublicKey, urlToDownloadSnapshotFrom, isRegularSnapshot, true );
     else {
-        for ( size_t idx = 0; idx < chainParams.getNodesCount() && !successfullDownload; ++idx )
+        for ( size_t idx = 0; idx < chainParams.getNodesCount() && !successfulDownload; ++idx )
             try {
                 if ( chainParams.getSelfNodeId() == chainParams.getNodeByIndex( idx ).id )
                     continue;
@@ -659,7 +664,7 @@ void downloadAndProccessSnapshot( std::shared_ptr< SnapshotManager >& snapshotMa
                     std::string( ":" ) +
                     ( chainParams.getNodeByIndex( idx ).port + 3 ).convert_to< std::string >();
 
-                successfullDownload = downloadSnapshotFromUrl( snapshotManager, chainParams,
+                successfulDownload = downloadSnapshotFromUrl( snapshotManager, chainParams,
                     arrayCommonPublicKey, nodeUrl, isRegularSnapshot );
             } catch ( std::exception& ex ) {
                 LOG( loggerWarning ) << "Exception while trying to set up snapshot: "
@@ -667,7 +672,7 @@ void downloadAndProccessSnapshot( std::shared_ptr< SnapshotManager >& snapshotMa
             }  // for blockNumber_url
     }
 
-    if ( !successfullDownload ) {
+    if ( !successfulDownload ) {
         throw std::runtime_error( "FATAL: tried to download snapshot from everywhere!" );
     }
 }
@@ -726,6 +731,10 @@ void doSnapshotDownload( const std::shared_ptr< ChainParams >& chainParams,
 #endif
         downloadAndProccessSnapshot(
             snapshotManager, *chainParams, urlToDownloadSnapshotFrom, false );
+        if ( zeroSnapshotOnly ) {
+            // Restoring here since we do not restore it during latest snapshot download
+            snapshotManager->restoreSnapshot( 0 );
+        }
     } catch ( std::exception& ) {
         std::throw_with_nested( std::runtime_error( std::string(
             " Fatal error in downloadAndProccessSnapshot for zero block! Will exit " ) ) );
@@ -1818,15 +1827,10 @@ int main( int argc, char** argv ) {
         }  // if --download-snapshot
 
         // download 0 snapshot if needed
-        if ( chainParams->isSyncNode() && !dataDirEmpty ) {
-            auto bc = BlockChain( chainParams, getDataDir() );
-            if ( bc.number() == 0 ) {
-                // zeroSnapshotOnly is set to true
-                if ( chainParams->isSyncFromCatchupEnabled() && !downloadSnapshotFlag ) {
-                    doSnapshotDownload( chainParams, statusAndControl, urlToDownloadSnapshotFrom,
-                        snapshotManager, sharedSpace, true );
-                }
-            }
+        if ( chainParams->isSyncFromCatchupEnabled() && dataDirEmpty && !downloadSnapshotFlag ) {
+            // Syncing from catchup, so zeroSnapshotOnly = true
+            doSnapshotDownload( chainParams, statusAndControl, urlToDownloadSnapshotFrom,
+                snapshotManager, sharedSpace, true );
         }
 
 #ifdef FAIR
