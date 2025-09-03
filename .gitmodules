@@ -9,7 +9,6 @@
 [submodule "libconsensus"]
 	path = libconsensus
 	url = https://github.com/skalenetwork/skale-consensus.git
-	branch = mirage-to-fair
 [submodule "test/jsontests"]
 	path = test/jsontests
 	url = https://github.com/skalenetwork/skaled-tests.git
