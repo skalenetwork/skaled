@@ -20,13 +20,23 @@ on:
         type: choice
         required: true
         options: 
-        - Debug
-        - RelWithDebInfo
-        - Release
+          - Debug
+          - RelWithDebInfo
+          - Release
         default: RelWithDebInfo
+      node_type:
+        description: 'Node type'
+        type: choice
+        options: 
+          - Core
+          - Core+Historic
+          - Historic
+        required: false
+        default: Core
 
 jobs:
   core_build:
+    if: github.event.inputs.node_type != 'Historic'
     uses: ./.github/workflows/setup-build-publish.yml
     with:
       image_version: ${{ github.event.inputs.image_version }}
@@ -39,6 +49,7 @@ jobs:
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
   historic_build:
+    if: github.event.inputs.node_type != 'Core'
     uses: ./.github/workflows/setup-build-publish.yml
     with:
       image_version: ${{ github.event.inputs.image_version }}
