@@ -42,6 +42,8 @@ SchainPatchEnum getEnumForPatchName( const std::string& _patchName ) {
         return SchainPatchEnum::ClearPartialReceiptsPatch;
     else if ( _patchName == "InvalidTransactionFormatPatch" )
         return SchainPatchEnum::InvalidTransactionFormatPatch;
+    else if ( _patchName == "CurrentBlockRandomPatch" )
+        return SchainPatchEnum::CurrentBlockRandomPatch;
     else
         throw std::out_of_range( _patchName );
 }
@@ -82,6 +84,8 @@ std::string getPatchNameForEnum( SchainPatchEnum _enumValue ) {
         return "ClearPartialReceiptsPatch";
     case SchainPatchEnum::InvalidTransactionFormatPatch:
         return "InvalidTransactionFormatPatch";
+    case SchainPatchEnum::CurrentBlockRandomPatch:
+        return "CurrentBlockRandomPatch";
     default:
         throw std::out_of_range(
             "UnknownPatch #" + std::to_string( static_cast< size_t >( _enumValue ) ) );
@@ -96,7 +100,7 @@ const std::unordered_set< SchainPatchEnum > SchainPatch::preEnabledForMIRAGE = {
     SchainPatchEnum::SkipInvalidTransactionsPatch, SchainPatchEnum::VerifyDaSigsPatch,
     SchainPatchEnum::FastConsensusPatch, SchainPatchEnum::EIP1559TransactionsPatch,
     SchainPatchEnum::VerifyBlsSyncPatch, SchainPatchEnum::ClearPartialReceiptsPatch,
-    SchainPatchEnum::InvalidTransactionFormatPatch
+    SchainPatchEnum::InvalidTransactionFormatPatch, SchainPatchEnum::CurrentBlockRandomPatch
 };
 const std::unordered_set< SchainPatchEnum > SchainPatch::preDisabledForMIRAGE = {
     SchainPatchEnum::RevertableFSPatch, SchainPatchEnum::FlexibleDeploymentPatch,

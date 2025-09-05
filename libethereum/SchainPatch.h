@@ -171,4 +171,10 @@ DEFINE_SIMPLE_PATCH( ClearPartialReceiptsPatch );
  */
 DEFINE_SIMPLE_PATCH( InvalidTransactionFormatPatch );
 
+/*
+ * Purpose: using current block in getBlockRandom
+ * Version introduced: 4.1.0
+ */
+DEFINE_SIMPLE_PATCH( CurrentBlockRandomPatch );
+
 #endif  // SCHAINPATCH_H

@@ -22,6 +22,7 @@ enum class SchainPatchEnum {
     ExternalGasPatch,
     ClearPartialReceiptsPatch,
     InvalidTransactionFormatPatch,
+    CurrentBlockRandomPatch,
     PatchesCount
 };
 
