@@ -249,6 +249,7 @@ static Logger& getLogger( int a_severity = VerbosityTrace ) {
     return logger;
 }
 
+#ifndef MIRAGE
 static void convertBytesToString(
     bytesConstRef _in, size_t _startPosition, std::string& _out, size_t& _stringLength ) {
     if ( _in.size() < UINT256_SIZE ) {
@@ -268,7 +269,7 @@ static void convertBytesToString(
     _out = std::string( ( char* ) byteFilename.data(), _stringLength );
 }
 
-#ifndef MIRAGE
+
 static size_t stat_compute_file_size( const char* _strFileName ) {
     std::ifstream file( _strFileName, ios::binary );
     file.exceptions( std::ifstream::failbit | std::ifstream::badbit );
@@ -595,8 +596,6 @@ ETH_REGISTER_FS_PRECOMPILED( calculateFileHash )
     bytes response = toBigEndian( code );
     return { false, response };
 }
-#endif
-
 
 ETH_REGISTER_PRECOMPILED( logTextMessage )( bytesConstRef _in ) {
     try {
@@ -768,7 +767,6 @@ static dev::u256 stat_parse_u256_hex_or_dec( const std::string& strValue ) {
     return uValue;
 }
 
-#ifndef MIRAGE
 static bool isCallToHistoricData( const std::string& callData ) {
     // in C++ 20 there is string::starts_with, but we do not use C++ 20 yet
     return boost::algorithm::starts_with( callData, "skaleConfig.sChain.nodes." );
@@ -972,7 +970,7 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableString )( bytesConstRef _in ) {
     bytes response = toBigEndian( code );
     return { false, response };  // 1st false - means bad error occur
 }
-#endif
+
 
 ETH_REGISTER_PRECOMPILED( fnReserved0x16 )( bytesConstRef /*_in*/ ) {
     u256 code = 0;
@@ -1051,6 +1049,7 @@ ETH_REGISTER_PRECOMPILED( getConfigPermissionFlag )( bytesConstRef _in ) {
     bytes response = toBigEndian( code );
     return { false, response };  // 1st false - means bad error occur
 }
+#endif
 
 ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef ) {
     try {
@@ -1073,11 +1072,13 @@ ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef ) {
     return { false, response };  // 1st false - means bad error occur
 }
 
+#ifndef MIRAGE
 ETH_REGISTER_PRECOMPILED( addBalance )( [[maybe_unused]] bytesConstRef _in ) {
     dev::u256 code = 0;
     bytes response = toBigEndian( code );
     return { false, response };  // 1st false - means bad error occur
 }
+
 
 ETH_REGISTER_PRECOMPILED( getIMABLSPublicKey )( bytesConstRef ) {
     try {
@@ -1103,5 +1104,6 @@ ETH_REGISTER_PRECOMPILED( getIMABLSPublicKey )( bytesConstRef ) {
     bytes response = toBigEndian( code );
     return { false, response };  // 1st false - means bad error occur
 }
+#endif
 
 }  // namespace

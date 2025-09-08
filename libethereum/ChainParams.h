@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <shared_mutex>
+
 #include "Account.h"
 #include <json_spirit/json_spirit.h>
 #include <libdevcore/Common.h>
@@ -68,8 +70,6 @@ struct ChainParams : public ChainOperationParams {
 
     std::string getConfigForConsensus() const;
 
-    void updateCurrentGroupIfNeeded( uint64_t _latestBlockTimestamp );
-
     // ONLY FOR TESTS
     void fillDefaultTestsParameters( size_t _port );
     void setArchiveMode() { nodeInfo.archiveMode = true; }
@@ -91,7 +91,19 @@ struct ChainParams : public ChainOperationParams {
 
     std::string getSchainName() const { return sChain.name; }
 
+#ifdef MIRAGE
+    Address getSChainNodeBeneficiaryAddressByIndex( uint64_t sChainIndex ) const;
+
+    bool updateCurrentGroupIfNeeded( uint64_t _latestBlockTimestamp );
+
+    CurrentGroup getNewestGroup() const;
+
+#else
+
     u256 getExternalGasDifficulty() const { return externalGasDifficulty; }
+
+    s256 getContractStorageLimit() const { return sChain.contractStorageLimit; }
+#endif
 
     u256 getGasLimit() const { return gasLimit; }
 
@@ -111,10 +123,6 @@ struct ChainParams : public ChainOperationParams {
     int64_t getMaxHistoricStateDbSize() const { return sChain.maxHistoricStateDbSize; }
 #endif
 
-#ifndef MIRAGE
-    s256 getContractStorageLimit() const { return sChain.contractStorageLimit; }
-#endif
-
     // GENERAL NODE GETTERS
 
     u256 getSelfNodeId() const { return nodeInfo.id; }
@@ -129,13 +137,13 @@ struct ChainParams : public ChainOperationParams {
 
     std::array< std::string, 4 > getCommonBlsPublicKey() const;
 
-    std::vector< sChainNode > getSchainNodes() const { return sChain.nodes; }
+    std::vector< sChainNode > getSchainNodes() const;
 
     std::vector< NodeGroup > getNodeGroups() const { return sChain.nodeGroups; }
 
     NodeGroup getNodeGroupByIndex( size_t _idx ) const { return sChain.nodeGroups.at( _idx ); }
 
-    sChainNode getNodeByIndex( size_t _idx ) const { return sChain.nodes.at( _idx ); }
+    sChainNode getNodeByIndex( size_t _idx ) const;
 
     int64_t getLevelDbReopenIntervalMs() const { return sChain.levelDBReopenIntervalMs; }
 
@@ -147,13 +155,13 @@ struct ChainParams : public ChainOperationParams {
 
     bool isSyncFromCatchupEnabled() const { return nodeInfo.syncFromCatchup; }
 
-#ifdef MIRAGE
-    Address getSChainNodeAddressByIndex( uint64_t sChainIndex ) const;
-#endif
-
-    size_t getNodesCount() const { return sChain.nodes.size(); }
+    size_t getNodesCount() const;
 
     size_t getThresholdCount() const { return sChain.t; }
+
+#ifdef MIRAGE
+    Address getStakingContractAddress() const;
+#endif
 
     // SGX GETTERS
 
@@ -182,6 +190,10 @@ struct ChainParams : public ChainOperationParams {
 
     std::string getHistoricNodePublicKey( unsigned _historicGroupIndex, unsigned _nodeId ) const {
         return sChain.nodeGroups.at( _historicGroupIndex ).nodes.at( _nodeId ).publicKey;
+    }
+
+    uint64_t getHistoricGroupFinishTs( unsigned _historicGroupIndex ) const {
+        return sChain.nodeGroups.at( _historicGroupIndex ).finishTs;
     }
 
     // SNAPSHOTS GETTERS
@@ -219,10 +231,19 @@ private:
 
     mutable std::string originalJSON;
 
-    Logger m_loggerDebug{ createLogger( VerbosityDebug, "ChainParams" ) };
 #ifdef MIRAGE
+    void switchSyncMode( const std::vector< sChainNode >& _nodes );
+
+    std::vector< u256 > getNodeIdsForCommittee();
+
+    bool isInCommittee( const std::vector< sChainNode >& _committee ) const;
+
+    mutable std::shared_mutex m_mutex;
+
     Logger m_loggerInfo{ createLogger( VerbosityInfo, "ChainParams" ) };
+    Logger m_loggerWarning{ createLogger( VerbosityWarning, "ChainParams" ) };
 #endif
+    Logger m_loggerDebug{ createLogger( VerbosityDebug, "ChainParams" ) };
 };
 
 }  // namespace dev::eth

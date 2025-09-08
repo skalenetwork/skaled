@@ -307,6 +307,18 @@ public:
         return m_snapshotAgent->createSnapshotFile( _blockNumber );
     }
 
+#ifdef BITE
+    uint64_t getCurrentEpochId() const { return historicGroupIndex.load(); }
+#endif
+
+#ifdef MIRAGE
+    bool updateGroupIfNeeded() { return bc().updateGroupIfNeeded(); }
+
+    std::pair< std::array< std::string, 4 >, uint64_t > getNextCommitteeBITEInfo() const;
+
+    bool isCommitteeRotationSoon() const;
+#endif
+
     // set exiting time for node rotation
     void setSchainExitTime( uint64_t _timestamp ) const;
 
@@ -347,6 +359,12 @@ public:
     // get node owner for historic node in chain
     std::string getHistoricNodePublicKey( unsigned _idx ) const {
         return chainParams().getHistoricNodePublicKey( historicGroupIndex, _idx );
+    }
+
+    uint64_t getCommitteeStartTs( unsigned _idx ) const {
+        if ( _idx == 0 )
+            return 0;
+        return chainParams().getHistoricGroupFinishTs( _idx - 1 );
     }
 
     void doStateDbCompaction() const { m_state.getOriginalDb()->doCompaction(); }
@@ -592,7 +610,12 @@ private:
     void updateHistoricGroupIndex();
 
     // which group corresponds to the current block timestamp on this node
+#ifdef BITE
+    std::atomic_uint64_t historicGroupIndex = 0;
+    static constexpr uint64_t MIN_COMMITTEE_ROTATION_INTERVAL_SEC = 3 * 60;  // 180 sec
+#else
     unsigned historicGroupIndex = 0;
+#endif
 
 public:
     FILE* performance_fd;

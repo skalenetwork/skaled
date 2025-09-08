@@ -96,7 +96,9 @@ string const c_allowFutureBlocks = "allowFutureBlocks";
 string const c_skaleConfig = "skaleConfig";
 string const c_stateRoot = "stateRoot";
 string const c_accountInitialFunds = "accountInitialFunds";
+
 string const c_externalGasDifficulty = "externalGasDifficulty";
+string const c_allowPreEIP155Txns = "allowPreEIP155Txns";
 
 void validateConfigJson( js::mObject const& _obj ) {
     requireJsonFields( _obj, "ChainParams::loadConfig",
@@ -273,9 +275,7 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "snapshotDownloadInactiveTimeout",
                 { { js::int_type }, JsonFieldPresence::Optional } },
             { "rotateAfterBlock", { { js::int_type }, JsonFieldPresence::Optional } },
-#ifndef MIRAGE
             { "contractStorageLimit", { { js::int_type }, JsonFieldPresence::Optional } },
-#endif
             { "dbStorageLimit", { { js::int_type }, JsonFieldPresence::Optional } },
 #ifdef MIRAGE
             { "nodes", { { js::obj_type, js::array_type }, JsonFieldPresence::Required } },
@@ -340,6 +340,7 @@ void validateConfigJson( js::mObject const& _obj ) {
                 { "blsPublicKey2", { { js::str_type }, JsonFieldPresence::Optional } },
                 { "blsPublicKey3", { { js::str_type }, JsonFieldPresence::Optional } },
                 { "owner", { { js::str_type }, JsonFieldPresence::Optional } },
+                { "rewardWalletAddress", { { js::str_type }, JsonFieldPresence::Optional } },
                 { "blockAuthor", { { js::str_type }, JsonFieldPresence::Optional } } } );
     };
 #ifndef MIRAGE
@@ -365,13 +366,15 @@ void validateConfigJson( js::mObject const& _obj ) {
                 const js::mObject& groupInfo = nodeGroup.second.get_obj();
                 requireJsonFields( groupInfo, "ChainParams::loadConfig::skaleConfig::sChain::nodes",
                     { { "group", { { js::array_type }, JsonFieldPresence::Required } },
-                        { "blsKey", { { js::obj_type }, JsonFieldPresence::Optional } } } );
+                        { "blsKey", { { js::obj_type }, JsonFieldPresence::Optional } },
+                        { "stakingContractAddress",
+                            { { js::str_type }, JsonFieldPresence::Optional } } } );
                 if ( groupInfo.count( "blsKey" ) ) {
                     const js::mObject& blsKeyInfo = groupInfo.at( "blsKey" ).get_obj();
                     requireJsonFields( blsKeyInfo,
                         "ChainParams::loadConfig::skaleConfig::sChain::nodes::blsKey",
                         {
-                            { "keyShareName", { { js::str_type }, JsonFieldPresence::Required } },
+                            { "keyShareName", { { js::str_type }, JsonFieldPresence::Optional } },
                             { "t", { { js::int_type }, JsonFieldPresence::Required } },
                             { "n", { { js::int_type }, JsonFieldPresence::Required } },
                             { "commonBLSPublicKey0",
@@ -382,12 +385,12 @@ void validateConfigJson( js::mObject const& _obj ) {
                                 { { js::str_type }, JsonFieldPresence::Required } },
                             { "commonBLSPublicKey3",
                                 { { js::str_type }, JsonFieldPresence::Required } },
-                            { "BLSPublicKey0", { { js::str_type }, JsonFieldPresence::Required } },
-                            { "BLSPublicKey1", { { js::str_type }, JsonFieldPresence::Required } },
-                            { "BLSPublicKey2", { { js::str_type }, JsonFieldPresence::Required } },
-                            { "BLSPublicKey3", { { js::str_type }, JsonFieldPresence::Required } },
-                            { "certFile", { { js::str_type }, JsonFieldPresence::Required } },
-                            { "keyFile", { { js::str_type }, JsonFieldPresence::Required } },
+                            { "BLSPublicKey0", { { js::str_type }, JsonFieldPresence::Optional } },
+                            { "BLSPublicKey1", { { js::str_type }, JsonFieldPresence::Optional } },
+                            { "BLSPublicKey2", { { js::str_type }, JsonFieldPresence::Optional } },
+                            { "BLSPublicKey3", { { js::str_type }, JsonFieldPresence::Optional } },
+                            { "certFile", { { js::str_type }, JsonFieldPresence::Optional } },
+                            { "keyFile", { { js::str_type }, JsonFieldPresence::Optional } },
                         } );
                 }
                 const js::mArray& nodes = groupInfo.at( "group" ).get_array();

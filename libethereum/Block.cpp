@@ -360,9 +360,11 @@ pair< TransactionReceipts, bool > Block::sync(
     ret.second = ( transactions.size() == c_maxSyncTransactions );  // say there's more to the
                                                                     // caller if we hit the limit
 
+#ifndef MIRAGE
     for ( Transaction& transaction : transactions ) {
         transaction.checkOutExternalGas( _bc.chainParams(), _bc.info().timestamp(), _bc.number() );
     }
+#endif
 
     assert( _bc.currentHash() == m_currentBlock.parentHash() );
     auto deadline = chrono::steady_clock::now() + chrono::milliseconds( msTimeout );
@@ -518,7 +520,11 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
             doPartialCatchupTestIfRequested( i );
 
 
-            if ( !tr.isInvalid() && !tr.hasExternalGas() && tr.gasPrice() < _gasPrice ) {
+            if ( !tr.isInvalid() &&
+#ifndef MIRAGE
+                 !tr.hasExternalGas() &&
+#endif
+                 tr.gasPrice() < _gasPrice ) {
                 LOG( m_loggerDebug )
                     << "Transaction " << tr.sha3() << " WouldNotBeInBlock: gasPrice "
                     << tr.gasPrice() << " < " << _gasPrice;
@@ -573,9 +579,9 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
 #ifdef MIRAGE
     auto lastRewardedBlockNumber = m_state.getLastRewardedBlockNumber();
     if ( lastRewardedBlockNumber < m_currentBlock.number() ) {
-        auto blockTimestamp = m_currentBlock.timestamp();
+        auto blockTimestamp = m_previousBlock.timestamp();
         auto reward = _bc.sealEngine()->blockReward( blockTimestamp, m_currentBlock.number() );
-        rewardBlockAuthorForNonDefaultBlock( reward );
+        rewardAllForNonDefaultBlock( _bc.chainParams().getStakingContractAddress(), reward );
         m_state.safeSetLastRewardedBlockNumber( m_currentBlock.number() );
         bool removeEmptyAccounts =
             m_currentBlock.number() >= _bc.chainParams().getEIP158ForkBlock();
@@ -714,8 +720,10 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
     unsigned i = 0;
     DEV_TIMED_ABOVE( "txExec", 500 ) for ( Transaction const& tr : _block.transactions ) {
         try {
+#ifndef MIRAGE
             const_cast< Transaction& >( tr ).checkOutExternalGas(
                 _bc.chainParams(), _bc.info().timestamp(), _bc.number() );
+#endif
             execute( _bc.lastBlockHashes(), tr, skale::Permanence::Committed, OnOpFunc(), i );
         } catch ( Exception& ex ) {
             ex << errinfo_transactionIndex( i );
@@ -844,7 +852,7 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
     DEV_TIMED_ABOVE( "applyRewards", 500 )
 
 #ifdef MIRAGE
-    rewardBlockAuthorForNonDefaultBlock(
+    rewardAllForNonDefaultBlock( _bc.chainParams().getStakingContractAddress(),
         _bc.sealEngine()->blockReward( m_currentBlock.timestamp(), m_currentBlock.number() ) );
 #else
     applyRewards( rewarded,
@@ -1013,9 +1021,28 @@ ExecutionResult Block::execute( LastBlockHashesFace const& _lh, Transaction cons
 }
 
 #ifdef MIRAGE
-void Block::rewardBlockAuthorForNonDefaultBlock( u256 const& _blockReward ) {
+void Block::rewardAllForNonDefaultBlock(
+    const dev::Address& _stakingContractAddress, u256 const& _blockReward ) {
+    // if staking contract is set to ZeroAddress, full reward goes to block author
+    auto evmSchedule =
+        sealEngine()->evmSchedule( m_previousBlock.timestamp(), m_currentBlock.number() );
+    size_t blockAuthorSharePromille = evmSchedule.shareOfBlockRewardToBlockAuthorPromille;
+    if ( _stakingContractAddress == dev::ZeroAddress )
+        blockAuthorSharePromille = 1000;
+
+    // calculate block author's share
+    u256 blockAuthorReward =
+        dev::calculateShareWithPrecision( _blockReward, blockAuthorSharePromille );
+    // calculate amount to be sent to staking contract
+    u256 stakingContractReward = _blockReward - blockAuthorReward;
+
+    // only distribute rewards for non-default blocks
     if ( m_currentBlock.author() != DEFAULT_BLOCK_OWNER_ADDRESS ) {
-        m_state.addBalance( m_currentBlock.author(), _blockReward );
+        // send to block author
+        m_state.addBalance( m_currentBlock.author(), blockAuthorReward );
+
+        // send to staking contract
+        m_state.addBalance( _stakingContractAddress, stakingContractReward );
     }
 }
 

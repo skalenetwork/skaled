@@ -25,6 +25,7 @@
 
 #include "Eth.h"
 #include "AccountHolder.h"
+#include "libethcore/Exceptions.h"
 #include <jsonrpccpp/common/exception.h>
 #include <libconsensus/utils/Time.h>
 #include <libdevcore/CommonData.h>
@@ -493,6 +494,21 @@ string Eth::eth_call( TransactionSkeleton& t, string const&
         throw std::logic_error( strRevertReason );
     }
 
+#ifdef MIRAGE
+    if ( er.excepted == dev::eth::TransactionException::UnsupportedDencunOpcode ) {
+        strRevertReason =
+            "Contract uses unsupported Dencun opcode. Please ensure it is compiled for EVM <= "
+            "Shanghai";
+
+        if ( !er.output.empty() ) {
+            Json::Value output = toJS( er.output );
+            BOOST_THROW_EXCEPTION(
+                JsonRpcException( REVERT_RPC_ERROR_CODE, strRevertReason, output ) );
+        }
+
+        BOOST_THROW_EXCEPTION( JsonRpcException( REVERT_RPC_ERROR_CODE, strRevertReason ) );
+    }
+#endif
 
     string callResult = toJS( er.output );
 
@@ -523,6 +539,23 @@ string Eth::eth_estimateGas( Json::Value const& _json ) {
 
             throw std::logic_error( strRevertReason );
         }
+
+#ifdef MIRAGE
+        if ( result.second.excepted == dev::eth::TransactionException::UnsupportedDencunOpcode ) {
+            strRevertReason =
+                "Contract uses unsupported Dencun opcode. Please ensure it is compiled for EVM <= "
+                "Shanghai";
+
+            if ( !result.second.output.empty() ) {
+                Json::Value output = toJS( result.second.output );
+                BOOST_THROW_EXCEPTION(
+                    JsonRpcException( REVERT_RPC_ERROR_CODE, strRevertReason, output ) );
+            }
+
+            BOOST_THROW_EXCEPTION( JsonRpcException( REVERT_RPC_ERROR_CODE, strRevertReason ) );
+        }
+#endif
+
         return toJS( result.first );
     } catch ( std::logic_error& error ) {
         throw error;
@@ -1061,6 +1094,33 @@ Json::Value Eth::eth_fetchQueuedTransactions( string const& _accountId ) {
     }
 }
 
+/// Helper function to parse boost exception error info
+template < typename Tag, typename T >
+void appendErrorInfo(
+    std::ostringstream& oss, const boost::exception& e, const std::string& label ) {
+    if ( auto info = boost::get_error_info< Tag >( e ) ) {
+        oss << " " << label << ": " << *info << "\n";
+    }
+}
+
+template < typename ExceptionT >
+std::string formatBoostException(
+    const ExceptionT& e, std::string const& customErrorMessage = "" ) {
+    std::ostringstream oss;
+    if ( !customErrorMessage.empty() ) {
+        oss << customErrorMessage << "\n";
+    } else {
+        oss << boost::core::demangle( typeid( e ).name() ) << "\n";
+    }
+
+    appendErrorInfo< errinfo_blockNumber, uint64_t >( oss, e, "Block number" );
+    appendErrorInfo< errinfo_txHash, std::string >( oss, e, "Transaction hash" );
+    // Add other known fields as needed
+
+    return oss.str();
+}
+
+
 string dev::rpc::exceptionToErrorMessage() {
     string ret;
     try {
@@ -1099,6 +1159,20 @@ string dev::rpc::exceptionToErrorMessage() {
         ret = "Transaction rejected by user.";
     } catch ( InvalidTransactionFormat const& ) {
         ret = "Invalid transaction format.";
+    }
+#ifdef BITE
+    // BITE exceptions
+    catch ( InvalidBITETransaction const& _e ) {
+        ret = "Invalid BITE transaction format.";
+    } catch ( BITETransactionTooShort const& _e ) {
+        ret = "BITE transaction too short.";
+    }
+#endif
+    catch ( PreEIP155ReplayProtectionViolation const& e ) {
+        ret = formatBoostException(
+            e, "Replay-protected transaction not allowed before EIP-155 activation." );
+    } catch ( PreEIP155LegacyTransactionNotAllowed const& e ) {
+        ret = formatBoostException( e, "Pre-EIP155 Legacy transactions not allowed." );
     } catch ( ... ) {
         ret = "Invalid RPC parameters.";
     }

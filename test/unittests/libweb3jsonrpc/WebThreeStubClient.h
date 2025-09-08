@@ -171,8 +171,12 @@ public:
     Json::Value debug_getPatchTimestamps() noexcept( false );
 
 #ifdef BITE
-    std::string skale_getCommonPublicKey() noexcept( false );
-    Json::Value skale_getDecryptedTransactionData( const std::string& param1 ) noexcept( false );
+    Json::Value bite_getCommitteesInfo() noexcept( false );
+    Json::Value bite_getDecryptedTransactionData( const std::string& param1 ) noexcept( false );
+#endif
+
+#ifdef MIRAGE
+    Json::Value skale_getBLSPublicKey() noexcept( false );
 #endif
 };
 

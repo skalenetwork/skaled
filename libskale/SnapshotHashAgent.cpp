@@ -255,8 +255,11 @@ std::tuple< dev::h256, libff::alt_bn128_G1, libff::alt_bn128_G2 > SnapshotHashAg
 
         libff::alt_bn128_G2 publicKey;
         if ( urlToDownloadSnapshotFrom_.empty() ) {
+#ifdef MIRAGE
+            Json::Value joPublicKeyResponse = skaleClient.skale_getBLSPublicKey();
+#else
             Json::Value joPublicKeyResponse = skaleClient.skale_imaInfo();
-
+#endif
             publicKey.X.c0 =
                 libff::alt_bn128_Fq( joPublicKeyResponse["BLSPublicKey0"].asCString() );
             publicKey.X.c1 =
@@ -265,6 +268,8 @@ std::tuple< dev::h256, libff::alt_bn128_G1, libff::alt_bn128_G2 > SnapshotHashAg
                 libff::alt_bn128_Fq( joPublicKeyResponse["BLSPublicKey2"].asCString() );
             publicKey.Y.c1 =
                 libff::alt_bn128_Fq( joPublicKeyResponse["BLSPublicKey3"].asCString() );
+
+
             publicKey.Z = libff::alt_bn128_Fq2::one();
         } else {
             publicKey = libff::alt_bn128_G2::one();
@@ -294,14 +299,16 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
                                           ':' +
                                           ( this->chainParams_.getNodeByIndex( i ).port + 3 )
                                               .convert_to< std::string >();
-                    auto snapshotData = askNodeForHash( nodeUrl, blockNumber );
-                    if ( std::get< 0 >( snapshotData ).size > 0 ) {
+
+                    auto [snapshotHash, snapshotSignature, nodeBlsPublicKey] =
+                        askNodeForHash( nodeUrl, blockNumber );
+                    if ( snapshotHash != dev::h256() ) {
                         const std::lock_guard< std::mutex > lock( this->hashesMutex );
 
                         this->isReceived_.at( i ) = true;
-                        this->hashes_.at( i ) = std::get< 0 >( snapshotData );
-                        this->signatures_.at( i ) = std::get< 1 >( snapshotData );
-                        this->public_keys_.at( i ) = std::get< 2 >( snapshotData );
+                        this->hashes_.at( i ) = snapshotHash;
+                        this->signatures_.at( i ) = snapshotSignature;
+                        this->public_keys_.at( i ) = nodeBlsPublicKey;
                     }
                 } catch ( std::exception& ex ) {
                     LOG( m_loggerError )
@@ -315,8 +322,9 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
             thr.join();
         }
     } else {
-        auto snapshotData = askNodeForHash( urlToDownloadSnapshotFrom_, blockNumber );
-        this->votedHash_ = { std::get< 0 >( snapshotData ), std::get< 1 >( snapshotData ) };
+        auto [snapshotHash, snapshotSignature, nodeBlsPublicKey] =
+            askNodeForHash( urlToDownloadSnapshotFrom_, blockNumber );
+        this->votedHash_ = { snapshotHash, snapshotSignature };
         return { urlToDownloadSnapshotFrom_ };
     }
 

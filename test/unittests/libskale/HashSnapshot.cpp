@@ -98,8 +98,9 @@ public:
         isSnapshotMajorityRequired = !urlToDownloadSnapshotFrom.empty();
 
 #ifdef MIRAGE
-        this->hashAgent_.reset( new SnapshotHashAgent(
-            _chainParams, _chainParams.sChain.currentGroups.back().commonBLSPublicKeys, urlToDownloadSnapshotFrom ) );
+        this->hashAgent_.reset( new SnapshotHashAgent( _chainParams,
+            _chainParams.sChain.currentGroups.back().commonBLSPublicKeys,
+            urlToDownloadSnapshotFrom ) );
 #else
         this->hashAgent_.reset( new SnapshotHashAgent(
             _chainParams, _chainParams.nodeInfo.commonBLSPublicKeys, urlToDownloadSnapshotFrom ) );
@@ -355,8 +356,8 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         chainParams->difficulty = chainParams->getMinimumDifficulty();
         chainParams->gasLimit = chainParams->getMaxGasLimit();
         chainParams->byzantiumForkBlock = 0;
-        chainParams->externalGasDifficulty = 1;
 #ifndef MIRAGE
+        chainParams->externalGasDifficulty = 1;
         chainParams->sChain.contractStorageLimit = 0x1122334455667788UL;
 #endif
         // add random extra data to randomize genesis hash and get random DB path,
@@ -460,8 +461,8 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         rpcServer->addConnector( ipcServer );
         ipcServer->StartListening();
 
-        auto client = new TestIpcClient( *ipcServer );
-        rpcClient = unique_ptr< WebThreeStubClient >( new WebThreeStubClient( *client ) );
+        testIpcClient = new TestIpcClient( *ipcServer );
+        rpcClient = unique_ptr< WebThreeStubClient >( new WebThreeStubClient( *testIpcClient ) );
     }
 
     ~SnapshotHashingFixture() {
@@ -476,6 +477,9 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         assert( rv == 0 );
         rv = system( ( "rm " + BTRFS_FILE_PATH ).c_str() );
         assert( rv == 0 );
+
+        if ( testIpcClient )
+            delete testIpcClient;
     }
 
     string sendingRawShouldFail( string const& _t ) {
@@ -499,6 +503,7 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
     KeyManager keyManager{ KeyManager::defaultPath(), SecretStore::defaultPath() };
     unique_ptr< ModularServer<> > rpcServer;
     unique_ptr< WebThreeStubClient > rpcClient;
+    TestIpcClient* testIpcClient;
     std::string adminSession;
     unique_ptr< SnapshotManager > mgr;
 };
@@ -508,7 +513,8 @@ BOOST_AUTO_TEST_SUITE( SnapshotSigningTestSuite )
 
 BOOST_AUTO_TEST_CASE( PositiveTest ) {
     libff::init_alt_bn128_params();
-    std::shared_ptr< ChainParams > chainParams = SnapshotHashAgentTest::makeChainParamsForTest( "PositiveTest" );
+    std::shared_ptr< ChainParams > chainParams =
+        SnapshotHashAgentTest::makeChainParamsForTest( "PositiveTest" );
     SnapshotHashAgentTest test_agent( *chainParams, "" );
     dev::h256 hash = dev::h256::random();
     std::vector< dev::h256 > snapshot_hashes( chainParams->getNodesCount(), hash );
@@ -527,7 +533,8 @@ BOOST_AUTO_TEST_CASE( PositiveTest ) {
 
 BOOST_AUTO_TEST_CASE( WrongHash ) {
     libff::init_alt_bn128_params();
-    std::shared_ptr< ChainParams > chainParams = SnapshotHashAgentTest::makeChainParamsForTest( "WrongHash" );
+    std::shared_ptr< ChainParams > chainParams =
+        SnapshotHashAgentTest::makeChainParamsForTest( "WrongHash" );
     SnapshotHashAgentTest test_agent( *chainParams, "" );
     dev::h256 hash = dev::h256::random();  // `correct` hash
     std::vector< dev::h256 > snapshot_hashes( chainParams->getNodesCount(), hash );
@@ -541,7 +548,8 @@ BOOST_AUTO_TEST_CASE( WrongHash ) {
 
 BOOST_AUTO_TEST_CASE( NotEnoughVotes ) {
     libff::init_alt_bn128_params();
-    std::shared_ptr< ChainParams > chainParams = SnapshotHashAgentTest::makeChainParamsForTest( "NotEnoughVotes" );
+    std::shared_ptr< ChainParams > chainParams =
+        SnapshotHashAgentTest::makeChainParamsForTest( "NotEnoughVotes" );
     SnapshotHashAgentTest test_agent( *chainParams, "" );
     dev::h256 hash = dev::h256::random();
     std::vector< dev::h256 > snapshot_hashes( chainParams->getNodesCount(), hash );
@@ -553,7 +561,8 @@ BOOST_AUTO_TEST_CASE( NotEnoughVotes ) {
 
 BOOST_AUTO_TEST_CASE( WrongSignature ) {
     libff::init_alt_bn128_params();
-    std::shared_ptr< ChainParams > chainParams = SnapshotHashAgentTest::makeChainParamsForTest( "WrongSignature" );
+    std::shared_ptr< ChainParams > chainParams =
+        SnapshotHashAgentTest::makeChainParamsForTest( "WrongSignature" );
     SnapshotHashAgentTest test_agent( *chainParams, "" );
     dev::h256 hash = dev::h256::random();
     std::vector< dev::h256 > snapshot_hashes( chainParams->getNodesCount(), hash );
@@ -564,7 +573,8 @@ BOOST_AUTO_TEST_CASE( WrongSignature ) {
 
 BOOST_AUTO_TEST_CASE( noSnapshotMajority ) {
     libff::init_alt_bn128_params();
-    std::shared_ptr< ChainParams > chainParams = SnapshotHashAgentTest::makeChainParamsForTest( "noSnapshotMajority" );
+    std::shared_ptr< ChainParams > chainParams =
+        SnapshotHashAgentTest::makeChainParamsForTest( "noSnapshotMajority" );
     std::string url = chainParams->getNodeByIndex( 3 ).ip + std::string( ":1234" );
 
     SnapshotHashAgentTest test_agent( *chainParams, url );
@@ -606,14 +616,14 @@ BOOST_FIXTURE_TEST_CASE( SnapshotHashingTest, SnapshotHashingFixture,
 
     mgr->doSnapshot( 1 );
     mgr->computeSnapshotHash( 1 );
-    BOOST_REQUIRE( mgr->isSnapshotHashPresent( 1 ) );
+    BOOST_REQUIRE( mgr->checkSnapshotFolderAndSnapshotHash( 1 ) );
 
     BOOST_REQUIRE( client->number() == 1 );
     WAIT_FOR_THE_NEXT_BLOCK();
 
     mgr->doSnapshot( 2 );
     mgr->computeSnapshotHash( 2 );
-    BOOST_REQUIRE( mgr->isSnapshotHashPresent( 2 ) );
+    BOOST_REQUIRE( mgr->checkSnapshotFolderAndSnapshotHash( 2 ) );
 
     BOOST_REQUIRE( client->number() == 2 );
     WAIT_FOR_THE_NEXT_BLOCK();
@@ -623,7 +633,8 @@ BOOST_FIXTURE_TEST_CASE( SnapshotHashingTest, SnapshotHashingFixture,
 
     BOOST_REQUIRE( hash1 != hash2 );
 
-    BOOST_REQUIRE_THROW( mgr->isSnapshotHashPresent( 3 ), SnapshotManager::SnapshotAbsent );
+    BOOST_REQUIRE_THROW(
+        mgr->checkSnapshotFolderAndSnapshotHash( 3 ), SnapshotManager::SnapshotAbsent );
 
     BOOST_REQUIRE_THROW( mgr->getSnapshotHash( 3 ), SnapshotManager::SnapshotAbsent );
 
@@ -634,15 +645,19 @@ BOOST_FIXTURE_TEST_CASE( SnapshotHashingTest, SnapshotHashingFixture,
 
     mgr->doSnapshot( 3 );
 
+#ifndef MIRAGE
     mgr->computeSnapshotHash( 3, true );
+#else
+    mgr->computeSnapshotHash( 3 );
+#endif
 
-    BOOST_REQUIRE( mgr->isSnapshotHashPresent( 3 ) );
+    BOOST_REQUIRE( mgr->checkSnapshotFolderAndSnapshotHash( 3 ) );
 
     dev::h256 hash3_dbl = mgr->getSnapshotHash( 3 );
 
     mgr->computeSnapshotHash( 3 );
 
-    BOOST_REQUIRE( mgr->isSnapshotHashPresent( 3 ) );
+    BOOST_REQUIRE( mgr->checkSnapshotFolderAndSnapshotHash( 3 ) );
 
     dev::h256 hash3 = mgr->getSnapshotHash( 3 );
 

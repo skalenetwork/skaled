@@ -18,6 +18,7 @@
 */
 
 #include "SealEngine.h"
+#include "Exceptions.h"
 #include "TransactionBase.h"
 
 #include <libethereum/SchainPatch.h>
@@ -103,22 +104,56 @@ void SealEngineFace::verifyTransaction( ChainOperationParams const& _chainParams
     BlockHeader const& _header, u256 const& _gasUsed ) {
     // verifyTransaction is the only place where TransactionBase is used instead of Transaction.
     u256 gas;
+#ifdef MIRAGE
+    gas = _t.gas();
+#else
     if ( PowCheckPatch::isEnabledWhen( _committedBlockTimestamp ) ) {
         // new behavior is to use pow-enabled gas
         gas = _t.gas();
-    } else {
+    }
+
+    else {
         // old behavior is to use non-POW gas
         gas = _t.nonPowGas();
     }
+#endif
 
     MICROPROFILE_SCOPEI( "SealEngineFace", "verifyTransaction", MP_ORCHID );
-    if ( ( _ir & ImportRequirements::TransactionSignatures ) &&
-         _header.number() < _chainParams.getEIP158ForkBlock() && _t.isReplayProtected() )
-        BOOST_THROW_EXCEPTION( InvalidSignature() );
 
-    if ( ( _ir & ImportRequirements::TransactionSignatures ) &&
-         _header.number() < _chainParams.getExperimentalForkBlock() && _t.hasZeroSignature() )
-        BOOST_THROW_EXCEPTION( InvalidSignature() );
+    if ( _ir & ImportRequirements::TransactionSignatures ) {
+        const bool isPreEIP155 = !_t.isReplayProtected();
+        const bool beforeEIP155 = _header.number() < _chainParams.getEIP158ForkBlock();
+        const bool needToEnforceChainId = !_chainParams.isChainIdCheckDisabled();
+        const bool hasZeroSignature = _t.hasZeroSignature();
+        const bool beforeExperimentalFork =
+            _header.number() < _chainParams.getExperimentalForkBlock();
+
+#ifdef MIRAGE
+        const bool allowPreEIP155Txns = _chainParams.getAllowPreEIP155Txns();
+
+        // Pre-EIP-155 tx not allowed
+        if ( !allowPreEIP155Txns && isPreEIP155 ) {
+            BOOST_THROW_EXCEPTION( PreEIP155LegacyTransactionNotAllowed()
+                                   << errinfo_blockNumber( _header.number() )
+                                   << errinfo_txHash( _t.sha3() ) );
+        }
+#endif
+        if ( beforeEIP155 && !isPreEIP155 ) {
+            BOOST_THROW_EXCEPTION( PreEIP155ReplayProtectionViolation()
+                                   << errinfo_blockNumber( _header.number() )
+                                   << errinfo_txHash( _t.sha3() ) );
+        }
+
+        if ( beforeExperimentalFork && hasZeroSignature ) {
+            BOOST_THROW_EXCEPTION( InvalidSignature() );
+        }
+
+        if ( ( !beforeEIP155 && needToEnforceChainId ) ||
+             ( !beforeEIP155 && !needToEnforceChainId && !isPreEIP155 ) ) {  // !isPreEIP155 = has
+                                                                             // chainId
+            _t.checkChainId( _chainParams.getChainId() );
+        }
+    }
 
     if ( ( _ir & ImportRequirements::TransactionBasic ) &&
          _header.number() >= _chainParams.getExperimentalForkBlock() && _t.hasZeroSignature() &&
@@ -147,13 +182,6 @@ void SealEngineFace::verifyTransaction( ChainOperationParams const& _chainParams
                                    static_cast< bigint >( _header.gasLimit() - _gasUsed ),
                                    static_cast< bigint >( gas ),
                                    string( "_gasUsed + (bigint)_t.gas() > _header.gasLimit()" ) ) );
-
-    if ( _ir & ImportRequirements::TransactionSignatures ) {
-        if ( _header.number() >= _chainParams.getEIP158ForkBlock() ) {
-            uint64_t chainID = _chainParams.getChainId();
-            _t.checkChainId( chainID, _chainParams.isChainIdCheckDisabled() );
-        }  // if
-    }
 }
 
 SealEngineFace* SealEngineRegistrar::create( ChainOperationParams const& _params ) {

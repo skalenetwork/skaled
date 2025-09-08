@@ -52,6 +52,10 @@
 #include <libhistoric/TraceOptions.h>
 #endif
 
+#ifdef MIRAGE
+#include <libskale/BlockRewardsActivationPatch.h>
+#endif
+
 #include <libethereum/SchainPatch.h>
 #include <libskale/TotalStorageUsedPatch.h>
 
@@ -342,6 +346,9 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     TotalStorageUsedPatch::init( this );
     // HACK Needed to set env var for consensus
     AmsterdamFixPatch::isEnabled( *this );
+#ifdef MIRAGE
+    BlockRewardsActivationPatch::init( this );
+#endif
 
     initCPUUSage();
 
@@ -551,11 +558,11 @@ size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
 
 #ifdef MIRAGE
     // get winning node address
-    Address _winningNodeAddress = getWinningNodeAddressByIndex( _winningNodeIndex );
+    Address winningNodeAddressToReward = getWinningNodeAddressByIndex( _winningNodeIndex );
     {
         DEV_WRITE_GUARDED( x_working )
         // set block author as winning node address
-        m_working.safeSetAuthor( _winningNodeAddress );
+        m_working.safeSetAuthor( winningNodeAddressToReward );
     }
 #endif
 
@@ -587,8 +594,8 @@ size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
         updateHistoricGroupIndex();
 
 #ifdef MIRAGE
-    LOG( m_loggerInfo ) << "Winner for block " << number() << ": " << _winningNodeAddress
-                        << " (index " << _winningNodeIndex << ")";
+    LOG( m_loggerInfo ) << "Reward receiver for block " << number() << ": "
+                        << winningNodeAddressToReward << " (index " << _winningNodeIndex << ")";
 #endif
     m_snapshotAgent->doSnapshotIfNeeded( number(), _timestamp );
 
@@ -600,10 +607,31 @@ size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
 #ifdef MIRAGE
 Address Client::getWinningNodeAddressByIndex( uint64_t _winningNodeIndex ) {
     if ( _winningNodeIndex > 0 ) {
-        return bc().chainParams().getSChainNodeAddressByIndex( _winningNodeIndex );
+        return bc().chainParams().getSChainNodeBeneficiaryAddressByIndex( _winningNodeIndex );
     } else {
         return Block::DEFAULT_BLOCK_OWNER_ADDRESS;
     }
+}
+
+bool Client::isCommitteeRotationSoon() const {
+    auto currentGroupIndex = historicGroupIndex.load();
+    if ( currentGroupIndex + 1 >= chainParams().getNodeGroups().size() )
+        // there is no next group thus no rotation
+        return false;
+
+    if ( getCommitteeStartTs( currentGroupIndex + 1 ) > bc().info().timestamp() &&
+         getCommitteeStartTs( currentGroupIndex + 1 ) - bc().info().timestamp() <
+             MIN_COMMITTEE_ROTATION_INTERVAL_SEC )
+        return true;
+    return false;
+}
+
+std::pair< std::array< std::string, 4 >, uint64_t > Client::getNextCommitteeBITEInfo() const {
+    auto currentGroupIndex = historicGroupIndex.load();
+    if ( currentGroupIndex + 1 >= chainParams().getNodeGroups().size() )
+        throw std::out_of_range( "Couldn't get next committee info" );
+    return { chainParams().getBlsPublicKeyForHistoricGroup( currentGroupIndex + 1 ),
+        currentGroupIndex + 1 };
 }
 #endif
 
@@ -1138,20 +1166,22 @@ h256 Client::importTransaction( Transaction const& _t, TransactionBroadcast _txO
     gasBidPrice = this->gasBidPrice();
 
 
+#ifndef MIRAGE
     // We need to check external gas under mutex to be sure about current block number
     // correctness
     const_cast< Transaction& >( _t ).checkOutExternalGas(
         chainParams(), bc().info().timestamp(), number() );
+#endif
 
     Executive::verifyTransaction( _t, bc().info().timestamp(),
         bc().number() ? this->blockInfo( bc().currentHash() ) : bc().genesis(), state,
         chainParams(), 0, gasBidPrice, chainParams().isMultiTransactionModeEnabled() );
 
-    // invalid BITE transactions should not be added to txn queue
 #ifdef BITE
+    // invalid BITE transactions should not be added to txn queue
     // only validate in production setup
     if ( !chainParams().isTestSignaturesEnabled() )
-        _t.checkAndValidateBITETransaction();
+        _t.checkAndValidateBITETransaction( historicGroupIndex );
 #endif
 
     ImportResult res;
@@ -1212,8 +1242,11 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
                 u256 gasPrice = _gasPrice == Invalid256 ? gasBidPrice() : _gasPrice;
                 Transaction t( _value, gasPrice, gasLimit, _dest, _data, nonce );
                 t.forceSender( _from );
+
                 t.forceChainId( chainParams().getChainId() );
+#ifndef MIRAGE
                 t.ignoreExternalGas();
+#endif
                 // if we are in a call, we add to the balance of the account
                 // value needed for the call to guaranteed pass
                 // geth does a similar thing, we need to check whether it is fully compatible with
@@ -1239,7 +1272,9 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
         Transaction t( _value, gasPrice, gasLimit, _dest, _data, nonce );
         t.forceSender( _from );
         t.forceChainId( chainParams().getChainId() );
+#ifndef MIRAGE
         t.ignoreExternalGas();
+#endif
         if ( _ff == FudgeFactor::Lenient )
             temp.mutableState().addBalance( _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
         ret = temp.execute( bc().lastBlockHashes(), t, skale::Permanence::Reverted );
@@ -1297,8 +1332,10 @@ Transaction Client::createTransactionForCallOrTraceCall( const Address& _from, c
     auto from = _from ? _from : ZeroAddress;
     t.forceSender( from );
     t.forceChainId( chainParams().getChainId() );
+#ifndef MIRAGE
     // call and traceCall do not use PoW
     t.ignoreExternalGas();
+#endif
     return t;
 }
 
@@ -1334,7 +1371,9 @@ Json::Value Client::traceBlock( BlockNumber _blockNumber, Json::Value const& _js
 #endif
             auto hashString = toHexPrefixed( tx.sha3() );
             transactionLog["txHash"] = hashString;
+#ifndef MIRAGE
             tx.checkOutExternalGas( chainParams(), bc().info().timestamp(), number() );
+#endif
             auto tracer =
                 std::make_shared< AlethStandardTrace >( tx, historicBlock.author(), traceOptions );
             auto executionResult =

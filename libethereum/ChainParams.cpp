@@ -98,7 +98,10 @@ void ChainParams::loadConfig( string const& _json, const boost::filesystem::path
     maximumExtraDataSize =
         u256( fromBigEndian< u256 >( fromHex( params[c_maximumExtraDataSize].get_str() ) ) );
     tieBreakingGas = params.count( c_tieBreakingGas ) ? params[c_tieBreakingGas].get_bool() : true;
+    // block rewards for FAIR are set in EVMSchedule
+#ifndef MIRAGE
     setBlockReward( u256( fromBigEndian< u256 >( fromHex( params[c_blockReward].get_str() ) ) ) );
+#endif
     skaleDisableChainIdCheck = params.count( c_skaleDisableChainIdCheck ) ?
                                    params[c_skaleDisableChainIdCheck].get_bool() :
                                    false;
@@ -140,7 +143,13 @@ void ChainParams::loadConfig( string const& _json, const boost::filesystem::path
     setOptionalU256Parameter( difficultyBoundDivisor, c_difficultyBoundDivisor );
     setOptionalU256Parameter( durationLimit, c_durationLimit );
     setOptionalU256Parameter( accountInitialFunds, c_accountInitialFunds );
+
+#ifdef MIRAGE
+    allowPreEIP155Txns =
+        params.count( c_allowPreEIP155Txns ) ? params[c_allowPreEIP155Txns].get_bool() : true;
+#else
     setOptionalU256Parameter( externalGasDifficulty, c_externalGasDifficulty );
+#endif
 
     if ( params.count( c_chainID ) )
         chainID = uint64_t(
@@ -148,10 +157,14 @@ void ChainParams::loadConfig( string const& _json, const boost::filesystem::path
     if ( params.count( c_networkID ) )
         networkID =
             int( u256( fromBigEndian< u256 >( fromHex( params.at( c_networkID ).get_str() ) ) ) );
+
     allowFutureBlocks = params.count( c_allowFutureBlocks );
+
+#ifndef MIRAGE
     if ( externalGasDifficulty == 0 ) {
         externalGasDifficulty = -1;
     }
+#endif
 
     // genesis
     string genesisStr = json_spirit::write_string( obj[c_genesis], false );
@@ -400,12 +413,32 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
         s.nodeGroups = nodeGroups;
     }
 
-    auto parseNodeDetails = [&keyShareName]( const auto& jsonNodeObj ) -> sChainNode {
+    auto parseNodeDetails = [
+#ifdef MIRAGE
+                                this,
+#endif
+                                testSignatures]( const auto& jsonNodeObj ) -> sChainNode {
         auto nodeConfObj = jsonNodeObj.get_obj();
         sChainNode node{};
         node.id = nodeConfObj.at( "nodeID" ).get_uint64();
 #ifdef MIRAGE
-        node.owner = jsToAddress( nodeConfObj.at( "owner" ).get_str() );
+        try {
+            node.owner = jsToAddress( nodeConfObj.at( "owner" ).get_str() );
+        } catch ( ... ) {
+            LOG( m_loggerWarning )
+                << "Node " << node.id << ": owner is not set, using zero address as fallback";
+            node.owner = ZeroAddress;
+        }
+
+        try {
+            node.rewardWalletAddress =
+                jsToAddress( nodeConfObj.at( "rewardWalletAddress" ).get_str() );
+        } catch ( ... ) {
+            LOG( m_loggerWarning )
+                << "Node " << node.id
+                << ": rewardWalletAddress is not set, using zero address as fallback";
+            node.rewardWalletAddress = ZeroAddress;
+        }
 #endif
         node.ip = nodeConfObj.at( "ip" ).get_str();
         node.port = nodeConfObj.at( "basePort" ).get_uint64();
@@ -424,7 +457,7 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
             node.publicKey = nodeConfObj.at( "publicKey" ).get_str();
         } catch ( ... ) {
         }
-        if ( !keyShareName.empty() ) {
+        if ( !testSignatures ) {
             try {
                 node.blsPublicKey[0] = nodeConfObj.at( "blsPublicKey0" ).get_str();
                 node.blsPublicKey[1] = nodeConfObj.at( "blsPublicKey1" ).get_str();
@@ -455,9 +488,10 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
             s.nodes.push_back( node );
         }
         s.t = t;
-        s.currentGroups[1] = { s.nodes, 1, keyShareName, BLSPublicKeys, commonBLSPublicKeys };
+        s.currentGroups[1] = { s.nodes, 1, keyShareName, BLSPublicKeys, commonBLSPublicKeys,
+            dev::ZeroAddress };
         // make it default
-        s.currentGroups[0] = { {}, 0, "", {}, {} };
+        s.currentGroups[0] = { {}, 0, "", {}, {}, dev::Address() };
     } else {
         auto nodesObjects = sChainObj.at( "nodes" ).get_obj();
         if ( nodesObjects.size() != c_currentGroupsSize )
@@ -472,9 +506,16 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
                 BOOST_THROW_EXCEPTION( runtime_error( "Invalid startTs in nodes section." ) );
             }
 
+            dev::Address stakingContractAddress = dev::ZeroAddress;
+
             std::vector< sChainNode > nodes;
 
             if ( startTs > 0 ) {
+                // read nodes details
+                for ( const auto& nodeConf : it->second.get_obj().at( "group" ).get_array() ) {
+                    auto node = parseNodeDetails( nodeConf );
+                    nodes.push_back( node );
+                }
                 // read bls related info
                 if ( !testSignatures ) {
                     const js::mObject& blsKeyInfo = it->second.get_obj().at( "blsKey" ).get_obj();
@@ -483,7 +524,8 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
                     commonBLSPublicKeys[2] = blsKeyInfo.at( "commonBLSPublicKey2" ).get_str();
                     commonBLSPublicKeys[3] = blsKeyInfo.at( "commonBLSPublicKey3" ).get_str();
 
-                    if ( !syncNode ) {
+                    bool isInCommittee = this->isInCommittee( nodes );
+                    if ( isInCommittee ) {
                         keyShareName = blsKeyInfo.at( "keyShareName" ).get_str();
 
                         t = blsKeyInfo.at( "t" ).get_int();
@@ -494,25 +536,32 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
                         BLSPublicKeys[3] = blsKeyInfo.at( "BLSPublicKey3" ).get_str();
                     }
                 }
-                // now read nodes details
-                for ( const auto& nodeConf : it->second.get_obj().at( "group" ).get_array() ) {
-                    auto node = parseNodeDetails( nodeConf );
-                    nodes.push_back( node );
+                // read staking contract address
+                try {
+                    stakingContractAddress = dev::Address(
+                        it->second.get_obj().at( "stakingContractAddress" ).get_str() );
+                } catch ( ... ) {
                 }
             } else {
                 // timestamp is set to 0 for BOOT group
                 startTs = 0;
             }
             s.currentGroups[std::distance( nodesObjects.begin(), it )] = { nodes,
-                ( uint64_t ) startTs, keyShareName, BLSPublicKeys, commonBLSPublicKeys };
+                ( uint64_t ) startTs, keyShareName, BLSPublicKeys, commonBLSPublicKeys,
+                stakingContractAddress };
             s.t = t;
         }
     }
 
-    if ( s.currentGroups[0].startTs > s.currentGroups[1].startTs )
+    // for BOOT group timestamp is set to 0
+    // invariant here - relevant group MUST BE stored under index 1
+    if ( s.currentGroups[0].startTs < s.currentGroups[1].startTs &&
+         s.currentGroups[0].startTs != 0 )
         std::swap( s.currentGroups[0], s.currentGroups[1] );
 
     s.nodes = s.currentGroups.back().nodes;
+
+    switchSyncMode( s.nodes );
 #endif
 
     sChain = s;
@@ -775,10 +824,32 @@ bool ChainParams::checkAdminOriginAllowed( const std::string& origin ) const {
     return false;
 }
 
+std::vector< sChainNode > ChainParams::getSchainNodes() const {
+#ifdef MIRAGE
+    std::shared_lock< std::shared_mutex > lock( m_mutex );
+#endif
+    return sChain.nodes;
+}
+
+sChainNode ChainParams::getNodeByIndex( size_t _idx ) const {
+#ifdef MIRAGE
+    std::shared_lock< std::shared_mutex > lock( m_mutex );
+#endif
+    return sChain.nodes.at( _idx );
+}
+
+size_t ChainParams::getNodesCount() const {
+#ifdef MIRAGE
+    std::shared_lock< std::shared_mutex > lock( m_mutex );
+#endif
+    return sChain.nodes.size();
+}
+
 std::array< std::string, 4 > ChainParams::getSelfBlsPublicKey() const {
 #ifndef MIRAGE
     return nodeInfo.BLSPublicKeys;
 #else
+    std::shared_lock< std::shared_mutex > lock( m_mutex );
     return sChain.currentGroups.back().BLSPublicKeys;
 #endif
 }
@@ -787,6 +858,7 @@ std::array< std::string, 4 > ChainParams::getCommonBlsPublicKey() const {
 #ifndef MIRAGE
     return nodeInfo.commonBLSPublicKeys;
 #else
+    std::shared_lock< std::shared_mutex > lock( m_mutex );
     return sChain.currentGroups.back().commonBLSPublicKeys;
 #endif
 }
@@ -795,6 +867,7 @@ std::string ChainParams::getKeyShareName() const {
 #ifndef MIRAGE
     return nodeInfo.keyShareName;
 #else
+    std::shared_lock< std::shared_mutex > lock( m_mutex );
     return sChain.currentGroups.back().keyShareName;
 #endif
 }
@@ -809,6 +882,11 @@ void ChainParams::fillDefaultTestsParameters( size_t _port ) {
 }
 
 #ifdef MIRAGE
+Address ChainParams::getStakingContractAddress() const {
+    std::shared_lock< std::shared_mutex > lock( m_mutex );
+    return sChain.currentGroups.back().stakingContractAddress;
+}
+
 std::string ChainParams::getConfigForConsensus() const {
     js::mValue val;
     json_spirit::read_string_or_throw( getOriginalJson(), val );
@@ -816,6 +894,9 @@ std::string ChainParams::getConfigForConsensus() const {
 
     js::mObject skaleConfigObj = obj["skaleConfig"].get_obj();
     js::mObject sChainObj = skaleConfigObj["sChain"].get_obj();
+    js::mObject nodeInfoObj = skaleConfigObj["nodeInfo"].get_obj();
+
+    nodeInfoObj["syncNode"] = isSyncNode();
 
     js::mArray newNodesObj;
     if ( sChainObj["nodes"].type() == json_spirit::obj_type ) {
@@ -837,23 +918,36 @@ std::string ChainParams::getConfigForConsensus() const {
 
     sChainObj["nodes"] = newNodesObj;
     skaleConfigObj["sChain"] = sChainObj;
+    skaleConfigObj["nodeInfo"] = nodeInfoObj;
     obj["skaleConfig"] = skaleConfigObj;
 
     return js::write_string( js::mValue( obj ), true );
 }
 
-void ChainParams::updateCurrentGroupIfNeeded( uint64_t _latestBlockTimestamp ) {
+bool ChainParams::updateCurrentGroupIfNeeded( uint64_t _latestBlockTimestamp ) {
     // for BOOT group timestamp is set to 0
     // invariant here - relevant group MUST BE stored under index 1
-    if ( _latestBlockTimestamp < sChain.currentGroups[1].startTs &&
-         sChain.currentGroups[0].startTs != 0 ) {
-        LOG( m_loggerInfo ) << "Using group with startTs " << sChain.currentGroups[0].startTs;
+    if ( _latestBlockTimestamp >= sChain.currentGroups[0].startTs &&
+         sChain.currentGroups[0].startTs > sChain.currentGroups[1].startTs ) {
+        std::unique_lock< std::shared_mutex > lock( m_mutex );
         std::swap( sChain.currentGroups[0], sChain.currentGroups[1] );
+        LOG( m_loggerInfo ) << "Using the group with startTs " << sChain.currentGroups[1].startTs;
         sChain.nodes = sChain.currentGroups[1].nodes;
+        switchSyncMode( sChain.nodes );
+        return true;
     }
+    return false;
 }
 
-Address ChainParams::getSChainNodeAddressByIndex( uint64_t _sChainIndex ) const {
+CurrentGroup ChainParams::getNewestGroup() const {
+    size_t newestIndex = 0;
+    if ( sChain.currentGroups[1].startTs >= sChain.currentGroups[0].startTs ) {
+        newestIndex = 1;
+    }
+    return sChain.currentGroups[newestIndex];
+}
+
+Address ChainParams::getSChainNodeBeneficiaryAddressByIndex( uint64_t _sChainIndex ) const {
     const auto& sChainNodes = sChain.nodes;
     auto has_schain_index = [&_sChainIndex]( const sChainNode& node ) {
         return node.sChainIndex == _sChainIndex;
@@ -863,6 +957,28 @@ Address ChainParams::getSChainNodeAddressByIndex( uint64_t _sChainIndex ) const 
         std::string sChainIndexStringRep = std::to_string( _sChainIndex );
         throw std::runtime_error( "No such sChainIndex -" + sChainIndexStringRep + " in config" );
     }
-    return nodeIterator->owner;
+    if ( nodeIterator->rewardWalletAddress == ZeroAddress ) {
+        return nodeIterator->owner;
+    } else {
+        return nodeIterator->rewardWalletAddress;
+    }
+}
+
+bool ChainParams::isInCommittee( const std::vector< sChainNode >& _committee ) const {
+    u256 thisNodeId = nodeInfo.id;
+    auto it = std::find_if( _committee.begin(), _committee.end(),
+        [thisNodeId]( const sChainNode& node ) { return node.id == thisNodeId; } );
+    return it != _committee.end();
+}
+
+// if a node is not in active committee
+// it should switch to sync mode
+// use it only after sChain.nodes was initialized / updated
+void ChainParams::switchSyncMode( const std::vector< sChainNode >& _nodes ) {
+    if ( !isInCommittee( _nodes ) ) {
+        nodeInfo.syncNode = true;
+    } else {
+        nodeInfo.syncNode = false;
+    }
 }
 #endif

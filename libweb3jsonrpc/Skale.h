@@ -72,6 +72,9 @@ public:
     Json::Value skale_downloadSnapshotFragment( const Json::Value& request ) override;
     Json::Value skale_getSnapshotSignature( unsigned blockNumber ) override;
     std::string skale_getLatestSnapshotBlockNumber() override;
+#ifdef MIRAGE
+    Json::Value skale_getBLSPublicKey() override;
+#endif
     std::string skale_getLatestBlockNumber() override;
     Json::Value skale_getDBUsage() override;
 
@@ -81,8 +84,8 @@ public:
 #endif
 
 #ifdef BITE
-    std::string skale_getCommonPublicKey() override;
-    Json::Value skale_getDecryptedTransactionData( const std::string& request ) override;
+    Json::Value bite_getCommitteesInfo() override;
+    Json::Value bite_getDecryptedTransactionData( const std::string& request ) override;
 #endif
 
     static bool isWeb3ShutdownEnabled();

@@ -70,9 +70,9 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
     ConsensusExtFace& _extFace ) const {
 #if CONSENSUS
     const auto& nfo = static_cast< const Interface& >( m_client ).blockInfo( LatestBlock );
-    //
+
     LOG( m_loggerInfo ) << "NOTE: Block number at startup is " << nfo.number();
-    //
+
     auto ts = nfo.timestamp();
 
     std::map< std::string, std::uint64_t > patchTimeStamps;
@@ -84,26 +84,31 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
         m_client.chainParams().getPatchTimestamp( SchainPatchEnum::FastConsensusPatch );
     patchTimeStamps["verifyBlsSyncPatchTimestamp"] =
         m_client.chainParams().getPatchTimestamp( SchainPatchEnum::VerifyBlsSyncPatch );
-#endif
+#endif  // MIRAGE
 
-    auto consensus_engine_ptr = make_unique< ConsensusEngine >( _extFace, m_client.number(), ts, 0,
+    auto consensusEnginePtr = make_unique< ConsensusEngine >( _extFace, m_client.number(), ts, 0,
         patchTimeStamps, m_client.chainParams().getConsensusStorageLimit() );
 
-    if ( m_client.chainParams().getSgxServerUrl() != "" ) {
-        this->fillSgxInfo( *consensus_engine_ptr );
+    if ( !m_client.chainParams().isSyncNode() &&
+         !m_client.chainParams().getSgxServerUrl().empty() ) {
+        this->fillSgxInfo( *consensusEnginePtr );
     }
 
-    this->fillPublicKeyInfo( *consensus_engine_ptr );
+    this->fillPublicKeyInfo( *consensusEnginePtr );
 
-    this->fillRotationHistory( *consensus_engine_ptr );
+    this->fillRotationHistory( *consensusEnginePtr );
 
-    return consensus_engine_ptr;
+#ifdef BITE
+    consensusEnginePtr->setEpochId( m_client.getCurrentEpochId() );
+#endif
+
+    return consensusEnginePtr;
 #else
     unsigned block_number = m_client.number();
     dev::h256 state_root =
         m_client.blockInfo( m_client.hashFromNumber( block_number ) ).stateRoot();
     return make_unique< ConsensusStub >( _extFace, block_number, state_root );
-#endif
+#endif  // CONSENSUS
 }
 
 #if CONSENSUS
@@ -167,7 +172,7 @@ void DefaultConsensusFactory::fillPublicKeyInfo( ConsensusEngine& consensus ) co
             node.blsPublicKey.begin(), node.blsPublicKey.end() );
 #else
         std::vector< std::string > public_key_share( 4 );
-        if ( node.id != this->m_client.chainParams().getSelfNodeId() ) {
+        if ( node.id != m_client.chainParams().getSelfNodeId() ) {
             public_key_share[0] = node.blsPublicKey.at( 0 );
             public_key_share[1] = node.blsPublicKey.at( 1 );
             public_key_share[2] = node.blsPublicKey.at( 2 );
@@ -179,7 +184,7 @@ void DefaultConsensusFactory::fillPublicKeyInfo( ConsensusEngine& consensus ) co
             public_key_share[2] = blsPublicKey.at( 2 );
             public_key_share[3] = blsPublicKey.at( 3 );
         }
-#endif
+#endif  // MIRAGE
 
         blsPublicKeys.push_back(
             std::make_shared< std::vector< std::string > >( public_key_share ) );
@@ -230,7 +235,8 @@ void DefaultConsensusFactory::fillRotationHistory( ConsensusEngine& consensus ) 
 } catch ( ... ) {
     std::throw_with_nested( std::runtime_error( "Error reading rotation history (nodeGroups)" ) );
 }
-#endif
+
+#endif  // CONSENSUS
 
 class ConsensusExtImpl : public ConsensusExtFace {
 public:
@@ -277,7 +283,10 @@ void ConsensusExtImpl::terminateApplication() {
 }
 
 SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory,
-    std::shared_ptr< InstanceMonitor > _instanceMonitor, const std::string& _gethURL,
+    std::shared_ptr< InstanceMonitor > _instanceMonitor,
+#ifndef MIRAGE
+    const std::string& _gethURL,
+#endif
     [[maybe_unused]] bool _broadcastEnabled )
     : m_client( _client ),
       m_tq( _client.m_tq ),
@@ -330,7 +339,7 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
     try {
 #ifdef MIRAGE
         m_consensus->parseFullConfigAndCreateNode(
-            m_client.chainParams().getConfigForConsensus(), _gethURL );
+            m_client.chainParams().getConfigForConsensus(), "" );
 #else
         m_consensus->parseFullConfigAndCreateNode(
             m_client.chainParams().getOriginalJson(), _gethURL );
@@ -538,6 +547,35 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
     return out_vector;
 }
 
+void SkaleHost::checkStateRoot( uint64_t _blockID, uint64_t _winningNodeIndex, u256 _stateRoot ) {
+    dev::h256 stCurrent =
+        this->m_client.blockInfo( this->m_client.hashFromNumber( _blockID - 1 ) ).stateRoot();
+
+    LOG( m_loggerTrace ) << "STATE ROOT FOR BLOCK: " << std::to_string( _blockID - 1 ) << " "
+                         << stCurrent.hex();
+
+    // FATAL if mismatch in non-default
+    if ( _winningNodeIndex != 0 && dev::h256::Arith( stCurrent ) != _stateRoot ) {
+        LOG( m_loggerError ) << "FATAL STATE ROOT MISMATCH ERROR: current state root "
+                             << dev::h256::Arith( stCurrent ).str()
+                             << " is not equal to arrived state root " << _stateRoot.str()
+                             << " with block ID #" << _blockID
+                             << ", /data_dir cleanup is recommended, exiting with code "
+                             << int( ExitHandler::ec_state_root_mismatch ) << "...";
+        if ( AmsterdamFixPatch::stateRootCheckingEnabled( m_client ) ) {
+            m_ignoreNewBlocks = true;
+            m_consensus->exitGracefully();
+            ExitHandler::exitHandler( -1, ExitHandler::ec_state_root_mismatch );
+        }
+    }
+
+    // WARN if default but non-zero
+    if ( _winningNodeIndex == 0 && _stateRoot != u256() )
+        LOG( m_loggerWarning ) << "WARNING: STATE ROOT MISMATCH!"
+                               << "Current block is DEFAULT BUT arrived state root is "
+                               << _stateRoot.str() << " with block ID #" << _blockID;
+}
+
 void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
 #ifdef BITE
     shared_ptr< DecryptedTransactionFieldsMap > _decryptedTransactionFields,
@@ -561,34 +599,8 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     // convert bytes back to transactions (using caching), delete them from q and push results into
     // blockchain
 
-    if ( this->m_client.chainParams().getSnapshotIntervalSec() > 0 ) {
-        dev::h256 stCurrent =
-            this->m_client.blockInfo( this->m_client.hashFromNumber( _blockID - 1 ) ).stateRoot();
-
-        LOG( m_loggerTrace ) << "STATE ROOT FOR BLOCK: " << std::to_string( _blockID - 1 ) << " "
-                             << stCurrent.hex();
-
-        // FATAL if mismatch in non-default
-        if ( _winningNodeIndex != 0 && dev::h256::Arith( stCurrent ) != _stateRoot ) {
-            LOG( m_loggerError ) << "FATAL STATE ROOT MISMATCH ERROR: current state root "
-                                 << dev::h256::Arith( stCurrent ).str()
-                                 << " is not equal to arrived state root " << _stateRoot.str()
-                                 << " with block ID #" << _blockID
-                                 << ", /data_dir cleanup is recommended, exiting with code "
-                                 << int( ExitHandler::ec_state_root_mismatch ) << "...";
-            if ( AmsterdamFixPatch::stateRootCheckingEnabled( m_client ) ) {
-                m_ignoreNewBlocks = true;
-                m_consensus->exitGracefully();
-                ExitHandler::exitHandler( -1, ExitHandler::ec_state_root_mismatch );
-            }
-        }
-
-        // WARN if default but non-zero
-        if ( _winningNodeIndex == 0 && _stateRoot != u256() )
-            LOG( m_loggerWarning ) << "WARNING: STATE ROOT MISMATCH!"
-                                   << "Current block is DEFAULT BUT arrived state root is "
-                                   << _stateRoot.str() << " with block ID #" << _blockID;
-    }
+    if ( this->m_client.chainParams().getSnapshotIntervalSec() > 0 )
+        checkStateRoot( _blockID, _winningNodeIndex, _stateRoot );
 
     std::vector< Transaction > out_txns;  // resultant Transaction vector
 
@@ -617,6 +629,8 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             }
 
 #endif
+
+#ifndef MIRAGE
             t.checkOutExternalGas(
                 m_client.chainParams(), latestInfo.timestamp(), m_client.number() );
 
@@ -630,7 +644,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                         m_client.chainParams(), latestInfo.timestamp(), m_client.number() );
                 }
             }
-
+#endif
             out_txns.push_back( t );
             m_debugTracer.tracepoint( "drop_good" );
             m_tq.dropGood( t );
@@ -690,6 +704,11 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     LOG( m_loggerDebug ) << "Successfully imported " << n_succeeded << " of " << out_txns.size()
                          << " transactions";
 
+#ifdef MIRAGE
+    if ( m_client.updateGroupIfNeeded() )
+        runCommitteeRotationForConsensus();
+#endif
+
     if ( m_instanceMonitor != nullptr ) {
         if ( m_instanceMonitor->isTimeToRotate( _timeStamp ) ) {
             m_instanceMonitor->prepareRotation();
@@ -708,6 +727,77 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     LOG( m_loggerError ) << "CRITICAL unknown exception (in createBlock)";
     LOG( m_loggerError ) << "\n" << skutils::signal::generate_stack_trace();
 }
+
+#ifdef MIRAGE
+void SkaleHost::runCommitteeRotationForConsensus() {
+    if ( m_committeeRotationMonitorThread != nullptr &&
+         m_committeeRotationMonitorThread->joinable() )
+        m_committeeRotationMonitorThread->join();
+    LOG( m_loggerInfo ) << "Committee rotation is in progress.";
+    m_ignoreNewBlocks = true;
+    m_broadcastRestartNeeded = true;
+    // stop all services first
+    // exitGracefully() interferes with exit procedure
+    // TODO: make it more ellegant to avoid collisions
+    m_consensus->exitGracefully();
+    m_committeeRotationMonitorThread.reset( new std::thread( [this]() {
+        while ( m_consensus->getStatus() != consensus_engine_status::CONSENSUS_EXITED ) {
+            usleep( 100 * 1000 );  // sleep 100ms
+        }
+        LOG( m_loggerDebug ) << "Committee rotation is completed. Creating consensus agents.";
+        // reset ConsensusInterface to use relevant block numbers
+        m_consensus = DefaultConsensusFactory( m_client ).create( *m_extFace );
+        m_consensus->parseFullConfigAndCreateNode(
+            m_client.chainParams().getConfigForConsensus(), "" );
+        m_consensusUpdateHappened = true;
+        // restart all services to fetch latest nodes info
+        try {
+            m_consensus->startAll();
+        } catch ( const std::exception& ex ) {
+            LOG( m_loggerError ) << "Exception occurred in startAll() after committee rotation: "
+                                 << ex.what();
+            // cleanup
+            m_exitNeeded = true;
+            m_broadcastThread.join();
+            ExitHandler::exitHandler( -1, ExitHandler::ec_termninated_by_signal );
+            return;
+        } catch ( ... ) {
+            LOG( m_loggerError ) << "Unknown exception in startAll() after committee rotation";
+            // cleanup
+            m_exitNeeded = true;
+            m_broadcastThread.join();
+            ExitHandler::exitHandler( -1, ExitHandler::ec_termninated_by_signal );
+            return;
+        }
+
+        try {
+            static const char g_strThreadName[] = "bootStrapAllAfterCommitteeRotation";
+            dev::setThreadName( g_strThreadName );
+            LOG( m_loggerInfo ) << "Thread " << g_strThreadName << " started";
+            m_consensus->bootStrapAll();
+            LOG( m_loggerInfo ) << "Thread " << g_strThreadName << " will exit";
+        } catch ( std::exception& ex ) {
+            std::string s = ex.what();
+            if ( s.empty() )
+                s = "no description";
+            LOG( m_loggerError ) << "Consensus thread in skale host after committee rotation will "
+                                    "exit with exception: "
+                                 << s;
+        } catch ( ... ) {
+            LOG( m_loggerError ) << "Consensus thread in skale host after committee rotation will "
+                                    "exit with unknown exception\n"
+                                 << skutils::signal::generate_stack_trace();
+        }
+        m_ignoreNewBlocks = false;
+        LOG( m_loggerInfo ) << "Committee rotation is completed.";
+    } ) );
+}
+
+void SkaleHost::handleConsensusUpdate() const {
+    m_consensus->updateLogger();
+    m_consensusUpdateHappened = false;
+}
+#endif
 
 void SkaleHost::startWorking() {
     if ( working )
@@ -811,6 +901,11 @@ void SkaleHost::stopWorking() {
     if ( m_broadcastThread.joinable() )
         m_broadcastThread.join();
 
+#ifdef MIRAGE
+    if ( m_committeeRotationMonitorThread != nullptr )
+        m_committeeRotationMonitorThread->join();
+#endif
+
     working = false;
 
     LOG( m_loggerInfo ) << "Consensus and broadcat threads finished.";
@@ -820,7 +915,13 @@ void SkaleHost::broadcastFunc() {
     dev::setThreadName( "broadcastFunc" );
     while ( !m_exitNeeded ) {
         try {
-            m_broadcaster->initSocket();
+#ifdef MIRAGE
+            if ( m_broadcastRestartNeeded ) [[unlikely]] {
+                m_broadcaster->resetServerSocket();
+                m_broadcastRestartNeeded = false;
+            } else
+#endif
+                m_broadcaster->initSocket();
 
             MICROPROFILE_SCOPEI( "SkaleHost", "broadcastFunc", MP_BISQUE );
 

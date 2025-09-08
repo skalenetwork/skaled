@@ -344,8 +344,9 @@ private:
     u256 enact( VerifiedBlockRef const& _block, BlockChain const& _bc );
 
 #ifdef MIRAGE
-    // Apply block reward for block author, if it is not default block
-    void rewardBlockAuthorForNonDefaultBlock( u256 const& _blockReward );
+    // Distribute block rewards to block author and staking contract, if it is not default block
+    void rewardAllForNonDefaultBlock(
+        const dev::Address& _stakingContractAddress, u256 const& _blockReward );
 #endif
     /// Finalise the block, applying the earned rewards.
     void applyRewards(
@@ -393,7 +394,6 @@ private:
     Logger m_loggerError{ createLogger( VerbosityError, "block" ) };
 
     Counter< Block > c;
-    ;
 
 public:
     static uint64_t howMany() { return Counter< Block >::howMany(); }

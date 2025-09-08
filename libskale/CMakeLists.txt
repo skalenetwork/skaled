@@ -38,6 +38,9 @@ set(headers
 
 if (NOT DEFINED MIRAGE)
     list(APPEND headers OverlayFS.h)
+else()
+    list(APPEND sources BlockRewardsActivationPatch.cpp)
+    list(APPEND headers BlockRewardsActivationPatch.h)
 endif()
 
 add_library(skale ${sources} ${headers})

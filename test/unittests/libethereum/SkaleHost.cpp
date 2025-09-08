@@ -117,6 +117,10 @@ public:
     virtual ConsensusInterface::SyncInfo getSyncInfo() override {
         return ConsensusInterface::SyncInfo{};
     };
+
+#ifdef MIRAGE
+    void updateLogger() const override {}
+#endif
 };
 
 class ConsensusTestStubFactory : public ConsensusFactory {
@@ -494,17 +498,27 @@ BOOST_DATA_TEST_CASE(
     pair< bool, Secret > ar = accountHolder->authenticate( ts );
     Transaction tx( ts, ar.second );
 
-    bytes data = tx.toBytes();
+    // spoil txn siganture to make it invalid
+    RLPStream txnRlp( 9 );
+    txnRlp << tx.nonce();            // nonce
+    txnRlp << tx.gasPrice();         // gasPrice
+    txnRlp << tx.gas();              // gasLimit
+    txnRlp << tx.to();               // to
+    txnRlp << tx.value();            // value
+    txnRlp << tx.data();             // data
 
-    // TODO try to spoil other fields
-    data[43] = 0x7f;  // spoil v
+    txnRlp << 30;                    // v
+    txnRlp << tx.signature().r;      // r
+    txnRlp << tx.signature().s;      // s
+
+    auto rlpBytes = txnRlp.out();
 
     CHECK_NONCE_BEGIN( senderAddress );
     CHECK_BALANCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{ data },
+        stub->createBlock( ConsensusExtFace::transactions_vector{ rlpBytes },
 #ifdef BITE
        make_shared< DecryptedTransactionFieldsMap >(),
 #endif
@@ -517,7 +531,7 @@ BOOST_DATA_TEST_CASE(
         REQUIRE_BLOCK_SIZE( 1, 0 );
     } else {
         REQUIRE_BLOCK_SIZE( 1, 1 );
-        h256 txHash = sha3( data );
+        h256 txHash = sha3( rlpBytes );
         REQUIRE_BLOCK_TRANSACTION( 1, 0, txHash );
     }
 
@@ -999,8 +1013,10 @@ BOOST_AUTO_TEST_CASE( transactionDropReceive
 
     // 1st tx
     Transaction tx1 = fixture.tx_from_json( json );
+#ifndef MIRAGE
     tx1.checkOutExternalGas(
         client->chainParams(), client->latestBlock().info().timestamp(), client->number() );
+#endif
 
     // submit it!
     tq->import( tx1 );
@@ -1067,8 +1083,11 @@ BOOST_AUTO_TEST_CASE(
 
     // 1st tx
     Transaction tx1 = fixture.tx_from_json( json );
+
+#ifndef MIRAGE
     tx1.checkOutExternalGas(
         client->chainParams(), client->latestBlock().info().timestamp(), client->number() );
+#endif
 
     // submit it!
     tq->import( tx1 );
@@ -1132,8 +1151,11 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPrice
 
     // 1st tx
     Transaction tx1 = fixture.tx_from_json( json );
+
+#ifndef MIRAGE
     tx1.checkOutExternalGas(
         client->chainParams(), client->latestBlock().info().timestamp(), client->number() );
+#endif
 
     // submit it!
     tq->import( tx1 );
@@ -1205,8 +1227,11 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive
 
     // 1st tx
     Transaction tx1 = fixture.tx_from_json( json );
+
+#ifndef MIRAGE
     tx1.checkOutExternalGas(
         client->chainParams(), client->latestBlock().info().timestamp(), client->number() );
+#endif
 
     // receive it!
     skaleHost->receiveTransaction( toJS( tx1.toBytes() ) );
@@ -1383,6 +1408,7 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
     BOOST_REQUIRE( res.second == toBigEndian( static_cast< u256 >( blockRandom ) ) );
 }
 
+#ifndef MIRAGE
 BOOST_AUTO_TEST_CASE( getCurrentBLSPublicKey ) {
     SkaleHostFixture fixture;
     auto& skaleHost = fixture.skaleHost;
@@ -1396,6 +1422,7 @@ BOOST_AUTO_TEST_CASE( getCurrentBLSPublicKey ) {
                                      toBigEndian( dev::u256( imaBLSPublicKey[2] ) ) +
                                      toBigEndian( dev::u256( imaBLSPublicKey[3] ) ) );
 }
+#endif
 
 #ifdef BITE
 BOOST_AUTO_TEST_CASE( biteTransactions ) {
@@ -1427,9 +1454,9 @@ BOOST_AUTO_TEST_CASE( biteTransactions ) {
     libBLS::TEBase::initializeIfNecessary();
     auto messageToEncrypt = libBLS::ThresholdUtils::hexCStringToBytes( dataToEncrypt.c_str() );
     auto publicKeyBytes = libBLS::ThresholdUtils::G2ToBytes( libff::alt_bn128_G2::random_element() );
-    auto cyphertext = libBLS::ThresholdEncryption::encrypt( messageToEncrypt, publicKeyBytes );
+    auto ciphertext = libBLS::ThresholdEncryption::encrypt( messageToEncrypt, publicKeyBytes );
 
-    json["data"] = std::string( "0x" ) + libBLS::ThresholdUtils::bytesToHexString( cyphertext.toBytes() );
+    json["data"] = std::string( "0x" ) + libBLS::ThresholdUtils::bytesToHexString( ciphertext.toBytes() );
 
     ts = toTransactionSkeleton( json );
     ts = client->populateTransactionWithDefaults( ts );

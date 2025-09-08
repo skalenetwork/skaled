@@ -356,6 +356,29 @@ std::string Skale::skale_getLatestSnapshotBlockNumber() {
     return response > 0 ? std::to_string( response ) : "earliest";
 }
 
+#ifdef MIRAGE
+Json::Value Skale::skale_getBLSPublicKey() {
+    try {
+        Json::Value publicKeyInfo;
+        const auto& blsPublicKey = m_client.chainParams().getSelfBlsPublicKey();
+
+        publicKeyInfo["BLSPublicKey0"] = blsPublicKey.at( 0 );
+        publicKeyInfo["BLSPublicKey1"] = blsPublicKey.at( 1 );
+        publicKeyInfo["BLSPublicKey2"] = blsPublicKey.at( 2 );
+        publicKeyInfo["BLSPublicKey3"] = blsPublicKey.at( 3 );
+
+        return publicKeyInfo;
+    } catch ( Exception const& ) {
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+    } catch ( const std::exception& e ) {
+        throw jsonrpc::JsonRpcException( e.what() );
+    } catch ( ... ) {
+        BOOST_THROW_EXCEPTION(
+            jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
+    }
+}
+#endif
+
 Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
     const dev::eth::ChainParams& chainParams = this->m_client.chainParams();
     if ( !chainParams.isSyncNode() &&
@@ -576,17 +599,33 @@ std::string Skale::oracle_checkResult( std::string& receipt ) {
 #endif
 
 #ifdef BITE
-std::string Skale::skale_getCommonPublicKey() {
+Json::Value Skale::bite_getCommitteesInfo() {
     try {
+        auto stringArrayToBLSPublicKey = []( const std::array< std::string, 4 >& publicKeyArray ) {
+            libff::alt_bn128_G2 publicKeyG2;
+            publicKeyG2.Z = libff::alt_bn128_Fq2::one();
+            publicKeyG2.X.c0 = libff::alt_bn128_Fq( publicKeyArray[0].c_str() );
+            publicKeyG2.X.c1 = libff::alt_bn128_Fq( publicKeyArray[1].c_str() );
+            publicKeyG2.Y.c0 = libff::alt_bn128_Fq( publicKeyArray[2].c_str() );
+            publicKeyG2.Y.c1 = libff::alt_bn128_Fq( publicKeyArray[3].c_str() );
+            libBLS::TEPublicKey publicKey( publicKeyG2 );
+            return publicKey;
+        };
         auto publicKeyArray = m_client.getCurrentBLSPublicKey();
-        libff::alt_bn128_G2 publicKeyG2;
-        publicKeyG2.Z = libff::alt_bn128_Fq2::one();
-        publicKeyG2.X.c0 = libff::alt_bn128_Fq( publicKeyArray[0].c_str() );
-        publicKeyG2.X.c1 = libff::alt_bn128_Fq( publicKeyArray[1].c_str() );
-        publicKeyG2.Y.c0 = libff::alt_bn128_Fq( publicKeyArray[2].c_str() );
-        publicKeyG2.Y.c1 = libff::alt_bn128_Fq( publicKeyArray[3].c_str() );
-        libBLS::TEPublicKey publicKey( publicKeyG2 );
-        return publicKey.toString();
+
+        Json::Value response = Json::arrayValue;
+        response[0]["commonBLSPublicKey"] = stringArrayToBLSPublicKey( publicKeyArray ).toString();
+        response[0]["epochId"] = m_client.getCurrentEpochId();
+#ifdef MIRAGE
+        if ( m_client.isCommitteeRotationSoon() ) {
+            auto nextCommitteeBITEInfo = m_client.getNextCommitteeBITEInfo();
+            response[1]["commonBLSPublicKey"] =
+                stringArrayToBLSPublicKey( nextCommitteeBITEInfo.first ).toString();
+            response[1]["epochId"] = nextCommitteeBITEInfo.second;
+        }
+#endif  // MIRAGE
+
+        return response;
     } catch ( Exception const& ) {
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& e ) {
@@ -595,7 +634,7 @@ std::string Skale::skale_getCommonPublicKey() {
 }
 
 // TODO - returns the data + to address (?)
-Json::Value Skale::skale_getDecryptedTransactionData( const std::string& _transactionHash ) {
+Json::Value Skale::bite_getDecryptedTransactionData( const std::string& _transactionHash ) {
     try {
         h256 h = jsToFixed< 32 >( _transactionHash );
         if ( !m_client.isKnownTransaction( h ) )
@@ -606,7 +645,7 @@ Json::Value Skale::skale_getDecryptedTransactionData( const std::string& _transa
         auto rcp = m_client.localisedTransactionReceipt( h );
         if ( rcp.gasUsed() == 0 )
             return std::string();
-#endif
+#endif  // HISTORIC_STATE
 
         auto decryptedData = m_client.decryptedTransactionData( h );
         if ( !decryptedData ) {
@@ -628,7 +667,7 @@ Json::Value Skale::skale_getDecryptedTransactionData( const std::string& _transa
             jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
 }
-#endif
+#endif  // BITE
 
 namespace snapshot {
 

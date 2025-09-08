@@ -170,6 +170,7 @@ public:
     u256 id;
 #ifdef MIRAGE
     Address owner;
+    Address rewardWalletAddress;
 #endif
     std::string ip;
     u256 port;
@@ -205,6 +206,7 @@ struct CurrentGroup {
     std::string keyShareName;
     std::array< std::string, 4 > BLSPublicKeys;
     std::array< std::string, 4 > commonBLSPublicKeys;
+    dev::Address stakingContractAddress;
 };
 
 using CurrentGroups = std::array< CurrentGroup, c_currentGroupsSize >;
@@ -256,18 +258,15 @@ public:
         // delete this explicitly!!
 #ifdef MIRAGE
         sChainNode me = { u256( 1 ), jsToAddress( "0x0000000000000000000000000000000000000000" ),
-            "127.0.0.11", u256( 11111 ), "::1", u256( 11111 ), u256( 1 ), "0xfa",
-            { "0", "1", "0", "1" } };
+            jsToAddress( "0x0000000000000000000000000000000000000000" ), "127.0.0.11",
+            u256( 11111 ), "::1", u256( 11111 ), u256( 1 ), "0xfa", { "0", "1", "0", "1" } };
 #else
         sChainNode me = { u256( 1 ), "127.0.0.11", u256( 11111 ), "::1", u256( 11111 ), u256( 1 ),
             "0xfa", { "0", "1", "0", "1" } };
 #endif
         nodes.push_back( me );
 #ifdef MIRAGE
-        currentGroups[0] = {
-            nodes,
-            1,
-            "",
+        currentGroups[0] = { nodes, 1, "",
             { "1085704699902305713594457076223282948137075635957851808699051999328"
               "5655852781",
                 "11559732032986387107991004021392285783925812861821192530917403151452391805634",
@@ -278,11 +277,8 @@ public:
                 "11559732032986387107991004021392285783925812861821192530917403151452391805634",
                 "8495653923123431417604973247489272438418190587263600148770280649306958101930",
                 "4082367875863433681332203403145435568316851327593401208105741076214120093531" },
-        };
-        currentGroups[1] = {
-            nodes,
-            2,
-            "",
+            dev::ZeroAddress };
+        currentGroups[1] = { nodes, 2, "",
             { "1085704699902305713594457076223282948137075635957851808699051999328"
               "5655852781",
                 "11559732032986387107991004021392285783925812861821192530917403151452391805634",
@@ -293,7 +289,7 @@ public:
                 "11559732032986387107991004021392285783925812861821192530917403151452391805634",
                 "8495653923123431417604973247489272438418190587263600148770280649306958101930",
                 "4082367875863433681332203403145435568316851327593401208105741076214120093531" },
-        };
+            dev::ZeroAddress };
 #endif
     }
 };
@@ -317,7 +313,9 @@ public:
         time_t _committedBlockTimestamp, u256 const& _workingBlockNumber ) const;
     u256 blockReward( EVMSchedule const& _schedule ) const;
     u256 blockReward( time_t _committedBlockTimestamp, u256 const& _workingBlockNumber ) const;
+#ifndef MIRAGE
     void setBlockReward( u256 const& _newBlockReward );
+#endif
 
     time_t getPatchTimestamp( SchainPatchEnum _patchEnum ) const;
 
@@ -393,12 +391,18 @@ public:
 
     bool isChainIdCheckDisabled() const { return skaleDisableChainIdCheck; }
 
+#ifdef MIRAGE
+    bool getAllowPreEIP155Txns() const { return allowPreEIP155Txns; }
+#endif
+
     /// General chain params.
 protected:
     /// The chain sealer name: e.g. Ethash, NoProof, BasicAuthority
     std::string sealEngineName = "NoProof";
 
+#ifndef MIRAGE
     u256 m_blockReward;
+#endif
 
     u256 maximumExtraDataSize = 1024;
     u256 accountStartNonce = 0;
@@ -441,7 +445,16 @@ protected:
     NodeInfo nodeInfo;
     SChain sChain;
     u256 accountInitialFunds = 0;
+
+#ifdef MIRAGE
+    // Allow pre-EIP155 transactions by default (if not present in config file)
+    // This is to allow backward compatibility with old tests (avoid regenerating them)
+    // New tests should have this set to false in config file
+    bool allowPreEIP155Txns = true;
+#else
     u256 externalGasDifficulty = ~u256( 0 );
+#endif
+
     typedef std::vector< std::string > vecAdminOrigins_t;
     vecAdminOrigins_t vecAdminOrigins;  // wildcard based folters for IP addresses
     int logsBlocksLimit = -1;

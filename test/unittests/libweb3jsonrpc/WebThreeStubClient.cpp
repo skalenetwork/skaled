@@ -1422,21 +1422,42 @@ Json::Value WebThreeStubClient::debug_getPatchTimestamps() {
 }
 
 #ifdef BITE
-std::string WebThreeStubClient::skale_getCommonPublicKey() {
+Json::Value WebThreeStubClient::bite_getCommitteesInfo() {
     Json::Value p;
     p = Json::nullValue;
-    Json::Value result = this->CallMethod( "skale_getCommonPublicKey", p );
-    return result.asString();
+    Json::Value result = this->CallMethod( "bite_getCommitteesInfo", p );
+    if ( result.isArray() )
+        return result;
+    else
+        throw jsonrpc::JsonRpcException(
+            jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
 }
 
-Json::Value WebThreeStubClient::skale_getDecryptedTransactionData( const std::string& param1 ) {
+Json::Value WebThreeStubClient::bite_getDecryptedTransactionData( const std::string& param1 ) {
     Json::Value p;
     p.append( param1 );
-    Json::Value result = this->CallMethod( "skale_getDecryptedTransactionData", p );
+    Json::Value result = this->CallMethod( "bite_getDecryptedTransactionData", p );
     if ( result.isObject() )
         return result;
     else
         throw jsonrpc::JsonRpcException(
             jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
+}
+#endif
+
+#ifdef MIRAGE
+Json::Value WebThreeStubClient::skale_getBLSPublicKey() {
+    Json::Value p;
+    p = Json::nullValue;
+    Json::Value result;
+
+    result = this->CallMethod( "skale_getBLSPublicKey", p );
+
+    if ( result.isObject() ) {
+        return result;
+    } else {
+        throw jsonrpc::JsonRpcException(
+            jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
+    }
 }
 #endif

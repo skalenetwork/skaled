@@ -19,12 +19,14 @@
 
 #pragma once
 
+#include <libdevcore/Log.h>
 #include <libdevcore/RLP.h>
 #include <libdevcore/SHA3.h>
 #include <libdevcrypto/Common.h>
 #include <libethcore/Common.h>
 #include <libethcore/Counter.h>
 
+#include <SkaleCommon.h>
 #include <boost/optional.hpp>
 
 namespace dev {
@@ -51,7 +53,63 @@ public:
     /// Constructs a transaction from a transaction skeleton & optional secret.
     TransactionBase( TransactionSkeleton const& _ts, Secret const& _s = Secret() );
 
-    /// Constructs a signed message-call transaction.
+
+#ifdef MIRAGE
+
+    /// Constructs a signed message-call transaction
+    TransactionBase( u256 const& _value, u256 const& _gasPrice, u256 const& _gas,
+        Address const& _dest, bytes const& _data, u256 const& _nonce, u256 const& _chainId,
+        Secret const& _secret )
+        : m_nonce( _nonce ),
+          m_value( _value ),
+          m_gasPrice( _gasPrice ),
+          m_gas( _gas ),
+          m_data( _data ),
+          m_type( MessageCall ),
+          m_chainId( _chainId ),
+          m_receiveAddress( _dest ) {
+        sign( _secret );
+    }
+
+    /// Constructs a unsigned message-call transaction
+    TransactionBase( u256 const& _value, u256 const& _gasPrice, u256 const& _gas,
+        Address const& _dest, bytes const& _data, u256 const& _nonce, u256 const& _chainId )
+        : m_nonce( _nonce ),
+          m_value( _value ),
+          m_gasPrice( _gasPrice ),
+          m_gas( _gas ),
+          m_data( _data ),
+          m_type( MessageCall ),
+          m_chainId( _chainId ),
+          m_receiveAddress( _dest ) {}
+
+    /// Constructs a signed contract-creation transaction.
+    TransactionBase( u256 const& _value, u256 const& _gasPrice, u256 const& _gas,
+        bytes const& _data, u256 const& _nonce, u256 const& _chainId, Secret const& _secret )
+        : m_nonce( _nonce ),
+          m_value( _value ),
+          m_gasPrice( _gasPrice ),
+          m_gas( _gas ),
+          m_data( _data ),
+          m_type( ContractCreation ),
+          m_chainId( _chainId ) {
+        sign( _secret );
+    }
+
+    /// Constructs a usigned contract-creation transaction.
+    TransactionBase( u256 const& _value, u256 const& _gasPrice, u256 const& _gas,
+        bytes const& _data, u256 const& _nonce, u256 const& _chainId )
+        : m_nonce( _nonce ),
+          m_value( _value ),
+          m_gasPrice( _gasPrice ),
+          m_gas( _gas ),
+          m_data( _data ),
+          m_type( ContractCreation ),
+          m_chainId( _chainId ) {}
+
+#endif
+
+    /// Constructs a signed message-call transaction
     TransactionBase( u256 const& _value, u256 const& _gasPrice, u256 const& _gas,
         Address const& _dest, bytes const& _data, u256 const& _nonce, Secret const& _secret )
         : m_nonce( _nonce ),
@@ -64,6 +122,7 @@ public:
         sign( _secret );
     }
 
+
     /// Constructs a signed contract-creation transaction.
     TransactionBase( u256 const& _value, u256 const& _gasPrice, u256 const& _gas,
         bytes const& _data, u256 const& _nonce, Secret const& _secret )
@@ -75,6 +134,7 @@ public:
           m_type( ContractCreation ) {
         sign( _secret );
     }
+
 
     /// Constructs an unsigned message-call transaction.
     TransactionBase( u256 const& _value, u256 const& _gasPrice, u256 const& _gas,
@@ -171,17 +231,26 @@ public:
 
     bool isBite() const { return m_isBITETxn; }
 
-    void checkAndValidateBITETransaction() const;
+    void checkAndValidateBITETransaction( uint64_t _epochId ) const;
 #endif
 
     /// @throws TransactionIsUnsigned if signature was not initialized
     /// @throws InvalidSValue if the signature has an invalid S value.
     void checkLowS() const;
 
-    /// @throws InvalidSValue if the chain id is neither -4 nor equal to @a chainId
-    /// Note that "-4" is the chain ID of the pre-155 rules, which should also be considered valid
-    /// after EIP155
-    void checkChainId( uint64_t chainId, bool disableChainIdCheck ) const;
+
+    /**
+     * @brief Checks if the provided chain ID matches the expected value.
+     *
+     * This function validates the given chainId against the chain ID associated with the
+     * transaction. If the chainId does not match, it throws an exception.
+     *
+     * @param chainId The chain ID to be checked.
+     * @throws `InvalidTransactionFormat` If the transaction does not have a chainId set.
+     * This should only happen if we call 'checkChainId' for pre-EIP155 transactions.
+     * @throws `InvalidSignature` If the chainId does not match the expected value.
+     */
+    void checkChainId( uint64_t chainId ) const;
 
     /// @returns true if transaction is non-null.
     explicit operator bool() const { return m_type != NullTransaction && m_type != Invalid; }
@@ -205,15 +274,17 @@ public:
     /// @returns the amount of ETH to be transferred by this (message-call) transaction, in Wei.
     /// Synonym for endowment().
     u256 value() const {
-        assert( !isInvalid() );
+        CHECK_STATE2( !isInvalid(), "Transaction is invalid. Cannot get value." );
         return m_value;
     }
 
     /// @returns the base fee and thus the implied exchange rate of ETH to GAS.
     u256 gasPrice() const;
 
+#ifndef MIRAGE
     /// @returns the non-PoW gas
     u256 nonPowGas() const;
+#endif
 
     /// @returns the total gas to convert, paid for from sender's account. Any unused gas gets
     /// refunded once the contract is ended.
@@ -222,19 +293,19 @@ public:
     /// @returns the receiving address of the message-call transaction (undefined for
     /// contract-creation transactions).
     Address receiveAddress() const {
-        assert( !isInvalid() );
+        CHECK_STATE2( !isInvalid(), "Transaction is invalid. Cannot get receive address." );
         return m_receiveAddress;
     }
 
     /// Synonym for receiveAddress().
     Address to() const {
-        assert( !isInvalid() );
+        CHECK_STATE2( !isInvalid(), "Transaction is invalid. Cannot get to address." );
         return m_receiveAddress;
     }
 
     /// Synonym for safeSender().
     Address from() const {
-        assert( !isInvalid() );
+        CHECK_STATE2( !isInvalid(), "Transaction is invalid. Cannot get from address." );
         return safeSender();
     }
 
@@ -243,7 +314,7 @@ public:
 
     /// @returns the transaction-count of the sender.
     u256 nonce() const {
-        assert( !isInvalid() );
+        CHECK_STATE2( !isInvalid(), "Transaction is invalid. Cannot get nonce." );
         return m_nonce;
     }
 
@@ -257,7 +328,7 @@ public:
 
     /// Sets the nonce to the given value. Clears any signature.
     void setNonce( u256 const& _n ) {
-        assert( !isInvalid() );
+        CHECK_STATE2( !isInvalid(), "Transaction is invalid. Cannot set nonce." );
         clearSignature();
         m_nonce = _n;
     }
@@ -269,12 +340,17 @@ public:
     bool hasZeroSignature() const { return m_vrs && isZeroSignature( m_vrs->r, m_vrs->s ); }
 
     /// @returns true if the transaction uses EIP155 replay protection
+    /// Only used for non-mirage builds - as mirage builds reject any pre-EIP155 transactions
     bool isReplayProtected() const {
-        assert( !isInvalid() );
+        CHECK_STATE2( !isInvalid(), "Transaction is invalid. Cannot check replay protection." );
         return m_chainId.has_value();
     }
 
-    uint64_t chainId() const { return m_chainId.has_value() ? m_chainId.get() : 0; }
+    uint64_t chainId() const {
+        CHECK_STATE2(
+            m_chainId.has_value(), "Transaction does not have chainId set. Cannot get chain ID." );
+        return m_chainId.get();
+    }
 
     /// @returns the signature of the transaction (the signature has the sender encoded in it)
     /// @throws TransactionIsUnsigned if signature was not initialized
@@ -284,7 +360,7 @@ public:
 
     /// @returns amount of gas required for the basic payment.
     int64_t baseGasRequired( EVMSchedule const& _es ) const {
-        assert( !isInvalid() );
+        CHECK_STATE2( !isInvalid(), "Transaction is invalid. Cannot get base gas required." );
         return baseGasRequired( isCreation(), &m_data, _es
 #ifdef BITE
             ,
@@ -323,6 +399,7 @@ protected:
 
     static bool isZeroSignature( u256 const& _r, u256 const& _s ) { return !_r && !_s; }
 
+#ifndef MIRAGE
     /*
      * this function is provided in order for aleth tests and utilities to compile.
      * In will never be called in skaled since in skaled TransactionBase objects are never
@@ -330,7 +407,9 @@ protected:
      *
      * The function always returns zero, which means no PoW.
      */
+
     virtual u256 getExternalGas() const { return 0; }
+#endif
 
     /// Clears the signature.
     void clearSignature() { m_vrs = SignatureStruct(); }
@@ -403,6 +482,8 @@ public:
     static uint64_t howMany() { return Counter< TransactionBase >::howMany(); }
 
 protected:
+    mutable dev::Logger m_loggerDebug{ createLogger( VerbosityDebug, "TransactionBase" ) };
+
     Type m_type = NullTransaction;  ///< Is this a contract-creation transaction or a message-call
     ///< transaction?
     boost::optional< uint64_t > m_chainId;  ///< EIP155 value for calculating transaction hash

@@ -61,7 +61,6 @@ std::string dumpStorage( ExtVM const& _ext ) {
     return o.str();
 }
 
-
 }  // namespace
 
 StandardTrace::StandardTrace() : m_trace( Json::arrayValue ) {}
@@ -197,7 +196,11 @@ void Executive::verifyTransaction( Transaction const& _transaction, time_t _comm
     const bool _allowFuture ) {
     MICROPROFILE_SCOPEI( "Executive", "verifyTransaction", MP_GAINSBORO );
 
-    if ( !_transaction.hasExternalGas() && _transaction.gasPrice() < _gasPrice ) {
+    if (
+#ifndef MIRAGE
+        !_transaction.hasExternalGas() &&
+#endif
+        _transaction.gasPrice() < _gasPrice ) {
         BOOST_THROW_EXCEPTION(
             GasPriceTooLow() << RequirementError( static_cast< bigint >( _gasPrice ),
                 static_cast< bigint >( _transaction.gasPrice() ) ) );
@@ -225,9 +228,11 @@ void Executive::verifyTransaction( Transaction const& _transaction, time_t _comm
 
         // Avoid unaffordable transactions.
         bigint gasCost = static_cast< bigint >( _transaction.gas() * _transaction.gasPrice() );
+#ifndef MIRAGE
         if ( _transaction.hasExternalGas() ) {
             gasCost = 0;
         }
+#endif
         bigint totalCost = _transaction.value() + gasCost;
         auto sender_ballance = _state.balance( _transaction.sender() );
         if ( sender_ballance < totalCost ) {
@@ -266,12 +271,19 @@ void Executive::initialize( Transaction const& _transaction ) {
 bool Executive::execute() {
     // Entry point for a user-executed transaction.
 
+#ifdef MIRAGE
+    // Pay...
+    LOG( m_loggerTrace ) << "Paying " << formatBalance( m_gasCost ) << " from sender for gas ("
+                         << m_t.gas() << " gas at " << formatBalance( m_t.gasPrice() ) << ")";
+    m_s.subBalance( m_t.sender(), m_gasCost );
+#else
     if ( !m_t.hasExternalGas() ) {
         // Pay...
         LOG( m_loggerTrace ) << "Paying " << formatBalance( m_gasCost ) << " from sender for gas ("
                              << m_t.gas() << " gas at " << formatBalance( m_t.gasPrice() ) << ")";
         m_s.subBalance( m_t.sender(), m_gasCost );
     }
+#endif
 
     assert( m_t.gas() >= ( u256 ) m_baseGasRequired );
 
@@ -589,8 +601,10 @@ bool Executive::go( OnOpFunc const& _onOp ) {
 bool Executive::finalize() {
     MICROPROFILE_SCOPEI( "Executive", "finalize", MP_PAPAYAWHIP );
     if ( m_ext ) {
+#ifndef MIRAGE
         // Accumulate refunds for suicides.
         m_ext->sub.refunds += m_ext->evmSchedule().suicideRefundGas * m_ext->sub.suicides.size();
+#endif
 
         // Refunds must be applied before the miner gets the fees.
         assert( m_ext->sub.refunds >= 0 );
@@ -603,13 +617,23 @@ bool Executive::finalize() {
         m_s.addBalance( m_t.sender(), m_gas * m_t.gasPrice() );
 
         u256 feesEarned = ( m_t.gas() - m_gas ) * m_t.gasPrice();
+#ifdef MIRAGE
+        EVMSchedule currentBlockSchedule = m_chainParams.makeEvmSchedule(
+            m_envInfo.committedBlockTimestamp(), m_envInfo.number() );
+        // calculate share of transaction fees to reward
+        // the rest is effectively burnt
+        feesEarned = dev::calculateShareWithPrecision(
+            feesEarned, currentBlockSchedule.shareOfTransactionFeeToRewardPromille );
+#endif
         m_s.addBalance( m_envInfo.author(), feesEarned );
     }
 
     // Suicides...
+#ifndef MIRAGE
     if ( m_ext )
         for ( auto a : m_ext->sub.suicides )
             m_s.kill( a );
+#endif
 
     // Logs..
     if ( m_ext )

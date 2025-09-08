@@ -168,8 +168,13 @@ public:
 
     dev::h256 getSnapshotHash( unsigned _blockNumber ) const;
     std::pair< int, int > getLatestSnapshots() const;
-    bool isSnapshotHashPresent( unsigned _blockNumber ) const;
-    void computeSnapshotHash( unsigned _blockNumber, bool is_checking = false );
+    bool checkSnapshotFolderAndSnapshotHash( unsigned _blockNumber ) const;
+    void computeSnapshotHash( unsigned _blockNumber
+#ifndef MIRAGE
+        ,
+        bool isChecking = false
+#endif
+    );
 
     uint64_t getBlockTimestamp( unsigned _blockNumber ) const;
 
@@ -194,15 +199,19 @@ private:
 
 #ifndef MIRAGE
     void computeFileStorageHash( const boost::filesystem::path& _fileSystemDir,
-        secp256k1_sha256_t* ctx, bool is_checking ) const;
+        secp256k1_sha256_t* ctx, bool isChecking ) const;
     void proceedFileStorageDirectory( const boost::filesystem::path& _fileSystemDir,
-        secp256k1_sha256_t* ctx, bool is_checking ) const;
+        secp256k1_sha256_t* ctx, bool isChecking ) const;
     void proceedRegularFile(
-        const boost::filesystem::path& path, secp256k1_sha256_t* ctx, bool is_checking ) const;
+        const boost::filesystem::path& path, secp256k1_sha256_t* ctx, bool isChecking ) const;
     void proceedDirectory( const boost::filesystem::path& path, secp256k1_sha256_t* ctx ) const;
 #endif
-    void computeAllVolumesHash(
-        unsigned _blockNumber, secp256k1_sha256_t* ctx, bool is_checking ) const;
+    void computeAllVolumesHash( unsigned _blockNumber, secp256k1_sha256_t* ctx
+#ifndef MIRAGE
+        ,
+        bool isChecking
+#endif
+    ) const;
     void computeDatabaseHash(
         const boost::filesystem::path& _dbDir, secp256k1_sha256_t* ctx ) const;
     void addLastPriceToHash( unsigned _blockNumber, secp256k1_sha256_t* ctx ) const;
