@@ -229,6 +229,10 @@ inline N diff( N const& _a, N const& _b ) {
     return std::max( _a, _b ) - std::min( _a, _b );
 }
 
+#ifdef MIRAGE
+u256 calculateShareWithPrecision( const u256& _base, size_t _sharePromile );
+#endif
+
 /// RAII utility class whose destructor calls a given function.
 class ScopeGuard {
 public:

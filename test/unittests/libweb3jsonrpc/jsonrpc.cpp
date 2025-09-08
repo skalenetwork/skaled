@@ -71,6 +71,10 @@
 #include <libconsensus/libBLS/threshold_encryption/ThresholdEncryption.h>
 #endif
 
+#ifdef MIRAGE
+#include <libskale/BlockRewardsActivationPatch.h>
+#endif
+
 // This is defined by some weird windows header - workaround for now.
 #undef GetMessage
 
@@ -138,7 +142,6 @@ static std::string const c_genesisConfigString = R"(
         "0000000000000000000000000000000000000002": { "precompiled": { "name": "sha256", "linear": { "base": 60, "word": 12 } } },
         "0000000000000000000000000000000000000003": { "precompiled": { "name": "ripemd160", "linear": { "base": 600, "word": 120 } } },
         "0000000000000000000000000000000000000004": { "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } } },)" +
-#ifndef MIRAGE
         R"( "0000000000000000000000000000000000000005": {
             "precompiled": {
                 "name": "createFile",
@@ -149,7 +152,6 @@ static std::string const c_genesisConfigString = R"(
                 "restrictAccess": ["00000000000000000000000000000000000000AA", "692a70d2e424a56d2c6c27aa97d1a86395877b3a"]
             }
         },)" +
-#endif
 
     /*
 pragma solidity ^0.4.25;
@@ -287,6 +289,7 @@ static std::string const c_genesisConfigString =
             "nodeGroups": {},
             "nodes": {
                 "1": {
+                    "stakingContractAddress": "0x5C60C315985977b7a408eBF4256984Acdf949549",
                     "group": [
                   { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )" +
         std::to_string( rand_port ) +
@@ -336,6 +339,9 @@ revert();
             }
         },
         "0x5c4e11842e8be09264dc1976943571d7af6d00f9" : {
+            "balance" : "1000000000000000000000000000000"
+        },
+        "0x5339Ef05428d1b87f4e2F2db64E782c68E9cDA56": {
             "balance" : "1000000000000000000000000000000"
         },
         "0x692a70d2e424a56d2c6c27aa97d1a86395877b3a" : {
@@ -873,14 +879,13 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_validTransaction,
     // Mine to generate a non-zero account balance
     const int blocksToMine = 1;
 #ifdef MIRAGE
-    const u256 blockReward = 5 * dev::eth::ether;
+    const u256 blockReward = fixture.client->chainParams().blockReward(
+                fixture.client->blockChain().info().timestamp(),
+                fixture.client->blockChain().info().number() );
 #else
     const u256 blockReward = 2 * dev::eth::ether;
 #endif
-    cerr << "Reward: " << blockReward << endl;
-    cerr << "Balance before: " << fixture.client->balanceAt( senderAddress ) << endl;
     dev::eth::simulateMining( *( fixture.client ), blocksToMine );
-    cerr << "Balance after: " << fixture.client->balanceAt( senderAddress ) << endl;
     BOOST_CHECK_EQUAL( blockReward, fixture.client->balanceAt( senderAddress ) );
 
     auto signedTx = fixture.rpcClient->eth_signTransaction( t );
@@ -919,7 +924,9 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorInvalidNonce,
     // Mine to generate a non-zero account balance
     const size_t blocksToMine = 1;
 #ifdef MIRAGE
-    const u256 blockReward = 5 * dev::eth::ether;
+    const u256 blockReward = fixture.client->chainParams().blockReward(
+                fixture.client->blockChain().info().timestamp(),
+                fixture.client->blockChain().info().number() );
 #else
     const u256 blockReward = 2 * dev::eth::ether;
 #endif
@@ -959,7 +966,9 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorInsufficientGas ) {
     // Mine to generate a non-zero account balance
     const int blocksToMine = 1;
 #ifdef MIRAGE
-    const u256 blockReward = 5 * dev::eth::ether;
+    const u256 blockReward = fixture.client->chainParams().blockReward(
+                fixture.client->blockChain().info().timestamp(),
+                fixture.client->blockChain().info().number() );
 #else
     const u256 blockReward = 2 * dev::eth::ether;
 #endif
@@ -989,7 +998,9 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorDuplicateTransaction ) {
     // Mine to generate a non-zero account balance
     const int blocksToMine = 1;
 #ifdef MIRAGE
-    const u256 blockReward = 5 * dev::eth::ether;
+    const u256 blockReward = fixture.client->chainParams().blockReward(
+                fixture.client->blockChain().info().timestamp(),
+                fixture.client->blockChain().info().number() );
 #else
     const u256 blockReward = 2 * dev::eth::ether;
 #endif
@@ -1031,7 +1042,9 @@ Json::Value buildSignedTransaction( JsonRpcFixture& fixture ) {
 
     // Mine to generate a non-zero account balance
     const size_t blocksToMine = 1;
-    const u256 blockReward = 5 * dev::eth::ether;
+    const u256 blockReward = fixture.client->chainParams().blockReward(
+                fixture.client->blockChain().info().timestamp(),
+                fixture.client->blockChain().info().number() );
     dev::eth::simulateMining( *( fixture.client ), blocksToMine );
     BOOST_CHECK_EQUAL( blockReward, fixture.client->balanceAt( senderAddress ) );
 
@@ -2461,7 +2474,9 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasPriceTooLow ) {
     // Mine to generate a non-zero account balance
     const int blocksToMine = 1;
 #ifdef MIRAGE
-    const u256 blockReward = 5 * dev::eth::ether;
+    const u256 blockReward = fixture.client->chainParams().blockReward(
+                fixture.client->blockChain().info().timestamp(),
+                fixture.client->blockChain().info().number() );
 #else
     const u256 blockReward = 2 * dev::eth::ether;
 #endif
@@ -4456,20 +4471,158 @@ BOOST_AUTO_TEST_CASE( getZeroBlock ) {
 
 #ifdef MIRAGE
 BOOST_AUTO_TEST_CASE( block_author_balance ) {
-    JsonRpcFixture fixture; //  ( c_genesisConfigString, false, false, true );
+    // when rewardWalletAddress is not defined
+
+    // for testBlockRewardsActivationPatchAddress
+    setenv( "TEST_BLOCK_REWARDS_ACTIVATION", "1", 1 );
+
+    std::string _config = c_genesisConfigString;
+    Json::Value ret;
+    Json::Reader().parse( _config, ret );
+    // Set FAIR chainID
+    std::string chainID = "0x3a6";
+    ret["params"]["chainID"] = chainID;
+    // disable block rewards at startup
+    ret["params"]["blockReward"] = "0x00";
+
+    Json::FastWriter fastWriter;
+    std::string config = fastWriter.write( ret );
+    JsonRpcFixture fixture( config, false, false, true );
+
     string etherbase = fixture.rpcClient->eth_coinbase();
 
-    u256 etherbaseBalance = fixture.client->balanceAt( jsToAddress( etherbase ) );
+    BOOST_REQUIRE( !BlockRewardsActivationPatch::isEnabled( fixture.client->chainId() ) );
+
+    // checksumed address: 0x0E7d7F1D34a502bD609542576941C3FCc087c588
+    auto node_owner = "0x0e7d7f1d34a502bd609542576941c3fcc087c588";
+
+    auto etherbase_address = jsToAddress( etherbase );
+
+    u256 etherbaseBalance = fixture.client->balanceAt( etherbase_address );
+    BOOST_REQUIRE_EQUAL( etherbaseBalance, 0 );
+
+    dev::Address stakingContractAddress = fixture.client->chainParams().getStakingContractAddress();
+    BOOST_REQUIRE_EQUAL( fixture.client->balanceAt( stakingContractAddress ), 0 );
+
+    // mine transaction not from testBlockRewardsActivationPatchAddress - block rewards should stay disabled
+    Json::Value silentTx;
+    silentTx["value"] = 1;
+    // address has preset balance in config
+    // silentTx["from"] = dev::Address( "0x5C4e11842E8be09264dc1976943571d7Af6d00F9" ).hex();
+    silentTx["to"] = BlockRewardsActivationPatch::getMagicAddress().hex();
+    silentTx["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    silentTx["gas"] = 30000;
+    silentTx["nonce"] = 0;
+
+    auto silentTs = toTransactionSkeleton( silentTx );
+    auto silentT = dev::eth::Transaction(
+        silentTs, dev::Secret( "1c2cd4b70c2b8c6cd7144bbbfbd1e5c6eacb4a5efd9c86d0e29cbbec4e8483b9" ) );
+
+    std::string txHash = fixture.rpcClient->eth_sendRawTransaction( dev::toHex( silentT.toBytes() ) );
+    BOOST_REQUIRE( !txHash.empty() );
+
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    BOOST_REQUIRE( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"] == "0x1" );
+    BOOST_REQUIRE( !BlockRewardsActivationPatch::isEnabled( fixture.client->chainId() ) );
+    // staking contract balance only gets changed when block rewards are activated
+    BOOST_REQUIRE_EQUAL( fixture.client->balanceAt( stakingContractAddress ), 0 );
+    etherbaseBalance = fixture.client->balanceAt( etherbase_address );
+    BOOST_REQUIRE_EQUAL( etherbaseBalance, 0 );
+
+    // mine transaction from testBlockRewardsActivationPatchAddress - block rewards should enable
+    Json::Value activationTx;
+    // activationTx["from"] = "0x5339Ef05428d1b87f4e2F2db64E782c68E9cDA56";
+    activationTx["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    activationTx["gas"] = 30000;
+    activationTx["chainId"] = "0x3a9";
+    activationTx["nonce"] = 0;
+    activationTx["to"] = dev::Address::random().hex();
+
+    auto ts = toTransactionSkeleton( activationTx );
+    auto t = dev::eth::Transaction(
+        ts, dev::Secret( "0e394ff21db60660a27a6383aedf8c75070648965acbef7c369c1bae2141a485" ) );
+
+    txHash = fixture.rpcClient->eth_sendRawTransaction( dev::toHex( t.toBytes() ) );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    BOOST_REQUIRE( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"] == "0x1" );
+    BOOST_REQUIRE( BlockRewardsActivationPatch::isEnabled( fixture.client->chainId() ) );
+    etherbaseBalance = fixture.client->balanceAt( etherbase_address );
+    BOOST_REQUIRE_EQUAL( etherbaseBalance, 0 );
+    BOOST_REQUIRE_EQUAL( fixture.client->balanceAt( stakingContractAddress ), 0 );
+
+    etherbaseBalance = fixture.client->balanceAt( jsToAddress( etherbase ) );
 
     auto authorInitialBalance = fixture.client->balanceAt( jsToAddress( "0x0E7d7F1D34a502bD609542576941C3FCc087c588" ) );
+    auto stakingContractInitialBalance = fixture.client->balanceAt( stakingContractAddress );
+
+    auto initialBlockNumber = jsToU256( fixture.rpcClient->eth_blockNumber() );
+
+    // push random transaction, check balance difference
+    Json::Value sampleTx;
+    sampleTx["value"] = 1000000;
+    sampleTx["data"] = toJS( bytes() );
+    sampleTx["from"] = fixture.coinbase.address().hex();
+    sampleTx["to"] = fixture.account2.address().hex();
+    sampleTx["gasPrice"] = 1000000000000;
+    txHash = fixture.rpcClient->eth_sendTransaction( sampleTx );
+    BOOST_REQUIRE( !txHash.empty() );
+
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    fixture.client->state().getOriginalDb()->createBlockSnap( 2 );
+    BOOST_REQUIRE_EQUAL( fixture.client->balanceAt( fixture.account2.address() ), u256( 1000000 ) );
+
+    auto txData = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+
+    auto blockNumAsString = fixture.rpcClient->eth_blockNumber();
+
+    auto author = fixture.rpcClient->eth_getBlockByNumber( blockNumAsString, false )["author"];
+    auto blockNumber = jsToU256( blockNumAsString );
+
+    BOOST_REQUIRE( author == node_owner );
+
+    auto totalReward = fixture.client->chainParams().blockReward(
+        fixture.client->latestBlock().info().timestamp(), fixture.client->number() );
+    auto blockAuthorReward = dev::calculateShareWithPrecision( totalReward, fixture.client->evmSchedule().shareOfBlockRewardToBlockAuthorPromille );
+    auto stakingContractReward = totalReward - blockAuthorReward;
+
+    auto feeForTx =
+        jsToU256( sampleTx["gasPrice"].asString() ) * jsToU256( txData["gasUsed"].asString() );
+    feeForTx = dev::calculateShareWithPrecision( feeForTx, fixture.client->evmSchedule().shareOfTransactionFeeToRewardPromille );
+
+    auto expectedAuthorBalanceChange = ( blockNumber - initialBlockNumber ) * blockAuthorReward + feeForTx;
+    auto expectedContractBalanceChange = ( blockNumber - initialBlockNumber ) * stakingContractReward;
+
+    BOOST_REQUIRE_EQUAL(
+        fixture.client->balanceAt( jsToAddress( author.asString() ) ) - authorInitialBalance,
+        expectedAuthorBalanceChange );
+    BOOST_REQUIRE_EQUAL(
+        fixture.client->balanceAt( stakingContractAddress ) - stakingContractInitialBalance,
+        expectedContractBalanceChange );
+}
+
+BOOST_AUTO_TEST_CASE( block_author_balance_reward_wallet ) {
+    // when rewardWalletAddress is defined
+
+    // checksumed address: 0xfa3fe33E351a7c60039E59D923e417A6362D1C3E
+    auto node_reward_wallet = "0xfa3fe33e351a7c60039e59d923e417a6362d1c3e";
+    auto node_reward_wallet_address = jsToAddress( node_reward_wallet );
+
+    nlohmann::json configJson = nlohmann::json::parse(c_genesisConfigString);
+
+    // Add rewardWalletAddress to the first node in group "1"
+    configJson["skaleConfig"]["sChain"]["nodes"]["1"]["group"][0]["rewardWalletAddress"] = node_reward_wallet;
+
+    auto noRewardWalletAddressConfig = configJson.dump();
+    JsonRpcFixture fixture( noRewardWalletAddressConfig, false, false, true );
+
+    auto authorInitialBalance = fixture.client->balanceAt( node_reward_wallet_address );
 
     auto initialBlockNumber = jsToU256( fixture.rpcClient->eth_blockNumber() );
 
     // mine block without transactions
     dev::eth::simulateMining( *( fixture.client ), 1 );
-    sleep(3);
-    etherbaseBalance = fixture.client->balanceAt( jsToAddress( etherbase ) );
-    BOOST_REQUIRE_GT( etherbaseBalance, 0 );
+    sleep( 3 );
 
     // mine transaction
     Json::Value sampleTx;
@@ -4492,17 +4645,23 @@ BOOST_AUTO_TEST_CASE( block_author_balance ) {
 
     auto author = fixture.rpcClient->eth_getBlockByNumber( blockNumAsString, false )["author"];
     auto blockNumber = jsToU256( blockNumAsString );
+    BOOST_REQUIRE( author == node_reward_wallet );
 
-    BOOST_REQUIRE( author != etherbase );
     auto totalReward = fixture.client->chainParams().blockReward(
-                fixture.client->latestBlock().info().timestamp(), fixture.client->number() );
+        fixture.client->latestBlock().info().timestamp(), fixture.client->number() );
+    auto blockAuthorReward =
+            dev::calculateShareWithPrecision( totalReward,
+                fixture.client->evmSchedule().shareOfBlockRewardToBlockAuthorPromille );
+
     auto feeForTx = jsToU256( sampleTx["gasPrice"].asString() ) * jsToU256( txData["gasUsed"].asString() );
-    auto expectedBalanceChange = ( blockNumber - initialBlockNumber ) * totalReward + feeForTx;
+    feeForTx = dev::calculateShareWithPrecision( feeForTx, fixture.client->evmSchedule().shareOfTransactionFeeToRewardPromille );
+    auto expectedBalanceChange = ( blockNumber - initialBlockNumber ) * blockAuthorReward + feeForTx;
 
     BOOST_REQUIRE_EQUAL(
-                fixture.client->balanceAt( jsToAddress( author.asString() ) ) - authorInitialBalance, expectedBalanceChange );
+        fixture.client->balanceAt( jsToAddress( author.asString() ) ) - authorInitialBalance,
+        expectedBalanceChange );
 }
-#endif
+#endif // MIRAGE
 
 #ifdef BITE
 
@@ -5276,7 +5435,6 @@ BOOST_AUTO_TEST_CASE( dencunOpcodesInTransaction ) {
 BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     JsonRpcFixture fixture( c_BITEConfigString, false, false, true, true );
 
-    dev::eth::simulateMining( *( fixture.client ), 20 );
     string senderAddress = toJS( fixture.coinbase.address() );
     size_t nonce = 0;
     std::string biteAddress = "0x" + std::string( BITE_ADDRESS_AS_STRING );
@@ -5505,7 +5663,6 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
 BOOST_AUTO_TEST_CASE( BITETransactionCouldNotBeDecrypted ) {
     JsonRpcFixture fixture( c_BITEConfigString, false, false, true, true );
 
-    dev::eth::simulateMining( *( fixture.client ), 20 );
     string senderAddress = toJS( fixture.coinbase.address() );
 
     // address 0x7aa5e36aa15e93d10f4f26357c30f052dacdde5f is preset in config
@@ -5531,9 +5688,10 @@ BOOST_AUTO_TEST_CASE( BITETransactionCouldNotBeDecrypted ) {
     auto ciphertextBytes = ciphertext.toBytes();
 
     // spoil random element in decryptedData
-    // only tamper the data part | --- KEY ---- | | --- Data - tamper this part ----|
+    // only tamper the data part
+    // | -- Number of keys --| | --- KEY ---- | | --- Data - tamper this part ----|
     size_t idxToSpoil =
-        libBLS::CipheredKey::CIPHERED_KEY_SIZE_BYTES +
+        1 + libBLS::CipheredKey::CIPHERED_KEY_SIZE_BYTES +
         rand() % ( ciphertextBytes.size() - libBLS::CipheredKey::CIPHERED_KEY_SIZE_BYTES );
     ciphertextBytes[idxToSpoil]++;
 
@@ -5865,8 +6023,6 @@ BOOST_AUTO_TEST_CASE( committeeRotation ) {
     Json::FastWriter fastWriter;
     std::string config = fastWriter.write( ret );
     JsonRpcFixture fixture( config, false, false, true );
-
-    dev::eth::simulateMining( *( fixture.client ), 20 );
 
     Json::Value txRefill;
     txRefill["to"] = "0xc868AF52a6549c773082A334E5AE232e0Ea3B513";
@@ -7139,8 +7295,6 @@ BOOST_AUTO_TEST_CASE( test_exceptions ) {
                                       1,
 #endif
                                        1 );
-
-
     BOOST_REQUIRE_THROW( cache.realIndexFromGapped( LatestBlock, 1 ), std::out_of_range );
     BOOST_REQUIRE_THROW( cache.realIndexFromGapped( LatestBlock, 2 ), std::out_of_range );
     BOOST_REQUIRE_THROW( cache.gappedIndexFromReal( LatestBlock, 2 ), std::out_of_range );
