@@ -241,9 +241,8 @@ void ClientBase::prependLogsFromBlock( LogFilter const& _f, h256 const& _blockHa
         const h256& th = transaction( _blockHash, i ).sha3();
         if ( _f.isRangeFilter() ) {
             for ( const auto& e : receipt.log() ) {
-                io_logs.emplace_back(
-                    LocalisedLogEntry( e, _blockHash, ( BlockNumber ) bc().number( _blockHash ), th,
-                        i, logIndex++, _polarity ) );
+                io_logs.emplace_back( LocalisedLogEntry( e, _blockHash,
+                    ( BlockNumber ) bc().number( _blockHash ), th, i, logIndex++, _polarity ) );
             }
             continue;
         }
@@ -263,10 +262,9 @@ void ClientBase::prependLogsFromBlock( LogFilter const& _f, h256 const& _blockHa
                         }
                     }
                     if ( isGood )
-                        io_logs.emplace_back(
-                            LocalisedLogEntry( e, _blockHash,
-                                                 ( BlockNumber ) bc().number( _blockHash ), th, i,
-                                                 logIndex++, _polarity ) );
+                        io_logs.emplace_back( LocalisedLogEntry( e, _blockHash,
+                            ( BlockNumber ) bc().number( _blockHash ), th, i, logIndex++,
+                            _polarity ) );
                     else
                         ++logIndex;
                 } else
@@ -312,7 +310,7 @@ unsigned ClientBase::installWatch(
 }
 
 bool ClientBase::uninstallWatch( unsigned _i ) {
-    LOG( m_loggerWatch ) << "XXX" << _i;
+    LOG( m_loggerWatch ) << "Uninstalling watch " << _i;
 
     Guard l( x_filtersWatches );
 
