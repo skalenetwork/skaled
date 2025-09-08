@@ -210,7 +210,7 @@ LocalisedLogEntries ClientBase::logs( LogFilter const& _f ) const {
             TransactionReceipt const& tr = temp.receipt( i );
             LogEntries le = _f.matches( tr );
             for ( unsigned j = 0; j < le.size(); ++j )
-                ret.insert( ret.begin(), LocalisedLogEntry( le[j] ) );
+                ret.emplace_back( LocalisedLogEntry( le[j] ) );
         }
         begin = bc().number();
     }
@@ -229,8 +229,6 @@ LocalisedLogEntries ClientBase::logs( LogFilter const& _f ) const {
 
     for ( auto n : matchingBlocks )
         prependLogsFromBlock( _f, bc().numberHash( n ), BlockPolarity::Live, ret );
-
-    reverse( ret.begin(), ret.end() );
     return ret;
 }
 
@@ -239,11 +237,11 @@ void ClientBase::prependLogsFromBlock( LogFilter const& _f, h256 const& _blockHa
     auto receipts = bc().receipts( _blockHash ).receipts;
     unsigned logIndex = 0;
     for ( size_t i = 0; i < receipts.size(); i++ ) {
-        TransactionReceipt receipt = receipts[i];
-        auto th = transaction( _blockHash, i ).sha3();
+        const TransactionReceipt& receipt = receipts[i];
+        const h256& th = transaction( _blockHash, i ).sha3();
         if ( _f.isRangeFilter() ) {
             for ( const auto& e : receipt.log() ) {
-                io_logs.insert( io_logs.begin(),
+                io_logs.emplace_back(
                     LocalisedLogEntry( e, _blockHash, ( BlockNumber ) bc().number( _blockHash ), th,
                         i, logIndex++, _polarity ) );
             }
@@ -252,7 +250,7 @@ void ClientBase::prependLogsFromBlock( LogFilter const& _f, h256 const& _blockHa
 
         if ( _f.matches( receipt.bloom() ) )
             for ( const auto& e : receipt.log() ) {
-                auto addresses = _f.getAddresses();
+                const auto& addresses = _f.getAddresses();
                 if ( addresses.empty() || std::find( addresses.begin(), addresses.end(),
                                               e.address ) != addresses.end() ) {
                     bool isGood = true;
@@ -265,8 +263,8 @@ void ClientBase::prependLogsFromBlock( LogFilter const& _f, h256 const& _blockHa
                         }
                     }
                     if ( isGood )
-                        io_logs.insert(
-                            io_logs.begin(), LocalisedLogEntry( e, _blockHash,
+                        io_logs.emplace_back(
+                            LocalisedLogEntry( e, _blockHash,
                                                  ( BlockNumber ) bc().number( _blockHash ), th, i,
                                                  logIndex++, _polarity ) );
                     else
