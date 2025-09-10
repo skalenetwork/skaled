@@ -979,6 +979,9 @@ u256 SkaleHost::getGasPrice( unsigned _blockNumber ) const {
 }
 
 u256 SkaleHost::getBlockRandom() const {
+    if ( CurrentBlockRandomPatch::isEnabledInWorkingBlock() ) {
+        return m_consensus->getRandomForBlockId( m_client.pendingInfo().number() );
+    }
     return m_consensus->getRandomForBlockId( m_client.number() );
 }
 
