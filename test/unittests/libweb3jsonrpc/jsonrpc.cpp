@@ -756,6 +756,7 @@ BOOST_AUTO_TEST_CASE(
         auto it = std::find_if( keys.begin(), keys.end(), [i]( dev::KeyPair const& keyPair ) {
             return jsToAddress( i.asString() ) == keyPair.address();
         } );
+
         BOOST_CHECK_EQUAL( it != keys.end(), true );
     }
 }
@@ -6077,6 +6078,34 @@ BOOST_AUTO_TEST_CASE( committeeRotation ) {
 
     receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE( receipt["status"] == std::string( "0x1" ) );
+}
+
+
+BOOST_AUTO_TEST_CASE( fetching_block_reward_beneficiary ) {
+    // testing searching for correct group by timestamp
+    std::string config = c_BITECommitteeRotationConfigString;
+    Json::Value ret;
+    Json::Reader().parse( config, ret );
+
+    auto currentTime = time( nullptr );
+    auto firstGroupTs = currentTime;
+    auto secondGroupTs = uint64_t( -1 );
+
+    ret["skaleConfig"]["sChain"]["nodeGroups"]["0"]["finish_ts"] = firstGroupTs;
+    ret["skaleConfig"]["sChain"]["nodeGroups"]["1"]["finish_ts"] = uint64_t( -1 );
+
+    Json::FastWriter fastWriter;
+    config = fastWriter.write( ret );
+    JsonRpcFixture fixture( config, false, false, true );
+
+    auto group = fixture.client->chainParams().getNodeGroupByFinishTimestamp( 0 );
+    BOOST_REQUIRE( group.finishTs == firstGroupTs );
+    group = fixture.client->chainParams().getNodeGroupByFinishTimestamp( firstGroupTs );
+    BOOST_REQUIRE( group.finishTs == firstGroupTs );
+    group = fixture.client->chainParams().getNodeGroupByFinishTimestamp( firstGroupTs + 1 );
+    BOOST_REQUIRE( group.finishTs == secondGroupTs );
+    group = fixture.client->chainParams().getNodeGroupByFinishTimestamp( secondGroupTs - 1 );
+    BOOST_REQUIRE( group.finishTs == secondGroupTs );
 }
 #endif // MIRAGE
 

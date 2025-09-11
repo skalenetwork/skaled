@@ -558,7 +558,7 @@ size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
 
 #ifdef MIRAGE
     // get winning node address
-    Address winningNodeAddressToReward = getWinningNodeAddressByIndex( _winningNodeIndex );
+    Address winningNodeAddressToReward = getWinningNodeBeneficiary( _winningNodeIndex, _timestamp );
     {
         DEV_WRITE_GUARDED( x_working )
         // set block author as winning node address
@@ -605,9 +605,9 @@ size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
 }
 
 #ifdef MIRAGE
-Address Client::getWinningNodeAddressByIndex( uint64_t _winningNodeIndex ) {
+Address Client::getWinningNodeBeneficiary( uint64_t _winningNodeIndex, uint64_t _timestamp ) const {
     if ( _winningNodeIndex > 0 ) {
-        return bc().chainParams().getSChainNodeBeneficiaryAddressByIndex( _winningNodeIndex );
+        return bc().chainParams().getNodeBeneficiaryByIndexAndTimestamp( _winningNodeIndex, _timestamp );
     } else {
         return Block::DEFAULT_BLOCK_OWNER_ADDRESS;
     }

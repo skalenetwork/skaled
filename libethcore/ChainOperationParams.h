@@ -187,6 +187,7 @@ struct GroupNode {
     u256 id;
     u256 schainIndex;
     std::string publicKey;
+    Address rewardWalletAddress;
 };
 
 /// skale

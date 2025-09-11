@@ -92,11 +92,15 @@ struct ChainParams : public ChainOperationParams {
     std::string getSchainName() const { return sChain.name; }
 
 #ifdef MIRAGE
-    Address getSChainNodeBeneficiaryAddressByIndex( uint64_t sChainIndex ) const;
+    Address getNodeBeneficiaryByIndexAndTimestamp( uint64_t, uint64_t ) const;
 
     bool updateCurrentGroupIfNeeded( uint64_t _latestBlockTimestamp );
 
     CurrentGroup getNewestGroup() const;
+
+    NodeGroup getNodeGroupByFinishTimestamp( uint64_t ) const;
+
+    GroupNode getIdBySChainIndexInNodeGroup( const NodeGroup&, uint64_t ) const;
 
 #else
 
