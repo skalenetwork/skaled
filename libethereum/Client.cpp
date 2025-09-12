@@ -607,7 +607,8 @@ size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
 #ifdef MIRAGE
 Address Client::getWinningNodeBeneficiary( uint64_t _winningNodeIndex, uint64_t _timestamp ) const {
     if ( _winningNodeIndex > 0 ) {
-        return bc().chainParams().getNodeBeneficiaryByIndexAndTimestamp( _winningNodeIndex, _timestamp );
+        return bc().chainParams().getNodeBeneficiaryByIndexAndTimestamp(
+            _winningNodeIndex, _timestamp );
     } else {
         return Block::DEFAULT_BLOCK_OWNER_ADDRESS;
     }
