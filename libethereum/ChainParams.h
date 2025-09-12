@@ -195,7 +195,8 @@ struct ChainParams : public ChainOperationParams {
     }
 
 #ifdef MIRAGE
-    Address getHistoricNodeRewardWalletAddress( unsigned _historicGroupIndex, unsigned _nodeId ) const {
+    Address getHistoricNodeRewardWalletAddress(
+        unsigned _historicGroupIndex, unsigned _nodeId ) const {
         return sChain.nodeGroups.at( _historicGroupIndex ).nodes.at( _nodeId ).rewardWalletAddress;
     }
 #endif
