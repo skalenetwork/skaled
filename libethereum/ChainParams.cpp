@@ -966,15 +966,19 @@ NodeGroup ChainParams::getNodeGroupByFinishTimestamp( uint64_t _timestamp ) cons
 
 GroupNode ChainParams::getIdBySChainIndexInNodeGroup(
     const NodeGroup& group, uint64_t _sChainIndex ) const {
-    auto hasSchainIndex = [&_sChainIndex](
-                              const GroupNode& node ) { return node.schainIndex == _sChainIndex; };
+    if ( _sChainIndex < 1 ) {
+        throw std::runtime_error( "sChainIndex is too small" );
+    }
+    // shifting since sChain indices are numbered from 0 in nodeGroups config section
+    uint64_t shiftedIndex = _sChainIndex - 1;
+    auto hasSchainIndex = [&shiftedIndex](
+                              const GroupNode& node ) { return node.schainIndex == shiftedIndex; };
 
-    // check
     auto nodeIterator = std::find_if( group.nodes.begin(), group.nodes.end(), hasSchainIndex );
     if ( nodeIterator == group.nodes.end() ) {
-        std::string sChainIndexStringRep = std::to_string( _sChainIndex );
+        std::string sChainIndexStringRep = std::to_string( shiftedIndex );
         throw std::runtime_error(
-            "No such sChainIndex -" + sChainIndexStringRep + " in nodeGroup in processing" );
+            "No such sChainIndex " + sChainIndexStringRep + " in nodeGroup in processing" );
     }
     return *nodeIterator;
 }
