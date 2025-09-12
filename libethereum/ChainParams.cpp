@@ -381,14 +381,20 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
                 u256 sChainIndex = groupNodeConfObj.at( 0 ).get_uint64();
                 u256 id = groupNodeConfObj.at( 1 ).get_uint64();
                 string publicKey = groupNodeConfObj.at( 2 ).get_str();
+#ifdef MIRAGE
                 Address rewardWalletAddress = ZeroAddress;
                 if ( groupNodeConfObj.size() == 4 ) {
                     rewardWalletAddress = Address( groupNodeConfObj.at( 3 ).get_str() );
                 }
+#endif
                 if ( publicKey.empty() ) {
                     BOOST_THROW_EXCEPTION( runtime_error( "Empty public key in config" ) );
                 }
-                groupNodes.push_back( { id, sChainIndex, publicKey, rewardWalletAddress } );
+                groupNodes.push_back( { id, sChainIndex, publicKey,
+#ifdef MIRAGE
+                    rewardWalletAddress
+#endif
+                } );
             }
             sort( groupNodes.begin(), groupNodes.end(),
                 []( const GroupNode& lhs, const GroupNode& rhs ) {
@@ -951,7 +957,7 @@ CurrentGroup ChainParams::getNewestGroup() const {
     return sChain.currentGroups[newestIndex];
 }
 
-NodeGroup ChainParams::getNodeGroupByFinishTimestamp( uint64_t _timestamp ) const {
+unsigned ChainParams::getNodeGroupIdByFinishTimestamp( const uint64_t _timestamp ) const {
     const std::vector< NodeGroup >& groups = sChain.nodeGroups;
     auto compareByFinishTs = []( const NodeGroup& group, uint64_t finishTimestamp ) {
         return group.finishTs < finishTimestamp;
@@ -959,35 +965,17 @@ NodeGroup ChainParams::getNodeGroupByFinishTimestamp( uint64_t _timestamp ) cons
     // searching for the latest group with finish timestamp later then provided
     auto groupIt = std::lower_bound( groups.begin(), groups.end(), _timestamp, compareByFinishTs );
     if ( groupIt == groups.end() ) {
-        std::runtime_error( "No group found for timestamp: " + std::to_string( _timestamp ) );
+        throw std::runtime_error( "No group found for timestamp: " + std::to_string( _timestamp ) );
     }
-    return *groupIt;
-}
-
-GroupNode ChainParams::getIdBySChainIndexInNodeGroup(
-    const NodeGroup& group, uint64_t _sChainIndex ) const {
-    if ( _sChainIndex < 1 ) {
-        throw std::runtime_error( "sChainIndex is too small" );
-    }
-    // shifting since sChain indices are numbered from 0 in nodeGroups config section
-    uint64_t shiftedIndex = _sChainIndex - 1;
-    auto hasSchainIndex = [&shiftedIndex](
-                              const GroupNode& node ) { return node.schainIndex == shiftedIndex; };
-
-    auto nodeIterator = std::find_if( group.nodes.begin(), group.nodes.end(), hasSchainIndex );
-    if ( nodeIterator == group.nodes.end() ) {
-        std::string sChainIndexStringRep = std::to_string( shiftedIndex );
-        throw std::runtime_error(
-            "No such sChainIndex " + sChainIndexStringRep + " in nodeGroup in processing" );
-    }
-    return *nodeIterator;
+    return std::distance( groups.begin(), groupIt );
 }
 
 Address ChainParams::getNodeBeneficiaryByIndexAndTimestamp(
-    uint64_t _sChainIndex, uint64_t _timestamp ) const {
-    NodeGroup currentGroupInProcessing = getNodeGroupByFinishTimestamp( _timestamp );
-    GroupNode node = getIdBySChainIndexInNodeGroup( currentGroupInProcessing, _sChainIndex );
-    return node.rewardWalletAddress;
+    const uint64_t _sChainIndex, const uint64_t _timestamp ) const {
+    unsigned groupIndexInProcessing = getNodeGroupIdByFinishTimestamp( _timestamp );
+    // shifting since sChain indices are numbered from 0
+    uint64_t shiftedIndex = _sChainIndex - 1;
+    return getHistoricNodeRewardWalletAddress( groupIndexInProcessing, shiftedIndex );
 }
 
 bool ChainParams::isInCommittee( const std::vector< sChainNode >& _committee ) const {

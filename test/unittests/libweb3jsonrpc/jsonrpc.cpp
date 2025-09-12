@@ -5092,7 +5092,8 @@ static std::string const c_BITECommitteeRotationConfigString =
                         "8": [
                             0,
                             8,
-                            "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea105a3d21845e5660bc3d4e7c82e7af1daa3baad393b1521467"
+                            "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea105a3d21845e5660bc3d4e7c82e7af1daa3baad393b1521467",
+                            "0x08151B8F80bfa7dEa760e461412AF24348224edf"
                         ]
                     },
                     "finish_ts": 1,
@@ -5108,7 +5109,8 @@ static std::string const c_BITECommitteeRotationConfigString =
                         "8": [
                             0,
                             8,
-                            "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea105a3d21845e5660bc3d4e7c82e7af1daa3baad393b1521467"
+                            "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea105a3d21845e5660bc3d4e7c82e7af1daa3baad393b1521467",
+                            "0x405c96D388cDFBa4f17493c875CCE9c680225276"
                         ]
                     },
                     "finish_ts": null,
@@ -6082,7 +6084,6 @@ BOOST_AUTO_TEST_CASE( committeeRotation ) {
 
 
 BOOST_AUTO_TEST_CASE( fetchingBlockRewardBeneficiary ) {
-    // testing searching for correct group by timestamp
     std::string config = c_BITECommitteeRotationConfigString;
     Json::Value ret;
     Json::Reader().parse( config, ret );
@@ -6098,18 +6099,18 @@ BOOST_AUTO_TEST_CASE( fetchingBlockRewardBeneficiary ) {
     config = fastWriter.write( ret );
     JsonRpcFixture fixture( config, false, false, true );
 
-    auto group = fixture.client->chainParams().getNodeGroupByFinishTimestamp( 0 );
-    BOOST_REQUIRE( group.finishTs == firstGroupTs );
-    group = fixture.client->chainParams().getNodeGroupByFinishTimestamp( firstGroupTs );
-    BOOST_REQUIRE( group.finishTs == firstGroupTs );
-    group = fixture.client->chainParams().getNodeGroupByFinishTimestamp( firstGroupTs + 1 );
-    BOOST_REQUIRE( group.finishTs == secondGroupTs );
-    group = fixture.client->chainParams().getNodeGroupByFinishTimestamp( secondGroupTs - 1 );
-    BOOST_REQUIRE( group.finishTs == secondGroupTs );
-
-    group = fixture.client->chainParams().getNodeGroupByFinishTimestamp( 0 );
-    auto node = fixture.client->chainParams().getIdBySChainIndexInNodeGroup( group, 1 );
-    BOOST_REQUIRE( node.id == 8 );
+    unsigned groupId = fixture.client->chainParams().getNodeGroupIdByFinishTimestamp( 0 );
+    BOOST_REQUIRE( groupId == 0 );
+    groupId = fixture.client->chainParams().getNodeGroupIdByFinishTimestamp( firstGroupTs );
+    BOOST_REQUIRE( groupId == 0 );
+    groupId = fixture.client->chainParams().getNodeGroupIdByFinishTimestamp( firstGroupTs + 1 );
+    BOOST_REQUIRE( groupId == 1 );
+    groupId = fixture.client->chainParams().getNodeGroupIdByFinishTimestamp( secondGroupTs - 1 );
+    BOOST_REQUIRE( groupId == 1 );
+    Address rewardWalletAddress = fixture.client->chainParams().getNodeBeneficiaryByIndexAndTimestamp( 1, firstGroupTs );
+    BOOST_REQUIRE( rewardWalletAddress == Address( "0x08151B8F80bfa7dEa760e461412AF24348224edf" )  );
+    rewardWalletAddress = fixture.client->chainParams().getNodeBeneficiaryByIndexAndTimestamp( 1, firstGroupTs + 1 );
+    BOOST_REQUIRE( rewardWalletAddress == Address( "0x405c96D388cDFBa4f17493c875CCE9c680225276" )  );
 }
 #endif // MIRAGE
 
