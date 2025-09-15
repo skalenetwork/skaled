@@ -967,7 +967,7 @@ Address ChainParams::getNodeBeneficiaryInHistoricGroup(
     if ( sChain.nodeGroups.size() > 0 ) {
         return getHistoricNodeRewardWalletAddress( _historicGroupIndex, shiftedIndex );
     } else {
-        return sChain.currentGroups[1].nodes[_sChainIndex].owner;
+        return sChain.currentGroups.at( 1 ).nodes.at( shiftedIndex ).owner;
     }
 }
 
