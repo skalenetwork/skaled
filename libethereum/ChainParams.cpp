@@ -960,6 +960,9 @@ CurrentGroup ChainParams::getNewestGroup() const {
 Address ChainParams::getNodeBeneficiaryInHistoricGroup(
     const unsigned _historicGroupIndex, const uint64_t _sChainIndex ) const {
     // shifting since sChain indices are numbered from 0
+    if ( _sChainIndex == 0 ) {
+        throw std::runtime_error( "Cannot get beneficiary for zero sChainIndex" );
+    }
     uint64_t shiftedIndex = _sChainIndex - 1;
     return getHistoricNodeRewardWalletAddress( _historicGroupIndex, shiftedIndex );
 }
