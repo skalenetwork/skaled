@@ -6088,28 +6088,13 @@ BOOST_AUTO_TEST_CASE( fetchingBlockRewardBeneficiary ) {
     Json::Value ret;
     Json::Reader().parse( config, ret );
 
-    auto currentTime = time( nullptr );
-    auto firstGroupTs = currentTime;
-    auto secondGroupTs = uint64_t( -1 );
-
-    ret["skaleConfig"]["sChain"]["nodeGroups"]["0"]["finish_ts"] = firstGroupTs;
-    ret["skaleConfig"]["sChain"]["nodeGroups"]["1"]["finish_ts"] = uint64_t( -1 );
-
     Json::FastWriter fastWriter;
     config = fastWriter.write( ret );
     JsonRpcFixture fixture( config, false, false, true );
 
-    unsigned groupId = fixture.client->chainParams().getNodeGroupIdByFinishTimestamp( 0 );
-    BOOST_REQUIRE( groupId == 0 );
-    groupId = fixture.client->chainParams().getNodeGroupIdByFinishTimestamp( firstGroupTs );
-    BOOST_REQUIRE( groupId == 0 );
-    groupId = fixture.client->chainParams().getNodeGroupIdByFinishTimestamp( firstGroupTs + 1 );
-    BOOST_REQUIRE( groupId == 1 );
-    groupId = fixture.client->chainParams().getNodeGroupIdByFinishTimestamp( secondGroupTs - 1 );
-    BOOST_REQUIRE( groupId == 1 );
-    Address rewardWalletAddress = fixture.client->chainParams().getNodeBeneficiaryByIndexAndTimestamp( 1, firstGroupTs );
+    Address rewardWalletAddress = fixture.client->chainParams().getNodeBeneficiaryInHistoricGroup( 0, 1 );
     BOOST_REQUIRE( rewardWalletAddress == Address( "0x08151B8F80bfa7dEa760e461412AF24348224edf" )  );
-    rewardWalletAddress = fixture.client->chainParams().getNodeBeneficiaryByIndexAndTimestamp( 1, firstGroupTs + 1 );
+    rewardWalletAddress = fixture.client->chainParams().getNodeBeneficiaryInHistoricGroup( 1, 1 );
     BOOST_REQUIRE( rewardWalletAddress == Address( "0x405c96D388cDFBa4f17493c875CCE9c680225276" )  );
 }
 #endif // MIRAGE

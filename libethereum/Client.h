@@ -209,7 +209,7 @@ public:
     }
 
 #ifdef MIRAGE
-    Address getWinningNodeBeneficiary( uint64_t, uint64_t ) const;
+    Address getWinningNodeBeneficiary( uint64_t ) const;
 
 #endif
 

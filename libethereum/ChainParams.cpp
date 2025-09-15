@@ -957,25 +957,11 @@ CurrentGroup ChainParams::getNewestGroup() const {
     return sChain.currentGroups[newestIndex];
 }
 
-unsigned ChainParams::getNodeGroupIdByFinishTimestamp( const uint64_t _timestamp ) const {
-    const std::vector< NodeGroup >& groups = sChain.nodeGroups;
-    auto compareByFinishTs = []( const NodeGroup& group, uint64_t finishTimestamp ) {
-        return group.finishTs < finishTimestamp;
-    };
-    // searching for the latest group with finish timestamp later then provided
-    auto groupIt = std::lower_bound( groups.begin(), groups.end(), _timestamp, compareByFinishTs );
-    if ( groupIt == groups.end() ) {
-        throw std::runtime_error( "No group found for timestamp: " + std::to_string( _timestamp ) );
-    }
-    return std::distance( groups.begin(), groupIt );
-}
-
-Address ChainParams::getNodeBeneficiaryByIndexAndTimestamp(
-    const uint64_t _sChainIndex, const uint64_t _timestamp ) const {
-    unsigned groupIndexInProcessing = getNodeGroupIdByFinishTimestamp( _timestamp );
+Address ChainParams::getNodeBeneficiaryInHistoricGroup(
+    const unsigned _historicGroupIndex, const uint64_t _sChainIndex ) const {
     // shifting since sChain indices are numbered from 0
     uint64_t shiftedIndex = _sChainIndex - 1;
-    return getHistoricNodeRewardWalletAddress( groupIndexInProcessing, shiftedIndex );
+    return getHistoricNodeRewardWalletAddress( _historicGroupIndex, shiftedIndex );
 }
 
 bool ChainParams::isInCommittee( const std::vector< sChainNode >& _committee ) const {
