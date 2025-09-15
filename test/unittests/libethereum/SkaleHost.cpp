@@ -149,7 +149,19 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         // so that tests can be run in parallel
         // TODO: better make it use ethemeral in-memory databases
         chainParams->extraData = h256::random().asBytes();
+#ifdef MIRAGE
+        chainParams->sChain.nodeGroups = {
+            { { GroupNode{ u256( 0 ), u256( 8 ),
+                           "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea"
+                           "10"
+                           "5a3d21845e5660bc3d4e7c82e7af1daa3baad393b1521467",
+                           Address( "0x08151B8F80bfa7dEa760e461412AF24348224edf" )
+              } },
+              uint64_t( -1 ), { "0", "0", "1", "0" } }
+        };
+#else
         chainParams->sChain.nodeGroups = { { {}, uint64_t( -1 ), { "0", "0", "1", "0" } } };
+#endif
         chainParams->nodeInfo.port = chainParams->nodeInfo.port6 = rand_port;
         chainParams->nodeInfo.testSignatures = true;
         chainParams->sChain.nodes[0].port = chainParams->sChain.nodes[0].port6 = rand_port;
@@ -802,7 +814,7 @@ BOOST_DATA_TEST_CASE(
     auto receiver = KeyPair::create();
 
 #ifdef MIRAGE
-	// block reward increased for MIRAGE to 5 ETH
+    // block reward increased for MIRAGE to 5 ETH
     auto value = 6 * dev::eth::ether + dev::eth::wei;
 #else
     auto value = 3 * dev::eth::ether + dev::eth::wei;
@@ -1468,7 +1480,7 @@ BOOST_AUTO_TEST_CASE( biteTransactions ) {
     shared_ptr< vector< uint8_t > > originalDataBytesPtr = std::make_shared< vector< uint8_t > >( messageToEncrypt );
 
     DecryptedTransactionFields txFields = {
-        originalDataBytesPtr, 
+        originalDataBytesPtr,
         std::make_shared<dev::bytes>(receiver.address().asBytes())
     };
 

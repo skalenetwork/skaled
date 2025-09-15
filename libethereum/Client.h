@@ -209,7 +209,8 @@ public:
     }
 
 #ifdef MIRAGE
-    Address getWinningNodeAddressByIndex( uint64_t _winningNodeIndex );
+    Address getWinningNodeBeneficiary( uint64_t ) const;
+
 #endif
 
     /// Type of sealers available for this seal engine.

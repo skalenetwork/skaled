@@ -381,10 +381,20 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
                 u256 sChainIndex = groupNodeConfObj.at( 0 ).get_uint64();
                 u256 id = groupNodeConfObj.at( 1 ).get_uint64();
                 string publicKey = groupNodeConfObj.at( 2 ).get_str();
+#ifdef MIRAGE
+                Address rewardWalletAddress = ZeroAddress;
+                if ( groupNodeConfObj.size() == 4 ) {
+                    rewardWalletAddress = Address( groupNodeConfObj.at( 3 ).get_str() );
+                }
+#endif
                 if ( publicKey.empty() ) {
                     BOOST_THROW_EXCEPTION( runtime_error( "Empty public key in config" ) );
                 }
-                groupNodes.push_back( { id, sChainIndex, publicKey } );
+                groupNodes.push_back( { id, sChainIndex, publicKey,
+#ifdef MIRAGE
+                    rewardWalletAddress
+#endif
+                } );
             }
             sort( groupNodes.begin(), groupNodes.end(),
                 []( const GroupNode& lhs, const GroupNode& rhs ) {
@@ -947,20 +957,17 @@ CurrentGroup ChainParams::getNewestGroup() const {
     return sChain.currentGroups[newestIndex];
 }
 
-Address ChainParams::getSChainNodeBeneficiaryAddressByIndex( uint64_t _sChainIndex ) const {
-    const auto& sChainNodes = sChain.nodes;
-    auto has_schain_index = [&_sChainIndex]( const sChainNode& node ) {
-        return node.sChainIndex == _sChainIndex;
-    };
-    auto nodeIterator = find_if( sChainNodes.begin(), sChainNodes.end(), has_schain_index );
-    if ( nodeIterator == sChainNodes.end() ) {
-        std::string sChainIndexStringRep = std::to_string( _sChainIndex );
-        throw std::runtime_error( "No such sChainIndex -" + sChainIndexStringRep + " in config" );
+Address ChainParams::getNodeBeneficiaryInHistoricGroup(
+    const unsigned _historicGroupIndex, const uint64_t _sChainIndex ) const {
+    // shifting since sChain indices are numbered from 0
+    if ( _sChainIndex == 0 ) {
+        throw std::runtime_error( "Cannot get beneficiary for zero sChainIndex" );
     }
-    if ( nodeIterator->rewardWalletAddress == ZeroAddress ) {
-        return nodeIterator->owner;
+    uint64_t shiftedIndex = _sChainIndex - 1;
+    if ( sChain.nodeGroups.size() > 0 ) {
+        return getHistoricNodeRewardWalletAddress( _historicGroupIndex, shiftedIndex );
     } else {
-        return nodeIterator->rewardWalletAddress;
+        return sChain.currentGroups.at( 1 ).nodes.at( shiftedIndex ).owner;
     }
 }
 
