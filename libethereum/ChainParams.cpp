@@ -964,7 +964,11 @@ Address ChainParams::getNodeBeneficiaryInHistoricGroup(
         throw std::runtime_error( "Cannot get beneficiary for zero sChainIndex" );
     }
     uint64_t shiftedIndex = _sChainIndex - 1;
-    return getHistoricNodeRewardWalletAddress( _historicGroupIndex, shiftedIndex );
+    if ( sChain.nodeGroups.size() > 0 ) {
+        return getHistoricNodeRewardWalletAddress( _historicGroupIndex, shiftedIndex );
+    } else {
+        return sChain.currentGroups[1].nodes[_sChainIndex].owner;
+    }
 }
 
 bool ChainParams::isInCommittee( const std::vector< sChainNode >& _committee ) const {
