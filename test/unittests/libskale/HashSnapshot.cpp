@@ -42,26 +42,27 @@ class SnapshotHashAgentTest {
 public:
     SnapshotHashAgentTest(
         ChainParams& _chainParams, const std::string& urlToDownloadSnapshotFrom ) {
-        std::vector< libff::alt_bn128_Fr > coeffs( _chainParams.sChain.t );
+        std::vector< libBLS::algebra::FrScalar > coeffs( _chainParams.sChain.t );
 
         for ( auto& elem : coeffs ) {
-            elem = libff::alt_bn128_Fr::random_element();
+            elem = libBLS::algebra::FrScalar::random();
 
             while ( elem == 0 ) {
-                elem = libff::alt_bn128_Fr::random_element();
+                elem = libBLS::algebra::FrScalar::random();
             }
         }
 
 
         blsPrivateKeys_.resize( _chainParams.sChain.nodes.size() );
         for ( size_t i = 0; i < _chainParams.sChain.nodes.size(); ++i ) {
-            blsPrivateKeys_[i] = libff::alt_bn128_Fr::zero();
+            blsPrivateKeys_[i] = libBLS::algebra::FrScalar::zero();
 
             for ( size_t j = 0; j < _chainParams.sChain.t; ++j ) {
                 blsPrivateKeys_[i] =
                     blsPrivateKeys_[i] +
                     coeffs[j] *
-                        libff::power( libff::alt_bn128_Fr( std::to_string( i + 1 ).c_str() ), j );
+                        libBLS::algebra::power( libBLS::algebra::FrScalar::fromString( 
+                            std::to_string( i + 1 ), libBLS::Base::DEC ), j );
             }
         }
 
@@ -70,27 +71,14 @@ public:
         for ( size_t i = 0; i < _chainParams.sChain.t; ++i ) {
             idx[i] = i + 1;
         }
-        auto lagrange_coeffs = libBLS::ThresholdUtils::LagrangeCoeffs( idx, _chainParams.sChain.t );
+        auto lagrange_coeffs = libBLS::algebra::lagrangeCoeffs( idx, _chainParams.sChain.t );
         auto keys = obj.KeysRecover( lagrange_coeffs, this->blsPrivateKeys_ );
-        keys.second.to_affine_coordinates();
+        keys.second.toAffineCoordinates();
+        auto stringArray = keys.second.toStringArray( libBLS::Base::DEC );
 #ifdef MIRAGE
-        _chainParams.sChain.currentGroups.back().commonBLSPublicKeys[0] =
-            libBLS::ThresholdUtils::fieldElementToString( keys.second.X.c0 );
-        _chainParams.sChain.currentGroups.back().commonBLSPublicKeys[1] =
-            libBLS::ThresholdUtils::fieldElementToString( keys.second.X.c1 );
-        _chainParams.sChain.currentGroups.back().commonBLSPublicKeys[2] =
-            libBLS::ThresholdUtils::fieldElementToString( keys.second.Y.c0 );
-        _chainParams.sChain.currentGroups.back().commonBLSPublicKeys[3] =
-            libBLS::ThresholdUtils::fieldElementToString( keys.second.Y.c1 );
+        _chainParams.sChain.currentGroups.back().commonBLSPublicKeys = stringArray;
 #else
-        _chainParams.nodeInfo.commonBLSPublicKeys[0] =
-            libBLS::ThresholdUtils::fieldElementToString( keys.second.X.c0 );
-        _chainParams.nodeInfo.commonBLSPublicKeys[1] =
-            libBLS::ThresholdUtils::fieldElementToString( keys.second.X.c1 );
-        _chainParams.nodeInfo.commonBLSPublicKeys[2] =
-            libBLS::ThresholdUtils::fieldElementToString( keys.second.Y.c0 );
-        _chainParams.nodeInfo.commonBLSPublicKeys[3] =
-            libBLS::ThresholdUtils::fieldElementToString( keys.second.Y.c1 );
+        _chainParams.nodeInfo.commonBLSPublicKeys = stringArray;
 #endif
 
         this->secret_as_is = keys.first;
@@ -113,10 +101,9 @@ public:
         for ( size_t i = 0; i < this->hashAgent_->n_; ++i ) {
             this->hashAgent_->isReceived_[i] = true;
             this->hashAgent_->public_keys_[i] =
-                this->blsPrivateKeys_[i] * libff::alt_bn128_G2::one();
+                this->blsPrivateKeys_[i] * libBLS::algebra::G2Point::generator();
             this->hashAgent_->signatures_[i] = libBLS::Bls::Signing(
-                libBLS::ThresholdUtils::HashtoG1( std::make_shared< std::array< uint8_t, 32 > >(
-                    this->hashAgent_->hashes_[i].asArray() ) ),
+                libBLS::algebra::hashToG1( this->hashAgent_->hashes_[i].asArray() ),
                 this->blsPrivateKeys_[i] );
         }
     }
@@ -148,14 +135,14 @@ public:
         return ret;
     }
 
-    std::pair< dev::h256, libff::alt_bn128_G1 > getVotedHash() const {
+    std::pair< dev::h256, libBLS::algebra::G1Point > getVotedHash() const {
         return this->hashAgent_->getVotedHash();
     }
 
     bool voteForHash() { return this->hashAgent_->voteForHash(); }
 
     void spoilSignature( size_t idx ) {
-        this->hashAgent_->signatures_[idx] = libff::alt_bn128_G1::random_element();
+        this->hashAgent_->signatures_[idx] = libBLS::algebra::G1Point::random();
     }
 
     static std::shared_ptr< ChainParams > makeChainParamsForTest( const std::string& _testName ) {
@@ -224,13 +211,13 @@ public:
         return chainParams;
     }
 
-    libff::alt_bn128_Fr secret_as_is;
+    libBLS::algebra::FrScalar secret_as_is;
 
     std::shared_ptr< SnapshotHashAgent > hashAgent_;
 
     bool isSnapshotMajorityRequired = false;
 
-    std::vector< libff::alt_bn128_Fr > blsPrivateKeys_;
+    std::vector< libBLS::algebra::FrScalar > blsPrivateKeys_;
 
     enum testNames { PositiveTest, WrongHash, NotEnoughVotes, WrongSignature, noSnapshotMajority };
 };
@@ -512,7 +499,7 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
 BOOST_AUTO_TEST_SUITE( SnapshotSigningTestSuite )
 
 BOOST_AUTO_TEST_CASE( PositiveTest ) {
-    libff::init_alt_bn128_params();
+    libBLS::init();
     std::shared_ptr< ChainParams > chainParams =
         SnapshotHashAgentTest::makeChainParamsForTest( "PositiveTest" );
     SnapshotHashAgentTest test_agent( *chainParams, "" );
@@ -526,13 +513,12 @@ BOOST_AUTO_TEST_CASE( PositiveTest ) {
     BOOST_REQUIRE( test_agent.getVotedHash().first == hash );
     BOOST_REQUIRE(
         test_agent.getVotedHash().second ==
-        libBLS::Bls::Signing( libBLS::ThresholdUtils::HashtoG1(
-                                  std::make_shared< std::array< uint8_t, 32 > >( hash.asArray() ) ),
+        libBLS::Bls::Signing( libBLS::algebra::hashToG1( hash.asArray() ),
             test_agent.secret_as_is ) );
 }
 
 BOOST_AUTO_TEST_CASE( WrongHash ) {
-    libff::init_alt_bn128_params();
+    libBLS::init();
     std::shared_ptr< ChainParams > chainParams =
         SnapshotHashAgentTest::makeChainParamsForTest( "WrongHash" );
     SnapshotHashAgentTest test_agent( *chainParams, "" );
@@ -547,7 +533,7 @@ BOOST_AUTO_TEST_CASE( WrongHash ) {
 }
 
 BOOST_AUTO_TEST_CASE( NotEnoughVotes ) {
-    libff::init_alt_bn128_params();
+    libBLS::init();
     std::shared_ptr< ChainParams > chainParams =
         SnapshotHashAgentTest::makeChainParamsForTest( "NotEnoughVotes" );
     SnapshotHashAgentTest test_agent( *chainParams, "" );
@@ -560,7 +546,7 @@ BOOST_AUTO_TEST_CASE( NotEnoughVotes ) {
 }
 
 BOOST_AUTO_TEST_CASE( WrongSignature ) {
-    libff::init_alt_bn128_params();
+    libBLS::init();
     std::shared_ptr< ChainParams > chainParams =
         SnapshotHashAgentTest::makeChainParamsForTest( "WrongSignature" );
     SnapshotHashAgentTest test_agent( *chainParams, "" );
@@ -572,7 +558,7 @@ BOOST_AUTO_TEST_CASE( WrongSignature ) {
 }
 
 BOOST_AUTO_TEST_CASE( noSnapshotMajority ) {
-    libff::init_alt_bn128_params();
+    libBLS::init();
     std::shared_ptr< ChainParams > chainParams =
         SnapshotHashAgentTest::makeChainParamsForTest( "noSnapshotMajority" );
     std::string url = chainParams->getNodeByIndex( 3 ).ip + std::string( ":1234" );

@@ -23,4 +23,4 @@ target_include_directories(ethashseal PRIVATE ../utils
         ${CMAKE_SOURCE_DIR}/libconsensus/libjson-rpc-cpp/src
         ${CMAKE_SOURCE_DIR}/libconsensus/jsoncpp/include
         )
-target_link_libraries(ethashseal PUBLIC ethereum ethcore)
+target_link_libraries(ethashseal PUBLIC ethereum ethcore bls)

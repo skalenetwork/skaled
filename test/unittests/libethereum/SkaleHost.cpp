@@ -1451,10 +1451,10 @@ BOOST_AUTO_TEST_CASE( biteTransactions ) {
     pair< bool, Secret > ar = accountHolder->authenticate( ts );
     Transaction txOriginal( ts, ar.second );
 
-    libBLS::TEBase::initializeIfNecessary();
+    libBLS::init();
     auto messageToEncrypt = libBLS::ThresholdUtils::hexCStringToBytes( dataToEncrypt.c_str() );
-    auto publicKeyBytes = libBLS::ThresholdUtils::G2ToBytes( libff::alt_bn128_G2::random_element() );
-    auto ciphertext = libBLS::ThresholdEncryption::encrypt( messageToEncrypt, publicKeyBytes );
+    auto publicKey = libBLS::TEPublicKey( libBLS::algebra::G2Point::random() );
+    auto ciphertext = libBLS::ThresholdEncryption::encrypt( messageToEncrypt, publicKey );
 
     json["data"] = std::string( "0x" ) + libBLS::ThresholdUtils::bytesToHexString( ciphertext.toBytes() );
 

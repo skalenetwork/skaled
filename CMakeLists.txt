@@ -110,6 +110,10 @@ include( EthExecutableHelper )
 include( EthDependencies )
 include( EthUtils )
 
+# set bls to use MCL backend
+add_library(bls_backend INTERFACE)
+target_compile_definitions(bls_backend INTERFACE USE_MCL=1)
+
 set( CLANG_FORMAT_EXCLUDE_PATTERNS
     ${CMAKE_BINARY_DIR}
     ${DEPS_SOURCES_ROOT}
@@ -208,7 +212,6 @@ add_subdirectory( libethcore )
 add_subdirectory( libevm )
 add_subdirectory( libethereum )
 add_subdirectory( libethashseal )
-
 add_subdirectory( libweb3jsonrpc )
 
 if( EVMJIT )
@@ -242,10 +245,10 @@ if ( CONSENSUS )
     set( BUILD_TESTS OFF CACHE BOOL "Build tests" ) # do not build libbls tests
     add_subdirectory( libconsensus EXCLUDE_FROM_ALL)
     target_compile_options( consensus PRIVATE -Wno-unused-variable ) # silence libff warnings
-    target_compile_options( bls PRIVATE -Wno-unused-variable ) # silence libff warnings
+    target_compile_options( bls PRIVATE -Wno-unused-variable) # silence libff warnings
 else()
     add_subdirectory( libconsensus/libBLS )
-    target_compile_options( bls PRIVATE -Wno-unused-variable ) # silence libff warnings
+    target_compile_options( bls PRIVATE -Wno-unused-variable) # silence libff warnings
     set( BUILD_TESTS OFF CACHE BOOL "Build tests" ) # do not build libbls tests
 endif()
 

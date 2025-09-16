@@ -602,12 +602,7 @@ std::string Skale::oracle_checkResult( std::string& receipt ) {
 Json::Value Skale::bite_getCommitteesInfo() {
     try {
         auto stringArrayToBLSPublicKey = []( const std::array< std::string, 4 >& publicKeyArray ) {
-            libff::alt_bn128_G2 publicKeyG2;
-            publicKeyG2.Z = libff::alt_bn128_Fq2::one();
-            publicKeyG2.X.c0 = libff::alt_bn128_Fq( publicKeyArray[0].c_str() );
-            publicKeyG2.X.c1 = libff::alt_bn128_Fq( publicKeyArray[1].c_str() );
-            publicKeyG2.Y.c0 = libff::alt_bn128_Fq( publicKeyArray[2].c_str() );
-            publicKeyG2.Y.c1 = libff::alt_bn128_Fq( publicKeyArray[3].c_str() );
+            libBLS::algebra::G2Point publicKeyG2 = libBLS::algebra::G2Point::fromString( publicKeyArray, libBLS::Base::DEC );
             libBLS::TEPublicKey publicKey( publicKeyG2 );
             return publicKey;
         };

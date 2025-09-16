@@ -442,12 +442,12 @@ unsigned getBlockToDownladSnapshot( const std::string& nodeUrl ) {
     return blockNumber;
 }
 
-std::pair< std::vector< std::string >, std::pair< dev::h256, libff::alt_bn128_G1 > >
+std::pair< std::vector< std::string >, std::pair< dev::h256, libBLS::algebra::G1Point > >
 voteForSnapshotHash(
     std::unique_ptr< SnapshotHashAgent >& snapshotHashAgent, unsigned blockNumber ) {
     static Logger loggerInfo{ createLogger( VerbosityInfo, "voteForSnapshotHash" ) };
 
-    std::pair< dev::h256, libff::alt_bn128_G1 > votedHash;
+    std::pair< dev::h256, libBLS::algebra::G1Point > votedHash;
     std::vector< std::string > listUrlsToDownload;
     try {
         listUrlsToDownload = snapshotHashAgent->getNodesToDownloadSnapshotFrom( blockNumber );
@@ -499,7 +499,7 @@ bool checkLocalSnapshot( std::shared_ptr< SnapshotManager >& snapshotManager, un
 
 bool tryDownloadSnapshot( std::shared_ptr< SnapshotManager >& snapshotManager,
     const ChainParams& chainParams, const std::vector< std::string >& listUrlsToDownload,
-    const std::pair< dev::h256, libff::alt_bn128_G1 >& votedHash, unsigned blockNumber,
+    const std::pair< dev::h256, libBLS::algebra::G1Point >& votedHash, unsigned blockNumber,
     bool isRegularSnapshot ) {
     static Logger loggerInfo{ createLogger( VerbosityInfo, "tryDownloadSnapshot" ) };
     static Logger loggerWarning{ createLogger( VerbosityWarning, "tryDownloadSnapshot" ) };
@@ -581,8 +581,8 @@ bool downloadSnapshotFromUrl( std::shared_ptr< SnapshotManager >& snapshotManage
     else
         snapshotHashAgent.reset( new SnapshotHashAgent( chainParams, arrayCommonPublicKey ) );
 
-    libff::init_alt_bn128_params();
-    std::pair< dev::h256, libff::alt_bn128_G1 > votedHash;
+    libBLS::init();
+    std::pair< dev::h256, libBLS::algebra::G1Point > votedHash;
     std::vector< std::string > listUrlsToDownload;
     std::tie( listUrlsToDownload, votedHash ) =
         voteForSnapshotHash( snapshotHashAgent, blockNumber );
