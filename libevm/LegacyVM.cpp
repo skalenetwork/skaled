@@ -81,6 +81,25 @@ void LegacyVM::onOperation() {
 // set current SP to SP', adjust SP' per _removed and _added items
 //
 void LegacyVM::adjustStack( unsigned _removed, unsigned _added ) {
+    // Log current state
+    LOG( m_loggerTrace ) << "adjustStack: SP=" << (void*)m_SP
+              << " SPP=" << (void*)m_SPP
+              << " stackEnd=" << (void*)m_stackEnd
+              << " removed=" << _removed << " added=" << _added;
+
+    m_SP = m_SPP;
+
+    // Check for potential overflow BEFORE it happens
+    if (_removed > 0) {
+        if (m_SPP > (u256*)(-1) - _removed) {
+            LOG( m_loggerTrace ) << "Stack pointer overflow would occur!";
+            throwBadStack(_removed, _added);
+        }
+        if (m_stackEnd - m_SPP < _removed) {
+            LOG( m_loggerTrace ) << "Stack bounds would be exceeded!";
+            throwBadStack(_removed, _added);
+        }
+    }
     m_SP = m_SPP;
 
     // adjust stack and check bounds
@@ -96,6 +115,8 @@ void LegacyVM::updateSSGas() {
     u256 const currentValue = m_ext->store( m_SP[0] );
     u256 const newValue = m_SP[1];
 
+    LOG( m_loggerTrace ) << "Update SS Gas: Contract address: " << m_ext->myAddress.hex() << " : Storage address: " << m_SP[0] << " : New storage: " << m_SP[1];
+
     if ( m_schedule->eip1283Mode )
         updateSSGasEIP1283( currentValue, newValue );
     else
@@ -107,6 +128,7 @@ void LegacyVM::updateSSGasPreEIP1283( u256 const& _currentValue, u256 const& _ne
         m_runGas = toInt63( m_schedule->sstoreSetGas );
     else if ( _currentValue && !_newValue ) {
         m_runGas = toInt63( m_schedule->sstoreResetGas );
+        LOG( m_loggerTrace ) << "Refund 15k: Current value: " << _currentValue << " : New value: " << _newValue;
         m_ext->sub.refunds += m_schedule->sstoreRefundGas;
     } else
         m_runGas = toInt63( m_schedule->sstoreResetGas );
