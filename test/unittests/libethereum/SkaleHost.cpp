@@ -66,7 +66,7 @@ public:
   shared_ptr< DecryptedTransactionFieldsMap > _decryptedTransactions,
 #endif
         uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice = 0, u256 _stateRoot = 0,
-#ifdef MIRAGE
+#ifdef FAIR
         uint64_t _winningNodeIndex = 1
 #else
         uint64_t _winningNodeIndex = -1
@@ -118,7 +118,7 @@ public:
         return ConsensusInterface::SyncInfo{};
     };
 
-#ifdef MIRAGE
+#ifdef FAIR
     void updateLogger() const override {}
 #endif
 };
@@ -149,7 +149,7 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         // so that tests can be run in parallel
         // TODO: better make it use ethemeral in-memory databases
         chainParams->extraData = h256::random().asBytes();
-#ifdef MIRAGE
+#ifdef FAIR
         chainParams->sChain.nodeGroups = {
             { { GroupNode{ u256( 0 ), u256( 8 ),
                            "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea"
@@ -280,7 +280,7 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
 
 BOOST_AUTO_TEST_SUITE( SkaleHostSuite )  //, *boost::unit_test::disabled() )
 
-#ifndef MIRAGE
+#ifndef FAIR
 auto skipInvalidTransactionsVariants = boost::unit_test::data::make( { false, true } );
 #else
 auto skipInvalidTransactionsVariants = boost::unit_test::data::make( { true } );
@@ -813,8 +813,8 @@ BOOST_DATA_TEST_CASE(
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
-#ifdef MIRAGE
-    // block reward increased for MIRAGE to 5 ETH
+#ifdef FAIR
+    // block reward increased for FAIR to 5 ETH
     auto value = 6 * dev::eth::ether + dev::eth::wei;
 #else
     auto value = 3 * dev::eth::ether + dev::eth::wei;
@@ -1025,7 +1025,7 @@ BOOST_AUTO_TEST_CASE( transactionDropReceive
 
     // 1st tx
     Transaction tx1 = fixture.tx_from_json( json );
-#ifndef MIRAGE
+#ifndef FAIR
     tx1.checkOutExternalGas(
         client->chainParams(), client->latestBlock().info().timestamp(), client->number() );
 #endif
@@ -1096,7 +1096,7 @@ BOOST_AUTO_TEST_CASE(
     // 1st tx
     Transaction tx1 = fixture.tx_from_json( json );
 
-#ifndef MIRAGE
+#ifndef FAIR
     tx1.checkOutExternalGas(
         client->chainParams(), client->latestBlock().info().timestamp(), client->number() );
 #endif
@@ -1164,7 +1164,7 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPrice
     // 1st tx
     Transaction tx1 = fixture.tx_from_json( json );
 
-#ifndef MIRAGE
+#ifndef FAIR
     tx1.checkOutExternalGas(
         client->chainParams(), client->latestBlock().info().timestamp(), client->number() );
 #endif
@@ -1240,7 +1240,7 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive
     // 1st tx
     Transaction tx1 = fixture.tx_from_json( json );
 
-#ifndef MIRAGE
+#ifndef FAIR
     tx1.checkOutExternalGas(
         client->chainParams(), client->latestBlock().info().timestamp(), client->number() );
 #endif
@@ -1382,7 +1382,7 @@ BOOST_AUTO_TEST_CASE( partialCatchUp
     ar = accountHolder->authenticate( ts );
     Transaction tx2( ts, ar.second );
 
-#ifndef MIRAGE
+#ifndef FAIR
     h256 txHash = tx2.sha3();
 #endif
 
@@ -1398,7 +1398,7 @@ BOOST_AUTO_TEST_CASE( partialCatchUp
                                 utcTime(), 2U ) );
 
     REQUIRE_BLOCK_INCREASE( 1 );
-#ifndef MIRAGE
+#ifndef FAIR
     REQUIRE_BLOCK_SIZE( 2, 2 );
     REQUIRE_BLOCK_TRANSACTION( 2, 1, txHash );
 #else
@@ -1420,7 +1420,7 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
     BOOST_REQUIRE( res.second == toBigEndian( static_cast< u256 >( blockRandom ) ) );
 }
 
-#ifndef MIRAGE
+#ifndef FAIR
 BOOST_AUTO_TEST_CASE( getCurrentBLSPublicKey ) {
     SkaleHostFixture fixture;
     auto& skaleHost = fixture.skaleHost;
@@ -1549,7 +1549,7 @@ BOOST_FIXTURE_TEST_CASE(
 #endif
                                 utcTime(), 1U ) );
 
-#ifndef MIRAGE
+#ifndef FAIR
     REQUIRE_BLOCK_SIZE( 1, 1 );
     REQUIRE_BLOCK_TRANSACTION( 1, 0, tx1Hash );
 #else

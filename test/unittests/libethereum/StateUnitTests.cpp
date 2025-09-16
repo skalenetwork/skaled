@@ -225,7 +225,7 @@ public:
     DbRotationFixture() { state.mutableHistoricState().saveRootForBlockNumber( 0 ); }
     TransientDirectory m_tempDirState;
     State state = State( 0, m_tempDirState.path(), h256{}, BaseState::Empty, 0,
-#ifndef MIRAGE
+#ifndef FAIR
                          32,
 #endif
                          1 );

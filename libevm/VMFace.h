@@ -39,7 +39,7 @@ ETH_SIMPLE_EXCEPTION_VM( BufferOverrun );
 ETH_SIMPLE_EXCEPTION_VM( StorageOverflow );
 ETH_SIMPLE_EXCEPTION_VM( InvalidContractDeployer );
 
-#ifdef MIRAGE
+#ifdef FAIR
 ETH_SIMPLE_EXCEPTION_VM( UnsupportedDencunOpcode );
 #endif
 

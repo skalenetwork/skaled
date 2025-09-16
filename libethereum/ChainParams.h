@@ -91,7 +91,7 @@ struct ChainParams : public ChainOperationParams {
 
     std::string getSchainName() const { return sChain.name; }
 
-#ifdef MIRAGE
+#ifdef FAIR
     Address getNodeBeneficiaryInHistoricGroup( const unsigned, const uint64_t ) const;
 
     bool updateCurrentGroupIfNeeded( uint64_t _latestBlockTimestamp );
@@ -158,7 +158,7 @@ struct ChainParams : public ChainOperationParams {
 
     size_t getThresholdCount() const { return sChain.t; }
 
-#ifdef MIRAGE
+#ifdef FAIR
     Address getStakingContractAddress() const;
 #endif
 
@@ -192,7 +192,7 @@ struct ChainParams : public ChainOperationParams {
         return sChain.nodeGroups.at( _historicGroupIndex ).nodes.at( _nodeId ).publicKey;
     }
 
-#ifdef MIRAGE
+#ifdef FAIR
     Address getHistoricNodeRewardWalletAddress(
         unsigned _historicGroupIndex, unsigned _nodeId ) const {
         return sChain.nodeGroups.at( _historicGroupIndex ).nodes.at( _nodeId ).rewardWalletAddress;
@@ -239,7 +239,7 @@ private:
 
     mutable std::string originalJSON;
 
-#ifdef MIRAGE
+#ifdef FAIR
     void switchSyncMode( const std::vector< sChainNode >& _nodes );
 
     std::vector< u256 > getNodeIdsForCommittee();

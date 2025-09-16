@@ -170,7 +170,7 @@ public:
     std::pair< int, int > getLatestSnapshots() const;
     bool checkSnapshotFolderAndSnapshotHash( unsigned _blockNumber ) const;
     void computeSnapshotHash( unsigned _blockNumber
-#ifndef MIRAGE
+#ifndef FAIR
         ,
         bool isChecking = false
 #endif
@@ -197,7 +197,7 @@ private:
     void cleanupDirectory(
         const boost::filesystem::path& p, const boost::filesystem::path& _keepDirectory = "" );
 
-#ifndef MIRAGE
+#ifndef FAIR
     void computeFileStorageHash( const boost::filesystem::path& _fileSystemDir,
         secp256k1_sha256_t* ctx, bool isChecking ) const;
     void proceedFileStorageDirectory( const boost::filesystem::path& _fileSystemDir,
@@ -207,7 +207,7 @@ private:
     void proceedDirectory( const boost::filesystem::path& path, secp256k1_sha256_t* ctx ) const;
 #endif
     void computeAllVolumesHash( unsigned _blockNumber, secp256k1_sha256_t* ctx
-#ifndef MIRAGE
+#ifndef FAIR
         ,
         bool isChecking
 #endif

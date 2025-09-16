@@ -56,7 +56,7 @@ void LegacyVM::throwDisallowedStateChange() {
     BOOST_THROW_EXCEPTION( DisallowedStateChange() );
 }
 
-#ifdef MIRAGE
+#ifdef FAIR
 void LegacyVM::throwUnsupportedDencunOpcode() {
     BOOST_THROW_EXCEPTION( UnsupportedDencunOpcode() );
 }

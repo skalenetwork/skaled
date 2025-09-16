@@ -175,7 +175,7 @@ public:
     Json::Value bite_getDecryptedTransactionData( const std::string& param1 ) noexcept( false );
 #endif
 
-#ifdef MIRAGE
+#ifdef FAIR
     Json::Value skale_getBLSPublicKey() noexcept( false );
 #endif
 };

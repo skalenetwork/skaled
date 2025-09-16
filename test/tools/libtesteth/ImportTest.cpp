@@ -60,7 +60,7 @@ ImportTest::ImportTest( json_spirit::mObject const& _input, json_spirit::mObject
       m_statePost( 0 ),
       m_testInputObject( _input ),
       m_testOutputObject( _output ) {
-#ifndef MIRAGE
+#ifndef FAIR
     m_statePre.setStorageLimit(1000000000);
     m_statePost.setStorageLimit(1000000000);
 #endif
@@ -206,7 +206,7 @@ bytes ImportTest::executeTest( bool _isFilling ) {
             if ( statePreIsChanged ) {
                 // revert changes in m_statePre
                 m_statePre = State( 0 );
-#ifndef MIRAGE
+#ifndef FAIR
                 m_statePre.setStorageLimit(1000000000);
 #endif
                 importState( m_testInputObject.at( "pre" ).get_obj(), m_statePre );
@@ -416,7 +416,7 @@ void ImportTest::importTransaction( json_spirit::mObject const& _o, eth::Transac
                        toInt( _o.at( "gasLimit" ) ), Address( _o.at( "to" ).get_str() ),
                        importData( _o ), toInt( _o.at( "nonce" ) ),
                        Secret( _o.at( "secretKey" ).get_str() ) );
-#ifndef MIRAGE
+#ifndef FAIR
         o_tr.ignoreExternalGas();
 #endif
     } else {
@@ -430,7 +430,7 @@ void ImportTest::importTransaction( json_spirit::mObject const& _o, eth::Transac
         RLP transactionRLP( transactionRLPStream.out() );
         try {
             o_tr = Transaction( transactionRLP.data(), CheckTransaction::Everything );
-#ifndef MIRAGE
+#ifndef FAIR
             o_tr.ignoreExternalGas();
 #endif
         } catch ( InvalidSignature const& ) {
@@ -442,7 +442,7 @@ void ImportTest::importTransaction( json_spirit::mObject const& _o, eth::Transac
                        Transaction( toInt( _o.at( "value" ) ), toInt( _o.at( "gasPrice" ) ),
                            toInt( _o.at( "gasLimit" ) ), Address( _o.at( "to" ).get_str() ),
                            importData( _o ), toInt( _o.at( "nonce" ) ) );
-#ifndef MIRAGE
+#ifndef FAIR
             o_tr.ignoreExternalGas();
 #endif
         } catch ( Exception& _e ) {
@@ -493,8 +493,8 @@ void ImportTest::importTransaction( json_spirit::mObject const& o_tr ) {
             }
 }
 
-#ifdef MIRAGE
-int ImportTest::compareStatesMIRAGE( State const& _stateExpect, State const& _statePost,
+#ifdef FAIR
+int ImportTest::compareStatesFAIR( State const& _stateExpect, State const& _statePost,
     unordered_set<Address> const& owners,
     AccountMaskMap const _expectedStateOptions, WhenError _throw ) {
     bool wasError = false;
@@ -819,8 +819,8 @@ bool ImportTest::checkGeneralTestSectionSearch( json_spirit::mObject const& _exp
                         _search->second.second = stateMap;
                         return true;
                     }
-#ifdef MIRAGE
-                    int errcode = ImportTest::compareStatesMIRAGE( expectState, postState, unordered_set< Address >(), stateMap, WhenError::Throw );
+#ifdef FAIR
+                    int errcode = ImportTest::compareStatesFAIR( expectState, postState, unordered_set< Address >(), stateMap, WhenError::Throw );
 #else
                     int errcode = ImportTest::compareStates( expectState, postState, stateMap, WhenError::Throw );
 #endif

@@ -67,7 +67,7 @@ SkaleStats::SkaleStats( const std::string& configPath, eth::Interface& _eth )
     initStatsCounters();
     nThisNodeIndex_ = findThisNodeIndex();
     //
-#ifndef MIRAGE
+#ifndef FAIR
     try {
         skutils::url urlMainNet = getImaMainNetURL();
     } catch ( const std::exception& ex ) {
@@ -389,7 +389,7 @@ Json::Value SkaleStats::skale_nodesRpcInfo() {
 }
 
 
-#ifndef MIRAGE
+#ifndef FAIR
 Json::Value SkaleStats::skale_imaInfo() {
     try {
         nlohmann::json joConfig = getConfigJSON();

@@ -4,7 +4,7 @@ using namespace dev::eth;
 
 bool SkipInvalidTransactionsPatch::hasPotentialInvalidTransactionsInBlock(
     dev::eth::BlockNumber _bn, const dev::eth::BlockChain& _bc ) {
-#ifdef MIRAGE
+#ifdef FAIR
     return false;
 #endif
     if ( _bn == 0 )

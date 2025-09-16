@@ -80,7 +80,7 @@ Json::Value SkaleClient::skale_getSnapshotSignature( unsigned blockNumber ) {
     }
 }
 
-#ifdef MIRAGE
+#ifdef FAIR
 Json::Value SkaleClient::skale_getBLSPublicKey() {
     Json::Value p;
     p = Json::nullValue;

@@ -104,7 +104,7 @@ void rotating_db_io::rotate() {
     test_crash_before_commit( "with_two_keys" );
 
     pieces[1]->kill( current_piece_mark_key );
-#ifdef MIRAGE
+#ifdef FAIR
     // LATEST_BLOCK_TIMESTAMP_KEY should only be present in current
     pieces[1]->kill( Slice( LATEST_BLOCK_TIMESTAMP_KEY ) );
 #endif
