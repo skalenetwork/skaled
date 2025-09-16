@@ -157,7 +157,7 @@ void TransactionBase::fillFromBytesLegacy(
                 BOOST_THROW_EXCEPTION( InvalidSignature() );
             }
 
-            // ifdef MIRAGE, then chainId is always set at this point - will fall into first branch
+            // ifdef FAIR, then chainId is always set at this point - will fall into first branch
             auto const recoveryID = m_chainId.has_value() ?
                                         _byte_{ v - ( u256{ *m_chainId } * 2 + 35 ) } :
                                         _byte_{ v - 27 };
@@ -612,7 +612,7 @@ u256 TransactionBase::gas() const {
      * this has been done in order to address the problem of switching "virtual" on/off
      */
     CHECK_STATE2( !isInvalid(), "Transaction is invalid. Cannot get gas." );
-#ifdef MIRAGE
+#ifdef FAIR
     return m_gas;
 #else
     if ( getExternalGas() != 0 ) {
@@ -623,7 +623,7 @@ u256 TransactionBase::gas() const {
 #endif
 }
 
-#ifndef MIRAGE
+#ifndef FAIR
 u256 TransactionBase::nonPowGas() const {
     return m_gas;
 }

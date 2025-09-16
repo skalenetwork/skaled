@@ -229,7 +229,7 @@ inline N diff( N const& _a, N const& _b ) {
     return std::max( _a, _b ) - std::min( _a, _b );
 }
 
-#ifdef MIRAGE
+#ifdef FAIR
 u256 calculateShareWithPrecision( const u256& _base, size_t _sharePromile );
 #endif
 

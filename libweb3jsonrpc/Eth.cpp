@@ -494,7 +494,7 @@ string Eth::eth_call( TransactionSkeleton& t, string const&
         throw std::logic_error( strRevertReason );
     }
 
-#ifdef MIRAGE
+#ifdef FAIR
     if ( er.excepted == dev::eth::TransactionException::UnsupportedDencunOpcode ) {
         strRevertReason =
             "Contract uses unsupported Dencun opcode. Please ensure it is compiled for EVM <= "
@@ -540,7 +540,7 @@ string Eth::eth_estimateGas( Json::Value const& _json ) {
             throw std::logic_error( strRevertReason );
         }
 
-#ifdef MIRAGE
+#ifdef FAIR
         if ( result.second.excepted == dev::eth::TransactionException::UnsupportedDencunOpcode ) {
             strRevertReason =
                 "Contract uses unsupported Dencun opcode. Please ensure it is compiled for EVM <= "

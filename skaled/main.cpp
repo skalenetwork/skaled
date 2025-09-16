@@ -211,7 +211,7 @@ void stopSealingAfterXBlocks( eth::Client* _c, unsigned _start, unsigned& io_min
     } catch ( InvalidSealEngine& ) {
     }
 
-#ifdef MIRAGE
+#ifdef FAIR
     // HACK: this should be called from every active thread
     // that has ever entered consensus
     // in reality this is the only place this function is executed
@@ -259,7 +259,7 @@ unsigned getLatestSnapshotBlockNumber( const std::string& strURLWeb3 ) {
     return block_number;
 }
 
-#ifdef MIRAGE
+#ifdef FAIR
 uint64_t fetchLatestBlockTimestamp( const std::string& url ) {
     static Logger loggerInfo{ createLogger( VerbosityInfo, "fetchLatestBlockTimestamp" ) };
 
@@ -525,7 +525,7 @@ bool tryDownloadSnapshot( std::shared_ptr< SnapshotManager >& snapshotManager,
 
             try {
                 snapshotManager->computeSnapshotHash( blockNumber
-#ifndef MIRAGE
+#ifndef FAIR
                     ,
                     true
 #endif
@@ -609,7 +609,7 @@ bool downloadSnapshotFromUrl( std::shared_ptr< SnapshotManager >& snapshotManage
     return successfulDownload;
 }
 
-#ifdef MIRAGE
+#ifdef FAIR
 uint64_t fetchLatestBlockTimestampFromNodes( const std::vector< sChainNode >& nodes ) {
     static Logger loggerWarning{ createLogger(
         VerbosityWarning, "fetchLatestBlockTimestampFromNodes" ) };
@@ -684,7 +684,7 @@ void doSnapshotDownload( const std::shared_ptr< ChainParams >& chainParams,
     std::shared_ptr< SharedSpace >& sharedSpace, bool zeroSnapshotOnly = false ) {
     static Logger loggerInfo{ createLogger( VerbosityInfo, "doSnapshotDownload" ) };
     static Logger loggerWarning{ createLogger( VerbosityWarning, "doSnapshotDownload" ) };
-#ifdef MIRAGE
+#ifdef FAIR
     // To process correct signatures we fetch current block timestamp
     // from one of the nodes and temporarily changing current group
 
@@ -722,7 +722,7 @@ void doSnapshotDownload( const std::shared_ptr< ChainParams >& chainParams,
                           << std::string( " seconds before downloading 0 snapshot" );
         sleep( chainParams->getSnapshotDownloadInactiveTimeout() +
                dev::rpc::Skale::snapshotDownloadFragmentMonitorThreadTimeout() );
-#ifdef MIRAGE
+#ifdef FAIR
         // Fetch timestamp and update group again
         // since the group may change during previous requests
 
@@ -1313,7 +1313,7 @@ int main( int argc, char** argv ) {
             }
         }
 
-#ifndef MIRAGE
+#ifndef FAIR
         // for now, leave previous values in file (for case of crash)
 
         if ( vm.count( "main-net-url" ) ) {
@@ -1808,7 +1808,7 @@ int main( int argc, char** argv ) {
         bool dataDirEmpty = isDataDirEmpty();
         if ( chainParams->getSnapshotIntervalSec() > 0 || downloadSnapshotFlag ) {
             std::vector< std::string > coreVolumes = { BlockChain::getChainDirName( *chainParams ),
-#ifndef MIRAGE
+#ifndef FAIR
                 "filestorage",
 #endif
                 "prices_" + chainParams->getSelfNodeId().str() + ".db",
@@ -1833,7 +1833,7 @@ int main( int argc, char** argv ) {
                 snapshotManager, sharedSpace, true );
         }
 
-#ifdef MIRAGE
+#ifdef FAIR
 
         // Configuring current group if it is regular syncing from catchup.
         // Setting back correct group if it starting from snapshot mode.
@@ -1971,7 +1971,7 @@ int main( int argc, char** argv ) {
 
             std::shared_ptr< SkaleHost > skaleHost =
                 std::make_shared< SkaleHost >( *g_client, &cons_fact, instanceMonitor,
-#ifndef MIRAGE
+#ifndef FAIR
                     skutils::json_config_file_accessor::g_strImaMainNetURL,
 #endif
                     !chainParams->isSyncNode() );

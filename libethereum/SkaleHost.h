@@ -113,7 +113,7 @@ public:
 
     SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory = nullptr,
         std::shared_ptr< InstanceMonitor > _instanceMonitor = nullptr,
-#ifndef MIRAGE
+#ifndef FAIR
         const std::string& _gethURL = "",
 #endif
         bool _broadcastEnabled = true );
@@ -146,7 +146,7 @@ public:
     // get public key for historic node in chain
     std::string getHistoricNodePublicKey( unsigned _idx ) const;
 
-#ifndef MIRAGE
+#ifndef FAIR
     uint64_t submitOracleRequest( const string& _spec, string& _receipt, string& _errorMessage );
     uint64_t checkOracleResult( const string& _receipt, string& _result );
 #endif
@@ -169,7 +169,7 @@ public:
 
     SkaleDebugInterface::handler getDebugHandler() const { return m_debugHandler; }
 
-#ifdef MIRAGE
+#ifdef FAIR
     bool isConsesusUpdateHappened() const { return m_consensusUpdateHappened; }
 
     void handleConsensusUpdate() const;
@@ -190,7 +190,7 @@ private:
         uint64_t _timeStamp, uint64_t _blockID, dev::u256 _gasPrice, u256 _stateRoot,
         uint64_t _winningNodeIndex );
 
-#ifdef MIRAGE
+#ifdef FAIR
     void runCommitteeRotationForConsensus();
 #endif
 
@@ -213,7 +213,7 @@ private:
     void penalizePeer(){};  // fake function for now
 
     std::thread m_consensusThread;
-#ifdef MIRAGE
+#ifdef FAIR
     std::unique_ptr< std::thread > m_committeeRotationMonitorThread;
 #endif
 
@@ -230,7 +230,7 @@ private:
     std::atomic_bool m_ignoreNewBlocks = false;  // used when we need to exit at specific block
 
     bool m_broadcastEnabled;
-#ifdef MIRAGE
+#ifdef FAIR
     std::atomic_bool m_broadcastRestartNeeded = false;
     mutable std::atomic_bool m_consensusUpdateHappened = false;
 #endif

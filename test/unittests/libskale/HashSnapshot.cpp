@@ -73,7 +73,7 @@ public:
         auto lagrange_coeffs = libBLS::ThresholdUtils::LagrangeCoeffs( idx, _chainParams.sChain.t );
         auto keys = obj.KeysRecover( lagrange_coeffs, this->blsPrivateKeys_ );
         keys.second.to_affine_coordinates();
-#ifdef MIRAGE
+#ifdef FAIR
         _chainParams.sChain.currentGroups.back().commonBLSPublicKeys[0] =
             libBLS::ThresholdUtils::fieldElementToString( keys.second.X.c0 );
         _chainParams.sChain.currentGroups.back().commonBLSPublicKeys[1] =
@@ -97,7 +97,7 @@ public:
 
         isSnapshotMajorityRequired = !urlToDownloadSnapshotFrom.empty();
 
-#ifdef MIRAGE
+#ifdef FAIR
         this->hashAgent_.reset( new SnapshotHashAgent( _chainParams,
             _chainParams.sChain.currentGroups.back().commonBLSPublicKeys,
             urlToDownloadSnapshotFrom ) );
@@ -356,7 +356,7 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         chainParams->difficulty = chainParams->getMinimumDifficulty();
         chainParams->gasLimit = chainParams->getMaxGasLimit();
         chainParams->byzantiumForkBlock = 0;
-#ifndef MIRAGE
+#ifndef FAIR
         chainParams->externalGasDifficulty = 1;
         chainParams->sChain.contractStorageLimit = 0x1122334455667788UL;
 #endif
@@ -373,7 +373,7 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
 
         mgr.reset( new SnapshotManager( chainParams, boost::filesystem::path( BTRFS_DIR_PATH ) ) );
 
-#ifndef MIRAGE
+#ifndef FAIR
         boost::filesystem::create_directory(
             boost::filesystem::path( BTRFS_DIR_PATH ) / "filestorage" / "test_dir" );
 
@@ -645,7 +645,7 @@ BOOST_FIXTURE_TEST_CASE( SnapshotHashingTest, SnapshotHashingFixture,
 
     mgr->doSnapshot( 3 );
 
-#ifndef MIRAGE
+#ifndef FAIR
     mgr->computeSnapshotHash( 3, true );
 #else
     mgr->computeSnapshotHash( 3 );

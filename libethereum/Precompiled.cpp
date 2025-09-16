@@ -249,7 +249,7 @@ static Logger& getLogger( int a_severity = VerbosityTrace ) {
     return logger;
 }
 
-#ifndef MIRAGE
+#ifndef FAIR
 static void convertBytesToString(
     bytesConstRef _in, size_t _startPosition, std::string& _out, size_t& _stringLength ) {
     if ( _in.size() < UINT256_SIZE ) {
@@ -1072,7 +1072,7 @@ ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef ) {
     return { false, response };  // 1st false - means bad error occur
 }
 
-#ifndef MIRAGE
+#ifndef FAIR
 ETH_REGISTER_PRECOMPILED( addBalance )( [[maybe_unused]] bytesConstRef _in ) {
     dev::u256 code = 0;
     bytes response = toBigEndian( code );

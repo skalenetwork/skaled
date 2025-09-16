@@ -227,8 +227,8 @@ BOOST_AUTO_TEST_CASE( bConstantinopleBlockReward ) {
 
     TestBlock const& topBlock = testBlockchain.topBlock();
 
-    #ifdef MIRAGE
-        // default block reward for MIRAGE is 5 ether
+    #ifdef FAIR
+        // default block reward for FAIR is 5 ether
         BOOST_REQUIRE_EQUAL( topBlock.state().balance( topBlock.beneficiary() ), 5 * ether );
     #else
         // constantinople block reward is 2 ether

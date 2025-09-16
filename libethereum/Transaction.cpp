@@ -74,7 +74,7 @@ TransactionException dev::eth::toTransactionException( Exception const& _e ) {
         return TransactionException::StackUnderflow;
     if ( !!dynamic_cast< InvalidContractDeployer const* >( &_e ) )
         return TransactionException::InvalidContractDeployer;
-#ifdef MIRAGE
+#ifdef FAIR
     if ( !!dynamic_cast< UnsupportedDencunOpcode const* >( &_e ) )
         return TransactionException::UnsupportedDencunOpcode;
 #endif
@@ -140,7 +140,7 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, TransactionException con
     case TransactionException::WouldNotBeInBlock:
         _out << "WouldNotBeInBlock";
         break;
-#ifdef MIRAGE
+#ifdef FAIR
     case TransactionException::UnsupportedDencunOpcode:
         _out << "UnsupportedDencunOpcode";
         break;
@@ -157,7 +157,7 @@ Transaction::Transaction() {}
 Transaction::Transaction( const TransactionSkeleton& _ts, const Secret& _s )
     : TransactionBase( _ts, _s ) {}
 
-#ifdef MIRAGE
+#ifdef FAIR
 
 Transaction::Transaction( const u256& _value, const u256& _gasPrice, const u256& _gas,
     const Address& _dest, const bytes& _data, const u256& _nonce, const u256& _chainId,
@@ -204,7 +204,7 @@ Transaction::Transaction( const bytes& _rlp, CheckTransaction _checkSig, bool _a
     : Transaction( &_rlp, _checkSig, _allowInvalid, _eip1559Enabled,
           _invalidTransactionFormatPatchEnabled ) {}
 
-#ifndef MIRAGE
+#ifndef FAIR
 bool Transaction::hasExternalGas() const {
     if ( !m_externalGasIsChecked ) {
         throw ExternalGasException();
@@ -222,7 +222,7 @@ u256 Transaction::getExternalGas() const {
 #endif
 
 u256 Transaction::gasPrice() const {
-#ifdef MIRAGE
+#ifdef FAIR
     return TransactionBase::gasPrice();
 #else
     if ( m_externalGasIsChecked && hasExternalGas() ) {
@@ -233,7 +233,7 @@ u256 Transaction::gasPrice() const {
 #endif
 }
 
-#ifndef MIRAGE
+#ifndef FAIR
 void Transaction::checkOutExternalGas(
     const ChainParams& _cp, time_t _committedBlockTimestamp, uint64_t _committedBlockNumber ) {
     u256 const& difficulty = _cp.getExternalGasDifficulty();

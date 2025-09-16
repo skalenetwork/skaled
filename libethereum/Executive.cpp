@@ -197,7 +197,7 @@ void Executive::verifyTransaction( Transaction const& _transaction, time_t _comm
     MICROPROFILE_SCOPEI( "Executive", "verifyTransaction", MP_GAINSBORO );
 
     if (
-#ifndef MIRAGE
+#ifndef FAIR
         !_transaction.hasExternalGas() &&
 #endif
         _transaction.gasPrice() < _gasPrice ) {
@@ -228,7 +228,7 @@ void Executive::verifyTransaction( Transaction const& _transaction, time_t _comm
 
         // Avoid unaffordable transactions.
         bigint gasCost = static_cast< bigint >( _transaction.gas() * _transaction.gasPrice() );
-#ifndef MIRAGE
+#ifndef FAIR
         if ( _transaction.hasExternalGas() ) {
             gasCost = 0;
         }
@@ -271,7 +271,7 @@ void Executive::initialize( Transaction const& _transaction ) {
 bool Executive::execute() {
     // Entry point for a user-executed transaction.
 
-#ifdef MIRAGE
+#ifdef FAIR
     // Pay...
     LOG( m_loggerTrace ) << "Paying " << formatBalance( m_gasCost ) << " from sender for gas ("
                          << m_t.gas() << " gas at " << formatBalance( m_t.gasPrice() ) << ")";
@@ -364,7 +364,7 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
             m_gas = ( u256 )( _p.gas - g );
             bytes output;
             bool success;
-#ifdef MIRAGE
+#ifdef FAIR
             tie( success, output ) =
                 m_chainParams.executePrecompiled( _p.codeAddress, _p.data, m_envInfo.number() );
 
@@ -506,7 +506,7 @@ bool Executive::go( OnOpFunc const& _onOp ) {
             // Create VM instance. Force Interpreter if tracing requested.
             auto vm = VMFactory::create();
             if ( m_isCreation ) {
-#ifndef MIRAGE
+#ifndef FAIR
                 // Checking whether deployment is allowed via ConfigController contract
                 bytes calldata;
                 if ( FlexibleDeploymentPatch::isEnabledWhen(
@@ -601,7 +601,7 @@ bool Executive::go( OnOpFunc const& _onOp ) {
 bool Executive::finalize() {
     MICROPROFILE_SCOPEI( "Executive", "finalize", MP_PAPAYAWHIP );
     if ( m_ext ) {
-#ifndef MIRAGE
+#ifndef FAIR
         // Accumulate refunds for suicides.
         m_ext->sub.refunds += m_ext->evmSchedule().suicideRefundGas * m_ext->sub.suicides.size();
 #endif
@@ -617,7 +617,7 @@ bool Executive::finalize() {
         m_s.addBalance( m_t.sender(), m_gas * m_t.gasPrice() );
 
         u256 feesEarned = ( m_t.gas() - m_gas ) * m_t.gasPrice();
-#ifdef MIRAGE
+#ifdef FAIR
         EVMSchedule currentBlockSchedule = m_chainParams.makeEvmSchedule(
             m_envInfo.committedBlockTimestamp(), m_envInfo.number() );
         // calculate share of transaction fees to reward
@@ -629,7 +629,7 @@ bool Executive::finalize() {
     }
 
     // Suicides...
-#ifndef MIRAGE
+#ifndef FAIR
     if ( m_ext )
         for ( auto a : m_ext->sub.suicides )
             m_s.kill( a );

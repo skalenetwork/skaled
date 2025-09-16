@@ -113,7 +113,7 @@ public:
         if ( _config != "" ) {
             Json::Value ret;
             Json::Reader().parse( _config, ret );
-#ifndef MIRAGE
+#ifndef FAIR
             ret["skaleConfig"]["sChain"]["contractStorageLimit"] = 32000;
 #endif
             Json::FastWriter fastWriter;
@@ -262,7 +262,7 @@ public:
 
         Json::Value ret;
         Json::Reader().parse( _config, ret );
-#ifndef MIRAGE
+#ifndef FAIR
         ret["skaleConfig"]["sChain"]["contractStorageLimit"] = 32000;
 #endif
         Json::FastWriter fastWriter;
@@ -381,7 +381,7 @@ static std::string const c_configString = R"(
 }
 )";
 
-#ifndef MIRAGE
+#ifndef FAIR
 static std::string const c_genesisInfoSkaleTest = std::string() +
                                                   R"E(
 {
@@ -986,7 +986,7 @@ BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE( getHistoricNodesData )
 
-#ifndef MIRAGE
+#ifndef FAIR
 static std::string const c_genesisInfoSkaleIMABLSPublicKeyTest = std::string() + R"E(
 {
     "sealEngine": "Ethash",
@@ -1226,7 +1226,7 @@ BOOST_AUTO_TEST_CASE( initAndUpdateHistoricConfigFields ) {
     BOOST_REQUIRE_EQUAL( testClient->getHistoricNodeId( 0 ), "26" );
     BOOST_REQUIRE_EQUAL( testClient->getHistoricNodeIndex( 0 ), "3" );
 
-#ifdef MIRAGE
+#ifdef FAIR
     BOOST_REQUIRE_EQUAL( testClient->getCurrentEpochId(), 0 );
     auto nextCommitteeBITEInfo = testClient->getNextCommitteeBITEInfo();
     BOOST_REQUIRE( nextCommitteeBITEInfo.first == imaBLSPublicKeyAfterBlock );
@@ -1238,7 +1238,7 @@ BOOST_AUTO_TEST_CASE( initAndUpdateHistoricConfigFields ) {
     make_shared< DecryptedTransactionFieldsMap >(),
 #endif
         1000,
-#ifdef MIRAGE
+#ifdef FAIR
         1,
 #endif
         4294967294 );
@@ -1250,14 +1250,14 @@ BOOST_AUTO_TEST_CASE( initAndUpdateHistoricConfigFields ) {
     BOOST_REQUIRE_EQUAL( testClient->getHistoricNodeId( 0 ), "30" );
     BOOST_REQUIRE_EQUAL( testClient->getHistoricNodeIndex( 0 ), "0" );
 
-#ifdef MIRAGE
+#ifdef FAIR
     BOOST_REQUIRE_EQUAL( testClient->getCurrentEpochId(), 1 );
 #endif
 }
 
 BOOST_AUTO_TEST_SUITE_END()
 
-#ifndef MIRAGE
+#ifndef FAIR
 static std::string const c_skaleConfigString =
     R"E(
 {

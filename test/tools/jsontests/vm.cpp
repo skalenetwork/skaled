@@ -368,20 +368,20 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
                     BOOST_REQUIRE_MESSAGE(
                         testInput.count( "expect" ) == 1, testname + " multiple expect set!" );
                     State postState = State();
-#ifndef MIRAGE
+#ifndef FAIR
                     postState.setStorageLimit(1000000000);
 #endif
                     State expectState = State();
-#ifndef MIRAGE
+#ifndef FAIR
                     expectState.setStorageLimit(1000000000);
 #endif
                     AccountMaskMap expectStateMap;
                     ImportTest::importState( mValue( fev.exportState() ).get_obj(), postState );
                     ImportTest::importState(
                         testInput.at( "expect" ).get_obj(), expectState, expectStateMap );
-#ifdef MIRAGE
+#ifdef FAIR
                     unordered_set< Address > owners;
-                    ImportTest::compareStatesMIRAGE(
+                    ImportTest::compareStatesFAIR(
                         expectState, postState, owners, expectStateMap, WhenError::Throw );
 #else
                     ImportTest::compareStates(
@@ -400,11 +400,11 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
                         testInput.count( "expect" ) == 1, testname + " multiple expect set!" );
 
                     State postState = State();
-#ifndef MIRAGE
+#ifndef FAIR
                     postState.setStorageLimit(1000000000);
 #endif
                     State expectState = State();
-#ifndef MIRAGE
+#ifndef FAIR
                     expectState.setStorageLimit(1000000000);
 #endif
                     AccountMaskMap expectStateMap;
@@ -414,9 +414,9 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
                     ImportTest::importState( testOutput.at( "post" ).get_obj(), postState );
                     ImportTest::importState(
                         testInput.at( "expect" ).get_obj(), expectState, expectStateMap );
-#ifdef MIRAGE
+#ifdef FAIR
                     unordered_set< Address > owners;
-                    ImportTest::compareStatesMIRAGE(
+                    ImportTest::compareStatesFAIR(
                         expectState, postState, owners, expectStateMap, WhenError::Throw );
 #else
                     ImportTest::compareStates(
@@ -476,19 +476,19 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
                 BOOST_CHECK_EQUAL( toInt( testInput.at( "gas" ) ), fev.gas );
 
                 State postState = State();
-#ifndef MIRAGE
+#ifndef FAIR
                 postState.setStorageLimit(1000000000);
 #endif
                 State expectState = State();
-#ifndef MIRAGE
+#ifndef FAIR
                 expectState.setStorageLimit(1000000000);
 #endif
                 mObject mPostState = fev.exportState();
                 ImportTest::importState( mPostState, postState );
                 ImportTest::importState( testInput.at( "post" ).get_obj(), expectState );
-#ifdef MIRAGE
+#ifdef FAIR
                 unordered_set< Address > owners;
-                ImportTest::compareStatesMIRAGE( expectState, postState, owners );
+                ImportTest::compareStatesFAIR( expectState, postState, owners );
 #else
                 ImportTest::compareStates( expectState, postState );
 #endif

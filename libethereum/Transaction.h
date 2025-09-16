@@ -59,7 +59,7 @@ enum class TransactionException {
     ,
     InvalidBITEAESData
 #endif
-#ifdef MIRAGE
+#ifdef FAIR
     ,
     UnsupportedDencunOpcode
 #endif
@@ -99,7 +99,7 @@ public:
     Transaction( TransactionSkeleton const& _ts, Secret const& _s = Secret() );
 
 
-#ifdef MIRAGE  // include chainId
+#ifdef FAIR  // include chainId
 
     /// Constructs a signed message-call transaction.
     Transaction( u256 const& _value, u256 const& _gasPrice, u256 const& _gas, Address const& _dest,
@@ -147,7 +147,7 @@ public:
 
     Transaction( Transaction const& ) = default;
 
-#ifndef MIRAGE
+#ifndef FAIR
     bool hasExternalGas() const;
 
     u256 getExternalGas() const;
@@ -158,7 +158,7 @@ public:
 
     u256 gasPrice() const;
 
-#ifndef MIRAGE
+#ifndef FAIR
     void ignoreExternalGas() {
         m_externalGasIsChecked = true;
         m_externalGas.reset();

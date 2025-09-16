@@ -233,7 +233,7 @@ std::atomic< ExitHandler::exit_code_t > ExitHandler::s_ec = ExitHandler::ec_succ
 std::atomic_int ExitHandler::s_nStopSignal{ 0 };
 std::atomic_bool ExitHandler::s_bStop{ false };
 
-#ifdef MIRAGE
+#ifdef FAIR
 u256 calculateShareWithPrecision( const u256& _base, size_t _sharePromile ) {
     return _base * _sharePromile / 1000;
 }

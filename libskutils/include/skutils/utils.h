@@ -584,7 +584,7 @@ public:
     bool extract_s_chain_URL_infos( size_t& nOwnNodeIndex, std::vector< std::string >& vecURLs ) {
         return stat_extract_s_chain_URL_infos( getConfigJSON(), nOwnNodeIndex, vecURLs );
     }
-#ifndef MIRAGE
+#ifndef FAIR
     //
     static std::string g_strImaMainNetURL;
     std::string getImaMainNetURLstring() const;

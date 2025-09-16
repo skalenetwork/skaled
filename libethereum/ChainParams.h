@@ -91,7 +91,7 @@ struct ChainParams : public ChainOperationParams {
 
     std::string getSchainName() const { return sChain.name; }
 
-#ifdef MIRAGE
+#ifdef FAIR
     Address getSChainNodeBeneficiaryAddressByIndex( uint64_t sChainIndex ) const;
 
     bool updateCurrentGroupIfNeeded( uint64_t _latestBlockTimestamp );
@@ -159,7 +159,7 @@ struct ChainParams : public ChainOperationParams {
 
     size_t getThresholdCount() const { return sChain.t; }
 
-#ifdef MIRAGE
+#ifdef FAIR
     Address getStakingContractAddress() const;
 #endif
 
@@ -231,7 +231,7 @@ private:
 
     mutable std::string originalJSON;
 
-#ifdef MIRAGE
+#ifdef FAIR
     void switchSyncMode( const std::vector< sChainNode >& _nodes );
 
     std::vector< u256 > getNodeIdsForCommittee();

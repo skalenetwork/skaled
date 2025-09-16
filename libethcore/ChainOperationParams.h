@@ -28,7 +28,7 @@
 
 #include <libdevcore/Common.h>
 
-#ifdef MIRAGE
+#ifdef FAIR
 #include <libethcore/CommonJS.h>
 #endif
 
@@ -70,7 +70,7 @@ public:
         u256 const& _blockNumber ) const {
         return m_cost( _in, _chainParams, _blockNumber );
     }
-#ifdef MIRAGE
+#ifdef FAIR
     std::pair< bool, bytes > execute( bytesConstRef _in ) const { return m_execute( _in ); }
 #else
     std::pair< bool, bytes > execute(
@@ -93,7 +93,7 @@ private:
     h160Set m_allowed_addresses;
 };
 
-#ifdef MIRAGE
+#ifdef FAIR
 static constexpr uint8_t c_currentGroupsSize = 2;
 #endif
 
@@ -113,7 +113,7 @@ public:
     std::string ip6;
     uint16_t port6;
     std::string sgxServerUrl;
-#ifndef MIRAGE
+#ifndef FAIR
     std::string keyShareName;
     std::array< std::string, 4 > BLSPublicKeys;
     std::array< std::string, 4 > commonBLSPublicKeys;
@@ -127,7 +127,7 @@ public:
     NodeInfo( std::string _name = "TestNode", u256 _id = 1, std::string _ip = "127.0.0.11",
         uint16_t _port = 11111, std::string _ip6 = "::1", uint16_t _port6 = 11111,
         std::string _sgxServerUrl = "", std::string _ecdsaKeyName = "",
-#ifndef MIRAGE
+#ifndef FAIR
         std::string _keyShareName = "",
         const std::array< std::string, 4 >&
             _BLSPublicKeys = { "1085704699902305713594457076223282948137075635957851808699051999328"
@@ -152,7 +152,7 @@ public:
         port6 = _port6;
         sgxServerUrl = _sgxServerUrl;
         ecdsaKeyName = _ecdsaKeyName;
-#ifndef MIRAGE
+#ifndef FAIR
         keyShareName = _keyShareName;
         BLSPublicKeys = _BLSPublicKeys;
         commonBLSPublicKeys = _commonBLSPublicKeys;
@@ -168,7 +168,7 @@ public:
 struct sChainNode {
 public:
     u256 id;
-#ifdef MIRAGE
+#ifdef FAIR
     Address owner;
     Address rewardWalletAddress;
 #endif
@@ -197,7 +197,7 @@ struct NodeGroup {
     std::array< std::string, 4 > blsPublicKey;
 };
 
-#ifdef MIRAGE
+#ifdef FAIR
 /// skale
 /// current group detailed information
 struct CurrentGroup {
@@ -220,11 +220,11 @@ public:
     Address owner;
     Address blockAuthor;
     std::vector< sChainNode > nodes;
-#ifdef MIRAGE
+#ifdef FAIR
     CurrentGroups currentGroups;
 #endif
     std::vector< NodeGroup > nodeGroups;
-#ifndef MIRAGE
+#ifndef FAIR
     s256 contractStorageLimit = 1000000000;
 #endif
     uint64_t dbStorageLimit = 0;
@@ -240,7 +240,7 @@ public:
 #endif
     size_t t = 1;
 
-#ifdef MIRAGE
+#ifdef FAIR
     uint64_t constantGasPrice = 100000;
 #endif
 
@@ -256,7 +256,7 @@ public:
 
         // HACK This creates one node and allows to run tests - BUT when loading config we need to
         // delete this explicitly!!
-#ifdef MIRAGE
+#ifdef FAIR
         sChainNode me = { u256( 1 ), jsToAddress( "0x0000000000000000000000000000000000000000" ),
             jsToAddress( "0x0000000000000000000000000000000000000000" ), "127.0.0.11",
             u256( 11111 ), "::1", u256( 11111 ), u256( 1 ), "0xfa", { "0", "1", "0", "1" } };
@@ -265,7 +265,7 @@ public:
             "0xfa", { "0", "1", "0", "1" } };
 #endif
         nodes.push_back( me );
-#ifdef MIRAGE
+#ifdef FAIR
         currentGroups[0] = { nodes, 1, "",
             { "1085704699902305713594457076223282948137075635957851808699051999328"
               "5655852781",
@@ -313,7 +313,7 @@ public:
         time_t _committedBlockTimestamp, u256 const& _workingBlockNumber ) const;
     u256 blockReward( EVMSchedule const& _schedule ) const;
     u256 blockReward( time_t _committedBlockTimestamp, u256 const& _workingBlockNumber ) const;
-#ifndef MIRAGE
+#ifndef FAIR
     void setBlockReward( u256 const& _newBlockReward );
 #endif
 
@@ -335,7 +335,7 @@ public:
         return precompiled.at( _a );
     }
 
-#ifdef MIRAGE
+#ifdef FAIR
     std::pair< bool, bytes > executePrecompiled(
         Address const& _a, bytesConstRef _in, u256 const& ) const {
         return precompiled.at( _a ).execute( _in );
@@ -391,7 +391,7 @@ public:
 
     bool isChainIdCheckDisabled() const { return skaleDisableChainIdCheck; }
 
-#ifdef MIRAGE
+#ifdef FAIR
     bool getAllowPreEIP155Txns() const { return allowPreEIP155Txns; }
 #endif
 
@@ -400,7 +400,7 @@ protected:
     /// The chain sealer name: e.g. Ethash, NoProof, BasicAuthority
     std::string sealEngineName = "NoProof";
 
-#ifndef MIRAGE
+#ifndef FAIR
     u256 m_blockReward;
 #endif
 
@@ -446,7 +446,7 @@ protected:
     SChain sChain;
     u256 accountInitialFunds = 0;
 
-#ifdef MIRAGE
+#ifdef FAIR
     // Allow pre-EIP155 transactions by default (if not present in config file)
     // This is to allow backward compatibility with old tests (avoid regenerating them)
     // New tests should have this set to false in config file
@@ -460,7 +460,7 @@ protected:
     int logsBlocksLimit = -1;
 };
 
-#ifdef MIRAGE
+#ifdef FAIR
 inline bool operator==( const sChainNode& lhs, const sChainNode& rhs ) {
     // if BLS public keys are different there is no point to check anything else
     // on the other hand, if the keys are equal they belong to the same node

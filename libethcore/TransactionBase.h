@@ -54,7 +54,7 @@ public:
     TransactionBase( TransactionSkeleton const& _ts, Secret const& _s = Secret() );
 
 
-#ifdef MIRAGE
+#ifdef FAIR
 
     /// Constructs a signed message-call transaction
     TransactionBase( u256 const& _value, u256 const& _gasPrice, u256 const& _gas,
@@ -281,7 +281,7 @@ public:
     /// @returns the base fee and thus the implied exchange rate of ETH to GAS.
     u256 gasPrice() const;
 
-#ifndef MIRAGE
+#ifndef FAIR
     /// @returns the non-PoW gas
     u256 nonPowGas() const;
 #endif
@@ -340,7 +340,7 @@ public:
     bool hasZeroSignature() const { return m_vrs && isZeroSignature( m_vrs->r, m_vrs->s ); }
 
     /// @returns true if the transaction uses EIP155 replay protection
-    /// Only used for non-mirage builds - as mirage builds reject any pre-EIP155 transactions
+    /// Only used for non-fair builds - as fair builds reject any pre-EIP155 transactions
     bool isReplayProtected() const {
         CHECK_STATE2( !isInvalid(), "Transaction is invalid. Cannot check replay protection." );
         return m_chainId.has_value();
@@ -399,7 +399,7 @@ protected:
 
     static bool isZeroSignature( u256 const& _r, u256 const& _s ) { return !_r && !_s; }
 
-#ifndef MIRAGE
+#ifndef FAIR
     /*
      * this function is provided in order for aleth tests and utilities to compile.
      * In will never be called in skaled since in skaled TransactionBase objects are never

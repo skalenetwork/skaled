@@ -93,7 +93,7 @@ enum class Instruction : uint8_t {
     MSIZE,       ///< get the size of active memory
     GAS,         ///< get the amount of available gas
     JUMPDEST,    ///< set a potential jump destination
-#ifdef MIRAGE
+#ifdef FAIR
     TLOAD = 0x5c,   // EIP-1153
     TSTORE = 0x5d,  // EIP-1153
     MCOPY = 0x5e,   // EIP-5656
