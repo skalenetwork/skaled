@@ -55,7 +55,7 @@ extern const Address c_blockhashContractAddress;
 /// Code of the special contract for block hash storage defined in EIP96
 extern const bytes c_blockhashContractCode;
 
-#ifndef MIRAGE
+#ifndef FAIR
 /// Address of the special contract for deployment control
 extern const Address c_configControllerContractAddress;
 #endif

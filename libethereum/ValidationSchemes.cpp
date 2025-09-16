@@ -233,7 +233,7 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "syncNodeReadJsonHeaderTimeoutSec",
                 { { js::int_type }, JsonFieldPresence::Optional } } } );
 
-#ifndef MIRAGE
+#ifndef FAIR
     std::string keyShareName = "";
     try {
         nodeInfo.at( "wallets" ).get_obj().at( "ima" ).get_obj().at( "keyShareName" ).get_str();
@@ -273,7 +273,7 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "rotateAfterBlock", { { js::int_type }, JsonFieldPresence::Optional } },
             { "contractStorageLimit", { { js::int_type }, JsonFieldPresence::Optional } },
             { "dbStorageLimit", { { js::int_type }, JsonFieldPresence::Optional } },
-#ifdef MIRAGE
+#ifdef FAIR
             { "nodes", { { js::obj_type, js::array_type }, JsonFieldPresence::Required } },
 #else
             { "nodes", { { js::array_type }, JsonFieldPresence::Required } },
@@ -284,7 +284,7 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "maxSkaledLeveldbStorageBytes", { { js::int_type }, JsonFieldPresence::Optional } },
             { "multiTransactionMode", { { js::bool_type }, JsonFieldPresence::Optional } },
             { "nodeGroups", { { js::obj_type }, JsonFieldPresence::Optional } }
-#ifdef MIRAGE
+#ifdef FAIR
             ,
             { "constantGasPrice", { { js::int_type }, JsonFieldPresence::Optional } }
 #endif
@@ -339,7 +339,7 @@ void validateConfigJson( js::mObject const& _obj ) {
                 { "rewardWalletAddress", { { js::str_type }, JsonFieldPresence::Optional } },
                 { "blockAuthor", { { js::str_type }, JsonFieldPresence::Optional } } } );
     };
-#ifndef MIRAGE
+#ifndef FAIR
     js::mArray const& nodes = sChain.at( "nodes" ).get_array();
     for ( auto const& obj : nodes ) {
         const js::mObject& node = obj.get_obj();

@@ -867,7 +867,7 @@ void SkaledFixture::sendSingleTransferOrBatch( u256 _amount, std::shared_ptr< Sk
             transaction.forceType2Fees( _gasPrice, _gasPrice );
         }
 
-#ifndef MIRAGE
+#ifndef FAIR
         if (usePow) {
             calculateAndSetPowGas(transaction);
         }
@@ -1083,7 +1083,7 @@ unique_ptr< WebThreeStubClient > SkaledFixture::rpcClient() const {
     return rpcClient;
 }
 
-#ifndef MIRAGE
+#ifndef FAIR
 void SkaledFixture::calculateAndSetPowGas( Transaction& _t ) const {
 
     for ( u256 i = 1;; i++ ) {

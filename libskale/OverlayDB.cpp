@@ -202,7 +202,7 @@ void OverlayDB::setPartialTransactionReceipt( const dev::bytes& _newReceipt,
 }
 
 
-#ifdef MIRAGE
+#ifdef FAIR
 // Converts a hexadecimal string to a uint64_t value.
 std::uint64_t OverlayDB::hexToUint64( const std::string& hexValue ) {
     std::stringstream valueStream( hexValue );

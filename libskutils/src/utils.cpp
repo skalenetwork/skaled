@@ -1619,7 +1619,7 @@ bool json_config_file_accessor::stat_extract_s_chain_URL_infos(
     }
 }
 
-#ifndef MIRAGE
+#ifndef FAIR
 std::string json_config_file_accessor::g_strImaMainNetURL;
 
 std::string json_config_file_accessor::getImaMainNetURLstring() const {

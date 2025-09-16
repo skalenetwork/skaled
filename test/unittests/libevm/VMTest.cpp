@@ -421,7 +421,7 @@ public:
 
     void testGasConsumed( std::string const& _codeStr, u256 const& _originalValue,
         u256 const& _expectedGasConsumed, u256 const& _expectedRefund ) {
-#ifndef MIRAGE
+#ifndef FAIR
         state.setStorageLimit(1000000000);
 #endif
         state.setStorage( to, 0, _originalValue );
@@ -652,7 +652,7 @@ class InstructionTestFixture : public TestOutputHelperFixture {
 public:
     InstructionTestFixture() : vm{new LegacyVM()} {
         ChainParams cp( genesisInfo( Network::IstanbulTest ) );
-#ifndef MIRAGE
+#ifndef FAIR
         cp.sChain._patchTimestamps[static_cast<size_t>(SchainPatchEnum::PushZeroPatch)] = 1;
 #endif
         SchainPatch::init(cp);

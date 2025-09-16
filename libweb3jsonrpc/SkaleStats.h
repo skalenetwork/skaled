@@ -114,7 +114,7 @@ public:
 
     Json::Value skale_stats() override;
     Json::Value skale_nodesRpcInfo() override;
-#ifndef MIRAGE
+#ifndef FAIR
     Json::Value skale_imaInfo() override;
 #endif
 

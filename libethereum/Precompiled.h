@@ -39,7 +39,7 @@ class SkaleHost;
 
 namespace skale {
 class State;
-#ifndef MIRAGE
+#ifndef FAIR
 class OverlayFS;
 #endif
 }  // namespace skale
@@ -58,7 +58,7 @@ struct ChainOperationParams;
 // allow call both with overlayFS and without it
 class PrecompiledExecutor {
 public:
-#ifdef MIRAGE
+#ifdef FAIR
     std::pair< bool, bytes > operator()( bytesConstRef _in ) const { return proxy( _in ); }
 #else
     std::pair< bool, bytes > operator()(
@@ -67,7 +67,7 @@ public:
     }
 #endif
     PrecompiledExecutor() {}
-#ifdef MIRAGE
+#ifdef FAIR
     PrecompiledExecutor(
         const std::function< std::pair< bool, bytes >( bytesConstRef _in ) >& _func )
         : proxy( _func ) {}
@@ -78,7 +78,7 @@ public:
 #endif
 
 private:
-#ifdef MIRAGE
+#ifdef FAIR
     std::function< std::pair< bool, bytes >( bytesConstRef _in ) > proxy;
 #else
     std::function< std::pair< bool, bytes >( bytesConstRef _in, skale::OverlayFS* _overlayFS ) >
@@ -128,7 +128,7 @@ private:
     static PrecompiledRegistrar* s_this;
 };
 
-#ifdef MIRAGE
+#ifdef FAIR
 #define ETH_REGISTER_PRECOMPILED( Name )                                                          \
     static std::pair< bool, bytes > __eth_registerPrecompiledFunction##Name( bytesConstRef _in ); \
     static PrecompiledExecutor __eth_registerPrecompiledFactory##Name =                           \

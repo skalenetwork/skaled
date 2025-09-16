@@ -99,7 +99,7 @@ void ChainParams::loadConfig( string const& _json, const boost::filesystem::path
         u256( fromBigEndian< u256 >( fromHex( params[c_maximumExtraDataSize].get_str() ) ) );
     tieBreakingGas = params.count( c_tieBreakingGas ) ? params[c_tieBreakingGas].get_bool() : true;
     // block rewards for FAIR are set in EVMSchedule
-#ifndef MIRAGE
+#ifndef FAIR
     setBlockReward( u256( fromBigEndian< u256 >( fromHex( params[c_blockReward].get_str() ) ) ) );
 #endif
     skaleDisableChainIdCheck = params.count( c_skaleDisableChainIdCheck ) ?
@@ -144,7 +144,7 @@ void ChainParams::loadConfig( string const& _json, const boost::filesystem::path
     setOptionalU256Parameter( durationLimit, c_durationLimit );
     setOptionalU256Parameter( accountInitialFunds, c_accountInitialFunds );
 
-#ifdef MIRAGE
+#ifdef FAIR
     allowPreEIP155Txns =
         params.count( c_allowPreEIP155Txns ) ? params[c_allowPreEIP155Txns].get_bool() : true;
 #else
@@ -160,7 +160,7 @@ void ChainParams::loadConfig( string const& _json, const boost::filesystem::path
 
     allowFutureBlocks = params.count( c_allowFutureBlocks );
 
-#ifndef MIRAGE
+#ifndef FAIR
     if ( externalGasDifficulty == 0 ) {
         externalGasDifficulty = -1;
     }
@@ -178,7 +178,7 @@ void ChainParams::loadConfig( string const& _json, const boost::filesystem::path
 void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
     auto skaleObj = obj[c_skaleConfig].get_obj();
 
-#ifdef MIRAGE
+#ifdef FAIR
     // keep original SKL-style config for compatibility (only for tests)
     bool isLegacy =
         skaleObj.at( "sChain" ).get_obj().at( "nodes" ).type() == json_spirit::array_type;
@@ -249,7 +249,7 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
 
         ecdsaKeyName = infoObj.at( "ecdsaKeyName" ).get_str();
 
-#ifdef MIRAGE
+#ifdef FAIR
         if ( isLegacy ) {
 #endif
             if ( infoObj.count( "wallets" ) == 0 ) {
@@ -274,14 +274,14 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
                 BLSPublicKeys[2] = ima["BLSPublicKey2"].get_str();
                 BLSPublicKeys[3] = ima["BLSPublicKey3"].get_str();
             }
-#ifdef MIRAGE
+#ifdef FAIR
         }
 #endif
     }
 
     nodeInfo = { nodeName, nodeID, ip, static_cast< uint16_t >( port ), ip6,
         static_cast< uint16_t >( port6 ), sgxServerUrl, ecdsaKeyName,
-#ifndef MIRAGE
+#ifndef FAIR
         keyShareName, BLSPublicKeys, commonBLSPublicKeys,
 #endif
         syncNode, archiveMode, syncFromCatchup, testSignatures };
@@ -292,7 +292,7 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
 
     s.name = sChainObj.at( "schainName" ).get_str();
     s.id = sChainObj.at( "schainID" ).get_uint64();
-#ifndef MIRAGE
+#ifndef FAIR
     s.t = t;
 #endif
     if ( sChainObj.count( "schainOwner" ) ) {
@@ -331,7 +331,7 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
                                    -1;
 #endif
 
-#ifndef MIRAGE
+#ifndef FAIR
     s.contractStorageLimit = sChainObj.count( "contractStorageLimit" ) ?
                                  sChainObj.at( "contractStorageLimit" ).get_int64() :
                                  0;
@@ -348,7 +348,7 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
     if ( sChainObj.count( "multiTransactionMode" ) )
         s.multiTransactionMode = sChainObj.at( "multiTransactionMode" ).get_bool();
 
-#ifdef MIRAGE
+#ifdef FAIR
     if ( sChainObj.count( "constantGasPrice" ) )
         s.constantGasPrice = sChainObj.at( "constantGasPrice" ).get_uint64();
 #endif
@@ -381,7 +381,7 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
                 u256 sChainIndex = groupNodeConfObj.at( 0 ).get_uint64();
                 u256 id = groupNodeConfObj.at( 1 ).get_uint64();
                 string publicKey = groupNodeConfObj.at( 2 ).get_str();
-#ifdef MIRAGE
+#ifdef FAIR
                 Address rewardWalletAddress = ZeroAddress;
                 if ( groupNodeConfObj.size() == 4 ) {
                     rewardWalletAddress = Address( groupNodeConfObj.at( 3 ).get_str() );
@@ -391,7 +391,7 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
                     BOOST_THROW_EXCEPTION( runtime_error( "Empty public key in config" ) );
                 }
                 groupNodes.push_back( { id, sChainIndex, publicKey,
-#ifdef MIRAGE
+#ifdef FAIR
                     rewardWalletAddress
 #endif
                 } );
@@ -424,14 +424,14 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
     }
 
     auto parseNodeDetails = [
-#ifdef MIRAGE
+#ifdef FAIR
                                 this,
 #endif
                                 testSignatures]( const auto& jsonNodeObj ) -> sChainNode {
         auto nodeConfObj = jsonNodeObj.get_obj();
         sChainNode node{};
         node.id = nodeConfObj.at( "nodeID" ).get_uint64();
-#ifdef MIRAGE
+#ifdef FAIR
         try {
             node.owner = jsToAddress( nodeConfObj.at( "owner" ).get_str() );
         } catch ( ... ) {
@@ -484,7 +484,7 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
     };
 
     // read current group(s) details
-#ifndef MIRAGE
+#ifndef FAIR
     for ( const auto& nodeConf : sChainObj.at( "nodes" ).get_array() ) {
         auto node = parseNodeDetails( nodeConf );
         s.nodes.push_back( node );
@@ -748,12 +748,12 @@ const std::string& ChainParams::getOriginalJson() const {
     sChainObj["emptyBlockIntervalMs"] = sChain.emptyBlockIntervalMs;
     sChainObj["snpshotIntervalMs"] = sChain.snapshotIntervalSec;
     sChainObj["multiTransactionMode"] = sChain.multiTransactionMode;
-#ifndef MIRAGE
+#ifndef FAIR
     sChainObj["contractStorageLimit"] = ( int64_t ) sChain.contractStorageLimit;
 #endif
     sChainObj["dbStorageLimit"] = sChain.dbStorageLimit;
 
-#ifdef MIRAGE
+#ifdef FAIR
     auto addNodeToArray = []( const sChainNode& node, js::mArray& nodes ) {
 #else
     js::mArray nodes;
@@ -772,7 +772,7 @@ const std::string& ChainParams::getOriginalJson() const {
         nodes.push_back( nodeConfObj );
     };
 
-#ifdef MIRAGE
+#ifdef FAIR
     js::mObject nodes;
 
     for ( const auto& currentGroup : sChain.currentGroups ) {
@@ -835,28 +835,28 @@ bool ChainParams::checkAdminOriginAllowed( const std::string& origin ) const {
 }
 
 std::vector< sChainNode > ChainParams::getSchainNodes() const {
-#ifdef MIRAGE
+#ifdef FAIR
     std::shared_lock< std::shared_mutex > lock( m_mutex );
 #endif
     return sChain.nodes;
 }
 
 sChainNode ChainParams::getNodeByIndex( size_t _idx ) const {
-#ifdef MIRAGE
+#ifdef FAIR
     std::shared_lock< std::shared_mutex > lock( m_mutex );
 #endif
     return sChain.nodes.at( _idx );
 }
 
 size_t ChainParams::getNodesCount() const {
-#ifdef MIRAGE
+#ifdef FAIR
     std::shared_lock< std::shared_mutex > lock( m_mutex );
 #endif
     return sChain.nodes.size();
 }
 
 std::array< std::string, 4 > ChainParams::getSelfBlsPublicKey() const {
-#ifndef MIRAGE
+#ifndef FAIR
     return nodeInfo.BLSPublicKeys;
 #else
     std::shared_lock< std::shared_mutex > lock( m_mutex );
@@ -865,7 +865,7 @@ std::array< std::string, 4 > ChainParams::getSelfBlsPublicKey() const {
 }
 
 std::array< std::string, 4 > ChainParams::getCommonBlsPublicKey() const {
-#ifndef MIRAGE
+#ifndef FAIR
     return nodeInfo.commonBLSPublicKeys;
 #else
     std::shared_lock< std::shared_mutex > lock( m_mutex );
@@ -874,7 +874,7 @@ std::array< std::string, 4 > ChainParams::getCommonBlsPublicKey() const {
 }
 
 std::string ChainParams::getKeyShareName() const {
-#ifndef MIRAGE
+#ifndef FAIR
     return nodeInfo.keyShareName;
 #else
     std::shared_lock< std::shared_mutex > lock( m_mutex );
@@ -891,7 +891,7 @@ void ChainParams::fillDefaultTestsParameters( size_t _port ) {
     sChain.nodes[0].port = sChain.nodes[0].port6 = _port;
 }
 
-#ifdef MIRAGE
+#ifdef FAIR
 Address ChainParams::getStakingContractAddress() const {
     std::shared_lock< std::shared_mutex > lock( m_mutex );
     return sChain.currentGroups.back().stakingContractAddress;

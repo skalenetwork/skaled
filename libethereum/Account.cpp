@@ -90,7 +90,7 @@ PrecompiledContract createPrecompiledContract( js::mObject const& _precompiled )
         unsigned base = toUnsigned( l.at( "base" ) );
         unsigned word = toUnsigned( l.at( "word" ) );
 
-#ifndef MIRAGE
+#ifndef FAIR
         h160Set allowedAddresses;
         auto restrictAccessIt = _precompiled.find( c_restrictAccess );
         if ( restrictAccessIt != _precompiled.end() ) {
@@ -112,7 +112,7 @@ PrecompiledContract createPrecompiledContract( js::mObject const& _precompiled )
         }  // restrictAccessIt
 #endif
         return PrecompiledContract( base, word, PrecompiledRegistrar::executor( n ), startingBlock
-#ifndef MIRAGE
+#ifndef FAIR
             ,
             allowedAddresses
 #endif
@@ -215,14 +215,14 @@ AccountMap dev::eth::jsonToAccountMap( std::string const& _json, u256 const& _de
                  shouldNotExists )  // defined only shouldNotExists field
                 ret[a] = Account( 0, 0 );
         }
-#ifdef MIRAGE
+#ifdef FAIR
         try {
 #endif
             if ( o_precompiled && accountMaskJson.count( c_precompiled ) ) {
                 js::mObject p = accountMaskJson.at( c_precompiled ).get_obj();
                 o_precompiled->insert( make_pair( a, createPrecompiledContract( p ) ) );
             }
-#ifdef MIRAGE
+#ifdef FAIR
         } catch ( ExecutorNotFound const& ) {
             cwarn << "Precompiled contract skipped due to missing executor";
         }

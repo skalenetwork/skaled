@@ -789,7 +789,7 @@ void LegacyVM::interpretCases() {
 #else
 
 
-#ifdef MIRAGE
+#ifdef FAIR
         CASE( TLOAD ) CASE( TSTORE ) CASE( MCOPY ) {
             ON_OP();
             throwUnsupportedDencunOpcode();
@@ -1559,7 +1559,7 @@ void LegacyVM::interpretCases() {
 
             updateIOGas();
 
-#ifndef MIRAGE
+#ifndef FAIR
             try {
                 m_ext->setStore( m_SP[0], m_SP[1] );
             } catch ( dev::StorageOverflow& ex ) {

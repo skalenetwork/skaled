@@ -1445,7 +1445,7 @@ Json::Value WebThreeStubClient::bite_getDecryptedTransactionData( const std::str
 }
 #endif
 
-#ifdef MIRAGE
+#ifdef FAIR
 Json::Value WebThreeStubClient::skale_getBLSPublicKey() {
     Json::Value p;
     p = Json::nullValue;

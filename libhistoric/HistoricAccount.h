@@ -51,13 +51,13 @@ public:
     /// Explicit constructor for wierd cases of construction or a contract account.
     HistoricAccount( u256 _nonce, u256 _balance, StorageRoot _storageRoot, h256 _codeHash,
         u256 const& _version, Changedness _c
-#ifndef MIRAGE
+#ifndef FAIR
         ,
         s256 _storageUsed = 0
 #endif
         )
         : Account( _nonce, _balance, _storageRoot, _codeHash, _version, _c
-#ifndef MIRAGE
+#ifndef FAIR
               ,
               _storageUsed
 #endif
