@@ -26,11 +26,11 @@
 #include "SkaleClient.h"
 
 #include <jsonrpccpp/client/connectors/httpclient.h>
-#include <libconsensus/libBLS/backends/interface/functions.hpp>
 #include <libethcore/CommonJS.h>
 #include <libskale/AmsterdamFixPatch.h>
 #include <libweb3jsonrpc/Skale.h>
 #include <skutils/rest_call.h>
+#include <libconsensus/libBLS/backends/interface/functions.hpp>
 
 SnapshotHashAgent::SnapshotHashAgent( const dev::eth::ChainParams& chainParams,
     const std::array< std::string, 4 >& common_public_key,
@@ -57,7 +57,8 @@ SnapshotHashAgent::SnapshotHashAgent( const dev::eth::ChainParams& chainParams,
 
 void SnapshotHashAgent::readPublicKeyFromConfig() {
     auto commonBlsPublicKeyArray = chainParams_.getCommonBlsPublicKey();
-    this->commonPublicKey_ = libBLS::algebra::G2Point::fromString( commonBlsPublicKeyArray, libBLS::Base::DEC );
+    this->commonPublicKey_ =
+        libBLS::algebra::G2Point::fromString( commonBlsPublicKeyArray, libBLS::Base::DEC );
     if ( !this->commonPublicKey_.isValid() ) {
         throw SnapshotHashAgentException( "Invalid common public key" );
     }
@@ -73,9 +74,8 @@ size_t SnapshotHashAgent::verifyAllData() const {
         if ( this->isReceived_.at( i ) ) {
             bool is_verified = false;
             try {
-                is_verified =
-                    this->bls_->Verification( this->hashes_.at( i ).asArray(),
-                        this->signatures_.at( i ), this->public_keys_.at( i ) );
+                is_verified = this->bls_->Verification( this->hashes_.at( i ).asArray(),
+                    this->signatures_.at( i ), this->public_keys_.at( i ) );
             } catch ( std::exception& ex ) {
                 LOG( m_loggerError ) << ex.what();
             }
@@ -136,8 +136,7 @@ bool SnapshotHashAgent::voteForHash() {
         std::vector< libBLS::algebra::FrScalar > lagrange_coeffs;
         libBLS::algebra::G1Point common_signature;
         try {
-            lagrange_coeffs =
-                libBLS::algebra::lagrangeCoeffs( idx, ( 2 * this->n_ + 1 ) / 3 );
+            lagrange_coeffs = libBLS::algebra::lagrangeCoeffs( idx, ( 2 * this->n_ + 1 ) / 3 );
             common_signature = this->bls_->SignatureRecover( signatures, lagrange_coeffs );
         } catch ( libBLS::ThresholdUtils::IncorrectInput& ex ) {
             LOG( m_loggerError )
@@ -150,8 +149,8 @@ bool SnapshotHashAgent::voteForHash() {
         bool is_verified = false;
 
         try {
-            is_verified = this->bls_->Verification( ( *it ).first.asArray() ,
-                common_signature, this->commonPublicKey_ );
+            is_verified = this->bls_->Verification(
+                ( *it ).first.asArray(), common_signature, this->commonPublicKey_ );
         } catch ( libBLS::ThresholdUtils::IsNotWellFormed& ex ) {
             LOG( m_loggerError )
                 << "Exception while verifying common signature from other skaleds: " << ex.what();
@@ -164,18 +163,18 @@ bool SnapshotHashAgent::voteForHash() {
                    "common public key from config";
 
             auto commonBlsPublicKeyArray = chainParams_.getCommonBlsPublicKey();
-            libBLS::algebra::G2Point commonPublicKey_from_config = libBLS::algebra::G2Point::fromString( 
-                commonBlsPublicKeyArray, libBLS::Base::DEC );
+            libBLS::algebra::G2Point commonPublicKeyFromConfig =
+                libBLS::algebra::G2Point::fromString( commonBlsPublicKeyArray, libBLS::Base::DEC );
 
             LOG( m_loggerDebug ) << "NEW BLS COMMON PUBLIC KEY:";
-            auto coords = commonPublicKey_from_config.toStringArray( libBLS::Base::DEC );
+            auto coords = commonPublicKeyFromConfig.toStringArray( libBLS::Base::DEC );
             LOG( m_loggerDebug ) << "X.c0: " << coords[0];
             LOG( m_loggerDebug ) << "X.c1: " << coords[1];
             LOG( m_loggerDebug ) << "Y.c0: " << coords[2];
             LOG( m_loggerDebug ) << "Y.c1: " << coords[3];
             try {
-                is_verified = this->bls_->Verification( ( *it ).first.asArray() ,
-                    common_signature, commonPublicKey_from_config );
+                is_verified = this->bls_->Verification(
+                    ( *it ).first.asArray(), common_signature, commonPublicKeyFromConfig );
             } catch ( libBLS::ThresholdUtils::IsNotWellFormed& ex ) {
                 LOG( m_loggerError )
                     << "Exception while verifying common signature from other skaleds: "
@@ -190,7 +189,7 @@ bool SnapshotHashAgent::voteForHash() {
             } else {
                 LOG( m_loggerInfo ) << "Common BLS signature was verified with common public key "
                                        "from config.";
-                this->commonPublicKey_ = commonPublicKey_from_config;
+                this->commonPublicKey_ = commonPublicKeyFromConfig;
             }
         }
 
@@ -203,8 +202,8 @@ bool SnapshotHashAgent::voteForHash() {
     return true;
 }
 
-std::tuple< dev::h256, libBLS::algebra::G1Point, libBLS::algebra::G2Point > SnapshotHashAgent::askNodeForHash(
-    const std::string& url, unsigned blockNumber ) {
+std::tuple< dev::h256, libBLS::algebra::G1Point, libBLS::algebra::G2Point >
+SnapshotHashAgent::askNodeForHash( const std::string& url, unsigned blockNumber ) {
     jsonrpc::HttpClient* jsonRpcClient = new jsonrpc::HttpClient( url );
     SkaleClient skaleClient( *jsonRpcClient );
 
@@ -233,9 +232,10 @@ std::tuple< dev::h256, libBLS::algebra::G1Point, libBLS::algebra::G2Point > Snap
         LOG( m_loggerInfo ) << "Received snapshot hash from " << url << " : " << strHash;
 
         libBLS::algebra::G1Point signature =
-            libBLS::algebra::G1Point( 
-                libBLS::algebra::FqElement::fromString( joSignatureResponse["X"].asCString(), libBLS::Base::DEC ),
-                libBLS::algebra::FqElement::fromString( joSignatureResponse["Y"].asCString(), libBLS::Base::DEC ),
+            libBLS::algebra::G1Point( libBLS::algebra::FqElement::fromString(
+                                          joSignatureResponse["X"].asCString(), libBLS::Base::DEC ),
+                libBLS::algebra::FqElement::fromString(
+                    joSignatureResponse["Y"].asCString(), libBLS::Base::DEC ),
                 libBLS::algebra::FqElement::one() );
 
         libBLS::algebra::G2Point publicKey;
