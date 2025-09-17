@@ -45,7 +45,7 @@
 #include "SkaledFixture.h"
 #include <libconsensus/SkaleCommon.h>
 
-#ifndef MIRAGE
+#ifndef FAIR
 #include <libconsensus/oracle/OracleRequestSpec.h>
 #endif
 
@@ -71,7 +71,7 @@
 #include <libconsensus/libBLS/threshold_encryption/ThresholdEncryption.h>
 #endif
 
-#ifdef MIRAGE
+#ifdef FAIR
 #include <libskale/BlockRewardsActivationPatch.h>
 #endif
 
@@ -86,7 +86,7 @@ using namespace dev::test;
 
 static size_t rand_port = ( srand( time( nullptr ) ), 1024 + rand() % 64000 );
 
-#ifndef MIRAGE
+#ifndef FAIR
 static std::string const c_genesisConfigString = R"(
 {
     "sealEngine": "NoProof",
@@ -446,7 +446,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
                         ret["accounts"]["0xD2002000000000000000000000000000000000D2"]["storage"]
                            ["0x0"] = toJS( account2.address() );
                 }
-#ifndef MIRAGE
+#ifndef FAIR
                 ret["skaleConfig"]["sChain"]["contractStorageLimit"] = 128;
 #endif
                 Json::FastWriter fastWriter;
@@ -456,7 +456,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
                 Json::Value ret;
                 Json::FastWriter fastWriter;
                 Json::Reader().parse( _config, ret );
-#ifndef MIRAGE
+#ifndef FAIR
                 ret["skaleConfig"]["sChain"]["contractStorageLimit"] = 106874910;
                 ret["skaleConfig"]["sChain"]["contractStoragePatchTimestamp"] = 1000;
 #endif
@@ -481,16 +481,29 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             chainParams->EIP158ForkBlock = 0;
             chainParams->constantinopleForkBlock = 0;
             chainParams->istanbulForkBlock = 0;
-#ifndef MIRAGE
+#ifndef FAIR
             chainParams->externalGasDifficulty = 1;
             chainParams->sChain.contractStorageLimit = 128;
 #endif
             // 615 + 1430 is experimentally-derived block size + average extras size
             chainParams->sChain.dbStorageLimit = 320.5 * ( 615 + 1430 );
-#ifdef MIRAGE
+#ifdef FAIR
+            chainParams->sChain.nodeGroups =
+            {
+                        { { GroupNode{ u256( 0 ), u256( 8 ),
+                                       "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea",
+                                       Address( "0x08151B8F80bfa7dEa760e461412AF24348224edf" )
+                          } },
+                          uint64_t( -1 ),
+                          { "3842742177969966091367527274107524613106077736353521259727282251005583743182",
+                            "3497912824016228906558906422247670474553186446469877598411863912329082553081",
+                            "8173996886448941320370434854289578123609627835954133538412363037981850950343",
+                            "20979370720689475348670582375026949105497642726992863932315517524004804784155" }
+                          }
+            };
             chainParams->sChain.nodes[0].owner = jsToAddress( "0x0E7d7F1D34a502bD609542576941C3FCc087c588" );
 #endif
-#ifndef MIRAGE
+#ifndef FAIR
             chainParams->sChain
                 ._patchTimestamps[static_cast< size_t >( SchainPatchEnum::ContractStoragePatch )] =
                 1;
@@ -598,7 +611,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
     }
 
     ~JsonRpcFixture() {
-#ifdef MIRAGE
+#ifdef FAIR
         if ( client->skaleHost()->isConsesusUpdateHappened() )
             client->skaleHost()->handleConsensusUpdate();
 #endif
@@ -650,7 +663,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
     time_t push0PatchActivationTimestamp;
 };
 
-#ifndef MIRAGE
+#ifndef FAIR
 struct RestrictedAddressFixture : public JsonRpcFixture {
     RestrictedAddressFixture( const std::string& _config = c_genesisConfigString )
         : JsonRpcFixture( _config ) {
@@ -758,6 +771,7 @@ BOOST_AUTO_TEST_CASE(
         auto it = std::find_if( keys.begin(), keys.end(), [i]( dev::KeyPair const& keyPair ) {
             return jsToAddress( i.asString() ) == keyPair.address();
         } );
+
         BOOST_CHECK_EQUAL( it != keys.end(), true );
     }
 }
@@ -880,7 +894,7 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_validTransaction,
 
     // Mine to generate a non-zero account balance
     const int blocksToMine = 1;
-#ifdef MIRAGE
+#ifdef FAIR
     const u256 blockReward = fixture.client->chainParams().blockReward(
                 fixture.client->blockChain().info().timestamp(),
                 fixture.client->blockChain().info().number() );
@@ -925,7 +939,7 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorInvalidNonce,
 
     // Mine to generate a non-zero account balance
     const size_t blocksToMine = 1;
-#ifdef MIRAGE
+#ifdef FAIR
     const u256 blockReward = fixture.client->chainParams().blockReward(
                 fixture.client->blockChain().info().timestamp(),
                 fixture.client->blockChain().info().number() );
@@ -967,7 +981,7 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorInsufficientGas ) {
 
     // Mine to generate a non-zero account balance
     const int blocksToMine = 1;
-#ifdef MIRAGE
+#ifdef FAIR
     const u256 blockReward = fixture.client->chainParams().blockReward(
                 fixture.client->blockChain().info().timestamp(),
                 fixture.client->blockChain().info().number() );
@@ -999,7 +1013,7 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorDuplicateTransaction ) {
 
     // Mine to generate a non-zero account balance
     const int blocksToMine = 1;
-#ifdef MIRAGE
+#ifdef FAIR
     const u256 blockReward = fixture.client->chainParams().blockReward(
                 fixture.client->blockChain().info().timestamp(),
                 fixture.client->blockChain().info().number() );
@@ -1031,7 +1045,7 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorDuplicateTransaction ) {
         "Same transaction already exists in the pending transaction queue." );
 }
 
-#ifdef MIRAGE
+#ifdef FAIR
 
 /**
  * Auxiliar function to mine a block to gather balance,
@@ -1067,7 +1081,7 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_acceptPreEIP155Txns_configOmitted )
     Json::Value ret;
     Json::Reader().parse( _config, ret );
     Json::FastWriter fastWriter;
-    
+
     // 'allowPreEIP155Txns' field is not set -> should be allowed by default
     std::string config = fastWriter.write( ret );
     JsonRpcFixture fixture( config );
@@ -1081,7 +1095,7 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_acceptPreEIP155Txns_configTrue ) {
     Json::Value ret;
     Json::Reader().parse( _config, ret );
     Json::FastWriter fastWriter;
-    
+
     // 'allowPreEIP155Txns' field is set to true -> should be allowed
     ret["params"]["allowPreEIP155Txns"] = true;
     std::string config = fastWriter.write( ret );
@@ -1106,7 +1120,7 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_rejectPreEIP155Txns_configFalse ) {
     std::cout << "Raw transaction: " << signedTx["raw"].asString() << std::endl;
     BOOST_REQUIRE_THROW(
         fixture.rpcClient->eth_sendRawTransaction( signedTx["raw"].asString() ),
-        jsonrpc::JsonRpcException 
+        jsonrpc::JsonRpcException
     );
 }
 
@@ -1340,7 +1354,7 @@ BOOST_AUTO_TEST_CASE( deploy_contract_not_from_owner ) {
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
     Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
-#ifdef MIRAGE
+#ifdef FAIR
     BOOST_CHECK_EQUAL( receipt["status"], string( "0x1" ) );
     Json::Value code =
         fixture.rpcClient->eth_getCode( receipt["contractAddress"].asString(), "latest" );
@@ -1397,7 +1411,7 @@ BOOST_AUTO_TEST_CASE( deploy_contract_without_controller ) {
     BOOST_REQUIRE( code.asString().substr( 2 ) == compiled.substr( 58 ) );
 }
 
-#ifndef MIRAGE
+#ifndef FAIR
 BOOST_AUTO_TEST_CASE( deploy_contract_with_controller ) {
     JsonRpcFixture fixture( c_genesisConfigString, false );
     auto senderAddress = fixture.coinbase.address();
@@ -1581,7 +1595,7 @@ BOOST_AUTO_TEST_CASE( push0_patch_activation ) {
     callObject["from"] = toJS( fixture.account2.address() );
     callObject["to"] = contractAddress;
 
-#ifndef MIRAGE
+#ifndef FAIR
     // first try without PushZeroPatch
 
     txHash = fixture.rpcClient->eth_sendTransaction( callObject );
@@ -1609,7 +1623,7 @@ BOOST_AUTO_TEST_CASE( push0_patch_activation ) {
     uint64_t crossingBlockNumber = fixture.client->number();
 #endif
 
-#ifndef MIRAGE
+#ifndef FAIR
     // in the "crossing" block tx still should fail
     receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE_EQUAL( receipt["status"], string( "0x0" ) );
@@ -1626,11 +1640,11 @@ BOOST_AUTO_TEST_CASE( push0_patch_activation ) {
     BOOST_REQUIRE_EQUAL( receipt["status"], string( "0x1" ) );
 
 #ifdef HISTORIC_STATE
-#ifndef MIRAGE
+#ifndef FAIR
     // historic call should fail before activation and succees after it
     callResult1 = fixture.rpcClient->eth_call( callObject, toJS( crossingBlockNumber - 1 ) );
     BOOST_REQUIRE_EQUAL( callResult1, string( "0x" ) );
-#endif // MIRAGE
+#endif // FAIR
 
     callResult1 = fixture.rpcClient->eth_call( callObject, toJS( crossingBlockNumber ) );
     BOOST_REQUIRE_NE( callResult1, string( "0x" ) );
@@ -2057,7 +2071,7 @@ BOOST_AUTO_TEST_CASE( estimate_gas_with_error ) {
     }
 }
 
-#ifndef MIRAGE
+#ifndef FAIR
 BOOST_AUTO_TEST_CASE( simplePoWTransaction ) {
     u256 ESTIMATE_AFTER_PATCH = u256( 21000 + 1024 * 16 );
     u256 ESTIMATE_BEFORE_PATCH = u256( 21000 + 1024 * 68 );
@@ -2146,7 +2160,7 @@ BOOST_AUTO_TEST_CASE( simplePoWTransaction ) {
 }
 #endif
 
-#ifndef MIRAGE
+#ifndef FAIR
 BOOST_AUTO_TEST_CASE( clearPartialReceipts ) {
     // Prepare fixture
     std::string _config = c_genesisConfigString;
@@ -2392,7 +2406,7 @@ BOOST_AUTO_TEST_CASE( skipTransactionExecution ) {
     BOOST_REQUIRE( receipt["gasUsed"].asString() == "0x5ac0" );
 }
 
-#ifndef MIRAGE
+#ifndef FAIR
 BOOST_AUTO_TEST_CASE( transactionWithoutFunds ) {
     JsonRpcFixture fixture;
     dev::eth::simulateMining( *( fixture.client ), 1 );
@@ -2475,7 +2489,7 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasPriceTooLow ) {
 
     // Mine to generate a non-zero account balance
     const int blocksToMine = 1;
-#ifdef MIRAGE
+#ifdef FAIR
     const u256 blockReward = fixture.client->chainParams().blockReward(
                 fixture.client->blockChain().info().timestamp(),
                 fixture.client->blockChain().info().number() );
@@ -2561,7 +2575,7 @@ BOOST_AUTO_TEST_CASE( logs ) {
         t["to"] = contractAddress;
         t["gas"] = "99000";
 
-#ifdef MIRAGE
+#ifdef FAIR
         std::string txHash;
         if (i%2) {
             txHash = fixture.rpcClient->eth_sendTransaction( t );
@@ -2703,8 +2717,8 @@ BOOST_AUTO_TEST_CASE( getLogs_limit ) {
 
     dev::eth::simulateMining( *( fixture.client ), 100 );
 
-    // push0Patch is enabled by default for MIRAGE
-#ifndef MIRAGE
+    // push0Patch is enabled by default for FAIR
+#ifndef FAIR
     // wait for push0Patch to be activated
     sleep(10);
 
@@ -2977,7 +2991,7 @@ BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
 
     Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     string contractAddress = receipt["contractAddress"].asString();
-#ifndef MIRAGE
+#ifndef FAIR
     dev::Address contract = dev::Address( contractAddress );
 #endif
 
@@ -2987,7 +3001,7 @@ BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
     txCall["from"] = toJS( senderAddress );
     txCall["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     auto callResult = fixture.rpcClient->eth_call( txCall, "latest" );
-#ifndef MIRAGE
+#ifndef FAIR
     BOOST_REQUIRE(
         fixture.client->state().createReadOnlySnapBasedCopy().storageUsed( contract ) == 0 );
 #endif
@@ -3001,7 +3015,7 @@ BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
     txPushValueAndCall["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txPushValueAndCall );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
-#ifndef MIRAGE
+#ifndef FAIR
     BOOST_REQUIRE(
         fixture.client->state().createReadOnlySnapBasedCopy().storageUsed( contract ) == 96 );
 #endif
@@ -3015,7 +3029,7 @@ BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
     txPushValue["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txPushValue );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
-#ifndef MIRAGE
+#ifndef FAIR
     BOOST_REQUIRE(
         fixture.client->state().createReadOnlySnapBasedCopy().storageUsed( contract ) == 128 );
 #endif
@@ -3028,7 +3042,7 @@ BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
     txThrow["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txThrow );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
-#ifndef MIRAGE
+#ifndef FAIR
     BOOST_REQUIRE(
         fixture.client->state().createReadOnlySnapBasedCopy().storageUsed( contract ) == 128 );
     BOOST_REQUIRE_EQUAL( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"], "0x0" );
@@ -3044,7 +3058,7 @@ BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
     txEraseValue["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txEraseValue );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
-#ifndef MIRAGE
+#ifndef FAIR
     BOOST_REQUIRE(
         fixture.client->state().createReadOnlySnapBasedCopy().storageUsed( contract ) == 96 );
 #endif
@@ -3059,7 +3073,7 @@ BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
     txZeroValue["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txZeroValue );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
-#ifndef MIRAGE
+#ifndef FAIR
     BOOST_REQUIRE(
         fixture.client->state().createReadOnlySnapBasedCopy().storageUsed( contract ) == 64 );
 #endif
@@ -3073,7 +3087,7 @@ BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
     txZeroValue1["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txZeroValue1 );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
-#ifndef MIRAGE
+#ifndef FAIR
     BOOST_REQUIRE(
         fixture.client->state().createReadOnlySnapBasedCopy().storageUsed( contract ) == 64 );
 #endif
@@ -3087,7 +3101,7 @@ BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
     txValueChanged["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txValueChanged );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
-#ifndef MIRAGE
+#ifndef FAIR
     BOOST_REQUIRE(
         fixture.client->state().createReadOnlySnapBasedCopy().storageUsed( contract ) == 96 );
 #endif
@@ -3101,7 +3115,7 @@ BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
     txValueChanged1["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txValueChanged1 );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
-#ifndef MIRAGE
+#ifndef FAIR
     BOOST_REQUIRE(
         fixture.client->state().createReadOnlySnapBasedCopy().storageUsed( contract ) == 96 );
 #endif
@@ -3115,7 +3129,7 @@ BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
     txValueChanged2["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txValueChanged2 );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
-#ifndef MIRAGE
+#ifndef FAIR
     BOOST_REQUIRE(
         fixture.client->state().createReadOnlySnapBasedCopy().storageUsed( contract ) == 128 );
 #endif
@@ -3129,7 +3143,7 @@ BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
     txValueChanged3["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txValueChanged3 );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
-#ifndef MIRAGE
+#ifndef FAIR
     BOOST_REQUIRE(
         fixture.client->state().createReadOnlySnapBasedCopy().storageUsed( contract ) == 128 );
     BOOST_REQUIRE_EQUAL( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"], "0x0" );
@@ -3198,7 +3212,7 @@ BOOST_AUTO_TEST_CASE( storage_limit_chain ) {
     txStore["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txStore );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
-#ifndef MIRAGE
+#ifndef FAIR
     BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == 64 );
 #endif
     BOOST_REQUIRE_EQUAL( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"], "0x1" );
@@ -3210,7 +3224,7 @@ BOOST_AUTO_TEST_CASE( storage_limit_chain ) {
     txStore["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txStore );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
-#ifndef MIRAGE
+#ifndef FAIR
     BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == 96 );
 #endif
     BOOST_REQUIRE_EQUAL( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"], "0x1" );
@@ -3222,7 +3236,7 @@ BOOST_AUTO_TEST_CASE( storage_limit_chain ) {
     txErase["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txErase );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
-#ifndef MIRAGE
+#ifndef FAIR
     BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == 64 );
 #endif
     BOOST_REQUIRE_EQUAL( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"], "0x1" );
@@ -3269,7 +3283,7 @@ BOOST_AUTO_TEST_CASE( storage_limit_chain ) {
     txStoreSecondContract["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txStoreSecondContract );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
-#ifndef MIRAGE
+#ifndef FAIR
     BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == 128 );
 #endif
     BOOST_REQUIRE_EQUAL( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"], "0x1" );
@@ -3282,7 +3296,7 @@ BOOST_AUTO_TEST_CASE( storage_limit_chain ) {
     txStoreSecondContract["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txStoreSecondContract );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
-#ifndef MIRAGE
+#ifndef FAIR
     BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == 128 );
     BOOST_REQUIRE_EQUAL( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"], "0x0" );
 #else
@@ -3296,7 +3310,7 @@ BOOST_AUTO_TEST_CASE( storage_limit_chain ) {
     txStore["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txStore );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
-#ifndef MIRAGE
+#ifndef FAIR
     BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == 128 );
     BOOST_REQUIRE_EQUAL( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"], "0x0" );
 #else
@@ -3311,7 +3325,7 @@ BOOST_AUTO_TEST_CASE( storage_limit_chain ) {
     txZeroValue["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txZeroValue );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
-#ifndef MIRAGE
+#ifndef FAIR
     BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == 96 );
 #endif
     BOOST_REQUIRE_EQUAL( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"], "0x1" );
@@ -3320,7 +3334,7 @@ BOOST_AUTO_TEST_CASE( storage_limit_chain ) {
 BOOST_AUTO_TEST_CASE( storage_limit_predeployed ) {
     JsonRpcFixture fixture( c_genesisConfigString );
     dev::eth::simulateMining( *( fixture.client ), 20 );
-#ifndef MIRAGE
+#ifndef FAIR
     BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == 64 );
 #endif
 
@@ -3335,7 +3349,7 @@ BOOST_AUTO_TEST_CASE( storage_limit_predeployed ) {
     txChangeInt["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     string txHash = fixture.rpcClient->eth_sendTransaction( txChangeInt );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
-#ifndef MIRAGE
+#ifndef FAIR
     BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == 64 );
 #endif
     BOOST_REQUIRE_EQUAL( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"], "0x1" );
@@ -3348,7 +3362,7 @@ BOOST_AUTO_TEST_CASE( storage_limit_predeployed ) {
     txZeroValue["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txZeroValue );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
-#ifndef MIRAGE
+#ifndef FAIR
     BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == 32 );
 #endif
     BOOST_REQUIRE_EQUAL( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"], "0x1" );
@@ -3361,7 +3375,7 @@ BOOST_AUTO_TEST_CASE( storage_limit_predeployed ) {
     txChangeInt["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txChangeInt );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
-#ifndef MIRAGE
+#ifndef FAIR
     BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == 64 );
 #endif
     BOOST_REQUIRE_EQUAL( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"], "0x1" );
@@ -3488,7 +3502,7 @@ BOOST_AUTO_TEST_CASE( storage_limit_reverted ) {
     BOOST_REQUIRE( receipt2["status"] == string( "0x1" ) );
     string contractAddress2 = receipt2["contractAddress"].asString();
 
-#ifndef MIRAGE
+#ifndef FAIR
     auto storageUsed = fixture.client->state().storageUsedTotal();
 #endif
 
@@ -3499,7 +3513,7 @@ BOOST_AUTO_TEST_CASE( storage_limit_reverted ) {
     txStoreTry["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txStoreTry );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
-#ifndef MIRAGE
+#ifndef FAIR
     BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == storageUsed );
 #endif
 
@@ -3516,7 +3530,7 @@ BOOST_AUTO_TEST_CASE( setSchainExitTime ) {
         fixture.rpcClient->setSchainExitTime( requestJson ), jsonrpc::JsonRpcException );
 }
 
-#ifndef MIRAGE
+#ifndef FAIR
 /*
 BOOST_AUTO_TEST_CASE( oracle, *boost::unit_test::disabled() ) {
 
@@ -3593,7 +3607,7 @@ BOOST_AUTO_TEST_CASE( debugGetPatchTimestamps ) {
     }
 }
 
-#ifndef MIRAGE
+#ifndef FAIR
 BOOST_AUTO_TEST_CASE( powTxnGasLimit ) {
     Json::Value configJson;
     Json::Reader().parse( c_genesisConfigString, configJson );
@@ -3782,7 +3796,7 @@ BOOST_AUTO_TEST_CASE( eip2930Transactions ) {
     BOOST_REQUIRE( fixture.rpcClient->eth_getBalance( "0xc868AF52a6549c773082A334E5AE232e0Ea3B513",
                        "latest" ) == "0x16345785d8a0000" );
 
-#ifndef MIRAGE
+#ifndef FAIR
     // try sending type1 txn before patchTimestmap
     BOOST_REQUIRE_THROW(
         fixture.rpcClient->eth_sendRawTransaction(
@@ -3985,7 +3999,7 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     BOOST_REQUIRE( fixture.rpcClient->eth_getBalance( "0x5EdF1e852fdD1B0Bc47C0307EF755C76f4B9c251",
                        "latest" ) == "0x16345785d8a0000" );
 
-#ifndef MIRAGE
+#ifndef FAIR
     // try sending type2 txn before patchTimestmap
     BOOST_REQUIRE_THROW(
         fixture.rpcClient->eth_sendRawTransaction(
@@ -4312,7 +4326,7 @@ BOOST_AUTO_TEST_CASE( InvalidTransactionFormatPatch ) {
     BOOST_REQUIRE( receipt["status"] == string( "0x1" ) );
 
 
-#ifndef MIRAGE
+#ifndef FAIR
     // send a txn with maxPriorityFeePerGas > maxFeePerGas before InvalidTransactionFormatPatchTimestamp
     txHash = fixture.rpcClient->eth_sendRawTransaction(
         "0x02f86d8197808504a817c8018504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b8080"
@@ -4470,204 +4484,9 @@ BOOST_AUTO_TEST_CASE( getZeroBlock ) {
     BOOST_REQUIRE( blockByHash["hash"] == blockHash );
 }
 
-
-#ifdef MIRAGE
-BOOST_AUTO_TEST_CASE( block_author_balance ) {
-    // when rewardWalletAddress is not defined
-
-    // for testBlockRewardsActivationPatchAddress
-    setenv( "TEST_BLOCK_REWARDS_ACTIVATION", "1", 1 );
-
-    std::string _config = c_genesisConfigString;
-    Json::Value ret;
-    Json::Reader().parse( _config, ret );
-    // Set FAIR chainID
-    std::string chainID = "0x3a6";
-    ret["params"]["chainID"] = chainID;
-    // disable block rewards at startup
-    ret["params"]["blockReward"] = "0x00";
-
-    Json::FastWriter fastWriter;
-    std::string config = fastWriter.write( ret );
-    JsonRpcFixture fixture( config, false, false, true );
-
-    string etherbase = fixture.rpcClient->eth_coinbase();
-
-    BOOST_REQUIRE( !BlockRewardsActivationPatch::isEnabled( fixture.client->chainId() ) );
-
-    // checksumed address: 0x0E7d7F1D34a502bD609542576941C3FCc087c588
-    auto node_owner = "0x0e7d7f1d34a502bd609542576941c3fcc087c588";
-
-    auto etherbase_address = jsToAddress( etherbase );
-
-    u256 etherbaseBalance = fixture.client->balanceAt( etherbase_address );
-    BOOST_REQUIRE_EQUAL( etherbaseBalance, 0 );
-
-    dev::Address stakingContractAddress = fixture.client->chainParams().getStakingContractAddress();
-    BOOST_REQUIRE_EQUAL( fixture.client->balanceAt( stakingContractAddress ), 0 );
-
-    // mine transaction not from testBlockRewardsActivationPatchAddress - block rewards should stay disabled
-    Json::Value silentTx;
-    silentTx["value"] = 1;
-    // address has preset balance in config
-    // silentTx["from"] = dev::Address( "0x5C4e11842E8be09264dc1976943571d7Af6d00F9" ).hex();
-    silentTx["to"] = BlockRewardsActivationPatch::getMagicAddress().hex();
-    silentTx["gasPrice"] = fixture.rpcClient->eth_gasPrice();
-    silentTx["gas"] = 30000;
-    silentTx["nonce"] = 0;
-
-    auto silentTs = toTransactionSkeleton( silentTx );
-    auto silentT = dev::eth::Transaction(
-        silentTs, dev::Secret( "1c2cd4b70c2b8c6cd7144bbbfbd1e5c6eacb4a5efd9c86d0e29cbbec4e8483b9" ) );
-
-    std::string txHash = fixture.rpcClient->eth_sendRawTransaction( dev::toHex( silentT.toBytes() ) );
-    BOOST_REQUIRE( !txHash.empty() );
-
-    dev::eth::mineTransaction( *( fixture.client ), 1 );
-    BOOST_REQUIRE( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"] == "0x1" );
-    BOOST_REQUIRE( !BlockRewardsActivationPatch::isEnabled( fixture.client->chainId() ) );
-    // staking contract balance only gets changed when block rewards are activated
-    BOOST_REQUIRE_EQUAL( fixture.client->balanceAt( stakingContractAddress ), 0 );
-    etherbaseBalance = fixture.client->balanceAt( etherbase_address );
-    BOOST_REQUIRE_EQUAL( etherbaseBalance, 0 );
-
-    // mine transaction from testBlockRewardsActivationPatchAddress - block rewards should enable
-    Json::Value activationTx;
-    // activationTx["from"] = "0x5339Ef05428d1b87f4e2F2db64E782c68E9cDA56";
-    activationTx["gasPrice"] = fixture.rpcClient->eth_gasPrice();
-    activationTx["gas"] = 30000;
-    activationTx["chainId"] = "0x3a9";
-    activationTx["nonce"] = 0;
-    activationTx["to"] = dev::Address::random().hex();
-
-    auto ts = toTransactionSkeleton( activationTx );
-    auto t = dev::eth::Transaction(
-        ts, dev::Secret( "0e394ff21db60660a27a6383aedf8c75070648965acbef7c369c1bae2141a485" ) );
-
-    txHash = fixture.rpcClient->eth_sendRawTransaction( dev::toHex( t.toBytes() ) );
-    dev::eth::mineTransaction( *( fixture.client ), 1 );
-    BOOST_REQUIRE( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"] == "0x1" );
-    BOOST_REQUIRE( BlockRewardsActivationPatch::isEnabled( fixture.client->chainId() ) );
-    etherbaseBalance = fixture.client->balanceAt( etherbase_address );
-    BOOST_REQUIRE_EQUAL( etherbaseBalance, 0 );
-    BOOST_REQUIRE_EQUAL( fixture.client->balanceAt( stakingContractAddress ), 0 );
-
-    etherbaseBalance = fixture.client->balanceAt( jsToAddress( etherbase ) );
-
-    auto authorInitialBalance = fixture.client->balanceAt( jsToAddress( "0x0E7d7F1D34a502bD609542576941C3FCc087c588" ) );
-    auto stakingContractInitialBalance = fixture.client->balanceAt( stakingContractAddress );
-
-    auto initialBlockNumber = jsToU256( fixture.rpcClient->eth_blockNumber() );
-
-    // push random transaction, check balance difference
-    Json::Value sampleTx;
-    sampleTx["value"] = 1000000;
-    sampleTx["data"] = toJS( bytes() );
-    sampleTx["from"] = fixture.coinbase.address().hex();
-    sampleTx["to"] = fixture.account2.address().hex();
-    sampleTx["gasPrice"] = 1000000000000;
-    txHash = fixture.rpcClient->eth_sendTransaction( sampleTx );
-    BOOST_REQUIRE( !txHash.empty() );
-
-    dev::eth::mineTransaction( *( fixture.client ), 1 );
-
-    fixture.client->state().getOriginalDb()->createBlockSnap( 2 );
-    BOOST_REQUIRE_EQUAL( fixture.client->balanceAt( fixture.account2.address() ), u256( 1000000 ) );
-
-    auto txData = fixture.rpcClient->eth_getTransactionReceipt( txHash );
-
-    auto blockNumAsString = fixture.rpcClient->eth_blockNumber();
-
-    auto author = fixture.rpcClient->eth_getBlockByNumber( blockNumAsString, false )["author"];
-    auto blockNumber = jsToU256( blockNumAsString );
-
-    BOOST_REQUIRE( author == node_owner );
-
-    auto totalReward = fixture.client->chainParams().blockReward(
-        fixture.client->latestBlock().info().timestamp(), fixture.client->number() );
-    auto blockAuthorReward = dev::calculateShareWithPrecision( totalReward, fixture.client->evmSchedule().shareOfBlockRewardToBlockAuthorPromille );
-    auto stakingContractReward = totalReward - blockAuthorReward;
-
-    auto feeForTx =
-        jsToU256( sampleTx["gasPrice"].asString() ) * jsToU256( txData["gasUsed"].asString() );
-    feeForTx = dev::calculateShareWithPrecision( feeForTx, fixture.client->evmSchedule().shareOfTransactionFeeToRewardPromille );
-
-    auto expectedAuthorBalanceChange = ( blockNumber - initialBlockNumber ) * blockAuthorReward + feeForTx;
-    auto expectedContractBalanceChange = ( blockNumber - initialBlockNumber ) * stakingContractReward;
-
-    BOOST_REQUIRE_EQUAL(
-        fixture.client->balanceAt( jsToAddress( author.asString() ) ) - authorInitialBalance,
-        expectedAuthorBalanceChange );
-    BOOST_REQUIRE_EQUAL(
-        fixture.client->balanceAt( stakingContractAddress ) - stakingContractInitialBalance,
-        expectedContractBalanceChange );
-}
-
-BOOST_AUTO_TEST_CASE( block_author_balance_reward_wallet ) {
-    // when rewardWalletAddress is defined
-
-    // checksumed address: 0xfa3fe33E351a7c60039E59D923e417A6362D1C3E
-    auto node_reward_wallet = "0xfa3fe33e351a7c60039e59d923e417a6362d1c3e";
-    auto node_reward_wallet_address = jsToAddress( node_reward_wallet );
-
-    nlohmann::json configJson = nlohmann::json::parse(c_genesisConfigString);
-
-    // Add rewardWalletAddress to the first node in group "1"
-    configJson["skaleConfig"]["sChain"]["nodes"]["1"]["group"][0]["rewardWalletAddress"] = node_reward_wallet;
-
-    auto noRewardWalletAddressConfig = configJson.dump();
-    JsonRpcFixture fixture( noRewardWalletAddressConfig, false, false, true );
-
-    auto authorInitialBalance = fixture.client->balanceAt( node_reward_wallet_address );
-
-    auto initialBlockNumber = jsToU256( fixture.rpcClient->eth_blockNumber() );
-
-    // mine block without transactions
-    dev::eth::simulateMining( *( fixture.client ), 1 );
-    sleep( 3 );
-
-    // mine transaction
-    Json::Value sampleTx;
-    sampleTx["value"] = 1000000;
-    sampleTx["data"] = toJS( bytes() );
-    sampleTx["from"] = fixture.coinbase.address().hex();
-    sampleTx["to"] = fixture.account2.address().hex();
-    sampleTx["gasPrice"] = 1000000000000;
-    std::string txHash = fixture.rpcClient->eth_sendTransaction( sampleTx );
-    BOOST_REQUIRE( !txHash.empty() );
-
-    dev::eth::mineTransaction( *( fixture.client ), 1 );
-
-    fixture.client->state().getOriginalDb()->createBlockSnap( 2 );
-    BOOST_REQUIRE_EQUAL( fixture.client->balanceAt( fixture.account2.address() ), u256( 1000000 ) );
-
-    auto txData = fixture.rpcClient->eth_getTransactionReceipt( txHash );
-
-    auto blockNumAsString = fixture.rpcClient->eth_blockNumber();
-
-    auto author = fixture.rpcClient->eth_getBlockByNumber( blockNumAsString, false )["author"];
-    auto blockNumber = jsToU256( blockNumAsString );
-    BOOST_REQUIRE( author == node_reward_wallet );
-
-    auto totalReward = fixture.client->chainParams().blockReward(
-        fixture.client->latestBlock().info().timestamp(), fixture.client->number() );
-    auto blockAuthorReward =
-            dev::calculateShareWithPrecision( totalReward,
-                fixture.client->evmSchedule().shareOfBlockRewardToBlockAuthorPromille );
-
-    auto feeForTx = jsToU256( sampleTx["gasPrice"].asString() ) * jsToU256( txData["gasUsed"].asString() );
-    feeForTx = dev::calculateShareWithPrecision( feeForTx, fixture.client->evmSchedule().shareOfTransactionFeeToRewardPromille );
-    auto expectedBalanceChange = ( blockNumber - initialBlockNumber ) * blockAuthorReward + feeForTx;
-
-    BOOST_REQUIRE_EQUAL(
-        fixture.client->balanceAt( jsToAddress( author.asString() ) ) - authorInitialBalance,
-        expectedBalanceChange );
-}
-#endif // MIRAGE
-
 #ifdef BITE
 
-#ifndef MIRAGE
+#ifndef FAIR
 static std::string const c_BITEConfigString =
     R"(
 {
@@ -5091,9 +4910,10 @@ static std::string const c_BITECommitteeRotationConfigString =
                 "0": {
                     "nodes": {
                         "8": [
-                            1,
+                            0,
                             8,
-                            "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea105a3d21845e5660bc3d4e7c82e7af1daa3baad393b1521467"
+                            "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea105a3d21845e5660bc3d4e7c82e7af1daa3baad393b1521467",
+                            "0x08151B8F80bfa7dEa760e461412AF24348224edf"
                         ]
                     },
                     "finish_ts": 1,
@@ -5107,9 +4927,10 @@ static std::string const c_BITECommitteeRotationConfigString =
                 "1": {
                     "nodes": {
                         "8": [
-                            1,
+                            0,
                             8,
-                            "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea105a3d21845e5660bc3d4e7c82e7af1daa3baad393b1521467"
+                            "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea105a3d21845e5660bc3d4e7c82e7af1daa3baad393b1521467",
+                            "0x405c96D388cDFBa4f17493c875CCE9c680225276"
                         ]
                     },
                     "finish_ts": null,
@@ -5138,6 +4959,7 @@ static std::string const c_BITECommitteeRotationConfigString =
                         "BLSPublicKey2": "3371162264373897025322009434717052197952692496405149486989861571246537813591",
                         "BLSPublicKey3": "13678625751515504401110635369790787716744686498431213713911601759809559919693"
                     },
+                    "stakingContractAddress": "0x5C60C315985977b7a408eBF4256984Acdf949549",
                     "group": [
                         {
                             "nodeID": 8,
@@ -5278,7 +5100,7 @@ revert();
     }
 }
 )";
-#endif // #ifndef MIRAGE
+#endif // #ifndef FAIR
 
 
 BOOST_AUTO_TEST_CASE( getCommonPublicKey ) {
@@ -5298,7 +5120,7 @@ BOOST_AUTO_TEST_CASE( getCommonPublicKey ) {
     BOOST_REQUIRE_EQUAL( epochId, fixture.client->getCurrentEpochId() );
 }
 
-#ifdef MIRAGE
+#ifdef FAIR
 BOOST_AUTO_TEST_CASE( getBLSPublicKey ) {
     JsonRpcFixture fixture( c_BITEConfigString, false, false, true );
 
@@ -5350,31 +5172,31 @@ BOOST_AUTO_TEST_CASE( dencunOpcodesInTransaction ) {
 
     // contract DencunContract {
     //     uint256 public storedValue;
-    
+
     //     function test(uint256 _input) external {
     //         assembly {
     //             tstore(0x0, _input)
-    
+
     //             let val := tload(0x0)
-    
+
     //             sstore(0x0, val)
     //         }
     //     }
-    
+
     //     function mcopyTest() public pure returns (uint256) {
     //         uint256[] memory source = new uint256[](3);
     //         source[0] = 10;
     //         source[1] = 20;
     //         source[2] = 30;
-    
+
     //         uint256[] memory destination = new uint256[](3);
-    
+
     //         assembly {
     //             let length := mul(3, 32) // 3 elements * 32 bytes each
-    
+
     //             mcopy(destination, add(source, 32), length)
     //         }
-    
+
     //         return destination[0];
     //     }
     // }
@@ -5418,7 +5240,7 @@ BOOST_AUTO_TEST_CASE( dencunOpcodesInTransaction ) {
     BOOST_REQUIRE_EQUAL( txReceipt["revertReason"].asString(), std::string( "Contract uses unsupported Dencun opcode. Please ensure it is compiled for EVM <= Shanghai" ) );
 
     // Call DencunContract.mcopyTest()
-    sampleTx["data"] = "0x25c69611"; 
+    sampleTx["data"] = "0x25c69611";
     txHash = fixture.rpcClient->eth_sendTransaction( sampleTx );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
@@ -5427,7 +5249,7 @@ BOOST_AUTO_TEST_CASE( dencunOpcodesInTransaction ) {
     BOOST_REQUIRE_EQUAL( txReceipt["revertReason"].asString(), std::string( "Contract uses unsupported Dencun opcode. Please ensure it is compiled for EVM <= Shanghai" ) );
 }
 
-#endif // MIRAGE
+#endif // FAIR
 
 BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     JsonRpcFixture fixture( c_BITEConfigString, false, false, true, true );
@@ -5742,7 +5564,7 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     // Set chainID = 151
     std::string chainID = "0x97";
     ret["params"]["chainID"] = chainID;
-#ifndef MIRAGE
+#ifndef FAIR
     // set contractStorageLimit
     ret["skaleConfig"]["sChain"]["contractStorageLimit"] = 1000000;
 #endif
@@ -5970,7 +5792,7 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     BOOST_REQUIRE( receipt["status"] == std::string( "0x0" ) );
 }
 
-#ifdef MIRAGE
+#ifdef FAIR
 BOOST_AUTO_TEST_CASE( committeeRotation ) {
     std::string _config = c_BITECommitteeRotationConfigString;
     Json::Value ret;
@@ -6068,11 +5890,219 @@ BOOST_AUTO_TEST_CASE( committeeRotation ) {
     receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE( receipt["status"] == std::string( "0x1" ) );
 }
-#endif // MIRAGE
+
+
+BOOST_AUTO_TEST_CASE( fetchingBlockRewardBeneficiary ) {
+    std::string config = c_BITECommitteeRotationConfigString;
+    Json::Value ret;
+    Json::Reader().parse( config, ret );
+
+    Json::FastWriter fastWriter;
+    config = fastWriter.write( ret );
+    JsonRpcFixture fixture( config, false, false, true );
+
+    Address rewardWalletAddress = fixture.client->chainParams().getNodeBeneficiaryInHistoricGroup( 0, 1 );
+    BOOST_REQUIRE( rewardWalletAddress == Address( "0x08151B8F80bfa7dEa760e461412AF24348224edf" )  );
+    rewardWalletAddress = fixture.client->chainParams().getNodeBeneficiaryInHistoricGroup( 1, 1 );
+    BOOST_REQUIRE( rewardWalletAddress == Address( "0x405c96D388cDFBa4f17493c875CCE9c680225276" )  );
+}
+
+BOOST_AUTO_TEST_CASE( block_author_balance ) {
+    // when rewardWalletAddress is not defined
+
+    // for testBlockRewardsActivationPatchAddress
+    setenv( "TEST_BLOCK_REWARDS_ACTIVATION", "1", 1 );
+
+    std::string _config = c_genesisConfigString;
+    Json::Value ret;
+    Json::Reader().parse( _config, ret );
+    // Set FAIR chainID
+    std::string chainID = "0x3a6";
+    ret["params"]["chainID"] = chainID;
+    // disable block rewards at startup
+    ret["params"]["blockReward"] = "0x00";
+
+    Json::FastWriter fastWriter;
+    std::string config = fastWriter.write( ret );
+    JsonRpcFixture fixture( config, false, false, true );
+
+    string etherbase = fixture.rpcClient->eth_coinbase();
+
+    BOOST_REQUIRE( !BlockRewardsActivationPatch::isEnabled( fixture.client->chainId() ) );
+
+    // checksumed address: 0x0E7d7F1D34a502bD609542576941C3FCc087c588
+    auto node_owner = "0x0e7d7f1d34a502bd609542576941c3fcc087c588";
+
+    auto etherbase_address = jsToAddress( etherbase );
+
+    u256 etherbaseBalance = fixture.client->balanceAt( etherbase_address );
+    BOOST_REQUIRE_EQUAL( etherbaseBalance, 0 );
+
+    dev::Address stakingContractAddress = fixture.client->chainParams().getStakingContractAddress();
+    BOOST_REQUIRE_EQUAL( fixture.client->balanceAt( stakingContractAddress ), 0 );
+
+    // mine transaction not from testBlockRewardsActivationPatchAddress - block rewards should stay disabled
+    Json::Value silentTx;
+    silentTx["value"] = 1;
+    // address has preset balance in config
+    // silentTx["from"] = dev::Address( "0x5C4e11842E8be09264dc1976943571d7Af6d00F9" ).hex();
+    silentTx["to"] = BlockRewardsActivationPatch::getMagicAddress().hex();
+    silentTx["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    silentTx["gas"] = 30000;
+    silentTx["nonce"] = 0;
+
+    auto silentTs = toTransactionSkeleton( silentTx );
+    auto silentT = dev::eth::Transaction(
+        silentTs, dev::Secret( "1c2cd4b70c2b8c6cd7144bbbfbd1e5c6eacb4a5efd9c86d0e29cbbec4e8483b9" ) );
+
+    std::string txHash = fixture.rpcClient->eth_sendRawTransaction( dev::toHex( silentT.toBytes() ) );
+    BOOST_REQUIRE( !txHash.empty() );
+
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    BOOST_REQUIRE( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"] == "0x1" );
+    BOOST_REQUIRE( !BlockRewardsActivationPatch::isEnabled( fixture.client->chainId() ) );
+    // staking contract balance only gets changed when block rewards are activated
+    BOOST_REQUIRE_EQUAL( fixture.client->balanceAt( stakingContractAddress ), 0 );
+    etherbaseBalance = fixture.client->balanceAt( etherbase_address );
+    BOOST_REQUIRE_EQUAL( etherbaseBalance, 0 );
+
+    // mine transaction from testBlockRewardsActivationPatchAddress - block rewards should enable
+    Json::Value activationTx;
+    // activationTx["from"] = "0x5339Ef05428d1b87f4e2F2db64E782c68E9cDA56";
+    activationTx["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    activationTx["gas"] = 30000;
+    activationTx["chainId"] = "0x3a9";
+    activationTx["nonce"] = 0;
+    activationTx["to"] = dev::Address::random().hex();
+
+    auto ts = toTransactionSkeleton( activationTx );
+    auto t = dev::eth::Transaction(
+        ts, dev::Secret( "0e394ff21db60660a27a6383aedf8c75070648965acbef7c369c1bae2141a485" ) );
+
+    txHash = fixture.rpcClient->eth_sendRawTransaction( dev::toHex( t.toBytes() ) );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    BOOST_REQUIRE( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"] == "0x1" );
+    BOOST_REQUIRE( BlockRewardsActivationPatch::isEnabled( fixture.client->chainId() ) );
+    etherbaseBalance = fixture.client->balanceAt( etherbase_address );
+    BOOST_REQUIRE_EQUAL( etherbaseBalance, 0 );
+    BOOST_REQUIRE_EQUAL( fixture.client->balanceAt( stakingContractAddress ), 0 );
+
+    etherbaseBalance = fixture.client->balanceAt( jsToAddress( etherbase ) );
+
+    auto authorInitialBalance = fixture.client->balanceAt( jsToAddress( "0x0E7d7F1D34a502bD609542576941C3FCc087c588" ) );
+    auto stakingContractInitialBalance = fixture.client->balanceAt( stakingContractAddress );
+
+    auto initialBlockNumber = jsToU256( fixture.rpcClient->eth_blockNumber() );
+
+    // push random transaction, check balance difference
+    Json::Value sampleTx;
+    sampleTx["value"] = 1000000;
+    sampleTx["data"] = toJS( bytes() );
+    sampleTx["from"] = fixture.coinbase.address().hex();
+    sampleTx["to"] = fixture.account2.address().hex();
+    sampleTx["gasPrice"] = 1000000000000;
+    txHash = fixture.rpcClient->eth_sendTransaction( sampleTx );
+    BOOST_REQUIRE( !txHash.empty() );
+
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    fixture.client->state().getOriginalDb()->createBlockSnap( 2 );
+    BOOST_REQUIRE_EQUAL( fixture.client->balanceAt( fixture.account2.address() ), u256( 1000000 ) );
+
+    auto txData = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+
+    auto blockNumAsString = fixture.rpcClient->eth_blockNumber();
+
+    auto author = fixture.rpcClient->eth_getBlockByNumber( blockNumAsString, false )["author"];
+    auto blockNumber = jsToU256( blockNumAsString );
+
+    BOOST_REQUIRE( author == node_owner );
+
+    auto totalReward = fixture.client->chainParams().blockReward(
+        fixture.client->latestBlock().info().timestamp(), fixture.client->number() );
+    auto blockAuthorReward = dev::calculateShareWithPrecision( totalReward, fixture.client->evmSchedule().shareOfBlockRewardToBlockAuthorPromille );
+    auto stakingContractReward = totalReward - blockAuthorReward;
+
+    auto feeForTx =
+        jsToU256( sampleTx["gasPrice"].asString() ) * jsToU256( txData["gasUsed"].asString() );
+    feeForTx = dev::calculateShareWithPrecision( feeForTx, fixture.client->evmSchedule().shareOfTransactionFeeToRewardPromille );
+
+    auto expectedAuthorBalanceChange = ( blockNumber - initialBlockNumber ) * blockAuthorReward + feeForTx;
+    auto expectedContractBalanceChange = ( blockNumber - initialBlockNumber ) * stakingContractReward;
+
+    BOOST_REQUIRE_EQUAL(
+        fixture.client->balanceAt( jsToAddress( author.asString() ) ) - authorInitialBalance,
+        expectedAuthorBalanceChange );
+    BOOST_REQUIRE_EQUAL(
+        fixture.client->balanceAt( stakingContractAddress ) - stakingContractInitialBalance,
+        expectedContractBalanceChange );
+}
+
+BOOST_AUTO_TEST_CASE( block_author_balance_reward_wallet ) {
+    // when rewardWalletAddress is defined
+
+    // checksumed address: 0xfa3fe33E351a7c60039E59D923e417A6362D1C3E
+    auto node_reward_wallet = "0xfa3fe33e351a7c60039e59d923e417a6362d1c3e";
+    auto node_reward_wallet_address = jsToAddress( node_reward_wallet );
+
+    nlohmann::json configJson = nlohmann::json::parse( c_BITECommitteeRotationConfigString );
+    // configJson["skaleConfig"]["sChain"]["nodeGroups"]["0"]["nodes"]["8"][3] = node_reward_wallet;
+    configJson["skaleConfig"]["sChain"]["nodeGroups"]["1"]["nodes"]["8"][3] = node_reward_wallet;
+    // configJson["skaleConfig"]["sChain"]["node"]["1"]["group"][0]["rewardWalletAddress"] = node_reward_wallet;
+
+    auto noRewardWalletAddressConfig = configJson.dump();
+    JsonRpcFixture fixture( noRewardWalletAddressConfig, false, false, true );
+
+    auto authorInitialBalance = fixture.client->balanceAt( node_reward_wallet_address );
+
+    auto initialBlockNumber = jsToU256( fixture.rpcClient->eth_blockNumber() );
+
+    // mine block without transactions
+    dev::eth::simulateMining( *( fixture.client ), 1 );
+    sleep( 3 );
+
+    // mine transaction
+    Json::Value sampleTx;
+    sampleTx["value"] = 1000000;
+    sampleTx["data"] = toJS( bytes() );
+    sampleTx["from"] = fixture.coinbase.address().hex();
+    sampleTx["to"] = fixture.account2.address().hex();
+    sampleTx["gasPrice"] = 1000000000000;
+    std::string txHash = fixture.rpcClient->eth_sendTransaction( sampleTx );
+    BOOST_REQUIRE( !txHash.empty() );
+
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    fixture.client->state().getOriginalDb()->createBlockSnap( 2 );
+    BOOST_REQUIRE_EQUAL( fixture.client->balanceAt( fixture.account2.address() ), u256( 1000000 ) );
+
+    auto txData = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+
+    auto blockNumAsString = fixture.rpcClient->eth_blockNumber();
+
+    auto author = fixture.rpcClient->eth_getBlockByNumber( blockNumAsString, false )["author"];
+    auto blockNumber = jsToU256( blockNumAsString );
+    BOOST_REQUIRE( author == node_reward_wallet );
+
+    auto totalReward = fixture.client->chainParams().blockReward(
+        fixture.client->latestBlock().info().timestamp(), fixture.client->number() );
+    auto blockAuthorReward =
+            dev::calculateShareWithPrecision( totalReward,
+                fixture.client->evmSchedule().shareOfBlockRewardToBlockAuthorPromille );
+
+    auto feeForTx = jsToU256( sampleTx["gasPrice"].asString() ) * jsToU256( txData["gasUsed"].asString() );
+    feeForTx = dev::calculateShareWithPrecision( feeForTx, fixture.client->evmSchedule().shareOfTransactionFeeToRewardPromille );
+    auto expectedBalanceChange = ( blockNumber - initialBlockNumber ) * blockAuthorReward + feeForTx;
+
+    BOOST_REQUIRE_EQUAL(
+        fixture.client->balanceAt( jsToAddress( author.asString() ) ) - authorInitialBalance,
+        expectedBalanceChange );
+}
+#endif // FAIR
 
 #endif // #ifdef BITE
 
-#ifndef MIRAGE
+#ifndef FAIR
 BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {
     JsonRpcFixture fixture( c_genesisGeneration2ConfigString, false, false, true );
     string etherbase = fixture.rpcClient->eth_coinbase();
@@ -6124,7 +6154,7 @@ BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {
 
     fixture.client->state().getOriginalDb()->createBlockSnap( 3 );
     auto t = fixture.rpcClient->eth_getTransactionReceipt( txHash );
-#ifdef MIRAGE
+#ifdef FAIR
     // reward goes to the node owner, not etherbase
     BOOST_REQUIRE_EQUAL( fixture.client->balanceAt( jsToAddress( etherbase ) ), etherbaseBalance - u256( 1000000 ) );
 #else
@@ -6163,7 +6193,7 @@ BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {
     fixture.client->state().getOriginalDb()->createBlockSnap( 4 );
     t = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     etherbaseBalance = fixture.client->balanceAt( jsToAddress( etherbase ) );
-#ifdef MIRAGE
+#ifdef FAIR
 // reward goes to the node owner, not etherbase
     BOOST_REQUIRE_EQUAL(  etherbaseBalance, 0 );
 #else
@@ -6691,7 +6721,7 @@ BOOST_AUTO_TEST_CASE( skip_invalid_transactions ) {
     txJson["gas"] = "200000";
     txJson["gasPrice"] = "5000000000000";
     txJson["to"] = fixture.account2.address().hex();
-#ifdef MIRAGE
+#ifdef FAIR
     txJson["value"] = "3500000000000000000";
 #else
     txJson["value"] = "1000000000000000000";
@@ -6964,7 +6994,7 @@ BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthPowTransfers,
 
     fixture.verifyTransactions = false;
     fixture.threadsCountForTestTransactions = 8;
-#ifndef MIRAGE
+#ifndef FAIR
     fixture.usePow = true;
 #endif
 
@@ -6995,7 +7025,7 @@ BOOST_AUTO_TEST_CASE( perf_sendManyParalelERC20Transfers,
 }
 
 
-#ifndef MIRAGE
+#ifndef FAIR
 BOOST_FIXTURE_TEST_SUITE( RestrictedAddressSuite, RestrictedAddressFixture )
 
 BOOST_AUTO_TEST_CASE( direct_call ) {
@@ -7219,7 +7249,7 @@ BOOST_AUTO_TEST_CASE( test_transactions ) {
                  "10000801ca0655757fd0650a65a373c48a4dc0f3d6ac5c3831aa0cc2cb863a5909dc6c25f72a07188"
                  "2ee8633466a243c0ea64dadb3120c1ca7a5cc7433c6c0b1c861a85322265" ),
         CheckTransaction::None );
-#ifndef MIRAGE
+#ifndef FAIR
     valid.ignoreExternalGas();
 #endif
 
@@ -7232,12 +7262,12 @@ BOOST_AUTO_TEST_CASE( test_transactions ) {
         std::make_shared< DecryptedTransactionFieldsMap >(),
 #endif
 
-#ifdef MIRAGE
+#ifdef FAIR
                                        1,
 #endif
                                        1 );
 
-#ifndef MIRAGE
+#ifndef FAIR
     BOOST_REQUIRE_EQUAL( cache.realBlockTransactionCount( LatestBlock ), 2 );
     BOOST_REQUIRE_EQUAL( cache.realIndexFromGapped( LatestBlock, 0 ), 1 );
     BOOST_REQUIRE_EQUAL( cache.gappedIndexFromReal( LatestBlock, 1 ), 0 );
@@ -7272,7 +7302,7 @@ BOOST_AUTO_TEST_CASE( test_exceptions ) {
                  "2ee8633466a243c0ea64dadb3120c1ca7a5cc7433c6c0b1c861a85322265" ),
         CheckTransaction::None );
 
-#ifndef MIRAGE
+#ifndef FAIR
     valid.ignoreExternalGas();
 #endif
 
@@ -7281,14 +7311,14 @@ BOOST_AUTO_TEST_CASE( test_exceptions ) {
         std::make_shared< DecryptedTransactionFieldsMap >(),
 #endif
 
-#ifdef MIRAGE
+#ifdef FAIR
                                       1,
 #endif
                                        1 );
     BOOST_REQUIRE_THROW( cache.realIndexFromGapped( LatestBlock, 1 ), std::out_of_range );
     BOOST_REQUIRE_THROW( cache.realIndexFromGapped( LatestBlock, 2 ), std::out_of_range );
     BOOST_REQUIRE_THROW( cache.gappedIndexFromReal( LatestBlock, 2 ), std::out_of_range );
-#ifndef MIRAGE
+#ifndef FAIR
     BOOST_REQUIRE_THROW( cache.gappedIndexFromReal( LatestBlock, 0 ), std::out_of_range );
 #endif
     BOOST_REQUIRE_THROW( cache.transactionPresent( LatestBlock, 2 ), std::out_of_range );

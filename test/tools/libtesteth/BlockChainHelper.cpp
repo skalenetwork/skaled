@@ -98,7 +98,7 @@ void TestBlock::initBlockFromJsonHeader( mObject const& _blockHeader, mObject co
 
     m_state = std::unique_ptr< State >(
         new State( 0, m_tempDirState.get()->path(), h256{}, BaseState::Empty, 0
-#ifndef MIRAGE
+#ifndef FAIR
                    , 1000000000
 #endif
                    ) );

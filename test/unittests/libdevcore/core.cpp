@@ -128,7 +128,7 @@ BOOST_AUTO_TEST_CASE( BMPBN ) {
     cc::_on_ = bPrev;
 }
 
-#ifdef MIRAGE
+#ifdef FAIR
 BOOST_AUTO_TEST_CASE( calculateShareWithPrecision ) {
     // Test with integer share (should behave like simple multiplication)
     dev::u256 base = 1000;

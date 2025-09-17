@@ -176,9 +176,9 @@ if (BITE)
     add_definitions(-DBITE=1)
 endif()
 
-if (MIRAGE)
+if (FAIR)
     add_definitions(-DBITE=1)
-    add_definitions(-DMIRAGE=1)
+    add_definitions(-DFAIR=1)
 endif()
 
 add_subdirectory( evmc )

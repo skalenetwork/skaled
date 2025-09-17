@@ -9,7 +9,7 @@
 
 #include <string>
 
-#ifdef MIRAGE
+#ifdef FAIR
 #include <unordered_set>
 #endif
 
@@ -28,10 +28,10 @@ public:
 protected:
     static void printInfo( const std::string& _patchName, time_t _timeStamp );
     static bool isPatchEnabledInWorkingBlock( SchainPatchEnum _patchEnum ) {
-#ifdef MIRAGE
-        if ( preEnabledForMIRAGE.count( _patchEnum ) > 0 )
+#ifdef FAIR
+        if ( preEnabledForFAIR.count( _patchEnum ) > 0 )
             return true;
-        if ( preDisabledForMIRAGE.count( _patchEnum ) > 0 )
+        if ( preDisabledForFAIR.count( _patchEnum ) > 0 )
             return false;
 #endif
         time_t activationTimestamp = chainParams.getPatchTimestamp( _patchEnum );
@@ -42,9 +42,9 @@ protected:
 protected:
     static dev::eth::ChainOperationParams chainParams;
     static std::atomic< time_t > committedBlockTimestamp;
-#ifdef MIRAGE
-    static const std::unordered_set< SchainPatchEnum > preEnabledForMIRAGE;
-    static const std::unordered_set< SchainPatchEnum > preDisabledForMIRAGE;
+#ifdef FAIR
+    static const std::unordered_set< SchainPatchEnum > preEnabledForFAIR;
+    static const std::unordered_set< SchainPatchEnum > preDisabledForFAIR;
 #endif
 };
 

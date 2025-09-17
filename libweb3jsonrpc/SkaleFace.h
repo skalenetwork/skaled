@@ -80,7 +80,7 @@ class SkaleFace : public ServerInterface< SkaleFace > {
         response = this->skale_getDBUsage();
     }
 
-#ifndef MIRAGE
+#ifndef FAIR
     inline virtual void oracle_submitRequestI( const Json::Value& request, Json::Value& response ) {
         std::string strRequest = request[0u].asString();
         response = this->oracle_submitRequest( strRequest );
@@ -120,7 +120,7 @@ class SkaleFace : public ServerInterface< SkaleFace > {
     virtual std::string skale_getLatestSnapshotBlockNumber() = 0;
     virtual std::string skale_getLatestBlockNumber() = 0;
     virtual Json::Value skale_getDBUsage() = 0;
-#ifndef MIRAGE
+#ifndef FAIR
     virtual std::string oracle_submitRequest( std::string& request ) = 0;
     virtual std::string oracle_checkResult( std::string& receipt ) = 0;
 #else
@@ -166,7 +166,7 @@ public:
         this->bindAndAddMethod( jsonrpc::Procedure( "skale_getDBUsage", jsonrpc::PARAMS_BY_POSITION,
                                     jsonrpc::JSON_INTEGER, NULL ),
             &dev::rpc::SkaleFace::skale_getDBUsageI );
-#ifndef MIRAGE
+#ifndef FAIR
         this->bindAndAddMethod( jsonrpc::Procedure( "oracle_submitRequest",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::SkaleFace::oracle_submitRequestI );

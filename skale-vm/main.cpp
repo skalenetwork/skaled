@@ -310,7 +310,7 @@ int main( int argc, char** argv ) {
         // data.
         t = Transaction( value, gasPrice, gas, data, 0 );
 
-#ifndef MIRAGE
+#ifndef FAIR
     t.ignoreExternalGas();  // for tests
 #endif
 

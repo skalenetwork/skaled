@@ -42,7 +42,7 @@
 
 #include "BaseState.h"
 #include "OverlayDB.h"
-#ifndef MIRAGE
+#ifndef FAIR
 #include "OverlayFS.h"
 #endif
 #include "Permanence.h"
@@ -212,7 +212,7 @@ public:
     explicit State( dev::u256 const& _accountStartNonce, boost::filesystem::path const& _dbPath,
         dev::h256 const& _genesis, BaseState _bs = BaseState::PreExisting,
         dev::u256 _initialFunds = 0
-#ifndef MIRAGE
+#ifndef FAIR
         ,
         dev::s256 _contractStorageLimit = 32
 #endif
@@ -262,7 +262,7 @@ public:
     void safeSetAndCommitPartialTransactionReceipt( const dev::bytes& _receipt,
         dev::eth::BlockNumber _blockNumber, uint64_t _transactionIndex );
 
-#ifdef MIRAGE
+#ifdef FAIR
     /// Save last block for which rewards has been applied
     void safeSetLastRewardedBlockNumber( dev::eth::BlockNumber _blockNumber );
     /// Get last block for which rewards has been applied
@@ -438,7 +438,7 @@ public:
 
     dev::db::DBImpl* getOriginalDb() const { return m_orig_db.get(); }
 
-#ifndef MIRAGE
+#ifndef FAIR
     void resetStorageChanges() {
         storageUsage.clear();
         currentStorageUsed_ = 0;
@@ -469,7 +469,7 @@ private:
             _historicBlockToStateRootDb,
 #endif
         BaseState _bs = BaseState::PreExisting, dev::u256 _initialFunds = 0
-#ifndef MIRAGE
+#ifndef FAIR
         ,
         dev::s256 _contractStorageLimit = 32
 #endif
@@ -505,7 +505,7 @@ private:
     bool executeTransaction(
         dev::eth::Executive& _e, dev::eth::Transaction const& _t, dev::eth::OnOpFunc const& _onOp );
 
-#ifndef MIRAGE
+#ifndef FAIR
     void rollbackStorageChange( const Change& _change, dev::eth::Account& _acc );
 
     void updateStorageUsage();
@@ -539,7 +539,7 @@ private:
 
     std::shared_ptr< boost::shared_mutex > x_db_ptr;
     std::shared_ptr< OverlayDB > m_db_ptr;  ///< Our overlay for the state.
-#ifndef MIRAGE
+#ifndef FAIR
     std::shared_ptr< OverlayFS > m_fs_ptr;  ///< Our overlay for the file system operations.
 #endif
     std::shared_ptr< dev::db::DBImpl > m_orig_db;
@@ -561,7 +561,7 @@ private:
 
     dev::u256 m_initial_funds = 0;
 
-#ifndef MIRAGE
+#ifndef FAIR
     dev::s256 contractStorageLimit_ = 0;
     std::map< dev::Address, dev::s256 > storageUsage;
     dev::s256 totalStorageUsed_ = 0;
@@ -598,7 +598,7 @@ public:
             pDB = m_db_ptr->db();
         return pDB;
     }
-#ifndef MIRAGE
+#ifndef FAIR
     std::shared_ptr< OverlayFS > fs() { return m_fs_ptr; }
 #endif
 

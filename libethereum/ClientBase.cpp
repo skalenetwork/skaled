@@ -92,7 +92,7 @@ std::pair< bool, ExecutionResult > ClientBase::estimateGasStep( int64_t _gas, Bl
         t = Transaction( _value, _gasPrice, _gas, _data, nonce );
     t.forceSender( _from );
     t.forceChainId( chainId() );
-#ifndef MIRAGE
+#ifndef FAIR
     t.ignoreExternalGas();
 #endif
     EnvInfo const env( _pendingBlock.info(), bc().lastBlockHashes(),

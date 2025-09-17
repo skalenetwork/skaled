@@ -77,14 +77,14 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
 
     std::map< std::string, std::uint64_t > patchTimeStamps;
 
-#ifndef MIRAGE
+#ifndef FAIR
     patchTimeStamps["verifyDaSigsPatchTimestamp"] =
         m_client.chainParams().getPatchTimestamp( SchainPatchEnum::VerifyDaSigsPatch );
     patchTimeStamps["fastConsensusPatchTimestamp"] =
         m_client.chainParams().getPatchTimestamp( SchainPatchEnum::FastConsensusPatch );
     patchTimeStamps["verifyBlsSyncPatchTimestamp"] =
         m_client.chainParams().getPatchTimestamp( SchainPatchEnum::VerifyBlsSyncPatch );
-#endif  // MIRAGE
+#endif  // FAIR
 
     auto consensusEnginePtr = make_unique< ConsensusEngine >( _extFace, m_client.number(), ts, 0,
         patchTimeStamps, m_client.chainParams().getConsensusStorageLimit() );
@@ -167,7 +167,7 @@ void DefaultConsensusFactory::fillPublicKeyInfo( ConsensusEngine& consensus ) co
 
     std::vector< std::shared_ptr< std::vector< std::string > > > blsPublicKeys;
     for ( const auto& node : m_client.chainParams().getSchainNodes() ) {
-#ifdef MIRAGE
+#ifdef FAIR
         std::vector< std::string > public_key_share(
             node.blsPublicKey.begin(), node.blsPublicKey.end() );
 #else
@@ -184,7 +184,7 @@ void DefaultConsensusFactory::fillPublicKeyInfo( ConsensusEngine& consensus ) co
             public_key_share[2] = blsPublicKey.at( 2 );
             public_key_share[3] = blsPublicKey.at( 3 );
         }
-#endif  // MIRAGE
+#endif  // FAIR
 
         blsPublicKeys.push_back(
             std::make_shared< std::vector< std::string > >( public_key_share ) );
@@ -284,7 +284,7 @@ void ConsensusExtImpl::terminateApplication() {
 
 SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory,
     std::shared_ptr< InstanceMonitor > _instanceMonitor,
-#ifndef MIRAGE
+#ifndef FAIR
     const std::string& _gethURL,
 #endif
     [[maybe_unused]] bool _broadcastEnabled )
@@ -337,7 +337,7 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
     }
 
     try {
-#ifdef MIRAGE
+#ifdef FAIR
         m_consensus->parseFullConfigAndCreateNode(
             m_client.chainParams().getConfigForConsensus(), "" );
 #else
@@ -630,7 +630,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
 #endif
 
-#ifndef MIRAGE
+#ifndef FAIR
             t.checkOutExternalGas(
                 m_client.chainParams(), latestInfo.timestamp(), m_client.number() );
 
@@ -666,7 +666,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             _decryptedTransactionFields,
 #endif
             _gasPrice,
-#ifdef MIRAGE
+#ifdef FAIR
             _winningNodeIndex,
 #endif
             _timeStamp );
@@ -704,7 +704,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     LOG( m_loggerDebug ) << "Successfully imported " << n_succeeded << " of " << out_txns.size()
                          << " transactions";
 
-#ifdef MIRAGE
+#ifdef FAIR
     if ( m_client.updateGroupIfNeeded() )
         runCommitteeRotationForConsensus();
 #endif
@@ -728,7 +728,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     LOG( m_loggerError ) << "\n" << skutils::signal::generate_stack_trace();
 }
 
-#ifdef MIRAGE
+#ifdef FAIR
 void SkaleHost::runCommitteeRotationForConsensus() {
     if ( m_committeeRotationMonitorThread != nullptr &&
          m_committeeRotationMonitorThread->joinable() )
@@ -901,7 +901,7 @@ void SkaleHost::stopWorking() {
     if ( m_broadcastThread.joinable() )
         m_broadcastThread.join();
 
-#ifdef MIRAGE
+#ifdef FAIR
     if ( m_committeeRotationMonitorThread != nullptr )
         m_committeeRotationMonitorThread->join();
 #endif
@@ -915,7 +915,7 @@ void SkaleHost::broadcastFunc() {
     dev::setThreadName( "broadcastFunc" );
     while ( !m_exitNeeded ) {
         try {
-#ifdef MIRAGE
+#ifdef FAIR
             if ( m_broadcastRestartNeeded ) [[unlikely]] {
                 m_broadcaster->resetServerSocket();
                 m_broadcastRestartNeeded = false;
@@ -1020,7 +1020,7 @@ std::string SkaleHost::getHistoricNodePublicKey( unsigned _idx ) const {
     return m_client.getHistoricNodePublicKey( _idx );
 }
 
-#ifndef MIRAGE
+#ifndef FAIR
 uint64_t SkaleHost::submitOracleRequest(
     const string& _spec, string& _receipt, string& _errorMessage ) {
     return m_consensus->submitOracleRequest( _spec, _receipt, _errorMessage );

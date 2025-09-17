@@ -72,7 +72,7 @@ const std::map< std::pair< uint64_t, std::string >, uint64_t > State::txnsToSkip
 
 State::State( dev::u256 const& _accountStartNonce, boost::filesystem::path const& _dbPath,
     dev::h256 const& _genesis, BaseState _bs, dev::u256 _initialFunds
-#ifndef MIRAGE
+#ifndef FAIR
     ,
     dev::s256 _contractStorageLimit
 #endif
@@ -84,7 +84,7 @@ State::State( dev::u256 const& _accountStartNonce, boost::filesystem::path const
     : x_db_ptr( make_shared< boost::shared_mutex >() ),
       m_accountStartNonce( _accountStartNonce ),
       m_initial_funds( _initialFunds )
-#ifndef MIRAGE
+#ifndef FAIR
       ,
       contractStorageLimit_( _contractStorageLimit )
 #endif
@@ -109,14 +109,14 @@ State::State( dev::u256 const& _accountStartNonce, boost::filesystem::path const
         _bs == BaseState::PreExisting ? dev::WithExisting::Trust : dev::WithExisting::Kill ) );
 
     auto state = createStateCopyAndClearCaches();
-#ifndef MIRAGE
+#ifndef FAIR
     totalStorageUsed_ = state.storageUsedTotal();
 #endif
 #ifdef HISTORIC_STATE
     m_historicState.setRootFromDB();
 #endif
 
-#ifndef MIRAGE
+#ifndef FAIR
     m_fs_ptr = state.fs();
 #endif
     if ( _bs == BaseState::PreExisting ) {
@@ -138,7 +138,7 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
         _historicBlockToStateRootDb,
 #endif
     skale::BaseState _bs, u256 _initialFunds
-#ifndef MIRAGE
+#ifndef FAIR
     ,
     s256 _contractStorageLimit
 #endif
@@ -151,7 +151,7 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
       m_db_ptr( make_shared< OverlayDB >( _db ) ),
       m_accountStartNonce( _accountStartNonce ),
       m_initial_funds( _initialFunds )
-#ifndef MIRAGE
+#ifndef FAIR
       ,
       contractStorageLimit_( _contractStorageLimit )
 #endif
@@ -162,14 +162,14 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
 #endif
 {
     auto state = createStateCopyAndClearCaches();
-#ifndef MIRAGE
+#ifndef FAIR
     totalStorageUsed_ = state.storageUsedTotal();
 #endif
 #ifdef HISTORIC_STATE
     m_historicState.setRootFromDB();
 #endif
 
-#ifndef MIRAGE
+#ifndef FAIR
     m_fs_ptr = state.fs();
 #endif
     if ( _bs == BaseState::PreExisting ) {
@@ -302,7 +302,7 @@ State::State( const State& _s )
     m_initial_funds = _s.m_initial_funds;
     m_snap = _s.m_snap;
     m_isReadOnlySnapBasedState = _s.m_isReadOnlySnapBasedState;
-#ifndef MIRAGE
+#ifndef FAIR
     contractStorageLimit_ = _s.contractStorageLimit_;
     totalStorageUsed_ = _s.storageUsedTotal();
 #endif
@@ -318,14 +318,14 @@ State& State::operator=( const State& _s ) {
     m_accountStartNonce = _s.m_accountStartNonce;
     m_changeLog = _s.m_changeLog;
     m_initial_funds = _s.m_initial_funds;
-#ifndef MIRAGE
+#ifndef FAIR
     contractStorageLimit_ = _s.contractStorageLimit_;
     totalStorageUsed_ = _s.storageUsedTotal();
 #endif
 #ifdef HISTORIC_STATE
     m_historicState = _s.m_historicState;
 #endif
-#ifndef MIRAGE
+#ifndef FAIR
     m_fs_ptr = _s.m_fs_ptr;
 #endif
     m_snap = _s.m_snap;
@@ -410,7 +410,7 @@ void State::safeSetAndCommitPartialTransactionReceipt(
     }
 }
 
-#ifdef MIRAGE
+#ifdef FAIR
 void State::safeSetLastRewardedBlockNumber( dev::eth::BlockNumber _blockNumber ) {
     if ( m_db_ptr ) {
         m_db_ptr->setLastRewardedBlockNumber( _blockNumber );
@@ -446,7 +446,7 @@ void State::populateFrom( eth::AccountMap const& _map ) {
                 if ( account.hasNewCode() ) {
                     setCode( address, account.code(), account.version() );
                 }
-#ifndef MIRAGE
+#ifndef FAIR
                 totalStorageUsed_ += currentStorageUsed_;
                 updateStorageUsage();
 #endif
@@ -548,7 +548,7 @@ eth::Account* State::account( Address const& _address ) {
     u256 nonce = state[0].toInt< u256 >();
     u256 balance = state[1].toInt< u256 >();
     h256 codeHash = state[2].toInt< u256 >();
-#ifndef MIRAGE
+#ifndef FAIR
     s256 storageUsed = state[3].toInt< s256 >();
 #endif
     // version is 0 if absent from RLP
@@ -557,7 +557,7 @@ eth::Account* State::account( Address const& _address ) {
     auto i = m_cache.emplace( std::piecewise_construct, std::forward_as_tuple( _address ),
         std::forward_as_tuple( nonce, balance, dev::eth::StorageRoot( EmptyTrie ), codeHash,
             version, dev::eth::Account::Changedness::Unchanged
-#ifndef MIRAGE
+#ifndef FAIR
             ,
             storageUsed
 #endif
@@ -608,7 +608,7 @@ void State::commit( dev::eth::CommitBehaviour _commitBehaviour ) {
                     }
 
                 } else {
-#ifndef MIRAGE
+#ifndef FAIR
                     RLPStream rlpStream( 4 );
 
                     rlpStream << account.nonce() << account.balance() << u256( account.codeHash() )
@@ -636,7 +636,7 @@ void State::commit( dev::eth::CommitBehaviour _commitBehaviour ) {
                 }
             }
         }
-#ifndef MIRAGE
+#ifndef FAIR
         m_db_ptr->updateStorageUsage( totalStorageUsed_ );
 #endif
         m_db_ptr->commit();
@@ -827,7 +827,7 @@ void State::setStorage( Address const& _contract, u256 const& _key, u256 const& 
     m_changeLog.emplace_back( _contract, _key, _currentValue );
     m_cache[_contract].setStorage( _key, _value );
 
-#ifndef MIRAGE
+#ifndef FAIR
     int count = 0;
 
     if ( ( _value > 0 && _currentValue > 0 ) || ( _value == 0 && _currentValue == 0 ) ) {
@@ -850,7 +850,7 @@ void State::clearStorageValue(
     m_changeLog.emplace_back( _contract, _key, _currentValue );
     m_cache[_contract].setStorage( _key, 0 );
 
-#ifndef MIRAGE
+#ifndef FAIR
     int count;
 
     if ( _currentValue == 0 ) {
@@ -886,7 +886,7 @@ void State::clearStorage( Address const& _contract ) {
     cdebug << "Self-destructing" << _contract;
 
     Account* acc = account( _contract );
-#ifndef MIRAGE
+#ifndef FAIR
     dev::s256 accStorageUsed = acc->storageUsed();
 
     if ( accStorageUsed == 0 && storageUsage[_contract] == 0 ) {
@@ -915,7 +915,7 @@ void State::clearStorage( Address const& _contract ) {
         m_db_ptr->insert( _contract, key, ZERO );
     }
 
-#ifndef MIRAGE
+#ifndef FAIR
     totalStorageUsed_ -= ( accStorageUsed + storageUsage[_contract] );
     acc->updateStorageUsage( -accStorageUsed );
 #endif
@@ -994,7 +994,7 @@ void State::rollback( size_t _savepoint ) {
         // change log entry.
         switch ( change.kind ) {
         case Change::Storage:
-#ifndef MIRAGE
+#ifndef FAIR
             if ( ContractStoragePatch::isEnabledInWorkingBlock() ) {
                 rollbackStorageChange( change, account );
             } else {
@@ -1026,7 +1026,7 @@ void State::rollback( size_t _savepoint ) {
         }
         m_changeLog.pop_back();
     }
-#ifndef MIRAGE
+#ifndef FAIR
     clearFileStorageCache();
 
     if ( !ContractStoragePatch::isEnabledInWorkingBlock() ) {
@@ -1118,7 +1118,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
     e.setResultRecipient( res );
 
     bool isCacheEnabled = RevertableFSPatch::isEnabledWhen( _envInfo.committedBlockTimestamp() );
-#ifndef MIRAGE
+#ifndef FAIR
     resetOverlayFS( isCacheEnabled );
 #endif
 
@@ -1155,7 +1155,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
     }
 #endif
 
-#ifdef MIRAGE
+#ifdef FAIR
     if ( res.excepted == dev::eth::TransactionException::UnsupportedDencunOpcode ) {
         strRevertReason =
             "Contract uses unsupported Dencun opcode. Please ensure it is compiled for EVM <= "
@@ -1169,13 +1169,13 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
     switch ( _p ) {
     case Permanence::Reverted:
     case Permanence::CommittedWithoutState:
-#ifndef MIRAGE
+#ifndef FAIR
         resetStorageChanges();
 #endif
         m_cache.clear();
         break;
     case Permanence::Committed: {
-#ifndef MIRAGE
+#ifndef FAIR
         if ( account( _t.from() ) != nullptr && account( _t.from() )->code() == bytes() ) {
             totalStorageUsed_ += currentStorageUsed_;
             updateStorageUsage();
@@ -1211,7 +1211,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         m_db_ptr->setPartialTransactionReceipt( stream.out(),
             ( dev::eth::BlockNumber ) _envInfo.number(), ( uint64_t ) _transactionIndex );
 
-#ifndef MIRAGE
+#ifndef FAIR
         m_fs_ptr->commit();
 #endif
 
@@ -1240,7 +1240,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         break;
     }
     case Permanence::Uncommitted:
-#ifndef MIRAGE
+#ifndef FAIR
         resetStorageChanges();
 #endif
         break;
@@ -1283,7 +1283,7 @@ bool State::executeTransaction(
     }
 }
 
-#ifndef MIRAGE
+#ifndef FAIR
 void State::rollbackStorageChange( const Change& _change, eth::Account& _acc ) {
     dev::u256 _currentValue = storage( _change.address, _change.key );
     int count = 0;

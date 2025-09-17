@@ -161,7 +161,7 @@ namespace eth {
 //
 #elif EVM_JUMP_DISPATCH
 
-#ifndef MIRAGE
+#ifndef FAIR
 #define OPCODES_5C_5E &&BEGINDATA, &&BEGINSUB, &&INVALID,
 #else
 #define OPCODES_5C_5E &&TLOAD, &&TSTORE, &&MCOPY,

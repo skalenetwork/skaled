@@ -240,7 +240,7 @@ SnapshotHashAgent::askNodeForHash( const std::string& url, unsigned blockNumber 
 
         libBLS::algebra::G2Point publicKey;
         if ( urlToDownloadSnapshotFrom_.empty() ) {
-#ifdef MIRAGE
+#ifdef FAIR
             Json::Value joPublicKeyResponse = skaleClient.skale_getBLSPublicKey();
 #else
             Json::Value joPublicKeyResponse = skaleClient.skale_imaInfo();
