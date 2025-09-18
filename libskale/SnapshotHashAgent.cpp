@@ -233,11 +233,10 @@ SnapshotHashAgent::askNodeForHash( const std::string& url, unsigned blockNumber 
 
         std::string xElement = joSignatureResponse["X"].asString();
         std::string yElement = joSignatureResponse["Y"].asString();
-        libBLS::algebra::G1Point signature =
-            libBLS::algebra::G1Point( 
-                libBLS::algebra::FqElement::fromString(xElement, libBLS::Base::DEC ),
-                libBLS::algebra::FqElement::fromString(yElement, libBLS::Base::DEC ),
-                libBLS::algebra::FqElement::one() );
+        libBLS::algebra::G1Point signature = libBLS::algebra::G1Point(
+            libBLS::algebra::FqElement::fromString( xElement, libBLS::Base::DEC ),
+            libBLS::algebra::FqElement::fromString( yElement, libBLS::Base::DEC ),
+            libBLS::algebra::FqElement::one() );
 
         libBLS::algebra::G2Point publicKey;
         if ( urlToDownloadSnapshotFrom_.empty() ) {
