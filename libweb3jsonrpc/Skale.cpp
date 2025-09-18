@@ -610,13 +610,13 @@ Json::Value Skale::bite_getCommitteesInfo() {
         auto publicKeyArray = m_client.getCurrentBLSPublicKey();
 
         Json::Value response = Json::arrayValue;
-        response[0]["commonBLSPublicKey"] = stringArrayToBLSPublicKey( publicKeyArray ).toString();
+        response[0]["commonBLSPublicKey"] = stringArrayToBLSPublicKey( publicKeyArray ).toString( libBLS::Base::HEXA );
         response[0]["epochId"] = m_client.getCurrentEpochId();
 #ifdef FAIR
         if ( m_client.isCommitteeRotationSoon() ) {
             auto nextCommitteeBITEInfo = m_client.getNextCommitteeBITEInfo();
             response[1]["commonBLSPublicKey"] =
-                stringArrayToBLSPublicKey( nextCommitteeBITEInfo.first ).toString();
+                stringArrayToBLSPublicKey( nextCommitteeBITEInfo.first ).toString( libBLS::Base::HEXA );
             response[1]["epochId"] = nextCommitteeBITEInfo.second;
         }
 #endif  // FAIR

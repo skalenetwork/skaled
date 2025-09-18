@@ -49,7 +49,7 @@ SnapshotHashAgent::SnapshotHashAgent( const dev::eth::ChainParams& chainParams,
     this->bls_.reset( new libBLS::Bls( ( 2 * this->n_ + 1 ) / 3, this->n_ ) );
 
     commonPublicKey_ = libBLS::algebra::G2Point::fromString( common_public_key, libBLS::Base::DEC );
-    if ( !commonPublicKey_.isValid() ) {
+    if ( !commonPublicKey_.isValid() || commonPublicKey_.isIdentity() ) {
         // zero or corrupted public key was provided in command line
         this->readPublicKeyFromConfig();
     }
@@ -231,11 +231,12 @@ SnapshotHashAgent::askNodeForHash( const std::string& url, unsigned blockNumber 
         std::string strHash = joSignatureResponse["hash"].asString();
         LOG( m_loggerInfo ) << "Received snapshot hash from " << url << " : " << strHash;
 
+        std::string xElement = joSignatureResponse["X"].asString();
+        std::string yElement = joSignatureResponse["Y"].asString();
         libBLS::algebra::G1Point signature =
-            libBLS::algebra::G1Point( libBLS::algebra::FqElement::fromString(
-                                          joSignatureResponse["X"].asCString(), libBLS::Base::DEC ),
-                libBLS::algebra::FqElement::fromString(
-                    joSignatureResponse["Y"].asCString(), libBLS::Base::DEC ),
+            libBLS::algebra::G1Point( 
+                libBLS::algebra::FqElement::fromString(xElement, libBLS::Base::DEC ),
+                libBLS::algebra::FqElement::fromString(yElement, libBLS::Base::DEC ),
                 libBLS::algebra::FqElement::one() );
 
         libBLS::algebra::G2Point publicKey;
@@ -371,7 +372,7 @@ std::pair< dev::h256, libBLS::algebra::G1Point > SnapshotHashAgent::getVotedHash
     }
 
     if ( AmsterdamFixPatch::snapshotHashCheckingEnabled( this->chainParams_ ) ) {
-        if ( !this->votedHash_.second.isValid() ) {
+        if ( !this->votedHash_.second.isValid() || this->votedHash_.second.isIdentity() ) {
             throw std::invalid_argument( "Signature is not well formed" );
         }
     }

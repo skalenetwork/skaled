@@ -564,7 +564,7 @@ BOOST_AUTO_TEST_CASE( constructBITETxnFromRlp ) {
     uint64_t epochId = 0;
 
     libBLS::init();
-    libBLS::TEPublicKey publicKey( libBLS::algebra::G2Point::random() );
+    libBLS::TEPublicKey publicKey = libBLS::TEPublicKey::random();
 
     // append to address to the end of the BITE data
     dev::Address toAddress = dev::Address::random();
@@ -677,8 +677,8 @@ BOOST_AUTO_TEST_CASE( constructBITETxnWithTwoPayloads ) {
     uint64_t currentEpochId = epochId1; // We'll validate against epochId1
 
     libBLS::init();
-    libBLS::TEPublicKey publicKey1( libBLS::algebra::G2Point::random() );
-    libBLS::TEPublicKey publicKey2( libBLS::algebra::G2Point::random() );
+    libBLS::TEPublicKey publicKey1 = libBLS::TEPublicKey::random();
+    libBLS::TEPublicKey publicKey2 = libBLS::TEPublicKey::random();
 
     // Prepare BITE data for both payloads
     dev::Address toAddress = dev::Address::random();
@@ -736,7 +736,7 @@ BOOST_AUTO_TEST_CASE( constructBITETxnWithTwoPayloads ) {
     BOOST_REQUIRE_THROW( wrongNumberOfElementsBITETxn.checkAndValidateBITETransaction( epochId1 + epochId2 + 1 ), dev::eth::InvalidBITETransaction );
 
     // epochId doesn't match and only 1 encrypted AES keys
-    libBLS::TEPublicKey publicKey3( libBLS::algebra::G2Point::random() );
+    libBLS::TEPublicKey publicKey3 = libBLS::TEPublicKey::random();
 
     auto encryptedMessage1Key = libBLS::ThresholdEncryption::encrypt( messageBytes, publicKey3 );
     auto encryptedBITEDataBytes1Key = encryptedMessage1Key.toBytes();

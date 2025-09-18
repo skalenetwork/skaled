@@ -5116,7 +5116,7 @@ BOOST_AUTO_TEST_CASE( getCommonPublicKey ) {
     libBLS::algebra::G2Point commonPublicKey = libBLS::algebra::G2Point::fromString( commonPublicKeyFromConfig, libBLS::Base::DEC );
 
     BOOST_REQUIRE_EQUAL( blsPublicKey.size(), 256 );
-    BOOST_REQUIRE_EQUAL( libBLS::TEPublicKey( blsPublicKey ).getPublicKeyRaw(), commonPublicKey );
+    BOOST_REQUIRE_EQUAL( libBLS::TEPublicKey( blsPublicKey, libBLS::Base::HEXA ).getPublicKeyRaw(), commonPublicKey );
     BOOST_REQUIRE_EQUAL( epochId, fixture.client->getCurrentEpochId() );
 }
 
@@ -5268,7 +5268,7 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     u256 epochId = biteInfo[0]["epochId"].asUInt64();
 
     auto encryptedMessage =
-        libBLS::ThresholdEncryption::encrypt( messageBytes, libBLS::TEPublicKey( blsPublicKey ) );
+        libBLS::ThresholdEncryption::encrypt( messageBytes, libBLS::TEPublicKey( blsPublicKey, libBLS::Base::HEXA ) );
     auto encryptedBytes = encryptedMessage.toBytes();
 
     auto dataField = formBITEPayloadRlp( epochId, encryptedBytes );
@@ -5346,8 +5346,8 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
         jsonrpc::JsonRpcException );
 
     /// Spoiling key part of ciphertext
-    auto randomEncryptedKeyObj = libBLS::CipheredKey( libBLS::algebra::G2Point::random(),
-        encryptedMessage.keys[0].V, libBLS::algebra::G1Point::random() );
+    auto randomEncryptedKeyObj = libBLS::CipheredKey::random();
+    randomEncryptedKeyObj.V = encryptedMessage.keys[0].V;
     auto randomEncryptedKeyByteArray = randomEncryptedKeyObj.toBytes();
     auto spoiledMessageBytes = encryptedBytes;
     // overwrite key part
@@ -5394,10 +5394,10 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
         jsonrpc::JsonRpcException );
 
     // now send BITE txn with multiple epochIds / encryptedAESKeys
-    libBLS::TEPublicKey publicKey2( libBLS::algebra::G2Point::random() );
+    libBLS::TEPublicKey publicKey2 = libBLS::TEPublicKey::random();
     u256 epochId2 = epochId + 5;
 
-    encryptedMessage = libBLS::ThresholdEncryption::encrypt( messageBytes, { libBLS::TEPublicKey( blsPublicKey ), publicKey2 } );
+    encryptedMessage = libBLS::ThresholdEncryption::encrypt( messageBytes, { libBLS::TEPublicKey( blsPublicKey, libBLS::Base::HEXA ), publicKey2 } );
     auto encryptedBITEDataBytes = encryptedMessage.toBytes();
 
     // Create payload with 2 encrypted AES keys
@@ -5433,7 +5433,7 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
                          jsonrpc::JsonRpcException );
 
     // epochId doesn't match and only 1 encrypted AES keys
-    libBLS::TEPublicKey publicKey3( libBLS::algebra::G2Point::random() );
+    libBLS::TEPublicKey publicKey3 = libBLS::TEPublicKey::random();
 
     auto encryptedMessage1Key = libBLS::ThresholdEncryption::encrypt( messageBytes, publicKey3 );
     auto encryptedBITEDataBytes1Key = encryptedMessage1Key.toBytes();
@@ -5453,7 +5453,7 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
                          jsonrpc::JsonRpcException );
 
     // 2 encrypted AES keys submitted, but one key is corrupt
-    auto corruptEncryptedMessage = libBLS::ThresholdEncryption::encrypt( messageBytes, { libBLS::TEPublicKey( blsPublicKey ), publicKey2 } );
+    auto corruptEncryptedMessage = libBLS::ThresholdEncryption::encrypt( messageBytes, { libBLS::TEPublicKey( blsPublicKey, libBLS::Base::HEXA ), publicKey2 } );
 
     // Corrupt the first key by replacing it with a random one
     corruptEncryptedMessage.keys[0] = libBLS::CipheredKey(
@@ -5503,7 +5503,7 @@ BOOST_AUTO_TEST_CASE( BITETransactionCouldNotBeDecrypted ) {
     u256 epochId = biteInfo[0]["epochId"].asUInt64();
 
     auto ciphertext =
-        libBLS::ThresholdEncryption::encrypt( messageBytes, libBLS::TEPublicKey( blsPublicKey ) );
+        libBLS::ThresholdEncryption::encrypt( messageBytes, libBLS::TEPublicKey( blsPublicKey, libBLS::Base::HEXA ) );
     auto ciphertextBytes = ciphertext.toBytes();
 
     // spoil random element in decryptedData
@@ -5827,8 +5827,8 @@ BOOST_AUTO_TEST_CASE( committeeRotation ) {
     ret["skaleConfig"]["sChain"]["nodeGroups"]["0"]["finish_ts"] = secondGroupTs;
 
     auto blsPublicKeyStringToStringArray = [](const std::string& publicKeyStr) {
-        libBLS::TEPublicKey publicKey( publicKeyStr );
-        auto rawPublicKey = publicKey.getPublicKeyRaw();        
+        libBLS::TEPublicKey publicKey( publicKeyStr, libBLS::Base::HEXA );
+        auto rawPublicKey = publicKey.getPublicKeyRaw();
         return rawPublicKey.toStringArray( libBLS::Base::DEC );
     };
 

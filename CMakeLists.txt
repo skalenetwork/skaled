@@ -110,7 +110,7 @@ include( EthExecutableHelper )
 include( EthDependencies )
 include( EthUtils )
 
-# set bls to use MCL backend
+# TODO - recheck if this is necessary set bls to use MCL backend
 add_library(bls_backend INTERFACE)
 target_compile_definitions(bls_backend INTERFACE USE_MCL=1)
 

@@ -61,8 +61,7 @@ public:
                 blsPrivateKeys_[i] =
                     blsPrivateKeys_[i] +
                     coeffs[j] *
-                        libBLS::algebra::power( libBLS::algebra::FrScalar::fromString( 
-                            std::to_string( i + 1 ), libBLS::Base::DEC ), j );
+                        libBLS::algebra::power( libBLS::algebra::FrScalar( i + 1 ), j );
             }
         }
 
