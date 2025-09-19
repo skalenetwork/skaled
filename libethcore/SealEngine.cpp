@@ -104,7 +104,7 @@ void SealEngineFace::verifyTransaction( ChainOperationParams const& _chainParams
     BlockHeader const& _header, u256 const& _gasUsed ) {
     // verifyTransaction is the only place where TransactionBase is used instead of Transaction.
     u256 gas;
-#ifdef MIRAGE
+#ifdef FAIR
     gas = _t.gas();
 #else
     if ( PowCheckPatch::isEnabledWhen( _committedBlockTimestamp ) ) {
@@ -128,7 +128,7 @@ void SealEngineFace::verifyTransaction( ChainOperationParams const& _chainParams
         const bool beforeExperimentalFork =
             _header.number() < _chainParams.getExperimentalForkBlock();
 
-#ifdef MIRAGE
+#ifdef FAIR
         const bool allowPreEIP155Txns = _chainParams.getAllowPreEIP155Txns();
 
         // Pre-EIP-155 tx not allowed

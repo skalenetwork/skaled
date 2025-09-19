@@ -19,7 +19,7 @@ public:
         this->bindAndAddMethod( jsonrpc::Procedure( "skale_nodesRpcInfo",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::SkaleStatsFace::skale_nodesRpcInfoI );
-#ifndef MIRAGE
+#ifndef FAIR
         this->bindAndAddMethod( jsonrpc::Procedure( "skale_imaInfo", jsonrpc::PARAMS_BY_POSITION,
                                     jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::SkaleStatsFace::skale_imaInfoI );
@@ -34,7 +34,7 @@ public:
         ( void ) request;
         response = this->skale_nodesRpcInfo();
     }
-#ifndef MIRAGE
+#ifndef FAIR
     inline virtual void skale_imaInfoI( const Json::Value& request, Json::Value& response ) {
         ( void ) request;
         response = this->skale_imaInfo();
@@ -43,7 +43,7 @@ public:
 
     virtual Json::Value skale_stats() = 0;
     virtual Json::Value skale_nodesRpcInfo() = 0;
-#ifndef MIRAGE
+#ifndef FAIR
     virtual Json::Value skale_imaInfo() = 0;
 #endif
 

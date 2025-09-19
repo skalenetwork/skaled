@@ -48,7 +48,7 @@ public:
     u256 getPriceForBlockId( uint64_t /*_blockId*/ ) const override { return 1000; }
     consensus_engine_status getStatus() const override { return CONSENSUS_ACTIVE; }  // moch
 
-#ifdef MIRAGE
+#ifdef FAIR
     void updateLogger() const override {}
 #endif
 

@@ -122,7 +122,7 @@ public:
         resetCurrent();
     }
 
-#ifdef MIRAGE
+#ifdef FAIR
     /// Set the author address for any transactions we do and rewards we get.
     /// No reset of current block
     void safeSetAuthor( Address const& _id ) {
@@ -343,7 +343,7 @@ private:
     /// Throws on failure.
     u256 enact( VerifiedBlockRef const& _block, BlockChain const& _bc );
 
-#ifdef MIRAGE
+#ifdef FAIR
     // Distribute block rewards to block author and staking contract, if it is not default block
     void rewardAllForNonDefaultBlock(
         const dev::Address& _stakingContractAddress, u256 const& _blockReward );

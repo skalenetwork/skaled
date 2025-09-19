@@ -208,8 +208,9 @@ public:
         restartMining();
     }
 
-#ifdef MIRAGE
-    Address getWinningNodeAddressByIndex( uint64_t _winningNodeIndex );
+#ifdef FAIR
+    Address getWinningNodeBeneficiary( uint64_t ) const;
+
 #endif
 
     /// Type of sealers available for this seal engine.
@@ -298,7 +299,7 @@ public:
         const std::shared_ptr< DecryptedTransactionFieldsMap >& _decryptedTransactionDataFields,
 #endif
         u256 _gasPrice,
-#ifdef MIRAGE
+#ifdef FAIR
         uint64_t _winningNodeIndex,
 #endif
         uint64_t _timestamp = ( uint64_t ) utcTime() );
@@ -311,7 +312,7 @@ public:
     uint64_t getCurrentEpochId() const { return historicGroupIndex.load(); }
 #endif
 
-#ifdef MIRAGE
+#ifdef FAIR
     bool updateGroupIfNeeded() { return bc().updateGroupIfNeeded(); }
 
     std::pair< std::array< std::string, 4 >, uint64_t > getNextCommitteeBITEInfo() const;
@@ -373,7 +374,7 @@ public:
 
     std::pair< uint64_t, uint64_t > getBlocksDbUsage() const;
 
-#ifndef MIRAGE
+#ifndef FAIR
     std::pair< uint64_t, uint64_t > getStateDbUsage() const;
 #else
     uint64_t getStateDbUsage() const;
@@ -384,7 +385,7 @@ public:
     uint64_t getHistoricRootsDbUsage() const;
 #endif  // HISTORIC_STATE
 
-#ifndef MIRAGE
+#ifndef FAIR
     uint64_t submitOracleRequest( const string& _spec, string& _receipt, string& _errorMessage );
     uint64_t checkOracleResult( const string& _receipt, string& _result );
 #endif
@@ -586,7 +587,7 @@ protected:
     mutable Logger m_loggerInfo{ createLogger( VerbosityInfo, "client" ) };
     mutable Logger m_loggerTrace{ createLogger( VerbosityTrace, "client" ) };
     mutable Logger m_loggerWarning{ createLogger( VerbosityWarning, "client" ) };
-#ifdef MIRAGE
+#ifdef FAIR
     mutable Logger m_loggerDebug{ createLogger( VerbosityDebug, "client" ) };
 #endif
     mutable Logger m_loggerError{ createLogger( VerbosityError, "client" ) };

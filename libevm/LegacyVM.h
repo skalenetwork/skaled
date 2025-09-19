@@ -149,7 +149,7 @@ private:
     void throwBufferOverrun( bigint const& _enfOfAccess );
     void throwStorageOverflow( const std::string& _addr );
 
-#ifdef MIRAGE
+#ifdef FAIR
     void throwUnsupportedDencunOpcode();
 #endif
 

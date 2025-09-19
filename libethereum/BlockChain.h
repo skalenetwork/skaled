@@ -134,7 +134,7 @@ public:
 
     static std::string getChainDirName( const ChainParams& _cp );
 
-#ifdef MIRAGE
+#ifdef FAIR
     static uint64_t getLatestBlockTimestamp(
         const ChainParams& _params, const boost::filesystem::path& _dataDir );
 #endif
@@ -473,7 +473,7 @@ public:
         return 0;
     }
 
-#ifdef MIRAGE
+#ifdef FAIR
     bool updateGroupIfNeeded() {
         auto latestBlockTimestamp = info().timestamp();
         CHECK_EXPRESSION( m_params );

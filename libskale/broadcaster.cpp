@@ -243,7 +243,7 @@ void ZmqBroadcaster::initSocket() {
     server_socket();
 }
 
-#ifdef MIRAGE
+#ifdef FAIR
 void ZmqBroadcaster::resetServerSocket() {
     if ( m_zmq_server_socket ) {
         int linger = 1;

@@ -180,7 +180,7 @@ string BlockChain::getChainDirName( const ChainParams& _cp ) {
     return toHex( BlockHeader( _cp.genesisBlock() ).hash().ref().cropped( 0, 4 ) );
 }
 
-#ifdef MIRAGE
+#ifdef FAIR
 // open blocks_and_extras db and read LATEST_BLOCK_TIMESTAMP_KEY from current
 uint64_t BlockChain::getLatestBlockTimestamp(
     const ChainParams& _params, const boost::filesystem::path& _dataDir ) {
@@ -1045,7 +1045,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
             m_db->insert( db::Slice( "\x1"
                                      "best" ),
                 db::Slice( ( char const* ) &m_lastBlockHash, 32 ) );
-#ifdef MIRAGE
+#ifdef FAIR
             // update LATEST_BLOCK_TIMESTAMP_KEY
             m_db->insert( db::Slice( db::LATEST_BLOCK_TIMESTAMP_KEY ),
                 db::Slice( std::to_string( _block.info.timestamp() ) ) );

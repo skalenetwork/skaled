@@ -91,7 +91,7 @@ struct EVMSchedule {
     unsigned BITETxnCost = 21000;
 #endif
 
-#ifdef MIRAGE
+#ifdef FAIR
     // at network start transaction fees will not be distributed to block authors / stakers
     // this number will be changed in later patches
     size_t shareOfTransactionFeeToRewardPromille = 0;
@@ -141,7 +141,7 @@ static const EVMSchedule ByzantiumSchedule = [] {
     schedule.haveRevert = true;
     schedule.haveReturnData = true;
     schedule.haveStaticCall = true;
-#ifndef MIRAGE
+#ifndef FAIR
     schedule.blockRewardOverwrite = { 3 * ether };
 #endif
     return schedule;
@@ -153,7 +153,7 @@ static const EVMSchedule ConstantinopleSchedule = [] {
     schedule.haveBitwiseShifting = true;
     schedule.haveExtcodehash = true;
     schedule.eip1283Mode = true;
-#ifndef MIRAGE
+#ifndef FAIR
     schedule.blockRewardOverwrite = { 2 * ether };
 #endif
     return schedule;

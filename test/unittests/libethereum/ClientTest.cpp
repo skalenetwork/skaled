@@ -113,7 +113,7 @@ public:
         if ( _config != "" ) {
             Json::Value ret;
             Json::Reader().parse( _config, ret );
-#ifndef MIRAGE
+#ifndef FAIR
             ret["skaleConfig"]["sChain"]["contractStorageLimit"] = 32000;
 #endif
             Json::FastWriter fastWriter;
@@ -262,7 +262,7 @@ public:
 
         Json::Value ret;
         Json::Reader().parse( _config, ret );
-#ifndef MIRAGE
+#ifndef FAIR
         ret["skaleConfig"]["sChain"]["contractStorageLimit"] = 32000;
 #endif
         Json::FastWriter fastWriter;
@@ -381,7 +381,7 @@ static std::string const c_configString = R"(
 }
 )";
 
-#ifndef MIRAGE
+#ifndef FAIR
 static std::string const c_genesisInfoSkaleTest = std::string() +
                                                   R"E(
 {
@@ -509,6 +509,40 @@ static std::string const c_genesisInfoSkaleTest = std::string() +
         "schainName": "TestChain",
         "schainID": 1,
         "emptyBlockIntervalMs": -1,
+        "nodeGroups": {
+            "0": {
+                "nodes": {
+                    "8": [
+                        1,
+                        8,
+                        "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea105a3d21845e5660bc3d4e7c82e7af1daa3baad393b1521467"
+                    ]
+                },
+                "finish_ts": 1,
+                "bls_public_key": {
+                    "blsPublicKey0": "15959969554621958245201075983340071881770733084910870228938077786643587385029",
+                    "blsPublicKey1": "7970122607051572307517094692346020360016825923464107614135327251488152616550",
+                    "blsPublicKey2": "3371162264373897025322009434717052197952692496405149486989861571246537813591",
+                    "blsPublicKey3": "13678625751515504401110635369790787716744686498431213713911601759809559919693"
+                }
+            },
+            "1": {
+                "nodes": {
+                    "8": [
+                        1,
+                        8,
+                        "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea105a3d21845e5660bc3d4e7c82e7af1daa3baad393b1521467"
+                    ]
+                },
+                "finish_ts": null,
+                "bls_public_key": {
+                    "blsPublicKey0": "3842742177969966091367527274107524613106077736353521259727282251005583743182",
+                    "blsPublicKey1": "3497912824016228906558906422247670474553186446469877598411863912329082553081",
+                    "blsPublicKey2": "8173996886448941320370434854289578123609627835954133538412363037981850950343",
+                    "blsPublicKey3": "20979370720689475348670582375026949105497642726992863932315517524004804784155"
+                }
+            }
+        },
         "nodes": {
             "1": {
                 "group": [
@@ -986,7 +1020,7 @@ BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE( getHistoricNodesData )
 
-#ifndef MIRAGE
+#ifndef FAIR
 static std::string const c_genesisInfoSkaleIMABLSPublicKeyTest = std::string() + R"E(
 {
     "sealEngine": "Ethash",
@@ -1226,7 +1260,7 @@ BOOST_AUTO_TEST_CASE( initAndUpdateHistoricConfigFields ) {
     BOOST_REQUIRE_EQUAL( testClient->getHistoricNodeId( 0 ), "26" );
     BOOST_REQUIRE_EQUAL( testClient->getHistoricNodeIndex( 0 ), "3" );
 
-#ifdef MIRAGE
+#ifdef FAIR
     BOOST_REQUIRE_EQUAL( testClient->getCurrentEpochId(), 0 );
     auto nextCommitteeBITEInfo = testClient->getNextCommitteeBITEInfo();
     BOOST_REQUIRE( nextCommitteeBITEInfo.first == imaBLSPublicKeyAfterBlock );
@@ -1238,7 +1272,7 @@ BOOST_AUTO_TEST_CASE( initAndUpdateHistoricConfigFields ) {
     make_shared< DecryptedTransactionFieldsMap >(),
 #endif
         1000,
-#ifdef MIRAGE
+#ifdef FAIR
         1,
 #endif
         4294967294 );
@@ -1250,14 +1284,14 @@ BOOST_AUTO_TEST_CASE( initAndUpdateHistoricConfigFields ) {
     BOOST_REQUIRE_EQUAL( testClient->getHistoricNodeId( 0 ), "30" );
     BOOST_REQUIRE_EQUAL( testClient->getHistoricNodeIndex( 0 ), "0" );
 
-#ifdef MIRAGE
+#ifdef FAIR
     BOOST_REQUIRE_EQUAL( testClient->getCurrentEpochId(), 1 );
 #endif
 }
 
 BOOST_AUTO_TEST_SUITE_END()
 
-#ifndef MIRAGE
+#ifndef FAIR
 static std::string const c_skaleConfigString =
     R"E(
 {

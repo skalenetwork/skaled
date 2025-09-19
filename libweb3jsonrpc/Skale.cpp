@@ -356,7 +356,7 @@ std::string Skale::skale_getLatestSnapshotBlockNumber() {
     return response > 0 ? std::to_string( response ) : "earliest";
 }
 
-#ifdef MIRAGE
+#ifdef FAIR
 Json::Value Skale::skale_getBLSPublicKey() {
     try {
         Json::Value publicKeyInfo;
@@ -527,7 +527,7 @@ Json::Value Skale::skale_getDBUsage() {
 
     joSkaledDBUsage["blocks.db_disk_usage"] = blocksDbUsage.first;
     joSkaledDBUsage["pieceUsageBytes"] = blocksDbUsage.second;
-#ifndef MIRAGE
+#ifndef FAIR
     joSkaledDBUsage["state.db_disk_usage"] = stateDbUsage.first;
     joSkaledDBUsage["contractStorageUsed"] = stateDbUsage.second;
 #else
@@ -550,7 +550,7 @@ Json::Value Skale::skale_getDBUsage() {
     return response;
 }
 
-#ifndef MIRAGE
+#ifndef FAIR
 std::string Skale::oracle_submitRequest( std::string& request ) {
     try {
         if ( m_client.chainParams().isSyncNode() )
@@ -616,14 +616,14 @@ Json::Value Skale::bite_getCommitteesInfo() {
         Json::Value response = Json::arrayValue;
         response[0]["commonBLSPublicKey"] = stringArrayToBLSPublicKey( publicKeyArray ).toString();
         response[0]["epochId"] = m_client.getCurrentEpochId();
-#ifdef MIRAGE
+#ifdef FAIR
         if ( m_client.isCommitteeRotationSoon() ) {
             auto nextCommitteeBITEInfo = m_client.getNextCommitteeBITEInfo();
             response[1]["commonBLSPublicKey"] =
                 stringArrayToBLSPublicKey( nextCommitteeBITEInfo.first ).toString();
             response[1]["epochId"] = nextCommitteeBITEInfo.second;
         }
-#endif  // MIRAGE
+#endif  // FAIR
 
         return response;
     } catch ( Exception const& ) {

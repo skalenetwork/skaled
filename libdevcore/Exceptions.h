@@ -75,7 +75,7 @@ DEV_SIMPLE_EXCEPTION( MissingField );
 DEV_SIMPLE_EXCEPTION( WrongFieldType );
 DEV_SIMPLE_EXCEPTION( InterfaceNotSupported );
 DEV_SIMPLE_EXCEPTION( ExternalFunctionFailure );
-#ifndef MIRAGE
+#ifndef FAIR
 DEV_SIMPLE_EXCEPTION( StorageOverflow );
 #endif
 DEV_SIMPLE_EXCEPTION( DatabaseCorruption );

@@ -58,7 +58,7 @@ public:
     virtual void startService() = 0;
     virtual void stopService() = 0;
 
-#ifdef MIRAGE
+#ifdef FAIR
     virtual void resetServerSocket() = 0;
 #endif
 };
@@ -72,7 +72,7 @@ public:
     virtual void startService() {}
     virtual void stopService() {}
 
-#ifdef MIRAGE
+#ifdef FAIR
     virtual void resetServerSocket() {}
 #endif
 
@@ -97,7 +97,7 @@ public:
     virtual void startService();
     virtual void stopService();
 
-#ifdef MIRAGE
+#ifdef FAIR
     virtual void resetServerSocket();
 #endif
 

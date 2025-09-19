@@ -179,19 +179,19 @@ void TestSuite::runAllTestsInFolder( string const& _testFolder ) const {
     vector< fs::path > files = test::getFiles( getFullPathFiller( _testFolder ),
         {".json", ".yml"}, filter.empty() ? filter : filter + "Filler" );
 
-    // Filter out test files based on MIRAGE flag for files with the same prefix
+    // Use FAIR_ test state file if FAIR_ is available
+    std:: string commonPrefix = "FAIR_";
     if ( filter.empty() ) {
         std::unordered_map<std::string, std::vector<fs::path>> filesByPrefix;
         for (auto const& file : files) {
             std::string fileName = file.stem().string();
             std::string prefix;
 
-            if (fileName.size() > 7 && fileName.substr(0, 7) == "MIRAGE_") {
-                prefix = fileName.substr(7);
+            if ( fileName.size() > commonPrefix.size() && fileName.substr( 0, commonPrefix.size() ) == commonPrefix ) {
+                prefix = fileName.substr( commonPrefix.size() );
             } else {
                 prefix = fileName;
             }
-
             filesByPrefix[prefix].push_back(file);
         }
 
@@ -201,27 +201,27 @@ void TestSuite::runAllTestsInFolder( string const& _testFolder ) const {
                 filteredFiles.push_back(entry.second[0]);
             } else {
                 // We have multiple files with the same prefix
-                bool hasMirage = false;
-                fs::path mirageFile;
-                fs::path nonMirageFile;
+                bool hasFair = false;
+                fs::path fairFile;
+                fs::path nonFairFile;
                 for (auto const& file : entry.second) {
                     std::string fileName = file.stem().string();
-                    if (fileName.size() > 7 && fileName.substr(0, 7) == "MIRAGE_") {
-                        hasMirage = true;
-                        mirageFile = file;
+                    if ( fileName.size() > commonPrefix.size() && fileName.substr( 0, commonPrefix.size() ) == commonPrefix ) {
+                        hasFair = true;
+                        fairFile = file;
                     } else {
-                        nonMirageFile = file;
+                        nonFairFile = file;
                     }
                 }
 
-                if (hasMirage) {
-    #ifdef MIRAGE
-                    filteredFiles.push_back(mirageFile);
+                if (hasFair) {
+    #ifdef FAIR
+                    filteredFiles.push_back(fairFile);
     #else
-                    filteredFiles.push_back(nonMirageFile);
+                    filteredFiles.push_back(nonFairFile);
     #endif
                 } else {
-                    // If no mirage/non-mirage distinction, add all files
+                    // If no fair/non-fair distinction, add all files
                     for (auto const& file : entry.second) {
                         filteredFiles.push_back(file);
                     }

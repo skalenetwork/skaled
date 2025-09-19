@@ -303,7 +303,7 @@ public:
 
     unique_ptr< WebThreeStubClient > rpcClient() const;
 
-#ifndef MIRAGE
+#ifndef FAIR
     void calculateAndSetPowGas( Transaction& _t ) const;
 #endif
 
@@ -321,7 +321,7 @@ public:
 
     const string HARDHAT_CONFIG_FILE_NAME = "../../test/historicstate/hardhat/hardhat.config.js";
     uint64_t transactionTimeoutMs = 60000;
-#ifndef MIRAGE
+#ifndef FAIR
     bool usePow = false;
     u256 powDiffuculty = 1;
 #endif
