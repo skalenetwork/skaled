@@ -26,6 +26,7 @@
 #include <libethereum/SchainPatch.h>
 
 #include <algorithm>
+#include <stdexcept>
 #include <utility>
 
 #include "BlockChain.h"
@@ -216,7 +217,7 @@ LocalisedLogEntries ClientBase::logs( LogFilter const& _f ) const {
     }
 
     // Handle blocks from main chain
-    set< unsigned > matchingBlocks;
+    unordered_set< unsigned > matchingBlocks;
     if ( !_f.isRangeFilter() )
         for ( auto const& i : _f.bloomPossibilities() ) {
             std::vector< unsigned > matchingBlocksVector = bc().withBlockBloom( i, end, begin );
@@ -226,7 +227,6 @@ LocalisedLogEntries ClientBase::logs( LogFilter const& _f ) const {
         // if it is a range filter, we want to get all logs from all blocks in given range
         for ( unsigned i = end; i <= begin; i++ )
             matchingBlocks.insert( i );
-
     for ( auto n : matchingBlocks )
         prependLogsFromBlock( _f, bc().numberHash( n ), BlockPolarity::Live, ret );
     return ret;
@@ -236,6 +236,7 @@ void ClientBase::prependLogsFromBlock( LogFilter const& _f, h256 const& _blockHa
     BlockPolarity _polarity, LocalisedLogEntries& io_logs ) const {
     auto receipts = bc().receipts( _blockHash ).receipts;
     unsigned logIndex = 0;
+    int64_t logCountLimit = bc().chainParams().getResponseLogCountLimit();
     for ( size_t i = 0; i < receipts.size(); i++ ) {
         const TransactionReceipt& receipt = receipts[i];
         const h256& th = transaction( _blockHash, i ).sha3();
@@ -261,11 +262,14 @@ void ClientBase::prependLogsFromBlock( LogFilter const& _f, h256 const& _blockHa
                             isGood = false;
                         }
                     }
-                    if ( isGood )
+                    if ( isGood ) {
                         io_logs.emplace_back( LocalisedLogEntry( e, _blockHash,
                             ( BlockNumber ) bc().number( _blockHash ), th, i, logIndex++,
                             _polarity ) );
-                    else
+                        if ( logCountLimit != -1 && io_logs.size() > logCountLimit ) {
+                            BOOST_THROW_EXCEPTION( LogCountLimitExceeded() );
+                        }
+                    } else
                         ++logIndex;
                 } else
                     ++logIndex;

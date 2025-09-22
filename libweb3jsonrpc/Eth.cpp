@@ -887,7 +887,27 @@ Json::Value Eth::eth_getFilterChangesEx( string const& _filterId ) {
 
 Json::Value Eth::eth_getFilterLogs( string const& _filterId ) {
     try {
-        return toJson( client()->logs( static_cast< unsigned int >( jsToInt( _filterId ) ) ) );
+        // Measure client()->logs() call execution time (line 891)
+        auto logs_start_time = std::chrono::steady_clock::now();
+        auto logs = client()->logs( static_cast< unsigned int >( jsToInt( _filterId ) ) );
+        auto logs_end_time = std::chrono::steady_clock::now();
+
+        auto logs_duration = std::chrono::duration_cast< std::chrono::milliseconds >(
+            logs_end_time - logs_start_time );
+        LOG( m_loggerDebug ) << "client()->logs() execution time: " << logs_duration.count()
+                             << " ms for filter " << _filterId;
+
+        // Measure toJson() conversion execution time (line 892)
+        auto json_start_time = std::chrono::steady_clock::now();
+        auto result = toJson( logs );
+        auto json_end_time = std::chrono::steady_clock::now();
+
+        auto json_duration = std::chrono::duration_cast< std::chrono::milliseconds >(
+            json_end_time - json_start_time );
+        LOG( m_loggerDebug ) << "toJson() conversion time: " << json_duration.count()
+                             << " ms for filter " << _filterId;
+
+        return result;
     } catch ( const TooBigResponse& ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS,
             "Log response size exceeded. Maximum allowed number of requested blocks is " +
@@ -899,6 +919,8 @@ Json::Value Eth::eth_getFilterLogs( string const& _filterId ) {
 
 Json::Value Eth::eth_getLogs( Json::Value const& _json ) {
     try {
+        auto prepare_start_time = std::chrono::steady_clock::now();
+
         LogFilter filter = toLogFilter( _json );
         if ( !_json["blockHash"].isNull() ) {
             if ( !_json["fromBlock"].isNull() || !_json["toBlock"].isNull() )
@@ -915,11 +937,41 @@ Json::Value Eth::eth_getLogs( Json::Value const& _json ) {
             filter.withEarliest( number );
             filter.withLatest( number );
         }
-        return toJson( client()->logs( filter ) );
+        auto prepare_end_time = std::chrono::steady_clock::now();
+
+        auto prepare_duration = std::chrono::duration_cast< std::chrono::milliseconds >(
+            prepare_end_time - prepare_start_time );
+        LOG( m_loggerDebug ) << "HEREB prepare execution time: " << prepare_duration.count()
+                             << " ms for eth_getLogs";
+
+
+        auto logs_start_time = std::chrono::steady_clock::now();
+        auto logs = client()->logs( filter );
+        auto logs_end_time = std::chrono::steady_clock::now();
+
+        auto logs_duration = std::chrono::duration_cast< std::chrono::milliseconds >(
+            logs_end_time - logs_start_time );
+        LOG( m_loggerDebug ) << "HEREB client()->logs(filter) execution time: "
+                             << logs_duration.count() << " ms for eth_getLogs";
+
+        auto json_start_time = std::chrono::steady_clock::now();
+        auto result = toJson( logs );
+        auto json_end_time = std::chrono::steady_clock::now();
+
+        auto json_duration = std::chrono::duration_cast< std::chrono::milliseconds >(
+            json_end_time - json_start_time );
+        LOG( m_loggerDebug ) << "HEREB toJson() conversion time: " << json_duration.count()
+                             << " ms for eth_getLogs";
+        return result;
+
     } catch ( const TooBigResponse& ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS,
             "Log response size exceeded. Maximum allowed number of requested blocks is " +
                 to_string( this->client()->chainParams().getLogsBlocksLimit() ) ) );
+    } catch ( const LogCountLimitExceeded& ) {
+        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INTERNAL_ERROR,
+            "Log response log count limit exceeded. Maximum allowed number of returned logs is " +
+                to_string( this->client()->chainParams().getResponseLogCountLimit() ) ) );
     } catch ( const JsonRpcException& ) {
         throw;
     } catch ( ... ) {
