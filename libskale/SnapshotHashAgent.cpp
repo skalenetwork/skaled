@@ -74,7 +74,7 @@ size_t SnapshotHashAgent::verifyAllData() const {
         if ( this->isReceived_.at( i ) ) {
             bool is_verified = false;
             try {
-                is_verified = this->bls_->Verification( this->hashes_.at( i ).asArray(),
+                is_verified = this->bls_->Verify( this->hashes_.at( i ).asArray(),
                     this->signatures_.at( i ), this->public_keys_.at( i ) );
             } catch ( std::exception& ex ) {
                 LOG( m_loggerError ) << ex.what();
@@ -149,7 +149,7 @@ bool SnapshotHashAgent::voteForHash() {
         bool is_verified = false;
 
         try {
-            is_verified = this->bls_->Verification(
+            is_verified = this->bls_->Verify(
                 ( *it ).first.asArray(), common_signature, this->commonPublicKey_ );
         } catch ( libBLS::ThresholdUtils::IsNotWellFormed& ex ) {
             LOG( m_loggerError )
@@ -173,7 +173,7 @@ bool SnapshotHashAgent::voteForHash() {
             LOG( m_loggerDebug ) << "Y.c0: " << coords[2];
             LOG( m_loggerDebug ) << "Y.c1: " << coords[3];
             try {
-                is_verified = this->bls_->Verification(
+                is_verified = this->bls_->Verify(
                     ( *it ).first.asArray(), common_signature, commonPublicKeyFromConfig );
             } catch ( libBLS::ThresholdUtils::IsNotWellFormed& ex ) {
                 LOG( m_loggerError )
