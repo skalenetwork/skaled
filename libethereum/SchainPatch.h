@@ -181,6 +181,7 @@ DEFINE_SIMPLE_PATCH( CurrentBlockRandomPatch );
  * Context: fix group index initialization on startup
  * if skaled exits after the first block after rotation timestamp
  * then it starts again and initializes with wrong group index
+ * Version introduced: 4.1.0
  */
 DEFINE_AMNESIC_PATCH( GroupIndexInitPatch );
 
