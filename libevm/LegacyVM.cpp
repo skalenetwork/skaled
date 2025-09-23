@@ -96,7 +96,7 @@ void LegacyVM::updateSSGas() {
     u256 const currentValue = m_ext->store( m_SP[0] );
     u256 const newValue = m_SP[1];
 
-    LOG( m_loggerTrace ) << "Update SS Gas: Contract address: " << m_ext->myAddress.hex() << " : Storage address: " << m_SP[0] << " : New storage: " << m_SP[1];
+    LOG( m_loggerTrace ) << "Update SS Gas: Contract address: " << m_ext->myAddress.hex() << " : Storage address: " << m_SP[0] << "Current storage: " << currentValue << " : New storage: " << newValue;
 
     if ( m_schedule->eip1283Mode )
         updateSSGasEIP1283( currentValue, newValue );
@@ -159,7 +159,6 @@ uint64_t LegacyVM::gasForMem( u512 const& _size ) {
 void LegacyVM::updateIOGas() {
     if ( m_io_gas < m_runGas )
         throwOutOfGas();
-    LOG( m_loggerTrace ) << "Updating gas: " << m_io_gas << " -> " << m_io_gas - m_runGas;
     m_io_gas -= m_runGas;
 }
 
