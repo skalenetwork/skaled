@@ -30,6 +30,7 @@
 #include <jsonrpccpp/common/exception.h>
 #include <jsonrpccpp/server.h>
 #include <libdevcore/Common.h>
+#include <rapidjson/document.h>
 #include <iosfwd>
 #include <memory>
 
@@ -199,6 +200,8 @@ public:
     virtual Json::Value eth_getFilterLogs( std::string const& _filterId ) override;
     //    virtual Json::Value eth_getFilterLogsEx( std::string const& _filterId ) override;
     virtual Json::Value eth_getLogs( Json::Value const& _json ) override;
+    rapidjson::Document eth_getLogsRapid(
+        rapidjson::Value const& _json, rapidjson::Document::AllocatorType& allocator );
     //    virtual Json::Value eth_getLogsEx( Json::Value const& _json ) override;
     virtual Json::Value eth_getWork() override;
     virtual bool eth_submitWork(

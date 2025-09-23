@@ -2655,7 +2655,8 @@ const SkaleServerOverride::protocol_rpc_map_t SkaleServerOverride::g_protocol_rp
     { "eth_getBalance", &SkaleServerOverride::eth_getBalance },
     { "eth_getStorageAt", &SkaleServerOverride::eth_getStorageAt },
     { "eth_getTransactionCount", &SkaleServerOverride::eth_getTransactionCount },
-    { "eth_getCode", &SkaleServerOverride::eth_getCode }
+    { "eth_getCode", &SkaleServerOverride::eth_getCode },
+    { "eth_getLogs", &SkaleServerOverride::eth_getLogs }
 };
 
 
@@ -2785,6 +2786,11 @@ void SkaleServerOverride::eth_getTransactionCount( const string& /*strOrigin*/,
 void SkaleServerOverride::eth_getCode( const string& /*strOrigin*/,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
     opts_.fn_eth_getCode_( joRequest, joResponse );
+}
+
+void SkaleServerOverride::eth_getLogs( const string& /*strOrigin*/,
+    const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
+    opts_.fn_eth_getLogs_( joRequest, joResponse );
 }
 
 bool SkaleServerOverride::handleHttpSpecificRequest(

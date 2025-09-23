@@ -417,6 +417,7 @@ public:
         fn_jsonrpc_call_t fn_eth_getStorageAt_;
         fn_jsonrpc_call_t fn_eth_getTransactionCount_;
         fn_jsonrpc_call_t fn_eth_getCode_;
+        fn_jsonrpc_call_t fn_eth_getLogs_;
         double lfExecutionDurationMaxForPerformanceWarning_ = 0;  // in seconds
         bool isTraceCalls_ = false;
         bool isTraceSpecialCalls_ = false;
@@ -434,6 +435,7 @@ public:
             fn_eth_getStorageAt_ = other.fn_eth_getStorageAt_;
             fn_eth_getTransactionCount_ = other.fn_eth_getTransactionCount_;
             fn_eth_getCode_ = other.fn_eth_getCode_;
+            fn_eth_getLogs_ = other.fn_eth_getLogs_;
             lfExecutionDurationMaxForPerformanceWarning_ =
                 other.lfExecutionDurationMaxForPerformanceWarning_;
             isTraceCalls_ = other.isTraceCalls_;
@@ -590,6 +592,9 @@ protected:
         rapidjson::Document& joResponse );
 
     void eth_getCode( const string& strOrigin, const rapidjson::Document& joRequest,
+        rapidjson::Document& joResponse );
+
+    void eth_getLogs( const string& strOrigin, const rapidjson::Document& joRequest,
         rapidjson::Document& joResponse );
 
     unsigned iwBlockStats_ = unsigned( -1 ), iwPendingTransactionStats_ = unsigned( -1 );

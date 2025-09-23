@@ -2,6 +2,7 @@
 #define SKUTILS_HTTP_PG_H 1
 
 #include <atomic>
+#include <chrono>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-copy"
@@ -52,6 +53,7 @@ class request_site : public proxygen::RequestHandler {
     std::string m_strLogPrefix;
     size_t m_bodyPartNumber = 0;
     std::string m_strBody;
+    std::chrono::steady_clock::time_point m_request_start_time;
 
 public:
     std::string m_httpMethod, m_origin, m_path, m_dstAddress_;

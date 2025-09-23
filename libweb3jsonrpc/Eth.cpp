@@ -979,6 +979,68 @@ Json::Value Eth::eth_getLogs( Json::Value const& _json ) {
     }
 }
 
+rapidjson::Document Eth::eth_getLogsRapid(
+    rapidjson::Value const& _json, rapidjson::Document::AllocatorType& allocator ) {
+    try {
+        auto prepare_start_time = std::chrono::steady_clock::now();
+
+        LogFilter filter = rapidJsonToLogFilter( _json );
+        if ( _json.HasMember( "blockHash" ) && !_json["blockHash"].IsNull() ) {
+            if ( _json.HasMember( "fromBlock" ) || _json.HasMember( "toBlock" ) )
+                BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS,
+                    "fromBlock and toBlock are not allowed if blockHash is present" ) );
+            string strHash = _json["blockHash"].GetString();
+            if ( strHash.empty() )
+                throw std::invalid_argument( "blockHash cannot be an empty string" );
+            uint64_t number = m_eth.numberFromHash( jsToFixed< 32 >( strHash ) );
+            if ( number == PendingBlock )
+                BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS,
+                    "A block with this hash does not exist in the database. If this is an old "
+                    "block, try connecting to an archive node" ) );
+            filter.withEarliest( number );
+            filter.withLatest( number );
+        }
+        auto prepare_end_time = std::chrono::steady_clock::now();
+
+        auto prepare_duration = std::chrono::duration_cast< std::chrono::milliseconds >(
+            prepare_end_time - prepare_start_time );
+        LOG( m_loggerDebug ) << "HEREB prepare execution time: " << prepare_duration.count()
+                             << " ms for eth_getLogsRapid";
+
+        auto logs_start_time = std::chrono::steady_clock::now();
+        auto logs = client()->logs( filter );
+        auto logs_end_time = std::chrono::steady_clock::now();
+
+        auto logs_duration = std::chrono::duration_cast< std::chrono::milliseconds >(
+            logs_end_time - logs_start_time );
+        LOG( m_loggerDebug ) << "HEREB client()->logs(filter) execution time: "
+                             << logs_duration.count() << " ms for eth_getLogsRapid";
+
+        auto json_start_time = std::chrono::steady_clock::now();
+        auto result = toRapidJson( logs, allocator );
+        auto json_end_time = std::chrono::steady_clock::now();
+
+        auto json_duration = std::chrono::duration_cast< std::chrono::milliseconds >(
+            json_end_time - json_start_time );
+        LOG( m_loggerDebug ) << "HEREB toRapidJson() conversion time: " << json_duration.count()
+                             << " ms for eth_getLogsRapid";
+        return result;
+
+    } catch ( const TooBigResponse& ) {
+        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS,
+            "Log response size exceeded. Maximum allowed number of requested blocks is " +
+                to_string( this->client()->chainParams().getLogsBlocksLimit() ) ) );
+    } catch ( const LogCountLimitExceeded& ) {
+        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INTERNAL_ERROR,
+            "Log response log count limit exceeded. Maximum allowed number of returned logs is " +
+                to_string( this->client()->chainParams().getResponseLogCountLimit() ) ) );
+    } catch ( const JsonRpcException& ) {
+        throw;
+    } catch ( ... ) {
+        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
+    }
+}
+
 Json::Value Eth::eth_getWork() {
     try {
         Json::Value ret( Json::arrayValue );

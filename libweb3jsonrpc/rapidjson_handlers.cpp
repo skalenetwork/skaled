@@ -1,4 +1,7 @@
 #include "rapidjson_handlers.h"
+#include <libethcore/CommonJS.h>
+#include <libethcore/Exceptions.h>
+#include <chrono>
 
 #define ERROR_RPC_CUSTOM_ERROR ( -32004 )
 
@@ -262,6 +265,113 @@ void inject_rapidjson_handlers( SkaleServerOverride::opts_t& serverOpts, dev::rp
         }
     };
 
+    SkaleServerOverride::fn_jsonrpc_call_t fn_eth_getLogs =
+        [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) -> void {
+        try {
+            if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsArray() ) {
+                throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+            }
+
+            if ( joRequest["params"].GetArray().Size() != 1 ||
+                 !joRequest["params"].GetArray()[0].IsObject() ) {
+                throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+            }
+
+            const auto& filterObj = joRequest["params"].GetArray()[0];
+            rapidjson::Document::AllocatorType& allocator = joResponse.GetAllocator();
+            rapidjson::Document filter;
+            filter.SetObject();
+
+            if ( filterObj.HasMember( "fromBlock" ) && filterObj["fromBlock"].IsString() ) {
+                rapidjson::Value fromBlock;
+                fromBlock.SetString( filterObj["fromBlock"].GetString(),
+                    filterObj["fromBlock"].GetStringLength(), allocator );
+                filter.AddMember( "fromBlock", fromBlock, allocator );
+            }
+            if ( filterObj.HasMember( "toBlock" ) && filterObj["toBlock"].IsString() ) {
+                rapidjson::Value toBlock;
+                toBlock.SetString( filterObj["toBlock"].GetString(),
+                    filterObj["toBlock"].GetStringLength(), allocator );
+                filter.AddMember( "toBlock", toBlock, allocator );
+            }
+            if ( filterObj.HasMember( "blockHash" ) && filterObj["blockHash"].IsString() ) {
+                rapidjson::Value blockHash;
+                blockHash.SetString( filterObj["blockHash"].GetString(),
+                    filterObj["blockHash"].GetStringLength(), allocator );
+                filter.AddMember( "blockHash", blockHash, allocator );
+            }
+            if ( filterObj.HasMember( "address" ) ) {
+                rapidjson::Value addresses;
+                if ( filterObj["address"].IsArray() ) {
+                    addresses.SetArray();
+                    for ( auto const& addr : filterObj["address"].GetArray() ) {
+                        if ( addr.IsString() ) {
+                            rapidjson::Value addrValue;
+                            addrValue.SetString(
+                                addr.GetString(), addr.GetStringLength(), allocator );
+                            addresses.PushBack( addrValue, allocator );
+                        }
+                    }
+                } else if ( filterObj["address"].IsString() ) {
+                    addresses.SetString( filterObj["address"].GetString(),
+                        filterObj["address"].GetStringLength(), allocator );
+                }
+                filter.AddMember( "address", addresses, allocator );
+            }
+            if ( filterObj.HasMember( "topics" ) && filterObj["topics"].IsArray() ) {
+                rapidjson::Value topicsArray;
+                topicsArray.SetArray();
+                for ( auto const& topicValue : filterObj["topics"].GetArray() ) {
+                    if ( topicValue.IsArray() ) {
+                        rapidjson::Value topicSubArray;
+                        topicSubArray.SetArray();
+                        for ( auto const& t : topicValue.GetArray() ) {
+                            if ( t.IsNull() ) {
+                                rapidjson::Value nullValue;
+                                nullValue.SetNull();
+                                topicSubArray.PushBack( nullValue, allocator );
+                            } else if ( t.IsString() ) {
+                                rapidjson::Value topicStr;
+                                topicStr.SetString( t.GetString(), t.GetStringLength(), allocator );
+                                topicSubArray.PushBack( topicStr, allocator );
+                            }
+                        }
+                        topicsArray.PushBack( topicSubArray, allocator );
+                    } else if ( topicValue.IsNull() ) {
+                        rapidjson::Value nullValue;
+                        nullValue.SetNull();
+                        topicsArray.PushBack( nullValue, allocator );
+                    } else if ( topicValue.IsString() ) {
+                        rapidjson::Value topicStr;
+                        topicStr.SetString(
+                            topicValue.GetString(), topicValue.GetStringLength(), allocator );
+                        topicsArray.PushBack( topicStr, allocator );
+                    }
+                }
+                filter.AddMember( "topics", topicsArray, allocator );
+            }
+
+            auto start_time = std::chrono::steady_clock::now();
+            rapidjson::Document result = pEthFace->eth_getLogsRapid( filter, allocator );
+            auto end_time = std::chrono::steady_clock::now();
+            auto duration =
+                std::chrono::duration_cast< std::chrono::milliseconds >( end_time - start_time );
+            std::cout << "HEREB TIMING: eth_getLogsRapid execution time: " << duration.count()
+                      << " ms" << std::endl;
+
+            joResponse.EraseMember( "result" );
+            joResponse.AddMember( "result", result.Move(), allocator );
+
+        } catch ( const jsonrpc::JsonRpcException& ex ) {
+            wrapJsonRpcException( joRequest, ex, joResponse );
+        } catch ( const dev::Exception& ) {
+            wrapJsonRpcException( joRequest,
+                jsonrpc::JsonRpcException(
+                    ERROR_RPC_CUSTOM_ERROR, dev::rpc::exceptionToErrorMessage() ),
+                joResponse );
+        }
+    };
+
     serverOpts.fn_eth_sendRawTransaction_ = fn_eth_sendRawTransaction;
     serverOpts.fn_eth_getTransactionReceipt_ = fn_eth_getTransactionReceipt;
     serverOpts.fn_eth_call_ = fn_eth_call;
@@ -269,4 +379,5 @@ void inject_rapidjson_handlers( SkaleServerOverride::opts_t& serverOpts, dev::rp
     serverOpts.fn_eth_getStorageAt_ = fn_eth_getStorageAt;
     serverOpts.fn_eth_getTransactionCount_ = fn_eth_getTransactionCount;
     serverOpts.fn_eth_getCode_ = fn_eth_getCode;
+    serverOpts.fn_eth_getLogs_ = fn_eth_getLogs;
 }

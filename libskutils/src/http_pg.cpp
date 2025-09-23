@@ -1,4 +1,5 @@
 #include <skutils/http_pg.h>
+#include <skutils/smart_request_factory.h>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-copy"
@@ -81,6 +82,9 @@ request_site::~request_site() {
 }
 
 void request_site::onRequest( std::unique_ptr< proxygen::HTTPMessage > _req ) noexcept {
+    // Start timing when request headers arrive from network
+    m_request_start_time = std::chrono::steady_clock::now();
+
     m_sink.OnRecordRequestCountIncrement();
     m_httpMethod = skutils::tools::to_upper( skutils::tools::trim_copy( _req->getMethodString() ) );
 
@@ -158,6 +162,8 @@ void request_site::onEOM() noexcept {
     nlohmann::json joID = "0xBADF00D", joIn;
     skutils::result_of_http_request rslt;
     rslt.isBinary_ = false;
+    auto post_processing_start_time = std::chrono::steady_clock::now();
+
     try {
         joIn = nlohmann::json::parse( m_strBody );
         PG_LOG( m_strLogPrefix + "body JSON " + joIn.dump() );
@@ -165,6 +171,7 @@ void request_site::onEOM() noexcept {
             joID = joIn["id"];
 
         rslt = m_SSRQ->onRequest( joIn, m_origin, m_ipVer, m_dstAddress_, m_dstPort );
+        post_processing_start_time = std::chrono::steady_clock::now();
 
         if ( rslt.isBinary_ ) {
             PG_LOG( m_strLogPrefix + "binary answer " +
@@ -201,6 +208,17 @@ void request_site::onEOM() noexcept {
         bldr.body( strOut );
     }
     bldr.sendWithEOM();
+
+    // Measure complete request time from network entry to exit
+    auto request_end_time = std::chrono::steady_clock::now();
+    auto post_processing_duration = std::chrono::duration_cast< std::chrono::milliseconds >(
+        request_end_time - post_processing_start_time );
+    auto full_request_duration = std::chrono::duration_cast< std::chrono::milliseconds >(
+        request_end_time - m_request_start_time );
+    std::cout << "HEREB: Post processing request time: " << post_processing_duration.count()
+              << " ms" << std::endl;
+    std::cout << "HEREB: Full request time from network entry to exit: "
+              << full_request_duration.count() << " ms" << std::endl;
 }
 
 void request_site::onUpgrade( proxygen::UpgradeProtocol ) noexcept {

@@ -648,6 +648,43 @@ TransactionSkeleton rapidJsonToTransactionSkeleton( rapidjson::Value const& _jso
     return ret;
 }
 
+LogFilter rapidJsonToLogFilter( rapidjson::Value const& _json ) {
+    LogFilter filter;
+    if ( !_json.IsObject() )
+        return filter;
+
+    // check only !empty. it should throw exceptions if input params are incorrect
+    if ( _json.HasMember( "fromBlock" ) && _json["fromBlock"].IsString() )
+        filter.withEarliest( dev::eth::jsToBlockNumber( _json["fromBlock"].GetString() ) );
+    if ( _json.HasMember( "toBlock" ) && _json["toBlock"].IsString() )
+        filter.withLatest( dev::eth::jsToBlockNumber( _json["toBlock"].GetString() ) );
+    if ( _json.HasMember( "address" ) ) {
+        if ( _json["address"].IsArray() ) {
+            for ( auto const& addr : _json["address"].GetArray() ) {
+                if ( addr.IsString() )
+                    filter.address( jsToAddress( addr.GetString() ) );
+            }
+        } else if ( _json["address"].IsString() ) {
+            filter.address( jsToAddress( _json["address"].GetString() ) );
+        }
+    }
+    if ( _json.HasMember( "topics" ) && _json["topics"].IsArray() ) {
+        unsigned topicIndex = 0;
+        for ( auto const& topicValue : _json["topics"].GetArray() ) {
+            if ( topicValue.IsArray() ) {
+                for ( auto const& t : topicValue.GetArray() ) {
+                    if ( !t.IsNull() && t.IsString() )
+                        filter.topic( topicIndex, jsToFixed< 32 >( t.GetString() ) );
+                }
+            } else if ( !topicValue.IsNull() && topicValue.IsString() ) {
+                filter.topic( topicIndex, jsToFixed< 32 >( topicValue.GetString() ) );
+            }
+            topicIndex++;
+        }
+    }
+    return filter;
+}
+
 // TODO: this should be removed once we decide to remove backward compatibility with old log filters
 dev::eth::LogFilter toLogFilter( Json::Value const& _json )  // commented to avoid warning.
                                                              // Uncomment once in use @ PoC-7.
