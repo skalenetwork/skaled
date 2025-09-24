@@ -1406,7 +1406,6 @@ void Client::initHistoricGroupIndex() {
     auto nodeGroups = chainParams().getNodeGroups();
 
     uint64_t currentBlockTimestamp = blockInfo( hashFromNumber( number() ) ).timestamp();
-    uint64_t previousBlockTimestamp = blockInfo( hashFromNumber( number() - 1 ) ).timestamp();
 
     // always returns it != end() because current finish ts equals to uint64_t(-1)
     auto it = std::find_if( nodeGroups.begin(), nodeGroups.end(),
@@ -1418,11 +1417,14 @@ void Client::initHistoricGroupIndex() {
             std::runtime_error( "Assertion failed: it == chainParams().sChain.nodeGroups.end()" ) );
     }
 
-    if ( it != nodeGroups.begin() ) {
-        auto prevIt = std::prev( it );
-        if ( currentBlockTimestamp >= prevIt->finishTs &&
-             previousBlockTimestamp < prevIt->finishTs )
-            it = prevIt;
+    if ( !GroupIndexInitPatch::isEnabledInWorkingBlock() ) {
+        uint64_t previousBlockTimestamp = blockInfo( hashFromNumber( number() - 1 ) ).timestamp();
+        if ( it != nodeGroups.begin() ) {
+            auto prevIt = std::prev( it );
+            if ( currentBlockTimestamp >= prevIt->finishTs &&
+                 previousBlockTimestamp < prevIt->finishTs )
+                it = prevIt;
+        }
     }
 
     historicGroupIndex = std::distance( nodeGroups.begin(), it );
