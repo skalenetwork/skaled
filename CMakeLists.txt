@@ -110,10 +110,6 @@ include( EthExecutableHelper )
 include( EthDependencies )
 include( EthUtils )
 
-# TODO - recheck if this is necessary set bls to use MCL backend
-add_library(bls_backend INTERFACE)
-target_compile_definitions(bls_backend INTERFACE USE_MCL=1)
-
 set( CLANG_FORMAT_EXCLUDE_PATTERNS
     ${CMAKE_BINARY_DIR}
     ${DEPS_SOURCES_ROOT}
