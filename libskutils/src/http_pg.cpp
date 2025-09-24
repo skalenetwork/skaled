@@ -362,9 +362,9 @@ void request_site::logAndMeasurePerformance(
     auto full_request_duration = std::chrono::duration_cast< std::chrono::milliseconds >(
         request_end_time - m_request_start_time );
 
-    std::cout << "HEREB: Post processing request time (" << path_type
+    std::cout << "SERVER_DEBUG: Post processing request time (" << path_type
               << "): " << post_processing_duration.count() << " ms" << std::endl;
-    std::cout << "HEREB: Full request time from network entry to exit (" << path_type
+    std::cout << "SERVER_DEBUG: Full request time from network entry to exit (" << path_type
               << "): " << full_request_duration.count() << " ms" << std::endl;
 }
 

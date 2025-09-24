@@ -356,8 +356,8 @@ void inject_rapidjson_handlers( SkaleServerOverride::opts_t& serverOpts, dev::rp
             auto end_time = std::chrono::steady_clock::now();
             auto duration =
                 std::chrono::duration_cast< std::chrono::milliseconds >( end_time - start_time );
-            std::cout << "HEREB TIMING: eth_getLogsRapid execution time: " << duration.count()
-                      << " ms" << std::endl;
+            std::cout << "SERVER_DEBUG TIMING: eth_getLogsRapid execution time: "
+                      << duration.count() << " ms" << std::endl;
 
             joResponse.EraseMember( "result" );
             joResponse.AddMember( "result", result.Move(), allocator );
