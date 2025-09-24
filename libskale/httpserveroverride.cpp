@@ -65,6 +65,10 @@
 #include <libweb3jsonrpc/Eth.h>
 #include <libweb3jsonrpc/Skale.h>
 
+#include <rapidjson/document.h>
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/writer.h>
+
 #include <skutils/eth_utils.h>
 #include <skutils/multithreading.h>
 #include <skutils/network.h>
@@ -2266,8 +2270,78 @@ bool SkaleServerOverride::StartListening() {
                     joIn, strSchemeUC, nServerIndex, strOrigin, ipVer, nPort, esm );
                 return rslt;
             };
-            m_proxygenServer =
-                skutils::http_pg::pg_accumulate_start( fnHandler, pg_threads_, pg_threads_limit_ );
+
+            skutils::http_pg::pg_on_request_eth_getLogs_handler_t fnGetLogsHandler =
+                [this]( const rapidjson::Document& joIn, const string& strOrigin, int ipVer,
+                    const string& strDstAddress,
+                    int nDstPort ) -> skutils::result_of_http_request_rapid {
+                if ( isShutdownMode() )
+                    throw std::runtime_error( "query was cancelled due to server shutdown mode" );
+                skutils::url u( strOrigin );
+                string strSchemeUC =
+                    skutils::tools::to_upper( skutils::tools::trim_copy( u.scheme() ) );
+                string strPort = skutils::tools::trim_copy( u.port() );
+                int nPort = 0;
+                if ( strPort.empty() ) {
+                    if ( strSchemeUC == "HTTPS" )
+                        nPort = 443;
+                    else
+                        nPort = 80;
+                } else
+                    nPort = atoi( u.port().c_str() );
+                int nServerIndex = 0;  // TO-FIX: detect server index here"
+                e_server_mode_t esm = implGuessProxygenRequestESM( strDstAddress, nDstPort );
+
+                // Create response document
+                skutils::result_of_http_request_rapid rslt;
+                rslt.isBinary_ = false;
+                rslt.joOut_.SetObject();
+                rapidjson::Document::AllocatorType& allocator = rslt.joOut_.GetAllocator();
+
+                // Copy request ID if present
+                if ( joIn.HasMember( "id" ) ) {
+                    rapidjson::Value idValue;
+                    idValue.CopyFrom( joIn["id"], allocator );
+                    rslt.joOut_.AddMember( "id", idValue, allocator );
+                }
+
+                // Add jsonrpc version
+                rslt.joOut_.AddMember( "jsonrpc", "2.0", allocator );
+
+                try {
+                    // Call the existing eth_getLogs implementation
+                    rapidjson::Document joRequestCopy;
+                    joRequestCopy.CopyFrom( joIn, joRequestCopy.GetAllocator() );
+                    rapidjson::Document joResponse;
+                    joResponse.SetObject();
+                    eth_getLogs( strOrigin, joRequestCopy, joResponse );
+
+                    // Copy result to our response
+                    if ( joResponse.HasMember( "result" ) ) {
+                        rapidjson::Value resultValue;
+                        resultValue.CopyFrom( joResponse["result"], allocator );
+                        rslt.joOut_.AddMember( "result", resultValue, allocator );
+                    } else if ( joResponse.HasMember( "error" ) ) {
+                        rapidjson::Value errorValue;
+                        errorValue.CopyFrom( joResponse["error"], allocator );
+                        rslt.joOut_.AddMember( "error", errorValue, allocator );
+                    }
+                } catch ( const std::exception& ex ) {
+                    rapidjson::Value joError;
+                    joError.SetObject();
+                    joError.AddMember( "code", -32603, allocator );
+                    string errorMessage = ex.what();
+                    rapidjson::Value v;
+                    v.SetString( errorMessage.c_str(), errorMessage.size(), allocator );
+                    joError.AddMember( "message", v, allocator );
+                    rslt.joOut_.AddMember( "error", joError, allocator );
+                }
+
+                return rslt;
+            };
+
+            m_proxygenServer = skutils::http_pg::pg_accumulate_start(
+                fnHandler, fnGetLogsHandler, pg_threads_, pg_threads_limit_ );
             skutils::http_pg::pg_accumulate_clear();
             if ( !m_proxygenServer ) {
                 LOG( m_loggerError ) << "Failed to start proxygen server";
@@ -2454,7 +2528,8 @@ void SkaleServerOverride::on_connection_overflow_peer_closed(
                          << ( int ) esm;
 }
 
-SkaleServerOverride& SkaleServerOverride::getSSO() {  // abstract in SkaleStatsSubscriptionManager
+SkaleServerOverride& SkaleServerOverride::getSSO() {  // abstract in
+                                                      // SkaleStatsSubscriptionManager
     return ( *this );
 }
 
@@ -2715,9 +2790,11 @@ void SkaleServerOverride::setSchainExitTime( const string& strOrigin,
         // return call error if call from outside of local network
         if ( !isLocalAddress )
             throw std::runtime_error(
-                "caller have no permition for this action" );  // NOTICE: just throw exception and
-                                                               // RPC call will extract text from it
-                                                               // and return it as call error
+                "caller have no permition for this action" );  // NOTICE: just throw
+                                                               // exception and RPC call
+                                                               // will extract text from it
+                                                               // and return it as call
+                                                               // error
         rapidjson::StringBuffer buffer;
         rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
         joResponse.Accept( writer );
