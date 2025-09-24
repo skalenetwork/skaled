@@ -5372,8 +5372,8 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     spoiledBITEDataRlp.clear();
 
     /// Encrypted key is not well formed -> should throw exception
-    randomEncryptedKeyObj.U.getXRef().getC0Ref().asBackendRef() = libBLS::algebra::FqElement::random().asBackendType();
-    randomEncryptedKeyObj.W.getYRef().asBackendRef() = libBLS::algebra::FqElement::random().asBackendType();
+    randomEncryptedKeyObj.U.setXC0( libBLS::algebra::FqElement::random() );
+    randomEncryptedKeyObj.W.setY( libBLS::algebra::FqElement::random() );
     randomEncryptedKeyByteArray = randomEncryptedKeyObj.toBytes();
     std::copy( randomEncryptedKeyByteArray.begin(), randomEncryptedKeyByteArray.end(),
         spoiledMessageBytes.begin() );
