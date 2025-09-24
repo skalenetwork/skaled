@@ -518,6 +518,15 @@ private:
     bool implGuessProxygenRequestESM( std::list< std::shared_ptr< SkaleRelayProxygenHTTP > >& lst,
         const string& strDstAddress, int nDstPort, e_server_mode_t& esm );
 
+    // ABOUTME: Extracted lambda function handlers for proxygen server initialization
+    // ABOUTME: These methods handle HTTP requests that were previously inline lambdas
+    skutils::result_of_http_request handleProxygenHttpRequest( const nlohmann::json& request,
+        const string& origin, int ipVer, const string& dstAddress, uint16_t port );
+    skutils::result_of_http_request_rapid handleProxygenEthGetLogsRequest(
+        const rapidjson::Document& request, const string& origin, int ipVer,
+        const string& dstAddress, uint16_t port );
+
+
     /// Loggers
     dev::Logger m_loggerDebug{ createLogger( dev::VerbosityDebug, "SkaleServerOverride" ) };
     dev::Logger m_loggerTrace{ createLogger( dev::VerbosityTrace, "SkaleServerOverride" ) };

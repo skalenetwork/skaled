@@ -52,6 +52,7 @@
 #include <libethcore/CommonJS.h>
 #include <libethereum/Client.h>
 #include <libweb3jsonrpc/JsonHelper.h>
+#include <sys/types.h>
 
 #if ( defined MSIZE )
 #undef MSIZE
@@ -2243,101 +2244,99 @@ bool SkaleServerOverride::implGuessProxygenRequestESM(
     return false;
 }
 
+skutils::result_of_http_request SkaleServerOverride::handleProxygenHttpRequest(
+    const nlohmann::json& joIn, const string& origin, int ipVer, const string& dstAddress,
+    uint16_t dstPort ) {
+    if ( isShutdownMode() )
+        throw std::runtime_error( "query was cancelled due to server shutdown mode" );
+    skutils::url u( origin );
+    string schemeUC = skutils::tools::to_upper( skutils::tools::trim_copy( u.scheme() ) );
+    string portStringRepr = skutils::tools::trim_copy( u.port() );
+    uint16_t port = 0;
+    if ( portStringRepr.empty() ) {
+        if ( schemeUC == "HTTPS" )
+            port = 443;
+        else
+            port = 80;
+    } else
+        port = ( uint16_t ) atoi( u.port().c_str() );
+    int serverIndex = 0;  // TO-FIX: detect server index here"
+    e_server_mode_t esm = implGuessProxygenRequestESM( dstAddress, dstPort );
+    skutils::result_of_http_request rslt =
+        implHandleHttpRequest( joIn, schemeUC, serverIndex, origin, ipVer, port, esm );
+    return rslt;
+}
+
+skutils::result_of_http_request_rapid SkaleServerOverride::handleProxygenEthGetLogsRequest(
+    const rapidjson::Document& request, const string& origin, int ipVer, const string& dstAddress,
+    uint16_t dstPort ) {
+    if ( isShutdownMode() )
+        throw std::runtime_error( "query was cancelled due to server shutdown mode" );
+    // Create response document
+    skutils::result_of_http_request_rapid result;
+    result.isBinary_ = false;
+    result.joOut_.SetObject();
+    rapidjson::Document::AllocatorType& allocator = result.joOut_.GetAllocator();
+
+    // Copy request ID if present
+    if ( request.HasMember( "id" ) ) {
+        rapidjson::Value idValue;
+        idValue.CopyFrom( request["id"], allocator );
+        result.joOut_.AddMember( "id", idValue, allocator );
+    }
+
+    // Add jsonrpc version
+    result.joOut_.AddMember( "jsonrpc", "2.0", allocator );
+
+    try {
+        // Call the existing eth_getLogs implementation
+        rapidjson::Document requestCopy;
+        requestCopy.CopyFrom( request, requestCopy.GetAllocator() );
+        rapidjson::Document response;
+        response.SetObject();
+        eth_getLogs( origin, requestCopy, response );
+
+        // Copy result to our response
+        if ( response.HasMember( "result" ) ) {
+            rapidjson::Value resultValue;
+            resultValue.CopyFrom( response["result"], allocator );
+            result.joOut_.AddMember( "result", resultValue, allocator );
+        } else if ( response.HasMember( "error" ) ) {
+            rapidjson::Value errorValue;
+            errorValue.CopyFrom( response["error"], allocator );
+            result.joOut_.AddMember( "error", errorValue, allocator );
+        }
+    } catch ( const std::exception& ex ) {
+        rapidjson::Value error;
+        error.SetObject();
+        error.AddMember( "code", -32603, allocator );
+        string errorMessage = ex.what();
+        rapidjson::Value v;
+        v.SetString( errorMessage.c_str(), errorMessage.size(), allocator );
+        error.AddMember( "message", v, allocator );
+        result.joOut_.AddMember( "error", error, allocator );
+    }
+
+    return result;
+}
+
 bool SkaleServerOverride::StartListening() {
     if ( StartListening( e_server_mode_t::esm_standard ) &&
          StartListening( e_server_mode_t::esm_informational ) ) {
         if ( skutils::http_pg::pg_accumulate_size() > 0 ) {
             skutils::http_pg::pg_on_request_handler_t fnHandler =
-                [this]( const json& joIn, const string& strOrigin, int ipVer,
-                    const string& strDstAddress, int nDstPort ) -> skutils::result_of_http_request {
-                if ( isShutdownMode() )
-                    throw std::runtime_error( "query was cancelled due to server shutdown mode" );
-                skutils::url u( strOrigin );
-                string strSchemeUC =
-                    skutils::tools::to_upper( skutils::tools::trim_copy( u.scheme() ) );
-                string strPort = skutils::tools::trim_copy( u.port() );
-                int nPort = 0;
-                if ( strPort.empty() ) {
-                    if ( strSchemeUC == "HTTPS" )
-                        nPort = 443;
-                    else
-                        nPort = 80;
-                } else
-                    nPort = atoi( u.port().c_str() );
-                int nServerIndex = 0;  // TO-FIX: detect server index here"
-                e_server_mode_t esm = implGuessProxygenRequestESM( strDstAddress, nDstPort );
-                skutils::result_of_http_request rslt = implHandleHttpRequest(
-                    joIn, strSchemeUC, nServerIndex, strOrigin, ipVer, nPort, esm );
-                return rslt;
+                [this]( const nlohmann::json& request, const string& origin, int ipVer,
+                    const string& dstAddress,
+                    uint16_t dstPort ) -> skutils::result_of_http_request {
+                return handleProxygenHttpRequest( request, origin, ipVer, dstAddress, dstPort );
             };
 
             skutils::http_pg::pg_on_request_eth_getLogs_handler_t fnGetLogsHandler =
-                [this]( const rapidjson::Document& joIn, const string& strOrigin, int ipVer,
-                    const string& strDstAddress,
-                    int nDstPort ) -> skutils::result_of_http_request_rapid {
-                if ( isShutdownMode() )
-                    throw std::runtime_error( "query was cancelled due to server shutdown mode" );
-                skutils::url u( strOrigin );
-                string strSchemeUC =
-                    skutils::tools::to_upper( skutils::tools::trim_copy( u.scheme() ) );
-                string strPort = skutils::tools::trim_copy( u.port() );
-                int nPort = 0;
-                if ( strPort.empty() ) {
-                    if ( strSchemeUC == "HTTPS" )
-                        nPort = 443;
-                    else
-                        nPort = 80;
-                } else
-                    nPort = atoi( u.port().c_str() );
-                int nServerIndex = 0;  // TO-FIX: detect server index here"
-                e_server_mode_t esm = implGuessProxygenRequestESM( strDstAddress, nDstPort );
-
-                // Create response document
-                skutils::result_of_http_request_rapid rslt;
-                rslt.isBinary_ = false;
-                rslt.joOut_.SetObject();
-                rapidjson::Document::AllocatorType& allocator = rslt.joOut_.GetAllocator();
-
-                // Copy request ID if present
-                if ( joIn.HasMember( "id" ) ) {
-                    rapidjson::Value idValue;
-                    idValue.CopyFrom( joIn["id"], allocator );
-                    rslt.joOut_.AddMember( "id", idValue, allocator );
-                }
-
-                // Add jsonrpc version
-                rslt.joOut_.AddMember( "jsonrpc", "2.0", allocator );
-
-                try {
-                    // Call the existing eth_getLogs implementation
-                    rapidjson::Document joRequestCopy;
-                    joRequestCopy.CopyFrom( joIn, joRequestCopy.GetAllocator() );
-                    rapidjson::Document joResponse;
-                    joResponse.SetObject();
-                    eth_getLogs( strOrigin, joRequestCopy, joResponse );
-
-                    // Copy result to our response
-                    if ( joResponse.HasMember( "result" ) ) {
-                        rapidjson::Value resultValue;
-                        resultValue.CopyFrom( joResponse["result"], allocator );
-                        rslt.joOut_.AddMember( "result", resultValue, allocator );
-                    } else if ( joResponse.HasMember( "error" ) ) {
-                        rapidjson::Value errorValue;
-                        errorValue.CopyFrom( joResponse["error"], allocator );
-                        rslt.joOut_.AddMember( "error", errorValue, allocator );
-                    }
-                } catch ( const std::exception& ex ) {
-                    rapidjson::Value joError;
-                    joError.SetObject();
-                    joError.AddMember( "code", -32603, allocator );
-                    string errorMessage = ex.what();
-                    rapidjson::Value v;
-                    v.SetString( errorMessage.c_str(), errorMessage.size(), allocator );
-                    joError.AddMember( "message", v, allocator );
-                    rslt.joOut_.AddMember( "error", joError, allocator );
-                }
-
-                return rslt;
+                [this]( const rapidjson::Document& request, const string& origin, int ipVer,
+                    const string& dstAddress,
+                    uint16_t dstPort ) -> skutils::result_of_http_request_rapid {
+                return handleProxygenEthGetLogsRequest(
+                    request, origin, ipVer, dstAddress, dstPort );
             };
 
             m_proxygenServer = skutils::http_pg::pg_accumulate_start(
