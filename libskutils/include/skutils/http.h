@@ -734,7 +734,7 @@ struct result_of_http_request {
 
 struct result_of_http_request_rapid {
     bool isBinary_ = false;
-    rapidjson::Document joOut_;
+    rapidjson::Document out_;
     std::vector< uint8_t > vecBytes_;
 };  /// struct result_of_http_request_rapid
 

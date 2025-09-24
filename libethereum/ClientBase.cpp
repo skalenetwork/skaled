@@ -237,9 +237,10 @@ void ClientBase::prependLogsFromBlock( LogFilter const& _f, h256 const& _blockHa
     auto receipts = bc().receipts( _blockHash ).receipts;
     unsigned logIndex = 0;
     int64_t logCountLimit = bc().chainParams().getResponseLogCountLimit();
+    const auto& hashes = bc().transactionHashes( _blockHash );
     for ( size_t i = 0; i < receipts.size(); i++ ) {
         const TransactionReceipt& receipt = receipts[i];
-        const h256& th = transaction( _blockHash, i ).sha3();
+        const h256& th = hashes[i];
         if ( _f.isRangeFilter() ) {
             for ( const auto& e : receipt.log() ) {
                 io_logs.emplace_back( LocalisedLogEntry( e, _blockHash,

@@ -627,26 +627,26 @@ test_server_proxygen::test_server_proxygen( const char* strBindAddr4, const char
         [this]( const rapidjson::Document& joIn, const std::string& strOrigin, int ipVer,
             const std::string& strDstAddress,
             int nDstPort ) -> skutils::result_of_http_request_rapid {
-        skutils::result_of_http_request_rapid rslt;
-        rslt.isBinary_ = false;
-        rslt.joOut_.SetObject();
-        rapidjson::Document::AllocatorType& allocator = rslt.joOut_.GetAllocator();
+        skutils::result_of_http_request_rapid result;
+        result.isBinary_ = false;
+        result.out_.SetObject();
+        rapidjson::Document::AllocatorType& allocator = result.out_.GetAllocator();
 
         // Copy request ID if present
         if ( joIn.HasMember( "id" ) ) {
             rapidjson::Value idValue;
             idValue.CopyFrom( joIn["id"], allocator );
-            rslt.joOut_.AddMember( "id", idValue, allocator );
+            result.out_.AddMember( "id", idValue, allocator );
         }
 
         // Add jsonrpc version
-        rslt.joOut_.AddMember( "jsonrpc", "2.0", allocator );
+        result.out_.AddMember( "jsonrpc", "2.0", allocator );
 
         // Create empty logs result for test
         rapidjson::Value logsArray( rapidjson::kArrayType );
-        rslt.joOut_.AddMember( "result", logsArray, allocator );
+        result.out_.AddMember( "result", logsArray, allocator );
 
-        return rslt;
+        return result;
     };
     hProxygenServer_ =
         skutils::http_pg::pg_start( fnHandler, fnGetLogsHandler, arr_pge, threads, threads_limit );

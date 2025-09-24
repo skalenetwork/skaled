@@ -164,17 +164,14 @@ void request_site::onEOM() noexcept {
 
     // Route request to appropriate handler based on method
     try {
-        nlohmann::json joIn = nlohmann::json::parse( m_strBody );
-        string strMethod = "";
-        if ( joIn.count( "method" ) > 0 && joIn["method"].is_string() ) {
-            strMethod = joIn["method"].get< string >();
+        nlohmann::json request = nlohmann::json::parse( m_strBody );
+        string method = "";
+        if ( request.count( "method" ) > 0 && request["method"].is_string() ) {
+            method = request["method"].get< string >();
         }
-
-        if ( strMethod == "eth_getLogs" ) {
-            // Route to rapidjson-specific handler
+        if ( method == "eth_getLogs" ) {
             onEOMEthGetLogs();
         } else {
-            // Route to nlohmann json handler
             onEOMDefault();
         }
     } catch ( const std::exception& ex ) {
@@ -225,32 +222,9 @@ void request_site::onEOMDefault() noexcept {
             "unknown exception in HTTP handler", joID );
         PG_LOG( m_strLogPrefix + "got error answer JSON " + rslt.joOut_.dump() );
     }
-    proxygen::ResponseBuilder bldr( downstream_ );
-    bldr.status( 200, "OK" );
-    bldr.header( "access-control-allow-origin", "*" );
-    if ( rslt.isBinary_ ) {
-        bldr.header( "content-length", skutils::tools::format( "%zu", rslt.vecBytes_.size() ) );
-        bldr.header( "Content-Type", "application/octet-stream" );
-        string buffer( rslt.vecBytes_.begin(), rslt.vecBytes_.end() );
-        bldr.body( buffer );
-    } else {
-        string strOut = rslt.joOut_.dump();
-        bldr.header( "content-length", skutils::tools::format( "%zu", strOut.size() ) );
-        bldr.header( "Content-Type", "application/json" );
-        bldr.body( strOut );
-    }
-    bldr.sendWithEOM();
-
-    // Measure complete request time from network entry to exit
-    auto request_end_time = std::chrono::steady_clock::now();
-    auto post_processing_duration = std::chrono::duration_cast< std::chrono::milliseconds >(
-        request_end_time - post_processing_start_time );
-    auto full_request_duration = std::chrono::duration_cast< std::chrono::milliseconds >(
-        request_end_time - m_request_start_time );
-    std::cout << "HEREB: Post processing request time: " << post_processing_duration.count()
-              << " ms" << std::endl;
-    std::cout << "HEREB: Full request time from network entry to exit: "
-              << full_request_duration.count() << " ms" << std::endl;
+    // Convert to string and use common response sending functionality
+    std::string jsonString = rslt.isBinary_ ? "" : rslt.joOut_.dump();
+    sendHttpResponse( rslt.isBinary_, rslt.vecBytes_, jsonString );
 }
 
 void request_site::onEOMEthGetLogs() noexcept {
@@ -264,7 +238,6 @@ void request_site::onEOMEthGetLogs() noexcept {
         PG_LOG( m_strLogPrefix + "body JSON parsed with rapidjson for eth_getLogs" );
 
         if ( !rapidRequest.HasParseError() ) {
-            // Use the rapidjson version for eth_getLogs
             rapidRslt = m_SSRQ->onRequestEthGetLogs(
                 rapidRequest, m_origin, m_ipVer, m_dstAddress_, m_dstPort );
 
@@ -275,10 +248,9 @@ void request_site::onEOMEthGetLogs() noexcept {
                         cc::binary_table( ( const void* ) ( void* ) rapidRslt.vecBytes_.data(),
                             size_t( rapidRslt.vecBytes_.size() ) ) );
             } else {
-                // Convert rapidjson document to string for logging
                 rapidjson::StringBuffer buffer;
                 rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
-                rapidRslt.joOut_.Accept( writer );
+                rapidRslt.out_.Accept( writer );
                 PG_LOG( m_strLogPrefix + "answer JSON " + string( buffer.GetString() ) );
             }
         } else {
@@ -287,16 +259,16 @@ void request_site::onEOMEthGetLogs() noexcept {
     } catch ( const std::exception& ex ) {
         PG_LOG( m_strLogPrefix + "problem with body " + m_strBody + ", error info: " + ex.what() );
         rapidRslt.isBinary_ = false;
-        rapidRslt.joOut_.SetObject();
-        rapidjson::Document::AllocatorType& allocator = rapidRslt.joOut_.GetAllocator();
+        rapidRslt.out_.SetObject();
+        rapidjson::Document::AllocatorType& allocator = rapidRslt.out_.GetAllocator();
 
         rapidjson::Value jsonrpcValue;
         jsonrpcValue.SetString( "2.0", allocator );
-        rapidRslt.joOut_.AddMember( "jsonrpc", jsonrpcValue, allocator );
+        rapidRslt.out_.AddMember( "jsonrpc", jsonrpcValue, allocator );
 
         rapidjson::Value idValue;
         idValue.SetString( "0xBADF00D", allocator );
-        rapidRslt.joOut_.AddMember( "id", idValue, allocator );
+        rapidRslt.out_.AddMember( "id", idValue, allocator );
 
         rapidjson::Value errorObj( rapidjson::kObjectType );
         errorObj.AddMember( "code", -32000, allocator );
@@ -304,23 +276,23 @@ void request_site::onEOMEthGetLogs() noexcept {
         rapidjson::Value messageValue;
         messageValue.SetString( ex.what(), allocator );
         errorObj.AddMember( "message", messageValue, allocator );
-        rapidRslt.joOut_.AddMember( "error", errorObj, allocator );
+        rapidRslt.out_.AddMember( "error", errorObj, allocator );
 
         PG_LOG( m_strLogPrefix + "got error answer JSON for rapidjson" );
     } catch ( ... ) {
         PG_LOG( m_strLogPrefix + "problem with body " + m_strBody +
                 ", error info: " + "unknown exception in HTTP handler" );
         rapidRslt.isBinary_ = false;
-        rapidRslt.joOut_.SetObject();
-        rapidjson::Document::AllocatorType& allocator = rapidRslt.joOut_.GetAllocator();
+        rapidRslt.out_.SetObject();
+        rapidjson::Document::AllocatorType& allocator = rapidRslt.out_.GetAllocator();
 
         rapidjson::Value jsonrpcValue2;
         jsonrpcValue2.SetString( "2.0", allocator );
-        rapidRslt.joOut_.AddMember( "jsonrpc", jsonrpcValue2, allocator );
+        rapidRslt.out_.AddMember( "jsonrpc", jsonrpcValue2, allocator );
 
         rapidjson::Value idValue2;
         idValue2.SetString( "0xBADF00D", allocator );
-        rapidRslt.joOut_.AddMember( "id", idValue2, allocator );
+        rapidRslt.out_.AddMember( "id", idValue2, allocator );
 
         rapidjson::Value errorObj( rapidjson::kObjectType );
         errorObj.AddMember( "code", -32000, allocator );
@@ -328,42 +300,22 @@ void request_site::onEOMEthGetLogs() noexcept {
         rapidjson::Value messageValue2;
         messageValue2.SetString( "unknown exception in HTTP handler", allocator );
         errorObj.AddMember( "message", messageValue2, allocator );
-        rapidRslt.joOut_.AddMember( "error", errorObj, allocator );
+        rapidRslt.out_.AddMember( "error", errorObj, allocator );
 
         PG_LOG( m_strLogPrefix + "got error answer JSON for rapidjson" );
     }
 
-    proxygen::ResponseBuilder bldr( downstream_ );
-    bldr.status( 200, "OK" );
-    bldr.header( "access-control-allow-origin", "*" );
-    if ( rapidRslt.isBinary_ ) {
-        bldr.header(
-            "content-length", skutils::tools::format( "%zu", rapidRslt.vecBytes_.size() ) );
-        bldr.header( "Content-Type", "application/octet-stream" );
-        string buffer( rapidRslt.vecBytes_.begin(), rapidRslt.vecBytes_.end() );
-        bldr.body( buffer );
-    } else {
-        // Convert rapidjson document to string for response
+    // Convert rapidjson to string and use common response sending functionality
+    std::string jsonString;
+    if ( !rapidRslt.isBinary_ ) {
         rapidjson::StringBuffer buffer;
         rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
-        rapidRslt.joOut_.Accept( writer );
-        string strOut = buffer.GetString();
-        bldr.header( "content-length", skutils::tools::format( "%zu", strOut.size() ) );
-        bldr.header( "Content-Type", "application/json" );
-        bldr.body( strOut );
+        rapidRslt.out_.Accept( writer );
+        jsonString = buffer.GetString();
     }
-    bldr.sendWithEOM();
 
-    // Measure complete request time from network entry to exit
-    auto request_end_time = std::chrono::steady_clock::now();
-    auto post_processing_duration = std::chrono::duration_cast< std::chrono::milliseconds >(
-        request_end_time - post_processing_start_time );
-    auto full_request_duration = std::chrono::duration_cast< std::chrono::milliseconds >(
-        request_end_time - m_request_start_time );
-    std::cout << "HEREB: Post processing request time (rapidjson): "
-              << post_processing_duration.count() << " ms" << std::endl;
-    std::cout << "HEREB: Full request time from network entry to exit (rapidjson): "
-              << full_request_duration.count() << " ms" << std::endl;
+    sendHttpResponse( rapidRslt.isBinary_, rapidRslt.vecBytes_, jsonString );
+    logAndMeasurePerformance( post_processing_start_time, "rapidjson" );
 }
 
 void request_site::onUpgrade( proxygen::UpgradeProtocol ) noexcept {
@@ -379,6 +331,41 @@ void request_site::requestComplete() noexcept {
 void request_site::onError( proxygen::ProxygenError _err ) noexcept {
     PG_LOG( m_strLogPrefix + __FUNCTION__ + to_string( size_t( _err ) ) );
     delete this;
+}
+
+void request_site::sendHttpResponse( bool isBinary, const std::vector< uint8_t >& vecBytes,
+    const std::string& jsonString ) noexcept {
+    proxygen::ResponseBuilder bldr( downstream_ );
+    bldr.status( 200, "OK" );
+    bldr.header( "access-control-allow-origin", "*" );
+
+    if ( isBinary ) {
+        bldr.header( "content-length", skutils::tools::format( "%zu", vecBytes.size() ) );
+        bldr.header( "Content-Type", "application/octet-stream" );
+        string buffer( vecBytes.begin(), vecBytes.end() );
+        bldr.body( buffer );
+    } else {
+        bldr.header( "content-length", skutils::tools::format( "%zu", jsonString.size() ) );
+        bldr.header( "Content-Type", "application/json" );
+        bldr.body( jsonString );
+    }
+    bldr.sendWithEOM();
+}
+
+void request_site::logAndMeasurePerformance(
+    std::chrono::steady_clock::time_point post_processing_start_time,
+    const std::string& path_type ) noexcept {
+    // Measure complete request time from network entry to exit
+    auto request_end_time = std::chrono::steady_clock::now();
+    auto post_processing_duration = std::chrono::duration_cast< std::chrono::milliseconds >(
+        request_end_time - post_processing_start_time );
+    auto full_request_duration = std::chrono::duration_cast< std::chrono::milliseconds >(
+        request_end_time - m_request_start_time );
+
+    std::cout << "HEREB: Post processing request time (" << path_type
+              << "): " << post_processing_duration.count() << " ms" << std::endl;
+    std::cout << "HEREB: Full request time from network entry to exit (" << path_type
+              << "): " << full_request_duration.count() << " ms" << std::endl;
 }
 
 request_site_factory::request_site_factory( server_side_request_handler* _SSRQ )

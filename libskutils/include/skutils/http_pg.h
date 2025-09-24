@@ -72,6 +72,13 @@ public:
     void onUpgrade( proxygen::UpgradeProtocol _proto ) noexcept override;
     void requestComplete() noexcept override;
     void onError( proxygen::ProxygenError _err ) noexcept override;
+
+private:
+    // Helper methods for extracting common functionality
+    void sendHttpResponse( bool isBinary, const std::vector< uint8_t >& vecBytes,
+        const std::string& jsonString ) noexcept;
+    void logAndMeasurePerformance( std::chrono::steady_clock::time_point post_processing_start_time,
+        const std::string& path_type ) noexcept;
 };  /// class request_site
 
 
@@ -105,7 +112,7 @@ public:
         // Default implementation returns empty result
         skutils::result_of_http_request_rapid rslt;
         rslt.isBinary_ = false;
-        rslt.joOut_.SetObject();
+        rslt.out_.SetObject();
         return rslt;
     }
 };  /// class server_side_request_handler

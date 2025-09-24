@@ -2275,18 +2275,18 @@ skutils::result_of_http_request_rapid SkaleServerOverride::handleProxygenEthGetL
     // Create response document
     skutils::result_of_http_request_rapid result;
     result.isBinary_ = false;
-    result.joOut_.SetObject();
-    rapidjson::Document::AllocatorType& allocator = result.joOut_.GetAllocator();
+    result.out_.SetObject();
+    rapidjson::Document::AllocatorType& allocator = result.out_.GetAllocator();
 
     // Copy request ID if present
     if ( request.HasMember( "id" ) ) {
         rapidjson::Value idValue;
         idValue.CopyFrom( request["id"], allocator );
-        result.joOut_.AddMember( "id", idValue, allocator );
+        result.out_.AddMember( "id", idValue, allocator );
     }
 
     // Add jsonrpc version
-    result.joOut_.AddMember( "jsonrpc", "2.0", allocator );
+    result.out_.AddMember( "jsonrpc", "2.0", allocator );
 
     try {
         // Call the existing eth_getLogs implementation
@@ -2300,11 +2300,11 @@ skutils::result_of_http_request_rapid SkaleServerOverride::handleProxygenEthGetL
         if ( response.HasMember( "result" ) ) {
             rapidjson::Value resultValue;
             resultValue.CopyFrom( response["result"], allocator );
-            result.joOut_.AddMember( "result", resultValue, allocator );
+            result.out_.AddMember( "result", resultValue, allocator );
         } else if ( response.HasMember( "error" ) ) {
             rapidjson::Value errorValue;
             errorValue.CopyFrom( response["error"], allocator );
-            result.joOut_.AddMember( "error", errorValue, allocator );
+            result.out_.AddMember( "error", errorValue, allocator );
         }
     } catch ( const std::exception& ex ) {
         rapidjson::Value error;
@@ -2314,7 +2314,7 @@ skutils::result_of_http_request_rapid SkaleServerOverride::handleProxygenEthGetL
         rapidjson::Value v;
         v.SetString( errorMessage.c_str(), errorMessage.size(), allocator );
         error.AddMember( "message", v, allocator );
-        result.joOut_.AddMember( "error", error, allocator );
+        result.out_.AddMember( "error", error, allocator );
     }
 
     return result;
