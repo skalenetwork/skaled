@@ -203,8 +203,28 @@ LocalisedLogEntries ClientBase::logs( LogFilter const& _f ) const {
     if ( begin >= end && begin - end > ( uint64_t ) bc().chainParams().getLogsBlocksLimit() )
         BOOST_THROW_EXCEPTION( TooBigResponse() );
 
-    // Handle pending transactions differently as they're not on the block chain.
+    bool addPending = false;
     if ( begin > bc().number() ) {
+        addPending = true;
+        begin = bc().number();
+    }
+
+    // Handle blocks from main chain
+    set< unsigned > matchingBlocks;
+    if ( !_f.isRangeFilter() )
+        for ( auto const& i : _f.bloomPossibilities() ) {
+            std::vector< unsigned > matchingBlocksVector = bc().withBlockBloom( i, end, begin );
+            matchingBlocks.insert( matchingBlocksVector.begin(), matchingBlocksVector.end() );
+        }
+    else
+        // if it is a range filter, we want to get all logs from all blocks in given range
+        for ( unsigned i = end; i <= begin ; i++ )
+            matchingBlocks.insert( i );
+    for ( auto n : matchingBlocks )
+        prependLogsFromBlock( _f, bc().numberHash( n ), BlockPolarity::Live, ret );
+
+    if ( addPending ) {
+        // Handle pending transactions differently as they're not on the block chain.
         Block temp = postSeal();
         for ( unsigned i = 0; i < temp.pending().size(); ++i ) {
             // Might have a transaction that contains a matching log.
@@ -213,22 +233,8 @@ LocalisedLogEntries ClientBase::logs( LogFilter const& _f ) const {
             for ( unsigned j = 0; j < le.size(); ++j )
                 ret.emplace_back( LocalisedLogEntry( le[j] ) );
         }
-        begin = bc().number();
     }
 
-    // Handle blocks from main chain
-    unordered_set< unsigned > matchingBlocks;
-    if ( !_f.isRangeFilter() )
-        for ( auto const& i : _f.bloomPossibilities() ) {
-            std::vector< unsigned > matchingBlocksVector = bc().withBlockBloom( i, end, begin );
-            matchingBlocks.insert( matchingBlocksVector.begin(), matchingBlocksVector.end() );
-        }
-    else
-        // if it is a range filter, we want to get all logs from all blocks in given range
-        for ( unsigned i = end; i <= begin; i++ )
-            matchingBlocks.insert( i );
-    for ( auto n : matchingBlocks )
-        prependLogsFromBlock( _f, bc().numberHash( n ), BlockPolarity::Live, ret );
     return ret;
 }
 
