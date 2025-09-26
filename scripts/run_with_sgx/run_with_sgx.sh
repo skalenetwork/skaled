@@ -11,8 +11,20 @@ set -e  # Exit on any command failure
 
 # Check if argument is provided
 if [ -z "$1" ]; then
-    echo "Usage: $0 <config_file_path>"
+    echo "Usage: $0 <config_file_path> [-FAIR]"
     exit 1
+fi
+
+isFair=false
+config_path=$1
+
+echo "Using config file: $config_path"
+
+shift
+
+if [ "$1" == "-FAIR" ]; then
+    echo "Running in FAIR mode."
+    isFair=true
 fi
 
 mkdir -p tmp
@@ -21,7 +33,7 @@ mkdir -p tmp
 #            Check if SGX wallet is listenning
 ##############################################################
 
-PORT=1029
+PORT=1026
 
 if ss -tuln | grep -q ":$PORT"; then
     echo "SGX is listenning at $PORT."
@@ -64,12 +76,17 @@ fi
 
 
 # only update config if we generated new set of keys
-if [ ! -f $1 ]; then
+if [ ! -f $config_path ]; then
     echo "No config.json file found!"
     exit 1
 fi
 
-python3 update_config.py $1 ./tmp/keys.json ./tmp/updated_config.json
+flags=""
+if [ $isFair == true ]; then
+    flags="-isFair"
+fi
+
+python3 update_config.py $config_path ./tmp/keys.json ./tmp/updated_config.json $flags
 echo "Updated config file generated successfully."
 
 
@@ -92,4 +109,4 @@ NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./skaled/skaled \
     --aa no \
     --ssl-key NULL \
     --ssl-cert NULL \
-    --sgx-url http://127.0.0.1:1029
+    --sgx-url https://127.0.0.1:1026

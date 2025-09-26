@@ -1,25 +1,60 @@
 # Requirements
 
 1. Skaled should be compiled, and have the `./build` directory correctly generated. Please refer to skaled's `README.md`
+    - You may compile skaled either as `FAIR` or `non-FAIR`
 2. Have `python3.10` - this is needed for running the `sgx.py` script for generating the keys.
 
----
+
 
 # Descritpion
 
-This script should be used to run skaled with 1 node and SGX wallet.
-It generates new ECDSA and BLS keys, and replaces them in the `config.json` file passed, generating a new updated `config.json`, which is automatically passed to skaled to run.
+This script should be used to **run skaled with 1 node and SGX wallet**.
+It generates new ECDSA and BLS keys, and replaces them in the `config.json` file passed (if any), generating a new updated `config.json`, which is automatically passed to skaled to run.
 
 You can also see the generated keys as well as the updated `config.json` inside `tmp` folder.
 
-How to run:
-1. Build & run SGX wallet using **http** using `-n` flag. Refer to sgxwallet repo's `README.md`. The only requirement for this script is that sgxwallet should be listenning on port 1029.
-2. Go to `scritps/run_with_sgx` and run the script:
-```bash
-bash ./run_with_sgx.sh <original-config-file>
-```
 
-The script will generate a new set of keys, import them into sgx wallet, update the new keys in the config file (not in place), and start skaled with some default params.
+## How to run
+
+#### 1.  Non-FAIR skaled
+
+1. Compile skaled:
+    ```bash
+    cmake -H. -Bbuild -DCMAKE_BUILD_TYPE=Debug
+    cmake --build build -- -j$(nproc)
+    ```
+2. Launch SGXWallet
+    Build sgx, or use docker, and make sure it is listening on port **1026** - with HTTPS support (without `-n` flag).
+    Go to `scripts/run_with_sgx` and run this script to copy the certifiacate + key:
+    ```bash
+    bash copy_sgx_cert.sh <SgxWallet-path>
+    ```
+
+3. **(Optional)** If you need to edit any config from skaled config file, edit the `scripts/run_with_sgx/configs/non-fair.json`
+4. Go to `scritps/run_with_sgx` and run the script:
+    ```bash
+    bash ./run_with_sgx.sh [custom-config-file]
+    ```
+    You may pass some other config file path as an argument to the script. If not, it will use the default one at `scripts/run_with_sgx/configs/non-fair.json`.
+
+---
+
+#### 2. FAIR skaled
+1. Compile skaled with `FAIR` flag:
+    ```bash
+    cmake -H. -Bbuild -DCMAKE_BUILD_TYPE=Debug -DFAIR=1
+    cmake --build build -- -j$(nproc)
+    ```
+2. Launch SGXWallet - see non-fair build above (1.2)
+
+3. **(Optional)** If you need to edit any config from skaled config file, edit the `scripts/run_with_sgx/configs/fair.json`
+4. Go to `scritps/run_with_sgx` and run the script:
+    ```bash
+    bash ./run_with_sgx.sh [custom-config-file] -FAIR
+    ```
+    You may pass some other config file path as an argument to the script. If not, it will use the default one at `scripts/run_with_sgx/configs/non-fair.json`.
+
+---
 
 Once finished (Eg. before commiting), you should run:
 ```bash

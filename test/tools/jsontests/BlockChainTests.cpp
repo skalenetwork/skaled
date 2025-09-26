@@ -553,9 +553,7 @@ void testBCTest( json_spirit::mObject const& _o ) {
 #ifdef FAIR
     unordered_set< Address > owners;
     owners.insert( testChain.topBlock().blockHeader().author() );
-    std::cout << "here4" << std::endl;
     ImportTest::compareStatesFAIR( postState, testChain.topBlock().state(), owners );
-    std::cout << "here5" << std::endl;
     ImportTest::compareStatesFAIR( postState, blockchain.topBlock().state(), owners );
 #else
     ImportTest::compareStates( postState, testChain.topBlock().state() );
