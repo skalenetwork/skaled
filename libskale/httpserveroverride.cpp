@@ -2763,8 +2763,11 @@ void SkaleServerOverride::setSchainExitTime( const string& strOrigin,
             }
         }
         const rapidjson::Value& joParams = joRequest["params"];
-        // parse value of "finishTime"
         size_t finishTime = 0;
+        if ( !joParams.IsObject() ) {
+            throw std::runtime_error(
+                "params should be an object" );
+        }
         if ( joParams.HasMember( "finishTime" ) > 0 ) {
             const rapidjson::Value& joValue = joParams["finishTime"];
             if ( joValue.IsNumber() )

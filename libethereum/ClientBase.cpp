@@ -218,7 +218,7 @@ LocalisedLogEntries ClientBase::logs( LogFilter const& _f ) const {
         }
     else
         // if it is a range filter, we want to get all logs from all blocks in given range
-        for ( unsigned i = end; i <= begin ; i++ )
+        for ( unsigned i = end; i <= begin; i++ )
             matchingBlocks.insert( i );
     for ( auto n : matchingBlocks )
         prependLogsFromBlock( _f, bc().numberHash( n ), BlockPolarity::Live, ret );
