@@ -108,13 +108,7 @@ public:
         const std::string& _origin, int _ipVer, const std::string& _dstAddress, int _dstPort ) = 0;
     virtual skutils::result_of_http_request_rapid onRequestEthGetLogs(
         const rapidjson::Document& _joIn, const std::string& _origin, int _ipVer,
-        const std::string& _dstAddress, int _dstPort ) {
-        // Default implementation returns empty result
-        skutils::result_of_http_request_rapid rslt;
-        rslt.isBinary_ = false;
-        rslt.out_.SetObject();
-        return rslt;
-    }
+        const std::string& _dstAddress, int _dstPort ) = 0;
 };  /// class server_side_request_handler
 
 

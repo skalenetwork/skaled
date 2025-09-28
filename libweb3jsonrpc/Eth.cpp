@@ -887,7 +887,6 @@ Json::Value Eth::eth_getFilterChangesEx( string const& _filterId ) {
 
 Json::Value Eth::eth_getFilterLogs( string const& _filterId ) {
     try {
-        // Measure client()->logs() call execution time (line 891)
         auto logs_start_time = std::chrono::steady_clock::now();
         auto logs = client()->logs( static_cast< unsigned int >( jsToInt( _filterId ) ) );
         auto logs_end_time = std::chrono::steady_clock::now();
@@ -897,7 +896,6 @@ Json::Value Eth::eth_getFilterLogs( string const& _filterId ) {
         LOG( m_loggerDebug ) << "client()->logs() execution time: " << logs_duration.count()
                              << " ms for filter " << _filterId;
 
-        // Measure toJson() conversion execution time (line 892)
         auto json_start_time = std::chrono::steady_clock::now();
         auto result = toJson( logs );
         auto json_end_time = std::chrono::steady_clock::now();
@@ -917,6 +915,8 @@ Json::Value Eth::eth_getFilterLogs( string const& _filterId ) {
     }
 }
 
+
+// HERET. TODO: Remvoe
 Json::Value Eth::eth_getLogs( Json::Value const& _json ) {
     try {
         auto prepare_start_time = std::chrono::steady_clock::now();

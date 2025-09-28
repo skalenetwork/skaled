@@ -2267,36 +2267,31 @@ skutils::result_of_http_request SkaleServerOverride::handleProxygenHttpRequest(
     return rslt;
 }
 
-skutils::result_of_http_request_rapid SkaleServerOverride::handleProxygenEthGetLogsRequest(
+skutils::result_of_http_request_rapid SkaleServerOverride::handleProxygenHttpEthGetLogsRequest(
     const rapidjson::Document& request, const string& origin, int ipVer, const string& dstAddress,
     uint16_t dstPort ) {
     if ( isShutdownMode() )
         throw std::runtime_error( "query was cancelled due to server shutdown mode" );
-    // Create response document
     skutils::result_of_http_request_rapid result;
     result.isBinary_ = false;
     result.out_.SetObject();
     rapidjson::Document::AllocatorType& allocator = result.out_.GetAllocator();
 
-    // Copy request ID if present
     if ( request.HasMember( "id" ) ) {
         rapidjson::Value idValue;
         idValue.CopyFrom( request["id"], allocator );
         result.out_.AddMember( "id", idValue, allocator );
     }
 
-    // Add jsonrpc version
     result.out_.AddMember( "jsonrpc", "2.0", allocator );
 
     try {
-        // Call the existing eth_getLogs implementation
         rapidjson::Document requestCopy;
         requestCopy.CopyFrom( request, requestCopy.GetAllocator() );
         rapidjson::Document response;
         response.SetObject();
         eth_getLogs( origin, requestCopy, response );
 
-        // Copy result to our response
         if ( response.HasMember( "result" ) ) {
             rapidjson::Value resultValue;
             resultValue.CopyFrom( response["result"], allocator );
@@ -2335,7 +2330,7 @@ bool SkaleServerOverride::StartListening() {
                 [this]( const rapidjson::Document& request, const string& origin, int ipVer,
                     const string& dstAddress,
                     uint16_t dstPort ) -> skutils::result_of_http_request_rapid {
-                return handleProxygenEthGetLogsRequest(
+                return handleProxygenHttpEthGetLogsRequest(
                     request, origin, ipVer, dstAddress, dstPort );
             };
 
@@ -2765,8 +2760,7 @@ void SkaleServerOverride::setSchainExitTime( const string& strOrigin,
         const rapidjson::Value& joParams = joRequest["params"];
         size_t finishTime = 0;
         if ( !joParams.IsObject() ) {
-            throw std::runtime_error(
-                "params should be an object" );
+            throw std::runtime_error( "params should be an object" );
         }
         if ( joParams.HasMember( "finishTime" ) > 0 ) {
             const rapidjson::Value& joValue = joParams["finishTime"];
