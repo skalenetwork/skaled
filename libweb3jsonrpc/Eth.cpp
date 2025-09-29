@@ -35,6 +35,9 @@
 #include <libskale/SkipInvalidTransactionsPatch.h>
 #include <libweb3jsonrpc/JsonHelper.h>
 
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/writer.h>
+
 #include <csignal>
 #include <exception>
 
@@ -984,6 +987,11 @@ rapidjson::Document Eth::eth_getLogsRapid(
     try {
         auto prepare_start_time = std::chrono::steady_clock::now();
 
+        // Log the input JSON for debugging
+        rapidjson::StringBuffer buffer;
+        rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
+        _json.Accept( writer );
+
         LogFilter filter = rapidJsonToLogFilter( _json );
         if ( _json.HasMember( "blockHash" ) && !_json["blockHash"].IsNull() ) {
             if ( _json.HasMember( "fromBlock" ) || _json.HasMember( "toBlock" ) )
@@ -1030,11 +1038,11 @@ rapidjson::Document Eth::eth_getLogsRapid(
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS,
             "Log response size exceeded. Maximum allowed number of requested blocks is " +
                 to_string( this->client()->chainParams().getLogsBlocksLimit() ) ) );
-    } catch ( const LogCountLimitExceeded& ) {
+    } catch ( const LogCountLimitExceeded& e ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INTERNAL_ERROR,
             "Response log count limit exceeded. Maximum allowed number of returned logs is " +
                 to_string( this->client()->chainParams().getResponseLogCountLimit() ) ) );
-    } catch ( const JsonRpcException& ) {
+    } catch ( const JsonRpcException& e ) {
         throw;
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );

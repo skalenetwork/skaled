@@ -653,11 +653,19 @@ LogFilter rapidJsonToLogFilter( rapidjson::Value const& _json ) {
     if ( !_json.IsObject() )
         return filter;
 
-    // check only !empty. it should throw exceptions if input params are incorrect
-    if ( _json.HasMember( "fromBlock" ) && _json["fromBlock"].IsString() )
-        filter.withEarliest( dev::eth::jsToBlockNumber( _json["fromBlock"].GetString() ) );
-    if ( _json.HasMember( "toBlock" ) && _json["toBlock"].IsString() )
-        filter.withLatest( dev::eth::jsToBlockNumber( _json["toBlock"].GetString() ) );
+    if ( _json.HasMember( "fromBlock" ) ) {
+        if ( _json["fromBlock"].IsString() )
+            filter.withEarliest( dev::eth::jsToBlockNumber( _json["fromBlock"].GetString() ) );
+        else if ( _json["fromBlock"].IsInt() )
+            filter.withEarliest(
+                static_cast< dev::eth::BlockNumber >( _json["fromBlock"].GetInt() ) );
+    }
+    if ( _json.HasMember( "toBlock" ) ) {
+        if ( _json["toBlock"].IsString() )
+            filter.withLatest( dev::eth::jsToBlockNumber( _json["toBlock"].GetString() ) );
+        else if ( _json["toBlock"].IsInt() )
+            filter.withLatest( static_cast< dev::eth::BlockNumber >( _json["toBlock"].GetInt() ) );
+    }
     if ( _json.HasMember( "address" ) ) {
         if ( _json["address"].IsArray() ) {
             for ( auto const& addr : _json["address"].GetArray() ) {
