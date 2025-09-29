@@ -9,23 +9,58 @@ set -e  # Exit on any command failure
 #                   Input args check
 ##############################################################
 
-# Check if argument is provided
-if [ -z "$1" ]; then
-    echo "Usage: $0 <config_file_path> [-FAIR]"
-    exit 1
-fi
 
+# Default values
 isFair=false
-config_path=$1
+useHttps=false
+sgxPort=1029 # http
+sgxUrl="http://127.0.0.1:$sgxPort"
+config_path=""
 
-echo "Using config file: $config_path"
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -FAIR)
+            isFair=true
+            shift
+            ;;
+        -HTTPS)
+            useHttps=true
+            sgxPort=1026
+            sgxUrl="https://127.0.0.1:$sgxPort"
+            shift
+            ;;
+        -config)
+            if [ -n "$2" ] && [[ $2 != -* ]]; then
+                config_path="$2"
+                shift 2
+            else
+                echo "Error: -config requires a path argument."
+                exit 1
+            fi
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Usage: $0 [-FAIR] [-HTTPS] [-config <path>]"
+            exit 1
+            ;;
+    esac
+done
 
-shift
-
-if [ "$1" == "-FAIR" ]; then
-    echo "Running in FAIR mode."
-    isFair=true
+# set default config if not provided
+if [ -z "$config_path" ]; then
+    if [ $isFair == true ]; then
+        config_path="./sample_configs/fair.json"
+    else
+        config_path="./sample_configs/non-fair.json"
+    fi
 fi
+
+# Print final values
+echo "FAIR: $isFair"
+echo "HTTPS: $useHttps"
+echo "Config: ${config_path:-<none>}"
+echo "SGX URL: $sgxUrl"
 
 mkdir -p tmp
 
@@ -33,12 +68,10 @@ mkdir -p tmp
 #            Check if SGX wallet is listenning
 ##############################################################
 
-PORT=1026
-
-if ss -tuln | grep -q ":$PORT"; then
-    echo "SGX is listenning at $PORT."
+if ss -tuln | grep -q ":$sgxPort"; then
+    echo "SGX is listenning at $sgxPort."
 else
-    echo "SGX is not listenning at $PORT. Check if SGX is running."
+    echo "SGX is not listenning at $sgxPort. Check if SGX is running."
     exit 1
 fi
 
@@ -67,7 +100,18 @@ CACHED_KEYS=0
 # generate ECDSA and BLS keys if needed
 if [ ! -f "tmp/keys.json" ]; then
     echo "Generating ECDSA & BLS keys..."
-    python3 sgx_import.py
+
+    # check if certs are needed
+    if [ $useHttps == true ]; then
+        if [ ! -f "./tmp/sgx.crt" ] || [ ! -f "./tmp/sgx.key" ]; then
+            echo "Error: HTTPS selected but ./tmp/sgx.crt or ./tmp/sgx.key not found!"
+            exit 1
+        fi
+        python3 sgx_import.py --sgx-url $sgxUrl --cert-path "./tmp"
+    else
+        python3 sgx_import.py --sgx-url $sgxUrl
+    fi
+
     echo "Generation and import of ECDSA & BLS keys done."
 else
     CACHED_KEYS=1
@@ -98,6 +142,14 @@ cd ../../build
 echo "Running skaled with updated config..."
 
 mkdir -p ../scripts/run_with_sgx/tmp/data_dir
+
+sslKey=NULL
+sslCert=NULL
+if [ $useHttps == true ]; then
+    sslKey="../scripts/run_with_sgx/tmp/sgx.key"
+    sslCert="../scripts/run_with_sgx/tmp/sgx.crt"
+fi
+
 NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./skaled/skaled \
     --http-port 1237 \
     --config ../scripts/run_with_sgx/tmp/updated_config.json \
@@ -107,6 +159,6 @@ NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./skaled/skaled \
     --web3-trace \
     --enable-debug-behavior-apis \
     --aa no \
-    --ssl-key NULL \
-    --ssl-cert NULL \
-    --sgx-url https://127.0.0.1:1026
+    --ssl-key $sslKey \
+    --ssl-cert $sslCert \
+    --sgx-url $sgxUrl

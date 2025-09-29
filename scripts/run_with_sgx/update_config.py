@@ -4,27 +4,26 @@ import os
 
 def update_dict(base, updates, isFair: bool):
     for value in updates:
-        if not isFair:
-            base["skaleConfig"]["nodeInfo"]["wallets"]["ima"]["keyShareName"] = value["bls"]["name"]
-            base["skaleConfig"]["nodeInfo"]["wallets"]["ima"]["commonBLSPublicKey0"] = value["bls"]["public_key"][0]
-            base["skaleConfig"]["nodeInfo"]["wallets"]["ima"]["commonBLSPublicKey1"] = value["bls"]["public_key"][1]
-            base["skaleConfig"]["nodeInfo"]["wallets"]["ima"]["commonBLSPublicKey2"] = value["bls"]["public_key"][2]
-            base["skaleConfig"]["nodeInfo"]["wallets"]["ima"]["commonBLSPublicKey3"] = value["bls"]["public_key"][3]
-            base["skaleConfig"]["nodeInfo"]["wallets"]["ima"]["BLSPublicKey0"] = value["bls"]["public_key"][0]
-            base["skaleConfig"]["nodeInfo"]["wallets"]["ima"]["BLSPublicKey1"] = value["bls"]["public_key"][1]
-            base["skaleConfig"]["nodeInfo"]["wallets"]["ima"]["BLSPublicKey2"] = value["bls"]["public_key"][2]
-            base["skaleConfig"]["nodeInfo"]["wallets"]["ima"]["BLSPublicKey3"] = value["bls"]["public_key"][3]
-
-            # nodes - BLS
-            base["skaleConfig"]["sChain"]["nodes"][0]["blsPublicKey0"] = value["bls"]["public_key"][0]
-            base["skaleConfig"]["sChain"]["nodes"][0]["blsPublicKey1"] = value["bls"]["public_key"][1]
-            base["skaleConfig"]["sChain"]["nodes"][0]["blsPublicKey2"] = value["bls"]["public_key"][2]
-            base["skaleConfig"]["sChain"]["nodes"][0]["blsPublicKey3"] = value["bls"]["public_key"][3]
+        base["skaleConfig"]["nodeInfo"]["wallets"]["ima"]["keyShareName"] = value["bls"]["name"]
+        base["skaleConfig"]["nodeInfo"]["wallets"]["ima"]["commonBLSPublicKey0"] = value["bls"]["public_key"][0]
+        base["skaleConfig"]["nodeInfo"]["wallets"]["ima"]["commonBLSPublicKey1"] = value["bls"]["public_key"][1]
+        base["skaleConfig"]["nodeInfo"]["wallets"]["ima"]["commonBLSPublicKey2"] = value["bls"]["public_key"][2]
+        base["skaleConfig"]["nodeInfo"]["wallets"]["ima"]["commonBLSPublicKey3"] = value["bls"]["public_key"][3]
+        base["skaleConfig"]["nodeInfo"]["wallets"]["ima"]["BLSPublicKey0"] = value["bls"]["public_key"][0]
+        base["skaleConfig"]["nodeInfo"]["wallets"]["ima"]["BLSPublicKey1"] = value["bls"]["public_key"][1]
+        base["skaleConfig"]["nodeInfo"]["wallets"]["ima"]["BLSPublicKey2"] = value["bls"]["public_key"][2]
+        base["skaleConfig"]["nodeInfo"]["wallets"]["ima"]["BLSPublicKey3"] = value["bls"]["public_key"][3]
 
         if isFair:
             # nodes - ECDSA
             base["skaleConfig"]["sChain"]["nodeGroups"]["0"]["nodes"]["1"][2] = "0x" + value["ecdsa"]["public_key"]
             # base["skaleConfig"]["sChain"]["nodes"]["0"]["group"][0]["publicKey"] = "0x" + value["ecdsa"]["public_key"]
+
+        # nodes - BLS
+        base["skaleConfig"]["sChain"]["nodes"][0]["blsPublicKey0"] = value["bls"]["public_key"][0]
+        base["skaleConfig"]["sChain"]["nodes"][0]["blsPublicKey1"] = value["bls"]["public_key"][1]
+        base["skaleConfig"]["sChain"]["nodes"][0]["blsPublicKey2"] = value["bls"]["public_key"][2]
+        base["skaleConfig"]["sChain"]["nodes"][0]["blsPublicKey3"] = value["bls"]["public_key"][3]
 
         # nodes - ECDSA
         base["skaleConfig"]["sChain"]["nodes"][0]["publicKey"] = "0x" + value["ecdsa"]["public_key"]
