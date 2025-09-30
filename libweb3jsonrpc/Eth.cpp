@@ -983,11 +983,10 @@ Json::Value Eth::eth_getLogs( Json::Value const& _json ) {
 }
 
 rapidjson::Document Eth::eth_getLogsRapid(
-    rapidjson::Value const& _json, rapidjson::Document::AllocatorType& allocator ) {
+    rapidjson::Value const& _json, rapidjson::Document::AllocatorType& _responseAllocator ) {
     try {
         auto prepare_start_time = std::chrono::steady_clock::now();
 
-        // Log the input JSON for debugging
         rapidjson::StringBuffer buffer;
         rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
         _json.Accept( writer );
@@ -1025,7 +1024,7 @@ rapidjson::Document Eth::eth_getLogsRapid(
                              << logs_duration.count() << " ms for eth_getLogsRapid";
 
         auto json_start_time = std::chrono::steady_clock::now();
-        auto result = toRapidJson( logs, allocator );
+        auto result = toRapidJson( logs, _responseAllocator );
         auto json_end_time = std::chrono::steady_clock::now();
 
         auto json_duration = std::chrono::duration_cast< std::chrono::milliseconds >(
@@ -1047,6 +1046,62 @@ rapidjson::Document Eth::eth_getLogsRapid(
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
+}
+
+rapidjson::Document Eth::eth_getFilterLogsRapid(
+    string const& _filterId, rapidjson::Document::AllocatorType& _responseAllocator ) {
+    try {
+        auto logs = client()->logs( static_cast< unsigned int >( jsToInt( _filterId ) ) );
+        auto result = toRapidJson( logs, _responseAllocator );
+        return result;
+    } catch ( const LogCountLimitExceeded& e ) {
+        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INTERNAL_ERROR,
+            "Response log count limit exceeded. Maximum allowed number of returned logs is " +
+                to_string( this->client()->chainParams().getResponseLogCountLimit() ) ) );
+    } catch ( ... ) {
+        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
+    }
+}
+
+static Json::Value rapidDocumentToJson(
+    const rapidjson::Document& rapidResult, const char* errorContext ) {
+    rapidjson::StringBuffer sb;
+    rapidjson::Writer< rapidjson::StringBuffer > writer( sb );
+    rapidResult.Accept( writer );
+
+    Json::Value parsed;
+    Json::CharReaderBuilder rbuilder;
+    std::string errs;
+    std::istringstream iss( sb.GetString() );
+    if ( !Json::parseFromStream( rbuilder, iss, &parsed, &errs ) ) {
+        BOOST_THROW_EXCEPTION( JsonRpcException(
+            Errors::ERROR_RPC_INTERNAL_ERROR, std::string( "Failed to convert rapid " ) +
+                                                  ( errorContext ? errorContext : "logs" ) ) );
+    }
+    return parsed;
+}
+
+Json::Value Eth::eth_getLogsRapidAdapter( Json::Value const& _json ) {
+    rapidjson::Document filterDoc;
+    {
+        Json::StreamWriterBuilder wbuilder;
+        std::string serialized = Json::writeString( wbuilder, _json );
+        filterDoc.Parse( serialized.c_str() );
+        if ( filterDoc.HasParseError() ) {
+            BOOST_THROW_EXCEPTION(
+                JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS, "Invalid filter JSON" ) );
+        }
+    }
+    rapidjson::Document rapidResult = eth_getLogsRapid( filterDoc, filterDoc.GetAllocator() );
+    return rapidDocumentToJson( rapidResult, "logs" );
+}
+
+Json::Value Eth::eth_getFilterLogsRapidAdapter( std::string const& _filterId ) {
+    rapidjson::Document allocHolder;
+    allocHolder.SetObject();
+    rapidjson::Document rapidResult =
+        eth_getFilterLogsRapid( _filterId, allocHolder.GetAllocator() );
+    return rapidDocumentToJson( rapidResult, "filter logs" );
 }
 
 Json::Value Eth::eth_getWork() {

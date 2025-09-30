@@ -2290,7 +2290,14 @@ skutils::result_of_http_request_rapid SkaleServerOverride::handleProxygenHttpEth
         requestCopy.CopyFrom( request, requestCopy.GetAllocator() );
         rapidjson::Document response;
         response.SetObject();
-        eth_getLogs( origin, requestCopy, response );
+
+        // Route to appropriate method based on request method name
+        string methodName = request["method"].GetString();
+        if ( methodName == "eth_getFilterLogs" ) {
+            eth_getFilterLogs( origin, requestCopy, response );
+        } else {
+            eth_getLogs( origin, requestCopy, response );
+        }
 
         if ( response.HasMember( "result" ) ) {
             rapidjson::Value resultValue;
@@ -2725,7 +2732,8 @@ const SkaleServerOverride::protocol_rpc_map_t SkaleServerOverride::g_protocol_rp
     { "eth_getStorageAt", &SkaleServerOverride::eth_getStorageAt },
     { "eth_getTransactionCount", &SkaleServerOverride::eth_getTransactionCount },
     { "eth_getCode", &SkaleServerOverride::eth_getCode },
-    { "eth_getLogs", &SkaleServerOverride::eth_getLogs }
+    { "eth_getLogs", &SkaleServerOverride::eth_getLogs },
+    { "eth_getFilterLogs", &SkaleServerOverride::eth_getFilterLogs }
 };
 
 
@@ -2861,9 +2869,14 @@ void SkaleServerOverride::eth_getCode( const string& /*strOrigin*/,
     opts_.fn_eth_getCode_( joRequest, joResponse );
 }
 
-void SkaleServerOverride::eth_getLogs( const string& /*strOrigin*/,
+void SkaleServerOverride::eth_getLogs( const string& strOrigin,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
     opts_.fn_eth_getLogs_( joRequest, joResponse );
+}
+
+void SkaleServerOverride::eth_getFilterLogs( const string& strOrigin,
+    const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
+    opts_.fn_eth_getFilterLogs_( joRequest, joResponse );
 }
 
 bool SkaleServerOverride::handleHttpSpecificRequest(

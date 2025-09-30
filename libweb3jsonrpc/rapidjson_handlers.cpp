@@ -301,6 +301,42 @@ void inject_rapidjson_handlers( SkaleServerOverride::opts_t& serverOpts, dev::rp
         }
     };
 
+    SkaleServerOverride::fn_jsonrpc_call_t fn_eth_getFilterLogs =
+        [=]( const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) -> void {
+        try {
+            if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsArray() ) {
+                throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+            }
+
+            if ( joRequest["params"].GetArray().Size() != 1 ||
+                 !joRequest["params"].GetArray()[0].IsString() ) {
+                throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+            }
+
+            const std::string filterId = joRequest["params"].GetArray()[0].GetString();
+            rapidjson::Document::AllocatorType& allocator = joResponse.GetAllocator();
+
+            auto start_time = std::chrono::steady_clock::now();
+            rapidjson::Document result = pEthFace->eth_getFilterLogsRapid( filterId, allocator );
+            auto end_time = std::chrono::steady_clock::now();
+            auto duration =
+                std::chrono::duration_cast< std::chrono::milliseconds >( end_time - start_time );
+            std::cout << "SERVER_DEBUG TIMING: eth_getFilterLogsRapid execution time: "
+                      << duration.count() << " ms" << std::endl;
+
+            joResponse.EraseMember( "result" );
+            joResponse.AddMember( "result", result.Move(), allocator );
+
+        } catch ( const jsonrpc::JsonRpcException& ex ) {
+            wrapJsonRpcException( joRequest, ex, joResponse );
+        } catch ( const dev::Exception& ) {
+            wrapJsonRpcException( joRequest,
+                jsonrpc::JsonRpcException(
+                    ERROR_RPC_CUSTOM_ERROR, dev::rpc::exceptionToErrorMessage() ),
+                joResponse );
+        }
+    };
+
     serverOpts.fn_eth_sendRawTransaction_ = fn_eth_sendRawTransaction;
     serverOpts.fn_eth_getTransactionReceipt_ = fn_eth_getTransactionReceipt;
     serverOpts.fn_eth_call_ = fn_eth_call;
@@ -309,4 +345,5 @@ void inject_rapidjson_handlers( SkaleServerOverride::opts_t& serverOpts, dev::rp
     serverOpts.fn_eth_getTransactionCount_ = fn_eth_getTransactionCount;
     serverOpts.fn_eth_getCode_ = fn_eth_getCode;
     serverOpts.fn_eth_getLogs_ = fn_eth_getLogs;
+    serverOpts.fn_eth_getFilterLogs_ = fn_eth_getFilterLogs;
 }

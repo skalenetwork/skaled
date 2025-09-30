@@ -169,7 +169,7 @@ void request_site::onEOM() noexcept {
         if ( request.count( "method" ) > 0 && request["method"].is_string() ) {
             method = request["method"].get< string >();
         }
-        if ( method == "eth_getLogs" ) {
+        if ( method == "eth_getLogs" || method == "eth_getFilterLogs" ) {
             onEOMEthGetLogs();
         } else {
             onEOMDefault();
