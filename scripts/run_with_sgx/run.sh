@@ -49,11 +49,7 @@ done
 
 # set default config if not provided
 if [ -z "$config_path" ]; then
-    if [ $isFair == true ]; then
-        config_path="./sample_configs/fair.json"
-    else
-        config_path="./sample_configs/non-fair.json"
-    fi
+    config_path="./sample_configs/config.json"
 fi
 
 # Print final values
@@ -69,9 +65,9 @@ mkdir -p tmp
 ##############################################################
 
 if ss -tuln | grep -q ":$sgxPort"; then
-    echo "SGX is listenning at $sgxPort."
+    echo "Running with custom SGX wallet at $sgxUrl"
 else
-    echo "SGX is not listenning at $sgxPort. Check if SGX is running."
+    echo "SGX is not listenning at $sgxPort."
     exit 1
 fi
 
@@ -100,16 +96,15 @@ CACHED_KEYS=0
 # generate ECDSA and BLS keys if needed
 if [ ! -f "tmp/keys.json" ]; then
     echo "Generating ECDSA & BLS keys..."
-
     # check if certs are needed
     if [ $useHttps == true ]; then
         if [ ! -f "./tmp/sgx.crt" ] || [ ! -f "./tmp/sgx.key" ]; then
             echo "Error: HTTPS selected but ./tmp/sgx.crt or ./tmp/sgx.key not found!"
             exit 1
         fi
-        python3 sgx_import.py --sgx-url $sgxUrl --cert-path "./tmp"
+        python3 utils/sgx_import.py --sgx-url $sgxUrl --cert-path "./tmp"
     else
-        python3 sgx_import.py --sgx-url $sgxUrl
+        python3 utils/sgx_import.py --sgx-url $sgxUrl
     fi
 
     echo "Generation and import of ECDSA & BLS keys done."
@@ -130,7 +125,7 @@ if [ $isFair == true ]; then
     flags="-isFair"
 fi
 
-python3 update_config.py $config_path ./tmp/keys.json ./tmp/updated_config.json $flags
+python3 utils/update_config.py $config_path ./tmp/keys.json ./tmp/updated_config.json $flags
 echo "Updated config file generated successfully."
 
 

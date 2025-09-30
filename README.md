@@ -108,6 +108,13 @@ cd build/test
 ./testeth -- --all
 ```
 
+## Next steps: Run `skaled` with SGX
+
+
+This page only covers **building and testing**.
+
+
+To **run `skaled` with Intel SGX** see: [Run `skaled` with SGX](./docs/getting-started/one-node.md)
 
 ## Documentation
 
