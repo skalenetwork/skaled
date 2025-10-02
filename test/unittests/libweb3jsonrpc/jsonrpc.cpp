@@ -2706,6 +2706,16 @@ BOOST_AUTO_TEST_CASE( logs ) {
     logs = fixture.rpcClient->eth_getLogs( t );
     BOOST_REQUIRE( logs.isArray() );
     BOOST_REQUIRE_EQUAL( logs.size(), 24 );
+
+    Json::Value filterReq;
+    filterReq["fromBlock"] = 3;
+    filterReq["toBlock"] = 26;
+    filterReq["address"] = contractAddress;
+    filterReq["topics"] = Json::Value( Json::arrayValue );
+    std::string filterId = fixture.rpcClient->eth_newFilter( filterReq );
+    Json::Value filterLogs = fixture.rpcClient->eth_getFilterLogs( filterId );
+    BOOST_REQUIRE( filterLogs.isArray() );
+    BOOST_REQUIRE_EQUAL( filterLogs.size(), logs.size() );
 }
 
 // limit on getLogs output
@@ -2798,6 +2808,13 @@ fallback() external payable {
     BOOST_REQUIRE_THROW(
         Json::Value res = fixture.rpcClient->eth_getFilterLogs( filterId ), std::exception );
     BOOST_REQUIRE_NO_THROW( Json::Value res = fixture.rpcClient->eth_getFilterChanges( filterId ) );
+
+    req["toBlock"] = 2;
+    filterId = fixture.rpcClient->eth_newFilter( req );
+    BOOST_REQUIRE_NO_THROW( Json::Value res = fixture.rpcClient->eth_getFilterLogs( filterId ) );
+    BOOST_REQUIRE_NO_THROW(
+        Json::Value res2 = fixture.rpcClient->eth_getFilterChanges( filterId ) );
+
 }
 
 // test blockHash parameter
