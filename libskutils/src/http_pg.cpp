@@ -317,6 +317,7 @@ void request_site::onError( proxygen::ProxygenError _err ) noexcept {
 
 void request_site::sendHttpResponse( bool isBinary, const std::vector< uint8_t >& vecBytes,
     const std::string& jsonString ) noexcept {
+    std::cout << "SERVER_DEBUG bytes: " << sizeof( jsonString ) + ( jsonString.capacity() + 1 ) << std::endl;
     proxygen::ResponseBuilder bldr( downstream_ );
     bldr.status( 200, "OK" );
     bldr.header( "access-control-allow-origin", "*" );
