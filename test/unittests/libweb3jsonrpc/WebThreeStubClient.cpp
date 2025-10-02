@@ -631,9 +631,9 @@ Json::Value WebThreeStubClient::eth_getFilterChangesEx( const std::string& param
 }
 
 Json::Value WebThreeStubClient::eth_getFilterLogs( const std::string& param1 ) {
-    Json::Value p;
-    p.append( param1 );
-    Json::Value result = this->CallMethod( "eth_getFilterLogsRapid", p );
+    Json::Value adapterParams;
+    adapterParams.append( param1 );
+    Json::Value result = this->CallMethod( "eth_getFilterLogs", adapterParams );
     if ( result.isArray() )
         return result;
     else
@@ -654,10 +654,9 @@ Json::Value WebThreeStubClient::eth_getFilterLogsEx( const std::string& param1 )
 
 
 Json::Value WebThreeStubClient::eth_getLogs( const Json::Value& param1 ) {
-    std::string filterSerialized = param1.toStyledString();
-    Json::Value p;
-    p.append( filterSerialized );
-    Json::Value result = this->CallMethod( "eth_getLogsRapid", p );
+    Json::Value adapterParams;
+    adapterParams.append( param1 );
+    Json::Value result = this->CallMethod( "eth_getLogs", adapterParams );
     if ( result.isArray() )
         return result;
     throw jsonrpc::JsonRpcException(
