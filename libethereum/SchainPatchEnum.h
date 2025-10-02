@@ -23,6 +23,7 @@ enum class SchainPatchEnum {
     ClearPartialReceiptsPatch,
     InvalidTransactionFormatPatch,
     CurrentBlockRandomPatch,
+    GroupIndexInitPatch,
     PatchesCount
 };
 
