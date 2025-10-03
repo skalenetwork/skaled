@@ -250,10 +250,10 @@ private:
 
     mutable std::shared_mutex m_mutex;
 
-    Logger m_loggerInfo{ createLogger( VerbosityInfo, "ChainParams" ) };
-    Logger m_loggerWarning{ createLogger( VerbosityWarning, "ChainParams" ) };
+    mutable Logger m_loggerInfo{ createLogger( VerbosityInfo, "ChainParams" ) };
+    mutable Logger m_loggerWarning{ createLogger( VerbosityWarning, "ChainParams" ) };
 #endif
-    Logger m_loggerDebug{ createLogger( VerbosityDebug, "ChainParams" ) };
+    mutable Logger m_loggerDebug{ createLogger( VerbosityDebug, "ChainParams" ) };
 };
 
 }  // namespace dev::eth
