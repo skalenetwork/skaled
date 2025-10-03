@@ -86,7 +86,6 @@ public:
     Json::Value eth_getFilterLogs( const std::string& param1 ) noexcept( false );
     Json::Value eth_getFilterLogsEx( const std::string& param1 ) noexcept( false );
     Json::Value eth_getLogs( const Json::Value& param1 ) noexcept( false );
-    // Rapid JSON RPC variant (server must expose method name "eth_getLogsRapid")
     Json::Value eth_getLogsRapid( const Json::Value& param1 ) noexcept( false );
     Json::Value eth_getLogsEx( const Json::Value& param1 ) noexcept( false );
     Json::Value eth_getWork() noexcept( false );

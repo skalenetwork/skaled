@@ -891,8 +891,6 @@ Json::Value Eth::eth_getFilterChangesEx( string const& _filterId ) {
 rapidjson::Document Eth::eth_getLogsAsRapid(
     rapidjson::Value const& _json, rapidjson::Document::AllocatorType& _responseAllocator ) {
     try {
-        auto prepare_start_time = std::chrono::steady_clock::now();
-
         rapidjson::StringBuffer buffer;
         rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
         _json.Accept( writer );
@@ -913,30 +911,9 @@ rapidjson::Document Eth::eth_getLogsAsRapid(
             filter.withEarliest( number );
             filter.withLatest( number );
         }
-        auto prepare_end_time = std::chrono::steady_clock::now();
-
-        auto prepare_duration = std::chrono::duration_cast< std::chrono::milliseconds >(
-            prepare_end_time - prepare_start_time );
-        LOG( m_loggerDebug ) << "SERVER_DEBUG prepare execution time: " << prepare_duration.count()
-                             << " ms for eth_getLogsAsRapid";
-
-        auto logs_start_time = std::chrono::steady_clock::now();
         auto logs = client()->logs( filter );
-        auto logs_end_time = std::chrono::steady_clock::now();
-
-        auto logs_duration = std::chrono::duration_cast< std::chrono::milliseconds >(
-            logs_end_time - logs_start_time );
-        LOG( m_loggerDebug ) << "SERVER_DEBUG client()->logs(filter) execution time: "
-                             << logs_duration.count() << " ms for eth_getLogsAsRapid";
-
-        auto json_start_time = std::chrono::steady_clock::now();
         auto result = toRapidJson( logs, _responseAllocator );
-        auto json_end_time = std::chrono::steady_clock::now();
 
-        auto json_duration = std::chrono::duration_cast< std::chrono::milliseconds >(
-            json_end_time - json_start_time );
-        LOG( m_loggerDebug ) << "SERVER_DEBUG toRapidJson() conversion time: "
-                             << json_duration.count() << " ms for eth_getLogsAsRapid";
         return result;
 
     } catch ( const TooBigResponse& ) {

@@ -76,8 +76,6 @@ public:
 private:
     void sendHttpResponse( bool isBinary, const std::vector< uint8_t >& vecBytes,
         const std::string& jsonString ) noexcept;
-    void logAndMeasurePerformance( std::chrono::steady_clock::time_point post_processing_start_time,
-        const std::string& path_type ) noexcept;
 
     skutils::result_of_http_request_rapid createRapidJsonError(
         const std::string& message ) noexcept;

@@ -280,14 +280,7 @@ void inject_rapidjson_handlers( SkaleServerOverride::opts_t& serverOpts, dev::rp
             const auto& filterObj = joRequest["params"].GetArray()[0];
             rapidjson::Document::AllocatorType& allocator = joResponse.GetAllocator();
 
-            auto start_time = std::chrono::steady_clock::now();
             rapidjson::Document result = pEthFace->eth_getLogsAsRapid( filterObj, allocator );
-            auto end_time = std::chrono::steady_clock::now();
-            auto duration =
-                std::chrono::duration_cast< std::chrono::milliseconds >( end_time - start_time );
-            std::cout << "SERVER_DEBUG TIMING: eth_getLogsAsRapid execution time: "
-                      << duration.count() << " ms" << std::endl;
-
             joResponse.EraseMember( "result" );
             joResponse.AddMember( "result", result.Move(), allocator );
 
@@ -315,15 +308,7 @@ void inject_rapidjson_handlers( SkaleServerOverride::opts_t& serverOpts, dev::rp
 
             const std::string filterId = joRequest["params"].GetArray()[0].GetString();
             rapidjson::Document::AllocatorType& allocator = joResponse.GetAllocator();
-
-            auto start_time = std::chrono::steady_clock::now();
             rapidjson::Document result = pEthFace->eth_getFilterLogsAsRapid( filterId, allocator );
-            auto end_time = std::chrono::steady_clock::now();
-            auto duration =
-                std::chrono::duration_cast< std::chrono::milliseconds >( end_time - start_time );
-            std::cout << "SERVER_DEBUG TIMING: eth_getFilterLogsAsRapid execution time: "
-                      << duration.count() << " ms" << std::endl;
-
             joResponse.EraseMember( "result" );
             joResponse.AddMember( "result", result.Move(), allocator );
 

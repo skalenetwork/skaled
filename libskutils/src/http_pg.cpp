@@ -162,7 +162,6 @@ void request_site::onEOM() noexcept {
     PG_LOG( m_strLogPrefix + __FUNCTION__ + " body size: " + to_string( m_strBody.size() ) );
     PG_LOG( m_strLogPrefix + __FUNCTION__ + " body content: " + m_strBody );
 
-    // Route request to appropriate handler based on method
     try {
         nlohmann::json request = nlohmann::json::parse( m_strBody );
         string method = "";
@@ -174,14 +173,9 @@ void request_site::onEOM() noexcept {
         } else {
             onEOMDefault();
         }
-    } catch ( const std::exception& ex ) {
-        PG_LOG( m_strLogPrefix + "routing error: " + ex.what() );
-        // Fall back to default handler
-        onEOMDefault();
     } catch ( ... ) {
         PG_LOG( m_strLogPrefix + "unknown routing error" );
-        // Fall back to default handler
-        onEOMDefault();
+        throw;
     }
 }
 
@@ -197,7 +191,6 @@ void request_site::onEOMDefault() noexcept {
         if ( joIn.count( "id" ) > 0 )
             joID = joIn["id"];
 
-        // Use normal processing for non-eth_getLogs methods
         rslt = m_SSRQ->onRequest( joIn, m_origin, m_ipVer, m_dstAddress_, m_dstPort );
 
         post_processing_start_time = std::chrono::steady_clock::now();
@@ -222,7 +215,6 @@ void request_site::onEOMDefault() noexcept {
             "unknown exception in HTTP handler", joID );
         PG_LOG( m_strLogPrefix + "got error answer JSON " + rslt.joOut_.dump() );
     }
-    // Convert to string and use common response sending functionality
     std::string jsonString = rslt.isBinary_ ? "" : rslt.joOut_.dump();
     sendHttpResponse( rslt.isBinary_, rslt.vecBytes_, jsonString );
 }
@@ -266,7 +258,6 @@ void request_site::onEOMEthGetLogs() noexcept {
     }
 
     sendRapidJsonResponse( rapidRslt );
-    logAndMeasurePerformance( post_processing_start_time, "rapidjson" );
 }
 
 skutils::result_of_http_request_rapid request_site::createRapidJsonError(
@@ -317,8 +308,6 @@ void request_site::onError( proxygen::ProxygenError _err ) noexcept {
 
 void request_site::sendHttpResponse( bool isBinary, const std::vector< uint8_t >& vecBytes,
     const std::string& jsonString ) noexcept {
-    std::cout << "SERVER_DEBUG bytes: " << sizeof( jsonString ) + ( jsonString.capacity() + 1 )
-              << std::endl;
     proxygen::ResponseBuilder bldr( downstream_ );
     bldr.status( 200, "OK" );
     bldr.header( "access-control-allow-origin", "*" );
@@ -334,22 +323,6 @@ void request_site::sendHttpResponse( bool isBinary, const std::vector< uint8_t >
         bldr.body( jsonString );
     }
     bldr.sendWithEOM();
-}
-
-void request_site::logAndMeasurePerformance(
-    std::chrono::steady_clock::time_point post_processing_start_time,
-    const std::string& path_type ) noexcept {
-    // Measure complete request time from network entry to exit
-    auto request_end_time = std::chrono::steady_clock::now();
-    auto post_processing_duration = std::chrono::duration_cast< std::chrono::milliseconds >(
-        request_end_time - post_processing_start_time );
-    auto full_request_duration = std::chrono::duration_cast< std::chrono::milliseconds >(
-        request_end_time - m_request_start_time );
-
-    std::cout << "SERVER_DEBUG: Post processing request time (" << path_type
-              << "): " << post_processing_duration.count() << " ms" << std::endl;
-    std::cout << "SERVER_DEBUG: Full request time from network entry to exit (" << path_type
-              << "): " << full_request_duration.count() << " ms" << std::endl;
 }
 
 request_site_factory::request_site_factory( server_side_request_handler* _SSRQ )
