@@ -2297,9 +2297,13 @@ skutils::result_of_http_request_rapid SkaleServerOverride::handleProxygenHttpEth
         }
 
         if ( response.HasMember( "result" ) ) {
-            result.out_.AddMember( "result", response["result"], allocator );
+            rapidjson::Value resultValue;
+            resultValue.CopyFrom( response["result"], allocator );
+            result.out_.AddMember( "result", resultValue, allocator );
         } else if ( response.HasMember( "error" ) ) {
-            result.out_.AddMember( "error", response["error"], allocator );
+            rapidjson::Value errorValue;
+            errorValue.CopyFrom( response["error"], allocator );
+            result.out_.AddMember( "error", errorValue, allocator );
         }
     } catch ( const std::exception& ex ) {
         rapidjson::Value error;

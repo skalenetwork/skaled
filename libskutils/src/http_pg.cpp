@@ -230,11 +230,6 @@ void request_site::onEOMEthGetLogs() noexcept {
 
         result =
             m_SSRQ->onRequestEthGetLogs( request, m_origin, m_ipVer, m_dstAddress_, m_dstPort );
-
-        rapidjson::StringBuffer buffer;
-        rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
-        result.out_.Accept( writer );
-        PG_LOG( m_strLogPrefix + "answer JSON " + string( buffer.GetString() ) );
     } catch ( const std::exception& ex ) {
         PG_LOG( m_strLogPrefix + "problem with body " + m_strBody + ", error info: " + ex.what() );
         result = createRapidJsonError( failedCode, errId, ex.what() );
