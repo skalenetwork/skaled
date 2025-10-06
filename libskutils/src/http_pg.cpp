@@ -175,7 +175,7 @@ void request_site::onEOM() noexcept {
         }
     } catch ( ... ) {
         PG_LOG( m_strLogPrefix + "unknown routing error" );
-        throw;
+        onEOMDefault();
     }
 }
 
