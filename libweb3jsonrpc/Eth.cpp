@@ -946,23 +946,6 @@ rapidjson::Document Eth::eth_getFilterLogsAsRapid(
     }
 }
 
-static Json::Value rapidDocumentToJson(
-    const rapidjson::Document& rapidResult, const char* errorContext ) {
-    rapidjson::StringBuffer sb;
-    rapidjson::Writer< rapidjson::StringBuffer > writer( sb );
-    rapidResult.Accept( writer );
-
-    Json::Value parsed;
-    Json::CharReaderBuilder rbuilder;
-    std::string errs;
-    std::istringstream iss( sb.GetString() );
-    if ( !Json::parseFromStream( rbuilder, iss, &parsed, &errs ) ) {
-        BOOST_THROW_EXCEPTION( JsonRpcException(
-            Errors::ERROR_RPC_INTERNAL_ERROR, std::string( "Failed to convert rapid " ) +
-                                                  ( errorContext ? errorContext : "logs" ) ) );
-    }
-    return parsed;
-}
 
 Json::Value Eth::eth_getLogsAsJson( Json::Value const& _json ) {
     rapidjson::Document filterDoc;
@@ -976,7 +959,7 @@ Json::Value Eth::eth_getLogsAsJson( Json::Value const& _json ) {
         }
     }
     rapidjson::Document rapidResult = eth_getLogsAsRapid( filterDoc, filterDoc.GetAllocator() );
-    return rapidDocumentToJson( rapidResult, "logs" );
+    return dev::eth::rapidDocumentToJson( rapidResult, "logs" );
 }
 
 Json::Value Eth::eth_getFilterLogsAsJson( std::string const& _filterId ) {
@@ -984,7 +967,7 @@ Json::Value Eth::eth_getFilterLogsAsJson( std::string const& _filterId ) {
     allocHolder.SetObject();
     rapidjson::Document rapidResult =
         eth_getFilterLogsAsRapid( _filterId, allocHolder.GetAllocator() );
-    return rapidDocumentToJson( rapidResult, "filter logs" );
+    return dev::eth::rapidDocumentToJson( rapidResult, "filter logs" );
 }
 
 Json::Value Eth::eth_getWork() {

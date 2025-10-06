@@ -693,6 +693,23 @@ LogFilter rapidJsonToLogFilter( rapidjson::Value const& _json ) {
     return filter;
 }
 
+Json::Value rapidDocumentToJson( const rapidjson::Document& doc, const char* errorContext ) {
+    rapidjson::StringBuffer sb;
+    rapidjson::Writer< rapidjson::StringBuffer > writer( sb );
+    doc.Accept( writer );
+
+    Json::Value parsed;
+    Json::CharReaderBuilder rbuilder;
+    std::string errs;
+    std::istringstream iss( sb.GetString() );
+    if ( !Json::parseFromStream( rbuilder, iss, &parsed, &errs ) ) {
+        BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INTERNAL_ERROR,
+            std::string( "Failed to convert rapid " ) +
+                ( errorContext ? errorContext : "document" ) ) );
+    }
+    return parsed;
+}
+
 // TODO: this should be removed once we decide to remove backward compatibility with old log filters
 dev::eth::LogFilter toLogFilter( Json::Value const& _json )  // commented to avoid warning.
                                                              // Uncomment once in use @ PoC-7.
