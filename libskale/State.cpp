@@ -745,17 +745,22 @@ u256 State::getNonce( Address const& _addr ) const {
 u256 State::storage( Address const& _id, u256 const& _key ) const {
     if ( eth::Account const* acc = account( _id ) ) {
         auto memoryIterator = acc->storageOverlay().find( _key );
-        if ( memoryIterator != acc->storageOverlay().end() )
+        if ( memoryIterator != acc->storageOverlay().end() ) {
+            LOG( m_loggerDebug ) << "Storage hit (overlay): " << _id << " [" << _key << "] = " << memoryIterator->second;
             return memoryIterator->second;
+        }
 
         memoryIterator = acc->originalStorageCache().find( _key );
-        if ( memoryIterator != acc->originalStorageCache().end() )
+        if ( memoryIterator != acc->originalStorageCache().end() ) {
+            LOG( m_loggerDebug ) << "Storage hit (original): " << _id << " [" << _key << "] = " << memoryIterator->second;
             return memoryIterator->second;
+        }
 
         // Not in the storage cache - go to the DB.
         SharedDBGuard lock( *this );
         u256 value = m_db_ptr->lookup( _id, _key );
         acc->setStorageCache( _key, value );
+        LOG( m_loggerDebug ) << "Storage miss: " << _id << " [" << _key << "] = " << value;
         return value;
     } else
         return 0;
@@ -781,6 +786,9 @@ void State::setStorage( Address const& _contract, u256 const& _key, u256 const& 
     if ( totalStorageUsed_ + currentStorageUsed_ > contractStorageLimit_ ) {
         BOOST_THROW_EXCEPTION( dev::StorageOverflow() << errinfo_comment( _contract.hex() ) );
     }
+
+    LOG( m_loggerDebug ) << "Storage change: " << _contract << " [" << _key << "] = " << _value
+                     << " (was " << _currentValue << ")";
 }
 
 void State::clearStorageValue(
