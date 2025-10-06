@@ -85,9 +85,6 @@ request_site::~request_site() {
 }
 
 void request_site::onRequest( std::unique_ptr< proxygen::HTTPMessage > _req ) noexcept {
-    // Start timing when request headers arrive from network
-    m_request_start_time = std::chrono::steady_clock::now();
-
     m_sink.OnRecordRequestCountIncrement();
     m_httpMethod = skutils::tools::to_upper( skutils::tools::trim_copy( _req->getMethodString() ) );
 
@@ -180,20 +177,17 @@ void request_site::onEOM() noexcept {
 }
 
 void request_site::onEOMDefault() noexcept {
-    nlohmann::json joID = "0xBADF00D", joIn;
+    nlohmann::json id = "0xBADF00D", request;
     skutils::result_of_http_request rslt;
     rslt.isBinary_ = false;
-    auto post_processing_start_time = std::chrono::steady_clock::now();
 
     try {
-        joIn = nlohmann::json::parse( m_strBody );
-        PG_LOG( m_strLogPrefix + "body JSON " + joIn.dump() );
-        if ( joIn.count( "id" ) > 0 )
-            joID = joIn["id"];
+        request = nlohmann::json::parse( m_strBody );
+        PG_LOG( m_strLogPrefix + "body JSON " + request.dump() );
+        if ( request.count( "id" ) > 0 )
+            id = request["id"];
 
-        rslt = m_SSRQ->onRequest( joIn, m_origin, m_ipVer, m_dstAddress_, m_dstPort );
-
-        post_processing_start_time = std::chrono::steady_clock::now();
+        rslt = m_SSRQ->onRequest( request, m_origin, m_ipVer, m_dstAddress_, m_dstPort );
 
         if ( rslt.isBinary_ ) {
             PG_LOG( m_strLogPrefix + "binary answer " +
@@ -205,14 +199,14 @@ void request_site::onEOMDefault() noexcept {
     } catch ( const std::exception& ex ) {
         PG_LOG( m_strLogPrefix + "problem with body " + m_strBody + ", error info: " + ex.what() );
         rslt.isBinary_ = false;
-        rslt.joOut_ = server_side_request_handler::json_from_error_text( ex.what(), joID );
+        rslt.joOut_ = server_side_request_handler::json_from_error_text( ex.what(), id );
         PG_LOG( m_strLogPrefix + "got error answer JSON " + rslt.joOut_.dump() );
     } catch ( ... ) {
         PG_LOG( m_strLogPrefix + "problem with body " + m_strBody +
                 ", error info: " + "unknown exception in HTTP handler" );
         rslt.isBinary_ = false;
         rslt.joOut_ = server_side_request_handler::json_from_error_text(
-            "unknown exception in HTTP handler", joID );
+            "unknown exception in HTTP handler", id );
         PG_LOG( m_strLogPrefix + "got error answer JSON " + rslt.joOut_.dump() );
     }
     std::string jsonString = rslt.isBinary_ ? "" : rslt.joOut_.dump();
@@ -220,74 +214,70 @@ void request_site::onEOMDefault() noexcept {
 }
 
 void request_site::onEOMEthGetLogs() noexcept {
-    rapidjson::Document rapidRequest;
-    skutils::result_of_http_request_rapid rapidRslt;
-    rapidRslt.isBinary_ = false;
-    auto post_processing_start_time = std::chrono::steady_clock::now();
+    rapidjson::Document request;
+    skutils::result_of_http_request_rapid result;
+    result.isBinary_ = false;
+    const int failedCode = -32000;
+    const string errId( "0xBADF00D" );
 
     try {
-        rapidRequest.Parse( m_strBody.c_str() );
+        request.Parse( m_strBody.c_str() );
         PG_LOG( m_strLogPrefix + "body JSON parsed with rapidjson for eth_getLogs" );
 
-        if ( rapidRequest.HasParseError() ) {
+        if ( request.HasParseError() ) {
             throw std::runtime_error( "rapidjson parse error" );
         }
 
-        rapidRslt = m_SSRQ->onRequestEthGetLogs(
-            rapidRequest, m_origin, m_ipVer, m_dstAddress_, m_dstPort );
+        result =
+            m_SSRQ->onRequestEthGetLogs( request, m_origin, m_ipVer, m_dstAddress_, m_dstPort );
 
-        post_processing_start_time = std::chrono::steady_clock::now();
-
-        if ( !rapidRslt.isBinary_ ) {
-            rapidjson::StringBuffer buffer;
-            rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
-            rapidRslt.out_.Accept( writer );
-            PG_LOG( m_strLogPrefix + "answer JSON " + string( buffer.GetString() ) );
-        } else {
-            PG_LOG( m_strLogPrefix + "binary answer " +
-                    cc::binary_table( ( const void* ) ( void* ) rapidRslt.vecBytes_.data(),
-                        size_t( rapidRslt.vecBytes_.size() ) ) );
-        }
+        rapidjson::StringBuffer buffer;
+        rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
+        result.out_.Accept( writer );
+        PG_LOG( m_strLogPrefix + "answer JSON " + string( buffer.GetString() ) );
     } catch ( const std::exception& ex ) {
         PG_LOG( m_strLogPrefix + "problem with body " + m_strBody + ", error info: " + ex.what() );
-        rapidRslt = createRapidJsonError( ex.what() );
+        result = createRapidJsonError( failedCode, errId, ex.what() );
     } catch ( ... ) {
         PG_LOG( m_strLogPrefix + "problem with body " + m_strBody +
                 ", error info: unknown exception in HTTP handler" );
-        rapidRslt = createRapidJsonError( "unknown exception in HTTP handler" );
+        result = createRapidJsonError( failedCode, errId, "unknown exception in HTTP handler" );
     }
 
-    sendRapidJsonResponse( rapidRslt );
+    sendRapidJsonResponse( result );
 }
 
 skutils::result_of_http_request_rapid request_site::createRapidJsonError(
-    const std::string& message ) noexcept {
-    skutils::result_of_http_request_rapid rapidRslt;
-    rapidRslt.isBinary_ = false;
-    rapidRslt.out_.SetObject();
-    rapidjson::Document::AllocatorType& allocator = rapidRslt.out_.GetAllocator();
+    int code, const std::string& id, const std::string& message ) noexcept {
+    skutils::result_of_http_request_rapid result;
+    result.isBinary_ = false;
+    result.out_.SetObject();
+    auto& a = result.out_.GetAllocator();
 
-    rapidRslt.out_.AddMember( "jsonrpc", rapidjson::Value( "2.0", allocator ), allocator );
-    rapidRslt.out_.AddMember( "id", rapidjson::Value( "0xBADF00D", allocator ), allocator );
+    result.out_.AddMember( "jsonrpc", "2.0", a );
 
-    rapidjson::Value errorObj( rapidjson::kObjectType );
-    errorObj.AddMember( "code", -32000, allocator );
-    errorObj.AddMember( "message", rapidjson::Value( message.c_str(), allocator ), allocator );
-    rapidRslt.out_.AddMember( "error", errorObj, allocator );
+    rapidjson::Value vId;
+    vId.SetString( id.c_str(), static_cast< rapidjson::SizeType >( id.size() ), a );
+    result.out_.AddMember( "id", vId, a );
 
-    PG_LOG( m_strLogPrefix + "got error answer JSON for rapidjson" );
-    return rapidRslt;
+    rapidjson::Value err( rapidjson::kObjectType );
+    err.AddMember( "code", code, a );
+
+    rapidjson::Value vMsg;
+    vMsg.SetString( message.c_str(), static_cast< rapidjson::SizeType >( message.size() ), a );
+    err.AddMember( "message", vMsg, a );
+
+    result.out_.AddMember( "error", err, a );
+    return result;
 }
 
 void request_site::sendRapidJsonResponse(
     const skutils::result_of_http_request_rapid& rapidRslt ) noexcept {
     std::string jsonString;
-    if ( !rapidRslt.isBinary_ ) {
-        rapidjson::StringBuffer buffer;
-        rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
-        rapidRslt.out_.Accept( writer );
-        jsonString = buffer.GetString();
-    }
+    rapidjson::StringBuffer buffer;
+    rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
+    rapidRslt.out_.Accept( writer );
+    jsonString = buffer.GetString();
     sendHttpResponse( rapidRslt.isBinary_, rapidRslt.vecBytes_, jsonString );
 }
 

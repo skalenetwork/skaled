@@ -2286,36 +2286,29 @@ skutils::result_of_http_request_rapid SkaleServerOverride::handleProxygenHttpEth
     result.out_.AddMember( "jsonrpc", "2.0", allocator );
 
     try {
-        rapidjson::Document requestCopy;
-        requestCopy.CopyFrom( request, requestCopy.GetAllocator() );
         rapidjson::Document response;
         response.SetObject();
 
-        // Route to appropriate method based on request method name
         string methodName = request["method"].GetString();
         if ( methodName == "eth_getFilterLogs" ) {
-            eth_getFilterLogs( origin, requestCopy, response );
+            eth_getFilterLogs( origin, request, response );
         } else {
-            eth_getLogs( origin, requestCopy, response );
+            eth_getLogs( origin, request, response );
         }
 
         if ( response.HasMember( "result" ) ) {
-            rapidjson::Value resultValue;
-            resultValue.CopyFrom( response["result"], allocator );
-            result.out_.AddMember( "result", resultValue, allocator );
+            result.out_.AddMember( "result", response["result"], allocator );
         } else if ( response.HasMember( "error" ) ) {
-            rapidjson::Value errorValue;
-            errorValue.CopyFrom( response["error"], allocator );
-            result.out_.AddMember( "error", errorValue, allocator );
+            result.out_.AddMember( "error", response["error"], allocator );
         }
     } catch ( const std::exception& ex ) {
         rapidjson::Value error;
         error.SetObject();
         error.AddMember( "code", -32603, allocator );
         string errorMessage = ex.what();
-        rapidjson::Value v;
-        v.SetString( errorMessage.c_str(), errorMessage.size(), allocator );
-        error.AddMember( "message", v, allocator );
+        rapidjson::Value message;
+        message.SetString( errorMessage.c_str(), errorMessage.size(), allocator );
+        error.AddMember( "message", message, allocator );
         result.out_.AddMember( "error", error, allocator );
     }
 
@@ -2767,9 +2760,6 @@ void SkaleServerOverride::setSchainExitTime( const string& strOrigin,
         }
         const rapidjson::Value& joParams = joRequest["params"];
         size_t finishTime = 0;
-        if ( !joParams.IsObject() ) {
-            throw std::runtime_error( "params should be an object" );
-        }
         if ( joParams.HasMember( "finishTime" ) > 0 ) {
             const rapidjson::Value& joValue = joParams["finishTime"];
             if ( joValue.IsNumber() )
