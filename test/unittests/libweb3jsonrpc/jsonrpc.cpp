@@ -2883,7 +2883,7 @@ BOOST_AUTO_TEST_CASE( getResponseLogCountLimit ) {
     req["topics"] = Json::Value( Json::arrayValue );
     req["address"] = contractAddress;
 
-    req["toBlock"] = 5;
+    req["toBlock"] = 4;
     BOOST_REQUIRE_NO_THROW( Json::Value logs = fixture.rpcClient->eth_getLogs( req ) );
 
     string overHash = fixture.rpcClient->eth_sendTransaction( callTx );
