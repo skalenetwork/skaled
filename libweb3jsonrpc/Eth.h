@@ -252,6 +252,7 @@ protected:
 
 private:
     dev::Logger m_loggerDebug{ dev::createLogger( dev::VerbosityDebug, "Eth" ) };
+    static const int LIMIT_EXCEEDED_ERR_CODE = -32005;
 };
 
 }  // namespace rpc

@@ -50,6 +50,7 @@
 #include <libdevcore/CommonData.h>
 #include <libethashseal/EthashClient.h>
 #include <libethcore/CommonJS.h>
+#include <libethcore/Exceptions.h>
 #include <libethereum/Client.h>
 #include <libweb3jsonrpc/JsonHelper.h>
 #include <sys/types.h>
@@ -2276,6 +2277,7 @@ skutils::result_of_http_request_rapid SkaleServerOverride::handleProxygenHttpEth
     result.isBinary_ = false;
     result.out_.SetObject();
     rapidjson::Document::AllocatorType& allocator = result.out_.GetAllocator();
+    const int internalErrorCode = -32603;
 
     if ( request.HasMember( "id" ) ) {
         rapidjson::Value idValue;
@@ -2305,18 +2307,27 @@ skutils::result_of_http_request_rapid SkaleServerOverride::handleProxygenHttpEth
             errorValue.CopyFrom( response["error"], allocator );
             result.out_.AddMember( "error", errorValue, allocator );
         }
+    } catch ( const jsonrpc::JsonRpcException& ex ) {
+        SkaleServerOverride::addRapidJsonError( result.out_, ex.GetCode(), ex.GetMessage() );
     } catch ( const std::exception& ex ) {
-        rapidjson::Value error;
-        error.SetObject();
-        error.AddMember( "code", -32603, allocator );
-        string errorMessage = ex.what();
-        rapidjson::Value message;
-        message.SetString( errorMessage.c_str(), errorMessage.size(), allocator );
-        error.AddMember( "message", message, allocator );
-        result.out_.AddMember( "error", error, allocator );
+        SkaleServerOverride::addRapidJsonError( result.out_, internalErrorCode, ex.what() );
+    } catch ( ... ) {
+        SkaleServerOverride::addRapidJsonError(
+            result.out_, internalErrorCode, "unknown exception" );
     }
 
     return result;
+}
+
+void SkaleServerOverride::addRapidJsonError(
+    rapidjson::Document& target, int code, const std::string& message ) {
+    auto& a = target.GetAllocator();
+    rapidjson::Value error( rapidjson::kObjectType );
+    error.AddMember( "code", code, a );
+    rapidjson::Value msg;
+    msg.SetString( message.c_str(), message.size(), a );
+    error.AddMember( "message", msg, a );
+    target.AddMember( "error", error, a );
 }
 
 bool SkaleServerOverride::StartListening() {

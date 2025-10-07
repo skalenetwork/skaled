@@ -917,15 +917,13 @@ rapidjson::Document Eth::eth_getLogsAsRapid(
         return result;
 
     } catch ( const TooBigResponse& ) {
-        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS,
-            "Log response size exceeded. Maximum allowed number of requested blocks is " +
-                to_string( this->client()->chainParams().getLogsBlocksLimit() ) ) );
+        BOOST_THROW_EXCEPTION( JsonRpcException(
+            LIMIT_EXCEEDED_ERR_CODE, "Block range limit exceeded. Maximum allowed number of requested blocks is " +
+                        to_string( this->client()->chainParams().getLogsBlocksLimit() ) ) );
     } catch ( const LogCountLimitExceeded& e ) {
-        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INTERNAL_ERROR,
+        BOOST_THROW_EXCEPTION( JsonRpcException( LIMIT_EXCEEDED_ERR_CODE,
             "Response log count limit exceeded. Maximum allowed number of returned logs is " +
                 to_string( this->client()->chainParams().getResponseLogCountLimit() ) ) );
-    } catch ( const JsonRpcException& e ) {
-        throw;
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
@@ -937,10 +935,14 @@ rapidjson::Document Eth::eth_getFilterLogsAsRapid(
         auto logs = client()->logs( static_cast< unsigned int >( jsToInt( _filterId ) ) );
         auto result = toRapidJson( logs, _responseAllocator );
         return result;
+    } catch ( const TooBigResponse& ) {
+        BOOST_THROW_EXCEPTION( JsonRpcException(
+            LIMIT_EXCEEDED_ERR_CODE, "Block range limit exceeded. Maximum allowed number of requested blocks is " +
+                to_string( this->client()->chainParams().getLogsBlocksLimit() ) ) );
     } catch ( const LogCountLimitExceeded& e ) {
-        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INTERNAL_ERROR,
-            "Response log count limit exceeded. Maximum allowed number of returned logs is " +
-                to_string( this->client()->chainParams().getResponseLogCountLimit() ) ) );
+        BOOST_THROW_EXCEPTION( JsonRpcException( LIMIT_EXCEEDED_ERR_CODE,
+                                               "Response log count limit exceeded. Maximum allowed number of returned logs is " +
+                                                   to_string( this->client()->chainParams().getResponseLogCountLimit() ) ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }

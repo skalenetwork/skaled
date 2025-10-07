@@ -624,6 +624,11 @@ public:
     friend class SkaleRelayProxygenHTTP;
     friend class SkaleRelayWS;
     friend class SkaleWsPeer;
+
+private:
+    static void addRapidJsonError(
+        rapidjson::Document& target, int code, const std::string& message );
+
 };  /// class SkaleServerOverride
 
 

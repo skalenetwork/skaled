@@ -525,6 +525,8 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
 
             if ( params.count( "getLogsBlocksLimit" ) && stoi( params.at( "getLogsBlocksLimit" ) ) )
                 chainParams->logsBlocksLimit = stoi( params.at( "getLogsBlocksLimit" ) );
+            if ( params.count( "getResponseLogCountLimit" ) && stoi( params.at( "getResponseLogCountLimit" ) ) )
+                chainParams->responseLogCountLimit = stoi( params.at( "getResponseLogCountLimit" ) );
         }
         chainParams->sChain.multiTransactionMode = _mtmEnabled;
         chainParams->nodeInfo.syncNode = _isSyncNode;
@@ -2801,12 +2803,17 @@ fallback() external payable {
 
     // 3 11 blocks
     req["toBlock"] = 12;
-    BOOST_REQUIRE_THROW( Json::Value logs = fixture.rpcClient->eth_getLogs( req ), std::exception );
+    BOOST_CHECK_EXCEPTION(
+        ( fixture.rpcClient->eth_getLogs( req ) ),
+        jsonrpc::JsonRpcException,
+        []( const jsonrpc::JsonRpcException& ex ) {
+            return ex.GetCode() == -32005 && std::string( ex.GetMessage() ).find( "Block range limit exceeded" ) !=
+                   std::string::npos;
+        } );
 
     // 4 filter
     string filterId = fixture.rpcClient->eth_newFilter( req );
-    BOOST_REQUIRE_THROW(
-        Json::Value res = fixture.rpcClient->eth_getFilterLogs( filterId ), std::exception );
+
     BOOST_REQUIRE_NO_THROW( Json::Value res = fixture.rpcClient->eth_getFilterChanges( filterId ) );
 
     req["toBlock"] = 2;
@@ -2815,6 +2822,82 @@ fallback() external payable {
     BOOST_REQUIRE_NO_THROW(
         Json::Value res2 = fixture.rpcClient->eth_getFilterChanges( filterId ) );
 
+    req["toBlock"] = 50;
+    filterId = fixture.rpcClient->eth_newFilter( req );
+    BOOST_CHECK_EXCEPTION(
+        ( fixture.rpcClient->eth_getFilterLogs( filterId ) ),
+        jsonrpc::JsonRpcException,
+        []( const jsonrpc::JsonRpcException& ex ) {
+            std::cout << ex.GetCode() << " " << ex.GetMessage() << std::endl;
+            return ex.GetCode() == -32005 && std::string( ex.GetMessage() ).find( "Block range limit exceeded" ) !=
+                   std::string::npos;
+        } );
+}
+
+BOOST_AUTO_TEST_CASE( getResponseLogCountLimit ) {
+    JsonRpcFixture fixture(
+        "", true, true, false, false, false, -1, { { "getResponseLogCountLimit", "201" } } );
+
+    dev::eth::simulateMining( *( fixture.client ), 1 );
+
+#ifndef FAIR
+    sleep( 10 );
+    Json::Value txRefill;
+    txRefill["to"] = "0xc868AF52a6549c773082A334E5AE232e0Ea3B513";
+    txRefill["from"] = toJS( fixture.coinbase.address() );
+    txRefill["gas"] = "100000";
+    txRefill["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txRefill["value"] = 100000000000000000;
+    string txHash = fixture.rpcClient->eth_sendTransaction( txRefill );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+#endif
+
+    string bytecode =
+        "6080604052348015600e575f80fd5b5060c080601a5f395ff3fe60806040525f5b6064811015604f577f907787"
+        "67414a5c844b9d35a8745f67697ee3b8c2c3f4feafe5d9a3e234a5a3654382604051603d9291906067565b6040"
+        "5180910390a18060010190506006565b005b5f819050919050565b6061816051565b82525050565b5f60408201"
+        "905060785f830185605a565b60836020830184605a565b939250505056fea264697066735822122040208e35f2"
+        "706dd92c17579466ab671c308efec51f558a755ea2cf81105ab22964736f6c63430008190033";
+
+    Json::Value create;
+    create["code"] = bytecode;
+    create["gas"] = "180000";
+    string deployHash = fixture.rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    Json::Value deployReceipt = fixture.rpcClient->eth_getTransactionReceipt( deployHash );
+    string contractAddress = deployReceipt["contractAddress"].asString();
+
+    Json::Value callTx;
+    callTx["from"] = toJS( fixture.coinbase.address() );
+    callTx["to"] = contractAddress;
+    callTx["gas"] = "999000";
+
+    for ( int i = 0; i < 5; ++i ) {
+        string h = fixture.rpcClient->eth_sendTransaction( callTx );
+        BOOST_REQUIRE( !h.empty() );
+        dev::eth::mineTransaction( *( fixture.client ), 1 );
+    }
+
+    Json::Value req;
+    req["fromBlock"] = 1;
+    req["topics"] = Json::Value( Json::arrayValue );
+    req["address"] = contractAddress;
+
+    req["toBlock"] = 5;
+    BOOST_REQUIRE_NO_THROW( Json::Value logs = fixture.rpcClient->eth_getLogs( req ) );
+
+    string overHash = fixture.rpcClient->eth_sendTransaction( callTx );
+    BOOST_REQUIRE( !overHash.empty() );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    req["toBlock"] = fixture.client->number();
+    BOOST_CHECK_EXCEPTION(
+        ( fixture.rpcClient->eth_getLogs( req ) ),
+        jsonrpc::JsonRpcException,
+        []( const jsonrpc::JsonRpcException& ex ) {
+            return ex.GetCode() == -32005 && std::string( ex.GetMessage() ).find( "Response log count limit exceeded" ) !=
+                   std::string::npos;
+        } );
 }
 
 // test blockHash parameter

@@ -217,7 +217,7 @@ void request_site::onEOMEthGetLogs() noexcept {
     rapidjson::Document request;
     skutils::result_of_http_request_rapid result;
     result.isBinary_ = false;
-    const int failedCode = -32000;
+    const int invalidInputCode = -32000;
     const string errId( "0xBADF00D" );
 
     try {
@@ -232,11 +232,12 @@ void request_site::onEOMEthGetLogs() noexcept {
             m_SSRQ->onRequestEthGetLogs( request, m_origin, m_ipVer, m_dstAddress_, m_dstPort );
     } catch ( const std::exception& ex ) {
         PG_LOG( m_strLogPrefix + "problem with body " + m_strBody + ", error info: " + ex.what() );
-        result = createRapidJsonError( failedCode, errId, ex.what() );
+        result = createRapidJsonError( invalidInputCode, errId, ex.what() );
     } catch ( ... ) {
         PG_LOG( m_strLogPrefix + "problem with body " + m_strBody +
                 ", error info: unknown exception in HTTP handler" );
-        result = createRapidJsonError( failedCode, errId, "unknown exception in HTTP handler" );
+        result =
+            createRapidJsonError( invalidInputCode, errId, "unknown exception in HTTP handler" );
     }
 
     sendRapidJsonResponse( result );
@@ -463,8 +464,6 @@ skutils::result_of_http_request_rapid server::onRequestEthGetLogs( const rapidjs
         m_h_getLogs( _joIn, _origin, _ipVer, _dstAddress, _dstPort );
     return rslt;
 }
-
-
 bool g_pbLogging = false;
 
 bool pg_logging_get() {
