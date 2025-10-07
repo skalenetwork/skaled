@@ -105,7 +105,7 @@ public:
     virtual skutils::result_of_http_request onRequest( const nlohmann::json& _joIn,
         const std::string& _origin, int _ipVer, const std::string& _dstAddress, int _dstPort ) = 0;
     virtual skutils::result_of_http_request_rapid onRequestEthGetLogs(
-        const rapidjson::Document& _joIn, const std::string& _origin, int _ipVer,
+        const rapidjson::Document& _request, const std::string& _origin, int _ipVer,
         const std::string& _dstAddress, int _dstPort ) = 0;
 };  /// class server_side_request_handler
 

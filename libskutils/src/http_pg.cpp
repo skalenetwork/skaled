@@ -458,10 +458,11 @@ skutils::result_of_http_request server::onRequest( const nlohmann::json& _joIn,
     return rslt;
 }
 
-skutils::result_of_http_request_rapid server::onRequestEthGetLogs( const rapidjson::Document& _joIn,
-    const string& _origin, int _ipVer, const string& _dstAddress, int _dstPort ) {
+skutils::result_of_http_request_rapid server::onRequestEthGetLogs(
+    const rapidjson::Document& _request, const string& _origin, int _ipVer,
+    const string& _dstAddress, int _dstPort ) {
     skutils::result_of_http_request_rapid rslt =
-        m_h_getLogs( _joIn, _origin, _ipVer, _dstAddress, _dstPort );
+        m_h_getLogs( _request, _origin, _ipVer, _dstAddress, _dstPort );
     return rslt;
 }
 bool g_pbLogging = false;
