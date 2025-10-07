@@ -380,7 +380,7 @@ public:
     //        response = this->eth_getFilterLogsEx( request[0u].asString() );
     //    }
     inline virtual void eth_getLogsI( const Json::Value& request, Json::Value& response ) {
-        response = this->eth_getLogsAsJson( request[0u].asString() );
+        response = this->eth_getLogs( request[0u] );
     }
     //    inline virtual void eth_getLogsExI( const Json::Value& request, Json::Value& response ) {
     //        response = this->eth_getLogsEx( request[0u] );
@@ -512,7 +512,7 @@ public:
     virtual Json::Value eth_getFilterChangesEx( const std::string& param1 ) = 0;
     //    virtual Json::Value eth_getFilterLogsEx( const std::string& param1 ) = 0;
     virtual Json::Value eth_getFilterLogsAsJson( std::string const& _filterId ) = 0;
-    virtual Json::Value eth_getLogsAsJson( const Json::Value& param1 ) = 0;
+    virtual Json::Value eth_getLogs( const Json::Value& param1 ) = 0;
     //    virtual Json::Value eth_getLogsEx( const Json::Value& param1 ) = 0;
     virtual Json::Value eth_getWork() = 0;
     virtual bool eth_submitWork(

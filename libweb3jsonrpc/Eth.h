@@ -198,8 +198,8 @@ public:
     virtual Json::Value eth_getFilterChanges( std::string const& _filterId ) override;
     virtual Json::Value eth_getFilterChangesEx( std::string const& _filterId ) override;
     //    virtual Json::Value eth_getFilterLogsEx( std::string const& _filterId ) override;
-    virtual Json::Value eth_getLogsAsJson( Json::Value const& _json ) override;
-    rapidjson::Document eth_getLogsAsRapid(
+    virtual Json::Value eth_getLogs( Json::Value const& _json ) override;
+    rapidjson::Document eth_getLogs(
         rapidjson::Value const& _json, rapidjson::Document::AllocatorType& _responseAllocator );
     // Adapter functions used for unit tests to use old json interface
     // Should be removed once everything is moved to rapidjson

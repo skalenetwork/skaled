@@ -888,7 +888,7 @@ Json::Value Eth::eth_getFilterChangesEx( string const& _filterId ) {
     }
 }
 
-rapidjson::Document Eth::eth_getLogsAsRapid(
+rapidjson::Document Eth::eth_getLogs(
     rapidjson::Value const& _json, rapidjson::Document::AllocatorType& _responseAllocator ) {
     try {
         rapidjson::StringBuffer buffer;
@@ -949,7 +949,7 @@ rapidjson::Document Eth::eth_getFilterLogsAsRapid(
 }
 
 
-Json::Value Eth::eth_getLogsAsJson( Json::Value const& _json ) {
+Json::Value Eth::eth_getLogs( Json::Value const& _json ) {
     rapidjson::Document filterDoc;
     {
         Json::StreamWriterBuilder wbuilder;
@@ -960,7 +960,7 @@ Json::Value Eth::eth_getLogsAsJson( Json::Value const& _json ) {
                 JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS, "Invalid filter JSON" ) );
         }
     }
-    rapidjson::Document rapidResult = eth_getLogsAsRapid( filterDoc, filterDoc.GetAllocator() );
+    rapidjson::Document rapidResult = eth_getLogs( filterDoc, filterDoc.GetAllocator() );
     return dev::eth::rapidDocumentToJson( rapidResult, "logs" );
 }
 

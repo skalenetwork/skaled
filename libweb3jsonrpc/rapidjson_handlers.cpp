@@ -280,7 +280,7 @@ void inject_rapidjson_handlers( SkaleServerOverride::opts_t& serverOpts, dev::rp
             const auto& filterObj = joRequest["params"].GetArray()[0];
             rapidjson::Document::AllocatorType& allocator = joResponse.GetAllocator();
 
-            rapidjson::Document result = pEthFace->eth_getLogsAsRapid( filterObj, allocator );
+            rapidjson::Document result = pEthFace->eth_getLogs( filterObj, allocator );
             joResponse.EraseMember( "result" );
             joResponse.AddMember( "result", result.Move(), allocator );
 
