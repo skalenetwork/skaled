@@ -240,52 +240,65 @@ LocalisedLogEntries ClientBase::logs( LogFilter const& _f ) const {
 
 void ClientBase::appendLogsFromBlock( LogFilter const& _f, h256 const& _blockHash,
     BlockPolarity _polarity, LocalisedLogEntries& io_logs ) const {
-    auto receipts = bc().receipts( _blockHash ).receipts;
-    unsigned logIndex = 0;
-    int64_t logCountLimit = bc().chainParams().getResponseLogCountLimit();
+    auto receiptsBundle = bc().receipts( _blockHash );
+    const auto& receipts = receiptsBundle.receipts;
     const auto& hashes = bc().transactionHashes( _blockHash );
+    auto blockNumber = ( BlockNumber ) bc().number( _blockHash );
+
+    unsigned logIndex = 0;
+    const int64_t logCountLimit = bc().chainParams().getResponseLogCountLimit();
+    const bool limitEnabled = logCountLimit != -1;
+
     for ( size_t i = 0; i < receipts.size(); i++ ) {
         const TransactionReceipt& receipt = receipts[i];
         const h256& th = hashes[i];
+
         if ( _f.isRangeFilter() ) {
             for ( const auto& e : receipt.log() ) {
-                io_logs.emplace_back( LocalisedLogEntry( e, _blockHash,
-                    ( BlockNumber ) bc().number( _blockHash ), th, i, logIndex++, _polarity ) );
-                if ( logCountLimit != -1 && io_logs.size() > logCountLimit ) {
+                if ( limitEnabled && io_logs.size() + 1 > logCountLimit )
                     BOOST_THROW_EXCEPTION( LogCountLimitExceeded() );
-                }
+
+                io_logs.emplace_back(
+                    LocalisedLogEntry( e, _blockHash, blockNumber, th, i, logIndex++, _polarity ) );
             }
             continue;
         }
 
-        if ( _f.matches( receipt.bloom() ) )
+        if ( _f.matches( receipt.bloom() ) ) {
+            const auto& filterAddresses = _f.getAddresses();
+            const auto& filterTopicsArray = _f.getTopics();
+
             for ( const auto& e : receipt.log() ) {
-                const auto& addresses = _f.getAddresses();
-                if ( addresses.empty() || std::find( addresses.begin(), addresses.end(),
-                                              e.address ) != addresses.end() ) {
-                    bool isGood = true;
-                    for ( unsigned j = 0; j < 4; ++j ) {
-                        auto topics = _f.getTopics()[j];
-                        if ( !topics.empty() &&
-                             ( e.topics.size() < j || ( std::find( topics.begin(), topics.end(),
-                                                            e.topics[j] ) == topics.end() ) ) ) {
-                            isGood = false;
-                        }
-                    }
-                    if ( isGood ) {
-                        io_logs.emplace_back( LocalisedLogEntry( e, _blockHash,
-                            ( BlockNumber ) bc().number( _blockHash ), th, i, logIndex++,
-                            _polarity ) );
-                        if ( logCountLimit != -1 && io_logs.size() > logCountLimit ) {
-                            BOOST_THROW_EXCEPTION( LogCountLimitExceeded() );
-                        }
-                    } else
-                        ++logIndex;
-                } else
+                if ( !filterAddresses.empty() &&
+                     std::find( filterAddresses.begin(), filterAddresses.end(), e.address ) ==
+                         filterAddresses.end() ) {
                     ++logIndex;
+                    continue;
+                }
+
+                bool isGood = true;
+                for ( unsigned j = 0; j < 4 && isGood; ++j ) {
+                    const auto& topics = filterTopicsArray[j];
+                    if ( !topics.empty() &&
+                         ( e.topics.size() <= j || std::find( topics.begin(), topics.end(),
+                                                       e.topics[j] ) == topics.end() ) ) {
+                        isGood = false;
+                    }
+                }
+
+                if ( isGood ) {
+                    if ( limitEnabled && io_logs.size() + 1 > logCountLimit )
+                        BOOST_THROW_EXCEPTION( LogCountLimitExceeded() );
+
+                    io_logs.emplace_back( LocalisedLogEntry(
+                        e, _blockHash, blockNumber, th, i, logIndex++, _polarity ) );
+                } else {
+                    ++logIndex;
+                }
             }
-        else
+        } else {
             logIndex += receipt.log().size();
+        }
     }
 }
 
