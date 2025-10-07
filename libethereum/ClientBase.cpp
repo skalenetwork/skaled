@@ -221,7 +221,7 @@ LocalisedLogEntries ClientBase::logs( LogFilter const& _f ) const {
         for ( unsigned i = end; i <= begin; i++ )
             matchingBlocks.insert( i );
     for ( auto n : matchingBlocks )
-        prependLogsFromBlock( _f, bc().numberHash( n ), BlockPolarity::Live, ret );
+        appendLogsFromBlock( _f, bc().numberHash( n ), BlockPolarity::Live, ret );
 
     if ( addPending ) {
         // Handle pending transactions differently as they're not on the block chain.
@@ -238,7 +238,7 @@ LocalisedLogEntries ClientBase::logs( LogFilter const& _f ) const {
     return ret;
 }
 
-void ClientBase::prependLogsFromBlock( LogFilter const& _f, h256 const& _blockHash,
+void ClientBase::appendLogsFromBlock( LogFilter const& _f, h256 const& _blockHash,
     BlockPolarity _polarity, LocalisedLogEntries& io_logs ) const {
     auto receipts = bc().receipts( _blockHash ).receipts;
     unsigned logIndex = 0;
@@ -251,6 +251,9 @@ void ClientBase::prependLogsFromBlock( LogFilter const& _f, h256 const& _blockHa
             for ( const auto& e : receipt.log() ) {
                 io_logs.emplace_back( LocalisedLogEntry( e, _blockHash,
                     ( BlockNumber ) bc().number( _blockHash ), th, i, logIndex++, _polarity ) );
+                if ( logCountLimit != -1 && io_logs.size() > logCountLimit ) {
+                    BOOST_THROW_EXCEPTION( LogCountLimitExceeded() );
+                }
             }
             continue;
         }
