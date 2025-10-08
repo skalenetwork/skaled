@@ -472,8 +472,6 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
 
     this->resetCurrent( _timestamp );
 
-    m_state = m_state.createStateCopyAndClearCaches();  // mainly for debugging
-
     TransactionReceipts saved_receipts =
 
         m_receipts = m_state.safePartialTransactionReceipts( info().number() );
