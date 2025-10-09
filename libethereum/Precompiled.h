@@ -85,7 +85,7 @@ private:
     std::function< std::pair< bool, bytes >( bytesConstRef _in, const u256& _bn ) > proxy;
 #else
     std::function< std::pair< bool, bytes >(
-        bytesConstRef _in, , const u256& _bn, skale::OverlayFS* _overlayFS ) >
+        bytesConstRef _in, const u256& _bn, skale::OverlayFS* _overlayFS ) >
         proxy;
 #endif
 };

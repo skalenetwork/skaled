@@ -76,7 +76,7 @@ public:
     }
 #else
     std::pair< bool, bytes > execute(
-        bytesConstRef _in, cosnt u256& _bn, skale::OverlayFS* _overlayFS = nullptr ) const {
+        bytesConstRef _in, const u256& _bn, skale::OverlayFS* _overlayFS = nullptr ) const {
         return m_execute( _in, _bn, _overlayFS );
     }
 #endif
