@@ -568,7 +568,7 @@ void State::commit( dev::eth::CommitBehaviour _commitBehaviour ) {
                         const u256& storageAddress = storageAddressValuePair.first;
                         const u256& value = storageAddressValuePair.second;
 
-                        LOG( m_loggerDebug ) << "STORAGE_COMMIT: account=" << address.hex()
+                        LOG( m_loggerDebug ) << "STORAGE_COMMIT_STATE: account=" << address.hex()
                                   << " key=" << storageAddress.str() 
                                   << " value=" << value.str()
                                   << " threadId=" << std::this_thread::get_id();
@@ -978,6 +978,7 @@ void State::clearCaches() {
 }
 
 void State::clearAllCaches() {
+    LOG( m_loggerDebug ) << "ClearAllCaches: threadId = " << std::this_thread::get_id();
     m_changeLog.clear();
     m_cache.clear();
     m_unchangedCacheEntries.clear();
