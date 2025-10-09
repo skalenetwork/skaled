@@ -1414,7 +1414,7 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
     auto& skaleHost = fixture.skaleHost;
 
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getBlockRandom" );
-    auto res = exec( bytesConstRef() );
+    auto res = exec( bytesConstRef(), 1 );
     u256 blockRandom = skaleHost->getBlockRandom();
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( res.second == toBigEndian( static_cast< u256 >( blockRandom ) ) );

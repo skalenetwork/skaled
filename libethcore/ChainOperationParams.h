@@ -71,11 +71,13 @@ public:
         return m_cost( _in, _chainParams, _blockNumber );
     }
 #ifdef FAIR
-    std::pair< bool, bytes > execute( bytesConstRef _in ) const { return m_execute( _in ); }
+    std::pair< bool, bytes > execute( bytesConstRef _in, const u256& _bn ) const {
+        return m_execute( _in, _bn );
+    }
 #else
     std::pair< bool, bytes > execute(
-        bytesConstRef _in, skale::OverlayFS* _overlayFS = nullptr ) const {
-        return m_execute( _in, _overlayFS );
+        bytesConstRef _in, cosnt u256& _bn, skale::OverlayFS* _overlayFS = nullptr ) const {
+        return m_execute( _in, _bn, _overlayFS );
     }
 #endif
 
@@ -340,13 +342,13 @@ public:
 
 #ifdef FAIR
     std::pair< bool, bytes > executePrecompiled(
-        Address const& _a, bytesConstRef _in, u256 const& ) const {
-        return precompiled.at( _a ).execute( _in );
+        Address const& _a, bytesConstRef _in, u256 const& _bn ) const {
+        return precompiled.at( _a ).execute( _in, _bn );
     }
 #else
-    std::pair< bool, bytes > executePrecompiled( Address const& _a, bytesConstRef _in, u256 const&,
-        skale::OverlayFS* _overlayFS = nullptr ) const {
-        return precompiled.at( _a ).execute( _in, _overlayFS );
+    std::pair< bool, bytes > executePrecompiled( Address const& _a, bytesConstRef _in,
+        u256 const& _bn, skale::OverlayFS* _overlayFS = nullptr ) const {
+        return precompiled.at( _a ).execute( _in, _bn, _overlayFS );
     }
 #endif
 
