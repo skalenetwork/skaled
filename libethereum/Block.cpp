@@ -465,8 +465,7 @@ inline void Block::doPartialCatchupTestIfRequested( unsigned i ) {
     }
 }
 
-
-void Block::cleanupPartialTransactionReceiptsForPreviousBlock( BlockChain const& _bc ) {
+void Block::cleanupPartialTransactionReceiptsForPreviousBlock() {
     if ( KeepPartialReceiptsUntilNextBlockPatch::isEnabledWhen( m_previousBlock.timestamp() ) &&
          m_previousBlock.number() > 0 ) {
         m_state.safeRemovePartialTransactionReceiptsForBlock( m_previousBlock.number() );
@@ -510,7 +509,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
         }
     }
 
-    cleanupPartialTransactionReceiptsForPreviousBlock( _bc );
+    cleanupPartialTransactionReceiptsForPreviousBlock();
 
     for ( unsigned i = 0; i < _transactions.size(); ++i ) {
         Transaction const& tr = _transactions[i];
