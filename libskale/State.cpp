@@ -336,6 +336,12 @@ void State::safeRemoveAllPartialTransactionReceipts() {
     }
 }
 
+void State::safeRemovePartialTransactionReceiptsForBlock( dev::eth::BlockNumber _blockNumber ) {
+    if ( m_db_ptr ) {
+        m_db_ptr->removePartialTransactionReceiptsForBlock( _blockNumber );
+    }
+}
+
 
 void State::safeRemoveLegacyPartialTransactionReceipts() {
     if ( m_db_ptr ) {

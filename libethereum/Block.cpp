@@ -460,6 +460,14 @@ inline void Block::doPartialCatchupTestIfRequested( unsigned i ) {
     }
 }
 
+
+void Block::cleanupPartialTransactionReceiptsForPreviousBlock( BlockChain const& _bc ) {
+    if ( KeepPartialReceiptsUntilNextBlockPatch::isEnabledWhen( m_previousBlock.timestamp() ) &&
+         m_previousBlock.number() > 0 ) {
+        m_state.safeRemovePartialTransactionReceiptsForBlock( m_previousBlock.number() );
+    }
+}
+
 tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _bc,
     const Transactions& _transactions, uint64_t _timestamp, u256 _gasPrice ) {
     if ( isSealed() )
@@ -497,6 +505,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
         }
     }
 
+    cleanupPartialTransactionReceiptsForPreviousBlock( _bc );
 
     for ( unsigned i = 0; i < _transactions.size(); ++i ) {
         Transaction const& tr = _transactions[i];
@@ -574,7 +583,9 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
 #endif
 
     // we got to the end of the block so we do not need partial transaction receipts anymore
-    m_state.safeRemoveAllPartialTransactionReceipts();
+    if ( !KeepPartialReceiptsUntilNextBlockPatch::isEnabledWhen( m_previousBlock.timestamp() ) ) {
+        m_state.safeRemoveAllPartialTransactionReceipts();
+    }
 
     // since we committed changes corresponding to a particular block
     // we need to create a new readonly snap
