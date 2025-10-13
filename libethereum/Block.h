@@ -360,6 +360,7 @@ private:
 
     /// Creates and updates the special contract for storing block hashes according to EIP96
     void updateBlockhashContract();
+    void cleanupPartialTransactionReceiptsForPreviousBlock( BlockChain const& _bc );
 
     State m_state;                ///< Our state.
     Transactions m_transactions;  ///< The current list of transactions that we've included in the

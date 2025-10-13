@@ -256,6 +256,7 @@ public:
     dev::eth::TransactionReceipts safeLegacyPartialTransactionReceipts();
 
     void safeRemoveAllPartialTransactionReceipts();
+    void safeRemovePartialTransactionReceiptsForBlock( dev::eth::BlockNumber _blockNumber );
     void safeCommitZeroBlockLegacyPartialTransactionReceipts();
 
 

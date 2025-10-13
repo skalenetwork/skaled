@@ -2158,6 +2158,82 @@ BOOST_AUTO_TEST_CASE( simplePoWTransaction ) {
 }
 #endif
 
+BOOST_AUTO_TEST_CASE( keepPartialReceiptsUntilNextBlock ) {
+    std::string _config = c_genesisConfigString;
+    Json::Value ret;
+    Json::Reader().parse( _config, ret );
+
+    std::string chainID = "0x97";
+    ret["params"]["chainID"] = chainID;
+
+    time_t keepPatchActivationTs = time( nullptr ) + 10;
+    ret["skaleConfig"]["sChain"]["keepPartialReceiptsUntilNextBlockPatchTimestamp"] =
+        keepPatchActivationTs;
+
+    Json::FastWriter fastWriter;
+    std::string config = fastWriter.write( ret );
+    JsonRpcFixture fixture( config );
+
+    dev::eth::simulateMining( *( fixture.client ), 20 );
+
+    string senderAddress = toJS( fixture.coinbase.address() );
+
+    Json::Value transactionCallObject;
+    transactionCallObject["from"] = toJS( senderAddress );
+    transactionCallObject["to"] = "0x692a70d2e424a56d2c6c27aa97d1a86395877b3a";
+    transactionCallObject["data"] = "0x28b5e32b";
+
+    auto sendAndMine = [&]( dev::eth::BlockNumber& outBlockNumber ) {
+        TransactionSkeleton ts = toTransactionSkeleton( transactionCallObject );
+        ts = fixture.client->populateTransactionWithDefaults( ts );
+        pair< bool, Secret > ar = fixture.accountHolder->authenticate( ts );
+        Transaction tx( ts, ar.second );
+        auto txHash = fixture.rpcClient->eth_sendRawTransaction( toJS( tx.toBytes() ) );
+        dev::eth::mineTransaction( *( fixture.client ), 1 );
+        auto receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+        outBlockNumber = jsToInt( receipt["blockNumber"].asString() );
+    };
+
+    dev::eth::BlockNumber preActivationBlockNumber = 0;
+    sendAndMine( preActivationBlockNumber );
+    {
+        State state( fixture.client->state() );
+        BOOST_REQUIRE_EQUAL(
+            state.safePartialTransactionReceipts( preActivationBlockNumber ).size(), 0 );
+    }
+
+    time_t nowTs = time( nullptr );
+    if ( nowTs < keepPatchActivationTs ) {
+        sleep( keepPatchActivationTs - nowTs + 1 );
+    }
+
+    dev::eth::BlockNumber firstPostActivationBlockNumber = 0;
+    sendAndMine( firstPostActivationBlockNumber );
+    {
+        State state( fixture.client->state() );
+        BOOST_REQUIRE_EQUAL(
+            state.safePartialTransactionReceipts( firstPostActivationBlockNumber ).size(), 0 );
+    }
+
+    dev::eth::BlockNumber secondPostActivationBlockNumber = 0;
+    sendAndMine( secondPostActivationBlockNumber );
+    {
+        State state( fixture.client->state() );
+        BOOST_REQUIRE_EQUAL(
+            state.safePartialTransactionReceipts( secondPostActivationBlockNumber ).size(), 1 );
+    }
+
+    dev::eth::BlockNumber thirdPostActivationBlockNumber = 0;
+    sendAndMine( thirdPostActivationBlockNumber );
+    {
+        State state( fixture.client->state() );
+        BOOST_REQUIRE_EQUAL(
+            state.safePartialTransactionReceipts( secondPostActivationBlockNumber ).size(), 0 );
+        BOOST_REQUIRE_EQUAL(
+            state.safePartialTransactionReceipts( thirdPostActivationBlockNumber ).size(), 1 );
+    }
+}
+
 #ifndef FAIR
 BOOST_AUTO_TEST_CASE( clearPartialReceipts ) {
     // Prepare fixture
