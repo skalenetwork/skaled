@@ -237,11 +237,12 @@ void LevelDB::insert( Slice _key, Slice _value ) {
 
 void LevelDB::kill( Slice _key ) {
     leveldb::Slice const key( _key.data(), _key.size() );
-    leveldb::Status status;
-    {
-        SharedDBGuard lock( *this );  // protect so db is not reopened during Delete() call
-        status = m_db->Delete( m_writeOptions, key );
-    }
+//    leveldb::Status status;
+//    {
+//        SharedDBGuard lock( *this );  // protect so db is not reopened during Delete() call
+//        status = m_db->Delete( m_writeOptions, key );
+//    }
+    auto const status = m_db->Delete( m_writeOptions, key );
     // At this point the key is not actually deleted. It will be deleted when the batch
     // is committed
     g_keysToBeDeletedStats++;

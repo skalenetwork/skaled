@@ -298,6 +298,16 @@ void OverlayDB::commit() {
                 LOG( m_loggerWarning )
                     << "Sleeping for" << ( commitTry + 1 ) << "seconds, then retrying.";
                 std::this_thread::sleep_for( std::chrono::seconds( commitTry + 1 ) );
+            } catch ( ... ) {
+                if ( commitTry == 9 ) {
+                    LOG( m_loggerWarning ) << "Fail(1) writing to state database. Bombing out. ";
+                    LOG( m_loggerWarning ) << DETAILED_ERROR;
+                    exit( -1 );
+                }
+                cerror << "Unknown error(2) writing to state database (during DB commit)";
+                LOG( m_loggerWarning )
+                    << "Sleeping for" << ( commitTry + 1 ) << "seconds, then retrying.";
+                std::this_thread::sleep_for( std::chrono::seconds( commitTry + 1 ) );
             }
         }
 #if DEV_GUARDED_DB
