@@ -1718,6 +1718,30 @@ void SkaleServerOverride::logTraceServerTraffic( bool isRX, dev::Logger logger, 
                   << strPayload;
 }
 
+void SkaleServerOverride::logTraceServerTrafficEthGetLogs( bool isRX, int ipVer,
+    const std::string& origin, const std::string& dstAddress, uint16_t dstPort,
+    const std::string& methodName, const rapidjson::Document& payload, bool isRequest ) {
+    skutils::url u( origin );
+    string schemeUC = skutils::tools::to_upper( skutils::tools::trim_copy( u.scheme() ) );
+    int serverIndex = 0;
+    e_server_mode_t esm = implGuessProxygenRequestESM( dstAddress, dstPort );
+
+    std::unique_ptr< dev::Logger > logger;
+    if ( !methodName.empty() ) {
+        logger = getLoggerFromMethodTraceVerbosity( methodName );
+    }
+
+    if ( logger ) {
+        rapidjson::StringBuffer buffer;
+        rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
+        payload.Accept( writer );
+        string strPayload = buffer.GetString();
+        string strFormattedPayload = implPreformatTrafficJsonMessage( strPayload, isRequest );
+        logTraceServerTraffic( isRX, *logger, ipVer, schemeUC.c_str(), serverIndex, esm,
+            origin.c_str(), strFormattedPayload );
+    }
+}
+
 static void stat_check_port_availability_for_server_to_start_listen( int ipVer, const char* strAddr,
     int nPort, e_server_mode_t esm, const char* strProtocolName, int nServerIndex,
     SkaleServerOverride* pSO ) {
@@ -2273,6 +2297,15 @@ skutils::result_of_http_request_rapid SkaleServerOverride::handleProxygenHttpEth
     uint16_t dstPort ) {
     if ( isShutdownMode() )
         throw std::runtime_error( "query was cancelled due to server shutdown mode" );
+
+    string methodName;
+    if ( request.HasMember( "method" ) && request["method"].IsString() ) {
+        methodName = request["method"].GetString();
+    }
+
+    logTraceServerTrafficEthGetLogs(
+        true, ipVer, origin, dstAddress, dstPort, methodName, request, true );
+
     skutils::result_of_http_request_rapid result;
     result.isBinary_ = false;
     result.out_.SetObject();
@@ -2291,7 +2324,6 @@ skutils::result_of_http_request_rapid SkaleServerOverride::handleProxygenHttpEth
         rapidjson::Document response;
         response.SetObject();
 
-        string methodName = request["method"].GetString();
         if ( methodName == "eth_getFilterLogs" ) {
             eth_getFilterLogs( origin, request, response );
         } else {
@@ -2315,6 +2347,9 @@ skutils::result_of_http_request_rapid SkaleServerOverride::handleProxygenHttpEth
         SkaleServerOverride::addRapidJsonError(
             result.out_, internalErrorCode, "unknown exception" );
     }
+
+    logTraceServerTrafficEthGetLogs(
+        false, ipVer, origin, dstAddress, dstPort, methodName, result.out_, false );
 
     return result;
 }

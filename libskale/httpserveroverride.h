@@ -489,6 +489,9 @@ public:
     void logTraceServerTraffic( bool isRX, dev::Logger verbosity, int ipVer,
         const char* strProtocol, int nServerIndex, e_server_mode_t esm, const char* strOrigin,
         const string& strPayload );
+    void logTraceServerTrafficEthGetLogs( bool isRX, int ipVer, const string& origin,
+        const string& dstAddress, uint16_t dstPort, const string& methodName,
+        const rapidjson::Document& payload, bool isRequest );
 
 private:
     std::map< string, jsonrpc::IClientConnectionHandler* > urlhandler;
