@@ -24,6 +24,8 @@
 #include "Log.h"
 #include <libdevcore/microprofile.h>
 
+#include <thread>
+
 using std::string, std::runtime_error;
 
 namespace dev::db {
