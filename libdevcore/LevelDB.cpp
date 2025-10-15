@@ -237,6 +237,10 @@ void LevelDB::insert( Slice _key, Slice _value ) {
 
 void LevelDB::kill( Slice _key ) {
     leveldb::Slice const key( _key.data(), _key.size() );
+    cnote << "Scheduling key for deletion. Key data: " << std::string( _key.data(), _key.size() );
+    cnote << "DB Path: " << m_path;
+    cnote << "Thread ID: " << std::this_thread::get_id();
+    cnote << "Reopen period ms: " << m_reopenPeriodMs;
 //    leveldb::Status status;
 //    {
 //        SharedDBGuard lock( *this );  // protect so db is not reopened during Delete() call
