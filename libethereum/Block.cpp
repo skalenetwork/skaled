@@ -463,7 +463,14 @@ inline void Block::doPartialCatchupTestIfRequested( unsigned i ) {
 void Block::cleanupPartialTransactionReceiptsForPreviousBlock() {
     if ( KeepPartialReceiptsUntilNextBlockPatch::isEnabledWhen( m_previousBlock.timestamp() ) &&
          m_previousBlock.number() > 0 ) {
+        LOG( m_loggerDebug ) << "Removing partial transaction receipts for block "
+                             << m_previousBlock.number();
         m_state.safeRemovePartialTransactionReceiptsForBlock( m_previousBlock.number() );
+    }
+    // do a simple sanity check from time to time
+    static uint64_t sanityCheckCounter = 0;
+    if ( sanityCheckCounter++ % 10000 == 0 ) {
+        LDB_CHECK( m_state.safePartialTransactionReceipts( m_previousBlock.number() ).empty() );
     }
 }
 
@@ -590,12 +597,6 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
     // we need to create a new readonly snap
     LDB_CHECK( m_state.getOriginalDb() );
     m_state.getOriginalDb()->createBlockSnap( info().number() );
-
-    // do a simple sanity check from time to time
-    static uint64_t sanityCheckCounter = 0;
-    if ( sanityCheckCounter++ % 10000 == 0 ) {
-        LDB_CHECK( m_state.safePartialTransactionReceipts( info().number() ).empty() );
-    }
 
     LDB_CHECK( receipts.size() >= countBad );
 
