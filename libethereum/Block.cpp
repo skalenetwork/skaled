@@ -552,8 +552,14 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
                 continue;
             }
 
+            Transaction tx = tr;
+            auto traceOptions = TraceOptions::make( Json::Value() );
+            auto tracer =
+                std::make_shared< AlethStandardTrace >( tx, m_currentBlock.author(), traceOptions );
+
             ExecutionResult res =
-                execute( _bc.lastBlockHashes(), tr, Permanence::Committed, OnOpFunc(), i );
+                execute( _bc.lastBlockHashes(), tr, Permanence::Committed, tracer->functionToExecuteOnEachOperation(), i );
+            tracer->finalizeAndPrintTrace( res, m_state.mutableHistoricState(), m_state.mutableHistoricState() );
 
             if ( !m_receipts.empty() &&
                  !ClearPartialReceiptsPatch::isEnabledWhen( m_previousBlock.timestamp() ) ) {
