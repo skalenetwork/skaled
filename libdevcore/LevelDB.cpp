@@ -243,6 +243,14 @@ void LevelDB::kill( Slice _key ) {
     cnote << "DB Path: " << m_path;
     cnote << "Thread ID: " << std::this_thread::get_id();
     cnote << "Reopen period ms: " << m_reopenPeriodMs;
+    void* callstack[128];
+    int frames = ::backtrace(callstack, 128);
+    char** strs = ::backtrace_symbols(callstack, frames);
+    cnote << "Backtrace for LevelDB::kill:";
+    for (int i = 0; i < frames; ++i) {
+        cnote << strs[i];
+    }
+    free(strs);
 //    leveldb::Status status;
 //    {
 //        SharedDBGuard lock( *this );  // protect so db is not reopened during Delete() call
