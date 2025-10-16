@@ -620,9 +620,11 @@ bool Client::isCommitteeRotationSoon() const {
         // there is no next group thus no rotation
         return false;
 
-    if ( getCommitteeStartTs( currentGroupIndex + 1 ) > bc().info().timestamp() &&
-         getCommitteeStartTs( currentGroupIndex + 1 ) - bc().info().timestamp() <
-             MIN_COMMITTEE_ROTATION_INTERVAL_SEC )
+    const int64_t nextCommitteeStartTs =
+        static_cast< int64_t >( getCommitteeStartTs( currentGroupIndex + 1 ) );
+    const int64_t currentTimestamp = bc().info().timestamp();
+    if ( nextCommitteeStartTs > currentTimestamp &&
+         nextCommitteeStartTs - currentTimestamp < MIN_COMMITTEE_ROTATION_INTERVAL_SEC )
         return true;
     return false;
 }
