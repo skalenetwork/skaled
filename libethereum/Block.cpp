@@ -560,6 +560,10 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
             ExecutionResult res =
                 execute( _bc.lastBlockHashes(), tr, Permanence::Committed, tracer->functionToExecuteOnEachOperation(), i );
             tracer->finalizeAndPrintTrace( res, m_state.mutableHistoricState(), m_state.mutableHistoricState() );
+            auto result = tracer->getJSONResult();
+            Json::FastWriter fastWriter;
+            std::string output = fastWriter.write(result);
+            LOG( m_loggerTrace ) << "Trace result: " << output;
 
             if ( !m_receipts.empty() &&
                  !ClearPartialReceiptsPatch::isEnabledWhen( m_previousBlock.timestamp() ) ) {
