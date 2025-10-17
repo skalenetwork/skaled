@@ -280,7 +280,7 @@ void LevelDB::commit( std::unique_ptr< WriteBatchFace > _batch ) {
     {
         SharedDBGuard lock( *this );  // protect so db is not reopened during Write() call
         BatchIteratorHandler handler;
-        status = batch->Iterate(&handler);
+        status = batchPtr->Iterate(&handler);
         checkStatus( status );
         status = m_db->Write( m_writeOptions, &batchPtr->writeBatch() );
     }
