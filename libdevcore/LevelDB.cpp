@@ -78,6 +78,19 @@ private:
     std::atomic< uint64_t > keysToBeDeletedCount;
 };
 
+class BatchIteratorHandler : public leveldb::WriteBatch::Handler {
+public:
+    void Put(const leveldb::Slice& key, const leveldb::Slice& value) override {
+        // Called for each insert operation
+        ctrace << "Insert: " << key.ToString() << " = " << value.ToString();
+    }
+    
+    void Delete(const leveldb::Slice& key) override {
+        // Called for each kill operation
+        ctrace << "Delete: " << key.ToString();
+    }
+};
+
 void LevelDBWriteBatch::insert( Slice _key, Slice _value ) {
     MICROPROFILE_SCOPEI( "LevelDBWriteBatch", "insert", MP_LAVENDERBLUSH );
     m_writeBatch.Put( toLDBSlice( _key ), toLDBSlice( _value ) );
@@ -239,23 +252,11 @@ void LevelDB::insert( Slice _key, Slice _value ) {
 
 void LevelDB::kill( Slice _key ) {
     leveldb::Slice const key( _key.data(), _key.size() );
-    cnote << "Scheduling key for deletion. Key data: " << std::string( _key.data(), _key.size() );
-    cnote << "DB Path: " << m_path;
-    cnote << "Thread ID: " << std::this_thread::get_id();
-    cnote << "Reopen period ms: " << m_reopenPeriodMs;
-    void* callstack[128];
-    int frames = ::backtrace(callstack, 128);
-    char** strs = ::backtrace_symbols(callstack, frames);
-    cnote << "Backtrace for LevelDB::kill:";
-    for (int i = 0; i < frames; ++i) {
-        cnote << strs[i];
-    }
-    free(strs);
-//    leveldb::Status status;
-//    {
-//        SharedDBGuard lock( *this );  // protect so db is not reopened during Delete() call
-//        status = m_db->Delete( m_writeOptions, key );
-//    }
+   leveldb::Status status;
+   {
+       SharedDBGuard lock( *this );  // protect so db is not reopened during Delete() call
+       status = m_db->Delete( m_writeOptions, key );
+   }
     auto const status = m_db->Delete( m_writeOptions, key );
     // At this point the key is not actually deleted. It will be deleted when the batch
     // is committed
@@ -279,6 +280,9 @@ void LevelDB::commit( std::unique_ptr< WriteBatchFace > _batch ) {
     leveldb::Status status;
     {
         SharedDBGuard lock( *this );  // protect so db is not reopened during Write() call
+        BatchIteratorHandler handler;
+        status = batch->Iterate(&handler);
+        checkStatus( status );
         status = m_db->Write( m_writeOptions, &batchPtr->writeBatch() );
     }
     // Commit happened. This means the keys actually got deleted in LevelDB. Increment key deletes
