@@ -553,7 +553,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
             }
 
             Transaction tx = tr;
-            auto traceOptions = TraceOptions::make( Json::Value() );
+            auto traceOptions = TraceOptions::make( Json::Value( Json::objectValue ) );
             auto tracer =
                 std::make_shared< AlethStandardTrace >( tx, m_currentBlock.author(), traceOptions );
 
