@@ -621,8 +621,7 @@ bool Client::isCommitteeRotationSoon() const {
         return false;
 
     const uint64_t nextCommitteeStartTs = getCommitteeStartTs( currentGroupIndex + 1 );
-    const uint64_t currentTimestamp =
-        static_cast< uint64_t >( bc().info().timestamp() > 0 ? bc().info().timestamp() : 0 );
+    const uint64_t currentTimestamp = static_cast< uint64_t >( bc().info().timestamp() );
 
     if ( nextCommitteeStartTs > currentTimestamp &&
          nextCommitteeStartTs - currentTimestamp < MIN_COMMITTEE_ROTATION_INTERVAL_SEC )
