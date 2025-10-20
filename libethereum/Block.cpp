@@ -552,18 +552,8 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
                 continue;
             }
 
-            Transaction tx = tr;
-            auto traceOptions = TraceOptions::make( Json::Value( Json::objectValue ) );
-            auto tracer =
-                std::make_shared< AlethStandardTrace >( tx, m_currentBlock.author(), traceOptions );
-
             ExecutionResult res =
-                execute( _bc.lastBlockHashes(), tr, Permanence::Committed, tracer->functionToExecuteOnEachOperation(), i );
-            tracer->finalizeAndPrintTrace( res, m_state.mutableHistoricState(), m_state.mutableHistoricState() );
-            auto result = tracer->getJSONResult();
-            Json::FastWriter fastWriter;
-            std::string output = fastWriter.write(result);
-            LOG( m_loggerTrace ) << "Trace result: " << output;
+                execute( _bc.lastBlockHashes(), tr, Permanence::Committed, OnOpFunc(), i );
 
             if ( !m_receipts.empty() &&
                  !ClearPartialReceiptsPatch::isEnabledWhen( m_previousBlock.timestamp() ) ) {
