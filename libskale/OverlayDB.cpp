@@ -162,7 +162,7 @@ void OverlayDB::removePartialTransactionReceiptsByPrefix(
         keys.push_back( keyStr );
         return true;
     } );
-    for ( auto key : keys ) {
+    for ( const auto& key : keys ) {
         m_db_face->kill( key );
     }
     m_db_face->commit( commitLabel );

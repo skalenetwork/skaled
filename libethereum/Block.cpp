@@ -466,7 +466,7 @@ inline void Block::doPartialCatchupTestIfRequested( unsigned i ) {
 }
 
 void Block::cleanupPartialTransactionReceiptsForPreviousBlock() {
-    if ( KeepPartialReceiptsUntilNextBlockPatch::isEnabledWhen( m_previousBlock.timestamp() ) &&
+    if ( KeepPartialReceiptsUntilNextBlockPatch::isEnabledInWorkingBlock() &&
          m_previousBlock.number() > 0 ) {
         LOG( m_loggerDebug ) << "Removing partial transaction receipts for block "
                              << m_previousBlock.number();
@@ -610,7 +610,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
 #endif
 
     // we got to the end of the block so we do not need partial transaction receipts anymore
-    if ( !KeepPartialReceiptsUntilNextBlockPatch::isEnabledWhen( m_previousBlock.timestamp() ) ) {
+    if ( !KeepPartialReceiptsUntilNextBlockPatch::isEnabledInWorkingBlock() ) {
         m_state.safeRemoveAllPartialTransactionReceipts();
     }
 
