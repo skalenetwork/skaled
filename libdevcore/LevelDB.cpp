@@ -83,15 +83,15 @@ class BatchIteratorHandler : public leveldb::WriteBatch::Handler {
 public:
     void Put(const leveldb::Slice& key, const leveldb::Slice& value) override {
         // Called for each insert operation
-        std::string keyHex = dev::toHex(key.data(), key.data() + key.size());
-        std::string valueHex = dev::toHex(value.data(), value.data() + value.size());
+        std::string keyHex = dev::toHex(key.data(), key.data() + key.size(), "0x");
+        std::string valueHex = dev::toHex(value.data(), value.data() + value.size(), "0x");
         ctrace << "Insert: key=" << keyHex << " (" << key.size() << " bytes)"
                << " value=" << valueHex << " (" << value.size() << " bytes)";
     }
     
     void Delete(const leveldb::Slice& key) override {
         // Called for each kill operation
-        std::string keyHex = dev::toHex(key.data(), key.data() + key.size());
+        std::string keyHex = dev::toHex(key.data(), key.data() + key.size(), "0x");
         ctrace << "Delete: key=" << keyHex << " (" << key.size() << " bytes)";
     }
 };
