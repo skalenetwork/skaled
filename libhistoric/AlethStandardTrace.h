@@ -33,6 +33,7 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 #include "libevm/Instruction.h"
 #include "libevm/LegacyVM.h"
 #include "libevm/VMFace.h"
+#include <libethereum/ExtVM.h>
 #include <cstdint>
 #include <memory>
 
@@ -158,7 +159,7 @@ private:
     // analyze instruction and record function calls, returns and storage value
     // accesses
     void analyzeInstructionAndRecordNeededInformation( uint64_t, Instruction& _inst,
-        uint64_t _gasRemaining, const ExtVMFace* _face, AlethExtVM& _ext, const LegacyVM* _vm );
+        uint64_t _gasRemaining, const ExtVMFace* _face, ExtVM& _ext, const LegacyVM* _vm );
 
     // get the currently executing smartcontract memory from EVM
     [[nodiscard]] static std::vector< std::uint8_t >
@@ -167,7 +168,7 @@ private:
     // this is called when the function call depth of the current instruction is different from the
     // previous instruction. This happens when a function is called or returned.
     void processFunctionCallOrReturnIfHappened(
-        const AlethExtVM& _ext, const LegacyVM* _vm, std::uint64_t _gasRemaining );
+        const ExtVM& _ext, const LegacyVM* _vm, std::uint64_t _gasRemaining );
 
 
     // print all supported traces. This can be used for QA
@@ -179,7 +180,7 @@ private:
     void printTrace(
         ExecutionResult& _er, const HistoricState& _statePre, const HistoricState& _statePost );
 
-    [[nodiscard]] vector< uint8_t > getInputData( const AlethExtVM& _ext ) const;
+    [[nodiscard]] vector< uint8_t > getInputData( const ExtVM& _ext ) const;
 
     void recordMinerFeePayment( HistoricState& _statePost );
 
@@ -231,7 +232,7 @@ private:
     std::map< uint64_t, shared_ptr< FunctionCallRecord > > m_callInstructionCounterToFunctionRecord;
 
     shared_ptr< OpExecutionRecord > createOpExecutionRecord( uint64_t _pc, Instruction& _inst,
-        const bigint& _gasOpGas, const bigint& _gasRemaining, const AlethExtVM& ext,
+        const bigint& _gasOpGas, const bigint& _gasRemaining, const ExtVM& ext,
         const LegacyVM* _vm );
 };
 }  // namespace dev::eth

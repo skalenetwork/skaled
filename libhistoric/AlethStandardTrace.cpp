@@ -32,7 +32,7 @@ TraceOptions eth::AlethStandardTrace::getOptions() const {
 }
 
 void AlethStandardTrace::analyzeInstructionAndRecordNeededInformation( uint64_t, Instruction& _inst,
-    uint64_t _gasRemaining, const ExtVMFace* _face, AlethExtVM& _ext, const LegacyVM* _vm ) {
+    uint64_t _gasRemaining, const ExtVMFace* _face, ExtVM& _ext, const LegacyVM* _vm ) {
     STATE_CHECK( _face )
     STATE_CHECK( _vm )
     STATE_CHECK( !m_isFinalized )
@@ -106,7 +106,7 @@ void AlethStandardTrace::analyzeInstructionAndRecordNeededInformation( uint64_t,
 }
 
 void AlethStandardTrace::processFunctionCallOrReturnIfHappened(
-    const AlethExtVM& _ext, const LegacyVM* _vm, uint64_t _gasRemaining ) {
+    const ExtVM& _ext, const LegacyVM* _vm, uint64_t _gasRemaining ) {
     STATE_CHECK( !m_isFinalized )
     STATE_CHECK( _vm )
 
@@ -128,7 +128,7 @@ void AlethStandardTrace::processFunctionCallOrReturnIfHappened(
     }
 }
 
-vector< uint8_t > AlethStandardTrace::getInputData( const AlethExtVM& _ext ) const {
+vector< uint8_t > AlethStandardTrace::getInputData( const ExtVM& _ext ) const {
     if ( getLastOpRecord()->m_op == Instruction::CREATE ||
          getLastOpRecord()->m_op == Instruction::CREATE2 ) {
         // we are in a constructor code, so input to the function is current
@@ -317,7 +317,7 @@ void AlethStandardTrace::recordInstructionIsExecuted( uint64_t _pc, Instruction 
     STATE_CHECK( !m_isFinalized )
 
     // remove const qualifier since we need to set tracing values in AlethExtVM
-    AlethExtVM& ext = ( AlethExtVM& ) ( *_voidExt );
+    ExtVM& ext = dynamic_cast< ExtVM& >( *const_cast< ExtVMFace* >( _voidExt ) );
     auto vm = dynamic_cast< LegacyVM const* >( _vm );
     if ( !vm ) {
         BOOST_THROW_EXCEPTION( std::runtime_error( std::string( "Null _vm in" ) + __FUNCTION__ ) );
@@ -334,7 +334,7 @@ void AlethStandardTrace::recordInstructionIsExecuted( uint64_t _pc, Instruction 
 }
 
 shared_ptr< OpExecutionRecord > AlethStandardTrace::createOpExecutionRecord( uint64_t _pc,
-    Instruction& _inst, const bigint& _gasOpGas, const bigint& _gasRemaining, const AlethExtVM& ext,
+    Instruction& _inst, const bigint& _gasOpGas, const bigint& _gasRemaining, const ExtVM& ext,
     const LegacyVM* _vm ) {
     STATE_CHECK( _vm )
 
