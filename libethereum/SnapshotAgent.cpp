@@ -15,7 +15,7 @@ SnapshotAgent::SnapshotAgent( int64_t _snapshotIntervalSec,
       m_debugTracer( _debugTracer ) {
     if ( m_snapshotIntervalSec > 0 ) {
         BOOST_LOG( m_loggerInfo ) << "Snapshots enabled, snapshotIntervalSec is: "
-                            << m_snapshotIntervalSec;
+                                  << m_snapshotIntervalSec;
     }
 }
 
@@ -73,16 +73,17 @@ void SnapshotAgent::init( unsigned _currentBlockNumber, int64_t _timestampOfBloc
     }
 
     BOOST_LOG( m_loggerInfo ) << "Latest snapshots init: " << latest_snapshots.first << " "
-                        << latest_snapshots.second << " -> "
-                        << this->last_snapshoted_block_with_hash;
+                              << latest_snapshots.second << " -> "
+                              << this->last_snapshoted_block_with_hash;
 
     BOOST_LOG( m_loggerInfo ) << "Init last snapshot creation time: "
-                        << this->last_snapshot_creation_time;
+                              << this->last_snapshot_creation_time;
 }
 
 void SnapshotAgent::finishHashComputingAndUpdateHashesIfNeeded( int64_t _timestamp ) {
     if ( m_snapshotIntervalSec > 0 && this->isTimeToDoSnapshot( _timestamp ) ) {
-        BOOST_LOG( m_loggerInfo ) << "Last snapshot creation time: " << this->last_snapshot_creation_time;
+        BOOST_LOG( m_loggerInfo ) << "Last snapshot creation time: "
+                                  << this->last_snapshot_creation_time;
 
         if ( m_snapshotHashComputing != nullptr && m_snapshotHashComputing->joinable() )
             m_snapshotHashComputing->join();
@@ -125,7 +126,8 @@ void SnapshotAgent::doSnapshotIfNeeded( unsigned _currentBlockNumber, int64_t _t
 
         this->last_snapshot_creation_time = _timestamp;
 
-        BOOST_LOG( m_loggerInfo ) << "New snapshot creation time: " << this->last_snapshot_creation_time;
+        BOOST_LOG( m_loggerInfo ) << "New snapshot creation time: "
+                                  << this->last_snapshot_creation_time;
     }
 
     // snapshots without hash can appear either from start, from downloading or from just
@@ -197,20 +199,21 @@ void SnapshotAgent::startHashComputingThread() {
             t2 = boost::chrono::high_resolution_clock::now();
             this->snapshot_hash_calculation_time_ms =
                 boost::chrono::duration_cast< boost::chrono::milliseconds >( t2 - t1 ).count();
-            BOOST_LOG( m_loggerInfo ) << "Computed hash for snapshot " << latest_snapshots.second << ": "
-                                << m_snapshotManager->getSnapshotHash( latest_snapshots.second );
+            BOOST_LOG( m_loggerInfo )
+                << "Computed hash for snapshot " << latest_snapshots.second << ": "
+                << m_snapshotManager->getSnapshotHash( latest_snapshots.second );
             m_debugTracer.tracepoint( "computeSnapshotHash_end" );
 
         } catch ( const std::exception& ex ) {
             BOOST_LOG( m_loggerError ) << "CRITICAL"
-                                 << " " << dev::nested_exception_what( ex )
-                                 << " in computeSnapshotHash(). Exiting...";
+                                       << " " << dev::nested_exception_what( ex )
+                                       << " in computeSnapshotHash(). Exiting...";
             BOOST_LOG( m_loggerError ) << "\n" << skutils::signal::generate_stack_trace() << "\n";
             ExitHandler::exitHandler( -1, ExitHandler::ec_compute_snapshot_error );
         } catch ( ... ) {
             BOOST_LOG( m_loggerError ) << "CRITICAL"
-                                 << " unknown exception in computeSnapshotHash(). "
-                                    "Exiting...";
+                                       << " unknown exception in computeSnapshotHash(). "
+                                          "Exiting...";
             BOOST_LOG( m_loggerError ) << "\n" << skutils::signal::generate_stack_trace() << "\n";
             ExitHandler::exitHandler( -1, ExitHandler::ec_compute_snapshot_error );
         }
@@ -230,6 +233,6 @@ void SnapshotAgent::doSnapshotAndComputeHash( unsigned _blockNumber ) {
 
     m_snapshotManager->computeSnapshotHash( _blockNumber );
     BOOST_LOG( m_loggerInfo ) << "Computed hash for snapshot " << _blockNumber << ": "
-                        << m_snapshotManager->getSnapshotHash( _blockNumber );
+                              << m_snapshotManager->getSnapshotHash( _blockNumber );
     m_debugTracer.tracepoint( "computeSnapshotHash_end" );
 }

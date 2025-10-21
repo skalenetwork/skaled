@@ -273,14 +273,16 @@ bool Executive::execute() {
 
 #ifdef FAIR
     // Pay...
-    BOOST_LOG( m_loggerTrace ) << "Paying " << formatBalance( m_gasCost ) << " from sender for gas ("
-                         << m_t.gas() << " gas at " << formatBalance( m_t.gasPrice() ) << ")";
+    BOOST_LOG( m_loggerTrace ) << "Paying " << formatBalance( m_gasCost )
+                               << " from sender for gas (" << m_t.gas() << " gas at "
+                               << formatBalance( m_t.gasPrice() ) << ")";
     m_s.subBalance( m_t.sender(), m_gasCost );
 #else
     if ( !m_t.hasExternalGas() ) {
         // Pay...
-        BOOST_LOG( m_loggerTrace ) << "Paying " << formatBalance( m_gasCost ) << " from sender for gas ("
-                             << m_t.gas() << " gas at " << formatBalance( m_t.gasPrice() ) << ")";
+        BOOST_LOG( m_loggerTrace )
+            << "Paying " << formatBalance( m_gasCost ) << " from sender for gas (" << m_t.gas()
+            << " gas at " << formatBalance( m_t.gasPrice() ) << ")";
         m_s.subBalance( m_t.sender(), m_gasCost );
     }
 #endif
@@ -488,11 +490,11 @@ OnOpFunc Executive::simpleTrace() {
         if ( vm )
             BOOST_LOG( traceLogger ) << dumpStackAndMemory( *vm );
         BOOST_LOG( traceLogger ) << dumpStorage( ext );
-        BOOST_LOG( traceLogger ) << " < " << dec << ext.depth << " : " << ext.myAddress << " : #" << steps
-                           << " : " << hex << setw( 4 ) << setfill( '0' ) << PC << " : "
-                           << instructionInfo( inst ).name << " : " << dec << gas << " : -" << dec
-                           << gasCost << " : " << newMemSize << "x32"
-                           << " >";
+        BOOST_LOG( traceLogger ) << " < " << dec << ext.depth << " : " << ext.myAddress << " : #"
+                                 << steps << " : " << hex << setw( 4 ) << setfill( '0' ) << PC
+                                 << " : " << instructionInfo( inst ).name << " : " << dec << gas
+                                 << " : -" << dec << gasCost << " : " << newMemSize << "x32"
+                                 << " >";
     };
 }
 

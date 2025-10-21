@@ -187,8 +187,9 @@ bool SnapshotHashAgent::voteForHash() {
                        "downloaded. Try to backup node manually using skale-node-cli.";
                 return false;
             } else {
-                BOOST_LOG( m_loggerInfo ) << "Common BLS signature was verified with common public key "
-                                       "from config.";
+                BOOST_LOG( m_loggerInfo )
+                    << "Common BLS signature was verified with common public key "
+                       "from config.";
                 this->commonPublicKey_ = commonPublicKeyFromConfig;
             }
         }
@@ -211,9 +212,9 @@ SnapshotHashAgent::askNodeForHash( const std::string& url, unsigned blockNumber 
     try {
         joSignatureResponse = skaleClient.skale_getSnapshotSignature( blockNumber );
     } catch ( jsonrpc::JsonRpcException& ex ) {
-        BOOST_LOG( m_loggerError ) << "WARNING "
-                             << "Error while trying to get snapshot signature from " << url << " : "
-                             << ex.what();
+        BOOST_LOG( m_loggerError )
+            << "WARNING "
+            << "Error while trying to get snapshot signature from " << url << " : " << ex.what();
         delete jsonRpcClient;
         return {};
     }
@@ -221,9 +222,9 @@ SnapshotHashAgent::askNodeForHash( const std::string& url, unsigned blockNumber 
     if ( !joSignatureResponse.get( "hash", 0 ) || !joSignatureResponse.get( "X", 0 ) ||
          !joSignatureResponse.get( "Y", 0 ) ) {
         BOOST_LOG( m_loggerError ) << "WARNING "
-                             << " Signature from " + url +
-                                    "-th node was not received during "
-                                    "getNodesToDownloadSnapshotFrom ";
+                                   << " Signature from " + url +
+                                          "-th node was not received during "
+                                          "getNodesToDownloadSnapshotFrom ";
         delete jsonRpcClient;
 
         return {};
@@ -341,15 +342,16 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
         try {
             result = this->voteForHash();
         } catch ( SnapshotHashAgentException& ex ) {
-            BOOST_LOG( m_loggerError ) << "Exception while voting for snapshot hash from other skaleds: "
-                                 << ex.what();
+            BOOST_LOG( m_loggerError )
+                << "Exception while voting for snapshot hash from other skaleds: " << ex.what();
         } catch ( std::exception& ex ) {
-            BOOST_LOG( m_loggerError ) << "Exception while voting for snapshot hash from other skaleds: "
-                                 << ex.what();
+            BOOST_LOG( m_loggerError )
+                << "Exception while voting for snapshot hash from other skaleds: " << ex.what();
         }  // catch
 
     if ( !result ) {
-        BOOST_LOG( m_loggerInfo ) << "Not enough nodes to choose snapshot hash for block " << blockNumber;
+        BOOST_LOG( m_loggerInfo ) << "Not enough nodes to choose snapshot hash for block "
+                                  << blockNumber;
         return {};
     }
 

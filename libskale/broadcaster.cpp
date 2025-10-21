@@ -55,7 +55,7 @@ void HttpBroadcaster::initClients( const dev::eth::ChainParams& _chainParams ) {
 std::string HttpBroadcaster::getHttpUrl( const dev::eth::sChainNode& node ) {
     std::string url =
         "http://" + node.ip + ":" + ( node.port + 3 ).str();  // HACK +0 +1 +2 are used by consensus
-    BOOST_LOG( m_loggerInfo ) << url;                               // todo
+    BOOST_LOG( m_loggerInfo ) << url;                         // todo
     return url;
 }
 
@@ -209,12 +209,16 @@ void ZmqBroadcaster::startService() {
                 }
 
             } catch ( const std::exception& ex ) {
-                BOOST_LOG( m_loggerError ) << "CRITICAL " << ex.what() << " (restarting ZmqBroadcaster)";
-                BOOST_LOG( m_loggerError ) << "\n" << skutils::signal::generate_stack_trace() << "\n";
+                BOOST_LOG( m_loggerError )
+                    << "CRITICAL " << ex.what() << " (restarting ZmqBroadcaster)";
+                BOOST_LOG( m_loggerError ) << "\n"
+                                           << skutils::signal::generate_stack_trace() << "\n";
                 sleep( 2 );
             } catch ( ... ) {
-                BOOST_LOG( m_loggerError ) << "CRITICAL unknown exception (restarting ZmqBroadcaster)";
-                BOOST_LOG( m_loggerError ) << "\n" << skutils::signal::generate_stack_trace() << "\n";
+                BOOST_LOG( m_loggerError )
+                    << "CRITICAL unknown exception (restarting ZmqBroadcaster)";
+                BOOST_LOG( m_loggerError ) << "\n"
+                                           << skutils::signal::generate_stack_trace() << "\n";
                 sleep( 2 );
             }
 
@@ -258,7 +262,8 @@ void ZmqBroadcaster::resetServerSocket() {
 void ZmqBroadcaster::broadcast( const std::string& _rlp ) {
     int res = zmq_send( server_socket(), const_cast< char* >( _rlp.c_str() ), _rlp.size(), 0 );
     if ( res <= 0 ) {
-        BOOST_LOG( m_loggerWarning ) << "Got error " << res << " in zmq_send: " << zmq_strerror( res );
+        BOOST_LOG( m_loggerWarning )
+            << "Got error " << res << " in zmq_send: " << zmq_strerror( res );
         throw std::runtime_error( "Zmq can't send data" );
     }
 }

@@ -97,8 +97,9 @@ void AlethExecutive::initialize( Transaction const& _transaction ) {
             throw;
         }
         if ( m_t.nonce() != nonceReq ) {
-            BOOST_LOG( m_loggerDebug ) << "Sender: " << m_t.sender().hex() << " Invalid Nonce: Required "
-                                 << nonceReq << ", received " << m_t.nonce();
+            BOOST_LOG( m_loggerDebug )
+                << "Sender: " << m_t.sender().hex() << " Invalid Nonce: Required " << nonceReq
+                << ", received " << m_t.nonce();
             m_excepted = TransactionException::InvalidNonce;
             BOOST_THROW_EXCEPTION(
                 InvalidNonce() << RequirementError( ( bigint ) nonceReq, ( bigint ) m_t.nonce() ) );
@@ -108,9 +109,10 @@ void AlethExecutive::initialize( Transaction const& _transaction ) {
         bigint gasCost = ( bigint ) m_t.gas() * m_t.gasPrice();
         bigint totalCost = m_t.value() + gasCost;
         if ( m_s.balance( m_t.sender() ) < totalCost ) {
-            BOOST_LOG( m_loggerDebug ) << "Not enough cash: Require > " << totalCost << " = " << m_t.gas()
-                                 << " * " << m_t.gasPrice() << " + " << m_t.value() << " Got"
-                                 << m_s.balance( m_t.sender() ) << " for sender: " << m_t.sender();
+            BOOST_LOG( m_loggerDebug )
+                << "Not enough cash: Require > " << totalCost << " = " << m_t.gas() << " * "
+                << m_t.gasPrice() << " + " << m_t.value() << " Got" << m_s.balance( m_t.sender() )
+                << " for sender: " << m_t.sender();
             m_excepted = TransactionException::NotEnoughCash;
             BOOST_THROW_EXCEPTION( NotEnoughCash() << RequirementError( totalCost,
                                                           ( bigint ) m_s.balance( m_t.sender() ) )
@@ -124,8 +126,9 @@ bool AlethExecutive::execute() {
     // Entry point for a user-executed transaction.
 
     // Pay...
-    BOOST_LOG( m_loggerTrace ) << "Paying " << formatBalance( m_gasCost ) << " from sender for gas ("
-                         << m_t.gas() << " gas at " << formatBalance( m_t.gasPrice() ) << ")";
+    BOOST_LOG( m_loggerTrace ) << "Paying " << formatBalance( m_gasCost )
+                               << " from sender for gas (" << m_t.gas() << " gas at "
+                               << formatBalance( m_t.gasPrice() ) << ")";
     m_s.subBalance( m_t.sender(), m_gasCost );
 
 #ifdef BITE
@@ -310,11 +313,11 @@ OnOpFunc AlethExecutive::simpleTrace() {
         if ( vm )
             BOOST_LOG( m_loggerTrace ) << dumpStackAndMemory( *vm );
         BOOST_LOG( m_loggerTrace ) << dumpStorage( ext );
-        BOOST_LOG( m_loggerTrace ) << " < " << dec << ext.depth << " : " << ext.myAddress << " : #"
-                             << steps << " : " << hex << setw( 4 ) << setfill( '0' ) << PC << " : "
-                             << instructionInfo( inst ).name << " : " << dec << gas << " : -" << dec
-                             << gasCost << " : " << newMemSize << "x32"
-                             << " >";
+        BOOST_LOG( m_loggerTrace )
+            << " < " << dec << ext.depth << " : " << ext.myAddress << " : #" << steps << " : "
+            << hex << setw( 4 ) << setfill( '0' ) << PC << " : " << instructionInfo( inst ).name
+            << " : " << dec << gas << " : -" << dec << gasCost << " : " << newMemSize << "x32"
+            << " >";
     };
 }
 
@@ -362,8 +365,9 @@ bool AlethExecutive::go( OnOpFunc const& _onOp ) {
             m_excepted = toTransactionException( _e );
             revert();
         } catch ( InternalVMError const& _e ) {
-            BOOST_LOG( m_loggerError ) << "Internal VM Error (EVMC status code: "
-                                 << *boost::get_error_info< errinfo_evmcStatusCode >( _e ) << ")";
+            BOOST_LOG( m_loggerError )
+                << "Internal VM Error (EVMC status code: "
+                << *boost::get_error_info< errinfo_evmcStatusCode >( _e ) << ")";
             revert();
             throw;
 #ifdef HISTORIC_STATE
@@ -384,8 +388,8 @@ bool AlethExecutive::go( OnOpFunc const& _onOp ) {
         } catch ( std::exception const& _e ) {
             // TODO: AUDIT: check that this can never reasonably happen. Consider what to do if it
             // does.
-            BOOST_LOG( m_loggerError ) << "Unexpected std::exception in VM. Not enough RAM? "
-                                 << _e.what();
+            BOOST_LOG( m_loggerError )
+                << "Unexpected std::exception in VM. Not enough RAM? " << _e.what();
             exit( 1 );
             // Another solution would be to reject this transaction, but that also
             // has drawbacks. Essentially, the amount of ram has to be increased here.
@@ -396,7 +400,8 @@ bool AlethExecutive::go( OnOpFunc const& _onOp ) {
             m_res->output = m_output.toVector();
 
 #if ETH_TIMED_EXECUTIONS
-        BOOST_LOG( m_loggerInfo ) << "VM took:" << t.elapsed() << "; gas used: " << ( sgas - m_endGas );
+        BOOST_LOG( m_loggerInfo ) << "VM took:" << t.elapsed()
+                                  << "; gas used: " << ( sgas - m_endGas );
 #endif
     }
     return true;

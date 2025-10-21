@@ -295,7 +295,8 @@ void OverlayDB::commit() {
                 break;
             } catch ( boost::exception const& ex ) {
                 if ( commitTry == 9 ) {
-                    BOOST_LOG( m_loggerWarning ) << "Fail(1) writing to state database. Bombing out. ";
+                    BOOST_LOG( m_loggerWarning )
+                        << "Fail(1) writing to state database. Bombing out. ";
                     BOOST_LOG( m_loggerWarning ) << DETAILED_ERROR;
                     exit( -1 );
                 }
@@ -308,7 +309,8 @@ void OverlayDB::commit() {
                 std::this_thread::sleep_for( std::chrono::seconds( commitTry + 1 ) );
             } catch ( std::exception const& ex ) {
                 if ( commitTry == 9 ) {
-                    BOOST_LOG( m_loggerWarning ) << "Fail(2) writing to state database. Bombing out. ";
+                    BOOST_LOG( m_loggerWarning )
+                        << "Fail(2) writing to state database. Bombing out. ";
                     BOOST_LOG( m_loggerWarning ) << DETAILED_ERROR;
                     exit( -1 );
                 }

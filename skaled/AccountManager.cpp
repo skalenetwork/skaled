@@ -87,11 +87,12 @@ bool AccountManager::execute( int argc, char** argv ) {
                 for ( auto const& a : m_keyManager->accounts() )
                     if ( !got.count( a ) ) {
                         BOOST_LOG( m_loggerInfo ) << "Account #" << k << ": {" << a.hex() << "}"
-                                            << " (Brain)";
+                                                  << " (Brain)";
                         k++;
                     }
                 for ( auto const& u : bare ) {
-                    BOOST_LOG( m_loggerInfo ) << "Account #" << k << ": " << toUUID( u ) << " (Bare)";
+                    BOOST_LOG( m_loggerInfo )
+                        << "Account #" << k << ": " << toUUID( u ) << " (Bare)";
                     k++;
                 }
             }
@@ -190,7 +191,7 @@ bool AccountManager::openWallet() {
                 return true;
             else {
                 BOOST_LOG( m_loggerError ) << "Couldn't open wallet. Please check passphrase."
-                                     << "\n";
+                                           << "\n";
                 return false;
             }
         } else {

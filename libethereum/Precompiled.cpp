@@ -366,7 +366,8 @@ ETH_REGISTER_FS_PRECOMPILED( uploadChunk )( bytesConstRef _in, skale::OverlayFS*
         std::string strError = ex.what();
         if ( strError.empty() )
             strError = "exception without description";
-        BOOST_LOG( getLogger( VerbosityError ) ) << "Exception in uploadChunk: " << strError << "\n";
+        BOOST_LOG( getLogger( VerbosityError ) )
+            << "Exception in uploadChunk: " << strError << "\n";
     } catch ( ... ) {
         BOOST_LOG( getLogger( VerbosityError ) ) << "Unknown exception in uploadChunk\n";
     }
@@ -450,7 +451,8 @@ ETH_REGISTER_PRECOMPILED( getFileSize )( bytesConstRef _in ) {
         std::string strError = ex.what();
         if ( strError.empty() )
             strError = "exception without description";
-        BOOST_LOG( getLogger( VerbosityError ) ) << "Exception in getFileSize: " << strError << "\n";
+        BOOST_LOG( getLogger( VerbosityError ) )
+            << "Exception in getFileSize: " << strError << "\n";
     } catch ( ... ) {
         BOOST_LOG( getLogger( VerbosityError ) ) << "Unknown exception in getFileSize\n";
     }
@@ -514,7 +516,8 @@ ETH_REGISTER_FS_PRECOMPILED( createDirectory )( bytesConstRef _in, skale::Overla
         std::string strError = ex.what();
         if ( strError.empty() )
             strError = "exception without description";
-        BOOST_LOG( getLogger( VerbosityError ) ) << "Exception in createDirectory: " << strError << "\n";
+        BOOST_LOG( getLogger( VerbosityError ) )
+            << "Exception in createDirectory: " << strError << "\n";
     } catch ( ... ) {
         BOOST_LOG( getLogger( VerbosityError ) ) << "Unknown exception in createDirectory\n";
     }
@@ -552,7 +555,8 @@ ETH_REGISTER_FS_PRECOMPILED( deleteDirectory )( bytesConstRef _in, skale::Overla
         std::string strError = ex.what();
         if ( strError.empty() )
             strError = "exception without description";
-        BOOST_LOG( getLogger( VerbosityError ) ) << "Exception in deleteDirectory: " << strError << "\n";
+        BOOST_LOG( getLogger( VerbosityError ) )
+            << "Exception in deleteDirectory: " << strError << "\n";
     } catch ( ... ) {
         BOOST_LOG( getLogger( VerbosityError ) ) << "Unknown exception in deleteDirectory\n";
     }
@@ -694,7 +698,8 @@ ETH_REGISTER_PRECOMPILED( logTextMessage )( bytesConstRef _in ) {
         BOOST_LOG( getLogger( VerbosityError ) )
             << "Exception in precompiled/logTextMessage(): " << strError << "\n";
     } catch ( ... ) {
-        BOOST_LOG( getLogger( VerbosityError ) ) << "Unknown exception in precompiled/logTextMessage()\n";
+        BOOST_LOG( getLogger( VerbosityError ) )
+            << "Unknown exception in precompiled/logTextMessage()\n";
     }
     u256 code = 0;
     bytes response = toBigEndian( code );
@@ -1065,7 +1070,8 @@ ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef ) {
         BOOST_LOG( getLogger( VerbosityError ) )
             << "Exception in precompiled/getBlockRandom(): " << strError << "\n";
     } catch ( ... ) {
-        BOOST_LOG( getLogger( VerbosityError ) ) << "Unknown exception in precompiled/getBlockRandom()\n";
+        BOOST_LOG( getLogger( VerbosityError ) )
+            << "Unknown exception in precompiled/getBlockRandom()\n";
     }
     dev::u256 code = 0;
     bytes response = toBigEndian( code );

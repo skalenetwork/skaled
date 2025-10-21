@@ -64,10 +64,11 @@ HistoricState::openDB( fs::path const& _basePath, h256 const& _genesisHash, With
             fs::remove_all( dbPaths.statePath() );
         }
 
-        BOOST_LOG( m_loggerDebug ) << "Verifying path exists (and creating if not present): "
-                             << dbPaths.chainPath();
+        BOOST_LOG( m_loggerDebug )
+            << "Verifying path exists (and creating if not present): " << dbPaths.chainPath();
         fs::create_directories( dbPaths.chainPath() );
-        BOOST_LOG( m_loggerDebug ) << "Ensuring permissions are set for path: " << dbPaths.chainPath();
+        BOOST_LOG( m_loggerDebug )
+            << "Ensuring permissions are set for path: " << dbPaths.chainPath();
         DEV_IGNORE_EXCEPTIONS( fs::permissions( dbPaths.chainPath(), fs::owner_all ) );
 
         clog( VerbosityDebug, "statedb" )
@@ -104,7 +105,7 @@ HistoricState::openDB( fs::path const& _basePath, h256 const& _genesisHash, With
                 BOOST_THROW_EXCEPTION( DatabaseCorruption() );
             } else if ( dbStatus == db::DatabaseStatus::IOError ) {
                 BOOST_LOG( m_loggerError ) << "Database already open. You appear to have "
-                                        "another instance of Aleth running.";
+                                              "another instance of Aleth running.";
                 BOOST_THROW_EXCEPTION( DatabaseAlreadyOpen() );
             }
         }

@@ -941,7 +941,8 @@ bool ChainParams::updateCurrentGroupIfNeeded( uint64_t _latestBlockTimestamp ) {
          sChain.currentGroups[0].startTs > sChain.currentGroups[1].startTs ) {
         std::unique_lock< std::shared_mutex > lock( m_mutex );
         std::swap( sChain.currentGroups[0], sChain.currentGroups[1] );
-        BOOST_LOG( m_loggerInfo ) << "Using the group with startTs " << sChain.currentGroups[1].startTs;
+        BOOST_LOG( m_loggerInfo ) << "Using the group with startTs "
+                                  << sChain.currentGroups[1].startTs;
         sChain.nodes = sChain.currentGroups[1].nodes;
         switchSyncMode( sChain.nodes );
         return true;

@@ -63,7 +63,7 @@ bool AmsterdamFixPatch::isInitOnChainNeeded(
 
     if ( totalStorageUsed != best_number * 32 )
         BOOST_LOG( m_loggerInfo ) << "Will fix old stateRoots because totalStorageUsed = "
-                            << totalStorageUsed;
+                                  << totalStorageUsed;
 
     return totalStorageUsed != best_number * 32;
 } catch ( ... ) {
@@ -199,8 +199,8 @@ void AmsterdamFixPatch::initOnChain( batched_io::db_operations_face& _blocksDB,
 
         if ( bn == start_block + 1 || old_hash == best_hash || transactions.size() ||
              bn % 1000 == 0 )
-            BOOST_LOG( m_loggerInfo ) << "Repairing block " << bn << " " << old_hash << " -> "
-                                << new_hash;
+            BOOST_LOG( m_loggerInfo )
+                << "Repairing block " << bn << " " << old_hash << " -> " << new_hash;
 
         TransactionAddress ta;
         ta.blockHash = new_hash;
@@ -210,7 +210,7 @@ void AmsterdamFixPatch::initOnChain( batched_io::db_operations_face& _blocksDB,
             h256 hash = sha3( transactions[i].data() );
             ta.index = i;
             BOOST_LOG( m_loggerInfo ) << "Updating transaction " << hash << " location " << old_hash
-                                << " -> " << new_hash << " " << ta.index;
+                                      << " -> " << new_hash << " " << ta.index;
             _extrasDB.insert(
                 toSlice( hash, ExtraTransactionAddress ), ( db::Slice ) dev::ref( ta.rlp() ) );
         }  // for

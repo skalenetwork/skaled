@@ -209,11 +209,11 @@ Transactions TransactionQueue::topTransactions_WITH_LOCK( unsigned _limit ) {
     }
     if ( found_difference ) {
         BOOST_LOG( m_loggerError ) << "IS-348 bug detected. Wrong transaction order in "
-                                "block proposal was fixed by workaround :(";
+                                      "block proposal was fixed by workaround :(";
         BOOST_LOG( m_loggerTrace ) << "<i> <old> <new>";
         for ( size_t i = 0; i < top_transactions.size(); ++i ) {
-            BOOST_LOG( m_loggerTrace ) << i << " " << saved_txns[i].sha3() << " "
-                                 << top_transactions[i].sha3();
+            BOOST_LOG( m_loggerTrace )
+                << i << " " << saved_txns[i].sha3() << " " << top_transactions[i].sha3();
         }
     }
 
@@ -273,7 +273,8 @@ ImportResult TransactionQueue::manageImport_WITH_LOCK(
 
         m_onReady();
     } catch ( Exception const& _e ) {
-        BOOST_LOG( m_loggerTrace ) << "Ignoring invalid transaction: " << diagnostic_information( _e );
+        BOOST_LOG( m_loggerTrace )
+            << "Ignoring invalid transaction: " << diagnostic_information( _e );
         return ImportResult::Malformed;
     } catch ( std::exception const& _e ) {
         BOOST_LOG( m_loggerTrace ) << "Ignoring invalid transaction: " << _e.what();
@@ -507,7 +508,7 @@ void TransactionQueue::enqueue( RLP const& _data, h512 const& _nodeId ) {
         for ( unsigned i = 0; i < itemCount; ++i ) {
             if ( m_unverified.size() >= c_maxVerificationQueueSize ) {
                 BOOST_LOG( m_loggerInfo ) << "Transaction verification queue is full. Dropping "
-                                    << itemCount - i << " transactions";
+                                          << itemCount - i << " transactions";
                 break;
             }
             m_unverified.emplace_back( UnverifiedTransaction( _data[i].data(), _nodeId ) );

@@ -440,14 +440,14 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
             bool fl = cli.open( sgxServerURL );
             if ( !fl ) {
                 BOOST_LOG( m_loggerInfo ) << "FATAL:"
-                                    << " Exception while trying to connect to sgx server: "
-                                    << "connection refused";
+                                          << " Exception while trying to connect to sgx server: "
+                                          << "connection refused";
             }
 
             skutils::rest::data_t d;
             while ( true ) {
                 BOOST_LOG( m_loggerInfo ) << ">>> SGX call >>>"
-                                    << " " << joCall;
+                                          << " " << joCall;
                 d = cli.call( joCall );
                 if ( d.ei_.et_ !=
                      skutils::http::common_network_exception::error_type::et_no_error ) {
@@ -455,14 +455,16 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
                              skutils::http::common_network_exception::error_type::et_unknown ||
                          d.ei_.et_ ==
                              skutils::http::common_network_exception::error_type::et_fatal ) {
-                        BOOST_LOG( m_loggerError ) << "ERROR:"
-                                             << " Exception while trying to connect to sgx server: "
-                                             << " error with connection: "
-                                             << " retrying... ";
+                        BOOST_LOG( m_loggerError )
+                            << "ERROR:"
+                            << " Exception while trying to connect to sgx server: "
+                            << " error with connection: "
+                            << " retrying... ";
                     } else {
-                        BOOST_LOG( m_loggerError ) << "ERROR:"
-                                             << " Exception while trying to connect to sgx server: "
-                                             << " error with ssl certificates " << d.ei_.strError_;
+                        BOOST_LOG( m_loggerError )
+                            << "ERROR:"
+                            << " Exception while trying to connect to sgx server: "
+                            << " error with ssl certificates " << d.ei_.strError_;
                     }
                 } else {
                     break;
@@ -472,7 +474,7 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
             if ( d.empty() ) {
                 static const char g_strErrMsg[] = "SGX Server call to blsSignMessageHash failed";
                 BOOST_LOG( m_loggerError ) << "SGX call error"
-                                     << " " << g_strErrMsg;
+                                           << " " << g_strErrMsg;
                 throw std::runtime_error( g_strErrMsg );
             }
 

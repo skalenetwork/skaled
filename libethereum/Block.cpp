@@ -630,8 +630,8 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
     if ( !ClearPartialReceiptsPatch::isEnabledWhen( latestCommittedBlockTimeStamp ) ) {
         // Saving partial receipts old way to be compatible with < 4.0 version
         if ( !receiptsOfCommitted.empty() ) {
-            BOOST_LOG( m_loggerTrace ) << "Saving partial transaction receipts. Size: "
-                                 << receiptsOfCommitted.size();
+            BOOST_LOG( m_loggerTrace )
+                << "Saving partial transaction receipts. Size: " << receiptsOfCommitted.size();
             m_state.safeCommitLegacyPartialTransactionReceipts( receiptsOfCommitted );
         }
     }
@@ -686,8 +686,9 @@ u256 Block::enactOn( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
 #if ETH_TIMED_ENACTMENTS
     enactment = t.elapsed();
     if ( populateVerify + populateGrand + syncReset + enactment > 0.5 )
-        BOOST_LOG( m_loggerDebug ) << "popVer/popGrand/syncReset/enactment = " << populateVerify << " / "
-                             << populateGrand << " / " << syncReset << " / " << enactment;
+        BOOST_LOG( m_loggerDebug )
+            << "popVer/popGrand/syncReset/enactment = " << populateVerify << " / " << populateGrand
+            << " / " << syncReset << " / " << enactment;
 #endif
     return ret;
 }
@@ -983,13 +984,13 @@ ExecutionResult Block::execute( LastBlockHashesFace const& _lh, Transaction cons
         assert( false );
     } catch ( const std::exception& ex ) {
         BOOST_LOG( m_loggerDebug ) << "Transaction with index " << _transactionIndex
-                             << " WouldNotBeInBlock: " << ex.what();
+                                   << " WouldNotBeInBlock: " << ex.what();
         if ( _p != Permanence::Reverted )  // if it is not call
             _p = Permanence::CommittedWithoutState;
         resultReceipt.first.excepted = TransactionException::WouldNotBeInBlock;
     } catch ( ... ) {
-        BOOST_LOG( m_loggerDebug ) << "Transaction with index " << _transactionIndex
-                             << " WouldNotBeInBlock: ...";
+        BOOST_LOG( m_loggerDebug )
+            << "Transaction with index " << _transactionIndex << " WouldNotBeInBlock: ...";
         if ( _p != Permanence::Reverted )  // if it is not call
             _p = Permanence::CommittedWithoutState;
         resultReceipt.first.excepted = TransactionException::WouldNotBeInBlock;
@@ -1171,7 +1172,7 @@ void Block::commitToSeal(
     DEV_TIMED_ABOVE( "commit", 500 )
 
     BOOST_LOG( m_loggerTrace ) << "Post-reward stateRoot: "
-                         << "is not calculated in Skale state";
+                               << "is not calculated in Skale state";
     BOOST_LOG( m_loggerTrace ) << m_state;
 
     m_currentBlock.setLogBloom( logBloom() );
@@ -1253,7 +1254,7 @@ void Block::cleanup() {
     sealEngine()->populateFromParent( m_currentBlock, m_previousBlock );
 
     BOOST_LOG( m_loggerDebug ) << "finalising enactment. current -> previous, hash is "
-                         << m_previousBlock.hash();
+                               << m_previousBlock.hash();
 
     resetCurrent();
 }

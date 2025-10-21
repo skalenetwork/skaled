@@ -193,7 +193,8 @@ void State::populateHistoricStateFromSkaleState() {
 
     BOOST_LOG( m_loggerInfo ) << "Number of addresses in statedb:" << allAccountAddresses.size();
     BOOST_LOG( m_loggerInfo ) << "Historic state does not yet exist. Populating historic state ...";
-    BOOST_LOG( m_loggerInfo ) << "Please be patient as it may take up to several hours for a large state";
+    BOOST_LOG( m_loggerInfo )
+        << "Please be patient as it may take up to several hours for a large state";
 
 
     // this is done to save memory, otherwise OverlayDB will frow
@@ -236,7 +237,7 @@ dev::eth::AccountMap State::getBatchOfAccounts(
 void State::populateHistoricStateBatchFromSkaleState(
     std::unordered_map< Address, u256 >& _allAccountAddresses, uint64_t _batchNumber ) {
     BOOST_LOG( m_loggerInfo ) << "Now running batch " << _batchNumber << " out of "
-                        << STATE_IMPORT_BATCH_COUNT;
+                              << STATE_IMPORT_BATCH_COUNT;
 
     dev::eth::AccountMap accountMap = getBatchOfAccounts( _allAccountAddresses, _batchNumber );
 

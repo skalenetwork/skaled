@@ -87,7 +87,7 @@ void ConsensusStub::doWork() {
         return;
 
     BOOST_LOG( m_loggerDebug ) << "Taken " << txns.size() << " transactions for consensus"
-                         << "\n";
+                               << "\n";
 
     size_t txns_in_block = txns.size();  // rand()%txns.size();
                                          // any subset but not zero
@@ -111,7 +111,7 @@ void ConsensusStub::doWork() {
 #endif
             time( NULL ), 0, blockCounter, getPriceForBlockId( blockCounter ), stateRoot, -1 );
         BOOST_LOG( m_loggerDebug ) << "createBlock"
-                             << "\n";
+                                   << "\n";
     } catch ( const dev::Exception& x ) {
         BOOST_LOG( m_loggerDebug ) << x.what() << "\n";
     }  // catch

@@ -725,8 +725,8 @@ void TransactionBase::checkAndValidateBITETransaction( uint64_t _currentEpochId 
                     std::string( "BITE transaction's data is invalid: " ) + ex.what() ) );
         }
     } catch ( const Exception& _e ) {
-        BOOST_LOG( m_loggerDebug ) << std::string( "invalid BITE data format: " )
-                             << std::string( _e.what() );
+        BOOST_LOG( m_loggerDebug )
+            << std::string( "invalid BITE data format: " ) << std::string( _e.what() );
         throw;
     }
 }
