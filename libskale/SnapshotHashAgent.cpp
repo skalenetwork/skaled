@@ -77,7 +77,7 @@ size_t SnapshotHashAgent::verifyAllData() const {
                 is_verified = this->bls_->Verify( this->hashes_.at( i ).asArray(),
                     this->signatures_.at( i ), this->public_keys_.at( i ) );
             } catch ( std::exception& ex ) {
-                LOG( m_loggerError ) << ex.what();
+                BOOST_LOG( m_loggerError ) << ex.what();
             }
 
             verified += is_verified;
@@ -113,7 +113,7 @@ bool SnapshotHashAgent::voteForHash() {
     std::map< dev::h256, size_t >::iterator it;
     it = std::find_if( map_hash.begin(), map_hash.end(),
         [this]( const std::pair< dev::h256, size_t > p ) { return 3 * p.second > 2 * this->n_; } );
-    LOG( m_loggerInfo ) << "Snapshot hash is: " << ( *it ).first << ". Verifying it...";
+    BOOST_LOG( m_loggerInfo ) << "Snapshot hash is: " << ( *it ).first << ". Verifying it...";
 
     if ( it == map_hash.end() ) {
         throw NotEnoughVotesException( "note enough votes to choose hash" );
@@ -139,10 +139,10 @@ bool SnapshotHashAgent::voteForHash() {
             lagrange_coeffs = libBLS::algebra::lagrangeCoeffs( idx, ( 2 * this->n_ + 1 ) / 3 );
             common_signature = this->bls_->SignatureRecover( signatures, lagrange_coeffs );
         } catch ( libBLS::ThresholdUtils::IncorrectInput& ex ) {
-            LOG( m_loggerError )
+            BOOST_LOG( m_loggerError )
                 << "Exception while recovering common signature from other skaleds: " << ex.what();
         } catch ( libBLS::ThresholdUtils::IsNotWellFormed& ex ) {
-            LOG( m_loggerError )
+            BOOST_LOG( m_loggerError )
                 << "Exception while recovering common signature from other skaleds: " << ex.what();
         }
 
@@ -152,12 +152,12 @@ bool SnapshotHashAgent::voteForHash() {
             is_verified = this->bls_->Verify(
                 ( *it ).first.asArray(), common_signature, this->commonPublicKey_ );
         } catch ( libBLS::ThresholdUtils::IsNotWellFormed& ex ) {
-            LOG( m_loggerError )
+            BOOST_LOG( m_loggerError )
                 << "Exception while verifying common signature from other skaleds: " << ex.what();
         }
 
         if ( !is_verified ) {
-            LOG( m_loggerError )
+            BOOST_LOG( m_loggerError )
                 << "Common BLS signature wasn't verified, probably using incorrect "
                    "common public key specified in command line. Trying again with "
                    "common public key from config";
@@ -166,28 +166,28 @@ bool SnapshotHashAgent::voteForHash() {
             libBLS::algebra::G2Point commonPublicKeyFromConfig =
                 libBLS::algebra::G2Point::fromString( commonBlsPublicKeyArray, libBLS::Base::DEC );
 
-            LOG( m_loggerDebug ) << "NEW BLS COMMON PUBLIC KEY:";
+            BOOST_LOG( m_loggerDebug ) << "NEW BLS COMMON PUBLIC KEY:";
             auto coords = commonPublicKeyFromConfig.toStringArray( libBLS::Base::DEC );
-            LOG( m_loggerDebug ) << "X.c0: " << coords[0];
-            LOG( m_loggerDebug ) << "X.c1: " << coords[1];
-            LOG( m_loggerDebug ) << "Y.c0: " << coords[2];
-            LOG( m_loggerDebug ) << "Y.c1: " << coords[3];
+            BOOST_LOG( m_loggerDebug ) << "X.c0: " << coords[0];
+            BOOST_LOG( m_loggerDebug ) << "X.c1: " << coords[1];
+            BOOST_LOG( m_loggerDebug ) << "Y.c0: " << coords[2];
+            BOOST_LOG( m_loggerDebug ) << "Y.c1: " << coords[3];
             try {
                 is_verified = this->bls_->Verify(
                     ( *it ).first.asArray(), common_signature, commonPublicKeyFromConfig );
             } catch ( libBLS::ThresholdUtils::IsNotWellFormed& ex ) {
-                LOG( m_loggerError )
+                BOOST_LOG( m_loggerError )
                     << "Exception while verifying common signature from other skaleds: "
                     << ex.what();
             }
 
             if ( !is_verified ) {
-                LOG( m_loggerError )
+                BOOST_LOG( m_loggerError )
                     << "Common BLS signature wasn't verified, snapshot will not be "
                        "downloaded. Try to backup node manually using skale-node-cli.";
                 return false;
             } else {
-                LOG( m_loggerInfo ) << "Common BLS signature was verified with common public key "
+                BOOST_LOG( m_loggerInfo ) << "Common BLS signature was verified with common public key "
                                        "from config.";
                 this->commonPublicKey_ = commonPublicKeyFromConfig;
             }
@@ -211,7 +211,7 @@ SnapshotHashAgent::askNodeForHash( const std::string& url, unsigned blockNumber 
     try {
         joSignatureResponse = skaleClient.skale_getSnapshotSignature( blockNumber );
     } catch ( jsonrpc::JsonRpcException& ex ) {
-        LOG( m_loggerError ) << "WARNING "
+        BOOST_LOG( m_loggerError ) << "WARNING "
                              << "Error while trying to get snapshot signature from " << url << " : "
                              << ex.what();
         delete jsonRpcClient;
@@ -220,7 +220,7 @@ SnapshotHashAgent::askNodeForHash( const std::string& url, unsigned blockNumber 
 
     if ( !joSignatureResponse.get( "hash", 0 ) || !joSignatureResponse.get( "X", 0 ) ||
          !joSignatureResponse.get( "Y", 0 ) ) {
-        LOG( m_loggerError ) << "WARNING "
+        BOOST_LOG( m_loggerError ) << "WARNING "
                              << " Signature from " + url +
                                     "-th node was not received during "
                                     "getNodesToDownloadSnapshotFrom ";
@@ -229,7 +229,7 @@ SnapshotHashAgent::askNodeForHash( const std::string& url, unsigned blockNumber 
         return {};
     } else {
         std::string strHash = joSignatureResponse["hash"].asString();
-        LOG( m_loggerInfo ) << "Received snapshot hash from " << url << " : " << strHash;
+        BOOST_LOG( m_loggerInfo ) << "Received snapshot hash from " << url << " : " << strHash;
 
         std::string xElement = joSignatureResponse["X"].asString();
         std::string yElement = joSignatureResponse["Y"].asString();
@@ -291,7 +291,7 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
                         this->public_keys_.at( i ) = nodeBlsPublicKey;
                     }
                 } catch ( std::exception& ex ) {
-                    LOG( m_loggerError )
+                    BOOST_LOG( m_loggerError )
                         << "Exception while collecting snapshot signatures from other skaleds: "
                         << ex.what();
                 }
@@ -341,15 +341,15 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
         try {
             result = this->voteForHash();
         } catch ( SnapshotHashAgentException& ex ) {
-            LOG( m_loggerError ) << "Exception while voting for snapshot hash from other skaleds: "
+            BOOST_LOG( m_loggerError ) << "Exception while voting for snapshot hash from other skaleds: "
                                  << ex.what();
         } catch ( std::exception& ex ) {
-            LOG( m_loggerError ) << "Exception while voting for snapshot hash from other skaleds: "
+            BOOST_LOG( m_loggerError ) << "Exception while voting for snapshot hash from other skaleds: "
                                  << ex.what();
         }  // catch
 
     if ( !result ) {
-        LOG( m_loggerInfo ) << "Not enough nodes to choose snapshot hash for block " << blockNumber;
+        BOOST_LOG( m_loggerInfo ) << "Not enough nodes to choose snapshot hash for block " << blockNumber;
         return {};
     }
 

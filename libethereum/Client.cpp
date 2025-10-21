@@ -149,7 +149,7 @@ Client::Client( std::shared_ptr< const ChainParams > _params, int _networkID,
 #endif  /// (defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__)
 
     m_debugTracer.call_on_tracepoint( [this]( const std::string& name ) {
-        LOG( m_loggerTrace ) << "TRACEPOINT " << name << " "
+        BOOST_LOG( m_loggerTrace ) << "TRACEPOINT " << name << " "
                              << m_debugTracer.get_tracepoint_count( name );
     } );
 
@@ -176,7 +176,7 @@ void Client::stopWorking() {
         m_skaleHost->stopWorking();  // TODO Find and document a systematic way to start/stop all
                                      // workers
     else
-        LOG( m_loggerError ) << "Instance of SkaleHost was not properly created.";
+        BOOST_LOG( m_loggerError ) << "Instance of SkaleHost was not properly created.";
 
     m_snapshotAgent->terminate();
 
@@ -189,25 +189,25 @@ void Client::stopWorking() {
     m_bq.stop();               // l_sergiy: added to stop block queue processing
 
     m_bc.close();
-    LOG( m_loggerInfo ) << "Blockchain is closed";
+    BOOST_LOG( m_loggerInfo ) << "Blockchain is closed";
 
 #if ( defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__ )
     bool isForcefulExit =
         ( !m_skaleHost || m_skaleHost->exitedForcefully() == false ) ? false : true;
     if ( !isForcefulExit ) {
         delete_lock_file( m_dbPath );
-        LOG( m_loggerInfo ) << "Deleted lock file "
+        BOOST_LOG( m_loggerInfo ) << "Deleted lock file "
                             << boost::filesystem::canonical( m_dbPath ).string() +
                                    std::string( "/skaled.lock" );
     } else {
-        LOG( m_loggerInfo ) << "ATTENTION:"
+        BOOST_LOG( m_loggerInfo ) << "ATTENTION:"
                             << " "
                             << "Deleted lock file "
                             << boost::filesystem::canonical( m_dbPath ).string() +
                                    std::string( "/skaled.lock" )
                             << " after forceful exit";
     }
-    LOG( m_loggerInfo ).flush();
+    BOOST_LOG( m_loggerInfo ).flush();
 #endif  /// (defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__)
 
     terminate();
@@ -271,7 +271,7 @@ void Client::initStateFromDiskOrGenesis() {
     if ( m_state.empty() ) {
         // Saving legacy transaction receipts empty value
         // to be compatible with < 4.0.0 zero block versions
-        LOG( m_loggerInfo ) << "Saving legacy transaction receipts for empty state";
+        BOOST_LOG( m_loggerInfo ) << "Saving legacy transaction receipts for empty state";
         m_state.safeCommitZeroBlockLegacyPartialTransactionReceipts();
         populateNewChainStateFromGenesis();
     } else {
@@ -326,7 +326,7 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     if ( chainParams().getNodeGroups().size() > 0 ) {
         initHistoricGroupIndex();
     } else {
-        LOG( m_loggerInfo ) << "Empty node groups in config. "
+        BOOST_LOG( m_loggerInfo ) << "Empty node groups in config. "
                                "This is OK in tests but not OK in production";
     }
 
@@ -372,9 +372,9 @@ void Client::onBadBlock( Exception& _ex ) const {
     // BAD BLOCK
     bytes const* block = boost::get_error_info< errinfo_block >( _ex );
     if ( !block ) {
-        LOG( m_loggerWarning ) << "ODD: onBadBlock called but exception (" << _ex.what()
+        BOOST_LOG( m_loggerWarning ) << "ODD: onBadBlock called but exception (" << _ex.what()
                                << ") has no block in it.";
-        LOG( m_loggerWarning ) << boost::diagnostic_information( _ex );
+        BOOST_LOG( m_loggerWarning ) << boost::diagnostic_information( _ex );
         return;
     }
 
@@ -419,7 +419,7 @@ bool Client::isMajorSyncing() const {
 void Client::startedWorking() {
     // Synchronise the state according to the head of the block chain.
     // TODO: currently it contains keys for *all* blocks. Make it remove old ones.
-    LOG( m_loggerTrace ) << "startedWorking()";
+    BOOST_LOG( m_loggerTrace ) << "startedWorking()";
 
     DEV_GUARDED( m_blockImportMutex ) {
         DEV_WRITE_GUARDED( x_preSeal )
@@ -524,7 +524,7 @@ void Client::syncBlockQueue() {
     double elapsed = t.elapsed();
 
     if ( count ) {
-        LOG( m_loggerInfo ) << count << " blocks imported in " << unsigned( elapsed * 1000 )
+        BOOST_LOG( m_loggerInfo ) << count << " blocks imported in " << unsigned( elapsed * 1000 )
                             << " ms (" << ( count / elapsed ) << " blocks/s) in #" << bc().number();
     }
 
@@ -582,19 +582,19 @@ size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
     SchainPatch::useLatestBlockTimestamp( blockChain().info().timestamp() );
 
     if ( !UnsafeRegion::isActive() ) {
-        LOG( m_loggerTrace ) << "Total unsafe time so far = "
+        BOOST_LOG( m_loggerTrace ) << "Total unsafe time so far = "
                              << std::chrono::duration_cast< std::chrono::seconds >(
                                     UnsafeRegion::getTotalTime() )
                                     .count()
                              << " seconds";
     } else
-        LOG( m_loggerWarning ) << "Warning: UnsafeRegion still active!";
+        BOOST_LOG( m_loggerWarning ) << "Warning: UnsafeRegion still active!";
 
     if ( chainParams().getNodeGroups().size() > 0 )
         updateHistoricGroupIndex();
 
 #ifdef FAIR
-    LOG( m_loggerInfo ) << "Reward receiver for block " << number() << ": "
+    BOOST_LOG( m_loggerInfo ) << "Reward receiver for block " << number() << ": "
                         << winningNodeAddressToReward << " (index " << _winningNodeIndex << ")";
 #endif
     m_snapshotAgent->doSnapshotIfNeeded( number(), _timestamp );
@@ -641,7 +641,7 @@ size_t Client::syncTransactions(
     assert( m_skaleHost );
 
     while ( m_working.isSealed() ) {
-        LOG( m_loggerInfo ) << "m_working.isSealed. sleeping";
+        BOOST_LOG( m_loggerInfo ) << "m_working.isSealed. sleeping";
         usleep( 1000 );
     }
 
@@ -680,11 +680,11 @@ size_t Client::syncTransactions(
     // Tell network about the new transactions.
     m_skaleHost->noteNewTransactions();
 
-    LOG( m_loggerTrace ) << "Processed " << newPendingReceipts.size() << " transactions in "
+    BOOST_LOG( m_loggerTrace ) << "Processed " << newPendingReceipts.size() << " transactions in "
                          << timer.elapsed() * 1000 << "(" << ( bool ) m_syncTransactionQueue << ")";
 
 #ifdef HISTORIC_STATE
-    LOG( m_loggerInfo )
+    BOOST_LOG( m_loggerInfo )
         << "HSCT: " << m_working.mutableState().mutableHistoricState().getAndResetBlockCommitTime();
 #endif
     return goodReceipts;
@@ -693,11 +693,11 @@ size_t Client::syncTransactions(
 void Client::onDeadBlocks( h256s const& _blocks, h256Hash& io_changed ) {
     // insert transactions that we are declaring the dead part of the chain
     for ( auto const& h : _blocks ) {
-        LOG( m_loggerTrace ) << "Dead block: " << h;
+        BOOST_LOG( m_loggerTrace ) << "Dead block: " << h;
         for ( auto const& t : bc().transactions( h ) ) {
-            LOG( m_loggerTrace ) << "Resubmitting dead-block transaction "
+            BOOST_LOG( m_loggerTrace ) << "Resubmitting dead-block transaction "
                                  << Transaction( t, CheckTransaction::None );
-            LOG( m_loggerTrace ) << "Resubmitting dead-block transaction "
+            BOOST_LOG( m_loggerTrace ) << "Resubmitting dead-block transaction "
                                  << Transaction( t, CheckTransaction::None );
             m_tq.import( t, IfDropped::Retry );
         }
@@ -741,7 +741,7 @@ void Client::restartMining() {
         DEV_READ_GUARDED( x_postSeal )
         if ( !m_postSeal.isSealed() || m_postSeal.info().hash() != newPreMine.info().parentHash() )
             for ( auto const& t : m_postSeal.pending() ) {
-                LOG( m_loggerTrace ) << "Resubmitting post-seal transaction " << t;
+                BOOST_LOG( m_loggerTrace ) << "Resubmitting post-seal transaction " << t;
                 //                      ctrace << "Resubmitting post-seal transaction " << t;
                 auto ir = m_tq.import( t, IfDropped::Retry );
                 if ( ir != ImportResult::Success )
@@ -789,7 +789,7 @@ bool Client::remoteActive() const {
 }
 
 void Client::onPostStateChanged() {
-    LOG( m_loggerTrace ) << "Post state changed.";
+    BOOST_LOG( m_loggerTrace ) << "Post state changed.";
     m_signalled.notify_all();
     m_remoteWorking = false;
 }
@@ -797,12 +797,12 @@ void Client::onPostStateChanged() {
 void Client::startSealing() {
     if ( m_wouldSeal == true )
         return;
-    LOG( m_loggerInfo ) << "Client::startSealing: " << author();
+    BOOST_LOG( m_loggerInfo ) << "Client::startSealing: " << author();
     if ( author() ) {
         m_wouldSeal = true;
         m_signalled.notify_all();
     } else
-        LOG( m_loggerInfo ) << "You need to set an author in order to seal!";
+        BOOST_LOG( m_loggerInfo ) << "You need to set an author in order to seal!";
 }
 
 void Client::rejigSealing() {
@@ -810,14 +810,14 @@ void Client::rejigSealing() {
         if ( sealEngine()->shouldSeal( this ) ) {
             m_wouldButShouldnot = false;
 
-            LOG( m_loggerTrace ) << "Rejigging seal engine...";
+            BOOST_LOG( m_loggerTrace ) << "Rejigging seal engine...";
             DEV_WRITE_GUARDED( x_working ) {
                 if ( m_working.isSealed() ) {
-                    LOG( m_loggerInfo ) << "Tried to seal sealed block...";
+                    BOOST_LOG( m_loggerInfo ) << "Tried to seal sealed block...";
                     return;
                 }
                 // TODO is that needed? we have "Generating seal on" below
-                LOG( m_loggerTrace ) << "Starting to seal block"
+                BOOST_LOG( m_loggerTrace ) << "Starting to seal block"
                                      << " #" << m_working.info().number();
 
                 // TODO Deduplicate code
@@ -845,14 +845,14 @@ void Client::rejigSealing() {
 
             if ( wouldSeal() ) {
                 sealEngine()->onSealGenerated( [this]( bytes const& _header ) {
-                    LOG( m_loggerInfo ) << "Block sealed"
+                    BOOST_LOG( m_loggerInfo ) << "Block sealed"
                                         << " #" << BlockHeader( _header, HeaderData ).number();
                     if ( this->submitSealed( _header ) )
                         m_onBlockSealed( _header );
                     else
-                        LOG( m_loggerInfo ) << "Submitting block failed...";
+                        BOOST_LOG( m_loggerInfo ) << "Submitting block failed...";
                 } );
-                LOG( m_loggerTrace ) << "Generating seal on " << m_sealingInfo.hash( WithoutSeal )
+                BOOST_LOG( m_loggerTrace ) << "Generating seal on " << m_sealingInfo.hash( WithoutSeal )
                                      << " #" << m_sealingInfo.number();
                 sealEngine()->generateSeal( m_sealingInfo );
             }
@@ -866,14 +866,14 @@ void Client::rejigSealing() {
 void Client::sealUnconditionally( bool submitToBlockChain ) {
     m_wouldButShouldnot = false;
 
-    LOG( m_loggerTrace ) << "Rejigging seal engine...";
+    BOOST_LOG( m_loggerTrace ) << "Rejigging seal engine...";
     DEV_WRITE_GUARDED( x_working ) {
         if ( m_working.isSealed() ) {
-            LOG( m_loggerInfo ) << "Tried to seal sealed block...";
+            BOOST_LOG( m_loggerInfo ) << "Tried to seal sealed block...";
             return;
         }
         // TODO is that needed? we have "Generating seal on" below
-        LOG( m_loggerTrace ) << "Starting to seal block"
+        BOOST_LOG( m_loggerTrace ) << "Starting to seal block"
                              << " #" << m_working.info().number();
         // latest hash is really updated after NEXT snapshot already started hash computation
         // TODO Deduplicate code
@@ -908,7 +908,7 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
     m_sealingInfo.streamRLP( headerRlp );
     const bytes& header = headerRlp.out();
     BlockHeader header_struct( header, HeaderData );
-    LOG( m_loggerInfo ) << "Block sealed"
+    BOOST_LOG( m_loggerInfo ) << "Block sealed"
                         << " #" << header_struct.number() << " (" << header_struct.hash() << ")";
     std::stringstream ssBlockStats;
     ssBlockStats << "Block stats:"
@@ -926,14 +926,14 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
         ssBlockStats << ":RAM:" << getRAMUsage();
         ssBlockStats << ":CPU:" << getCPUUsage();
     }
-    LOG( m_loggerInfo ) << ssBlockStats.str();
+    BOOST_LOG( m_loggerInfo ) << ssBlockStats.str();
 
 
     if ( submitToBlockChain ) {
         if ( this->submitSealed( header ) )
             m_onBlockSealed( header );
         else
-            LOG( m_loggerInfo ) << "Submitting block failed...";
+            BOOST_LOG( m_loggerInfo ) << "Submitting block failed...";
     } else {
         UpgradableGuard l( x_working );
         {
@@ -941,7 +941,7 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
             if ( m_working.sealBlock( header ) ) {
                 m_onBlockSealed( header );
             } else {
-                LOG( m_loggerInfo ) << "Sealing block failed...";
+                BOOST_LOG( m_loggerInfo ) << "Sealing block failed...";
             }
         }
         DEV_WRITE_GUARDED( x_postSeal )
@@ -959,16 +959,16 @@ void Client::importWorkingBlock() {
 void Client::noteChanged( h256Hash const& _filters ) {
     Guard l( x_filtersWatches );
     if ( _filters.size() )
-        LOG( m_loggerWatch ) << "noteChanged: " << filtersToString( _filters );
+        BOOST_LOG( m_loggerWatch ) << "noteChanged: " << filtersToString( _filters );
     // accrue all changes left in each filter into the watches.
     for ( auto& w : m_watches )
         if ( _filters.count( w.second.id ) ) {
             if ( m_filters.count( w.second.id ) ) {
-                LOG( m_loggerWatch ) << w.first << " " << w.second.id.abridged();
+                BOOST_LOG( m_loggerWatch ) << w.first << " " << w.second.id.abridged();
                 w.second.append_changes( m_filters.at( w.second.id ).changes_ );
             } else if ( m_specialFilters.count( w.second.id ) )
                 for ( h256 const& hash : m_specialFilters.at( w.second.id ) ) {
-                    LOG( m_loggerWatch ) << w.first << " "
+                    BOOST_LOG( m_loggerWatch ) << w.first << " "
                                          << ( w.second.id == PendingChangedFilter ? "pending" :
                                                 w.second.id == ChainChangedFilter ? "chain" :
                                                                                     "???" );
@@ -1027,7 +1027,7 @@ void Client::tick() {
         m_bq.tick();
         m_lastTick = chrono::system_clock::now();
         if ( m_report.ticks == 15 )
-            LOG( m_loggerTrace ) << activityReport();
+            BOOST_LOG( m_loggerTrace ) << activityReport();
     }
 }
 
@@ -1043,7 +1043,7 @@ void Client::checkWatchGarbage() {
                      chrono::seconds( 20 ) )  // NB Was 200 for debugging. Normal value is 20!
             {
                 toUninstall.push_back( key );
-                LOG( m_loggerTrace ) << "GC: Uninstall " << key << " ("
+                BOOST_LOG( m_loggerTrace ) << "GC: Uninstall " << key << " ("
                                      << chrono::duration_cast< chrono::seconds >(
                                             chrono::system_clock::now() - m_watches[key].lastPoll )
                                             .count()
@@ -1280,11 +1280,11 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
             temp.mutableState().addBalance( _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
         ret = temp.execute( bc().lastBlockHashes(), t, skale::Permanence::Reverted );
     } catch ( InvalidNonce const& in ) {
-        LOG( m_loggerInfo ) << "exception in client call(1):"
+        BOOST_LOG( m_loggerInfo ) << "exception in client call(1):"
                             << boost::current_exception_diagnostic_information();
         throw std::runtime_error( "call with invalid nonce" );
     } catch ( ... ) {
-        LOG( m_loggerInfo ) << "exception in client call(2):"
+        BOOST_LOG( m_loggerInfo ) << "exception in client call(2):"
                             << boost::current_exception_diagnostic_information();
         throw;
     }

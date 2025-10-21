@@ -251,7 +251,7 @@ void BlockChain::open( fs::path const& _path, bool _applyPatches, WithExisting _
     DEV_IGNORE_EXCEPTIONS( fs::permissions( extrasPath, fs::owner_all ) );
 
     if ( _we == WithExisting::Kill ) {
-        LOG( m_loggerInfo ) << "Killing blockchain & extras database (WithExisting::Kill).";
+        BOOST_LOG( m_loggerInfo ) << "Killing blockchain & extras database (WithExisting::Kill).";
         fs::remove_all( chainPath / fs::path( "blocks_and_extras" ) );
     }
 
@@ -275,12 +275,12 @@ void BlockChain::open( fs::path const& _path, bool _applyPatches, WithExisting _
             throw;
 
         if ( fs::space( chainPath / fs::path( "blocks_and_extras" ) ).available < 1024 ) {
-            LOG( m_loggerWarning )
+            BOOST_LOG( m_loggerWarning )
                 << "Not enough available space found on hard drive. Please free some up and then "
                    "re-run. Bailing.";
             BOOST_THROW_EXCEPTION( NotEnoughAvailableSpace() );
         } else {
-            LOG( m_loggerWarning )
+            BOOST_LOG( m_loggerWarning )
                 << "Database " << ( chainPath / fs::path( "blocks_and_extras" ) ) << "or "
                 << ( extrasPath / fs::path( "extras" ) )
                 << "already open. You appear to have another instance of ethereum running. "
@@ -330,7 +330,7 @@ void BlockChain::open( fs::path const& _path, bool _applyPatches, WithExisting _
 
     m_lastBlockNumber = number( m_lastBlockHash );
 
-    LOG( m_loggerDebug ) << "Opened blockchain DB. Latest: " << currentHash() << ' '
+    BOOST_LOG( m_loggerDebug ) << "Opened blockchain DB. Latest: " << currentHash() << ' '
                          << m_lastBlockNumber;
 
     //    dump_blocks_and_extras_db( *this, 0 );
@@ -340,7 +340,7 @@ void BlockChain::open( fs::path const& _path, bool _applyPatches, WithExisting _
 }
 
 void BlockChain::close() {
-    LOG( m_loggerTrace ) << "Closing blockchain DB";
+    BOOST_LOG( m_loggerTrace ) << "Closing blockchain DB";
     // Not thread safe...
     m_extrasDB = nullptr;
     m_blocksDB = nullptr;
@@ -450,10 +450,10 @@ tuple< ImportRoute, bool, unsigned > BlockChain::sync(
                     std::back_inserter( goodTransactions ) );
                 ++count;
             } catch ( dev::eth::AlreadyHaveBlock const& ) {
-                LOG( m_loggerWarning ) << "ODD: Import queue contains already imported block";
+                BOOST_LOG( m_loggerWarning ) << "ODD: Import queue contains already imported block";
                 continue;
             } catch ( dev::eth::UnknownParent const& ) {
-                LOG( m_loggerWarning )
+                BOOST_LOG( m_loggerWarning )
                     << "ODD: Import queue contains block with unknown parent.";  // <<
                                                                                  // LogTag::Error
                 // <<
@@ -462,17 +462,17 @@ tuple< ImportRoute, bool, unsigned > BlockChain::sync(
                 // order. Can't continue - chain bad.
                 badBlocks.push_back( block.verified.info.hash() );
             } catch ( dev::eth::FutureTime const& ) {
-                LOG( m_loggerWarning ) << "ODD: Import queue contains a block with future time.";
+                BOOST_LOG( m_loggerWarning ) << "ODD: Import queue contains a block with future time.";
                 this_thread::sleep_for( chrono::seconds( 1 ) );
                 continue;
             } catch ( dev::eth::TransientError const& ) {
                 this_thread::sleep_for( chrono::milliseconds( 100 ) );
                 continue;
             } catch ( Exception& ex ) {
-                LOG( m_loggerError )
+                BOOST_LOG( m_loggerError )
                     << "Exception while importing block. Someone (Jeff? That you?) seems to be "
                     << "giving us dodgy blocks !";
-                LOG( m_loggerError ) << diagnostic_information( ex );
+                BOOST_LOG( m_loggerError ) << diagnostic_information( ex );
                 if ( m_onBad )
                     m_onBad( ex );
                 // NOTE: don't reimport since the queue should guarantee everything in the right
@@ -525,7 +525,7 @@ ImportRoute BlockChain::import( VerifiedBlockRef const& _block, State& _state, b
     // Work out its number as the parent's number + 1
     if ( !isKnown( _block.info.parentHash(), false ) )  // doesn't have to be current.
     {
-        LOG( m_loggerDebug ) << _block.info.hash() << " : Unknown parent "
+        BOOST_LOG( m_loggerDebug ) << _block.info.hash() << " : Unknown parent "
                              << _block.info.parentHash();
         // We don't know the parent (yet) - discard for now. It'll get resent to us if we find out
         // about its ancestry later on.
@@ -535,15 +535,15 @@ ImportRoute BlockChain::import( VerifiedBlockRef const& _block, State& _state, b
     auto pd = details( _block.info.parentHash() );
     if ( !pd ) {
         auto pdata = pd.rlp();
-        LOG( m_loggerError ) << "Details is returning false despite block known: " << RLP( pdata );
+        BOOST_LOG( m_loggerError ) << "Details is returning false despite block known: " << RLP( pdata );
         auto parentBlock = block( _block.info.parentHash() );
-        LOG( m_loggerError ) << "isKnown: " << isKnown( _block.info.parentHash() );
-        LOG( m_loggerError ) << "last/number: " << m_lastBlockNumber << " " << m_lastBlockHash
+        BOOST_LOG( m_loggerError ) << "isKnown: " << isKnown( _block.info.parentHash() );
+        BOOST_LOG( m_loggerError ) << "last/number: " << m_lastBlockNumber << " " << m_lastBlockHash
                              << " " << _block.info.number();
-        LOG( m_loggerError ) << "Block: " << BlockHeader( &parentBlock );
-        LOG( m_loggerError ) << "RLP: " << RLP( parentBlock );
-        LOG( m_loggerError ) << "DATABASE CORRUPTION: CRITICAL FAILURE";
-        LOG( m_loggerError ) << DETAILED_ERROR;
+        BOOST_LOG( m_loggerError ) << "Block: " << BlockHeader( &parentBlock );
+        BOOST_LOG( m_loggerError ) << "RLP: " << RLP( parentBlock );
+        BOOST_LOG( m_loggerError ) << "DATABASE CORRUPTION: CRITICAL FAILURE";
+        BOOST_LOG( m_loggerError ) << DETAILED_ERROR;
         exit( -1 );
     }
 
@@ -552,7 +552,7 @@ ImportRoute BlockChain::import( VerifiedBlockRef const& _block, State& _state, b
     // Verify parent-critical parts
     verifyBlock( _block.block, m_onBad, ImportRequirements::InOrderChecks );
 
-    LOG( m_loggerTrace ) << "Attempting import of " << _block.info.hash() << " ...";
+    BOOST_LOG( m_loggerTrace ) << "Attempting import of " << _block.info.hash() << " ...";
 
     performanceLogger.onStageFinished( "preliminaryChecks" );
 
@@ -581,9 +581,9 @@ ImportRoute BlockChain::import( VerifiedBlockRef const& _block, State& _state, b
         checkConsistency();
 #endif  // ETH_PARANOIA
     } catch ( BadRoot& ex ) {
-        LOG( m_loggerWarning ) << "*** BadRoot error! Trying to import" << _block.info.hash()
+        BOOST_LOG( m_loggerWarning ) << "*** BadRoot error! Trying to import" << _block.info.hash()
                                << "needed root" << *boost::get_error_info< errinfo_hash256 >( ex );
-        LOG( m_loggerWarning ) << _block.info;
+        BOOST_LOG( m_loggerWarning ) << _block.info;
         // Attempt in import later.
         BOOST_THROW_EXCEPTION( TransientError() );
     } catch ( Exception& ex ) {
@@ -651,7 +651,7 @@ ImportRoute BlockChain::import( const Block& _block ) {
 
 void BlockChain::checkBlockIsNew( VerifiedBlockRef const& _block ) const {
     if ( isKnown( _block.info.hash() ) ) {
-        LOG( m_loggerDebug ) << _block.info.hash() << " : Not new.";
+        BOOST_LOG( m_loggerDebug ) << _block.info.hash() << " : Not new.";
         BOOST_THROW_EXCEPTION( AlreadyHaveBlock() << errinfo_block( _block.block.toBytes() ) );
     }
 }
@@ -659,7 +659,7 @@ void BlockChain::checkBlockIsNew( VerifiedBlockRef const& _block ) const {
 void BlockChain::checkBlockTimestamp( BlockHeader const& _header ) const {
     // Check it's not crazy
     if ( _header.timestamp() > utcTime() && !m_params->isAllowFutureBlocks() ) {
-        LOG( m_loggerTrace ) << _header.hash() << " : Future time " << _header.timestamp()
+        BOOST_LOG( m_loggerTrace ) << _header.hash() << " : Future time " << _header.timestamp()
                              << " (now at " << utcTime() << ")";
         // Block has a timestamp in the future. This is no good.
         BOOST_THROW_EXCEPTION( FutureTime() );
@@ -675,7 +675,7 @@ bool BlockChain::rotateDBIfNeeded( uint64_t pieceUsageBytes ) {
                 true :
                 false;
         if ( isRotate ) {
-            LOG( m_loggerTrace ) << "Will perform storage-based block rotation";
+            BOOST_LOG( m_loggerTrace ) << "Will perform storage-based block rotation";
         }
     }
     if ( clockLastDbRotation_ == 0 )
@@ -685,7 +685,7 @@ bool BlockChain::rotateDBIfNeeded( uint64_t pieceUsageBytes ) {
         clock_t clockNow = clock();
         if ( ( clockNow - clockLastDbRotation_ ) >= clockDbRotationPeriod_ ) {
             isRotate = true;
-            LOG( m_loggerTrace ) << "Will perform timer-based block rotation";
+            BOOST_LOG( m_loggerTrace ) << "Will perform timer-based block rotation";
         }
     }
     if ( !isRotate )
@@ -878,7 +878,7 @@ void BlockChain::recomputeExistingOccupiedSpaceForBlockRotation() try {
     size_t blocksBatchSize = 0;
     size_t extrasBatchSize = 0;
 
-    LOG( m_loggerDebug ) << "Recomputing old blocks sizes...";
+    BOOST_LOG( m_loggerDebug ) << "Recomputing old blocks sizes...";
 
     // HACK 34 is key size + extra size + db prefix (blocks or extras)
     for ( unsigned i = 1; i <= number; ++i ) {
@@ -935,7 +935,7 @@ void BlockChain::recomputeExistingOccupiedSpaceForBlockRotation() try {
         // HACK Since blooms are often re-used, let's adjust size for them
         extrasBatchSize +=
             ( 4147 + 34 ) / 16 + ( 4147 + 34 ) / 256 + 2;  // 1+1/16th big bloom per block
-        LOG( m_loggerTrace ) << "Computed block " << i
+        BOOST_LOG( m_loggerTrace ) << "Computed block " << i
                              << " DB usage = " << blocksBatchSize + extrasBatchSize;
     }  // for block
 
@@ -944,7 +944,7 @@ void BlockChain::recomputeExistingOccupiedSpaceForBlockRotation() try {
         pieceUsageBytes = std::stoull( this->m_db->lookup( ( db::Slice ) "pieceUsageBytes" ) );
     }
 
-    LOG( m_loggerDebug ) << "pieceUsageBytes from DB = " << pieceUsageBytes
+    BOOST_LOG( m_loggerDebug ) << "pieceUsageBytes from DB = " << pieceUsageBytes
                          << " computed = " << blocksBatchSize + extrasBatchSize;
 
     if ( pieceUsageBytes == 0 ) {
@@ -954,12 +954,12 @@ void BlockChain::recomputeExistingOccupiedSpaceForBlockRotation() try {
         m_db->commit( "recompute_piece_usage" );
     } else {
         if ( pieceUsageBytes != blocksBatchSize + extrasBatchSize || true ) {
-            LOG( m_loggerError ) << "Computed db usage value is not equal to stored one! This "
+            BOOST_LOG( m_loggerError ) << "Computed db usage value is not equal to stored one! This "
                                     "should happen only if block rotation has occured!";
         }
     }  // else
 } catch ( const std::exception& ex ) {
-    LOG( m_loggerError )
+    BOOST_LOG( m_loggerError )
         << "Exception when recomputing old blocks sizes (but it's normal if DB has rotated): "
         << ex.what();
 }
@@ -989,33 +989,33 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     }
     pieceUsageBytes += writeSize;
 
-    LOG( m_loggerTrace ) << "BLOCK_DB+" << writeSize << ". Piece DB usage is " << pieceUsageBytes
+    BOOST_LOG( m_loggerTrace ) << "BLOCK_DB+" << writeSize << ". Piece DB usage is " << pieceUsageBytes
                          << " bytes";
 
     // re-evaluate batches and reset total usage counter if rotated!
     if ( rotateDBIfNeeded( pieceUsageBytes ) ) {
-        LOG( m_loggerInfo ) << "Rotated out some blocks";
+        BOOST_LOG( m_loggerInfo ) << "Rotated out some blocks";
         m_db->revert();
         writeSize = prepareDbDataAndReturnSize(
             _block, _receipts, _totalDifficulty, pLogBloomFull, _performanceLogger );
         pieceUsageBytes = writeSize;
-        LOG( m_loggerInfo ) << "DB usage is " << pieceUsageBytes << " bytes";
+        BOOST_LOG( m_loggerInfo ) << "DB usage is " << pieceUsageBytes << " bytes";
     }
 
     // FINALLY! change our best hash.
     newLastBlockHash = _block.info.hash();
     newLastBlockNumber = ( unsigned ) _block.info.number();
 
-    LOG( m_loggerTrace ) << "   Imported and best " << _totalDifficulty << " ("
+    BOOST_LOG( m_loggerTrace ) << "   Imported and best " << _totalDifficulty << " ("
                          << "#" << _block.info.number() << "). Has "
                          << ( details( _block.info.parentHash() ).children.size() - 1 )
                          << " siblings.";
 
 #if ETH_PARANOIA
     if ( isKnown( _block.info.hash() ) && !details( _block.info.hash() ) ) {
-        LOG( m_loggerError ) << "Known block just inserted has no details.";
-        LOG( m_loggerError ) << "Block: " << _block.info;
-        LOG( m_loggerError ) << "DATABASE CORRUPTION: CRITICAL FAILURE";
+        BOOST_LOG( m_loggerError ) << "Known block just inserted has no details.";
+        BOOST_LOG( m_loggerError ) << "Block: " << _block.info;
+        BOOST_LOG( m_loggerError ) << "DATABASE CORRUPTION: CRITICAL FAILURE";
         exit( -1 );
     }
 
@@ -1023,9 +1023,9 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
         State canary( _db, BaseState::Empty );
         canary.populateFromChain( *this, _block.info.hash() );
     } catch ( ... ) {
-        LOG( m_loggerError ) << "Failed to initialise State object form imported block.";
-        LOG( m_loggerError ) << "Block: " << _block.info;
-        LOG( m_loggerError ) << "DATABASE CORRUPTION: CRITICAL FAILURE";
+        BOOST_LOG( m_loggerError ) << "Failed to initialise State object form imported block.";
+        BOOST_LOG( m_loggerError ) << "Block: " << _block.info;
+        BOOST_LOG( m_loggerError ) << "DATABASE CORRUPTION: CRITICAL FAILURE";
         exit( -1 );
     }
 #endif  // ETH_PARANOIA
@@ -1052,13 +1052,13 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
 #endif
             m_db->commit( "insertBlockAndExtras" );
         } catch ( boost::exception const& ex ) {
-            LOG( m_loggerWarning ) << "Error writing to blocks_and_extras database: "
+            BOOST_LOG( m_loggerWarning ) << "Error writing to blocks_and_extras database: "
                                    << boost::diagnostic_information( ex );
-            LOG( m_loggerWarning )
+            BOOST_LOG( m_loggerWarning )
                 << "Put" << toHex( bytesConstRef( db::Slice( "best" ) ) ) << "=>"
                 << toHex( bytesConstRef( db::Slice( ( char const* ) &m_lastBlockHash, 32 ) ) );
-            LOG( m_loggerWarning ) << "Fail writing to blocks_and_extras database. Bombing out.";
-            LOG( m_loggerError ) << DETAILED_ERROR;
+            BOOST_LOG( m_loggerWarning ) << "Fail writing to blocks_and_extras database. Bombing out.";
+            BOOST_LOG( m_loggerError ) << DETAILED_ERROR;
             exit( -1 );
         }
     }
@@ -1086,7 +1086,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     h256s fresh;
     fresh.push_back( tbi.hash() );
 
-    LOG( m_loggerTrace ) << "Insterted block with " << _block.transactions.size()
+    BOOST_LOG( m_loggerTrace ) << "Insterted block with " << _block.transactions.size()
                          << " transactions";
 
     return ImportRoute{ dead, fresh, _block.transactions };
@@ -1132,7 +1132,7 @@ void BlockChain::clearBlockBlooms( unsigned _begin, unsigned _end ) {
 }
 
 void BlockChain::rescue( State const& /*_state*/ ) {
-    LOG( m_loggerInfo ) << "Rescuing database...";
+    BOOST_LOG( m_loggerInfo ) << "Rescuing database...";
     throw std::logic_error( "Rescueing is not implemented" );
 
     unsigned u = 1;
@@ -1147,32 +1147,32 @@ void BlockChain::rescue( State const& /*_state*/ ) {
         }
     }
     unsigned l = u / 2;
-    LOG( m_loggerInfo ) << "Finding last likely block number...";
+    BOOST_LOG( m_loggerInfo ) << "Finding last likely block number...";
     while ( u - l > 1 ) {
         unsigned m = ( u + l ) / 2;
-        LOG( m_loggerInfo ) << " " << m << flush;
+        BOOST_LOG( m_loggerInfo ) << " " << m << flush;
         if ( isKnown( numberHash( m ) ) )
             l = m;
         else
             u = m;
     }
-    LOG( m_loggerInfo ) << "  lowest is " << l;
+    BOOST_LOG( m_loggerInfo ) << "  lowest is " << l;
     for ( ; l > 0; --l ) {
         h256 h = numberHash( l );
-        LOG( m_loggerInfo ) << "Checking validity of " << l << " (" << h << ")..." << flush;
+        BOOST_LOG( m_loggerInfo ) << "Checking validity of " << l << " (" << h << ")..." << flush;
         try {
-            LOG( m_loggerInfo ) << "block..." << flush;
+            BOOST_LOG( m_loggerInfo ) << "block..." << flush;
             BlockHeader bi( block( h ) );
-            LOG( m_loggerInfo ) << "extras..." << flush;
+            BOOST_LOG( m_loggerInfo ) << "extras..." << flush;
             details( h );
-            LOG( m_loggerInfo ) << "state..." << flush;
-            LOG( m_loggerInfo ) << "STATE VALIDITY CHECK IS NOT SUPPORTED" << flush;
+            BOOST_LOG( m_loggerInfo ) << "state..." << flush;
+            BOOST_LOG( m_loggerInfo ) << "STATE VALIDITY CHECK IS NOT SUPPORTED" << flush;
             //            if (_db.exists(bi.stateRoot()))
             //                break;
         } catch ( ... ) {
         }
     }
-    LOG( m_loggerInfo ) << "OK.";
+    BOOST_LOG( m_loggerInfo ) << "OK.";
     rewind( l );
 }
 
@@ -1187,13 +1187,13 @@ void BlockChain::rewind( unsigned _newHead ) {
             m_extrasDB->insert(
                 db::Slice( "best" ), db::Slice( ( char const* ) &m_lastBlockHash, 32 ) );
         } catch ( boost::exception const& ex ) {
-            LOG( m_loggerWarning )
+            BOOST_LOG( m_loggerWarning )
                 << "Error writing to extras database: " << boost::diagnostic_information( ex );
-            LOG( m_loggerWarning )
+            BOOST_LOG( m_loggerWarning )
                 << "Put" << toHex( bytesConstRef( db::Slice( "best" ) ) ) << "=>"
                 << toHex( bytesConstRef( db::Slice( ( char const* ) &m_lastBlockHash, 32 ) ) );
-            LOG( m_loggerWarning ) << "Fail writing to extras database. Bombing out.";
-            LOG( m_loggerError ) << DETAILED_ERROR;
+            BOOST_LOG( m_loggerWarning ) << "Fail writing to extras database. Bombing out.";
+            BOOST_LOG( m_loggerError ) << DETAILED_ERROR;
             exit( -1 );
         }
         noteCanonChanged();
@@ -1381,7 +1381,7 @@ void BlockChain::garbageCollect( bool _force ) {
             case ExtraBlockHash: {
                 // m_cacheUsage should not contain ExtraBlockHash elements currently.  See the
                 // second noteUsed() in BlockChain.h, which is a no-op.
-                LOG( m_loggerError ) << DETAILED_ERROR;
+                BOOST_LOG( m_loggerError ) << DETAILED_ERROR;
                 assert( false );
                 break;
             }
@@ -1500,11 +1500,11 @@ void BlockChain::checkConsistency() {
             {
                 auto dp = details( p );
                 if ( asserts( contains( dp.children, h ) ) )
-                    LOG( m_loggerInfo )
+                    BOOST_LOG( m_loggerInfo )
                         << "Apparently the database is corrupt. Not much we can do at this "
                            "stage...";
                 if ( assertsEqual( dp.number, dh.number - 1 ) )
-                    LOG( m_loggerInfo )
+                    BOOST_LOG( m_loggerInfo )
                         << "Apparently the database is corrupt. Not much we can do at this "
                            "stage...";
             }
@@ -1659,7 +1659,7 @@ bytes BlockChain::block( h256 const& _hash ) const {
 
     string d = m_blocksDB->lookup( toSlice( _hash ) );
     if ( d.empty() ) {
-        LOG( m_loggerWarning ) << "Couldn't find requested block:" << _hash;
+        BOOST_LOG( m_loggerWarning ) << "Couldn't find requested block:" << _hash;
         return bytes();
     }
 
@@ -1685,7 +1685,7 @@ bytes BlockChain::headerData( h256 const& _hash ) const {
 
     string d = m_blocksDB->lookup( toSlice( _hash ) );
     if ( d.empty() ) {
-        LOG( m_loggerWarning ) << "Couldn't find requested block:" << _hash;
+        BOOST_LOG( m_loggerWarning ) << "Couldn't find requested block:" << _hash;
         return bytes();
     }
 

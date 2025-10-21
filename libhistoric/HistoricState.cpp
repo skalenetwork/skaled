@@ -60,14 +60,14 @@ HistoricState::openDB( fs::path const& _basePath, h256 const& _genesisHash, With
     DatabasePaths const dbPaths{ _basePath, _genesisHash };
     if ( db::isDiskDatabase() ) {
         if ( _we == WithExisting::Kill ) {
-            LOG( m_loggerInfo ) << "Deleting state database: " << dbPaths.statePath();
+            BOOST_LOG( m_loggerInfo ) << "Deleting state database: " << dbPaths.statePath();
             fs::remove_all( dbPaths.statePath() );
         }
 
-        LOG( m_loggerDebug ) << "Verifying path exists (and creating if not present): "
+        BOOST_LOG( m_loggerDebug ) << "Verifying path exists (and creating if not present): "
                              << dbPaths.chainPath();
         fs::create_directories( dbPaths.chainPath() );
-        LOG( m_loggerDebug ) << "Ensuring permissions are set for path: " << dbPaths.chainPath();
+        BOOST_LOG( m_loggerDebug ) << "Ensuring permissions are set for path: " << dbPaths.chainPath();
         DEV_IGNORE_EXCEPTIONS( fs::permissions( dbPaths.chainPath(), fs::owner_all ) );
 
         clog( VerbosityDebug, "statedb" )
@@ -79,7 +79,7 @@ HistoricState::openDB( fs::path const& _basePath, h256 const& _genesisHash, With
     }
 
     try {
-        LOG( m_loggerTrace ) << "Opening state database";
+        BOOST_LOG( m_loggerTrace ) << "Opening state database";
         auto rotator =
             std::make_shared< batched_io::BatchedRotatingHistoricDbIO >( dbPaths.statePath() );
         auto rotatingDB = std::make_shared< dev::db::RotatingHistoricState >( rotator );
@@ -88,27 +88,27 @@ HistoricState::openDB( fs::path const& _basePath, h256 const& _genesisHash, With
         return { dev::OverlayDB( std::move( bdb ) ), rotatingDB };
     } catch ( boost::exception const& ex ) {
         if ( db::isDiskDatabase() ) {
-            LOG( m_loggerError ) << "Error opening state database: " << dbPaths.statePath();
+            BOOST_LOG( m_loggerError ) << "Error opening state database: " << dbPaths.statePath();
             db::DatabaseStatus const dbStatus =
                 *boost::get_error_info< db::errinfo_dbStatusCode >( ex );
             if ( fs::space( dbPaths.statePath() ).available < 1024 ) {
-                LOG( m_loggerError )
+                BOOST_LOG( m_loggerError )
                     << "Not enough available space found on hard drive. Please free some up and "
                        "then re-run. Bailing.";
                 BOOST_THROW_EXCEPTION( NotEnoughAvailableSpace() );
             } else if ( dbStatus == db::DatabaseStatus::Corruption ) {
-                LOG( m_loggerError )
+                BOOST_LOG( m_loggerError )
                     << "Database corruption detected. Please see the exception for corruption "
                        "details. Exception: "
                     << boost::diagnostic_information( ex );
                 BOOST_THROW_EXCEPTION( DatabaseCorruption() );
             } else if ( dbStatus == db::DatabaseStatus::IOError ) {
-                LOG( m_loggerError ) << "Database already open. You appear to have "
+                BOOST_LOG( m_loggerError ) << "Database already open. You appear to have "
                                         "another instance of Aleth running.";
                 BOOST_THROW_EXCEPTION( DatabaseAlreadyOpen() );
             }
         }
-        LOG( m_loggerError )
+        BOOST_LOG( m_loggerError )
             << "Unknown error encountered when opening state database. Exception details: "
             << boost::diagnostic_information( ex );
         throw;

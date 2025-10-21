@@ -62,7 +62,7 @@ bool AmsterdamFixPatch::isInitOnChainNeeded(
     totalStorageUsed = std::stoull( totalStorageUsedStr );
 
     if ( totalStorageUsed != best_number * 32 )
-        LOG( m_loggerInfo ) << "Will fix old stateRoots because totalStorageUsed = "
+        BOOST_LOG( m_loggerInfo ) << "Will fix old stateRoots because totalStorageUsed = "
                             << totalStorageUsed;
 
     return totalStorageUsed != best_number * 32;
@@ -126,7 +126,7 @@ void AmsterdamFixPatch::initOnChain( batched_io::db_operations_face& _blocksDB,
     h256 prev_hash;
     BlockDetails prev_details;
 
-    LOG( m_loggerInfo ) << "Repairing stateRoots using base block " << start_block;
+    BOOST_LOG( m_loggerInfo ) << "Repairing stateRoots using base block " << start_block;
 
     for ( size_t bn = start_block;; ++bn ) {
         // read block
@@ -199,7 +199,7 @@ void AmsterdamFixPatch::initOnChain( batched_io::db_operations_face& _blocksDB,
 
         if ( bn == start_block + 1 || old_hash == best_hash || transactions.size() ||
              bn % 1000 == 0 )
-            LOG( m_loggerInfo ) << "Repairing block " << bn << " " << old_hash << " -> "
+            BOOST_LOG( m_loggerInfo ) << "Repairing block " << bn << " " << old_hash << " -> "
                                 << new_hash;
 
         TransactionAddress ta;
@@ -209,7 +209,7 @@ void AmsterdamFixPatch::initOnChain( batched_io::db_operations_face& _blocksDB,
         for ( size_t i = 0; i < transactions.size(); ++i ) {
             h256 hash = sha3( transactions[i].data() );
             ta.index = i;
-            LOG( m_loggerInfo ) << "Updating transaction " << hash << " location " << old_hash
+            BOOST_LOG( m_loggerInfo ) << "Updating transaction " << hash << " location " << old_hash
                                 << " -> " << new_hash << " " << ta.index;
             _extrasDB.insert(
                 toSlice( hash, ExtraTransactionAddress ), ( db::Slice ) dev::ref( ta.rlp() ) );
@@ -225,7 +225,7 @@ void AmsterdamFixPatch::initOnChain( batched_io::db_operations_face& _blocksDB,
             _extrasDB.insert(
                 db::Slice( "best" ), db::Slice( ( const char* ) new_hash.data(), 32 ) );
             _db.commit( "repair_best" );
-            LOG( m_loggerInfo ) << "Repaired till block " << bn;
+            BOOST_LOG( m_loggerInfo ) << "Repaired till block " << bn;
             break;
         }
 

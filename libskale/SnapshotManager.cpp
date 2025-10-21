@@ -155,7 +155,7 @@ void SnapshotManager::doSnapshot( unsigned _blockNumber ) {
 // exceptions:
 // - not found/cannot read
 void SnapshotManager::restoreSnapshot( unsigned _blockNumber ) {
-    LOG( m_loggerInfo ) << "Restoring snapshot made for block " << _blockNumber;
+    BOOST_LOG( m_loggerInfo ) << "Restoring snapshot made for block " << _blockNumber;
     try {
         if ( !fs::exists( snapshotsDir / to_string( _blockNumber ) ) )
             throw SnapshotAbsent( _blockNumber );
@@ -515,7 +515,7 @@ void SnapshotManager::computeDatabaseHash(
     dev::h256 dbHash;
     secp256k1_sha256_finalize( &dbCtx, dbHash.data() );
 
-    LOG( m_loggerInfo ) << _dbDir << " hash is: " << dbHash;
+    BOOST_LOG( m_loggerInfo ) << _dbDir << " hash is: " << dbHash;
 
     secp256k1_sha256_write( ctx, dbHash.data(), dbHash.size );
 } catch ( const fs::filesystem_error& ex ) {
@@ -561,7 +561,7 @@ void SnapshotManager::addLastPriceToHash( unsigned _blockNumber, secp256k1_sha25
 
     dev::h256 last_price_hash = dev::sha256( last_price.str() );
 
-    LOG( m_loggerInfo ) << "Latest price hash is: " << last_price_hash;
+    BOOST_LOG( m_loggerInfo ) << "Latest price hash is: " << last_price_hash;
     secp256k1_sha256_write( ctx, last_price_hash.data(), last_price_hash.size );
 }
 

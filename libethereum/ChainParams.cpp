@@ -435,7 +435,7 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
         try {
             node.owner = jsToAddress( nodeConfObj.at( "owner" ).get_str() );
         } catch ( ... ) {
-            LOG( m_loggerWarning )
+            BOOST_LOG( m_loggerWarning )
                 << "Node " << node.id << ": owner is not set, using zero address as fallback";
             node.owner = ZeroAddress;
         }
@@ -444,7 +444,7 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
             node.rewardWalletAddress =
                 jsToAddress( nodeConfObj.at( "rewardWalletAddress" ).get_str() );
         } catch ( ... ) {
-            LOG( m_loggerWarning )
+            BOOST_LOG( m_loggerWarning )
                 << "Node " << node.id
                 << ": rewardWalletAddress is not set, using zero address as fallback";
             node.rewardWalletAddress = ZeroAddress;
@@ -650,10 +650,10 @@ void ChainParams::populateFromGenesis( bytes const& _genesisRLP, AccountMap cons
 
     auto b = genesisBlock();
     if ( b != _genesisRLP ) {
-        LOG( m_loggerDebug ) << "Block passed:" << bi.hash() << bi.hash( WithoutSeal );
-        LOG( m_loggerDebug ) << "Genesis now:" << BlockHeader::headerHashFromBlock( b );
-        LOG( m_loggerDebug ) << RLP( b );
-        LOG( m_loggerDebug ) << RLP( _genesisRLP );
+        BOOST_LOG( m_loggerDebug ) << "Block passed:" << bi.hash() << bi.hash( WithoutSeal );
+        BOOST_LOG( m_loggerDebug ) << "Genesis now:" << BlockHeader::headerHashFromBlock( b );
+        BOOST_LOG( m_loggerDebug ) << RLP( b );
+        BOOST_LOG( m_loggerDebug ) << RLP( _genesisRLP );
         throw 0;
     }
 }
@@ -941,7 +941,7 @@ bool ChainParams::updateCurrentGroupIfNeeded( uint64_t _latestBlockTimestamp ) {
          sChain.currentGroups[0].startTs > sChain.currentGroups[1].startTs ) {
         std::unique_lock< std::shared_mutex > lock( m_mutex );
         std::swap( sChain.currentGroups[0], sChain.currentGroups[1] );
-        LOG( m_loggerInfo ) << "Using the group with startTs " << sChain.currentGroups[1].startTs;
+        BOOST_LOG( m_loggerInfo ) << "Using the group with startTs " << sChain.currentGroups[1].startTs;
         sChain.nodes = sChain.currentGroups[1].nodes;
         switchSyncMode( sChain.nodes );
         return true;
