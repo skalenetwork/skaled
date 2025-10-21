@@ -167,7 +167,7 @@ DEFINE_SIMPLE_PATCH( ClearPartialReceiptsPatch );
 
 /*
  * Purpose: keep partial receipts until next block to ensure sync state with consensus
- * Version introduced: 4.0.1+
+ * Version introduced: 4.0.3+
  */
 DEFINE_AMNESIC_PATCH( KeepPartialReceiptsUntilNextBlockPatch );
 
