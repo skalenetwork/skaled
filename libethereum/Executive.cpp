@@ -629,11 +629,9 @@ bool Executive::finalize() {
     }
 
     // Suicides...
-#ifndef FAIR
     if ( m_ext )
         for ( auto a : m_ext->sub.suicides )
             m_s.kill( a );
-#endif
 
     // Logs..
     if ( m_ext )
