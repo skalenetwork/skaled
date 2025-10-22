@@ -85,14 +85,13 @@ public:
         // Called for each insert operation
         std::string keyHex = dev::toHex(key.data(), key.data() + key.size(), "0x");
         std::string valueHex = dev::toHex(value.data(), value.data() + value.size(), "0x");
-        ctrace << "Insert: key=" << keyHex << " (" << key.size() << " bytes)"
-               << " value=" << valueHex << " (" << value.size() << " bytes)";
+        ctrace << "Insert: key=" << keyHex << " value=" << valueHex;
     }
     
     void Delete(const leveldb::Slice& key) override {
         // Called for each kill operation
         std::string keyHex = dev::toHex(key.data(), key.data() + key.size(), "0x");
-        ctrace << "Delete: key=" << keyHex << " (" << key.size() << " bytes)";
+        ctrace << "Delete: key=" << keyHex;
     }
 };
 
