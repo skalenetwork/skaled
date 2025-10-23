@@ -46,6 +46,10 @@ SchainPatchEnum getEnumForPatchName( const std::string& _patchName ) {
         return SchainPatchEnum::CurrentBlockRandomPatch;
     else if ( _patchName == "GroupIndexInitPatch" )
         return SchainPatchEnum::GroupIndexInitPatch;
+#ifdef FAIR
+    else if ( _patchName == "DisableSelfDestructPatch" )
+        return SchainPatchEnum::DisableSelfDestructPatch;
+#endif
     else
         throw std::out_of_range( _patchName );
 }
@@ -90,6 +94,10 @@ std::string getPatchNameForEnum( SchainPatchEnum _enumValue ) {
         return "CurrentBlockRandomPatch";
     case SchainPatchEnum::GroupIndexInitPatch:
         return "GroupIndexInitPatch";
+#ifdef FAIR
+    case SchainPatchEnum::DisableSelfDestructPatch:
+        return "DisableSelfdestructPatch";
+#endif
     default:
         throw std::out_of_range(
             "UnknownPatch #" + std::to_string( static_cast< size_t >( _enumValue ) ) );

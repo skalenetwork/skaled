@@ -185,4 +185,7 @@ DEFINE_SIMPLE_PATCH( CurrentBlockRandomPatch );
  */
 DEFINE_AMNESIC_PATCH( GroupIndexInitPatch );
 
+#ifdef FAIR
+DEFINE_AMNESIC_PATCH( DisableSelfDestructPatch );
+#endif
 #endif  // SCHAINPATCH_H

@@ -28,6 +28,9 @@
 #include <boost/thread.hpp>
 
 #include "LastBlockHashesFace.h"
+#ifdef FAIR
+#include "SchainPatch.h"
+#endif
 
 using namespace dev;
 using namespace dev::eth;
@@ -174,7 +177,13 @@ void ExtVM::suicide( [[maybe_unused]] Address _a ) {
     // http://martin.swende.se/blog/Ethereum_quirks_and_vulns.html). There is one test case
     // witnessing the current consensus
     // 'GeneralStateTests/stSystemOperationsTest/suicideSendEtherPostDeath.json'.
-#ifndef FAIR
+#ifdef FAIR
+    if ( !DisableSelfDestructPatch::isEnabledInWorkingBlock() ) {
+        m_s.addBalance( _a, m_s.balance( myAddress ) );
+        m_s.setBalance( myAddress, 0 );
+        ExtVMFace::suicide( _a );
+    }
+#else
     m_s.addBalance( _a, m_s.balance( myAddress ) );
     m_s.setBalance( myAddress, 0 );
     ExtVMFace::suicide( _a );
