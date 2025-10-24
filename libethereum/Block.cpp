@@ -599,7 +599,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
     // we got to the end of the block so we do not need partial transaction receipts anymore
     if ( !KeepPartialReceiptsUntilNextBlockPatch::isEnabledInWorkingBlock() ) {
         m_state.safeRemoveAllPartialTransactionReceipts();
-       sanityCheckPartialTransactionReceipts();
+        sanityCheckPartialTransactionReceipts();
     }
 
     // since we committed changes corresponding to a particular block
