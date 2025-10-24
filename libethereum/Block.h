@@ -335,6 +335,9 @@ private:
     // Clear partial transaction receipts for previous block
     void cleanupPartialTransactionReceiptsForPreviousBlock();
 
+    // Sanity check for partial transaction receipts
+    void sanityCheckPartialTransactionReceipts( std::optional< BlockNumber > blockNumber = std::nullopt );
+
     State m_state;                ///< Our state.
     Transactions m_transactions;  ///< The current list of transactions that we've included in the
                                   ///< state.

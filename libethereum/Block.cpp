@@ -467,10 +467,18 @@ void Block::cleanupPartialTransactionReceiptsForPreviousBlock() {
                              << m_previousBlock.number();
         m_state.safeRemovePartialTransactionReceiptsForBlock( m_previousBlock.number() );
     }
+    sanityCheckPartialTransactionReceipts( m_previousBlock.number() );
+}
+
+void Block::sanityCheckPartialTransactionReceipts( std::optional< BlockNumber > blockNumber ) {
     // do a simple sanity check from time to time
     static uint64_t sanityCheckCounter = 0;
     if ( sanityCheckCounter++ % 10000 == 0 ) {
-        LDB_CHECK( m_state.safePartialTransactionReceipts( m_previousBlock.number() ).empty() );
+        if ( blockNumber.has_value() ) {
+            LDB_CHECK( m_state.safePartialTransactionReceipts( blockNumber.value() ).empty() );
+        } else {
+            LDB_CHECK( m_state.safeLegacyPartialTransactionReceipts().empty() );
+        }
     }
 }
 
@@ -591,6 +599,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
     // we got to the end of the block so we do not need partial transaction receipts anymore
     if ( !KeepPartialReceiptsUntilNextBlockPatch::isEnabledInWorkingBlock() ) {
         m_state.safeRemoveAllPartialTransactionReceipts();
+       sanityCheckPartialTransactionReceipts();
     }
 
     // since we committed changes corresponding to a particular block
