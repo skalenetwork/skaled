@@ -96,7 +96,7 @@ std::string getPatchNameForEnum( SchainPatchEnum _enumValue ) {
         return "GroupIndexInitPatch";
 #ifdef FAIR
     case SchainPatchEnum::DisableSelfDestructPatch:
-        return "DisableSelfdestructPatch";
+        return "DisableSelfDestructPatch";
 #endif
     default:
         throw std::out_of_range(
