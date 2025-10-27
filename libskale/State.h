@@ -551,7 +551,7 @@ private:
     using StorageKey = std::pair< dev::Address, dev::u256 >;
     struct StorageKeyHash {
         std::size_t operator()( const StorageKey& _key ) const {
-            size_t seed = 0;
+            std::size_t seed = 0;
             boost::hash_combine( seed, _key.first.hex() );
             boost::hash_combine( seed, _key.second.str() );
             return seed;

@@ -581,7 +581,7 @@ void State::commit( dev::eth::CommitBehaviour _commitBehaviour ) {
 
                         m_db_ptr->insert( address, storageAddress, value );
                         // only add committed key-value pairs to cache
-                        m_globalLruCache.insert( { address, storageAddress }, value );
+                        m_globalLruCache.insertOrUpdate( { address, storageAddress }, value );
                     }
 
                     if ( account.hasNewCode() ) {
@@ -776,6 +776,7 @@ u256 State::storage( Address const& _id, u256 const& _key ) const {
             auto valueFromCache = m_globalLruCache.get( { _id, _key } );
             if ( valueFromCache.has_value() ) {
                 auto value = std::any_cast< dev::u256 >( valueFromCache );
+                LOG(m_loggerDebug) << "Storage hit (global cache): " << _id << " [" << _key << "] = " << value;
                 acc->setStorageCache( _key, value );
                 return value;
             }
@@ -998,7 +999,6 @@ void State::clearCaches() {
 }
 
 void State::clearAllCaches() {
-    LOG( m_loggerDebug ) << "ClearAllCaches: threadId = " << std::this_thread::get_id();
     m_changeLog.clear();
     m_cache.clear();
     m_unchangedCacheEntries.clear();
