@@ -4,16 +4,17 @@
 
 #pragma once
 
+#include <any>
 #include <list>
 #include <unordered_map>
 
 namespace dev {
-template < class Key, class Value >
+template < class Key, class Value, class Hash = std::hash< Key > >
 class LruCache {
     using key_type = Key;
     using value_type = Value;
     using list_type = std::list< std::pair< key_type, value_type > >;
-    using map_type = std::unordered_map< key_type, typename list_type::const_iterator >;
+    using map_type = std::unordered_map< key_type, typename list_type::const_iterator, Hash >;
 
 public:
     explicit LruCache( size_t _capacity ) : m_capacity( _capacity ) {}
@@ -31,6 +32,15 @@ public:
             m_data.splice( m_data.begin(), m_data, cIter->second );
 
         return m_index.size();
+    }
+
+    std::any get( key_type const& _key ) {
+        auto const cIter = m_index.find( _key );
+        if ( cIter != m_index.cend() ) {
+            m_data.splice( m_data.begin(), m_data, cIter->second );
+            return cIter->second->second;
+        }
+        return std::any();
     }
 
     size_t remove( key_type const& _key ) {

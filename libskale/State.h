@@ -31,6 +31,8 @@
 #include <boost/optional.hpp>
 #include <boost/thread/mutex.hpp>
 
+#include <libdevcore/DBImpl.h>
+#include <libdevcore/LruCache.h>
 #include <libethcore/Exceptions.h>
 #include <libethereum/Account.h>
 #include <libethereum/Executive.h>
@@ -44,7 +46,6 @@
 #include "OverlayDB.h"
 #include "OverlayFS.h"
 #include "Permanence.h"
-#include <libdevcore/DBImpl.h>
 
 #include <openssl/rand.h>
 #include <boost/chrono/io/utility/to_string.hpp>
@@ -546,6 +547,18 @@ private:
     // if the state is based on a LevelDB snap, the instance of the snap goes here
     std::shared_ptr< dev::db::LevelDBSnap > m_snap = nullptr;
     bool m_isReadOnlySnapBasedState = false;
+
+    using StorageKey = std::pair< dev::Address, dev::u256 >;
+    struct StorageKeyHash {
+        std::size_t operator()( const StorageKey& _key ) const {
+            size_t seed = 0;
+            boost::hash_combine( seed, _key.first.hex() );
+            boost::hash_combine( seed, _key.second.str() );
+            return seed;
+        }
+    };
+
+    static dev::LruCache< StorageKey, dev::u256, StorageKeyHash > m_globalLruCache;
 
     /// Loggers
     mutable dev::Logger m_loggerDebug{ dev::createLogger( dev::VerbosityDebug, "State" ) };

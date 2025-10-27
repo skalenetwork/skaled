@@ -63,6 +63,12 @@ using dev::eth::TransactionReceipt;
 #define ETH_VMTRACE 0
 #endif
 
+const uint64_t MAX_GLOBAL_STATE_LRU_CACHE_ENTRIES = 100 * 1000;
+
+dev::LruCache< State::StorageKey, dev::u256, State::StorageKeyHash > State::m_globalLruCache =
+    dev::LruCache< State::StorageKey, dev::u256, State::StorageKeyHash >(
+        MAX_GLOBAL_STATE_LRU_CACHE_ENTRIES );
+
 const std::map< std::pair< uint64_t, std::string >, uint64_t > State::txnsToSkipExecution{
     { { 1020352220, "3464b9a165a29fde2ce644882e82d99edbff5f530413f6cc18b26bf97e6478fb" }, 40729 },
     { { 1482601649, "d3f25440b752f4ad048b618554f71cec08a73af7bf88b6a7d55581f3a792d823" }, 32151 },
@@ -568,12 +574,14 @@ void State::commit( dev::eth::CommitBehaviour _commitBehaviour ) {
                         const u256& storageAddress = storageAddressValuePair.first;
                         const u256& value = storageAddressValuePair.second;
 
-                        LOG( m_loggerDebug ) << "STORAGE_COMMIT_STATE: account=" << address.hex()
-                                  << " key=" << storageAddress.str() 
-                                  << " value=" << value.str()
-                                  << " threadId=" << std::this_thread::get_id();
+                        LOG( m_loggerDebug )
+                            << "STORAGE_COMMIT_STATE: account=" << address.hex()
+                            << " key=" << storageAddress.str() << " value=" << value.str()
+                            << " threadId=" << std::this_thread::get_id();
 
                         m_db_ptr->insert( address, storageAddress, value );
+                        // only add committed key-value pairs to cache
+                        m_globalLruCache.insert( { address, storageAddress }, value );
                     }
 
                     if ( account.hasNewCode() ) {
@@ -751,14 +759,26 @@ u256 State::storage( Address const& _id, u256 const& _key ) const {
     if ( eth::Account const* acc = account( _id ) ) {
         auto memoryIterator = acc->storageOverlay().find( _key );
         if ( memoryIterator != acc->storageOverlay().end() ) {
-            LOG( m_loggerDebug ) << "Storage hit (overlay): " << _id << " [" << _key << "] = " << memoryIterator->second;
+            LOG( m_loggerDebug ) << "Storage hit (overlay): " << _id << " [" << _key
+                                 << "] = " << memoryIterator->second;
             return memoryIterator->second;
         }
 
         memoryIterator = acc->originalStorageCache().find( _key );
         if ( memoryIterator != acc->originalStorageCache().end() ) {
-            LOG( m_loggerDebug ) << "Storage hit (original): " << _id << " [" << _key << "] = " << memoryIterator->second;
+            LOG( m_loggerDebug ) << "Storage hit (original): " << _id << " [" << _key
+                                 << "] = " << memoryIterator->second;
             return memoryIterator->second;
+        }
+
+        // check global cache - avoid reading from db
+        if ( !m_isReadOnlySnapBasedState ) {
+            auto valueFromCache = m_globalLruCache.get( { _id, _key } );
+            if ( valueFromCache.has_value() ) {
+                auto value = std::any_cast< dev::u256 >( valueFromCache );
+                acc->setStorageCache( _key, value );
+                return value;
+            }
         }
 
         // Not in the storage cache - go to the DB.
@@ -793,7 +813,7 @@ void State::setStorage( Address const& _contract, u256 const& _key, u256 const& 
     }
 
     LOG( m_loggerDebug ) << "Storage change: " << _contract << " [" << _key << "] = " << _value
-                     << " (was " << _currentValue << ")";
+                         << " (was " << _currentValue << ")";
 }
 
 void State::clearStorageValue(
