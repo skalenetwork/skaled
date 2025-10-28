@@ -575,7 +575,8 @@ void State::commit( dev::eth::CommitBehaviour _commitBehaviour ) {
                         m_db_ptr->insert( address, storageAddress, value );
                         // only add committed key-value pairs to cache
                         if ( m_storageLruWriteCache.capacity() > 0 )
-                            m_storageLruWriteCache.insertOrUpdate( { address, storageAddress }, value );
+                            m_storageLruWriteCache.insertOrUpdate(
+                                { address, storageAddress }, value );
                     }
 
                     if ( account.hasNewCode() ) {
@@ -760,7 +761,7 @@ u256 State::storage( Address const& _id, u256 const& _key ) const {
             return memoryIterator->second;
 
         // check global cache - avoid reading from db
-        if ( !m_isReadOnlySnapBasedState && m_storageLruWriteCache.capacity() > 0) {
+        if ( !m_isReadOnlySnapBasedState && m_storageLruWriteCache.capacity() > 0 ) {
             std::optional< dev::u256 > valueFromCache = m_storageLruWriteCache.get( { _id, _key } );
             if ( valueFromCache.has_value() ) {
                 dev::u256 value = valueFromCache.value();
