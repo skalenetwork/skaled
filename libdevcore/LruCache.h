@@ -4,8 +4,8 @@
 
 #pragma once
 
-#include <any>
 #include <list>
+#include <optional>
 #include <unordered_map>
 
 namespace dev {
@@ -51,13 +51,13 @@ public:
         return m_index.size();
     }
 
-    std::any get( key_type const& _key ) {
+    std::optional< value_type > get( key_type const& _key ) {
         auto iter = m_index.find( _key );
         if ( iter != m_index.end() ) {
             m_data.splice( m_data.begin(), m_data, iter->second );
             return iter->second->second;
         }
-        return std::any();
+        return std::nullopt;
     }
 
     size_t remove( key_type const& _key ) {

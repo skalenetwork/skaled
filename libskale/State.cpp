@@ -762,9 +762,9 @@ u256 State::storage( Address const& _id, u256 const& _key ) const {
 
         // check global cache - avoid reading from db
         if ( !m_isReadOnlySnapBasedState ) {
-            auto valueFromCache = m_globalLruCache.get( { _id, _key } );
+            std::optional< dev::u256 > valueFromCache = m_globalLruCache.get( { _id, _key } );
             if ( valueFromCache.has_value() ) {
-                auto value = std::any_cast< dev::u256 >( valueFromCache );
+                dev::u256 value = valueFromCache.value();
                 acc->setStorageCache( _key, value );
                 return value;
             }
