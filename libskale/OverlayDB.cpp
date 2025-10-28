@@ -292,7 +292,7 @@ void OverlayDB::commit() {
                 std::this_thread::sleep_for( std::chrono::seconds( commitTry + 1 ) );
             } catch ( ... ) {
                 if ( commitTry == 9 ) {
-                    LOG( m_loggerWarning ) << "Fail(1) writing to state database. Bombing out. ";
+                    LOG( m_loggerWarning ) << "Fail(3) writing to state database. Bombing out. ";
                     LOG( m_loggerWarning ) << DETAILED_ERROR;
                     exit( -1 );
                 }
