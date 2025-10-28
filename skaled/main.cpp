@@ -1426,6 +1426,8 @@ int main( int argc, char** argv ) {
         unsigned c_transactionQueueSizeBytes = 12322916;
         unsigned c_futureTransactionQueueSizeBytes = 24645833;
 
+        unsigned c_maxStorageLruWriteCacheSize = 100 * 1000;
+
         if ( chainConfigParsed ) {
             try {
                 if ( joConfig["skaleConfig"]["nodeInfo"].count( "minCacheSize" ) )
@@ -1497,6 +1499,15 @@ int main( int argc, char** argv ) {
                             .get< unsigned >();
             } catch ( ... ) {
             }
+
+            try {
+                if ( joConfig["skaleConfig"]["nodeInfo"].count( "maxStorageLruWriteCacheSize" ) )
+                    c_maxStorageLruWriteCacheSize =
+                        joConfig["skaleConfig"]["nodeInfo"]["maxStorageLruWriteCacheSize"]
+                            .get< unsigned >();
+            } catch ( ... ) {
+            }
+            skale::State::setStorageLruWriteCache( c_maxStorageLruWriteCacheSize );
 
             if ( vm.count( "log-value-size-limit" ) ) {
                 int n = vm["log-value-size-limit"].as< size_t >();

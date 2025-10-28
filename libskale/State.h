@@ -444,6 +444,10 @@ public:
 
     void createReadOnlyStateDBSnap( uint64_t _blockNumber );
 
+    static void setStorageLruWriteCache( uint64_t _size ) {
+        m_storageLruWriteCache = dev::LruCache< State::StorageKey, dev::u256, State::StorageKeyHash >( _size );
+    }
+
 private:
     void clearCaches();
 
