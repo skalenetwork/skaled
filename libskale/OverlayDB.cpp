@@ -214,19 +214,11 @@ void OverlayDB::commitStorageValues() {
             if ( ContractStorageZeroValuePatch::isEnabledInWorkingBlock() && value == ZERO_VALUE ) {
                 // if the value is zero, the pair will be deleted in LevelDB
                 // if it exists
-                LOG( m_loggerDebug ) << "STORAGE_COMMIT_DB: account=" << address.hex()
-                          << " key=" << storageAddress.hex()
-                          << " value=" << 0
-                          << " threadId=" << std::this_thread::get_id();
                 m_db_face->kill(
                     skale::slicing::toSlice( getStorageKey( address, storageAddress ) ) );
             } else {
                 // if the value is not zero, the pair will be inserted or
                 // updated in the LevelDB
-                LOG( m_loggerDebug ) << "STORAGE_COMMIT_DB: account=" << address.hex()
-                          << " key=" << storageAddress.hex()
-                          << " value=" << value.hex()
-                          << " threadId=" << std::this_thread::get_id();
                 m_db_face->insert(
                     skale::slicing::toSlice( getStorageKey( address, storageAddress ) ),
                     skale::slicing::toSlice( value ) );

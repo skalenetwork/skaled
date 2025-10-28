@@ -79,22 +79,6 @@ private:
     std::atomic< uint64_t > keysToBeDeletedCount;
 };
 
-class BatchIteratorHandler : public leveldb::WriteBatch::Handler {
-public:
-    void Put(const leveldb::Slice& key, const leveldb::Slice& value) override {
-        // Called for each insert operation
-        std::string keyHex = dev::toHex(key.data(), key.data() + key.size(), "0x");
-        std::string valueHex = dev::toHex(value.data(), value.data() + value.size(), "0x");
-        ctrace << "Insert: key=" << keyHex << " value=" << valueHex;
-    }
-    
-    void Delete(const leveldb::Slice& key) override {
-        // Called for each kill operation
-        std::string keyHex = dev::toHex(key.data(), key.data() + key.size(), "0x");
-        ctrace << "Delete: key=" << keyHex;
-    }
-};
-
 void LevelDBWriteBatch::insert( Slice _key, Slice _value ) {
     MICROPROFILE_SCOPEI( "LevelDBWriteBatch", "insert", MP_LAVENDERBLUSH );
     m_writeBatch.Put( toLDBSlice( _key ), toLDBSlice( _value ) );
@@ -283,9 +267,6 @@ void LevelDB::commit( std::unique_ptr< WriteBatchFace > _batch ) {
     leveldb::Status status;
     {
         SharedDBGuard lock( *this );  // protect so db is not reopened during Write() call
-        BatchIteratorHandler handler;
-        status = batchPtr->writeBatch().Iterate(&handler);
-        checkStatus( status );
         status = m_db->Write( m_writeOptions, &batchPtr->writeBatch() );
     }
     // Commit happened. This means the keys actually got deleted in LevelDB. Increment key deletes

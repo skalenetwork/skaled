@@ -574,11 +574,6 @@ void State::commit( dev::eth::CommitBehaviour _commitBehaviour ) {
                         const u256& storageAddress = storageAddressValuePair.first;
                         const u256& value = storageAddressValuePair.second;
 
-                        LOG( m_loggerDebug )
-                            << "STORAGE_COMMIT_STATE: account=" << address.hex()
-                            << " key=" << storageAddress.str() << " value=" << value.str()
-                            << " threadId=" << std::this_thread::get_id();
-
                         m_db_ptr->insert( address, storageAddress, value );
                         // only add committed key-value pairs to cache
                         m_globalLruCache.insertOrUpdate( { address, storageAddress }, value );
@@ -759,15 +754,11 @@ u256 State::storage( Address const& _id, u256 const& _key ) const {
     if ( eth::Account const* acc = account( _id ) ) {
         auto memoryIterator = acc->storageOverlay().find( _key );
         if ( memoryIterator != acc->storageOverlay().end() ) {
-            LOG( m_loggerDebug ) << "Storage hit (overlay): " << _id << " [" << _key
-                                 << "] = " << memoryIterator->second;
             return memoryIterator->second;
         }
 
         memoryIterator = acc->originalStorageCache().find( _key );
         if ( memoryIterator != acc->originalStorageCache().end() ) {
-            LOG( m_loggerDebug ) << "Storage hit (original): " << _id << " [" << _key
-                                 << "] = " << memoryIterator->second;
             return memoryIterator->second;
         }
 
@@ -776,7 +767,6 @@ u256 State::storage( Address const& _id, u256 const& _key ) const {
             auto valueFromCache = m_globalLruCache.get( { _id, _key } );
             if ( valueFromCache.has_value() ) {
                 auto value = std::any_cast< dev::u256 >( valueFromCache );
-                LOG(m_loggerDebug) << "Storage hit (global cache): " << _id << " [" << _key << "] = " << value;
                 acc->setStorageCache( _key, value );
                 return value;
             }
@@ -786,7 +776,6 @@ u256 State::storage( Address const& _id, u256 const& _key ) const {
         SharedDBGuard lock( *this );
         u256 value = m_db_ptr->lookup( _id, _key );
         acc->setStorageCache( _key, value );
-        LOG( m_loggerDebug ) << "Storage miss: " << _id << " [" << _key << "] = " << value;
         return value;
     } else
         return 0;
@@ -812,9 +801,6 @@ void State::setStorage( Address const& _contract, u256 const& _key, u256 const& 
     if ( totalStorageUsed_ + currentStorageUsed_ > contractStorageLimit_ ) {
         BOOST_THROW_EXCEPTION( dev::StorageOverflow() << errinfo_comment( _contract.hex() ) );
     }
-
-    LOG( m_loggerDebug ) << "Storage change: " << _contract << " [" << _key << "] = " << _value
-                         << " (was " << _currentValue << ")";
 }
 
 void State::clearStorageValue(
