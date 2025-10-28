@@ -17,8 +17,6 @@
 
 #pragma once
 
-#include <libdevcore/Log.h>
-
 #include "Instruction.h"
 #include "LegacyVMConfig.h"
 #include "VMFace.h"
@@ -79,8 +77,6 @@ private:
     MemFnPtr m_onFail = 0;
     uint64_t m_nSteps = 0;
     EVMSchedule const* m_schedule = nullptr;
-
-    Logger m_loggerTrace{ createLogger( VerbosityTrace, "VMTrace" ) };
 
     // return bytes
     owning_bytes_ref m_output;

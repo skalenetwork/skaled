@@ -103,14 +103,13 @@ void LegacyVM::updateSSGas() {
 }
 
 void LegacyVM::updateSSGasPreEIP1283( u256 const& _currentValue, u256 const& _newValue ) {
-    if ( !_currentValue && _newValue ) {
+    if ( !_currentValue && _newValue )
         m_runGas = toInt63( m_schedule->sstoreSetGas );
-    } else if ( _currentValue && !_newValue ) {
+    else if ( _currentValue && !_newValue ) {
         m_runGas = toInt63( m_schedule->sstoreResetGas );
         m_ext->sub.refunds += m_schedule->sstoreRefundGas;
-    } else {
+    } else
         m_runGas = toInt63( m_schedule->sstoreResetGas );
-    }
 }
 
 void LegacyVM::updateSSGasEIP1283( u256 const& _currentValue, u256 const& _newValue ) {

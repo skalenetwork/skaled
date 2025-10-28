@@ -63,7 +63,7 @@ using dev::eth::TransactionReceipt;
 #define ETH_VMTRACE 0
 #endif
 
-const uint64_t MAX_GLOBAL_STATE_LRU_CACHE_ENTRIES = 100 * 1000;
+constexpr uint64_t MAX_GLOBAL_STATE_LRU_CACHE_ENTRIES = 100 * 1000;
 
 dev::LruCache< State::StorageKey, dev::u256, State::StorageKeyHash > State::m_globalLruCache =
     dev::LruCache< State::StorageKey, dev::u256, State::StorageKeyHash >(
@@ -753,14 +753,12 @@ u256 State::getNonce( Address const& _addr ) const {
 u256 State::storage( Address const& _id, u256 const& _key ) const {
     if ( eth::Account const* acc = account( _id ) ) {
         auto memoryIterator = acc->storageOverlay().find( _key );
-        if ( memoryIterator != acc->storageOverlay().end() ) {
+        if ( memoryIterator != acc->storageOverlay().end() )
             return memoryIterator->second;
-        }
 
         memoryIterator = acc->originalStorageCache().find( _key );
-        if ( memoryIterator != acc->originalStorageCache().end() ) {
+        if ( memoryIterator != acc->originalStorageCache().end() )
             return memoryIterator->second;
-        }
 
         // check global cache - avoid reading from db
         if ( !m_isReadOnlySnapBasedState ) {

@@ -31,7 +31,6 @@
 #include <boost/optional.hpp>
 #include <boost/thread/mutex.hpp>
 
-#include <libdevcore/DBImpl.h>
 #include <libdevcore/LruCache.h>
 #include <libethcore/Exceptions.h>
 #include <libethereum/Account.h>

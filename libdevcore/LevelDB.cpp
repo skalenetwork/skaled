@@ -23,9 +23,6 @@
 #include "LevelDBSnap.h"
 #include "Log.h"
 #include <libdevcore/microprofile.h>
-#include <libdevcore/CommonData.h>
-
-#include <thread>
 
 using std::string, std::runtime_error;
 
