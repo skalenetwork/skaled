@@ -799,6 +799,17 @@ void SkaleHost::handleConsensusUpdate() const {
 }
 #endif
 
+#ifdef FAIR
+void SkaleHost::updateConsensusEpochId( uint64_t _epochId ) {
+    if ( m_consensus ) {
+        auto* consensusEngine = dynamic_cast< ConsensusEngine* >( m_consensus.get() );
+        if ( consensusEngine ) {
+            consensusEngine->setEpochId( _epochId );
+        }
+    }
+}
+#endif
+
 void SkaleHost::startWorking() {
     if ( working )
         return;

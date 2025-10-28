@@ -313,7 +313,7 @@ public:
 #endif
 
 #ifdef FAIR
-    bool updateGroupIfNeeded() { return bc().updateGroupIfNeeded(); }
+    bool updateGroupIfNeeded();
 
     std::pair< std::array< std::string, 4 >, uint64_t > getNextCommitteeBITEInfo() const;
 

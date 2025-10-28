@@ -634,6 +634,14 @@ std::pair< std::array< std::string, 4 >, uint64_t > Client::getNextCommitteeBITE
     return { chainParams().getBlsPublicKeyForHistoricGroup( currentGroupIndex + 1 ),
         currentGroupIndex + 1 };
 }
+
+bool Client::updateGroupIfNeeded() {
+    bool result = bc().updateGroupIfNeeded();
+    if ( result && m_skaleHost ) {
+        m_skaleHost->updateConsensusEpochId( getCurrentEpochId() );
+    }
+    return result;
+}
 #endif
 
 size_t Client::syncTransactions(

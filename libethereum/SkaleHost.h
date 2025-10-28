@@ -163,6 +163,10 @@ public:
     }
     void pauseBroadcast( bool _pause ) { m_broadcastPauseFlag = _pause; }
 
+#ifdef FAIR
+    void updateConsensusEpochId( uint64_t _epochId );
+#endif
+
     void forceEmptyBlock();
 
     void forcedBroadcast( const dev::eth::Transaction& _txn );
