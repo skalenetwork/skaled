@@ -35,21 +35,21 @@ public:
     }
 
     size_t insertOrUpdate( key_type const& _key, value_type const& _val ) {
-       auto iter = m_index.find( _key );
-       if ( iter == m_index.end() ) {
-           if ( m_index.size() == m_capacity ) {
-               m_index.erase( m_data.back().first );
-               m_data.pop_back();
-           }
-           m_data.push_front( { _key, _val } );
-           m_index[_key] = m_data.begin();
-       } else {
-           iter->second->second = _val;
-           m_data.splice( m_data.begin(), m_data, iter->second );
-       }
+        auto iter = m_index.find( _key );
+        if ( iter == m_index.end() ) {
+            if ( m_index.size() == m_capacity ) {
+                m_index.erase( m_data.back().first );
+                m_data.pop_back();
+            }
+            m_data.push_front( { _key, _val } );
+            m_index[_key] = m_data.begin();
+        } else {
+            iter->second->second = _val;
+            m_data.splice( m_data.begin(), m_data, iter->second );
+        }
 
-       return m_index.size();
-   }
+        return m_index.size();
+    }
 
     std::any get( key_type const& _key ) {
         auto iter = m_index.find( _key );
