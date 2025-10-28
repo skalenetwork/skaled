@@ -555,10 +555,9 @@ private:
     using StorageKey = std::pair< dev::Address, dev::u256 >;
     struct StorageKeyHash {
         std::size_t operator()( const StorageKey& _key ) const {
-            std::size_t seed = 0;
-            boost::hash_combine( seed, _key.first.hex() );
-            boost::hash_combine( seed, _key.second.str() );
-            return seed;
+            dev::bytes key = OverlayDB::getStorageKey( _key.first, _key.second );
+
+            return boost::hash_range( key.begin(), key.end() );
         }
     };
 

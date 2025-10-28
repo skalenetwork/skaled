@@ -503,14 +503,13 @@ bool OverlayDB::empty() const {
     }
 }
 
-dev::bytes OverlayDB::getAuxiliaryKey( dev::h160 const& _address, _byte_ space ) const {
+dev::bytes OverlayDB::getAuxiliaryKey( dev::h160 const& _address, _byte_ space ) {
     bytes key = _address.asBytes();
     key.push_back( space );  // for aux
     return key;
 }
 
-dev::bytes OverlayDB::getStorageKey(
-    dev::h160 const& _address, dev::h256 const& _storageAddress ) const {
+dev::bytes OverlayDB::getStorageKey( dev::h160 const& _address, dev::h256 const& _storageAddress ) {
     bytes key = _address.asBytes();
     bytes storageAddress = _storageAddress.asBytes();
     key.insert( key.end(), storageAddress.begin(), storageAddress.end() );
