@@ -65,7 +65,7 @@ using dev::eth::TransactionReceipt;
 
 constexpr uint64_t MAX_GLOBAL_STATE_LRU_CACHE_ENTRIES = 100 * 1000;
 
-dev::LruCache< State::StorageKey, dev::u256, State::StorageKeyHash > State::m_globalLruCache =
+dev::LruCache< State::StorageKey, dev::u256, State::StorageKeyHash > State::m_storageLruWriteCache =
     dev::LruCache< State::StorageKey, dev::u256, State::StorageKeyHash >(
         MAX_GLOBAL_STATE_LRU_CACHE_ENTRIES );
 
@@ -576,7 +576,7 @@ void State::commit( dev::eth::CommitBehaviour _commitBehaviour ) {
 
                         m_db_ptr->insert( address, storageAddress, value );
                         // only add committed key-value pairs to cache
-                        m_globalLruCache.insertOrUpdate( { address, storageAddress }, value );
+                        m_storageLruWriteCache.insertOrUpdate( { address, storageAddress }, value );
                     }
 
                     if ( account.hasNewCode() ) {
@@ -762,7 +762,7 @@ u256 State::storage( Address const& _id, u256 const& _key ) const {
 
         // check global cache - avoid reading from db
         if ( !m_isReadOnlySnapBasedState ) {
-            std::optional< dev::u256 > valueFromCache = m_globalLruCache.get( { _id, _key } );
+            std::optional< dev::u256 > valueFromCache = m_storageLruWriteCache.get( { _id, _key } );
             if ( valueFromCache.has_value() ) {
                 dev::u256 value = valueFromCache.value();
                 acc->setStorageCache( _key, value );

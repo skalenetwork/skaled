@@ -557,7 +557,7 @@ private:
         }
     };
 
-    static dev::LruCache< StorageKey, dev::u256, StorageKeyHash > m_globalLruCache;
+    static dev::LruCache< StorageKey, dev::u256, StorageKeyHash > m_storageLruWriteCache;
 
     /// Loggers
     mutable dev::Logger m_loggerDebug{ dev::createLogger( dev::VerbosityDebug, "State" ) };
