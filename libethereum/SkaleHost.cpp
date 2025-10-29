@@ -672,6 +672,10 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             _timeStamp );
     }  // m_blockImportMutex
 
+#ifdef FAIR
+    syncNodeGroups();
+#endif
+
     if ( n_succeeded != out_txns.size() )
         penalizePeer();
 
@@ -704,10 +708,6 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     LOG( m_loggerDebug ) << "Successfully imported " << n_succeeded << " of " << out_txns.size()
                          << " transactions";
 
-#ifdef FAIR
-    if ( m_client.updateGroupIfNeeded() )
-        runCommitteeRotationForConsensus();
-#endif
 
     if ( m_instanceMonitor != nullptr ) {
         if ( m_instanceMonitor->isTimeToRotate( _timeStamp ) ) {
@@ -796,6 +796,19 @@ void SkaleHost::runCommitteeRotationForConsensus() {
 void SkaleHost::handleConsensusUpdate() const {
     m_consensus->updateLogger();
     m_consensusUpdateHappened = false;
+}
+
+void SkaleHost::syncNodeGroups() {
+    bool isHistoricGroupIndexUpdated = false;
+    if ( m_client.chainParams().getNodeGroups().size() > 0 ) {
+        isHistoricGroupIndexUpdated = m_client.updateHistoricGroupIndex();
+    }
+    bool isGroupUpdated = m_client.updateGroupIfNeeded();
+    if ( isGroupUpdated ) {
+        runCommitteeRotationForConsensus();
+    } else if ( isHistoricGroupIndexUpdated ) {
+        updateConsensusEpochId( m_client.getCurrentEpochId() );
+    }
 }
 #endif
 
@@ -903,8 +916,8 @@ void SkaleHost::stopWorking() {
     }
 
 
-    LOG( m_loggerInfo )
-        << "Consensus status is exited. Skaled is waiting for consensus and broadcast to finish.";
+    LOG( m_loggerInfo ) << "Consensus status is exited. Skaled is waiting for consensus and "
+                           "broadcast to finish.";
 
     if ( m_consensusThread.joinable() )
         m_consensusThread.join();

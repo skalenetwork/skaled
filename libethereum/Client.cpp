@@ -590,8 +590,10 @@ size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
     } else
         LOG( m_loggerWarning ) << "Warning: UnsafeRegion still active!";
 
+#ifndef FAIR
     if ( chainParams().getNodeGroups().size() > 0 )
         updateHistoricGroupIndex();
+#endif
 
 #ifdef FAIR
     LOG( m_loggerInfo ) << "Reward receiver for block " << number() << ": "
@@ -1438,16 +1440,20 @@ void Client::initHistoricGroupIndex() {
     historicGroupIndex = std::distance( nodeGroups.begin(), it );
 }
 
-void Client::updateHistoricGroupIndex() {
+bool Client::updateHistoricGroupIndex() {
     auto nodeGroups = chainParams().getNodeGroups();
     uint64_t blockTimestamp = blockInfo( hashFromNumber( number() ) ).timestamp();
     uint64_t currentFinishTs = nodeGroups.at( historicGroupIndex ).finishTs;
-    if ( blockTimestamp >= currentFinishTs )
+    bool updated = false;
+    if ( blockTimestamp >= currentFinishTs ) {
         ++historicGroupIndex;
+        updated = true;
+    }
     if ( historicGroupIndex >= nodeGroups.size() ) {
         BOOST_THROW_EXCEPTION( std::runtime_error(
             "Assertion failed: historicGroupIndex >= chainParams().sChain.nodeGroups.size())" ) );
     }
+    return updated;
 }
 
 // new block watch

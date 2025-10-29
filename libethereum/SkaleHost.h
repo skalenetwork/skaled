@@ -196,6 +196,7 @@ private:
 
 #ifdef FAIR
     void runCommitteeRotationForConsensus();
+    void syncNodeGroups();
 #endif
 
     void checkStateRoot( uint64_t _blockId, uint64_t _winningNodeIndex, u256 _stateRoot );

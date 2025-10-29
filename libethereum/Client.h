@@ -368,6 +368,10 @@ public:
         return chainParams().getHistoricGroupFinishTs( _idx - 1 );
     }
 
+#ifdef FAIR
+    bool updateHistoricGroupIndex();
+#endif
+
     void doStateDbCompaction() const { m_state.getOriginalDb()->doCompaction(); }
 
     void doBlocksDbCompaction() const { m_bc.doLevelDbCompaction(); }
@@ -608,7 +612,9 @@ protected:
 
 private:
     void initHistoricGroupIndex();
-    void updateHistoricGroupIndex();
+#ifndef FAIR
+    bool updateHistoricGroupIndex();
+#endif
 
     // which group corresponds to the current block timestamp on this node
 #ifdef BITE
