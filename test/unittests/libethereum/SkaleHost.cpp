@@ -207,6 +207,21 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         dev::eth::g_skaleHost = skaleHost;
     }
 
+#ifdef FAIR
+    void overwriteHistoricNodeGroups( const std::vector< dev::eth::NodeGroup >& _groups ) {
+        chainParams->sChain.nodeGroups = _groups;
+    }
+
+    void setCurrentGroupStartTimestamps( uint64_t _first, uint64_t _second ) {
+        chainParams->sChain.currentGroups[0].startTs = _first;
+        chainParams->sChain.currentGroups[1].startTs = _second;
+    }
+
+    uint64_t blockTimestamp( dev::eth::BlockNumber _number ) const {
+        return client->blockInfo( _number ).timestamp();
+    }
+#endif
+
     Transaction tx_from_json( const Json::Value& json ) {
         TransactionSkeleton ts = toTransactionSkeleton( json );
         ts = client->populateTransactionWithDefaults( ts );
@@ -1495,6 +1510,46 @@ BOOST_AUTO_TEST_CASE( biteTransactions ) {
     BOOST_REQUIRE( client->transaction( encryptedTxHash ).toBytes() == txEncrypted.toBytes() );
     BOOST_REQUIRE( client->decryptedTransactionData( encryptedTxHash ).data() == txOriginal.data() );
     BOOST_REQUIRE( client->decryptedTransactionData( encryptedTxHash ).to() == txOriginal.to() );
+}
+#endif
+
+#ifdef FAIR
+BOOST_AUTO_TEST_CASE(syncNodeGroupsUpdatesEpochIdWithoutRotation) {
+    SkaleHostFixture fixture;
+
+    auto& client = fixture.client;
+    auto& stub = fixture.stub;
+
+    auto nodeGroups = fixture.chainParams->getNodeGroups();
+    BOOST_REQUIRE( !nodeGroups.empty() );
+
+    dev::eth::NodeGroup firstGroup = nodeGroups.front();
+    dev::eth::NodeGroup secondGroup = nodeGroups.front();
+
+    uint64_t currentTimestamp = client->number() == 0 ? 0 : fixture.blockTimestamp( client->number() );
+    firstGroup.finishTs = currentTimestamp;
+    secondGroup.finishTs = currentTimestamp + 10;
+
+    fixture.overwriteHistoricNodeGroups( { firstGroup, secondGroup } );
+    fixture.setCurrentGroupStartTimestamps( 0, 0 );
+
+    BOOST_REQUIRE_EQUAL( client->getCurrentEpochId(), 0 );
+
+    uint64_t blockTimestamp = currentTimestamp + 1;
+    uint64_t blockId = client->number() + 1;
+
+#ifdef BITE
+    auto decryptedTransactions = std::make_shared< DecryptedTransactionFieldsMap >();
+#endif
+
+    BOOST_REQUIRE_NO_THROW( stub->createBlock(
+        ConsensusExtFace::transactions_vector{},
+#ifdef BITE
+        decryptedTransactions,
+#endif
+        blockTimestamp, blockId ) );
+
+    BOOST_REQUIRE_EQUAL( client->getCurrentEpochId(), 1 );
 }
 #endif
 

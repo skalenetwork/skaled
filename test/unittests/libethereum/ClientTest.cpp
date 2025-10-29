@@ -1283,10 +1283,6 @@ BOOST_AUTO_TEST_CASE( initAndUpdateHistoricConfigFields ) {
     BOOST_REQUIRE_EQUAL( testClient->getHistoricNodePublicKey( 0 ), "0x6180cde2cbbcc6b6a17efec4503a7d4316f8612f411ee171587089f770335f484003ad236c534b9afa82befc1f69533723abdb6ec2601e582b72dcfd7919338b" );
     BOOST_REQUIRE_EQUAL( testClient->getHistoricNodeId( 0 ), "30" );
     BOOST_REQUIRE_EQUAL( testClient->getHistoricNodeIndex( 0 ), "0" );
-
-#ifdef FAIR
-    BOOST_REQUIRE_EQUAL( testClient->getCurrentEpochId(), 1 );
-#endif
 }
 
 BOOST_AUTO_TEST_SUITE_END()
