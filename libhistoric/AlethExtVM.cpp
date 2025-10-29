@@ -170,16 +170,13 @@ void AlethExtVM::suicide( [[maybe_unused]] dev::Address _a ) {
     // witnessing the current consensus
     // 'GeneralStateTests/stSystemOperationsTest/suicideSendEtherPostDeath.json'.
 #ifdef FAIR
-    if ( !DisableSelfDestructPatch::isEnabledInWorkingBlock() ) {
-        m_s.addBalance( _a, m_s.balance( myAddress ) );
-        m_s.setBalance( myAddress, 0 );
-        ExtVMFace::suicide( _a );
+    if ( DisableSelfDestructPatch::isEnabledWhen( envInfo().committedBlockTimestamp() ) ) {
+        return;
     }
-#else
+#endif
     m_s.addBalance( _a, m_s.balance( myAddress ) );
     m_s.setBalance( myAddress, 0 );
     ExtVMFace::suicide( _a );
-#endif
 }
 
 h256 AlethExtVM::blockHash( u256 _number ) {
