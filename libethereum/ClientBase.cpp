@@ -127,7 +127,7 @@ std::pair< u256, ExecutionResult > ClientBase::estimateGas( Address const& _from
         else
             lowerBound = Transaction::baseGasRequired( !_dest, &_data, EVMSchedule() );
 
-        Block latest = latestBlock();
+        Block latest = getReadOnlyLatestBlockCopy();
         Block pending = preSeal();
 
         if ( upperBound > pending.info().gasLimit() ) {

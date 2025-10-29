@@ -63,6 +63,10 @@ using dev::eth::TransactionReceipt;
 #define ETH_VMTRACE 0
 #endif
 
+// disable cache for tests
+dev::LruCache< State::StorageKey, dev::u256, State::StorageKeyHash > State::m_storageLruWriteCache =
+    dev::LruCache< State::StorageKey, dev::u256, State::StorageKeyHash >( 0 );
+
 const std::map< std::pair< uint64_t, std::string >, uint64_t > State::txnsToSkipExecution{
     { { 1020352220, "3464b9a165a29fde2ce644882e82d99edbff5f530413f6cc18b26bf97e6478fb" }, 40729 },
     { { 1482601649, "d3f25440b752f4ad048b618554f71cec08a73af7bf88b6a7d55581f3a792d823" }, 32151 },
@@ -569,6 +573,10 @@ void State::commit( dev::eth::CommitBehaviour _commitBehaviour ) {
                         const u256& value = storageAddressValuePair.second;
 
                         m_db_ptr->insert( address, storageAddress, value );
+                        // only add committed key-value pairs to cache
+                        if ( m_storageLruWriteCache.capacity() > 0 )
+                            m_storageLruWriteCache.insertOrUpdate(
+                                { address, storageAddress }, value );
                     }
 
                     if ( account.hasNewCode() ) {
@@ -751,6 +759,16 @@ u256 State::storage( Address const& _id, u256 const& _key ) const {
         memoryIterator = acc->originalStorageCache().find( _key );
         if ( memoryIterator != acc->originalStorageCache().end() )
             return memoryIterator->second;
+
+        // check global cache - avoid reading from db
+        if ( !m_isReadOnlySnapBasedState && m_storageLruWriteCache.capacity() > 0 ) {
+            std::optional< dev::u256 > valueFromCache = m_storageLruWriteCache.get( { _id, _key } );
+            if ( valueFromCache.has_value() ) {
+                dev::u256 value = valueFromCache.value();
+                acc->setStorageCache( _key, value );
+                return value;
+            }
+        }
 
         // Not in the storage cache - go to the DB.
         SharedDBGuard lock( *this );

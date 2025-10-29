@@ -144,16 +144,6 @@ public:
         return m_state.addressHasCode( _address );
     }
 
-    /// Get the value of a storage position of an account.
-    /// @returns 0 if no account exists at that address.
-    u256 storage( Address const& _contract, u256 const& _memory ) const {
-        return m_state.storage( _contract, _memory );
-    }
-
-    std::map< h256, std::pair< u256, u256 > > storage( Address const& _contract ) const {
-        return m_state.storage( _contract );
-    }
-
     /// Get the code of an account.
     /// @returns bytes() if no account exists at that address.
     bytes const& code( Address const& _contract ) const { return m_state.code( _contract ); }

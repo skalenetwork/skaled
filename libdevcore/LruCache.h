@@ -5,22 +5,23 @@
 #pragma once
 
 #include <list>
+#include <optional>
 #include <unordered_map>
 
 namespace dev {
-template < class Key, class Value >
+template < class Key, class Value, class Hash = std::hash< Key > >
 class LruCache {
     using key_type = Key;
     using value_type = Value;
     using list_type = std::list< std::pair< key_type, value_type > >;
-    using map_type = std::unordered_map< key_type, typename list_type::const_iterator >;
+    using map_type = std::unordered_map< key_type, typename list_type::iterator, Hash >;
 
 public:
     explicit LruCache( size_t _capacity ) : m_capacity( _capacity ) {}
 
     size_t insert( key_type const& _key, value_type const& _val ) {
-        auto const cIter = m_index.find( _key );
-        if ( cIter == m_index.cend() ) {
+        auto iter = m_index.find( _key );
+        if ( iter == m_index.end() ) {
             if ( m_index.size() == m_capacity ) {
                 m_index.erase( m_data.back().first );
                 m_data.pop_back();
@@ -28,35 +29,61 @@ public:
             m_data.push_front( { _key, _val } );
             m_index[_key] = m_data.begin();
         } else
-            m_data.splice( m_data.begin(), m_data, cIter->second );
+            m_data.splice( m_data.begin(), m_data, iter->second );
 
         return m_index.size();
     }
 
+    size_t insertOrUpdate( key_type const& _key, value_type const& _val ) {
+        auto iter = m_index.find( _key );
+        if ( iter == m_index.end() ) {
+            if ( m_index.size() == m_capacity ) {
+                m_index.erase( m_data.back().first );
+                m_data.pop_back();
+            }
+            m_data.push_front( { _key, _val } );
+            m_index[_key] = m_data.begin();
+        } else {
+            iter->second->second = _val;
+            m_data.splice( m_data.begin(), m_data, iter->second );
+        }
+
+        return m_index.size();
+    }
+
+    std::optional< value_type > get( key_type const& _key ) {
+        auto iter = m_index.find( _key );
+        if ( iter != m_index.end() ) {
+            m_data.splice( m_data.begin(), m_data, iter->second );
+            return iter->second->second;
+        }
+        return std::nullopt;
+    }
+
     size_t remove( key_type const& _key ) {
-        auto const cIter = m_index.find( _key );
-        if ( cIter != m_index.cend() ) {
-            m_data.erase( cIter->second );
-            m_index.erase( cIter );
+        auto iter = m_index.find( _key );
+        if ( iter != m_index.end() ) {
+            m_data.erase( iter->second );
+            m_index.erase( iter );
         }
 
         return m_index.size();
     }
 
     bool touch( key_type const& _key ) {
-        auto const cIter = m_index.find( _key );
-        if ( cIter != m_index.cend() ) {
-            m_data.splice( m_data.begin(), m_data, cIter->second );
+        auto iter = m_index.find( _key );
+        if ( iter != m_index.end() ) {
+            m_data.splice( m_data.begin(), m_data, iter->second );
             return true;
         }
         return false;
     }
 
-    bool contains( key_type const& _key ) const { return m_index.find( _key ) != m_index.cend(); }
+    bool contains( key_type const& _key ) const { return m_index.find( _key ) != m_index.end(); }
 
     bool contains( key_type const& _key, value_type const& _value ) const {
-        auto const cIter = m_index.find( _key );
-        return cIter != m_index.cend() && ( *( cIter->second ) ).second == _value;
+        auto iter = m_index.find( _key );
+        return iter != m_index.end() && ( *( iter->second ) ).second == _value;
     }
 
     bool empty() const noexcept { return m_index.empty(); }

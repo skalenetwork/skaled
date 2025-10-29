@@ -118,6 +118,9 @@ public:
 
     static std::string uint64ToFixedLengthHex( uint64_t value );
 
+    static dev::bytes getAuxiliaryKey( dev::h160 const& _address, _byte_ space );
+    static dev::bytes getStorageKey( dev::h160 const& _address, dev::h256 const& _storageAddress );
+
 private:
     std::unordered_map< dev::h160, dev::bytes > m_cache;
     std::unordered_map< dev::h160, std::unordered_map< _byte_, dev::bytes > > m_auxiliaryCache;
@@ -125,9 +128,6 @@ private:
     dev::s256 storageUsed_ = 0;
 
     std::shared_ptr< batched_io::db_face > m_db_face;
-
-    dev::bytes getAuxiliaryKey( dev::h160 const& _address, _byte_ space ) const;
-    dev::bytes getStorageKey( dev::h160 const& _address, dev::h256 const& _storageAddress ) const;
 
     // a flag to commit to disk on every insert to save memory
     // this is currently only used for historic state conversion

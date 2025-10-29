@@ -290,6 +290,16 @@ void OverlayDB::commit() {
                 LOG( m_loggerWarning )
                     << "Sleeping for" << ( commitTry + 1 ) << "seconds, then retrying.";
                 std::this_thread::sleep_for( std::chrono::seconds( commitTry + 1 ) );
+            } catch ( ... ) {
+                if ( commitTry == 9 ) {
+                    LOG( m_loggerWarning ) << "Fail(3) writing to state database. Bombing out. ";
+                    LOG( m_loggerWarning ) << DETAILED_ERROR;
+                    exit( -1 );
+                }
+                cerror << "Unknown error(2) writing to state database (during DB commit)";
+                LOG( m_loggerWarning )
+                    << "Sleeping for" << ( commitTry + 1 ) << "seconds, then retrying.";
+                std::this_thread::sleep_for( std::chrono::seconds( commitTry + 1 ) );
             }
         }
 #if DEV_GUARDED_DB
@@ -493,14 +503,13 @@ bool OverlayDB::empty() const {
     }
 }
 
-dev::bytes OverlayDB::getAuxiliaryKey( dev::h160 const& _address, _byte_ space ) const {
+dev::bytes OverlayDB::getAuxiliaryKey( dev::h160 const& _address, _byte_ space ) {
     bytes key = _address.asBytes();
     key.push_back( space );  // for aux
     return key;
 }
 
-dev::bytes OverlayDB::getStorageKey(
-    dev::h160 const& _address, dev::h256 const& _storageAddress ) const {
+dev::bytes OverlayDB::getStorageKey( dev::h160 const& _address, dev::h256 const& _storageAddress ) {
     bytes key = _address.asBytes();
     bytes storageAddress = _storageAddress.asBytes();
     key.insert( key.end(), storageAddress.begin(), storageAddress.end() );
