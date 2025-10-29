@@ -53,7 +53,9 @@ HistoricState::HistoricState( HistoricState const& _s )
       m_unrevertablyTouched( _s.m_unrevertablyTouched ),
       m_accountStartNonce( _s.m_accountStartNonce ),
       m_totalTimeSpentInStateCommitsPerBlock( _s.m_totalTimeSpentInStateCommitsPerBlock ),
-      m_maxHistoricStateDbSize( _s.m_maxHistoricStateDbSize ) {}
+      m_maxHistoricStateDbSize( _s.m_maxHistoricStateDbSize ) {
+    m_state.setRoot( _s.m_state.root(), Verification::Skip, _s.m_state.rootBlockNumber() );
+}
 
 std::pair< dev::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > >
 HistoricState::openDB( fs::path const& _basePath, h256 const& _genesisHash, WithExisting _we ) {
@@ -149,7 +151,7 @@ HistoricState& HistoricState::operator=( HistoricState const& _s ) {
     m_rotatingTreeDb = _s.m_rotatingTreeDb;
     m_blockToStateRootDB = _s.m_blockToStateRootDB;
     m_rotatingRootsDb = _s.m_rotatingRootsDb;
-    m_state.open( &m_db, _s.m_state.root(), Verification::Skip );
+    m_state.open( &m_db, _s.m_state.root(), Verification::Skip, _s.m_state.rootBlockNumber() );
     m_cache = _s.m_cache;
     m_unchangedCacheEntries = _s.m_unchangedCacheEntries;
     m_nonExistingAccountsCache = _s.m_nonExistingAccountsCache;
@@ -634,12 +636,12 @@ std::pair< ExecutionResult, TransactionReceipt > HistoricState::execute( EnvInfo
         m_cache.clear();
         break;
     case skale::Permanence::Committed:
-        // should never be called since historic state is  read only
+        // should never be called since historic state is read only
         assert( false );
     case skale::Permanence::Uncommitted:
         break;
     case skale::Permanence::CommittedWithoutState:
-        // should never be called historic state is  read only
+        // should never be called historic state is read only
         assert( false );
     }
 
