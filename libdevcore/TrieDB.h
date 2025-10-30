@@ -799,6 +799,12 @@ SpecificTrieDB< KeyType, DB >::iterator::at() const {
 
 template < class DB >
 void GenericTrieDB< DB >::insert( bytesConstRef _key, bytesConstRef _value ) {
+    clog( dev::VerbosityDebug, "triedb" )
+        << "GenericTrieDB::insert: key=" << toHex( _key )
+        << " key_size=" << _key.size()
+        << " value_size=" << _value.size()
+        << " root=" << m_root;
+    
     std::string rootValue = node( m_root );
     assert( rootValue.size() );
     bytes b = mergeAt( RLP( rootValue ), m_root, NibbleSlice( _key ), _value );
@@ -809,7 +815,17 @@ void GenericTrieDB< DB >::insert( bytesConstRef _key, bytesConstRef _value ) {
     // here.
     if ( rootValue.size() < 32 )
         forceKillNode( m_root );
+    
+    h256 nodeHash = sha3( &b );
+    clog( dev::VerbosityDebug, "triedb" )
+        << "GenericTrieDB::insert forceInsertNode: node_value=" << toHex( b )
+        << " node_size=" << b.size()
+        << " node_hash=" << nodeHash;
+    
     m_root = forceInsertNode( &b );
+    
+    clog( dev::VerbosityDebug, "triedb" )
+        << "GenericTrieDB::insert complete: new_root=" << m_root;
 }
 
 template < class DB >

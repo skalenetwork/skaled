@@ -797,10 +797,15 @@ AddressHash HistoricState::commitExternalChangesIntoTrieDB(
 
                 for ( auto const& j : i.second.storageOverlay() ) {
                     if ( j.second ) {
+                        LOG( m_loggerDebug ) << "Inserting to storageDB from storageOverlay: address="
+                                                << i.first << " key=" << j.first << " value=" << dev::toHex( j.second )
+                                                << " storageRoot=" << storageRoot;
                         storageDB.insert( j.first, rlp( j.second ) );
-
-                    } else
+                    } else {
+                        LOG( m_loggerDebug ) << "Removing from storageDB: address=" << i.first
+                                                << " key=" << j.first << " storageRoot=" << storageRoot;
                         storageDB.remove( j.first );
+                    }
                 }
                 assert( storageDB.root() );
                 s.append( storageDB.root() );
