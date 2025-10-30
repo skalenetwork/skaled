@@ -814,6 +814,8 @@ void SkaleHost::syncNodeGroups() {
 
 #ifdef FAIR
 void SkaleHost::updateConsensusEpochId( uint64_t _epochId ) {
+    LOG( m_loggerInfo ) << "Updating epochId in consensus to " << _epochId;
+
     if ( m_consensus ) {
         auto* consensusEngine = dynamic_cast< ConsensusEngine* >( m_consensus.get() );
         if ( consensusEngine ) {

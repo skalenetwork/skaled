@@ -640,11 +640,7 @@ std::pair< std::array< std::string, 4 >, uint64_t > Client::getNextCommitteeBITE
 }
 
 bool Client::updateGroupIfNeeded() {
-    bool result = bc().updateGroupIfNeeded();
-    if ( result && m_skaleHost ) {
-        m_skaleHost->updateConsensusEpochId( getCurrentEpochId() );
-    }
-    return result;
+    return bc().updateGroupIfNeeded();
 }
 #endif
 
@@ -1448,6 +1444,7 @@ bool Client::updateHistoricGroupIndex() {
     uint64_t currentFinishTs = nodeGroups.at( historicGroupIndex ).finishTs;
     bool updated = false;
     if ( blockTimestamp >= currentFinishTs ) {
+        LOG( m_loggerInfo ) << "Updating historic group index to " << historicGroupIndex + 1;
         ++historicGroupIndex;
         updated = true;
     }
