@@ -1277,6 +1277,11 @@ BOOST_AUTO_TEST_CASE( initAndUpdateHistoricConfigFields ) {
 #endif
         4294967294 );
 
+#ifdef FAIR
+    if ( !testClient->updateGroupIfNeeded() )
+        testClient->updateHistoricGroupIndex();
+#endif
+
     sleep( 3 );
 
     BOOST_REQUIRE( testClient->getCurrentBLSPublicKey() == imaBLSPublicKeyAfterBlock );
