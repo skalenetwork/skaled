@@ -231,7 +231,8 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "syncNodeCatchupTimeoutSec", { { js::int_type }, JsonFieldPresence::Optional } },
             { "readJsonHeaderTimeoutSec", { { js::int_type }, JsonFieldPresence::Optional } },
             { "syncNodeReadJsonHeaderTimeoutSec",
-                { { js::int_type }, JsonFieldPresence::Optional } } } );
+                { { js::int_type }, JsonFieldPresence::Optional } },
+            { "DYNAMIC_PRICING_MIN_PRICE", { { js::int_type }, JsonFieldPresence::Optional } } } );
 
 #ifndef FAIR
     std::string keyShareName = "";
