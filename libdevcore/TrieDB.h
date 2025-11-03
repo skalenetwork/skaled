@@ -801,8 +801,7 @@ template < class DB >
 void GenericTrieDB< DB >::insert( bytesConstRef _key, bytesConstRef _value ) {
     clog( dev::VerbosityDebug, "triedb" )
         << "GenericTrieDB::insert: key=" << toHex( _key )
-        << " key_size=" << _key.size()
-        << " value_size=" << _value.size()
+        << " value=" << toHex( _value )
         << " root=" << m_root;
     
     std::string rootValue = node( m_root );
@@ -830,7 +829,16 @@ void GenericTrieDB< DB >::insert( bytesConstRef _key, bytesConstRef _value ) {
 
 template < class DB >
 std::string GenericTrieDB< DB >::at( bytesConstRef _key ) const {
-    return atAux( RLP( node( m_root ) ), _key );
+    clog( dev::VerbosityDebug, "triedb" ) << "GenericTrieDB::at - looking up key: " << toHex( _key )
+                    << ", root: " << m_root;
+    std::string result = atAux( RLP( node( m_root ) ), _key );
+    if ( result.empty() ) {
+        clog( dev::VerbosityDebug, "triedb" ) << "GenericTrieDB::at - key NOT FOUND: " << toHex( _key );
+    } else {
+        clog( dev::VerbosityDebug, "triedb" ) << "GenericTrieDB::at - key FOUND: " << toHex( _key )
+                        << ", value: " << result;
+    }
+    return result;
 }
 
 template < class DB >
