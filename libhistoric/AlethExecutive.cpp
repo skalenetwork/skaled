@@ -135,7 +135,6 @@ bool AlethExecutive::execute() {
     bytes const& dataToPassToEvm = m_t.data();
     Address receiverAddressToPassToEvm = m_t.receiveAddress();
 #endif
-    LOG( m_loggerTrace ) << "Data: " << dev::toHexPrefixed( dataToPassToEvm ) << " Address: " << m_t.sender().hex();
 
     assert( m_t.gas() >= ( u256 ) m_baseGasRequired );
     if ( m_t.isCreation() )
@@ -356,7 +355,6 @@ bool AlethExecutive::go( OnOpFunc const& _onOp ) {
         } catch ( RevertInstruction& _e ) {
             revert();
             m_output = _e.output();
-            LOG( m_loggerTrace ) << "EVM output: " << dev::toHexPrefixed(m_output);
             m_excepted = TransactionException::RevertInstruction;
         } catch ( VMException const& _e ) {
             LOG( m_loggerTrace ) << "Safe VM Exception. " << diagnostic_information( _e );
