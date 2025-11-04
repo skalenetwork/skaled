@@ -745,7 +745,7 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, HistoricState const& _s 
     return _out;
 }
 
-HistoricState::clearAllCaches() {
+void HistoricState::clearAllCaches() {
     m_changeLog.clear();
     m_cache.clear();
     m_unchangedCacheEntries.clear();
