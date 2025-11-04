@@ -28,6 +28,9 @@
 #include <boost/thread.hpp>
 
 #include "LastBlockHashesFace.h"
+#ifdef FAIR
+#include "SchainPatch.h"
+#endif
 
 using namespace dev;
 using namespace dev::eth;
@@ -169,11 +172,16 @@ CreateResult ExtVM::create( u256 _endowment, u256& io_gas, bytesConstRef _code, 
         e.newAddress() };
 }
 
-void ExtVM::suicide( Address _a ) {
+void ExtVM::suicide( [[maybe_unused]] Address _a ) {
     // Why transfer is not used here? That caused a consensus issue before (see Quirk #2 in
     // http://martin.swende.se/blog/Ethereum_quirks_and_vulns.html). There is one test case
     // witnessing the current consensus
     // 'GeneralStateTests/stSystemOperationsTest/suicideSendEtherPostDeath.json'.
+#ifdef FAIR
+    if ( DisableSelfDestructPatch::isEnabledWhen( envInfo().committedBlockTimestamp() ) ) {
+        return;
+    }
+#endif
     m_s.addBalance( _a, m_s.balance( myAddress ) );
     m_s.setBalance( myAddress, 0 );
     ExtVMFace::suicide( _a );
