@@ -809,7 +809,6 @@ void GenericTrieDB< DB >::insert( bytesConstRef _key, bytesConstRef _value ) {
     // here.
     if ( rootValue.size() < 32 )
         forceKillNode( m_root );
-
     m_root = forceInsertNode( &b );
 }
 
