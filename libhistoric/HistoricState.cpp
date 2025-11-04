@@ -123,14 +123,6 @@ u256 const& HistoricState::requireAccountStartNonce() const {
     return m_accountStartNonce;
 }
 
-/* void HistoricState::noteAccountStartNonce(u256 const &_actual) {
-    if (m_accountStartNonce == Invalid256)
-        m_accountStartNonce = _actual;
-    else if (m_accountStartNonce != _actual)
-        BOOST_THROW_EXCEPTION(IncorrectAccountStartNonceInState());
-}
- */
-
 void HistoricState::removeEmptyAccounts() {
     for ( auto& i : m_cache )
         if ( i.second.isDirty() && i.second.isEmpty() )
@@ -219,9 +211,7 @@ void HistoricState::commitExternalChanges( AccountMap const& _accountMap ) {
     auto historicStateStart = dev::db::LevelDB::getCurrentTimeMs();
     commitExternalChangesIntoTrieDB( _accountMap, m_state );
     m_state.db()->commit();
-    m_changeLog.clear();
-    m_cache.clear();
-    m_unchangedCacheEntries.clear();
+    clearAllCaches();
     auto historicStateFinish = dev::db::LevelDB::getCurrentTimeMs();
     m_totalTimeSpentInStateCommitsPerBlock += historicStateFinish - historicStateStart;
 }
@@ -755,19 +745,12 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, HistoricState const& _s 
     return _out;
 }
 
-/*HistoricState &dev::eth::createIntermediateState(HistoricState &o_s, Block const &_block, unsigned
-_txIndex, BlockChain const &_bc) {
-    // o_s = _block.state().historicState();
-    u256 const rootHash = _block.stateRootBeforeTx(_txIndex);
-    if (rootHash)
-        o_s.setRoot(globalRoot);
-    else {
-        o_s.setRoot(_block.stateRootBeforeTx(0));
-        o_s.executeBlockTransactions(_block, _txIndex, _bc.lastBlockHashes(), *_bc.sealEngine());
-    }
-    return o_s;
+HistoricState::clearAllCaches() {
+    m_changeLog.clear();
+    m_cache.clear();
+    m_unchangedCacheEntries.clear();
+    m_nonExistingAccountsCache.clear();
 }
- */
 
 AddressHash HistoricState::commitExternalChangesIntoTrieDB(
     const AccountMap& _cache, SecureTrieDB< Address, OverlayDB >& _state ) {
@@ -797,13 +780,8 @@ AddressHash HistoricState::commitExternalChangesIntoTrieDB(
 
                 for ( auto const& j : i.second.storageOverlay() ) {
                     if ( j.second ) {
-                        LOG( m_loggerDebug ) << "Inserting to storageDB from storageOverlay: address="
-                                                << i.first << " key=" << j.first << " value=" << dev::toHex( j.second )
-                                                << " storageRoot=" << storageRoot;
                         storageDB.insert( j.first, rlp( j.second ) );
                     } else {
-                        LOG( m_loggerDebug ) << "Removing from storageDB: address=" << i.first
-                                                << " key=" << j.first << " storageRoot=" << storageRoot;
                         storageDB.remove( j.first );
                     }
                 }

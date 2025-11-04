@@ -48,11 +48,7 @@ void OverlayDB::commit() {
 
             for ( auto const& i : m_main ) {
                 if ( i.second.second ) {
-                    clog( dev::VerbosityDebug, "overlaydb" )
-                        << "Inserting to DB from m_main cache: key=" << i.first.hex()
-                        << " value=" << dev::toHex( i.second.first );
                     m_db->insert( toSlice( i.first ), toSlice( i.second.first ) );
-                    //              cnote << i.first << "#" << m_main[i.first].second;
                     storageUsed_ += toSlice( i.first ).size() + toSlice( i.second.first ).size();
                 }
             }

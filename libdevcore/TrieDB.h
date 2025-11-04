@@ -799,11 +799,6 @@ SpecificTrieDB< KeyType, DB >::iterator::at() const {
 
 template < class DB >
 void GenericTrieDB< DB >::insert( bytesConstRef _key, bytesConstRef _value ) {
-    clog( dev::VerbosityDebug, "triedb" )
-        << "GenericTrieDB::insert: key=" << toHex( _key )
-        << " value=" << toHex( _value )
-        << " root=" << m_root;
-    
     std::string rootValue = node( m_root );
     assert( rootValue.size() );
     bytes b = mergeAt( RLP( rootValue ), m_root, NibbleSlice( _key ), _value );
@@ -814,31 +809,13 @@ void GenericTrieDB< DB >::insert( bytesConstRef _key, bytesConstRef _value ) {
     // here.
     if ( rootValue.size() < 32 )
         forceKillNode( m_root );
-    
-    h256 nodeHash = sha3( &b );
-    clog( dev::VerbosityDebug, "triedb" )
-        << "GenericTrieDB::insert forceInsertNode: node_value=" << toHex( b )
-        << " node_size=" << b.size()
-        << " node_hash=" << nodeHash;
-    
+
     m_root = forceInsertNode( &b );
-    
-    clog( dev::VerbosityDebug, "triedb" )
-        << "GenericTrieDB::insert complete: new_root=" << m_root;
 }
 
 template < class DB >
 std::string GenericTrieDB< DB >::at( bytesConstRef _key ) const {
-    clog( dev::VerbosityDebug, "triedb" ) << "GenericTrieDB::at - looking up key: " << toHex( _key )
-                    << ", root: " << m_root.hex();
-    std::string result = atAux( RLP( node( m_root ) ), _key );
-    if ( result.empty() ) {
-        clog( dev::VerbosityDebug, "triedb" ) << "GenericTrieDB::at - key NOT FOUND: " << toHex( _key );
-    } else {
-        clog( dev::VerbosityDebug, "triedb" ) << "GenericTrieDB::at - key FOUND: " << toHex( _key )
-                        << ", value: " << dev::toHex( result );
-    }
-    return result;
+    return atAux( RLP( node( m_root ) ), _key );
 }
 
 template < class DB >
