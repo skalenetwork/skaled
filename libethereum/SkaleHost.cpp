@@ -804,10 +804,8 @@ void SkaleHost::syncNodeGroups() {
         isHistoricGroupIndexUpdated = m_client.updateHistoricGroupIndex();
     }
     bool isGroupUpdated = m_client.updateGroupIfNeeded();
-    if ( isGroupUpdated ) {
+    if ( isHistoricGroupIndexUpdated || isGroupUpdated ) {
         runCommitteeRotationForConsensus();
-    } else if ( isHistoricGroupIndexUpdated ) {
-        updateConsensusEpochId( m_client.getCurrentEpochId() );
     }
 }
 #endif
