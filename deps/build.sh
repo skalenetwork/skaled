@@ -926,35 +926,6 @@ then
 	fi
 fi
 
-echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}ICONV${COLOR_SEPARATOR} ========================================${COLOR_RESET}"
-if [ ! -f "$INSTALL_ROOT/lib/libiconv.a" ];
-then
-	if [ "$UNIX_SYSTEM_NAME" = "Darwin" ];
-	then
-		echo -e "${COLOR_SUCCESS}skipping iconv on $UNIX_SYSTEM_NAME )))${COLOR_RESET}"
-	else
-		env_restore
-		cd "$SOURCES_ROOT"
-		if [ ! -d "libiconv-1.15" ];
-		then
-			echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
-			eval tar -xzf "$PREDOWNLOADED_ROOT/libiconv-1.15.tar.gz"
-			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
-			cd libiconv-1.15
-			eval ./configure "${CONF_CROSSCOMPILING_OPTS_GENERIC}" --enable-static --disable-shared --prefix="$INSTALL_ROOT" "${CONF_DEBUG_OPTIONS}"
-			cd ..
-		fi
-		echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
-		cd libiconv-1.15
-		eval "$MAKE" "${PARALLEL_MAKE_OPTIONS}"
-		eval "$MAKE" "${PARALLEL_MAKE_OPTIONS}" install
-		cd ..
-		cd "$SOURCES_ROOT"
-	fi
-else
-	echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
-fi
-
 if [ "$WITH_SDL" = "yes" ];
 then
 	echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}SDL2${COLOR_SEPARATOR} =========================================${COLOR_RESET}"
