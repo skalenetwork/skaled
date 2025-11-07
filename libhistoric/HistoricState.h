@@ -323,6 +323,9 @@ private:
     /// exception occurred.
     bool executeTransaction( AlethExecutive& _e, Transaction const& _t, OnOpFunc const& _onOp );
 
+    /// Clears all internal caches
+    void clearAllCaches();
+
     /// Our overlay for the state tree.
     dev::OverlayDB m_db;
     /// Interface for rotating db for the state tree
