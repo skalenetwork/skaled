@@ -86,7 +86,7 @@ PrecompiledPricer const& PrecompiledRegistrar::pricer( std::string const& _name 
 
 namespace {
 
-ETH_REGISTER_PRECOMPILED( ecrecover )( bytesConstRef _in ) {
+ETH_REGISTER_PRECOMPILED( ecrecover )( bytesConstRef _in, const dev::u256& ) {
     struct {
         h256 hash;
         h256 v;
@@ -114,15 +114,15 @@ ETH_REGISTER_PRECOMPILED( ecrecover )( bytesConstRef _in ) {
     return { true, {} };
 }
 
-ETH_REGISTER_PRECOMPILED( sha256 )( bytesConstRef _in ) {
+ETH_REGISTER_PRECOMPILED( sha256 )( bytesConstRef _in, const dev::u256& ) {
     return { true, dev::sha256( _in ).asBytes() };
 }
 
-ETH_REGISTER_PRECOMPILED( ripemd160 )( bytesConstRef _in ) {
+ETH_REGISTER_PRECOMPILED( ripemd160 )( bytesConstRef _in, const dev::u256& ) {
     return { true, h256( dev::ripemd160( _in ), h256::AlignRight ).asBytes() };
 }
 
-ETH_REGISTER_PRECOMPILED( identity )( bytesConstRef _in ) {
+ETH_REGISTER_PRECOMPILED( identity )( bytesConstRef _in, const dev::u256& ) {
     MICROPROFILE_SCOPEI( "VM", "identity", MP_RED );
     return { true, _in.toBytes() };
 }
@@ -149,7 +149,7 @@ bigint parseBigEndianRightPadded( bytesConstRef _in, bigint const& _begin, bigin
     return ret;
 }
 
-ETH_REGISTER_PRECOMPILED( modexp )( bytesConstRef _in ) {
+ETH_REGISTER_PRECOMPILED( modexp )( bytesConstRef _in, const dev::u256& ) {
     bigint const baseLength( parseBigEndianRightPadded( _in, 0, 32 ) );
     bigint const expLength( parseBigEndianRightPadded( _in, 32, 32 ) );
     bigint const modLength( parseBigEndianRightPadded( _in, 64, 32 ) );
@@ -208,7 +208,7 @@ ETH_REGISTER_PRECOMPILED_PRICER( modexp )
     return multComplexity( maxLength ) * max< bigint >( adjustedExpLength, 1 ) / 20;
 }
 
-ETH_REGISTER_PRECOMPILED( alt_bn128_G1_add )( bytesConstRef _in ) {
+ETH_REGISTER_PRECOMPILED( alt_bn128_G1_add )( bytesConstRef _in, const dev::u256& ) {
     return dev::crypto::alt_bn128_G1_add( _in );
 }
 
@@ -217,7 +217,7 @@ ETH_REGISTER_PRECOMPILED_PRICER( alt_bn128_G1_add )
     return _blockNumber < _chainParams.getIstanbulForkBlock() ? 500 : 150;
 }
 
-ETH_REGISTER_PRECOMPILED( alt_bn128_G1_mul )( bytesConstRef _in ) {
+ETH_REGISTER_PRECOMPILED( alt_bn128_G1_mul )( bytesConstRef _in, const dev::u256& ) {
     return dev::crypto::alt_bn128_G1_mul( _in );
 }
 
@@ -226,7 +226,7 @@ ETH_REGISTER_PRECOMPILED_PRICER( alt_bn128_G1_mul )
     return _blockNumber < _chainParams.getIstanbulForkBlock() ? 40000 : 6000;
 }
 
-ETH_REGISTER_PRECOMPILED( alt_bn128_pairing_product )( bytesConstRef _in ) {
+ETH_REGISTER_PRECOMPILED( alt_bn128_pairing_product )( bytesConstRef _in, const dev::u256& ) {
     return dev::crypto::alt_bn128_pairing_product( _in );
 }
 
@@ -283,7 +283,8 @@ boost::filesystem::path getFileStorageDir( const Address& _address ) {
 }
 
 // TODO: check file name and file existance
-ETH_REGISTER_FS_PRECOMPILED( createFile )( bytesConstRef _in, skale::OverlayFS* _overlayFS ) {
+ETH_REGISTER_FS_PRECOMPILED( createFile )
+( bytesConstRef _in, const dev::u256&, skale::OverlayFS* _overlayFS ) {
     if ( !_overlayFS )
         throw runtime_error( "_overlayFS is nullptr " );
 
@@ -327,7 +328,8 @@ ETH_REGISTER_FS_PRECOMPILED( createFile )( bytesConstRef _in, skale::OverlayFS* 
     return { false, response };
 }
 
-ETH_REGISTER_FS_PRECOMPILED( uploadChunk )( bytesConstRef _in, skale::OverlayFS* _overlayFS ) {
+ETH_REGISTER_FS_PRECOMPILED( uploadChunk )
+( bytesConstRef _in, const dev::u256&, skale::OverlayFS* _overlayFS ) {
     if ( !_overlayFS )
         throw runtime_error( "_overlayFS is nullptr " );
 
@@ -376,7 +378,7 @@ ETH_REGISTER_FS_PRECOMPILED( uploadChunk )( bytesConstRef _in, skale::OverlayFS*
     return { false, response };
 }
 
-ETH_REGISTER_PRECOMPILED( readChunk )( bytesConstRef _in ) {
+ETH_REGISTER_PRECOMPILED( readChunk )( bytesConstRef _in, const dev::u256& ) {
     MICROPROFILE_SCOPEI( "VM", "readChunk", MP_ORANGERED );
     try {
         auto rawAddress = _in.cropped( 12, 20 ).toBytes();
@@ -427,7 +429,7 @@ ETH_REGISTER_PRECOMPILED( readChunk )( bytesConstRef _in ) {
     return { false, response };
 }
 
-ETH_REGISTER_PRECOMPILED( getFileSize )( bytesConstRef _in ) {
+ETH_REGISTER_PRECOMPILED( getFileSize )( bytesConstRef _in, const dev::u256& ) {
     try {
         auto rawAddress = _in.cropped( 12, 20 ).toBytes();
         std::string address;
@@ -461,7 +463,8 @@ ETH_REGISTER_PRECOMPILED( getFileSize )( bytesConstRef _in ) {
     return { false, response };
 }
 
-ETH_REGISTER_FS_PRECOMPILED( deleteFile )( bytesConstRef _in, skale::OverlayFS* _overlayFS ) {
+ETH_REGISTER_FS_PRECOMPILED( deleteFile )
+( bytesConstRef _in, const dev::u256&, skale::OverlayFS* _overlayFS ) {
     if ( !_overlayFS )
         throw runtime_error( "_overlayFS is nullptr " );
 
@@ -494,7 +497,8 @@ ETH_REGISTER_FS_PRECOMPILED( deleteFile )( bytesConstRef _in, skale::OverlayFS* 
     return { false, response };
 }
 
-ETH_REGISTER_FS_PRECOMPILED( createDirectory )( bytesConstRef _in, skale::OverlayFS* _overlayFS ) {
+ETH_REGISTER_FS_PRECOMPILED( createDirectory )
+( bytesConstRef _in, const dev::u256&, skale::OverlayFS* _overlayFS ) {
     if ( !_overlayFS )
         throw runtime_error( "_overlayFS is nullptr " );
 
@@ -526,7 +530,8 @@ ETH_REGISTER_FS_PRECOMPILED( createDirectory )( bytesConstRef _in, skale::Overla
     return { false, response };
 }
 
-ETH_REGISTER_FS_PRECOMPILED( deleteDirectory )( bytesConstRef _in, skale::OverlayFS* _overlayFS ) {
+ETH_REGISTER_FS_PRECOMPILED( deleteDirectory )
+( bytesConstRef _in, const dev::u256&, skale::OverlayFS* _overlayFS ) {
     if ( !_overlayFS )
         throw runtime_error( "_overlayFS is nullptr " );
 
@@ -566,7 +571,7 @@ ETH_REGISTER_FS_PRECOMPILED( deleteDirectory )( bytesConstRef _in, skale::Overla
 }
 
 ETH_REGISTER_FS_PRECOMPILED( calculateFileHash )
-( bytesConstRef _in, skale::OverlayFS* _overlayFS ) {
+( bytesConstRef _in, const dev::u256&, skale::OverlayFS* _overlayFS ) {
     try {
         auto rawAddress = _in.cropped( 12, 20 ).toBytes();
         std::string address;
@@ -601,7 +606,7 @@ ETH_REGISTER_FS_PRECOMPILED( calculateFileHash )
     return { false, response };
 }
 
-ETH_REGISTER_PRECOMPILED( logTextMessage )( bytesConstRef _in ) {
+ETH_REGISTER_PRECOMPILED( logTextMessage )( bytesConstRef _in, const dev::u256& ) {
     try {
         if ( !g_configAccesssor )
             throw std::runtime_error( "Config accessor was not initialized" );
@@ -813,7 +818,7 @@ static std::pair< std::string, unsigned > parseHistoricFieldRequest( std::string
  * so one should pass the following as calldata:
  * toBytes( input.length + toBytes(input) )
  */
-ETH_REGISTER_PRECOMPILED( getConfigVariableUint256 )( bytesConstRef _in ) {
+ETH_REGISTER_PRECOMPILED( getConfigVariableUint256 )( bytesConstRef _in, const dev::u256& ) {
     try {
         size_t lengthName;
         std::string rawName;
@@ -870,7 +875,7 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableUint256 )( bytesConstRef _in ) {
     return { false, response };  // 1st false - means bad error occur
 }
 
-ETH_REGISTER_PRECOMPILED( getConfigVariableAddress )( bytesConstRef _in ) {
+ETH_REGISTER_PRECOMPILED( getConfigVariableAddress )( bytesConstRef _in, const dev::u256& ) {
     try {
         size_t lengthName;
         std::string rawName;
@@ -924,7 +929,7 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableAddress )( bytesConstRef _in ) {
  * so one should pass the following as calldata
  * toBytes( input.length + toBytes(input) )
  */
-ETH_REGISTER_PRECOMPILED( getConfigVariableString )( bytesConstRef _in ) {
+ETH_REGISTER_PRECOMPILED( getConfigVariableString )( bytesConstRef _in, const dev::u256& ) {
     try {
         size_t lengthName;
         std::string rawName;
@@ -977,7 +982,7 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableString )( bytesConstRef _in ) {
 }
 
 
-ETH_REGISTER_PRECOMPILED( fnReserved0x16 )( bytesConstRef /*_in*/ ) {
+ETH_REGISTER_PRECOMPILED( fnReserved0x16 )( bytesConstRef, const dev::u256& ) {
     u256 code = 0;
     bytes response = toBigEndian( code );
     return { false, response };  // 1st false - means bad error occur
@@ -993,7 +998,7 @@ static dev::u256 stat_s2a( const std::string& saIn ) {
     return u;
 }
 
-ETH_REGISTER_PRECOMPILED( getConfigPermissionFlag )( bytesConstRef _in ) {
+ETH_REGISTER_PRECOMPILED( getConfigPermissionFlag )( bytesConstRef _in, const dev::u256& ) {
     try {
         dev::u256 uValue;
         uValue = 0;
@@ -1056,11 +1061,11 @@ ETH_REGISTER_PRECOMPILED( getConfigPermissionFlag )( bytesConstRef _in ) {
 }
 #endif
 
-ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef ) {
+ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef, const dev::u256& _bn ) {
     try {
         if ( !g_skaleHost )
             throw std::runtime_error( "SkaleHost accessor was not initialized" );
-        dev::u256 uValue = g_skaleHost->getBlockRandom();
+        dev::u256 uValue = g_skaleHost->getBlockRandom( _bn.convert_to< unsigned >() );
         bytes response = toBigEndian( uValue );
         return { true, response };
     } catch ( std::exception& ex ) {
@@ -1079,14 +1084,14 @@ ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef ) {
 }
 
 #ifndef FAIR
-ETH_REGISTER_PRECOMPILED( addBalance )( [[maybe_unused]] bytesConstRef _in ) {
+ETH_REGISTER_PRECOMPILED( addBalance )( [[maybe_unused]] bytesConstRef _in, const dev::u256& ) {
     dev::u256 code = 0;
     bytes response = toBigEndian( code );
     return { false, response };  // 1st false - means bad error occur
 }
 
 
-ETH_REGISTER_PRECOMPILED( getIMABLSPublicKey )( bytesConstRef ) {
+ETH_REGISTER_PRECOMPILED( getIMABLSPublicKey )( bytesConstRef, const dev::u256& ) {
     try {
         if ( !g_skaleHost )
             throw std::runtime_error( "SkaleHost accessor was not initialized" );

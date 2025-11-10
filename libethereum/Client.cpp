@@ -622,9 +622,11 @@ bool Client::isCommitteeRotationSoon() const {
         // there is no next group thus no rotation
         return false;
 
-    if ( getCommitteeStartTs( currentGroupIndex + 1 ) > bc().info().timestamp() &&
-         getCommitteeStartTs( currentGroupIndex + 1 ) - bc().info().timestamp() <
-             MIN_COMMITTEE_ROTATION_INTERVAL_SEC )
+    const uint64_t nextCommitteeStartTs = getCommitteeStartTs( currentGroupIndex + 1 );
+    const uint64_t currentTimestamp = static_cast< uint64_t >( bc().info().timestamp() );
+
+    if ( nextCommitteeStartTs > currentTimestamp &&
+         nextCommitteeStartTs - currentTimestamp < MIN_COMMITTEE_ROTATION_INTERVAL_SEC )
         return true;
     return false;
 }
@@ -1082,14 +1084,12 @@ Block Client::blockByNumber( BlockNumber _h ) const {
         }
 
         // blockByNumber is only used for reads
-        auto readState = m_state.createStateCopyAndClearCaches();
+        auto readState = m_state.createReadOnlySnapBasedCopy();
         readState.mutableHistoricState().setRootByBlockNumber( this->blockInfo( hash ).number() );
 
         // removed m_blockImportMutex here
         // this function doesn't interact with latest block so the mutex isn't needed
         return Block( bc(), hash, readState );
-        assert( false );
-        return Block( bc() );
     } catch ( Exception& ex ) {
         ex << errinfo_block( bc().block( bc().currentHash() ) );
         onBadBlock( ex );

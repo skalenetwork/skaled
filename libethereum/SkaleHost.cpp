@@ -982,9 +982,13 @@ u256 SkaleHost::getGasPrice( unsigned _blockNumber ) const {
     return m_consensus->getPriceForBlockId( _blockNumber );
 }
 
-u256 SkaleHost::getBlockRandom() const {
+u256 SkaleHost::getBlockRandom( unsigned _blockNumber ) const {
     if ( CurrentBlockRandomPatch::isEnabledInWorkingBlock() ) {
-        return m_consensus->getRandomForBlockId( m_client.pendingInfo().number() );
+        if ( _blockNumber > m_client.number() )
+            // cant get info about future blocks
+            // only possible if responding eth_call or eth_estimateGas request
+            _blockNumber = m_client.number();
+        return m_consensus->getRandomForBlockId( _blockNumber );
     }
     return m_consensus->getRandomForBlockId( m_client.number() );
 }
