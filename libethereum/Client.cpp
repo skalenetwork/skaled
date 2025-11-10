@@ -1082,14 +1082,12 @@ Block Client::blockByNumber( BlockNumber _h ) const {
         }
 
         // blockByNumber is only used for reads
-        auto readState = m_state.createStateCopyAndClearCaches();
+        auto readState = m_state.createReadOnlySnapBasedCopy();
         readState.mutableHistoricState().setRootByBlockNumber( this->blockInfo( hash ).number() );
 
         // removed m_blockImportMutex here
         // this function doesn't interact with latest block so the mutex isn't needed
         return Block( bc(), hash, readState );
-        assert( false );
-        return Block( bc() );
     } catch ( Exception& ex ) {
         ex << errinfo_block( bc().block( bc().currentHash() ) );
         onBadBlock( ex );
