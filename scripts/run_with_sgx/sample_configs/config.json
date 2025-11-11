@@ -252,22 +252,22 @@
             "collectionDuration": 60,
             "transactionQueueSize": 1000,
             "maxOpenLeveldbFiles": 1000,
-            "ecdsaKeyName": "NEK:96a491a6888e4e068457fd8faaee3395bef297a186206a7d7d8b039090523837",
+            "ecdsaKeyName": "ecdsa-key-to-be-filled",
             "wallets": {
             "ima": {
-                    "keyShareName": "BLS_KEY:SCHAIN_ID:0:NODE_ID:0:DKG_ID:3998633927937875793260581558055964559945039028843",
+                    "keyShareName": "bls-key-to-be-filled",
                     "t": 1,
                     "n": 1,
                     "certFile": "/skale_node_data/sgx_certs/sgx.crt",
                     "keyFile": "/skale_node_data/sgx_certs/sgx.key",
-                    "commonBLSPublicKey0": "21544026146706762227841442922576525445009923522065216288503946153209686158423",
-                    "commonBLSPublicKey1": "2096127385137194354037940658083168534316743953210448192163300533229181477337",
-                    "commonBLSPublicKey2": "11735495268979083247470799580766286545311391242154511852378277674969340982918",
-                    "commonBLSPublicKey3": "10067623664746364115716145978926969655923976817532755127304681345644118715772",
-                    "BLSPublicKey0": "21544026146706762227841442922576525445009923522065216288503946153209686158423",
-                    "BLSPublicKey1": "2096127385137194354037940658083168534316743953210448192163300533229181477337",
-                    "BLSPublicKey2": "11735495268979083247470799580766286545311391242154511852378277674969340982918",
-                    "BLSPublicKey3": "10067623664746364115716145978926969655923976817532755127304681345644118715772"
+                    "commonBLSPublicKey0": "bls-key-to-be-filled",
+                    "commonBLSPublicKey1": "bls-key-to-be-filled",
+                    "commonBLSPublicKey2": "bls-key-to-be-filled",
+                    "commonBLSPublicKey3": "bls-key-to-be-filled",
+                    "BLSPublicKey0": "bls-key-to-be-filled",
+                    "BLSPublicKey1": "bls-key-to-be-filled",
+                    "BLSPublicKey2": "bls-key-to-be-filled",
+                    "BLSPublicKey3": "bls-key-to-be-filled"
                 }
             }
         },
@@ -287,15 +287,15 @@
                         "1": [
                             1,
                             1,
-                            "0x6dec4b6e4ec9371b62f6ee7219035eb354ae183180c83c37dd93198fe1471a872e46091d322d81fa948cb06bbece1418d6b1523d2b36f3c7df4a9c8ef14ae2fc"
+                            "ecdsa-key-to-be-filled"
                         ]
                     },
                     "finish_ts": null,
                     "bls_public_key": {
-                        "blsPublicKey0": "21544026146706762227841442922576525445009923522065216288503946153209686158423",
-                        "blsPublicKey1": "2096127385137194354037940658083168534316743953210448192163300533229181477337",
-                        "blsPublicKey2": "11735495268979083247470799580766286545311391242154511852378277674969340982918",
-                        "blsPublicKey3": "10067623664746364115716145978926969655923976817532755127304681345644118715772"
+                        "blsPublicKey0": "bls-key-to-be-filled",
+                        "blsPublicKey1": "bls-key-to-be-filled",
+                        "blsPublicKey2": "bls-key-to-be-filled",
+                        "blsPublicKey3": "bls-key-to-be-filled"
                     }
                 }
             },
@@ -308,11 +308,11 @@
                     "httpsRpcPort": 1239,
                     "wsRpcPort": 1233,
                     "wssRpcPort": 1238,
-                    "blsPublicKey0": "21544026146706762227841442922576525445009923522065216288503946153209686158423",
-                    "blsPublicKey1": "2096127385137194354037940658083168534316743953210448192163300533229181477337",
-                    "blsPublicKey2": "11735495268979083247470799580766286545311391242154511852378277674969340982918",
-                    "blsPublicKey3": "10067623664746364115716145978926969655923976817532755127304681345644118715772",
-                    "publicKey": "0x6dec4b6e4ec9371b62f6ee7219035eb354ae183180c83c37dd93198fe1471a872e46091d322d81fa948cb06bbece1418d6b1523d2b36f3c7df4a9c8ef14ae2fc",
+                    "blsPublicKey0": "bls-key-to-be-filled",
+                    "blsPublicKey1": "bls-key-to-be-filled",
+                    "blsPublicKey2": "bls-key-to-be-filled",
+                    "blsPublicKey3": "bls-key-to-be-filled",
+                    "publicKey": "ecdsa-key-to-be-filled",
                     "owner": "0x88fd5e01078629cc194c933d9631b9448fe10b1d",
                     "schainIndex": 1,
                     "ip": "127.0.0.1",
