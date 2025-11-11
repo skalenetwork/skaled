@@ -54,6 +54,8 @@ class FailureSummaryObserver : public test_observer {
 public:
     enum class Status { Failed, Errored, Aborted };
 
+    void setRunLabel( std::string _label ) { m_runLabel = std::move( _label ); }
+
     void test_unit_finish( test_unit const& unit, unsigned long ) override {
         if ( unit.p_type != boost::unit_test::TUT_CASE )
             return;
@@ -69,9 +71,34 @@ public:
         m_entries.push_back( std::move( entry ) );
     }
 
-    void test_finish() override { printSummary(); }
+    void test_finish() override { storeAndPrintCurrentRun(); }
 
     int priority() override { return 6; }
+
+    static void printAggregatedReport() {
+        if ( s_runSummaries.empty() )
+            return;
+
+        std::cout << "\n=== Aggregated failing test summary (" << s_runSummaries.size()
+                  << " run(s)) ===" << std::endl;
+        for ( auto const& run : s_runSummaries ) {
+            std::cout << "Run: " << run.label << std::endl;
+            if ( run.entries.empty() ) {
+                std::cout << "  No failed/errored/aborted test cases." << std::endl;
+                continue;
+            }
+
+            std::cout << "  Failed/errored/aborted test cases (" << run.entries.size()
+                      << "):" << std::endl;
+            for ( auto const& entry : run.entries ) {
+                std::cout << "   - " << entry.name << " [" << statusToString( entry.status )
+                          << "]";
+                if ( !entry.details.empty() )
+                    std::cout << ": " << entry.details;
+                std::cout << std::endl;
+            }
+        }
+    }
 
 private:
     struct Entry {
@@ -121,27 +148,42 @@ private:
         }
         return "unknown";
     }
+    struct RunSummary {
+        std::string label;
+        std::vector< Entry > entries;
+    };
 
-    void printSummary() const {
-        std::cout << "\n=== Test execution summary:\n";
-        if ( m_entries.empty() ) {
+    void storeAndPrintCurrentRun() {
+        RunSummary summary;
+        summary.label = m_runLabel.empty() ? std::string( "default-run" ) : m_runLabel;
+        summary.entries = m_entries;
+        printSummary( summary );
+        s_runSummaries.push_back( std::move( summary ) );
+        m_entries.clear();
+    }
+
+    static void printSummary( RunSummary const& summary ) {
+        std::cout << "\n=== Test execution summary (" << summary.label << ") ===\n";
+        if ( summary.entries.empty() ) {
             std::cout << "No failed/errored/aborted test cases detected." << std::endl;
             return;
         }
 
-        std::cout << "Failed/errored/aborted test cases (" << m_entries.size() << "):" << std::endl;
-        for ( auto const& entry : m_entries ) {
+        std::cout << "Failed/errored/aborted test cases (" << summary.entries.size() << "):" << std::endl;
+        for ( auto const& entry : summary.entries ) {
             std::cout << " - " << entry.name << " [" << statusToString( entry.status ) << "]";
             if ( !entry.details.empty() )
                 std::cout << ": " << entry.details;
             std::cout << std::endl;
         }
     }
-
     std::vector< Entry > m_entries;
+    std::string m_runLabel;
+    static std::vector< RunSummary > s_runSummaries;
 };
 
 FailureSummaryObserver g_failureSummaryObserver;
+std::vector< FailureSummaryObserver::RunSummary > FailureSummaryObserver::s_runSummaries;
 
 }  // namespace
 
@@ -253,6 +295,10 @@ int main( int argc, const char* argv[] ) {
     }
 
     dev::test::Options const& opt = dev::test::Options::get();
+    std::string runLabel = opt.rCurrentTestSuite.empty() ? std::string( "full-workflow" ) : opt.rCurrentTestSuite;
+    if ( opt.singleTestFile.is_initialized() )
+        runLabel += ":" + opt.singleTestFile.get();
+    g_failureSummaryObserver.setRunLabel( runLabel );
     framework::register_observer( g_failureSummaryObserver );
     if ( opt.createRandomTest || opt.singleTestFile.is_initialized() ) {
         bool testSuiteFound = false;
@@ -305,7 +351,7 @@ int main( int argc, const char* argv[] ) {
 
         MicroProfileDumpFileImmediately( "profile.html", "profile.csv", nullptr );
         MicroProfileShutdown();
-
+        FailureSummaryObserver::printAggregatedReport();
         return result;
     } else {
         // Initialize travis '.' output thread for log activity
@@ -318,7 +364,7 @@ int main( int argc, const char* argv[] ) {
 
         MicroProfileDumpFileImmediately( "profile.html", "profile.csv", nullptr );
         MicroProfileShutdown();
-
+        FailureSummaryObserver::printAggregatedReport();
         return result;
     }
 }
