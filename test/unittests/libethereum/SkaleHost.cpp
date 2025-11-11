@@ -19,6 +19,8 @@
 #include <libweb3jsonrpc/AccountHolder.h>
 #include <libweb3jsonrpc/JsonHelper.h>
 
+#include <json_spirit/JsonSpiritHeaders.h>
+
 #include <libethcore/SealEngine.h>
 
 #include <libdevcore/TransientDirectory.h>
@@ -28,6 +30,8 @@
 #include <boost/test/unit_test.hpp>
 
 #include <memory>
+#include <atomic>
+#include <limits>
 
 using namespace dev;
 using namespace dev::eth;
@@ -35,6 +39,18 @@ using namespace dev::test;
 using namespace std;
 
 static size_t rand_port = 1024 + rand() % 64000;
+
+#ifdef FAIR
+class MockRotationSkaleHost : public SkaleHost {
+public:
+    MockRotationSkaleHost( Client& _client, ConsensusFactory* _factory )
+        : SkaleHost( _client, _factory ) {}
+
+    void runCommitteeRotationForConsensus() override { ++rotationCallCount; }
+
+    std::atomic< uint32_t > rotationCallCount{0};
+};
+#endif
 
 class ConsensusTestStub : public ConsensusInterface {
 private:
@@ -136,7 +152,8 @@ public:
 // TODO Do not copy&paste from JsonRpcFixture
 struct SkaleHostFixture : public TestOutputHelperFixture {
     SkaleHostFixture( const std::map< std::string, std::string >& params =
-                          std::map< std::string, std::string >() ) {
+                          std::map< std::string, std::string >(),
+        bool mockCommitteeRotation = false ) {
         dev::p2p::NetworkPreferences nprefs;
 
         chainParams = std::make_shared< ChainParams >();
@@ -190,7 +207,16 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         client->setAuthor( coinbase.address() );
 
         ConsensusTestStubFactory test_stub_factory;
-        skaleHost = make_shared< SkaleHost >( *client, &test_stub_factory );
+#ifdef FAIR
+        if ( mockCommitteeRotation ) {
+            auto mockHost = std::make_shared< MockRotationSkaleHost >( *client, &test_stub_factory );
+            skaleHost = mockHost;
+            mockRotationHost = mockHost;
+        } else
+#endif
+        {
+            skaleHost = make_shared< SkaleHost >( *client, &test_stub_factory );
+        }
         stub = test_stub_factory.result;
 
         client->injectSkaleHost( skaleHost );
@@ -246,6 +272,9 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
     std::shared_ptr< eth::TrivialGasPricer > gasPricer;
 
     shared_ptr< SkaleHost > skaleHost;
+#ifdef FAIR
+    std::shared_ptr< MockRotationSkaleHost > mockRotationHost;
+#endif
     ConsensusTestStub* stub;
 };
 
@@ -1515,23 +1544,47 @@ BOOST_AUTO_TEST_CASE( biteTransactions ) {
 
 #ifdef FAIR
 BOOST_AUTO_TEST_CASE(syncNodeGroupsUpdatesEpochIdWithoutRotation) {
-    SkaleHostFixture fixture;
+    SkaleHostFixture fixture( {}, true );
 
     auto& client = fixture.client;
     auto& stub = fixture.stub;
 
-    auto nodeGroups = fixture.chainParams->getNodeGroups();
-    BOOST_REQUIRE( !nodeGroups.empty() );
+    uint64_t currentTimestamp = static_cast< uint64_t >( utcTime() );
 
-    dev::eth::NodeGroup firstGroup = nodeGroups.front();
-    dev::eth::NodeGroup secondGroup = nodeGroups.front();
-
-    uint64_t currentTimestamp = client->number() == 0 ? 0 : fixture.blockTimestamp( client->number() );
-    firstGroup.finishTs = currentTimestamp;
-    secondGroup.finishTs = currentTimestamp + 10;
-
-    fixture.overwriteHistoricNodeGroups( { firstGroup, secondGroup } );
-    fixture.setCurrentGroupStartTimestamps( 0, 0 );
+    fixture.overwriteHistoricNodeGroups( {
+        {
+         {
+          GroupNode{ u256( 0 ), u256( 8 ),
+            "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea"
+            "10"
+            "5a3d21845e5660bc3d4e7c82e7af1daa3baad393b1521467",
+            Address( "0x08151B8F80bfa7dEa760e461412AF24348224edf" )
+         }
+        },
+        currentTimestamp,
+        {
+            "15959969554621958245201075983340071881770733084910870228938077786643587385029",
+            "7970122607051572307517094692346020360016825923464107614135327251488152616550",
+            "3371162264373897025322009434717052197952692496405149486989861571246537813591",
+            "13678625751515504401110635369790787716744686498431213713911601759809559919693" }
+        },
+        {
+        {
+             GroupNode{ u256( 0 ), u256( 8 ),
+                 "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea"
+                 "10"
+                 "5a3d21845e5660bc3d4e7c82e7af1daa3baad393b1521467",
+                 Address( "0x08151B8F80bfa7dEa760e461412AF24348224edf" )
+             }
+         },
+         uint64_t( -1 ), {
+                "3842742177969966091367527274107524613106077736353521259727282251005583743182",
+                "3497912824016228906558906422247670474553186446469877598411863912329082553081",
+                "8173996886448941320370434854289578123609627835954133538412363037981850950343",
+                "20979370720689475348670582375026949105497642726992863932315517524004804784155"
+        }
+        }
+    });
 
     BOOST_REQUIRE_EQUAL( client->getCurrentEpochId(), 0 );
 

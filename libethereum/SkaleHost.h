@@ -194,8 +194,13 @@ private:
         uint64_t _timeStamp, uint64_t _blockID, dev::u256 _gasPrice, u256 _stateRoot,
         uint64_t _winningNodeIndex );
 
+protected:
 #ifdef FAIR
-    void runCommitteeRotationForConsensus();
+    virtual void runCommitteeRotationForConsensus();
+#endif
+
+private:
+#ifdef FAIR
     void syncNodeGroups();
 #endif
 
