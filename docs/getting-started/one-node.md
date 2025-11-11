@@ -72,7 +72,7 @@ You can also see the generated keys as well as the updated `config.json` inside 
 
 4. Go to `scritps/run_with_sgx` and run the script:
     ```bash
-    bash ./run_with_sgx.sh [custom-config-file] -FAIR [-HTTPS]
+    bash ./run.sh [custom-config-file] -FAIR [-HTTPS]
     ```
     You may pass some other config file path as an argument to the script. If not, it will use the default one at `scripts/run_with_sgx/configs/non-fair.json`.
 
