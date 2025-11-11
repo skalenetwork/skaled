@@ -28,7 +28,9 @@
 #include <libdevcore/microprofile.h>
 #include <libskale/UnsafeRegion.h>
 
+#include <boost/test/framework.hpp>
 #include <boost/test/included/unit_test.hpp>
+#include <boost/test/results_collector.hpp>
 
 #include <test/tools/jsontests/BlockChainTests.h>
 #include <test/tools/jsontests/StateTests.h>
@@ -38,9 +40,110 @@
 #include <clocale>
 #include <cstdlib>
 #include <iostream>
+#include <sstream>
+#include <string>
+#include <utility>
+#include <vector>
 #include <thread>
 
 using namespace boost::unit_test;
+
+namespace {
+
+class FailureSummaryObserver : public test_observer {
+public:
+    enum class Status { Failed, Errored, Aborted };
+
+    void test_unit_finish( test_unit const& unit, unsigned long ) override {
+        if ( unit.p_type != boost::unit_test::TUT_CASE )
+            return;
+
+        auto const& results = boost::unit_test::results_collector.results( unit.p_id );
+        if ( results.passed() || results.skipped() )
+            return;
+
+        Entry entry;
+        entry.name = unit.full_name();
+        entry.status = classify( results );
+        entry.details = buildDetails( results );
+        m_entries.push_back( std::move( entry ) );
+    }
+
+    void test_finish() override { printSummary(); }
+
+    int priority() override { return 6; }
+
+private:
+    struct Entry {
+        std::string name;
+        Status status;
+        std::string details;
+    };
+
+    static Status classify( boost::unit_test::test_results const& results ) {
+        if ( results.aborted() || results.p_test_cases_aborted > 0 || results.p_test_cases_timed_out > 0 )
+            return Status::Aborted;
+        if ( results.p_assertions_failed > 0 )
+            return Status::Failed;
+        return Status::Errored;
+    }
+
+    static std::string buildDetails( boost::unit_test::test_results const& results ) {
+        std::vector< std::string > parts;
+        auto failedAssertions = static_cast< unsigned long >( results.p_assertions_failed );
+        if ( failedAssertions > 0 )
+            parts.push_back( std::to_string( failedAssertions ) + " assertion(s) failed" );
+        auto warningCount = static_cast< unsigned long >( results.p_warnings_failed );
+        if ( warningCount > 0 )
+            parts.push_back( std::to_string( warningCount ) + " warning(s)" );
+        if ( results.p_test_cases_timed_out > 0 )
+            parts.push_back( "timed out" );
+        if ( results.aborted() )
+            parts.push_back( "aborted" );
+
+        std::string summary;
+        for ( size_t i = 0; i < parts.size(); ++i ) {
+            if ( i > 0 )
+                summary += ", ";
+            summary += parts[i];
+        }
+        return summary;
+    }
+
+    static const char* statusToString( Status status ) {
+        switch ( status ) {
+        case Status::Failed:
+            return "failed";
+        case Status::Errored:
+            return "errored";
+        case Status::Aborted:
+            return "aborted";
+        }
+        return "unknown";
+    }
+
+    void printSummary() const {
+        std::cout << "\n";
+        if ( m_entries.empty() ) {
+            std::cout << "No failed/errored/aborted test cases detected." << std::endl;
+            return;
+        }
+
+        std::cout << "Failed/errored/aborted test cases (" << m_entries.size() << "):" << std::endl;
+        for ( auto const& entry : m_entries ) {
+            std::cout << " - " << entry.name << " [" << statusToString( entry.status ) << "]";
+            if ( !entry.details.empty() )
+                std::cout << ": " << entry.details;
+            std::cout << std::endl;
+        }
+    }
+
+    std::vector< Entry > m_entries;
+};
+
+FailureSummaryObserver g_failureSummaryObserver;
+
+}  // namespace
 
 // printer-visitor for --list-tests
 struct TestTreeVisitor : test_tree_visitor {
@@ -150,6 +253,7 @@ int main( int argc, const char* argv[] ) {
     }
 
     dev::test::Options const& opt = dev::test::Options::get();
+    framework::register_observer( g_failureSummaryObserver );
     if ( opt.createRandomTest || opt.singleTestFile.is_initialized() ) {
         bool testSuiteFound = false;
         for ( int i = 0; i < argc; i++ ) {
