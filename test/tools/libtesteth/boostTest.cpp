@@ -123,7 +123,7 @@ private:
     }
 
     void printSummary() const {
-        std::cout << "\n";
+        std::cout << "\n=== Test execution summary:\n";
         if ( m_entries.empty() ) {
             std::cout << "No failed/errored/aborted test cases detected." << std::endl;
             return;

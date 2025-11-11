@@ -41,6 +41,8 @@ using namespace std;
 static size_t rand_port = 1024 + rand() % 64000;
 
 #ifdef FAIR
+// We need this mock class to avoid broken consensus after rotation.
+// Since test client does not save persistent state, restart triggered by rotation causes SIGABRT.
 class MockRotationSkaleHost : public SkaleHost {
 public:
     MockRotationSkaleHost( Client& _client, ConsensusFactory* _factory )
