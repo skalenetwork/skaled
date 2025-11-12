@@ -71,12 +71,12 @@ public:
         return m_cost( _in, _chainParams, _blockNumber );
     }
 #ifdef FAIR
-    std::pair< bool, bytes > execute( bytesConstRef _in, const u256& _bn ) const {
+    std::pair< bool, bytes > execute( bytesConstRef _in, u256 const& _bn ) const {
         return m_execute( _in, _bn );
     }
 #else
     std::pair< bool, bytes > execute(
-        bytesConstRef _in, const u256& _bn, skale::OverlayFS* _overlayFS = nullptr ) const {
+        bytesConstRef _in, u256 const& _bn, skale::OverlayFS* _overlayFS = nullptr ) const {
         return m_execute( _in, _bn, _overlayFS );
     }
 #endif

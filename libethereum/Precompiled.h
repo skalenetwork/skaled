@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <libdevcore/Address.h>
 #include <libdevcore/CommonData.h>
 #include <libdevcore/Exceptions.h>
 #include <functional>
@@ -51,7 +52,8 @@ namespace eth {
 
 extern std::shared_ptr< skutils::json_config_file_accessor > g_configAccesssor;
 extern std::shared_ptr< SkaleHost > g_skaleHost;
-extern skale::State g_state;
+
+inline thread_local int64_t g_currentTransactionIndex = -1;
 
 struct ChainOperationParams;
 
@@ -146,15 +148,16 @@ private:
 #else
 // ignore _overlayFS param and call registered function with 2 parameters
 // TODO: unregister on unload with a static object.
-#define ETH_REGISTER_PRECOMPILED( Name )                                                      \
-    static std::pair< bool, bytes > __eth_registerPrecompiledFunction##Name(                  \
-        bytesConstRef _in, const u256& _bn );                                                 \
-    static PrecompiledExecutor __eth_registerPrecompiledFactory##Name =                       \
-        ::dev::eth::PrecompiledRegistrar::registerExecutor(                                   \
-            #Name, PrecompiledExecutor( []( bytesConstRef _in, const u256& _bn,               \
-                                            skale::OverlayFS* ) -> std::pair< bool, bytes > { \
-                return __eth_registerPrecompiledFunction##Name( _in, _bn );                   \
-            } ) );                                                                            \
+#define ETH_REGISTER_PRECOMPILED( Name )                                                     \
+    static std::pair< bool, bytes > __eth_registerPrecompiledFunction##Name(                 \
+        bytesConstRef _in, const u256& _bn );                                                \
+    static PrecompiledExecutor __eth_registerPrecompiledFactory##Name =                      \
+        ::dev::eth::PrecompiledRegistrar::registerExecutor(                                  \
+            #Name, PrecompiledExecutor(                                                      \
+                       []( bytesConstRef _in,                                                \
+                           const u256& _bn skale::OverlayFS* ) -> std::pair< bool, bytes > { \
+                           return __eth_registerPrecompiledFunction##Name( _in, _bn );       \
+                       } ) );                                                                \
     static std::pair< bool, bytes > __eth_registerPrecompiledFunction##Name
 
 #define ETH_REGISTER_FS_PRECOMPILED( Name )                                           \

@@ -1077,6 +1077,126 @@ ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef, const dev::u256& _bn 
     return { false, response };  // 1st false - means bad error occur
 }
 
+#ifdef BITE
+
+// Check if x is a valid x-coordinate on secp256k1 curve (y² = x³ + 7 mod p)
+static bool isValidSecp256k1X( const u256& x ) {
+    static const u256 secp256k1P{
+        "0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f"
+    };
+
+    // Calculate x³ + 7 mod p
+    u256 xCubed = boost::multiprecision::powm( x, 3, secp256k1P );
+    u256 ySquared = ( xCubed + 7 ) % secp256k1P;
+
+    // Check if rhs is a quadratic residue (has a square root) using Legendre symbol
+    // If (ySquared^((p-1)/2) mod p) == 1, then rhs is a quadratic residue
+    u256 exponent = ( secp256k1P - 1 ) / 2;
+    u256 legendre = boost::multiprecision::powm( ySquared, exponent, secp256k1P );
+
+    return legendre == 1;
+}
+
+// Return (r,s,v) fabricated from entropy bytes and transaction index.
+static SignatureStruct makeDummySignature( const bytes& entropy, int64_t txIndex ) {
+    static const u256 kSecp256k1_N{
+        "0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141"
+    };
+
+    // Mix transaction index into entropy
+    bytes combinedEntropy = entropy;
+    combinedEntropy.insert( combinedEntropy.end(), reinterpret_cast< const uint8_t* >( &txIndex ),
+        reinterpret_cast< const uint8_t* >( &txIndex ) + sizeof( txIndex ) );
+
+    // Hash combined entropy to expand it
+    h256 h1 = dev::sha3( combinedEntropy );
+    h256 h2 = dev::sha3( h1 );
+    h256 h3 = dev::sha3( h1.asBytes() + h2.asBytes() );
+
+    // Construct r - ensure it's a valid x-coordinate on secp256k1 curve
+    u256 r = ( u256 ) h1;
+    if ( r == 0 || r >= kSecp256k1_N )
+        r = ( r % ( kSecp256k1_N - 1 ) ) + 1;
+
+    // Keep incrementing r until we find a valid curve point
+    size_t attempts = 0;
+    while ( !isValidSecp256k1X( r ) && attempts < 1000 ) {
+        r = ( r + 1 ) % kSecp256k1_N;
+        if ( r == 0 )
+            r = 1;
+        ++attempts;
+    }
+
+    if ( attempts >= 1000 ) {
+        LOG( getLogger( VerbosityWarning ) )
+            << "Could not find valid secp256k1 x-coordinate for r after 1000 attempts";
+    } else if ( attempts > 0 ) {
+        LOG( getLogger( VerbosityInfo ) ) << "Found valid r after " << attempts << " attempts";
+    }
+
+    // Construct s from second hash
+    u256 s = ( u256 ) h2;
+    if ( s == 0 || s >= kSecp256k1_N )
+        s = ( s % ( kSecp256k1_N - 1 ) ) + 1;
+
+    // Enforce “low s” (canonical form): if s > n/2 set s = n - s
+    u256 halfN = kSecp256k1_N / 2;
+    if ( s > halfN )
+        s = kSecp256k1_N - s;
+
+    uint8_t parity = ( uint8_t )( ( uint64_t ) h3[0] & 0x01 );
+
+    return SignatureStruct( h256( r ), h256( s ), parity );
+}
+
+ETH_REGISTER_PRECOMPILED( getRandomWalletForCTX )( bytesConstRef _in, const dev::u256& _bn ) {
+    try {
+        PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getBlockRandom" );
+        auto rngPrecompiledResponse = exec( _in, _bn );
+        // if call to getBlockRandom() fails, return error
+        if ( !rngPrecompiledResponse.first )
+            return rngPrecompiledResponse;
+
+        // generate a signature based on block random and txn index
+        SignatureStruct vrs = makeDummySignature(
+            rngPrecompiledResponse.second, dev::eth::g_currentTransactionIndex );
+
+        // parse input parameters
+        dev::Address destination( _in.cropped( 0, 20 ) );
+        bigint const gas( parseBigEndianRightPadded( _in, 20, 32 ) );
+        dev::bytes data = _in.cropped( 52, _in.size() - 32 ).toBytes();
+
+        dev::u256 gasPrice = g_skaleHost->getGasPrice();
+
+        // construct unsigned transaction and calculate its hash
+        Transaction sampleTransaction(
+            0, gasPrice, gas.convert_to< dev::u256 >(), destination, data, 0 );
+        dev::h256 txnHash = sampleTransaction.sha3( dev::eth::WithoutSignature );
+
+        dev::Public publicKey = recover( vrs, txnHash );
+
+        dev::Address walletAddress = dev::toAddress( publicKey );
+        LOG( getLogger( VerbosityInfo ) )
+            << "BLOCK RANDOM: " << dev::toHex( rngPrecompiledResponse.second );
+        LOG( getLogger( VerbosityInfo ) ) << "WALLET ADDRESS: " << walletAddress.hex();
+        dev::bytes addressBytes = walletAddress.asBytes();
+        return { true, addressBytes };
+    } catch ( std::exception& ex ) {
+        std::string strError = ex.what();
+        if ( strError.empty() )
+            strError = "exception without description";
+        LOG( getLogger( VerbosityError ) )
+            << "Exception in precompiled/getRandomWalletForCTX(): " << strError << "\n";
+    } catch ( ... ) {
+        LOG( getLogger( VerbosityError ) )
+            << "Unknown exception in precompiled/getRandomWalletForCTX()\n";
+    }
+    dev::u256 code = 0;
+    bytes response = toBigEndian( code );
+    return { false, response };  // 1st false - means bad error occur
+}
+#endif
+
 #ifndef FAIR
 ETH_REGISTER_PRECOMPILED( addBalance )( [[maybe_unused]] bytesConstRef _in, const dev::u256& ) {
     dev::u256 code = 0;

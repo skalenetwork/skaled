@@ -589,7 +589,6 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         // +3 because rand() seems to be called effectively simultaneously here and in "static"
         // section - thus giving same port for consensus
         serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ = std::rand() % 64000 + 1025 + 3;
-        std::cout << "PORT: " << serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ << std::endl;
         skale_server_connector = new SkaleServerOverride( chainParams, client.get(), serverOpts );
         rpcServer->addConnector( skale_server_connector );
         skale_server_connector->StartListening();
@@ -4780,7 +4779,9 @@ static std::string const c_BITEConfigString =
         "0000000000000000000000000000000000000001": { "precompiled": { "name": "ecrecover", "linear": { "base": 3000, "word": 0 } } },
         "0000000000000000000000000000000000000002": { "precompiled": { "name": "sha256", "linear": { "base": 60, "word": 12 } } },
         "0000000000000000000000000000000000000003": { "precompiled": { "name": "ripemd160", "linear": { "base": 600, "word": 120 } } },
-        "0000000000000000000000000000000000000004": { "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } } },)"
+        "0000000000000000000000000000000000000004": { "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } } },
+        "0000000000000000000000000000000000000005": { "precompiled": { "name": "getBlockRandom", "linear": { "base": 15, "word": 0 } } },
+        "0000000000000000000000000000000000000006": { "precompiled": { "name": "getRandomWalletForCTX", "linear": { "base": 15, "word": 0 } } },)"
     /*
 pragma solidity ^0.4.25;
 contract Caller {
@@ -5121,6 +5122,103 @@ BOOST_AUTO_TEST_CASE( getCommonPublicKey ) {
     BOOST_REQUIRE_EQUAL( blsPublicKey.size(), 256 );
     BOOST_REQUIRE_EQUAL( libBLS::TEPublicKey( blsPublicKey ).getPublicKeyRaw(), commonPublicKey );
     BOOST_REQUIRE_EQUAL( epochId, fixture.client->getCurrentEpochId() );
+}
+
+BOOST_AUTO_TEST_CASE( getRandomWalletForCTX ) {
+    JsonRpcFixture fixture( c_BITEConfigString, false, false, true, true );
+
+    dev::eth::g_skaleHost = fixture.client->skaleHost();
+
+//    dev::eth::simulateMining( *( fixture.client ), 20 );
+    string senderAddress = toJS( fixture.coinbase.address() );
+
+//    // SPDX-License-Identifier: UNLICENSED
+//    pragma solidity ^0.8.13;
+
+//    contract Precompile0x06Caller {
+//        address public constant PRECOMPILE_0X06 = address(0x06);
+//        address public lastGenerated;
+//        address public preLastGenerated;
+
+//        function generateRandomWallet() public returns (address) {
+//            (bool success, bytes memory result) = PRECOMPILE_0X06.staticcall("");
+//            require(success, "Call to precompile 0x06 failed");
+//            require(result.length >= 20, "Invalid result length");
+
+//            preLastGenerated = lastGenerated;
+//            address addr = address(bytes20(result));
+
+//            // Store the generated address in state variable
+//            lastGenerated = addr;
+
+//            return addr;
+//        }
+
+//        function getLastGenerated() public view returns (address) {
+//            return lastGenerated;
+//        }
+
+//        function getPreLastGenerated() public view returns (address) {
+//            return preLastGenerated;
+//        }
+//    }
+
+    std::string bytecode = "6080604052348015600f57600080fd5b506105fc8061001f6000396000f3fe608060405234801561001057600080fd5b50600436106100625760003560e01c80630c2dd5f4146100675780632fbd5da7146100855780634befb2cf146100a357806352c92885146100c1578063546c01c1146100df578063cdf72f9e146100fd575b600080fd5b61006f61011b565b60405161007c91906103ac565b60405180910390f35b61008d610141565b60405161009a91906103ac565b60405180910390f35b6100ab61016b565b6040516100b891906103ac565b60405180910390f35b6100c9610194565b6040516100d691906103ac565b60405180910390f35b6100e7610342565b6040516100f491906103ac565b60405180910390f35b610105610347565b60405161011291906103ac565b60405180910390f35b600160009054906101000a900473ffffffffffffffffffffffffffffffffffffffff1681565b6000600160009054906101000a900473ffffffffffffffffffffffffffffffffffffffff16905090565b60008060009054906101000a900473ffffffffffffffffffffffffffffffffffffffff16905090565b6000806000600673ffffffffffffffffffffffffffffffffffffffff166040516101bd906103f8565b600060405180830381855afa9150503d80600081146101f8576040519150601f19603f3d011682016040523d82523d6000602084013e6101fd565b606091505b509150915081610242576040517f08c379a00000000000000000000000000000000000000000000000000000000081526004016102399061046a565b60405180910390fd5b601481511015610287576040517f08c379a000000000000000000000000000000000000000000000000000000000815260040161027e906104d6565b60405180910390fd5b60008054906101000a900473ffffffffffffffffffffffffffffffffffffffff16600160006101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff1602179055506000816102f49061055f565b60601c9050806000806101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff16021790555080935050505090565b600681565b60008054906101000a900473ffffffffffffffffffffffffffffffffffffffff1681565b600073ffffffffffffffffffffffffffffffffffffffff82169050919050565b60006103968261036b565b9050919050565b6103a68161038b565b82525050565b60006020820190506103c1600083018461039d565b92915050565b600081905092915050565b50565b60006103e26000836103c7565b91506103ed826103d2565b600082019050919050565b6000610403826103d5565b9150819050919050565b600082825260208201905092915050565b7f43616c6c20746f20707265636f6d70696c652030783036206661696c65640000600082015250565b6000610454601e8361040d565b915061045f8261041e565b602082019050919050565b6000602082019050818103600083015261048381610447565b9050919050565b7f496e76616c696420726573756c74206c656e6774680000000000000000000000600082015250565b60006104c060158361040d565b91506104cb8261048a565b602082019050919050565b600060208201905081810360008301526104ef816104b3565b9050919050565b600081519050919050565b6000819050602082019050919050565b60007fffffffffffffffffffffffffffffffffffffffff00000000000000000000000082169050919050565b60006105498251610511565b80915050919050565b600082821b905092915050565b600061056a826104f6565b8261057484610501565b905061057f8161053d565b925060148210156105bf576105ba7fffffffffffffffffffffffffffffffffffffffff00000000000000000000000083601403600802610552565b831692505b505091905056fea2646970667358221220360447d80dafbd92194dd9e5ce5b16f35fbe25d44744803fde5c5355f432d40f64736f6c634300081e0033";
+
+    // deploy contract
+    Json::Value create;
+    create["from"] = toJS( senderAddress );
+    create["code"] = bytecode;
+    create["gas"] = "900000";
+    create["nonce"] = 0;
+    string txHash = fixture.rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    auto txReceipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    std::string contractAddress = txReceipt["contractAddress"].asString();
+
+    // submit 2 transactions in different blocks
+    Json::Value txGenerate;
+    txGenerate["to"] = contractAddress;
+    txGenerate["data"] = "0x52c92885";
+    txGenerate["from"] = toJS( senderAddress );
+    txGenerate["nonce"] = 1;
+
+    fixture.rpcClient->eth_sendTransaction( txGenerate );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    txGenerate["nonce"] = 2;
+    fixture.rpcClient->eth_sendTransaction( txGenerate );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    // read data from contract
+    Json::Value callGetLast;
+    callGetLast["to"] = contractAddress;
+    callGetLast["data"] = "0x4befb2cf";
+    callGetLast["from"] = toJS( senderAddress );
+    dev::Address randomAddress1( dev::unpadLeft( dev::fromHex( fixture.rpcClient->eth_call( callGetLast, "latest" ) ) ) );
+
+    Json::Value callGetPreLast;
+    callGetPreLast["to"] = contractAddress;
+    callGetPreLast["data"] = "0x2fbd5da7";
+    callGetPreLast["from"] = toJS( senderAddress );
+    dev::Address randomAddress2( dev::unpadLeft( dev::fromHex( fixture.rpcClient->eth_call( callGetPreLast, "latest" ) ) ) );
+
+    BOOST_REQUIRE( randomAddress1 != randomAddress2 );
+
+    // submit 2 transactions in one block
+    fixture.rpcClient->debug_pauseConsensus( true );
+    txGenerate["nonce"] = 3;
+    fixture.rpcClient->eth_sendTransaction( txGenerate );
+
+    txGenerate["nonce"] = 4;
+    fixture.rpcClient->eth_sendTransaction( txGenerate );
+    fixture.rpcClient->debug_pauseConsensus( false );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    // read data from contract again
+    dev::Address randomAddress3( dev::unpadLeft( dev::fromHex( fixture.rpcClient->eth_call( callGetLast, "latest" ) ) ) );
+    dev::Address randomAddress4( dev::unpadLeft( dev::fromHex( fixture.rpcClient->eth_call( callGetPreLast, "latest" ) ) ) );
+    BOOST_REQUIRE( randomAddress3 != randomAddress4 );
 }
 
 #ifdef FAIR

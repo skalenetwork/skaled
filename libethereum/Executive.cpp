@@ -367,12 +367,13 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
 #ifdef FAIR
             tie( success, output ) =
                 m_chainParams.executePrecompiled( _p.codeAddress, _p.data, m_envInfo.number() );
-
 #else
             tie( success, output ) = m_chainParams.executePrecompiled(
                 _p.codeAddress, _p.data, m_envInfo.number(), m_s.fs().get() );
 #endif
 
+            LOG( m_loggerDebug ) << "ADDRESS: " << _p.codeAddress.hex();
+            LOG( m_loggerDebug ) << "OUTPUT: " << dev::toHex( output );
             size_t outputSize = output.size();
             m_output = owning_bytes_ref{ std::move( output ), 0, outputSize };
             if ( !success ) {
