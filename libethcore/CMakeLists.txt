@@ -15,6 +15,7 @@ target_link_libraries( ethcore PUBLIC
 	devcrypto
 	devcore
 	skale
+	bls
 	)
 if (BITE)
     target_link_libraries( ethcore PUBLIC te )

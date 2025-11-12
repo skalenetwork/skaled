@@ -78,7 +78,7 @@ Skale::~Skale() {
     threadExitRequested = true;
     if ( snapshotDownloadFragmentMonitorThread != nullptr &&
          snapshotDownloadFragmentMonitorThread->joinable() ) {
-        LOG( m_loggerInfo ) << "Joining downloadSnapshotFragmentMonitorThread";
+        BOOST_LOG( m_loggerInfo ) << "Joining downloadSnapshotFragmentMonitorThread";
         snapshotDownloadFragmentMonitorThread->join();
     }
 }
@@ -106,15 +106,15 @@ void Skale::onShutdownInvoke( fn_on_shutdown_t fn ) {
 
 std::string Skale::skale_shutdownInstance() {
     if ( !g_bShutdownViaWeb3Enabled ) {
-        LOG( m_loggerWarning ) << "\nINSTANCE SHUTDOWN ATTEMPT WHEN DISABLED\n\n";
+        BOOST_LOG( m_loggerWarning ) << "\nINSTANCE SHUTDOWN ATTEMPT WHEN DISABLED\n\n";
         return toJS( "disabled" );
     }
     if ( g_bNodeInstanceShouldShutdown ) {
-        LOG( m_loggerInfo ) << "\nSECONDARY INSTANCE SHUTDOWN EVENT\n\n";
+        BOOST_LOG( m_loggerInfo ) << "\nSECONDARY INSTANCE SHUTDOWN EVENT\n\n";
         return toJS( "in progress(secondary attempt)" );
     }
     g_bNodeInstanceShouldShutdown = true;
-    LOG( m_loggerInfo ) << "\nINSTANCE SHUTDOWN EVENT\n\n";
+    BOOST_LOG( m_loggerInfo ) << "\nINSTANCE SHUTDOWN EVENT\n\n";
     for ( auto& fn : g_list_fn_on_shutdown ) {
         if ( !fn )
             continue;
@@ -124,9 +124,9 @@ std::string Skale::skale_shutdownInstance() {
             std::string s = ex.what();
             if ( s.empty() )
                 s = "no description";
-            LOG( m_loggerError ) << "Exception in shutdown event handler: " << s;
+            BOOST_LOG( m_loggerError ) << "Exception in shutdown event handler: " << s;
         } catch ( ... ) {
-            LOG( m_loggerError ) << "Unknown exception in shutdown event handler";
+            BOOST_LOG( m_loggerError ) << "Unknown exception in shutdown event handler";
         }
     }  // for( auto & fn : g_list_fn_on_shutdown )
     g_list_fn_on_shutdown.clear();
@@ -218,13 +218,13 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
                 sleep( SNAPSHOT_DOWNLOAD_MONITOR_THREAD_SLEEP_MS );
             }
 
-            LOG( m_loggerInfo ) << "Unlocking shared space.";
+            BOOST_LOG( m_loggerInfo ) << "Unlocking shared space.";
 
             std::lock_guard< std::mutex > lock( m_snapshot_mutex );
             if ( currentSnapshotBlockNumber >= 0 ) {
                 try {
                     fs::remove( currentSnapshotPath );
-                    LOG( m_loggerInfo ) << "Deleted snapshot file.";
+                    BOOST_LOG( m_loggerInfo ) << "Deleted snapshot file.";
                 } catch ( ... ) {
                 }
                 currentSnapshotBlockNumber = -1;
@@ -325,7 +325,7 @@ nlohmann::json Skale::impl_skale_downloadSnapshotFragmentJSON( const nlohmann::j
     std::string strBase64 = skutils::tools::base64::encode( buffer.data(), sizeOfChunk );
 
     if ( sizeOfChunk + idxFrom == sizeOfFile )
-        LOG( m_loggerInfo ) << "Sent all chunks for " << currentSnapshotPath.string();
+        BOOST_LOG( m_loggerInfo ) << "Sent all chunks for " << currentSnapshotPath.string();
 
     joResponse["size"] = sizeOfChunk;
     joResponse["data"] = strBase64;
@@ -439,15 +439,15 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
             cli.optsSSL_ = ssl_options;
             bool fl = cli.open( sgxServerURL );
             if ( !fl ) {
-                LOG( m_loggerInfo ) << "FATAL:"
-                                    << " Exception while trying to connect to sgx server: "
-                                    << "connection refused";
+                BOOST_LOG( m_loggerInfo ) << "FATAL:"
+                                          << " Exception while trying to connect to sgx server: "
+                                          << "connection refused";
             }
 
             skutils::rest::data_t d;
             while ( true ) {
-                LOG( m_loggerInfo ) << ">>> SGX call >>>"
-                                    << " " << joCall;
+                BOOST_LOG( m_loggerInfo ) << ">>> SGX call >>>"
+                                          << " " << joCall;
                 d = cli.call( joCall );
                 if ( d.ei_.et_ !=
                      skutils::http::common_network_exception::error_type::et_no_error ) {
@@ -455,14 +455,16 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
                              skutils::http::common_network_exception::error_type::et_unknown ||
                          d.ei_.et_ ==
                              skutils::http::common_network_exception::error_type::et_fatal ) {
-                        LOG( m_loggerError ) << "ERROR:"
-                                             << " Exception while trying to connect to sgx server: "
-                                             << " error with connection: "
-                                             << " retrying... ";
+                        BOOST_LOG( m_loggerError )
+                            << "ERROR:"
+                            << " Exception while trying to connect to sgx server: "
+                            << " error with connection: "
+                            << " retrying... ";
                     } else {
-                        LOG( m_loggerError ) << "ERROR:"
-                                             << " Exception while trying to connect to sgx server: "
-                                             << " error with ssl certificates " << d.ei_.strError_;
+                        BOOST_LOG( m_loggerError )
+                            << "ERROR:"
+                            << " Exception while trying to connect to sgx server: "
+                            << " error with ssl certificates " << d.ei_.strError_;
                     }
                 } else {
                     break;
@@ -471,8 +473,8 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
 
             if ( d.empty() ) {
                 static const char g_strErrMsg[] = "SGX Server call to blsSignMessageHash failed";
-                LOG( m_loggerError ) << "SGX call error"
-                                     << " " << g_strErrMsg;
+                BOOST_LOG( m_loggerError ) << "SGX call error"
+                                           << " " << g_strErrMsg;
                 throw std::runtime_error( g_strErrMsg );
             }
 
@@ -558,7 +560,7 @@ std::string Skale::oracle_submitRequest( std::string& request ) {
         std::string receipt;
         std::string errorMessage;
 
-        LOG( m_loggerDebug ) << request;
+        BOOST_LOG( m_loggerDebug ) << request;
 
         uint64_t status = this->m_client.submitOracleRequest( request, receipt, errorMessage );
         if ( status != ORACLE_SUCCESS ) {
@@ -588,7 +590,7 @@ std::string Skale::oracle_checkResult( std::string& receipt ) {
             throw jsonrpc::JsonRpcException(
                 status, skutils::tools::format( "Oracle request failed with status %zu", status ) );
         }
-        LOG( m_loggerDebug ) << result;
+        BOOST_LOG( m_loggerDebug ) << result;
         return result;
     } catch ( jsonrpc::JsonRpcException const& e ) {
         throw e;
@@ -602,25 +604,23 @@ std::string Skale::oracle_checkResult( std::string& receipt ) {
 Json::Value Skale::bite_getCommitteesInfo() {
     try {
         auto stringArrayToBLSPublicKey = []( const std::array< std::string, 4 >& publicKeyArray ) {
-            libff::alt_bn128_G2 publicKeyG2;
-            publicKeyG2.Z = libff::alt_bn128_Fq2::one();
-            publicKeyG2.X.c0 = libff::alt_bn128_Fq( publicKeyArray[0].c_str() );
-            publicKeyG2.X.c1 = libff::alt_bn128_Fq( publicKeyArray[1].c_str() );
-            publicKeyG2.Y.c0 = libff::alt_bn128_Fq( publicKeyArray[2].c_str() );
-            publicKeyG2.Y.c1 = libff::alt_bn128_Fq( publicKeyArray[3].c_str() );
+            libBLS::algebra::G2Point publicKeyG2 =
+                libBLS::algebra::G2Point::fromString( publicKeyArray, libBLS::Base::DEC );
             libBLS::TEPublicKey publicKey( publicKeyG2 );
             return publicKey;
         };
         auto publicKeyArray = m_client.getCurrentBLSPublicKey();
 
         Json::Value response = Json::arrayValue;
-        response[0]["commonBLSPublicKey"] = stringArrayToBLSPublicKey( publicKeyArray ).toString();
+        response[0]["commonBLSPublicKey"] =
+            stringArrayToBLSPublicKey( publicKeyArray ).toString( libBLS::Base::HEXA );
         response[0]["epochId"] = m_client.getCurrentEpochId();
 #ifdef FAIR
         if ( m_client.isCommitteeRotationSoon() ) {
             auto nextCommitteeBITEInfo = m_client.getNextCommitteeBITEInfo();
             response[1]["commonBLSPublicKey"] =
-                stringArrayToBLSPublicKey( nextCommitteeBITEInfo.first ).toString();
+                stringArrayToBLSPublicKey( nextCommitteeBITEInfo.first )
+                    .toString( libBLS::Base::HEXA );
             response[1]["epochId"] = nextCommitteeBITEInfo.second;
         }
 #endif  // FAIR

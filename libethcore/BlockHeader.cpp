@@ -230,7 +230,7 @@ void BlockHeader::verify( Strictness _s, BlockHeader const& _parent, bytesConstR
             txList.itemCount(), [&]( unsigned i ) { return rlp( i ); },
             [&]( unsigned i ) { return txList[i].data().toBytes(); } );
 
-        LOG( m_loggerDebug ) << "Expected trie root: " << toString( expectedRoot );
+        BOOST_LOG( m_loggerDebug ) << "Expected trie root: " << toString( expectedRoot );
         if ( m_transactionsRoot != expectedRoot ) {
             OverlayDB tm;
             GenericTrieDB< OverlayDB > transactionsTrie( &tm );
@@ -245,19 +245,19 @@ void BlockHeader::verify( Strictness _s, BlockHeader const& _parent, bytesConstR
                 transactionsTrie.insert( &k.out(), txList[i].data() );
 
                 txs.push_back( txList[i].data() );
-                LOG( m_loggerDebug ) << toHex( k.out() ) << toHex( txList[i].data() );
+                BOOST_LOG( m_loggerDebug ) << toHex( k.out() ) << toHex( txList[i].data() );
             }
-            LOG( m_loggerDebug ) << "trieRootOver" << expectedRoot;
-            LOG( m_loggerDebug ) << "orderedTrieRoot" << orderedTrieRoot( txs );
-            LOG( m_loggerDebug ) << "TrieDB" << transactionsTrie.root();
-            LOG( m_loggerDebug ) << "Contents:";
+            BOOST_LOG( m_loggerDebug ) << "trieRootOver" << expectedRoot;
+            BOOST_LOG( m_loggerDebug ) << "orderedTrieRoot" << orderedTrieRoot( txs );
+            BOOST_LOG( m_loggerDebug ) << "TrieDB" << transactionsTrie.root();
+            BOOST_LOG( m_loggerDebug ) << "Contents:";
             for ( auto const& t : txs )
-                LOG( m_loggerDebug ) << toHex( t );
+                BOOST_LOG( m_loggerDebug ) << toHex( t );
 
             BOOST_THROW_EXCEPTION( InvalidTransactionsRoot()
                                    << Hash256RequirementError( expectedRoot, m_transactionsRoot ) );
         }
-        LOG( m_loggerDebug ) << "Expected uncle hash: " << toString( sha3( root[2].data() ) );
+        BOOST_LOG( m_loggerDebug ) << "Expected uncle hash: " << toString( sha3( root[2].data() ) );
         if ( m_sha3Uncles != sha3( root[2].data() ) )
             BOOST_THROW_EXCEPTION( InvalidUnclesHash() << Hash256RequirementError(
                                        sha3( root[2].data() ), m_sha3Uncles ) );

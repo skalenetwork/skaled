@@ -138,6 +138,7 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
     SkaleHostFixture( const std::map< std::string, std::string >& params =
                           std::map< std::string, std::string >() ) {
         dev::p2p::NetworkPreferences nprefs;
+        libBLS::init();
 
         chainParams = std::make_shared< ChainParams >();
         chainParams->sealEngineName = NoProof::name();
@@ -1463,10 +1464,9 @@ BOOST_AUTO_TEST_CASE( biteTransactions ) {
     pair< bool, Secret > ar = accountHolder->authenticate( ts );
     Transaction txOriginal( ts, ar.second );
 
-    libBLS::TEBase::initializeIfNecessary();
     auto messageToEncrypt = libBLS::ThresholdUtils::hexCStringToBytes( dataToEncrypt.c_str() );
-    auto publicKeyBytes = libBLS::ThresholdUtils::G2ToBytes( libff::alt_bn128_G2::random_element() );
-    auto ciphertext = libBLS::ThresholdEncryption::encrypt( messageToEncrypt, publicKeyBytes );
+    auto publicKey = libBLS::TEPublicKey::random();
+    auto ciphertext = libBLS::ThresholdEncryption::encrypt( messageToEncrypt, publicKey );
 
     json["data"] = std::string( "0x" ) + libBLS::ThresholdUtils::bytesToHexString( ciphertext.toBytes() );
 

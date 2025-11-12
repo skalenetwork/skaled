@@ -256,7 +256,7 @@ void Transaction::checkOutExternalGas(
         }
         u256 externalGas = ~u256( 0 ) / u256( hash ) / difficulty;
         if ( externalGas > 0 )
-            LOG( m_loggerTrace ) << "Mined gas: " << externalGas;
+            BOOST_LOG( m_loggerTrace ) << "Mined gas: " << externalGas;
 
         EVMSchedule scheduleForUse = ConstantinopleSchedule;
         if ( CorrectForkInPowPatch::isEnabledWhen( _committedBlockTimestamp ) )

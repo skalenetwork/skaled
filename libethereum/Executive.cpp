@@ -113,9 +113,9 @@ void StandardTrace::operator()( uint64_t _steps, uint64_t PC, Instruction inst, 
         lastInst = m_lastInst.back();
         m_lastInst.back() = inst;
     } else {
-        LOG( m_loggerWarning )
+        BOOST_LOG( m_loggerWarning )
             << "Tracing VM and more than one new/deleted stack frame between steps!";
-        LOG( m_loggerWarning ) << "Attmepting naive recovery...";
+        BOOST_LOG( m_loggerWarning ) << "Attmepting naive recovery...";
         m_lastInst.resize( ext.depth + 1 );
     }
 
@@ -273,14 +273,16 @@ bool Executive::execute() {
 
 #ifdef FAIR
     // Pay...
-    LOG( m_loggerTrace ) << "Paying " << formatBalance( m_gasCost ) << " from sender for gas ("
-                         << m_t.gas() << " gas at " << formatBalance( m_t.gasPrice() ) << ")";
+    BOOST_LOG( m_loggerTrace ) << "Paying " << formatBalance( m_gasCost )
+                               << " from sender for gas (" << m_t.gas() << " gas at "
+                               << formatBalance( m_t.gasPrice() ) << ")";
     m_s.subBalance( m_t.sender(), m_gasCost );
 #else
     if ( !m_t.hasExternalGas() ) {
         // Pay...
-        LOG( m_loggerTrace ) << "Paying " << formatBalance( m_gasCost ) << " from sender for gas ("
-                             << m_t.gas() << " gas at " << formatBalance( m_t.gasPrice() ) << ")";
+        BOOST_LOG( m_loggerTrace )
+            << "Paying " << formatBalance( m_gasCost ) << " from sender for gas (" << m_t.gas()
+            << " gas at " << formatBalance( m_t.gasPrice() ) << ")";
         m_s.subBalance( m_t.sender(), m_gasCost );
     }
 #endif
@@ -445,7 +447,7 @@ bool Executive::executeCreate( Address const& _sender, u256 const& _endowment,
     bool accountAlreadyExist =
         ( m_s.addressHasCode( m_newAddress ) || m_s.getNonce( m_newAddress ) > 0 );
     if ( accountAlreadyExist ) {
-        LOG( m_loggerTrace ) << "Address already used: " << m_newAddress;
+        BOOST_LOG( m_loggerTrace ) << "Address already used: " << m_newAddress;
         m_gas = 0;
         m_excepted = TransactionException::AddressAlreadyUsed;
         revert();
@@ -486,13 +488,13 @@ OnOpFunc Executive::simpleTrace() {
 
         ostringstream o;
         if ( vm )
-            LOG( traceLogger ) << dumpStackAndMemory( *vm );
-        LOG( traceLogger ) << dumpStorage( ext );
-        LOG( traceLogger ) << " < " << dec << ext.depth << " : " << ext.myAddress << " : #" << steps
-                           << " : " << hex << setw( 4 ) << setfill( '0' ) << PC << " : "
-                           << instructionInfo( inst ).name << " : " << dec << gas << " : -" << dec
-                           << gasCost << " : " << newMemSize << "x32"
-                           << " >";
+            BOOST_LOG( traceLogger ) << dumpStackAndMemory( *vm );
+        BOOST_LOG( traceLogger ) << dumpStorage( ext );
+        BOOST_LOG( traceLogger ) << " < " << dec << ext.depth << " : " << ext.myAddress << " : #"
+                                 << steps << " : " << hex << setw( 4 ) << setfill( '0' ) << PC
+                                 << " : " << instructionInfo( inst ).name << " : " << dec << gas
+                                 << " : -" << dec << gasCost << " : " << newMemSize << "x32"
+                                 << " >";
     };
 }
 
@@ -555,12 +557,12 @@ bool Executive::go( OnOpFunc const& _onOp ) {
             m_output = _e.output();
             m_excepted = TransactionException::RevertInstruction;
         } catch ( VMException const& _e ) {
-            LOG( m_loggerTrace ) << "Safe VM Exception. " << diagnostic_information( _e );
+            BOOST_LOG( m_loggerTrace ) << "Safe VM Exception. " << diagnostic_information( _e );
             m_gas = 0;
             m_excepted = toTransactionException( _e );
             revert();
         } catch ( InternalVMError const& _e ) {
-            LOG( m_loggerWarning )
+            BOOST_LOG( m_loggerWarning )
                 << "Internal VM Error (" << *boost::get_error_info< errinfo_evmcStatusCode >( _e )
                 << ")\n"
                 << diagnostic_information( _e );
@@ -569,19 +571,19 @@ bool Executive::go( OnOpFunc const& _onOp ) {
         } catch ( Exception const& _e ) {
             // TODO: AUDIT: check that this can never reasonably happen. Consider what to do if it
             // does.
-            LOG( m_loggerWarning )
+            BOOST_LOG( m_loggerWarning )
                 << "Unexpected exception in VM. There may be a bug in this implementation. "
                 << diagnostic_information( _e );
-            LOG( m_loggerWarning ) << DETAILED_ERROR;
+            BOOST_LOG( m_loggerWarning ) << DETAILED_ERROR;
             exit( 1 );
             // Another solution would be to reject this transaction, but that also
             // has drawbacks. Essentially, the amount of ram has to be increased here.
         } catch ( std::exception const& _e ) {
             // TODO: AUDIT: check that this can never reasonably happen. Consider what to do if it
             // does.
-            LOG( m_loggerWarning )
+            BOOST_LOG( m_loggerWarning )
                 << "Unexpected std::exception in VM. Not enough RAM? " << _e.what();
-            LOG( m_loggerWarning ) << DETAILED_ERROR;
+            BOOST_LOG( m_loggerWarning ) << DETAILED_ERROR;
             exit( 1 );
             // Another solution would be to reject this transaction, but that also
             // has drawbacks. Essentially, the amount of ram has to be increased here.
