@@ -990,7 +990,7 @@ u256 SkaleHost::getBlockRandom( unsigned _blockNumber ) const {
             if ( _blockNumber > m_client.number() )
                 --_blockNumber;
         }
-        m_consensus->getRandomForBlockId( _blockNumber );
+        return m_consensus->getRandomForBlockId( _blockNumber );
     }
     return m_consensus->getRandomForBlockId( m_client.number() );
 }
