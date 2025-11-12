@@ -984,11 +984,13 @@ u256 SkaleHost::getGasPrice( unsigned _blockNumber ) const {
 
 u256 SkaleHost::getBlockRandom( unsigned _blockNumber ) const {
     if ( CurrentBlockRandomPatch::isEnabledInWorkingBlock() ) {
-        if ( _blockNumber > m_client.number() )
-            // cant get info about future blocks
-            // only possible if responding eth_call or eth_estimateGas request
-            _blockNumber = m_client.number();
-        return m_consensus->getRandomForBlockId( _blockNumber );
+        if ( dev::eth::g_currentTransactionIndex == -1 ) {
+            // means a call outside of block is being executed
+            // if _blockNumber > currentBlockNumber, need to decrease it by 1
+            if ( _blockNumber > m_client.number() )
+                --_blockNumber;
+        }
+        m_consensus->getRandomForBlockId( _blockNumber );
     }
     return m_consensus->getRandomForBlockId( m_client.number() );
 }

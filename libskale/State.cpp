@@ -1114,6 +1114,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
     // transaction is bad in any way.
     // HACK 0 here is for gasPrice
     // TODO Not sure that 1st 0 as timestamp is acceptable here
+    dev::eth::g_currentTransactionIndex = _transactionIndex;
     Executive e( *this, _envInfo, _chainParams, 0, 0, _p != Permanence::Committed );
     ExecutionResult res;
     e.setResultRecipient( res );

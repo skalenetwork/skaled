@@ -51,7 +51,8 @@ namespace eth {
 
 extern std::shared_ptr< skutils::json_config_file_accessor > g_configAccesssor;
 extern std::shared_ptr< SkaleHost > g_skaleHost;
-extern skale::State g_state;
+
+inline thread_local int64_t g_currentTransactionIndex = -1;
 
 struct ChainOperationParams;
 
