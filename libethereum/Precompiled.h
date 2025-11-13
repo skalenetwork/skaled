@@ -148,18 +148,6 @@ private:
 #else
 // ignore _overlayFS param and call registered function with 2 parameters
 // TODO: unregister on unload with a static object.
-#define ETH_REGISTER_PRECOMPILED( Name )                                                     \
-    static std::pair< bool, bytes > __eth_registerPrecompiledFunction##Name(                 \
-        bytesConstRef _in, const u256& _bn );                                                \
-    static PrecompiledExecutor __eth_registerPrecompiledFactory##Name =                      \
-        ::dev::eth::PrecompiledRegistrar::registerExecutor(                                  \
-            #Name, PrecompiledExecutor(                                                      \
-                       []( bytesConstRef _in, const u256& _bn,                               \
-                           skale::OverlayFS* ) -> std::pair< bool, bytes > {                 \
-                           return __eth_registerPrecompiledFunction##Name( _in, _bn );       \
-                       } ) );                                                                \
-    static std::pair< bool, bytes > __eth_registerPrecompiledFunction##Name
-
 #define ETH_REGISTER_PRECOMPILED( Name )                                                      \
     static std::pair< bool, bytes > __eth_registerPrecompiledFunction##Name(                  \
         bytesConstRef _in, const u256& _bn );                                                 \
@@ -168,7 +156,16 @@ private:
             #Name, PrecompiledExecutor( []( bytesConstRef _in, const u256& _bn,               \
                                             skale::OverlayFS* ) -> std::pair< bool, bytes > { \
                 return __eth_registerPrecompiledFunction##Name( _in, _bn );                   \
-            } ) );   
+            } ) );                                                                            \
+    static std::pair< bool, bytes > __eth_registerPrecompiledFunction##Name
+
+#define ETH_REGISTER_FS_PRECOMPILED( Name )                                           \
+    static std::pair< bool, bytes > __eth_registerPrecompiledFunction##Name(          \
+        bytesConstRef _in, const u256& _bn, skale::OverlayFS* _overlayFS );           \
+    static PrecompiledExecutor __eth_registerPrecompiledFactory##Name =               \
+        ::dev::eth::PrecompiledRegistrar::registerExecutor(                           \
+            #Name, PrecompiledExecutor( &__eth_registerPrecompiledFunction##Name ) ); \
+    static std::pair< bool, bytes > __eth_registerPrecompiledFunction##Name
 #endif
 
 #define ETH_REGISTER_PRECOMPILED_PRICER( Name )                                                  \
