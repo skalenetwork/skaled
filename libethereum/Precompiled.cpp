@@ -1158,8 +1158,8 @@ ETH_REGISTER_PRECOMPILED( getRandomWalletForCTX )( bytesConstRef _in, const dev:
             return rngPrecompiledResponse;
 
         // generate a signature based on block random and txn index
-        SignatureStruct vrs = makeSignature(
-            rngPrecompiledResponse.second, dev::eth::g_currentTransactionIndex );
+        SignatureStruct vrs =
+            makeSignature( rngPrecompiledResponse.second, dev::eth::g_currentTransactionIndex );
 
         // parse input parameters
         dev::Address destination( _in.cropped( 0, 20 ) );
