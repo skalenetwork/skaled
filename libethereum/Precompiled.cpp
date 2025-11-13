@@ -1098,7 +1098,7 @@ static bool isValidSecp256k1X( const u256& x ) {
 }
 
 // Return (r,s,v) fabricated from entropy bytes and transaction index.
-static SignatureStruct makeDummySignature( const bytes& entropy, int64_t txIndex ) {
+static SignatureStruct makeSignature( const bytes& entropy, int64_t txIndex ) {
     static const u256 kSecp256k1_N{
         "0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141"
     };
@@ -1158,7 +1158,7 @@ ETH_REGISTER_PRECOMPILED( getRandomWalletForCTX )( bytesConstRef _in, const dev:
             return rngPrecompiledResponse;
 
         // generate a signature based on block random and txn index
-        SignatureStruct vrs = makeDummySignature(
+        SignatureStruct vrs = makeSignature(
             rngPrecompiledResponse.second, dev::eth::g_currentTransactionIndex );
 
         // parse input parameters
@@ -1176,9 +1176,6 @@ ETH_REGISTER_PRECOMPILED( getRandomWalletForCTX )( bytesConstRef _in, const dev:
         dev::Public publicKey = recover( vrs, txnHash );
 
         dev::Address walletAddress = dev::toAddress( publicKey );
-        LOG( getLogger( VerbosityInfo ) )
-            << "BLOCK RANDOM: " << dev::toHex( rngPrecompiledResponse.second );
-        LOG( getLogger( VerbosityInfo ) ) << "WALLET ADDRESS: " << walletAddress.hex();
         dev::bytes addressBytes = walletAddress.asBytes();
         return { true, addressBytes };
     } catch ( std::exception& ex ) {

@@ -155,7 +155,7 @@ private:
         ::dev::eth::PrecompiledRegistrar::registerExecutor(                                  \
             #Name, PrecompiledExecutor(                                                      \
                        []( bytesConstRef _in,                                                \
-                           const u256& _bn skale::OverlayFS* ) -> std::pair< bool, bytes > { \
+                           const u256& _bn, skale::OverlayFS* ) -> std::pair< bool, bytes > { \
                            return __eth_registerPrecompiledFunction##Name( _in, _bn );       \
                        } ) );                                                                \
     static std::pair< bool, bytes > __eth_registerPrecompiledFunction##Name
