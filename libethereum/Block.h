@@ -361,7 +361,7 @@ private:
     /// Creates and updates the special contract for storing block hashes according to EIP96
     void updateBlockhashContract();
 
-    State m_state;                ///< Our state.
+    skale::State m_state;                ///< Our state.
     Transactions m_transactions;  ///< The current list of transactions that we've included in the
                                   ///< state.
     TransactionReceipts m_receipts;  ///< The corresponding list of transaction receipts.
