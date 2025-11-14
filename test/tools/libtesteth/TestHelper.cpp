@@ -127,9 +127,19 @@ void simulateMining( Client& client, size_t numBlocks, const dev::Address &addre
     assert( balanceAfter > balanceBefore );
 }
 
-void simulateMining( Client& client, size_t numBlocks ) {
+void simulateMining( Client& client, size_t numBlocks,  const bool handleConsensusUpdate ) {
     const dev::Address address = client.author();
     simulateMining( client, numBlocks, address );
+#ifdef FAIR
+    if ( handleConsensusUpdate ) {
+        shared_ptr<SkaleHost> skaleHost = client.skaleHost();
+        // To make sure consensus threadlocal log is updated
+        sleep(5);
+        if (skaleHost->isConsesusUpdateHappened() ) {
+            skaleHost->handleConsensusUpdate();
+        }
+    }
+#endif
 }
 
 }  // namespace eth
