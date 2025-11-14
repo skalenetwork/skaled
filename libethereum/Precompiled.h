@@ -38,13 +38,10 @@
 class SkaleHost;
 
 namespace skale {
-class State;
 #ifndef FAIR
 class OverlayFS;
 #endif
 }  // namespace skale
-
-using skale::State;
 
 namespace dev {
 namespace eth {
