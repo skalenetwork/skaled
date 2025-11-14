@@ -458,7 +458,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
 #endif
                 std::string output = fastWriter.write( ret );
                 chainParams->loadConfig( output );
-
+                ++rand_port; // increment port to avoid conflicts
 
                 // insecure schain owner(originator) private key
                 // address is 0x5C4e11842E8be09264dc1976943571d7Af6d00F9
