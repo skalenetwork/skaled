@@ -151,7 +151,7 @@ private:
 // TODO: unregister on unload with a static object.
 #define ETH_REGISTER_PRECOMPILED( Name )                                                      \
     static std::pair< bool, bytes > __eth_registerPrecompiledFunction##Name(                  \
-        bytesConstRef _in, const u256& _bn );                                                 \
+        bytesConstRef _in, const PrecompiledCallContext& _ctx );                                                 \
     static PrecompiledExecutor __eth_registerPrecompiledFactory##Name =                       \
         ::dev::eth::PrecompiledRegistrar::registerExecutor(                                   \
             #Name, PrecompiledExecutor( []( bytesConstRef _in, const PrecompiledCallContext& _ctx,               \
