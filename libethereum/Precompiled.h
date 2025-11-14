@@ -145,8 +145,8 @@ private:
     static PrecompiledExecutor __eth_registerPrecompiledFactory##Name =                       \
         ::dev::eth::PrecompiledRegistrar::registerExecutor(                                   \
             #Name, PrecompiledExecutor(                                                       \
-                       []( bytesConstRef _in, const PrecompiledCallContext& _ctx )            \
-                                                                -> std::pair< bool, bytes > { \
+                       []( bytesConstRef _in,                                                 \
+                        const PrecompiledCallContext& _ctx ) -> std::pair< bool, bytes > {    \
                            return __eth_registerPrecompiledFunction##Name( _in, _ctx );       \
                        } ) );                                                                 \
     static std::pair< bool, bytes > __eth_registerPrecompiledFunction##Name
