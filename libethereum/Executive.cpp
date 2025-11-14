@@ -372,8 +372,8 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
                 m_chainParams.executePrecompiled( _p.codeAddress, _p.data, ctx );
 
 #else
-            tie( success, output ) = m_chainParams.executePrecompiled(
-                _p.codeAddress, _p.data, ctx, m_s.fs().get() );
+            tie( success, output ) =
+                m_chainParams.executePrecompiled( _p.codeAddress, _p.data, ctx, m_s.fs().get() );
 #endif
 
             size_t outputSize = output.size();

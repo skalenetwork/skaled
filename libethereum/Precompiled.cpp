@@ -226,7 +226,8 @@ ETH_REGISTER_PRECOMPILED_PRICER( alt_bn128_G1_mul )
     return _blockNumber < _chainParams.getIstanbulForkBlock() ? 40000 : 6000;
 }
 
-ETH_REGISTER_PRECOMPILED( alt_bn128_pairing_product )( bytesConstRef _in, const PrecompiledCallContext& ) {
+ETH_REGISTER_PRECOMPILED( alt_bn128_pairing_product )
+( bytesConstRef _in, const PrecompiledCallContext& ) {
     return dev::crypto::alt_bn128_pairing_product( _in );
 }
 
@@ -818,7 +819,8 @@ static std::pair< std::string, unsigned > parseHistoricFieldRequest( std::string
  * so one should pass the following as calldata:
  * toBytes( input.length + toBytes(input) )
  */
-ETH_REGISTER_PRECOMPILED( getConfigVariableUint256 )( bytesConstRef _in, const PrecompiledCallContext& ) {
+ETH_REGISTER_PRECOMPILED( getConfigVariableUint256 )
+( bytesConstRef _in, const PrecompiledCallContext& ) {
     try {
         size_t lengthName;
         std::string rawName;
@@ -875,7 +877,8 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableUint256 )( bytesConstRef _in, const P
     return { false, response };  // 1st false - means bad error occur
 }
 
-ETH_REGISTER_PRECOMPILED( getConfigVariableAddress )( bytesConstRef _in, const PrecompiledCallContext& ) {
+ETH_REGISTER_PRECOMPILED( getConfigVariableAddress )
+( bytesConstRef _in, const PrecompiledCallContext& ) {
     try {
         size_t lengthName;
         std::string rawName;
@@ -929,7 +932,8 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableAddress )( bytesConstRef _in, const P
  * so one should pass the following as calldata
  * toBytes( input.length + toBytes(input) )
  */
-ETH_REGISTER_PRECOMPILED( getConfigVariableString )( bytesConstRef _in, const PrecompiledCallContext& ) {
+ETH_REGISTER_PRECOMPILED( getConfigVariableString )
+( bytesConstRef _in, const PrecompiledCallContext& ) {
     try {
         size_t lengthName;
         std::string rawName;
@@ -998,7 +1002,8 @@ static dev::u256 stat_s2a( const std::string& saIn ) {
     return u;
 }
 
-ETH_REGISTER_PRECOMPILED( getConfigPermissionFlag )( bytesConstRef _in, const PrecompiledCallContext& ) {
+ETH_REGISTER_PRECOMPILED( getConfigPermissionFlag )
+( bytesConstRef _in, const PrecompiledCallContext& ) {
     try {
         dev::u256 uValue;
         uValue = 0;
@@ -1090,12 +1095,12 @@ ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef, const PrecompiledCall
 }
 
 #ifndef FAIR
-ETH_REGISTER_PRECOMPILED( addBalance )( [[maybe_unused]] bytesConstRef _in, const PrecompiledCallContext& ) {
+ETH_REGISTER_PRECOMPILED( addBalance )
+( [[maybe_unused]] bytesConstRef _in, const PrecompiledCallContext& ) {
     dev::u256 code = 0;
     bytes response = toBigEndian( code );
     return { false, response };  // 1st false - means bad error occur
 }
-
 
 ETH_REGISTER_PRECOMPILED( getIMABLSPublicKey )( bytesConstRef, const PrecompiledCallContext& ) {
     try {

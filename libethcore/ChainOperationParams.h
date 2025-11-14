@@ -71,12 +71,13 @@ public:
         return m_cost( _in, _chainParams, _blockNumber );
     }
 #ifdef FAIR
-    std::pair< bool, bytes > execute( bytesConstRef _in, const PrecompiledCallContext& _ctx ) const {
+    std::pair< bool, bytes > execute(
+        bytesConstRef _in, const PrecompiledCallContext& _ctx ) const {
         return m_execute( _in, _ctx );
     }
 #else
-    std::pair< bool, bytes > execute(
-        bytesConstRef _in, const PrecompiledCallContext& _ctx, skale::OverlayFS* _overlayFS = nullptr ) const {
+    std::pair< bool, bytes > execute( bytesConstRef _in, const PrecompiledCallContext& _ctx,
+        skale::OverlayFS* _overlayFS = nullptr ) const {
         return m_execute( _in, _ctx, _overlayFS );
     }
 #endif
