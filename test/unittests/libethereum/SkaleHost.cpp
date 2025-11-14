@@ -75,10 +75,6 @@ public:
     }
     void stop() {}
 
-    ptr< SkaleLog > getSkaleLog() const override {
-        return nullptr;
-    }
-
     ConsensusExtFace::transactions_vector pendingTransactions( size_t _limit ) {
         u256 stateRoot = 0;
         return m_extFace.pendingTransactions( _limit, stateRoot );
