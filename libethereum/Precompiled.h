@@ -170,6 +170,7 @@ private:
     static PrecompiledExecutor __eth_registerPrecompiledFactory##Name =                        \
         ::dev::eth::PrecompiledRegistrar::registerExecutor(                                    \
             #Name, PrecompiledExecutor( &__eth_registerPrecompiledFunction##Name ) );          \
+    static std::pair< bool, bytes > __eth_registerPrecompiledFunction##Name
 #endif
 
 #define ETH_REGISTER_PRECOMPILED_PRICER( Name )                                                  \
