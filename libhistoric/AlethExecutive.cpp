@@ -191,8 +191,9 @@ bool AlethExecutive::call(
             m_gas = ( u256 )( _p.gas - g );
             bytes output;
             bool success;
+            PrecompiledCallContext ctx{ m_envInfo.number(), m_readOnly };
             tie( success, output ) =
-                m_chainParams.executePrecompiled( _p.codeAddress, _p.data, m_envInfo.number() );
+                m_chainParams.executePrecompiled( _p.codeAddress, _p.data, ctx );
             size_t outputSize = output.size();
             m_output = owning_bytes_ref{ std::move( output ), 0, outputSize };
             if ( !success ) {

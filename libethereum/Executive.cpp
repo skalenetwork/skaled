@@ -366,13 +366,14 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
             m_gas = ( u256 )( _p.gas - g );
             bytes output;
             bool success;
+            PrecompiledCallContext ctx{ m_envInfo.number(), m_readOnly };
 #ifdef FAIR
             tie( success, output ) =
-                m_chainParams.executePrecompiled( _p.codeAddress, _p.data, m_envInfo.number() );
+                m_chainParams.executePrecompiled( _p.codeAddress, _p.data, ctx );
 
 #else
             tie( success, output ) = m_chainParams.executePrecompiled(
-                _p.codeAddress, _p.data, m_envInfo.number(), m_s.fs().get() );
+                _p.codeAddress, _p.data, ctx, m_s.fs().get() );
 #endif
 
             size_t outputSize = output.size();
