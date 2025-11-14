@@ -76,11 +76,11 @@ public:
     PrecompiledExecutor() {}
 #ifdef FAIR
     PrecompiledExecutor( const std::function< std::pair< bool, bytes >(
-        bytesConstRef _in, const PrecompiledCallContext& _ctx ) >& _func )
+            bytesConstRef _in, const PrecompiledCallContext& _ctx ) >& _func )
         : proxy( _func ) {}
 #else
     PrecompiledExecutor( const std::function< std::pair< bool, bytes >( bytesConstRef _in,
-        const PrecompiledCallContext& _ctx, skale::OverlayFS* _overlayFS ) >& _func )
+            const PrecompiledCallContext& _ctx, skale::OverlayFS* _overlayFS ) >& _func )
         : proxy( _func ) {}
 #endif
 
