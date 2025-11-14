@@ -458,7 +458,6 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
 #endif
                 std::string output = fastWriter.write( ret );
                 chainParams->loadConfig( output );
-                ++rand_port; // increment port to avoid conflicts
 
                 // insecure schain owner(originator) private key
                 // address is 0x5C4e11842E8be09264dc1976943571d7Af6d00F9
@@ -617,6 +616,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         if ( httpClient )
             delete httpClient;
         BOOST_TEST_MESSAGE( "Destructed JsonRpcFixture" );
+        ++rand_port; // increment port to avoid conflicts
     }
 
     string sendingRawShouldFail( string const& _t ) {
