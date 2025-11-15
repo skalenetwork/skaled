@@ -615,7 +615,6 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
 
         if ( httpClient )
             delete httpClient;
-        sleep( 1 );
         BOOST_TEST_MESSAGE( "Destructed JsonRpcFixture" );
     }
 
@@ -5129,7 +5128,6 @@ BOOST_AUTO_TEST_CASE( getRandomWalletForCTX ) {
 
     dev::eth::g_skaleHost = fixture.client->skaleHost();
 
-//    dev::eth::simulateMining( *( fixture.client ), 20 );
     string senderAddress = toJS( fixture.coinbase.address() );
 
 // // SPDX-License-Identifier: UNLICENSED
@@ -5227,9 +5225,13 @@ BOOST_AUTO_TEST_CASE( getRandomWalletForCTX ) {
     fixture.rpcClient->debug_pauseConsensus( false );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
+    Json::Value latestBlock = fixture.rpcClient->eth_getBlockByNumber( "latest", "false" );
+    BOOST_REQUIRE_EQUAL( latestBlock["transactions"].size(), 2 );
+
     // read data from contract again
     dev::Address randomAddress3( dev::unpadLeft( dev::fromHex( fixture.rpcClient->eth_call( callGetLast, "latest" ) ) ) );
     dev::Address randomAddress4( dev::unpadLeft( dev::fromHex( fixture.rpcClient->eth_call( callGetPreLast, "latest" ) ) ) );
+    BOOST_REQUIRE( randomAddress1 != randomAddress3 );
     BOOST_REQUIRE( randomAddress3 != randomAddress4 );
 }
 
