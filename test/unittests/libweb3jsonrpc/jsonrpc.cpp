@@ -602,6 +602,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         rpcClient = unique_ptr< WebThreeStubClient >( new WebThreeStubClient( *httpClient ) );
 
         BOOST_TEST_MESSAGE( "Constructed JsonRpcFixture" );
+        ++rand_port; // increment port to avoid conflicts
     }
 
     ~JsonRpcFixture() {
@@ -616,7 +617,6 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         if ( httpClient )
             delete httpClient;
         BOOST_TEST_MESSAGE( "Destructed JsonRpcFixture" );
-        ++rand_port; // increment port to avoid conflicts
     }
 
     string sendingRawShouldFail( string const& _t ) {
