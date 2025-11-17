@@ -77,9 +77,11 @@ class DefaultConsensusFactory : public ConsensusFactory {
 public:
     DefaultConsensusFactory( const dev::eth::Client& _client ) : m_client( _client ) {}
     virtual std::unique_ptr< ConsensusInterface > create( ConsensusExtFace& _extFace ) const;
+    static uint64_t createCount() { return createdCounter.load( std::memory_order_relaxed ); }
 
 private:
     const dev::eth::Client& m_client;
+    static std::atomic_uint64_t createdCounter;
 
     /// Loggers
     mutable dev::Logger m_loggerInfo{ dev::createLogger(
@@ -135,6 +137,8 @@ public:
     dev::u256 getBlockRandom( unsigned _blockNumber ) const;
     dev::eth::SyncStatus syncStatus() const;
     std::map< std::string, uint64_t > getConsensusDbUsage() const;
+    consensus_engine_status getConsensusStatus() const;
+
     std::array< std::string, 4 > getCurrentBLSPublicKey() const;
 
     // get node id for historic node in chain
@@ -254,7 +258,6 @@ private:
 
     std::unique_ptr< ConsensusExtFace > m_extFace;
     std::unique_ptr< ConsensusInterface > m_consensus;
-
     std::optional< uint64_t > emptyBlockIntervalMsForRestore;  // used for temporary setting this
                                                                // to 0
     bool need_restore_emptyBlockInterval = false;

@@ -22,6 +22,7 @@
 
 #include "TestHelper.h"
 
+#include <chrono>
 #include <set>
 #include <string>
 
@@ -128,13 +129,21 @@ void simulateMining( Client& client, size_t numBlocks, const dev::Address &addre
 }
 
 void simulateMining( Client& client, size_t numBlocks,  const bool handleConsensusUpdate ) {
+    auto counsensusCreateCount = DefaultConsensusFactory( client ).createCount();
     const dev::Address address = client.author();
+    shared_ptr<SkaleHost> skaleHost = client.skaleHost();
     simulateMining( client, numBlocks, address );
 #ifdef FAIR
     if ( handleConsensusUpdate ) {
-        shared_ptr<SkaleHost> skaleHost = client.skaleHost();
-        // To make sure consensus threadlocal log is updated
-        sleep(5);
+        // Making sure consensus threadlocal log is updated
+        const auto deadline = chrono::steady_clock::now() + chrono::seconds( 10 );
+
+        while ( ( DefaultConsensusFactory( client ).createCount() == counsensusCreateCount ||
+               skaleHost->getConsensusStatus() == CONSENSUS_EXITED ) &&
+               chrono::steady_clock::now() < deadline  ) {
+            usleep(10);
+        }
+        sleep(2);
         if (skaleHost->isConsesusUpdateHappened() ) {
             skaleHost->handleConsensusUpdate();
         }

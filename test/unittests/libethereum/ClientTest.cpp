@@ -551,7 +551,13 @@ static std::string const c_genesisInfoSkaleTest = std::string() +
     R"E(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
                 ]
             },
-            "-1": {}
+            "2": {
+                "group": [
+              { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )E" +
+                                                  std::to_string( rand_port ) +
+                                                  R"E(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
+                ]
+            }
         }
     }
   },

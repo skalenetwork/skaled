@@ -66,8 +66,11 @@ using namespace dev::eth;
 
 const int SkaleHost::REJECT_OLD_TRANSACTION_THROUGH_BROADCAST_INTERVAL_SEC = 600;
 
+std::atomic_uint64_t DefaultConsensusFactory::createdCounter{ 0 };
+
 std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
     ConsensusExtFace& _extFace ) const {
+    createdCounter.fetch_add( 1, std::memory_order_relaxed );
 #if CONSENSUS
     const auto& nfo = static_cast< const Interface& >( m_client ).blockInfo( LatestBlock );
 
@@ -101,7 +104,6 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
 #ifdef BITE
     consensusEnginePtr->setEpochId( m_client.getCurrentEpochId() );
 #endif
-
     return consensusEnginePtr;
 #else
     unsigned block_number = m_client.number();
@@ -738,7 +740,7 @@ void SkaleHost::runCommitteeRotationForConsensus() {
     m_broadcastRestartNeeded = true;
     // stop all services first
     // exitGracefully() interferes with exit procedure
-    // TODO: make it more ellegant to avoid collisions
+    // TODO: make it more olegant to avoid collisions
     m_consensus->exitGracefully();
     m_committeeRotationMonitorThread.reset( new std::thread( [this]() {
         while ( m_consensus->getStatus() != consensus_engine_status::CONSENSUS_EXITED ) {
@@ -752,6 +754,7 @@ void SkaleHost::runCommitteeRotationForConsensus() {
         m_consensusUpdateHappened = true;
         // restart all services to fetch latest nodes info
         try {
+            LOG( m_loggerDebug ) << "Starting consensus after rotation";
             m_consensus->startAll();
         } catch ( const std::exception& ex ) {
             LOG( m_loggerError ) << "Exception occurred in startAll() after committee rotation: "
@@ -769,7 +772,6 @@ void SkaleHost::runCommitteeRotationForConsensus() {
             ExitHandler::exitHandler( -1, ExitHandler::ec_termninated_by_signal );
             return;
         }
-
         try {
             static const char g_strThreadName[] = "bootStrapAllAfterCommitteeRotation";
             dev::setThreadName( g_strThreadName );
@@ -1030,6 +1032,10 @@ dev::eth::SyncStatus SkaleHost::syncStatus() const {
 
 std::map< std::string, uint64_t > SkaleHost::getConsensusDbUsage() const {
     return m_consensus->getConsensusDbUsage();
+}
+
+consensus_engine_status SkaleHost::getConsensusStatus() const {
+    return m_consensus->getStatus();
 }
 
 std::array< std::string, 4 > SkaleHost::getCurrentBLSPublicKey() const {
