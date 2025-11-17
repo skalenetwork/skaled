@@ -2202,7 +2202,7 @@ BOOST_AUTO_TEST_CASE( clearPartialReceipts ) {
         dev::eth::mineTransaction( *( fixture.client ), 1 );
         auto receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
         dev::eth::BlockNumber blockNumber = jsToInt( receipt["blockNumber"].asString() );
-        State state( fixture.client->state() );
+        skale::State state( fixture.client->state() );
         BOOST_REQUIRE_EQUAL( blockNumber, block );
         BOOST_REQUIRE_EQUAL( state.safePartialTransactionReceipts( blockNumber ).size(), 0 );
         int64_t expectedSize = block == expectedNoLegacyReceiptsBlock ? 0 : 1;
