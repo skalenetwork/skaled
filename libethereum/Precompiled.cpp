@@ -1146,10 +1146,11 @@ static SignatureStruct makeSignature( const bytes& entropy, int64_t txIndex ) {
     }
 
     if ( attempts >= 1000 ) {
-        LOG( getLogger( VerbosityWarning ) )
+        BOOST_LOG( getLogger( VerbosityWarning ) )
             << "Could not find valid secp256k1 x-coordinate for r after 1000 attempts";
     } else if ( attempts > 0 ) {
-        LOG( getLogger( VerbosityInfo ) ) << "Found valid r after " << attempts << " attempts";
+        BOOST_LOG( getLogger( VerbosityTrace ) )
+            << "Found valid r after " << attempts << " attempts";
     }
 
     // Construct s from second hash
@@ -1167,10 +1168,11 @@ static SignatureStruct makeSignature( const bytes& entropy, int64_t txIndex ) {
     return SignatureStruct( h256( r ), h256( s ), parity );
 }
 
-ETH_REGISTER_PRECOMPILED( getRandomWalletForCTX )( bytesConstRef _in, const dev::u256& _bn ) {
+ETH_REGISTER_PRECOMPILED( getRandomWalletForCTX )
+( bytesConstRef _in, const PrecompiledCallContext& _ctx ) {
     try {
         PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getBlockRandom" );
-        auto rngPrecompiledResponse = exec( _in, _bn );
+        auto rngPrecompiledResponse = exec( _in, _ctx );
         // if call to getBlockRandom() fails, return error
         if ( !rngPrecompiledResponse.first )
             return rngPrecompiledResponse;
@@ -1180,14 +1182,15 @@ ETH_REGISTER_PRECOMPILED( getRandomWalletForCTX )( bytesConstRef _in, const dev:
             makeSignature( rngPrecompiledResponse.second, dev::eth::g_currentTransactionIndex );
 
         // parse input parameters
-        if ( _in.size() < 52 )
+        if ( _in.size() < dev::eth::TransactionBase::BITE2_INPUT_DATA_MIN_LEN )
             return { false, toBigEndian( dev::u256( 1 ) ) };
-        dev::Address destination( _in.cropped( 0, 20 ) );
+        // skip first 12 bytes - left-padded zero-bytes
+        dev::Address destination( _in.cropped( 12, 20 ) );
         // validate address
         if ( destination == dev::ZeroAddress )
             return { false, toBigEndian( dev::u256( 2 ) ) };
-        bigint const gas( parseBigEndianRightPadded( _in, 20, 32 ) );
-        dev::bytes data = _in.cropped( 52 ).toBytes();
+        bigint const gas( parseBigEndianRightPadded( _in, 32, 32 ) );
+        dev::bytes data = _in.cropped( 64 ).toBytes();
         // validate data size
         if ( data.empty() )
             return { false, toBigEndian( dev::u256( 3 ) ) };
@@ -1216,10 +1219,10 @@ ETH_REGISTER_PRECOMPILED( getRandomWalletForCTX )( bytesConstRef _in, const dev:
         std::string strError = ex.what();
         if ( strError.empty() )
             strError = "exception without description";
-        LOG( getLogger( VerbosityError ) )
+        BOOST_LOG( getLogger( VerbosityError ) )
             << "Exception in precompiled/getRandomWalletForCTX(): " << strError << "\n";
     } catch ( ... ) {
-        LOG( getLogger( VerbosityError ) )
+        BOOST_LOG( getLogger( VerbosityError ) )
             << "Unknown exception in precompiled/getRandomWalletForCTX()\n";
     }
     dev::u256 code = 0;

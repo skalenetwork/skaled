@@ -19,6 +19,10 @@
 
 #pragma once
 
+#ifdef BITE
+#include <libconsensus/node/ConsensusInterface.h>
+#endif
+
 #include <libdevcore/Log.h>
 #include <libdevcore/RLP.h>
 #include <libdevcore/SHA3.h>
@@ -480,6 +484,12 @@ public:
     mutable int64_t verifiedOn = -1;  // on which block it was imported
 
     static uint64_t howMany() { return Counter< TransactionBase >::howMany(); }
+
+#ifdef BITE
+    // Solidity adds 12 left-padded zero bytes when encoding an address parameter in the ABI format.
+    static constexpr uint64_t BITE2_INPUT_DATA_MIN_LEN =
+        12 + dev::Address::size + dev::h256::size + BITE_CIPHERTEXT_MIN_LEN;
+#endif
 
 protected:
     mutable dev::Logger m_loggerDebug{ createLogger( VerbosityDebug, "TransactionBase" ) };
