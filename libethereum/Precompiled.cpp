@@ -87,7 +87,7 @@ PrecompiledPricer const& PrecompiledRegistrar::pricer( std::string const& _name 
 
 namespace {
 
-ETH_REGISTER_PRECOMPILED( ecrecover )( bytesConstRef _in, const dev::u256& ) {
+ETH_REGISTER_PRECOMPILED( ecrecover )( bytesConstRef _in, const PrecompiledCallContext& ) {
     struct {
         h256 hash;
         h256 v;
@@ -115,15 +115,15 @@ ETH_REGISTER_PRECOMPILED( ecrecover )( bytesConstRef _in, const dev::u256& ) {
     return { true, {} };
 }
 
-ETH_REGISTER_PRECOMPILED( sha256 )( bytesConstRef _in, const dev::u256& ) {
+ETH_REGISTER_PRECOMPILED( sha256 )( bytesConstRef _in, const PrecompiledCallContext& ) {
     return { true, dev::sha256( _in ).asBytes() };
 }
 
-ETH_REGISTER_PRECOMPILED( ripemd160 )( bytesConstRef _in, const dev::u256& ) {
+ETH_REGISTER_PRECOMPILED( ripemd160 )( bytesConstRef _in, const PrecompiledCallContext& ) {
     return { true, h256( dev::ripemd160( _in ), h256::AlignRight ).asBytes() };
 }
 
-ETH_REGISTER_PRECOMPILED( identity )( bytesConstRef _in, const dev::u256& ) {
+ETH_REGISTER_PRECOMPILED( identity )( bytesConstRef _in, const PrecompiledCallContext& ) {
     MICROPROFILE_SCOPEI( "VM", "identity", MP_RED );
     return { true, _in.toBytes() };
 }
@@ -150,7 +150,7 @@ bigint parseBigEndianRightPadded( bytesConstRef _in, bigint const& _begin, bigin
     return ret;
 }
 
-ETH_REGISTER_PRECOMPILED( modexp )( bytesConstRef _in, const dev::u256& ) {
+ETH_REGISTER_PRECOMPILED( modexp )( bytesConstRef _in, const PrecompiledCallContext& ) {
     bigint const baseLength( parseBigEndianRightPadded( _in, 0, 32 ) );
     bigint const expLength( parseBigEndianRightPadded( _in, 32, 32 ) );
     bigint const modLength( parseBigEndianRightPadded( _in, 64, 32 ) );
@@ -209,7 +209,7 @@ ETH_REGISTER_PRECOMPILED_PRICER( modexp )
     return multComplexity( maxLength ) * max< bigint >( adjustedExpLength, 1 ) / 20;
 }
 
-ETH_REGISTER_PRECOMPILED( alt_bn128_G1_add )( bytesConstRef _in, const dev::u256& ) {
+ETH_REGISTER_PRECOMPILED( alt_bn128_G1_add )( bytesConstRef _in, const PrecompiledCallContext& ) {
     return dev::crypto::alt_bn128_G1_add( _in );
 }
 
@@ -218,7 +218,7 @@ ETH_REGISTER_PRECOMPILED_PRICER( alt_bn128_G1_add )
     return _blockNumber < _chainParams.getIstanbulForkBlock() ? 500 : 150;
 }
 
-ETH_REGISTER_PRECOMPILED( alt_bn128_G1_mul )( bytesConstRef _in, const dev::u256& ) {
+ETH_REGISTER_PRECOMPILED( alt_bn128_G1_mul )( bytesConstRef _in, const PrecompiledCallContext& ) {
     return dev::crypto::alt_bn128_G1_mul( _in );
 }
 
@@ -227,7 +227,8 @@ ETH_REGISTER_PRECOMPILED_PRICER( alt_bn128_G1_mul )
     return _blockNumber < _chainParams.getIstanbulForkBlock() ? 40000 : 6000;
 }
 
-ETH_REGISTER_PRECOMPILED( alt_bn128_pairing_product )( bytesConstRef _in, const dev::u256& ) {
+ETH_REGISTER_PRECOMPILED( alt_bn128_pairing_product )
+( bytesConstRef _in, const PrecompiledCallContext& ) {
     return dev::crypto::alt_bn128_pairing_product( _in );
 }
 
@@ -285,7 +286,7 @@ boost::filesystem::path getFileStorageDir( const Address& _address ) {
 
 // TODO: check file name and file existance
 ETH_REGISTER_FS_PRECOMPILED( createFile )
-( bytesConstRef _in, const dev::u256&, skale::OverlayFS* _overlayFS ) {
+( bytesConstRef _in, const PrecompiledCallContext&, skale::OverlayFS* _overlayFS ) {
     if ( !_overlayFS )
         throw runtime_error( "_overlayFS is nullptr " );
 
@@ -320,9 +321,9 @@ ETH_REGISTER_FS_PRECOMPILED( createFile )
         std::string strError = ex.what();
         if ( strError.empty() )
             strError = "exception without description";
-        LOG( getLogger( VerbosityError ) ) << "Exception in createFile: " << strError << "\n";
+        BOOST_LOG( getLogger( VerbosityError ) ) << "Exception in createFile: " << strError << "\n";
     } catch ( ... ) {
-        LOG( getLogger( VerbosityError ) ) << "Unknown exception in createFile\n";
+        BOOST_LOG( getLogger( VerbosityError ) ) << "Unknown exception in createFile\n";
     }
     u256 code = 0;
     bytes response = toBigEndian( code );
@@ -330,7 +331,7 @@ ETH_REGISTER_FS_PRECOMPILED( createFile )
 }
 
 ETH_REGISTER_FS_PRECOMPILED( uploadChunk )
-( bytesConstRef _in, const dev::u256&, skale::OverlayFS* _overlayFS ) {
+( bytesConstRef _in, const PrecompiledCallContext&, skale::OverlayFS* _overlayFS ) {
     if ( !_overlayFS )
         throw runtime_error( "_overlayFS is nullptr " );
 
@@ -369,16 +370,17 @@ ETH_REGISTER_FS_PRECOMPILED( uploadChunk )
         std::string strError = ex.what();
         if ( strError.empty() )
             strError = "exception without description";
-        LOG( getLogger( VerbosityError ) ) << "Exception in uploadChunk: " << strError << "\n";
+        BOOST_LOG( getLogger( VerbosityError ) )
+            << "Exception in uploadChunk: " << strError << "\n";
     } catch ( ... ) {
-        LOG( getLogger( VerbosityError ) ) << "Unknown exception in uploadChunk\n";
+        BOOST_LOG( getLogger( VerbosityError ) ) << "Unknown exception in uploadChunk\n";
     }
     u256 code = 0;
     bytes response = toBigEndian( code );
     return { false, response };
 }
 
-ETH_REGISTER_PRECOMPILED( readChunk )( bytesConstRef _in, const dev::u256& ) {
+ETH_REGISTER_PRECOMPILED( readChunk )( bytesConstRef _in, const PrecompiledCallContext& ) {
     MICROPROFILE_SCOPEI( "VM", "readChunk", MP_ORANGERED );
     try {
         auto rawAddress = _in.cropped( 12, 20 ).toBytes();
@@ -420,16 +422,16 @@ ETH_REGISTER_PRECOMPILED( readChunk )( bytesConstRef _in, const dev::u256& ) {
         std::string strError = ex.what();
         if ( strError.empty() )
             strError = "exception without description";
-        LOG( getLogger( VerbosityError ) ) << "Exception in readChunk: " << strError << "\n";
+        BOOST_LOG( getLogger( VerbosityError ) ) << "Exception in readChunk: " << strError << "\n";
     } catch ( ... ) {
-        LOG( getLogger( VerbosityError ) ) << "Unknown exception in readChunk\n";
+        BOOST_LOG( getLogger( VerbosityError ) ) << "Unknown exception in readChunk\n";
     }
     u256 code = 0;
     bytes response = toBigEndian( code );
     return { false, response };
 }
 
-ETH_REGISTER_PRECOMPILED( getFileSize )( bytesConstRef _in, const dev::u256& ) {
+ETH_REGISTER_PRECOMPILED( getFileSize )( bytesConstRef _in, const PrecompiledCallContext& ) {
     try {
         auto rawAddress = _in.cropped( 12, 20 ).toBytes();
         std::string address;
@@ -453,9 +455,10 @@ ETH_REGISTER_PRECOMPILED( getFileSize )( bytesConstRef _in, const dev::u256& ) {
         std::string strError = ex.what();
         if ( strError.empty() )
             strError = "exception without description";
-        LOG( getLogger( VerbosityError ) ) << "Exception in getFileSize: " << strError << "\n";
+        BOOST_LOG( getLogger( VerbosityError ) )
+            << "Exception in getFileSize: " << strError << "\n";
     } catch ( ... ) {
-        LOG( getLogger( VerbosityError ) ) << "Unknown exception in getFileSize\n";
+        BOOST_LOG( getLogger( VerbosityError ) ) << "Unknown exception in getFileSize\n";
     }
     u256 code = 0;
     bytes response = toBigEndian( code );
@@ -463,7 +466,7 @@ ETH_REGISTER_PRECOMPILED( getFileSize )( bytesConstRef _in, const dev::u256& ) {
 }
 
 ETH_REGISTER_FS_PRECOMPILED( deleteFile )
-( bytesConstRef _in, const dev::u256&, skale::OverlayFS* _overlayFS ) {
+( bytesConstRef _in, const PrecompiledCallContext&, skale::OverlayFS* _overlayFS ) {
     if ( !_overlayFS )
         throw runtime_error( "_overlayFS is nullptr " );
 
@@ -487,9 +490,9 @@ ETH_REGISTER_FS_PRECOMPILED( deleteFile )
         std::string strError = ex.what();
         if ( strError.empty() )
             strError = "exception without description";
-        LOG( getLogger( VerbosityError ) ) << "Exception in deleteFile: " << strError << "\n";
+        BOOST_LOG( getLogger( VerbosityError ) ) << "Exception in deleteFile: " << strError << "\n";
     } catch ( ... ) {
-        LOG( getLogger( VerbosityError ) ) << "Unknown exception in deleteFile\n";
+        BOOST_LOG( getLogger( VerbosityError ) ) << "Unknown exception in deleteFile\n";
     }
     u256 code = 0;
     bytes response = toBigEndian( code );
@@ -497,7 +500,7 @@ ETH_REGISTER_FS_PRECOMPILED( deleteFile )
 }
 
 ETH_REGISTER_FS_PRECOMPILED( createDirectory )
-( bytesConstRef _in, const dev::u256&, skale::OverlayFS* _overlayFS ) {
+( bytesConstRef _in, const PrecompiledCallContext&, skale::OverlayFS* _overlayFS ) {
     if ( !_overlayFS )
         throw runtime_error( "_overlayFS is nullptr " );
 
@@ -519,9 +522,10 @@ ETH_REGISTER_FS_PRECOMPILED( createDirectory )
         std::string strError = ex.what();
         if ( strError.empty() )
             strError = "exception without description";
-        LOG( getLogger( VerbosityError ) ) << "Exception in createDirectory: " << strError << "\n";
+        BOOST_LOG( getLogger( VerbosityError ) )
+            << "Exception in createDirectory: " << strError << "\n";
     } catch ( ... ) {
-        LOG( getLogger( VerbosityError ) ) << "Unknown exception in createDirectory\n";
+        BOOST_LOG( getLogger( VerbosityError ) ) << "Unknown exception in createDirectory\n";
     }
     u256 code = 0;
     bytes response = toBigEndian( code );
@@ -529,7 +533,7 @@ ETH_REGISTER_FS_PRECOMPILED( createDirectory )
 }
 
 ETH_REGISTER_FS_PRECOMPILED( deleteDirectory )
-( bytesConstRef _in, const dev::u256&, skale::OverlayFS* _overlayFS ) {
+( bytesConstRef _in, const PrecompiledCallContext&, skale::OverlayFS* _overlayFS ) {
     if ( !_overlayFS )
         throw runtime_error( "_overlayFS is nullptr " );
 
@@ -558,9 +562,10 @@ ETH_REGISTER_FS_PRECOMPILED( deleteDirectory )
         std::string strError = ex.what();
         if ( strError.empty() )
             strError = "exception without description";
-        LOG( getLogger( VerbosityError ) ) << "Exception in deleteDirectory: " << strError << "\n";
+        BOOST_LOG( getLogger( VerbosityError ) )
+            << "Exception in deleteDirectory: " << strError << "\n";
     } catch ( ... ) {
-        LOG( getLogger( VerbosityError ) ) << "Unknown exception in deleteDirectory\n";
+        BOOST_LOG( getLogger( VerbosityError ) ) << "Unknown exception in deleteDirectory\n";
     }
     u256 code = 0;
     bytes response = toBigEndian( code );
@@ -568,7 +573,7 @@ ETH_REGISTER_FS_PRECOMPILED( deleteDirectory )
 }
 
 ETH_REGISTER_FS_PRECOMPILED( calculateFileHash )
-( bytesConstRef _in, const dev::u256&, skale::OverlayFS* _overlayFS ) {
+( bytesConstRef _in, const PrecompiledCallContext&, skale::OverlayFS* _overlayFS ) {
     try {
         auto rawAddress = _in.cropped( 12, 20 ).toBytes();
         std::string address;
@@ -593,17 +598,17 @@ ETH_REGISTER_FS_PRECOMPILED( calculateFileHash )
         std::string strError = ex.what();
         if ( strError.empty() )
             strError = "exception without description";
-        LOG( getLogger( VerbosityError ) )
+        BOOST_LOG( getLogger( VerbosityError ) )
             << "Exception in calculateFileHash: " << strError << "\n";
     } catch ( ... ) {
-        LOG( getLogger( VerbosityError ) ) << "Unknown exception in calculateFileHash\n";
+        BOOST_LOG( getLogger( VerbosityError ) ) << "Unknown exception in calculateFileHash\n";
     }
     u256 code = 0;
     bytes response = toBigEndian( code );
     return { false, response };
 }
 
-ETH_REGISTER_PRECOMPILED( logTextMessage )( bytesConstRef _in, const dev::u256& ) {
+ETH_REGISTER_PRECOMPILED( logTextMessage )( bytesConstRef _in, const PrecompiledCallContext& ) {
     try {
         if ( !g_configAccesssor )
             throw std::runtime_error( "Config accessor was not initialized" );
@@ -671,22 +676,22 @@ ETH_REGISTER_PRECOMPILED( logTextMessage )( bytesConstRef _in, const dev::u256& 
         switch ( nMessageType ) {
         case 0:
         default:  // normal message
-            LOG( getLogger( VerbosityInfo ) ) << ss.str();
+            BOOST_LOG( getLogger( VerbosityInfo ) ) << ss.str();
             break;
         case 1:  // debug message
-            LOG( getLogger( VerbosityDebug ) ) << ss.str();
+            BOOST_LOG( getLogger( VerbosityDebug ) ) << ss.str();
             break;
         case 2:  // trace message
-            LOG( getLogger( VerbosityTrace ) ) << ss.str();
+            BOOST_LOG( getLogger( VerbosityTrace ) ) << ss.str();
             break;
         case 3:  // warning message
-            LOG( getLogger( VerbosityWarning ) ) << ss.str();
+            BOOST_LOG( getLogger( VerbosityWarning ) ) << ss.str();
             break;
         case 4:  // error message
-            LOG( getLogger( VerbosityError ) ) << ss.str();
+            BOOST_LOG( getLogger( VerbosityError ) ) << ss.str();
             break;
         case 5:  // fatal message
-            LOG( getLogger( VerbosityDebug ) ) << ss.str();
+            BOOST_LOG( getLogger( VerbosityDebug ) ) << ss.str();
             break;
         }
 
@@ -697,10 +702,11 @@ ETH_REGISTER_PRECOMPILED( logTextMessage )( bytesConstRef _in, const dev::u256& 
         std::string strError = ex.what();
         if ( strError.empty() )
             strError = "exception without description";
-        LOG( getLogger( VerbosityError ) )
+        BOOST_LOG( getLogger( VerbosityError ) )
             << "Exception in precompiled/logTextMessage(): " << strError << "\n";
     } catch ( ... ) {
-        LOG( getLogger( VerbosityError ) ) << "Unknown exception in precompiled/logTextMessage()\n";
+        BOOST_LOG( getLogger( VerbosityError ) )
+            << "Unknown exception in precompiled/logTextMessage()\n";
     }
     u256 code = 0;
     bytes response = toBigEndian( code );
@@ -814,7 +820,8 @@ static std::pair< std::string, unsigned > parseHistoricFieldRequest( std::string
  * so one should pass the following as calldata:
  * toBytes( input.length + toBytes(input) )
  */
-ETH_REGISTER_PRECOMPILED( getConfigVariableUint256 )( bytesConstRef _in, const dev::u256& ) {
+ETH_REGISTER_PRECOMPILED( getConfigVariableUint256 )
+( bytesConstRef _in, const PrecompiledCallContext& ) {
     try {
         size_t lengthName;
         std::string rawName;
@@ -860,10 +867,10 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableUint256 )( bytesConstRef _in, const d
         std::string strError = ex.what();
         if ( strError.empty() )
             strError = "exception without description";
-        LOG( getLogger( VerbosityError ) )
+        BOOST_LOG( getLogger( VerbosityError ) )
             << "Exception in precompiled/getConfigVariableUint256(): " << strError << "\n";
     } catch ( ... ) {
-        LOG( getLogger( VerbosityError ) )
+        BOOST_LOG( getLogger( VerbosityError ) )
             << "Unknown exception in precompiled/getConfigVariableUint256()\n";
     }
     u256 code = 0;
@@ -871,7 +878,8 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableUint256 )( bytesConstRef _in, const d
     return { false, response };  // 1st false - means bad error occur
 }
 
-ETH_REGISTER_PRECOMPILED( getConfigVariableAddress )( bytesConstRef _in, const dev::u256& ) {
+ETH_REGISTER_PRECOMPILED( getConfigVariableAddress )
+( bytesConstRef _in, const PrecompiledCallContext& ) {
     try {
         size_t lengthName;
         std::string rawName;
@@ -896,10 +904,10 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableAddress )( bytesConstRef _in, const d
         std::string strError = ex.what();
         if ( strError.empty() )
             strError = "exception without description";
-        LOG( getLogger( VerbosityError ) )
+        BOOST_LOG( getLogger( VerbosityError ) )
             << "Exception in precompiled/getConfigVariableAddress(): " << strError << "\n";
     } catch ( ... ) {
-        LOG( getLogger( VerbosityError ) )
+        BOOST_LOG( getLogger( VerbosityError ) )
             << "Unknown exception in precompiled/getConfigVariableAddress()\n";
     }
     u256 code = 0;
@@ -925,7 +933,8 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableAddress )( bytesConstRef _in, const d
  * so one should pass the following as calldata
  * toBytes( input.length + toBytes(input) )
  */
-ETH_REGISTER_PRECOMPILED( getConfigVariableString )( bytesConstRef _in, const dev::u256& ) {
+ETH_REGISTER_PRECOMPILED( getConfigVariableString )
+( bytesConstRef _in, const PrecompiledCallContext& ) {
     try {
         size_t lengthName;
         std::string rawName;
@@ -966,10 +975,10 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableString )( bytesConstRef _in, const de
         std::string strError = ex.what();
         if ( strError.empty() )
             strError = "exception without description";
-        LOG( getLogger( VerbosityError ) )
+        BOOST_LOG( getLogger( VerbosityError ) )
             << "Exception in precompiled/getConfigVariableString(): " << strError << "\n";
     } catch ( ... ) {
-        LOG( getLogger( VerbosityError ) )
+        BOOST_LOG( getLogger( VerbosityError ) )
             << "Unknown exception in precompiled/getConfigVariableString()\n";
     }
     u256 code = 0;
@@ -978,7 +987,7 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableString )( bytesConstRef _in, const de
 }
 
 
-ETH_REGISTER_PRECOMPILED( fnReserved0x16 )( bytesConstRef, const dev::u256& ) {
+ETH_REGISTER_PRECOMPILED( fnReserved0x16 )( bytesConstRef, const PrecompiledCallContext& ) {
     u256 code = 0;
     bytes response = toBigEndian( code );
     return { false, response };  // 1st false - means bad error occur
@@ -994,7 +1003,8 @@ static dev::u256 stat_s2a( const std::string& saIn ) {
     return u;
 }
 
-ETH_REGISTER_PRECOMPILED( getConfigPermissionFlag )( bytesConstRef _in, const dev::u256& ) {
+ETH_REGISTER_PRECOMPILED( getConfigPermissionFlag )
+( bytesConstRef _in, const PrecompiledCallContext& ) {
     try {
         dev::u256 uValue;
         uValue = 0;
@@ -1045,10 +1055,10 @@ ETH_REGISTER_PRECOMPILED( getConfigPermissionFlag )( bytesConstRef _in, const de
         std::string strError = ex.what();
         if ( strError.empty() )
             strError = "exception without description";
-        LOG( getLogger( VerbosityError ) )
+        BOOST_LOG( getLogger( VerbosityError ) )
             << "Exception in precompiled/getConfigPermissionFlag(): " << strError << "\n";
     } catch ( ... ) {
-        LOG( getLogger( VerbosityError ) )
+        BOOST_LOG( getLogger( VerbosityError ) )
             << "Unknown exception in precompiled/getConfigPermissionFlag()\n";
     }
     dev::u256 code = 0;
@@ -1057,21 +1067,28 @@ ETH_REGISTER_PRECOMPILED( getConfigPermissionFlag )( bytesConstRef _in, const de
 }
 #endif
 
-ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef, const dev::u256& _bn ) {
+ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef, const PrecompiledCallContext& _ctx ) {
     try {
         if ( !g_skaleHost )
             throw std::runtime_error( "SkaleHost accessor was not initialized" );
-        dev::u256 uValue = g_skaleHost->getBlockRandom( _bn.convert_to< unsigned >() );
+        unsigned blockNumberToCall = _ctx.blockNumber.convert_to< unsigned >();
+        if ( _ctx.isReadOnly ) {
+            // means a call outside of block is being executed
+            // if blockNumberToCall > currentBlockNumber, need to decrease it by 1
+            --blockNumberToCall;
+        }
+        dev::u256 uValue = g_skaleHost->getBlockRandom( blockNumberToCall );
         bytes response = toBigEndian( uValue );
         return { true, response };
     } catch ( std::exception& ex ) {
         std::string strError = ex.what();
         if ( strError.empty() )
             strError = "exception without description";
-        LOG( getLogger( VerbosityError ) )
+        BOOST_LOG( getLogger( VerbosityError ) )
             << "Exception in precompiled/getBlockRandom(): " << strError << "\n";
     } catch ( ... ) {
-        LOG( getLogger( VerbosityError ) ) << "Unknown exception in precompiled/getBlockRandom()\n";
+        BOOST_LOG( getLogger( VerbosityError ) )
+            << "Unknown exception in precompiled/getBlockRandom()\n";
     }
     dev::u256 code = 0;
     bytes response = toBigEndian( code );
@@ -1212,14 +1229,14 @@ ETH_REGISTER_PRECOMPILED( getRandomWalletForCTX )( bytesConstRef _in, const dev:
 #endif
 
 #ifndef FAIR
-ETH_REGISTER_PRECOMPILED( addBalance )( [[maybe_unused]] bytesConstRef _in, const dev::u256& ) {
+ETH_REGISTER_PRECOMPILED( addBalance )
+( [[maybe_unused]] bytesConstRef _in, const PrecompiledCallContext& ) {
     dev::u256 code = 0;
     bytes response = toBigEndian( code );
     return { false, response };  // 1st false - means bad error occur
 }
 
-
-ETH_REGISTER_PRECOMPILED( getIMABLSPublicKey )( bytesConstRef, const dev::u256& ) {
+ETH_REGISTER_PRECOMPILED( getIMABLSPublicKey )( bytesConstRef, const PrecompiledCallContext& ) {
     try {
         if ( !g_skaleHost )
             throw std::runtime_error( "SkaleHost accessor was not initialized" );
@@ -1233,10 +1250,10 @@ ETH_REGISTER_PRECOMPILED( getIMABLSPublicKey )( bytesConstRef, const dev::u256& 
         std::string strError = ex.what();
         if ( strError.empty() )
             strError = "exception without description";
-        LOG( getLogger( VerbosityError ) )
+        BOOST_LOG( getLogger( VerbosityError ) )
             << "Exception in precompiled/getCurrentBLSPublicKey(): " << strError << "\n";
     } catch ( ... ) {
-        LOG( getLogger( VerbosityError ) )
+        BOOST_LOG( getLogger( VerbosityError ) )
             << "Unknown exception in precompiled/getCurrentBLSPublicKey()\n";
     }
     dev::u256 code = 0;

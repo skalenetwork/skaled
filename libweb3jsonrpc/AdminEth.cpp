@@ -167,7 +167,7 @@ Json::Value AdminEth::admin_eth_vmTrace(
             //            e.finalize();
             //            Json::Reader().parse(st.json(), ret);
         } catch ( Exception const& _e ) {
-            LOG( m_loggerWarning ) << diagnostic_information( _e );
+            BOOST_LOG( m_loggerWarning ) << diagnostic_information( _e );
         }
     }
 

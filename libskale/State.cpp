@@ -120,7 +120,7 @@ State::State( dev::u256 const& _accountStartNonce, boost::filesystem::path const
     m_fs_ptr = state.fs();
 #endif
     if ( _bs == BaseState::PreExisting ) {
-        LOG( m_loggerDebug ) << "Using existing database";
+        BOOST_LOG( m_loggerDebug ) << "Using existing database";
     } else if ( _bs == BaseState::Empty ) {
         // Initialise to the state entailed by the genesis block; this guarantees the trie is built
         // correctly.
@@ -173,7 +173,7 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
     m_fs_ptr = state.fs();
 #endif
     if ( _bs == BaseState::PreExisting ) {
-        LOG( m_loggerDebug ) << "Using existing database";
+        BOOST_LOG( m_loggerDebug ) << "Using existing database";
     } else if ( _bs == BaseState::Empty ) {
         // Initialise to the state entailed by the genesis block; this guarantees the trie is built
         // correctly.
@@ -191,9 +191,10 @@ const uint64_t STATE_IMPORT_BATCH_COUNT = 16;
 void State::populateHistoricStateFromSkaleState() {
     auto allAccountAddresses = this->addresses();
 
-    LOG( m_loggerInfo ) << "Number of addresses in statedb:" << allAccountAddresses.size();
-    LOG( m_loggerInfo ) << "Historic state does not yet exist. Populating historic state ...";
-    LOG( m_loggerInfo ) << "Please be patient as it may take up to several hours for a large state";
+    BOOST_LOG( m_loggerInfo ) << "Number of addresses in statedb:" << allAccountAddresses.size();
+    BOOST_LOG( m_loggerInfo ) << "Historic state does not yet exist. Populating historic state ...";
+    BOOST_LOG( m_loggerInfo )
+        << "Please be patient as it may take up to several hours for a large state";
 
 
     // this is done to save memory, otherwise OverlayDB will frow
@@ -201,7 +202,7 @@ void State::populateHistoricStateFromSkaleState() {
         populateHistoricStateBatchFromSkaleState( allAccountAddresses, i );
     }
 
-    LOG( m_loggerInfo ) << "Completed state import";
+    BOOST_LOG( m_loggerInfo ) << "Completed state import";
 }
 
 
@@ -235,8 +236,8 @@ dev::eth::AccountMap State::getBatchOfAccounts(
 
 void State::populateHistoricStateBatchFromSkaleState(
     std::unordered_map< Address, u256 >& _allAccountAddresses, uint64_t _batchNumber ) {
-    LOG( m_loggerInfo ) << "Now running batch " << _batchNumber << " out of "
-                        << STATE_IMPORT_BATCH_COUNT;
+    BOOST_LOG( m_loggerInfo ) << "Now running batch " << _batchNumber << " out of "
+                              << STATE_IMPORT_BATCH_COUNT;
 
     dev::eth::AccountMap accountMap = getBatchOfAccounts( _allAccountAddresses, _batchNumber );
 
@@ -251,7 +252,7 @@ skale::OverlayDB State::openDB(
     fs::path path = _basePath.empty() ? eth::Defaults::dbPath() : _basePath;
 
     if ( _we == WithExisting::Kill ) {
-        LOG( m_loggerDebug ) << "Killing state database (WithExisting::Kill).";
+        BOOST_LOG( m_loggerDebug ) << "Killing state database (WithExisting::Kill).";
         fs::remove_all( path / fs::path( "state" ) );
     }
 
@@ -266,18 +267,18 @@ skale::OverlayDB State::openDB(
         std::unique_ptr< batched_io::batched_db > bdb = make_unique< batched_io::batched_db >();
         bdb->open( m_orig_db );
         assert( bdb->is_open() );
-        LOG( m_loggerDebug ) << "Opened state DB.";
+        BOOST_LOG( m_loggerDebug ) << "Opened state DB.";
         return OverlayDB( std::move( bdb ) );
     } catch ( boost::exception const& ex ) {
-        LOG( m_loggerWarning ) << boost::diagnostic_information( ex );
+        BOOST_LOG( m_loggerWarning ) << boost::diagnostic_information( ex );
         if ( fs::space( path / fs::path( "state" ) ).available < 1024 ) {
-            LOG( m_loggerWarning )
+            BOOST_LOG( m_loggerWarning )
                 << "Not enough available space found on hard drive. Please free some up and "
                    "then "
                    "re-run. Bailing.";
             BOOST_THROW_EXCEPTION( eth::NotEnoughAvailableSpace() );
         } else {
-            LOG( m_loggerWarning )
+            BOOST_LOG( m_loggerWarning )
                 << "Database " << ( path / fs::path( "state" ) )
                 << "already open. You appear to have another instance of ethereum running. "
                    "Bailing.";
@@ -1146,13 +1147,13 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         if ( strRevertReason.empty() )
             strRevertReason = "EVM revert instruction without description message";
         std::string strOut = "Error message from State::execute(): " + strRevertReason;
-        LOG( m_loggerDebug ) << strOut;
+        BOOST_LOG( m_loggerDebug ) << strOut;
     }
 #ifdef BITE
     if ( res.excepted == dev::eth::TransactionException::InvalidBITEAESData ) {
         strRevertReason = "Could not decrypt BITE transaction.";
         std::string strOut = "Error message from State::execute(): " + strRevertReason;
-        LOG( m_loggerDebug ) << strOut;
+        BOOST_LOG( m_loggerDebug ) << strOut;
     }
 #endif
 
@@ -1162,7 +1163,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
             "Contract uses unsupported Dencun opcode. Please ensure it is compiled for EVM <= "
             "Shanghai";
         std::string strOut = "Error message from State::execute(): " + strRevertReason;
-        LOG( m_loggerDebug ) << strOut;
+        BOOST_LOG( m_loggerDebug ) << strOut;
     }
 #endif
 
