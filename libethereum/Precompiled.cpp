@@ -36,6 +36,7 @@
 #include <libdevcrypto/LibSnark.h>
 #include <libethcore/ChainOperationParams.h>
 #include <libethcore/Common.h>
+#include <libethereum/Client.h>
 #include <libethereum/SchainPatch.h>
 #include <libethereum/SkaleHost.h>
 #include <libskale/State.h>
@@ -1162,15 +1163,31 @@ ETH_REGISTER_PRECOMPILED( getRandomWalletForCTX )( bytesConstRef _in, const dev:
             makeSignature( rngPrecompiledResponse.second, dev::eth::g_currentTransactionIndex );
 
         // parse input parameters
+        if ( _in.size() < 52 )
+            return { false, toBigEndian( dev::u256( 1 ) ) };
         dev::Address destination( _in.cropped( 0, 20 ) );
+        // validate address
+        if ( destination == dev::ZeroAddress )
+            return { false, toBigEndian( dev::u256( 2 ) ) };
         bigint const gas( parseBigEndianRightPadded( _in, 20, 32 ) );
-        dev::bytes data = _in.cropped( 52, _in.size() - 32 ).toBytes();
+        dev::bytes data = _in.cropped( 52 ).toBytes();
+        // validate data size
+        if ( data.empty() )
+            return { false, toBigEndian( dev::u256( 3 ) ) };
+        // validate gasLimit
+        auto evmSchedule = g_skaleHost->client().evmSchedule();
+        if ( TransactionBase::baseGasRequired(
+                 false, dev::bytesConstRef( data.data(), data.size() ), evmSchedule, true ) > gas )
+            return { false, toBigEndian( dev::u256( 4 ) ) };
 
         dev::u256 gasPrice = g_skaleHost->getGasPrice();
 
         // construct unsigned transaction and calculate its hash
         Transaction sampleTransaction(
             0, gasPrice, gas.convert_to< dev::u256 >(), destination, data, 0 );
+        if ( sampleTransaction.isInvalid() )
+            return { false, toBigEndian( dev::u256( 5 ) ) };
+
         dev::h256 txnHash = sampleTransaction.sha3( dev::eth::WithoutSignature );
 
         dev::Public publicKey = recover( vrs, txnHash );
