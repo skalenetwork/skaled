@@ -169,7 +169,7 @@ public:
 
     SkaleDebugInterface::handler getDebugHandler() const { return m_debugHandler; }
 
-    const dev::eth::Client& client() const { return client; }
+    const dev::eth::Client& client() const { return m_client; }
 
 #ifdef FAIR
     bool isConsesusUpdateHappened() const { return m_consensusUpdateHappened; }
