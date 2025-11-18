@@ -128,22 +128,20 @@ void simulateMining( Client& client, size_t numBlocks, const dev::Address &addre
     assert( balanceAfter > balanceBefore );
 }
 
-void simulateMining( Client& client, size_t numBlocks,  const bool handleConsensusUpdate ) {
-    auto counsensusCreateCount = DefaultConsensusFactory( client ).createCount();
+void simulateMining( Client& client, size_t numBlocks,  const bool waitForConsensusRotation ) {
+    auto consensusCreatedCountBefore = DefaultConsensusFactory( client ).getCreatedCounter();
     const dev::Address address = client.author();
     shared_ptr<SkaleHost> skaleHost = client.skaleHost();
     simulateMining( client, numBlocks, address );
 #ifdef FAIR
-    if ( handleConsensusUpdate ) {
+    if ( waitForConsensusRotation ) {
         // Making sure consensus threadlocal log is updated
         const auto deadline = chrono::steady_clock::now() + chrono::seconds( 10 );
-
-        while ( ( DefaultConsensusFactory( client ).createCount() == counsensusCreateCount ||
-               skaleHost->getConsensusStatus() == CONSENSUS_EXITED ) &&
+        while ( ( DefaultConsensusFactory( client ).getCreatedCounter() == consensusCreatedCountBefore ||
+               skaleHost->ignoreNewBlocksEnabled() ) &&
                chrono::steady_clock::now() < deadline  ) {
             usleep(10);
         }
-        sleep(2);
         if (skaleHost->isConsesusUpdateHappened() ) {
             skaleHost->handleConsensusUpdate();
         }

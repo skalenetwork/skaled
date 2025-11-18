@@ -332,7 +332,6 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
             m_consensus = DefaultConsensusFactory( m_client ).create( *m_extFace );
         else
             m_consensus = _consFactory->create( *m_extFace );
-
     } catch ( const std::exception& e ) {
         BOOST_LOG( m_loggerError ) << "Could not create consensus in SkaleHost" << e.what();
         std::throw_with_nested( CreationException() );
@@ -817,19 +816,6 @@ void SkaleHost::syncNodeGroups() {
 }
 #endif
 
-#ifdef FAIR
-void SkaleHost::updateConsensusEpochId( uint64_t _epochId ) {
-    BOOST_LOG( m_loggerInfo ) << "Updating epochId in consensus to " << _epochId;
-
-    if ( m_consensus ) {
-        auto* consensusEngine = dynamic_cast< ConsensusEngine* >( m_consensus.get() );
-        if ( consensusEngine ) {
-            consensusEngine->setEpochId( _epochId );
-        }
-    }
-}
-#endif
-
 void SkaleHost::startWorking() {
     if ( working )
         return;
@@ -1039,6 +1025,10 @@ std::map< std::string, uint64_t > SkaleHost::getConsensusDbUsage() const {
 consensus_engine_status SkaleHost::getConsensusStatus() const {
     return m_consensus->getStatus();
 }
+
+bool SkaleHost::ignoreNewBlocksEnabled() const {
+    return m_ignoreNewBlocks;
+};
 
 std::array< std::string, 4 > SkaleHost::getCurrentBLSPublicKey() const {
     return m_client.getCurrentBLSPublicKey();

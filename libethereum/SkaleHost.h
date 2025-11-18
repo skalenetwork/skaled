@@ -77,7 +77,7 @@ class DefaultConsensusFactory : public ConsensusFactory {
 public:
     DefaultConsensusFactory( const dev::eth::Client& _client ) : m_client( _client ) {}
     virtual std::unique_ptr< ConsensusInterface > create( ConsensusExtFace& _extFace ) const;
-    static uint64_t createCount() { return createdCounter.load( std::memory_order_relaxed ); }
+    static uint64_t getCreatedCounter() { return createdCounter.load( std::memory_order_relaxed ); }
 
 private:
     const dev::eth::Client& m_client;
@@ -138,6 +138,7 @@ public:
     dev::eth::SyncStatus syncStatus() const;
     std::map< std::string, uint64_t > getConsensusDbUsage() const;
     consensus_engine_status getConsensusStatus() const;
+    bool ignoreNewBlocksEnabled() const;
 
     std::array< std::string, 4 > getCurrentBLSPublicKey() const;
 
@@ -166,10 +167,6 @@ public:
         // else do nothing
     }
     void pauseBroadcast( bool _pause ) { m_broadcastPauseFlag = _pause; }
-
-#ifdef FAIR
-    void updateConsensusEpochId( uint64_t _epochId );
-#endif
 
     void forceEmptyBlock();
 
