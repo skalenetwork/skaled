@@ -4493,12 +4493,12 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
     Json::Value ret;
     Json::Reader().parse( _config, ret );
 
-    ret["skaleConfig"]["sChain"]["CurrentBlockRandomPatch"] = 1;
+    ret["skaleConfig"]["sChain"]["CurrentBlockRandomPatchTimestamp"] = 1;
 
     Json::FastWriter fastWriter;
     std::string config = fastWriter.write( ret );
 
-    JsonRpcFixture fixture( config, false, false, true );
+    JsonRpcFixture fixture( config );
 
     dev::eth::simulateMining( *( fixture.client ), 20 );
     string senderAddress = toJS( fixture.coinbase.address() );
@@ -4553,11 +4553,31 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
     dev::bytes blockRandomFromContract = dev::fromHex( fixture.rpcClient->eth_call( callGetLast, "latest" ) );
 
     PrecompiledExecutor blockRandomExecutor = PrecompiledRegistrar::executor( "getBlockRandom" );
-    dev::eth::PrecompiledCallContext ctx( fixture.client->number(), 0, true );
+    dev::eth::PrecompiledCallContext ctx( fixture.client->number(),
+#ifdef BITE
+                                          0,
+#endif
+                                          true );
     auto executionResult = blockRandomExecutor( dev::bytesConstRef(), ctx );
 
     BOOST_REQUIRE( executionResult.first );
+    std::cout << dev::toHex( executionResult.second ) << ' ' << dev::toHex( blockRandomFromContract ) << '\n';
     BOOST_REQUIRE( executionResult.second == blockRandomFromContract );
+
+#ifdef HISTORIC_STATE
+    // produce more blocks, execute historic call and compare results
+    Json::Value txRefill;
+    txRefill["to"] = "0xc868AF52a6549c773082A334E5AE232e0Ea3B513";
+    txRefill["from"] = toJS( senderAddress );
+    txRefill["gas"] = "100000";
+    txRefill["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txRefill["value"] = 1;
+    fixture.rpcClient->eth_sendTransaction( txRefill );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    dev::bytes blockRandomFromHistoricCall = dev::fromHex( fixture.rpcClient->eth_call( callGetLast, toJS( fixture.client->number() - 1 ) ) );
+    BOOST_REQUIRE( blockRandomFromHistoricCall == blockRandomFromContract );
+#endif
 }
 
 #ifdef BITE

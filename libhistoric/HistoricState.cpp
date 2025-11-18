@@ -603,12 +603,22 @@ void HistoricState::rollback( size_t _savepoint ) {
     }
 }
 
-std::pair< ExecutionResult, TransactionReceipt > HistoricState::execute( EnvInfo const& _envInfo,
-    eth::ChainOperationParams const& _chainParams, Transaction const& _t, skale::Permanence _p,
-    OnOpFunc const& _onOp ) {
+std::pair< ExecutionResult, TransactionReceipt > HistoricState::execute(
+    EnvInfo const& _envInfo, eth::ChainOperationParams const& _chainParams, Transaction const& _t,
+    skale::Permanence _p, OnOpFunc const& _onOp
+#ifdef BITE
+    ,
+    int64_t _transactionIndex
+#endif
+) {
     // Create and initialize the executive. This will throw fairly cheaply and quickly if the
     // transaction is bad in any way.
-    AlethExecutive e( *this, _envInfo, _chainParams, 0 );
+    AlethExecutive e( *this, _envInfo, _chainParams, 0
+#ifdef BITE
+        ,
+        dev::u256( _transactionIndex )
+#endif
+    );
     ExecutionResult res;
     e.setResultRecipient( res );
 

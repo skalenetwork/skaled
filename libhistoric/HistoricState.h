@@ -161,7 +161,12 @@ public:
     /// This will change the state accordingly.
     std::pair< ExecutionResult, TransactionReceipt > execute( EnvInfo const& _envInfo,
         eth::ChainOperationParams const& _chainParams, Transaction const& _t,
-        skale::Permanence _p = skale::Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc() );
+        skale::Permanence _p = skale::Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc()
+#ifdef BITE
+                                                                 ,
+        int64_t _transactionIndex = -1
+#endif
+    );
 
     /// Check if the address is in use.
     bool addressInUse( Address const& _address ) const;

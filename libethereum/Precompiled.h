@@ -50,14 +50,29 @@ namespace eth {
 extern std::shared_ptr< skutils::json_config_file_accessor > g_configAccesssor;
 extern std::shared_ptr< SkaleHost > g_skaleHost;
 
-inline thread_local int64_t g_currentTransactionIndex = -1;
 struct PrecompiledCallContext {
-    PrecompiledCallContext() : blockNumber( 0 ), currentTxnIndex( -1 ), isReadOnly( true ) {}
-    PrecompiledCallContext(
-        const dev::u256& _bn, const dev::u256& _currentTxnIndex, bool _readOnly )
-        : blockNumber( _bn ), currentTxnIndex( _currentTxnIndex ), isReadOnly( _readOnly ) {}
+    PrecompiledCallContext()
+        : blockNumber( 0 ),
+#ifdef BITE
+          currentTxnIndex( -1 ),
+#endif
+          isReadOnly( true ) {
+    }
+    PrecompiledCallContext( const dev::u256& _bn,
+#ifdef BITE
+        const dev::u256& _currentTxnIndex,
+#endif
+        bool _readOnly )
+        : blockNumber( _bn ),
+#ifdef BITE
+          currentTxnIndex( _currentTxnIndex ),
+#endif
+          isReadOnly( _readOnly ) {
+    }
     dev::u256 blockNumber;
+#ifdef BITE
     dev::u256 currentTxnIndex;
+#endif
     bool isReadOnly;
 };
 

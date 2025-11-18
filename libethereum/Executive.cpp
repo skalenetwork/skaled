@@ -366,7 +366,10 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
             m_gas = ( u256 )( _p.gas - g );
             bytes output;
             bool success;
-            PrecompiledCallContext ctx{ m_envInfo.number(), dev::eth::g_currentTransactionIndex,
+            PrecompiledCallContext ctx{ m_envInfo.number(),
+#ifdef BITE
+                m_txnIndex,
+#endif
                 m_readOnly };
 #ifdef FAIR
             tie( success, output ) =
@@ -394,7 +397,12 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
             auto const version = m_s.version( _p.codeAddress );
             m_ext = make_shared< ExtVM >( m_s, m_envInfo, m_chainParams, _p.receiveAddress,
                 _p.senderAddress, _origin, _p.apparentValue, _gasPrice, _p.data, &c, codeHash,
-                version, m_depth, false, _p.staticCall, m_readOnly );
+                version, m_depth, false, _p.staticCall, m_readOnly
+#ifdef BITE
+                ,
+                m_txnIndex
+#endif
+            );
         }
     }
 
@@ -469,9 +477,14 @@ bool Executive::executeCreate( Address const& _sender, u256 const& _endowment,
 
     // Schedule _init execution if not empty.
     if ( !_init.empty() )
-        m_ext = make_shared< ExtVM >( m_s, m_envInfo, m_chainParams, m_newAddress, _sender, _origin,
-            _endowment, _gasPrice, bytesConstRef(), _init, sha3( _init ), _version, m_depth, true,
-            false );
+        m_ext = make_shared< ExtVM >(
+            m_s, m_envInfo, m_chainParams, m_newAddress, _sender, _origin, _endowment, _gasPrice,
+            bytesConstRef(), _init, sha3( _init ), _version, m_depth, true, false
+#ifdef BITE
+            ,
+            true, m_txnIndex
+#endif
+        );
     else
         // code stays empty, but we set the version
         m_s.setCode( m_newAddress, {}, _version );
