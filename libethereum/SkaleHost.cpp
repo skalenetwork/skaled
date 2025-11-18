@@ -923,7 +923,7 @@ void SkaleHost::stopWorking() {
 
 
     BOOST_LOG( m_loggerInfo ) << "Consensus status is exited. Skaled is waiting for consensus and "
-                           "broadcast to finish.";
+                                 "broadcast to finish.";
     BOOST_LOG( m_loggerInfo )
         << "Consensus status is exited. Skaled is waiting for consensus and broadcast to finish.";
 
