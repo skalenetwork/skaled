@@ -584,8 +584,8 @@ Json::Value Eth::eth_getBlockByHash( string const& _blockHash, bool _includeTran
             try {
                 baseFeePerGas = client()->gasBidPrice( bn - 1 );
             } catch ( std::invalid_argument& _e ) {
-                LOG( m_loggerDebug ) << "Cannot get gas price for block " << h;
-                LOG( m_loggerDebug ) << _e.what();
+                BOOST_LOG( m_loggerDebug ) << "Cannot get gas price for block " << h;
+                BOOST_LOG( m_loggerDebug ) << _e.what();
                 // set default gasPrice
                 // probably the price was rotated out as we are asking the price for the old block
                 baseFeePerGas = client()->gasBidPrice();
@@ -647,8 +647,8 @@ Json::Value Eth::eth_getBlockByNumber( string const& _blockNumber, bool _include
             try {
                 baseFeePerGas = client()->gasBidPrice( bn - 1 );
             } catch ( std::invalid_argument& _e ) {
-                LOG( m_loggerDebug ) << "Cannot get gas price for block " << bn;
-                LOG( m_loggerDebug ) << _e.what();
+                BOOST_LOG( m_loggerDebug ) << "Cannot get gas price for block " << bn;
+                BOOST_LOG( m_loggerDebug ) << _e.what();
                 // set default gasPrice
                 // probably the price was rotated out as we are asking the price for the old block
                 baseFeePerGas = client()->gasBidPrice();

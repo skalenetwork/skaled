@@ -2,5 +2,9 @@
 
 # SKALED Documentation
 
--   [JSON RPC Interface Compatibility](json-rpc-interface.md)
--   [Snapshots](snapshots.md)
+### Getting Started
+-   [Spin up skaled with 1 node](getting-started/one-node.md)
+
+### Features
+-   [JSON RPC Interface Compatibility](features/json-rpc-interface.md)
+-   [Snapshots](features/snapshots.md)

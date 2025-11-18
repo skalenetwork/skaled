@@ -157,6 +157,7 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
                           std::map< std::string, std::string >(),
         bool mockCommitteeRotation = false ) {
         dev::p2p::NetworkPreferences nprefs;
+        libBLS::init();
 
         chainParams = std::make_shared< ChainParams >();
         chainParams->sealEngineName = NoProof::name();
@@ -1460,7 +1461,7 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
     auto& skaleHost = fixture.skaleHost;
 
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getBlockRandom" );
-    auto res = exec( bytesConstRef(), 1 );
+    auto res = exec( bytesConstRef(), { 1, true } );
     u256 blockRandom = skaleHost->getBlockRandom( 0 );
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( res.second == toBigEndian( static_cast< u256 >( blockRandom ) ) );
@@ -1472,7 +1473,7 @@ BOOST_AUTO_TEST_CASE( getCurrentBLSPublicKey ) {
     auto& skaleHost = fixture.skaleHost;
 
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getIMABLSPublicKey" );
-    auto res = exec( bytesConstRef(), 1 );
+    auto res = exec( bytesConstRef(), { 1, true } );
     std::array< std::string, 4 > imaBLSPublicKey = skaleHost->getCurrentBLSPublicKey();
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( res.second == toBigEndian( dev::u256( imaBLSPublicKey[0] ) ) +
@@ -1509,10 +1510,9 @@ BOOST_AUTO_TEST_CASE( biteTransactions ) {
     pair< bool, Secret > ar = accountHolder->authenticate( ts );
     Transaction txOriginal( ts, ar.second );
 
-    libBLS::TEBase::initializeIfNecessary();
     auto messageToEncrypt = libBLS::ThresholdUtils::hexCStringToBytes( dataToEncrypt.c_str() );
-    auto publicKeyBytes = libBLS::ThresholdUtils::G2ToBytes( libff::alt_bn128_G2::random_element() );
-    auto ciphertext = libBLS::ThresholdEncryption::encrypt( messageToEncrypt, publicKeyBytes );
+    auto publicKey = libBLS::TEPublicKey::random();
+    auto ciphertext = libBLS::ThresholdEncryption::encrypt( messageToEncrypt, publicKey );
 
     json["data"] = std::string( "0x" ) + libBLS::ThresholdUtils::bytesToHexString( ciphertext.toBytes() );
 

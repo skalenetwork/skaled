@@ -71,16 +71,18 @@ Json::Value SkalePerformanceTracker::skale_performanceTrackingStatus(
         Json::Reader().parse( s, ret );
         return ret;
     } catch ( Exception const& ex ) {
-        LOG( m_loggerError ) << ( strLogPrefix + " " +
-                                  "FATAL:" + " Exception while processing request: " + ex.what() );
+        BOOST_LOG( m_loggerError )
+            << ( strLogPrefix + " " +
+                   "FATAL:" + " Exception while processing request: " + ex.what() );
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& ex ) {
-        LOG( m_loggerError ) << strLogPrefix + " " +
-                                    "FATAL:" + " Exception while processing request: " + ex.what();
+        BOOST_LOG( m_loggerError )
+            << strLogPrefix + " " + "FATAL:" + " Exception while processing request: " + ex.what();
         throw jsonrpc::JsonRpcException( ex.what() );
     } catch ( ... ) {
-        LOG( m_loggerError ) << strLogPrefix + " " + "FATAL:" +
-                                    " Exception while processing request: " + "unknown exception";
+        BOOST_LOG( m_loggerError )
+            << strLogPrefix + " " +
+                   "FATAL:" + " Exception while processing request: " + "unknown exception";
         throw jsonrpc::JsonRpcException( "unknown exception" );
     }
 }
@@ -115,16 +117,16 @@ Json::Value SkalePerformanceTracker::skale_performanceTrackingStart( const Json:
         Json::Reader().parse( s, ret );
         return ret;
     } catch ( Exception const& ex ) {
-        LOG( m_loggerError ) << strLogPrefix +
-                                    " FATAL: Exception while processing request: " + ex.what();
+        BOOST_LOG( m_loggerError )
+            << strLogPrefix + " FATAL: Exception while processing request: " + ex.what();
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& ex ) {
-        LOG( m_loggerError ) << strLogPrefix +
-                                    " FATAL: Exception while processing request: " + ex.what();
+        BOOST_LOG( m_loggerError )
+            << strLogPrefix + " FATAL: Exception while processing request: " + ex.what();
         throw jsonrpc::JsonRpcException( ex.what() );
     } catch ( ... ) {
-        LOG( m_loggerError ) << strLogPrefix +
-                                    " FATAL: Exception while processing request: unknown exception";
+        BOOST_LOG( m_loggerError )
+            << strLogPrefix + " FATAL: Exception while processing request: unknown exception";
         throw jsonrpc::JsonRpcException( "unknown exception" );
     }
 }
@@ -152,16 +154,16 @@ Json::Value SkalePerformanceTracker::skale_performanceTrackingStop(
         Json::Reader().parse( s, ret );
         return ret;
     } catch ( Exception const& ex ) {
-        LOG( m_loggerError ) << strLogPrefix +
-                                    " FATAL: Exception while processing request: " + ex.what();
+        BOOST_LOG( m_loggerError )
+            << strLogPrefix + " FATAL: Exception while processing request: " + ex.what();
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& ex ) {
-        LOG( m_loggerError ) << strLogPrefix +
-                                    " FATAL: Exception while processing request: " + ex.what();
+        BOOST_LOG( m_loggerError )
+            << strLogPrefix + " FATAL: Exception while processing request: " + ex.what();
         throw jsonrpc::JsonRpcException( ex.what() );
     } catch ( ... ) {
-        LOG( m_loggerError ) << strLogPrefix +
-                                    " FATAL: Exception while processing request: unknown exception";
+        BOOST_LOG( m_loggerError )
+            << strLogPrefix + " FATAL: Exception while processing request: unknown exception";
         throw jsonrpc::JsonRpcException( "unknown exception" );
     }
 }
@@ -195,16 +197,16 @@ Json::Value SkalePerformanceTracker::skale_performanceTrackingFetch( const Json:
         Json::Reader().parse( s, ret );
         return ret;
     } catch ( Exception const& ex ) {
-        LOG( m_loggerError ) << strLogPrefix +
-                                    " FATAL: Exception while processing request: " + ex.what();
+        BOOST_LOG( m_loggerError )
+            << strLogPrefix + " FATAL: Exception while processing request: " + ex.what();
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& ex ) {
-        LOG( m_loggerError ) << strLogPrefix +
-                                    " FATAL: Exception while processing request: " + ex.what();
+        BOOST_LOG( m_loggerError )
+            << strLogPrefix + " FATAL: Exception while processing request: " + ex.what();
         throw jsonrpc::JsonRpcException( ex.what() );
     } catch ( ... ) {
-        LOG( m_loggerError ) << strLogPrefix +
-                                    " FATAL: Exception while processing request: unknown exception";
+        BOOST_LOG( m_loggerError )
+            << strLogPrefix + " FATAL: Exception while processing request: unknown exception";
         throw jsonrpc::JsonRpcException( "unknown exception" );
     }
 }
