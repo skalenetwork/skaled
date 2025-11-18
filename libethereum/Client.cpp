@@ -1450,7 +1450,7 @@ bool Client::updateHistoricGroupIndex() {
     uint64_t currentFinishTs = nodeGroups.at( historicGroupIndex ).finishTs;
     bool updated = false;
     if ( blockTimestamp >= currentFinishTs ) {
-        LOG( m_loggerInfo ) << "Updating historic group index to " << historicGroupIndex + 1;
+        BOOST_LOG( m_loggerInfo ) << "Updating historic group index to " << historicGroupIndex + 1;
         ++historicGroupIndex;
         updated = true;
     }
