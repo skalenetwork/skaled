@@ -195,6 +195,7 @@ revert();
                 }
             }
         },
+        "0000000000000000000000000000000000000008": { "precompiled": { "name": "getBlockRandom", "linear": { "base": 15, "word": 0 } } },
         "0x5c4e11842e8be09264dc1976943571d7af6d00f9" : {
             "balance" : "1000000000000000000000000000000"
         },
@@ -305,6 +306,7 @@ static std::string const c_genesisConfigString =
         "0000000000000000000000000000000000000002": { "precompiled": { "name": "sha256", "linear": { "base": 60, "word": 12 } } },
         "0000000000000000000000000000000000000003": { "precompiled": { "name": "ripemd160", "linear": { "base": 600, "word": 120 } } },
         "0000000000000000000000000000000000000004": { "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } } },
+        "0000000000000000000000000000000000000008": { "precompiled": { "name": "getBlockRandom", "linear": { "base": 15, "word": 0 } } },
         )"
     /*
 pragma solidity ^0.4.25;
@@ -4484,6 +4486,78 @@ BOOST_AUTO_TEST_CASE( getZeroBlock ) {
     Json::Value blockByHash = fixture.rpcClient->eth_getBlockByHash( blockHash, "false" );
     BOOST_REQUIRE( blockByHash["number"] == string( "0x0" ) );
     BOOST_REQUIRE( blockByHash["hash"] == blockHash );
+}
+
+BOOST_AUTO_TEST_CASE( getBlockRandom ) {
+    std::string _config = c_genesisConfigString;
+    Json::Value ret;
+    Json::Reader().parse( _config, ret );
+
+    ret["skaleConfig"]["sChain"]["CurrentBlockRandomPatch"] = 1;
+
+    Json::FastWriter fastWriter;
+    std::string config = fastWriter.write( ret );
+
+    JsonRpcFixture fixture( config, false, false, true );
+
+    dev::eth::simulateMining( *( fixture.client ), 20 );
+    string senderAddress = toJS( fixture.coinbase.address() );
+
+    dev::eth::g_skaleHost = fixture.client->skaleHost();
+//    pragma solidity ^0.8.13;
+
+//    contract GetBlockRandomPrecompiled {
+//        address public constant PRECOMPILE_0X08 = address(0x08);
+//        bytes32 lastBlockRandom;
+
+//        function getBlockRandom() public returns (bytes32) {
+//            (bool success, bytes memory result) = PRECOMPILE_0X08.staticcall("");
+//            require(success, "Call to precompile 0x06 failed");
+//            require(result.length >= 20, "Invalid result length");
+//            lastBlockRandom = bytes32(result);
+
+//            return lastBlockRandom;
+//        }
+
+//        function getLastBlockRandom() public view returns (bytes32) {
+//            return lastBlockRandom;
+//        }
+//    }
+    std::string bytecode = "6080604052348015600f57600080fd5b506104548061001f6000396000f3fe608060405234801561001057600080fd5b50600436106100415760003560e01c80633ec4b2de146100465780635e2e884d14610064578063dc031dfe14610082575b600080fd5b61004e6100a0565b60405161005b91906101fc565b60405180910390f35b61006c6100a5565b6040516100799190610230565b60405180910390f35b61008a6100ae565b6040516100979190610230565b60405180910390f35b600881565b60008054905090565b6000806000600873ffffffffffffffffffffffffffffffffffffffff166040516100d79061027c565b600060405180830381855afa9150503d8060008114610112576040519150601f19603f3d011682016040523d82523d6000602084013e610117565b606091505b50915091508161015c576040517f08c379a0000000000000000000000000000000000000000000000000000000008152600401610153906102ee565b60405180910390fd5b6014815110156101a1576040517f08c379a00000000000000000000000000000000000000000000000000000000081526004016101989061035a565b60405180910390fd5b806101ab906103b7565b6000819055506000549250505090565b600073ffffffffffffffffffffffffffffffffffffffff82169050919050565b60006101e6826101bb565b9050919050565b6101f6816101db565b82525050565b600060208201905061021160008301846101ed565b92915050565b6000819050919050565b61022a81610217565b82525050565b60006020820190506102456000830184610221565b92915050565b600081905092915050565b50565b600061026660008361024b565b915061027182610256565b600082019050919050565b600061028782610259565b9150819050919050565b600082825260208201905092915050565b7f43616c6c20746f20707265636f6d70696c652030783036206661696c65640000600082015250565b60006102d8601e83610291565b91506102e3826102a2565b602082019050919050565b60006020820190508181036000830152610307816102cb565b9050919050565b7f496e76616c696420726573756c74206c656e6774680000000000000000000000600082015250565b6000610344601583610291565b915061034f8261030e565b602082019050919050565b6000602082019050818103600083015261037381610337565b9050919050565b600081519050919050565b6000819050602082019050919050565b60006103a18251610217565b80915050919050565b600082821b905092915050565b60006103c28261037a565b826103cc84610385565b90506103d781610395565b92506020821015610417576104127fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff836020036008026103aa565b831692505b505091905056fea26469706673582212200547f4a1b7b525d8f531c7e991887fdca3437350b86fc09b06a1acaa83b5c3ad64736f6c634300081e0033";
+
+    // deploy contract
+    Json::Value create;
+    create["from"] = toJS( senderAddress );
+    create["code"] = bytecode;
+    create["gas"] = "900000";
+    create["nonce"] = 0;
+    string txHash = fixture.rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    auto txReceipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    std::string contractAddress = txReceipt["contractAddress"].asString();
+
+    // submit getBlockRandom transaction
+    Json::Value txGenerate;
+    txGenerate["to"] = contractAddress;
+    txGenerate["data"] = "0xdc031dfe";
+    txGenerate["from"] = toJS( senderAddress );
+    txGenerate["nonce"] = 1;
+    fixture.rpcClient->eth_sendTransaction( txGenerate );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    // read data from contract
+    Json::Value callGetLast;
+    callGetLast["to"] = contractAddress;
+    callGetLast["data"] = "0x5e2e884d";
+    callGetLast["from"] = toJS( senderAddress );
+    dev::bytes blockRandomFromContract = dev::fromHex( fixture.rpcClient->eth_call( callGetLast, "latest" ) );
+
+    PrecompiledExecutor blockRandomExecutor = PrecompiledRegistrar::executor( "getBlockRandom" );
+    dev::eth::PrecompiledCallContext ctx( fixture.client->number(), 0, true );
+    auto executionResult = blockRandomExecutor( dev::bytesConstRef(), ctx );
+
+    BOOST_REQUIRE( executionResult.first );
+    BOOST_REQUIRE( executionResult.second == blockRandomFromContract );
 }
 
 #ifdef BITE
