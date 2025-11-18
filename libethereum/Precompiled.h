@@ -52,10 +52,12 @@ extern std::shared_ptr< SkaleHost > g_skaleHost;
 
 inline thread_local int64_t g_currentTransactionIndex = -1;
 struct PrecompiledCallContext {
-    PrecompiledCallContext() : blockNumber( 0 ), isReadOnly( true ) {}
-    PrecompiledCallContext( dev::u256 bn, bool readOnly )
-        : blockNumber( bn ), isReadOnly( readOnly ) {}
+    PrecompiledCallContext() : blockNumber( 0 ), currentTxnIndex( -1 ), isReadOnly( true ) {}
+    PrecompiledCallContext(
+        const dev::u256& _bn, const dev::u256& _currentTxnIndex, bool _readOnly )
+        : blockNumber( _bn ), currentTxnIndex( _currentTxnIndex ), isReadOnly( _readOnly ) {}
     dev::u256 blockNumber;
+    dev::u256 currentTxnIndex;
     bool isReadOnly;
 };
 
