@@ -4589,11 +4589,7 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
     BOOST_REQUIRE( blockRandomFromHistoricCall == blockRandomFromContract );
 
     // ask for blockRandom for early block
-    ctx = PrecompiledCallContext( blockNumberEarly,
-#ifdef BITE
-                                0,
-#endif
-                                true );
+    ctx = PrecompiledCallContext( blockNumberEarly, true );
     auto blockRandomEarlyHistoric = blockRandomExecutor(dev::bytesConstRef(), ctx );
     BOOST_REQUIRE( blockRandomEarlyHistoric.first );
     BOOST_REQUIRE( blockRandomEarlyHistoric.second == blockRandomEarly.second );
