@@ -1072,13 +1072,7 @@ ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef, const PrecompiledCall
         if ( !g_skaleHost )
             throw std::runtime_error( "SkaleHost accessor was not initialized" );
         unsigned blockNumberToCall = _ctx.blockNumber.convert_to< unsigned >();
-        if ( _ctx.isReadOnly ) {
-            // means a call outside of block is being executed
-            // if blockNumberToCall > currentBlockNumber, need to decrease it by 1
-            if ( blockNumberToCall > g_skaleHost->client().number() )
-                --blockNumberToCall;
-        }
-        dev::u256 uValue = g_skaleHost->getBlockRandom( blockNumberToCall );
+        dev::u256 uValue = g_skaleHost->getBlockRandom( blockNumberToCall, !_ctx.isReadOnly );
         bytes response = toBigEndian( uValue );
         return { true, response };
     } catch ( std::exception& ex ) {

@@ -63,7 +63,7 @@ public:
     }
     void createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
 #ifdef BITE
-  shared_ptr< DecryptedTransactionFieldsMap > _decryptedTransactions,
+        shared_ptr< DecryptedTransactionFieldsMap > _decryptedTransactions,
 #endif
         uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice = 0, u256 _stateRoot = 0,
 #ifdef FAIR
@@ -71,13 +71,12 @@ public:
 #else
         uint64_t _winningNodeIndex = -1
 #endif
-        ) {
+    ) {
         m_extFace.createBlock( _approvedTransactions,
 #ifdef BITE
-                              _decryptedTransactions,
+            _decryptedTransactions,
 #endif
-                               _timeStamp, 0, _blockID, _gasPrice,
-            _stateRoot, _winningNodeIndex );
+            _timeStamp, 0, _blockID, _gasPrice, _stateRoot, _winningNodeIndex );
         setPriceForBlockId( _blockID, _gasPrice );
     }
 
@@ -152,13 +151,19 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         chainParams->extraData = h256::random().asBytes();
 #ifdef FAIR
         chainParams->sChain.nodeGroups = {
-            { { GroupNode{ u256( 0 ), u256( 8 ),
-                           "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea"
-                           "10"
-                           "5a3d21845e5660bc3d4e7c82e7af1daa3baad393b1521467",
-                           Address( "0x08151B8F80bfa7dEa760e461412AF24348224edf" )
-              } },
-              uint64_t( -1 ), { "0", "0", "1", "0" } }
+            { { GroupNode {
+                u256( 0 ),
+                u256( 8 ),
+                "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea"
+                "10"
+                "5a3d21845e5660bc3d4e7c82e7af1daa3baad393b1521467",
+                Address( "0x08151B8F80bfa7dEa760e461412AF24348224edf" )
+            } },
+                uint64_t( -1 ),
+                { "0",
+                    "0",
+                    "1",
+                    "0" } }
         };
 #else
         chainParams->sChain.nodeGroups = { { {}, uint64_t( -1 ), { "0", "0", "1", "0" } } };
@@ -322,9 +327,9 @@ BOOST_DATA_TEST_CASE(
     BOOST_REQUIRE_NO_THROW(
         stub->createBlock( ConsensusExtFace::transactions_vector{ tx.toBytes() },
 #ifdef BITE
-           make_shared< DecryptedTransactionFieldsMap >(),
+            make_shared< DecryptedTransactionFieldsMap >(),
 #endif
-                           utcTime(), 1U) );
+            utcTime(), 1U ) );
 
     REQUIRE_BLOCK_INCREASE( 1 );
     REQUIRE_BLOCK_SIZE( 1, 1 );
@@ -368,10 +373,9 @@ BOOST_DATA_TEST_CASE(
     BOOST_REQUIRE_NO_THROW( stub->createBlock(
         ConsensusExtFace::transactions_vector{ small_tx1, small_tx2, bad_tx1, bad_tx2 },
 #ifdef BITE
-    make_shared< DecryptedTransactionFieldsMap >(),
+        make_shared< DecryptedTransactionFieldsMap >(),
 #endif
-                                utcTime(),
-        1U ) );
+        utcTime(), 1U ) );
 
     REQUIRE_BLOCK_INCREASE( 1 );
 
@@ -465,9 +469,9 @@ BOOST_DATA_TEST_CASE(
     BOOST_REQUIRE_NO_THROW(
         stub->createBlock( ConsensusExtFace::transactions_vector{ tx.toBytes() },
 #ifdef BITE
-           make_shared< DecryptedTransactionFieldsMap >(),
+            make_shared< DecryptedTransactionFieldsMap >(),
 #endif
-                           utcTime(), 1U ) );
+            utcTime(), 1U ) );
 
     REQUIRE_BLOCK_INCREASE( 1 );
 
@@ -513,16 +517,16 @@ BOOST_DATA_TEST_CASE(
 
     // spoil txn siganture to make it invalid
     RLPStream txnRlp( 9 );
-    txnRlp << tx.nonce();            // nonce
-    txnRlp << tx.gasPrice();         // gasPrice
-    txnRlp << tx.gas();              // gasLimit
-    txnRlp << tx.to();               // to
-    txnRlp << tx.value();            // value
-    txnRlp << tx.data();             // data
+    txnRlp << tx.nonce();     // nonce
+    txnRlp << tx.gasPrice();  // gasPrice
+    txnRlp << tx.gas();       // gasLimit
+    txnRlp << tx.to();        // to
+    txnRlp << tx.value();     // value
+    txnRlp << tx.data();      // data
 
-    txnRlp << 30;                    // v
-    txnRlp << tx.signature().r;      // r
-    txnRlp << tx.signature().s;      // s
+    txnRlp << 30;                // v
+    txnRlp << tx.signature().r;  // r
+    txnRlp << tx.signature().s;  // s
 
     auto rlpBytes = txnRlp.out();
 
@@ -530,12 +534,11 @@ BOOST_DATA_TEST_CASE(
     CHECK_BALANCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
-    BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{ rlpBytes },
+    BOOST_REQUIRE_NO_THROW( stub->createBlock( ConsensusExtFace::transactions_vector{ rlpBytes },
 #ifdef BITE
-       make_shared< DecryptedTransactionFieldsMap >(),
+        make_shared< DecryptedTransactionFieldsMap >(),
 #endif
-                           utcTime(), 1U ) );
+        utcTime(), 1U ) );
 
     REQUIRE_BLOCK_INCREASE( 1 );
 
@@ -590,9 +593,9 @@ BOOST_DATA_TEST_CASE(
     BOOST_REQUIRE_NO_THROW(
         stub->createBlock( ConsensusExtFace::transactions_vector{ tx.toBytes() },
 #ifdef BITE
-           make_shared< DecryptedTransactionFieldsMap >(),
+            make_shared< DecryptedTransactionFieldsMap >(),
 #endif
-                           utcTime(), 1U ) );
+            utcTime(), 1U ) );
 
     REQUIRE_BLOCK_INCREASE( 1 );
 
@@ -662,9 +665,9 @@ BOOST_DATA_TEST_CASE(
     BOOST_REQUIRE_NO_THROW(
         stub->createBlock( ConsensusExtFace::transactions_vector{ tx.toBytes() },
 #ifdef BITE
-           make_shared< DecryptedTransactionFieldsMap >(),
+            make_shared< DecryptedTransactionFieldsMap >(),
 #endif
-                           utcTime(), 1U ) );
+            utcTime(), 1U ) );
 
     REQUIRE_BLOCK_INCREASE( 1 );
     REQUIRE_BLOCK_SIZE( 1, 1 );
@@ -711,9 +714,9 @@ BOOST_DATA_TEST_CASE(
     BOOST_REQUIRE_NO_THROW(
         stub->createBlock( ConsensusExtFace::transactions_vector{ tx.toBytes() },
 #ifdef BITE
-           make_shared< DecryptedTransactionFieldsMap >(),
+            make_shared< DecryptedTransactionFieldsMap >(),
 #endif
-                           utcTime(), 1U ) );
+            utcTime(), 1U ) );
 
     REQUIRE_BLOCK_INCREASE( 1 );
 
@@ -758,12 +761,12 @@ BOOST_DATA_TEST_CASE(
     Transaction tx1( ts, ar.second );
 
     // create 1 txns in 1 block
-    BOOST_REQUIRE_NO_THROW( stub->createBlock(
-        ConsensusExtFace::transactions_vector{ tx1.toBytes() },
+    BOOST_REQUIRE_NO_THROW(
+        stub->createBlock( ConsensusExtFace::transactions_vector{ tx1.toBytes() },
 #ifdef BITE
             make_shared< DecryptedTransactionFieldsMap >(),
 #endif
-                                utcTime(), 1U ) );
+            utcTime(), 1U ) );
 
     // now our test txn
     json["value"] = jsToDecimal( toJS( 9000 * dev::eth::szabo ) );
@@ -778,12 +781,12 @@ BOOST_DATA_TEST_CASE(
     CHECK_BALANCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
-    BOOST_REQUIRE_NO_THROW( stub->createBlock(
-        ConsensusExtFace::transactions_vector{ tx2.toBytes() },
+    BOOST_REQUIRE_NO_THROW(
+        stub->createBlock( ConsensusExtFace::transactions_vector{ tx2.toBytes() },
 #ifdef BITE
             make_shared< DecryptedTransactionFieldsMap >(),
 #endif
-                                utcTime(), 2U ) );
+            utcTime(), 2U ) );
 
     REQUIRE_BLOCK_INCREASE( 1 );
 
@@ -842,9 +845,9 @@ BOOST_DATA_TEST_CASE(
     BOOST_REQUIRE_NO_THROW(
         stub->createBlock( ConsensusExtFace::transactions_vector{ tx.toBytes() },
 #ifdef BITE
-           make_shared< DecryptedTransactionFieldsMap >(),
+            make_shared< DecryptedTransactionFieldsMap >(),
 #endif
-                           utcTime(), 1U ) );
+            utcTime(), 1U ) );
 
     REQUIRE_BLOCK_INCREASE( 1 );
 
@@ -874,9 +877,9 @@ BOOST_DATA_TEST_CASE(
 
     stub->createBlock( ConsensusExtFace::transactions_vector{ tx.toBytes() },
 #ifdef BITE
-           make_shared< DecryptedTransactionFieldsMap >(),
+        make_shared< DecryptedTransactionFieldsMap >(),
 #endif
-                       utcTime(), 2U );
+        utcTime(), 2U );
 
     REQUIRE_BLOCK_SIZE( 2, 1 );
     REQUIRE_BLOCK_TRANSACTION( 2, 0, txHash );
@@ -932,12 +935,12 @@ BOOST_DATA_TEST_CASE(
     CHECK_BALANCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
-    BOOST_REQUIRE_NO_THROW( stub->createBlock(
-        ConsensusExtFace::transactions_vector{ tx1.toBytes(), tx2.toBytes() },
+    BOOST_REQUIRE_NO_THROW(
+        stub->createBlock( ConsensusExtFace::transactions_vector{ tx1.toBytes(), tx2.toBytes() },
 #ifdef BITE
             make_shared< DecryptedTransactionFieldsMap >(),
 #endif
-                                utcTime(), 1U ) );
+            utcTime(), 1U ) );
     BOOST_REQUIRE_EQUAL( client->number(), 1 );
 
     REQUIRE_BLOCK_INCREASE( 1 );
@@ -973,7 +976,7 @@ BOOST_AUTO_TEST_CASE( gasLimitInBlockProposal ) {
     wr_state.addBalance(
         fixture.account2.address(), client->chainParams().getGasLimit() * 1000 + dev::eth::ether );
     wr_state.commit();
-    wr_state.getOriginalDb()->createBlockSnap(2);
+    wr_state.getOriginalDb()->createBlockSnap( 2 );
 
     // 1 txn with max gas
     Json::Value json;
@@ -1057,12 +1060,11 @@ BOOST_AUTO_TEST_CASE( transactionDropReceive
     CHECK_BLOCK_BEGIN;
     CHECK_NONCE_BEGIN( senderAddress );
 
-    BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{ tx3 },
+    BOOST_REQUIRE_NO_THROW( stub->createBlock( ConsensusExtFace::transactions_vector{ tx3 },
 #ifdef BITE
-           make_shared< DecryptedTransactionFieldsMap >(),
+        make_shared< DecryptedTransactionFieldsMap >(),
 #endif
-                           utcTime(), 1U ) );
+        utcTime(), 1U ) );
     stub->setPriceForBlockId( 1, 1000 );
 
     REQUIRE_BLOCK_INCREASE( 1 );
@@ -1122,12 +1124,12 @@ BOOST_AUTO_TEST_CASE(
     CHECK_BALANCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
-    BOOST_REQUIRE_NO_THROW( stub->createBlock(
-        ConsensusExtFace::transactions_vector{ tx2.toBytes() },
+    BOOST_REQUIRE_NO_THROW(
+        stub->createBlock( ConsensusExtFace::transactions_vector{ tx2.toBytes() },
 #ifdef BITE
             make_shared< DecryptedTransactionFieldsMap >(),
 #endif
-                                utcTime(), 1U ) );
+            utcTime(), 1U ) );
     stub->setPriceForBlockId( 1, 1000 );
 
     REQUIRE_BLOCK_INCREASE( 1 );
@@ -1190,12 +1192,12 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPrice
     CHECK_BALANCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
-    BOOST_REQUIRE_NO_THROW( stub->createBlock(
-        ConsensusExtFace::transactions_vector{ tx2.toBytes() },
+    BOOST_REQUIRE_NO_THROW(
+        stub->createBlock( ConsensusExtFace::transactions_vector{ tx2.toBytes() },
 #ifdef BITE
             make_shared< DecryptedTransactionFieldsMap >(),
 #endif
-                                utcTime(), 1U, 1000 ) );
+            utcTime(), 1U, 1000 ) );
     stub->setPriceForBlockId( 1, 1100 );
 
     REQUIRE_BLOCK_INCREASE( 1 );
@@ -1267,12 +1269,12 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive
     CHECK_BALANCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
-    BOOST_REQUIRE_NO_THROW( stub->createBlock(
-        ConsensusExtFace::transactions_vector{ tx2.toBytes() },
+    BOOST_REQUIRE_NO_THROW(
+        stub->createBlock( ConsensusExtFace::transactions_vector{ tx2.toBytes() },
 #ifdef BITE
             make_shared< DecryptedTransactionFieldsMap >(),
 #endif
-                                utcTime(), 1U, 1000 ) );
+            utcTime(), 1U, 1000 ) );
     stub->setPriceForBlockId( 1, 1100 );
 
     REQUIRE_BLOCK_INCREASE( 1 );
@@ -1321,9 +1323,9 @@ BOOST_AUTO_TEST_CASE( transactionRace
     BOOST_REQUIRE_NO_THROW(
         stub->createBlock( ConsensusExtFace::transactions_vector{ tx.toBytes() },
 #ifdef BITE
-           make_shared< DecryptedTransactionFieldsMap >(),
+            make_shared< DecryptedTransactionFieldsMap >(),
 #endif
-                           utcTime(), 1U ) );
+            utcTime(), 1U ) );
     stub->setPriceForBlockId( 1, 1000 );
 
     REQUIRE_BLOCK_INCREASE( 1 );
@@ -1369,12 +1371,12 @@ BOOST_AUTO_TEST_CASE( partialCatchUp
     Transaction tx1( ts, ar.second );
 
     // create 1 txns in 1 block
-    BOOST_REQUIRE_NO_THROW( stub->createBlock(
-        ConsensusExtFace::transactions_vector{ tx1.toBytes() },
+    BOOST_REQUIRE_NO_THROW(
+        stub->createBlock( ConsensusExtFace::transactions_vector{ tx1.toBytes() },
 #ifdef BITE
             make_shared< DecryptedTransactionFieldsMap >(),
 #endif
-                                utcTime(), 1U ) );
+            utcTime(), 1U ) );
 
     // now 2 txns
     json["value"] = jsToDecimal( toJS( 9000 * dev::eth::szabo ) );
@@ -1391,12 +1393,12 @@ BOOST_AUTO_TEST_CASE( partialCatchUp
     CHECK_BALANCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
-    BOOST_REQUIRE_NO_THROW( stub->createBlock(
-        ConsensusExtFace::transactions_vector{ tx1.toBytes(), tx2.toBytes() },
+    BOOST_REQUIRE_NO_THROW(
+        stub->createBlock( ConsensusExtFace::transactions_vector{ tx1.toBytes(), tx2.toBytes() },
 #ifdef BITE
             make_shared< DecryptedTransactionFieldsMap >(),
 #endif
-                                utcTime(), 2U ) );
+            utcTime(), 2U ) );
 
     REQUIRE_BLOCK_INCREASE( 1 );
 #ifndef FAIR
@@ -1417,10 +1419,10 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getBlockRandom" );
     auto res = exec( bytesConstRef(), { 1,
 #ifdef BITE
-                                                              0,
+                                          0,
 #endif
-                                                              true } );
-    u256 blockRandom = skaleHost->getBlockRandom( 0 );
+                                          true } );
+    u256 blockRandom = skaleHost->getBlockRandom( 0, false );
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( res.second == toBigEndian( static_cast< u256 >( blockRandom ) ) );
 }
@@ -1433,9 +1435,9 @@ BOOST_AUTO_TEST_CASE( getCurrentBLSPublicKey ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getIMABLSPublicKey" );
     auto res = exec( bytesConstRef(), { 1,
 #ifdef BITE
-                                                              0,
+                                          0,
 #endif
-                                                              true } );
+                                          true } );
     std::array< std::string, 4 > imaBLSPublicKey = skaleHost->getCurrentBLSPublicKey();
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( res.second == toBigEndian( dev::u256( imaBLSPublicKey[0] ) ) +
@@ -1476,7 +1478,8 @@ BOOST_AUTO_TEST_CASE( biteTransactions ) {
     auto publicKey = libBLS::TEPublicKey::random();
     auto ciphertext = libBLS::ThresholdEncryption::encrypt( messageToEncrypt, publicKey );
 
-    json["data"] = std::string( "0x" ) + libBLS::ThresholdUtils::bytesToHexString( ciphertext.toBytes() );
+    json["data"] =
+        std::string( "0x" ) + libBLS::ThresholdUtils::bytesToHexString( ciphertext.toBytes() );
 
     ts = toTransactionSkeleton( json );
     ts = client->populateTransactionWithDefaults( ts );
@@ -1485,23 +1488,22 @@ BOOST_AUTO_TEST_CASE( biteTransactions ) {
 
     h256 encryptedTxHash = txEncrypted.sha3();
 
-    shared_ptr< vector< uint8_t > > originalDataBytesPtr = std::make_shared< vector< uint8_t > >( messageToEncrypt );
+    shared_ptr< vector< uint8_t > > originalDataBytesPtr =
+        std::make_shared< vector< uint8_t > >( messageToEncrypt );
 
-    DecryptedTransactionFields txFields = {
-        originalDataBytesPtr,
-        std::make_shared<dev::bytes>(receiver.address().asBytes())
-    };
+    DecryptedTransactionFields txFields = { originalDataBytesPtr,
+        std::make_shared< dev::bytes >( receiver.address().asBytes() ) };
 
     DecryptedTransactionFieldsMap decryptedTxnDataMap{ { 0, txFields } };
 
     // simulate new block
-    BOOST_REQUIRE_NO_THROW( stub->createBlock(
-        ConsensusExtFace::transactions_vector{ txEncrypted.toBytes() },
-        make_shared< DecryptedTransactionFieldsMap >( decryptedTxnDataMap ),
-        utcTime(), 1U ) );
+    BOOST_REQUIRE_NO_THROW(
+        stub->createBlock( ConsensusExtFace::transactions_vector{ txEncrypted.toBytes() },
+            make_shared< DecryptedTransactionFieldsMap >( decryptedTxnDataMap ), utcTime(), 1U ) );
 
     BOOST_REQUIRE( client->transaction( encryptedTxHash ).toBytes() == txEncrypted.toBytes() );
-    BOOST_REQUIRE( client->decryptedTransactionData( encryptedTxHash ).data() == txOriginal.data() );
+    BOOST_REQUIRE(
+        client->decryptedTransactionData( encryptedTxHash ).data() == txOriginal.data() );
     BOOST_REQUIRE( client->decryptedTransactionData( encryptedTxHash ).to() == txOriginal.to() );
 }
 #endif
@@ -1550,12 +1552,12 @@ BOOST_FIXTURE_TEST_CASE(
     CHECK_BLOCK_BEGIN;
 
     // simulate it coming from another node
-    BOOST_REQUIRE_NO_THROW( stub->createBlock(
-        ConsensusExtFace::transactions_vector{ tx1.toBytes() },
+    BOOST_REQUIRE_NO_THROW(
+        stub->createBlock( ConsensusExtFace::transactions_vector{ tx1.toBytes() },
 #ifdef BITE
             make_shared< DecryptedTransactionFieldsMap >(),
 #endif
-                                utcTime(), 1U ) );
+            utcTime(), 1U ) );
 
 #ifndef FAIR
     REQUIRE_BLOCK_SIZE( 1, 1 );
@@ -1581,12 +1583,11 @@ BOOST_FIXTURE_TEST_CASE(
     proposal = stub->pendingTransactions( 100 );
     BOOST_REQUIRE_EQUAL( proposal.size(), 2 );
 
-    BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{ proposal[0] },
+    BOOST_REQUIRE_NO_THROW( stub->createBlock( ConsensusExtFace::transactions_vector{ proposal[0] },
 #ifdef BITE
-          make_shared< DecryptedTransactionFieldsMap >(),
+        make_shared< DecryptedTransactionFieldsMap >(),
 #endif
-                           utcTime(), 2U ) );
+        utcTime(), 2U ) );
 
     REQUIRE_BLOCK_INCREASE( 2 );
     REQUIRE_BLOCK_SIZE( 2, 1 );
@@ -1603,12 +1604,11 @@ BOOST_FIXTURE_TEST_CASE(
     BOOST_REQUIRE_EQUAL( proposal.size(), 1 );
 
     // submit it for sure
-    BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{ proposal[0] },
+    BOOST_REQUIRE_NO_THROW( stub->createBlock( ConsensusExtFace::transactions_vector{ proposal[0] },
 #ifdef BITE
-           make_shared< DecryptedTransactionFieldsMap >(),
+        make_shared< DecryptedTransactionFieldsMap >(),
 #endif
-                           utcTime(), 3U ) );
+        utcTime(), 3U ) );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

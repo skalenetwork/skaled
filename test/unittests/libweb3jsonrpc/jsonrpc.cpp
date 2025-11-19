@@ -4493,7 +4493,9 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
     Json::Value ret;
     Json::Reader().parse( _config, ret );
 
-    ret["skaleConfig"]["sChain"]["CurrentBlockRandomPatchTimestamp"] = 1;
+    time_t currentBlockRandomPatchActivationTimestamp = time( nullptr ) + 10;
+    ret["skaleConfig"]["sChain"]["currentBlockRandomPatchTimestamp"] =
+        currentBlockRandomPatchActivationTimestamp;
 
     Json::FastWriter fastWriter;
     std::string config = fastWriter.write( ret );
@@ -4502,8 +4504,32 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
 
     dev::eth::simulateMining( *( fixture.client ), 20 );
     string senderAddress = toJS( fixture.coinbase.address() );
-
     dev::eth::g_skaleHost = fixture.client->skaleHost();
+
+    // create block and save block random for it
+    Json::Value txRefill;
+    txRefill["to"] = "0xc868AF52a6549c773082A334E5AE232e0Ea3B513";
+    txRefill["from"] = toJS( senderAddress );
+    txRefill["gas"] = "100000";
+    txRefill["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txRefill["value"] = 1;
+    fixture.rpcClient->eth_sendTransaction( txRefill );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    PrecompiledExecutor blockRandomExecutor = PrecompiledRegistrar::executor( "getBlockRandom" );
+    auto blockNumberEarly = fixture.client->number();
+    dev::eth::PrecompiledCallContext ctx( blockNumberEarly,
+#ifdef BITE
+                                          0,
+#endif
+                                          true );
+    auto blockRandomEarly = blockRandomExecutor( dev::bytesConstRef(), ctx );
+
+    // wait till patch is activated
+    sleep( 10 );
+    fixture.rpcClient->eth_sendTransaction( txRefill );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
 //    pragma solidity ^0.8.13;
 
 //    contract GetBlockRandomPrecompiled {
@@ -4530,7 +4556,6 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
     create["from"] = toJS( senderAddress );
     create["code"] = bytecode;
     create["gas"] = "900000";
-    create["nonce"] = 0;
     string txHash = fixture.rpcClient->eth_sendTransaction( create );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
     auto txReceipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
@@ -4541,7 +4566,6 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
     txGenerate["to"] = contractAddress;
     txGenerate["data"] = "0xdc031dfe";
     txGenerate["from"] = toJS( senderAddress );
-    txGenerate["nonce"] = 1;
     fixture.rpcClient->eth_sendTransaction( txGenerate );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
@@ -4552,31 +4576,33 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
     callGetLast["from"] = toJS( senderAddress );
     dev::bytes blockRandomFromContract = dev::fromHex( fixture.rpcClient->eth_call( callGetLast, "latest" ) );
 
-    PrecompiledExecutor blockRandomExecutor = PrecompiledRegistrar::executor( "getBlockRandom" );
-    dev::eth::PrecompiledCallContext ctx( fixture.client->number(),
+    ctx = PrecompiledCallContext( fixture.client->number(),
 #ifdef BITE
-                                          0,
+                                0,
 #endif
-                                          true );
+                                true );
     auto executionResult = blockRandomExecutor( dev::bytesConstRef(), ctx );
 
     BOOST_REQUIRE( executionResult.first );
-    std::cout << dev::toHex( executionResult.second ) << ' ' << dev::toHex( blockRandomFromContract ) << '\n';
     BOOST_REQUIRE( executionResult.second == blockRandomFromContract );
 
 #ifdef HISTORIC_STATE
     // produce more blocks, execute historic call and compare results
-    Json::Value txRefill;
-    txRefill["to"] = "0xc868AF52a6549c773082A334E5AE232e0Ea3B513";
-    txRefill["from"] = toJS( senderAddress );
-    txRefill["gas"] = "100000";
-    txRefill["gasPrice"] = fixture.rpcClient->eth_gasPrice();
-    txRefill["value"] = 1;
     fixture.rpcClient->eth_sendTransaction( txRefill );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
     dev::bytes blockRandomFromHistoricCall = dev::fromHex( fixture.rpcClient->eth_call( callGetLast, toJS( fixture.client->number() - 1 ) ) );
     BOOST_REQUIRE( blockRandomFromHistoricCall == blockRandomFromContract );
+
+    // ask for blockRandom for early block
+    ctx = PrecompiledCallContext( blockNumberEarly,
+#ifdef BITE
+                                0,
+#endif
+                                true );
+    auto blockRandomEarlyHistoric = blockRandomExecutor(dev::bytesConstRef(), ctx );
+    BOOST_REQUIRE( blockRandomEarlyHistoric.first );
+    BOOST_REQUIRE( blockRandomEarlyHistoric.second == blockRandomEarly.second );
 #endif
 }
 
