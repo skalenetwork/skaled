@@ -40,6 +40,7 @@
 #include <clocale>
 #include <cstdlib>
 #include <iostream>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -54,7 +55,7 @@ class FailureSummaryObserver : public test_observer {
 public:
     enum class Status { Failed, Errored, Aborted };
 
-    void setRunLabel( std::string _label ) { m_runLabel = std::move( _label ); }
+    void setRunLabel( std::string _label ) { mRunLabel = std::move( _label ); }
 
     void test_unit_finish( test_unit const& unit, unsigned long ) override {
         if ( unit.p_type != boost::unit_test::TUT_CASE )
@@ -68,7 +69,7 @@ public:
         entry.name = unit.full_name();
         entry.status = classify( results );
         entry.details = buildDetails( results );
-        m_entries.push_back( std::move( entry ) );
+        mEntries.push_back( std::move( entry ) );
     }
 
     void test_finish() override { storeAndPrintCurrentRun(); }
@@ -76,12 +77,12 @@ public:
     int priority() override { return 6; }
 
     static void printAggregatedReport() {
-        if ( s_runSummaries.empty() )
+        if ( sRunSummaries.empty() )
             return;
 
-        std::cout << "\n=== Aggregated failing test summary (" << s_runSummaries.size()
+        std::cout << "\n=== Aggregated failing test summary (" << sRunSummaries.size()
                   << " run(s)) ===" << std::endl;
-        for ( auto const& run : s_runSummaries ) {
+        for ( auto const& run : sRunSummaries ) {
             std::cout << "Run: " << run.label << std::endl;
             if ( run.entries.empty() ) {
                 std::cout << "  No failed/errored/aborted test cases." << std::endl;
@@ -154,12 +155,10 @@ private:
     };
 
     void storeAndPrintCurrentRun() {
-        RunSummary summary;
-        summary.label = m_runLabel.empty() ? std::string( "default-run" ) : m_runLabel;
-        summary.entries = m_entries;
+        RunSummary summary{mRunLabel.empty() ? std::string( "default-run" ) : mRunLabel, mEntries};
         printSummary( summary );
-        s_runSummaries.push_back( std::move( summary ) );
-        m_entries.clear();
+        sRunSummaries.push_back( std::move( summary ) );
+        mEntries.clear();
     }
 
     static void printSummary( RunSummary const& summary ) {
@@ -177,13 +176,13 @@ private:
             std::cout << std::endl;
         }
     }
-    std::vector< Entry > m_entries;
-    std::string m_runLabel;
-    static std::vector< RunSummary > s_runSummaries;
+    std::vector< Entry > mEntries;
+    std::string mRunLabel;
+    static std::vector< RunSummary > sRunSummaries;
 };
 
-FailureSummaryObserver g_failureSummaryObserver;
-std::vector< FailureSummaryObserver::RunSummary > FailureSummaryObserver::s_runSummaries;
+std::unique_ptr< FailureSummaryObserver > gFailureSummaryObserver = std::make_unique< FailureSummaryObserver >();
+std::vector< FailureSummaryObserver::RunSummary > FailureSummaryObserver::sRunSummaries;
 
 }  // namespace
 
@@ -298,8 +297,8 @@ int main( int argc, const char* argv[] ) {
     std::string runLabel = opt.rCurrentTestSuite.empty() ? std::string( "full-workflow" ) : opt.rCurrentTestSuite;
     if ( opt.singleTestFile.is_initialized() )
         runLabel += ":" + opt.singleTestFile.get();
-    g_failureSummaryObserver.setRunLabel( runLabel );
-    framework::register_observer( g_failureSummaryObserver );
+    gFailureSummaryObserver->setRunLabel( runLabel );
+    framework::register_observer( *gFailureSummaryObserver );
     if ( opt.createRandomTest || opt.singleTestFile.is_initialized() ) {
         bool testSuiteFound = false;
         for ( int i = 0; i < argc; i++ ) {

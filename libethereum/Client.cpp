@@ -170,6 +170,14 @@ void Client::stopWorking() {
     //    if ( !Worker::isWorking() )
     //        return;
 
+    // Make sure safe consensus is properly updated before exit
+    const auto deadline = chrono::steady_clock::now() + chrono::seconds( 10 );
+    while ( m_skaleHost->ignoreNewBlocksEnabled() && chrono::steady_clock::now() < deadline  ) {
+        usleep(10);
+    }
+    if (m_skaleHost->isConsesusUpdateHappened() ) {
+        m_skaleHost->handleConsensusUpdate();
+    }
     Worker::stopWorking();
 
     if ( m_skaleHost )
