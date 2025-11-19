@@ -173,10 +173,10 @@ void Client::stopWorking() {
     // Make sure safe consensus is properly updated before exit (epoch id in particular).
     // Only related to FAIR
     const auto deadline = chrono::steady_clock::now() + chrono::seconds( 10 );
-    while ( m_skaleHost->ignoreNewBlocksEnabled() && chrono::steady_clock::now() < deadline  ) {
-        usleep(10);
+    while ( m_skaleHost->ignoreNewBlocksEnabled() && chrono::steady_clock::now() < deadline ) {
+        usleep( 10 );
     }
-    if (m_skaleHost->isConsesusUpdateHappened() ) {
+    if ( m_skaleHost->isConsesusUpdateHappened() ) {
         m_skaleHost->handleConsensusUpdate();
     }
 #endif
