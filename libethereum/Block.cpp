@@ -553,7 +553,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
             }
 
             ExecutionResult res =
-                execute( _bc.lastBlockHashes(), tr, Permanence::Committed, OnOpFunc(), i );
+                execute( _bc.lastBlockHashes(), tr, Permanence::Uncommitted, OnOpFunc(), i );
 
             if ( !m_receipts.empty() &&
                  !ClearPartialReceiptsPatch::isEnabledWhen( m_previousBlock.timestamp() ) ) {
@@ -583,10 +583,6 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
         auto reward = _bc.sealEngine()->blockReward( blockTimestamp, m_currentBlock.number() );
         rewardAllForNonDefaultBlock( _bc.chainParams().getStakingContractAddress(), reward );
         m_state.safeSetLastRewardedBlockNumber( m_currentBlock.number() );
-        bool removeEmptyAccounts =
-            m_currentBlock.number() >= _bc.chainParams().getEIP158ForkBlock();
-        m_state.commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
-                                              dev::eth::CommitBehaviour::KeepEmptyAccounts );
     }
 #endif
 
@@ -635,6 +631,10 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
             m_state.safeCommitLegacyPartialTransactionReceipts( receiptsOfCommitted );
         }
     }
+    bool removeEmptyAccounts =
+        m_currentBlock.number() >= _bc.chainParams().getEIP158ForkBlock();
+    m_state.commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
+                                          dev::eth::CommitBehaviour::KeepEmptyAccounts );
 
     return make_tuple( receipts, receipts.size() - countBad );
 }
