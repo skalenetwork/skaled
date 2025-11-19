@@ -243,8 +243,8 @@ eth::OnOpFunc FakeExtVM::simpleTrace() const {
         for ( auto const& i : std::get< 2 >( ext.addresses.find( ext.myAddress )->second ) )
             o << std::showbase << std::hex << i.first << ": " << i.second << "\n";
 
-        LOG( ext.m_loggerTrace ) << o.str();
-        LOG( ext.m_loggerTrace ) << " | " << std::dec << ext.depth << " | " << ext.myAddress << " | #"
+        BOOST_LOG( ext.m_loggerTrace ) << o.str();
+        BOOST_LOG( ext.m_loggerTrace ) << " | " << std::dec << ext.depth << " | " << ext.myAddress << " | #"
                             << steps << " | " << std::hex << std::setw( 4 ) << std::setfill( '0' )
                             << pc << " : " << instructionInfo( inst ).name << " | " << std::dec
                             << gas << " | -" << std::dec << gasCost << " | " << newMemSize << "x32"

@@ -427,6 +427,10 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         bool _isSyncNode = false, int _emptyBlockIntervalMs = -1,
         const std::map< std::string, std::string >& params =
             std::map< std::string, std::string >() ) {
+
+        // this fixture is used in al tests to load config. So also init bls library as well
+        libBLS::init();
+
         if ( _config != "" ) {
             if ( !_generation2 ) {
                 Json::Value ret;
@@ -696,8 +700,6 @@ string fromAscii( string _s ) {
 /// Helper functions
 
 dev::bytes formEncryptedMessageMockup( const dev::bytes& message, const dev::Address& toAddress ) {
-    libBLS::TEBase::initializeIfNecessary();
-
     RLPStream biteDataRlp( 2 );
 
     biteDataRlp << message;
@@ -2202,7 +2204,7 @@ BOOST_AUTO_TEST_CASE( clearPartialReceipts ) {
         dev::eth::mineTransaction( *( fixture.client ), 1 );
         auto receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
         dev::eth::BlockNumber blockNumber = jsToInt( receipt["blockNumber"].asString() );
-        State state( fixture.client->state() );
+        skale::State state( fixture.client->state() );
         BOOST_REQUIRE_EQUAL( blockNumber, block );
         BOOST_REQUIRE_EQUAL( state.safePartialTransactionReceipts( blockNumber ).size(), 0 );
         int64_t expectedSize = block == expectedNoLegacyReceiptsBlock ? 0 : 1;
@@ -5211,15 +5213,10 @@ BOOST_AUTO_TEST_CASE( getCommonPublicKey ) {
     uint64_t epochId = biteInfo[0]["epochId"].asUInt64();
 
     auto commonPublicKeyFromConfig = fixture.client->chainParams().getCommonBlsPublicKey();
-    libff::alt_bn128_G2 commonPublicKey;
-    commonPublicKey.X.c0 = libff::alt_bn128_Fq( commonPublicKeyFromConfig[0].c_str() );
-    commonPublicKey.X.c1 = libff::alt_bn128_Fq( commonPublicKeyFromConfig[1].c_str() );
-    commonPublicKey.Y.c0 = libff::alt_bn128_Fq( commonPublicKeyFromConfig[2].c_str() );
-    commonPublicKey.Y.c1 = libff::alt_bn128_Fq( commonPublicKeyFromConfig[3].c_str() );
-    commonPublicKey.Z = libff::alt_bn128_Fq2::one();
+    libBLS::algebra::G2Point commonPublicKey = libBLS::algebra::G2Point::fromString( commonPublicKeyFromConfig, libBLS::Base::DEC );
 
     BOOST_REQUIRE_EQUAL( blsPublicKey.size(), 256 );
-    BOOST_REQUIRE_EQUAL( libBLS::TEPublicKey( blsPublicKey ).getPublicKeyRaw(), commonPublicKey );
+    BOOST_REQUIRE_EQUAL( libBLS::TEPublicKey( blsPublicKey, libBLS::Base::HEXA ).getPublicKeyRaw(), commonPublicKey );
     BOOST_REQUIRE_EQUAL( epochId, fixture.client->getCurrentEpochId() );
 }
 
@@ -5371,7 +5368,7 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     u256 epochId = biteInfo[0]["epochId"].asUInt64();
 
     auto encryptedMessage =
-        libBLS::ThresholdEncryption::encrypt( messageBytes, libBLS::TEPublicKey( blsPublicKey ) );
+        libBLS::ThresholdEncryption::encrypt( messageBytes, libBLS::TEPublicKey( blsPublicKey, libBLS::Base::HEXA ) );
     auto encryptedBytes = encryptedMessage.toBytes();
 
     auto dataField = formBITEPayloadRlp( epochId, encryptedBytes );
@@ -5449,8 +5446,8 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
         jsonrpc::JsonRpcException );
 
     /// Spoiling key part of ciphertext
-    auto randomEncryptedKeyObj = libBLS::CipheredKey( libff::alt_bn128_G2::random_element(),
-        encryptedMessage.keys[0].V, libff::alt_bn128_G1::random_element() );
+    auto randomEncryptedKeyObj = libBLS::CipheredKey::random();
+    randomEncryptedKeyObj.V = encryptedMessage.keys[0].V;
     auto randomEncryptedKeyByteArray = randomEncryptedKeyObj.toBytes();
     auto spoiledMessageBytes = encryptedBytes;
     // overwrite key part
@@ -5475,8 +5472,8 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     spoiledBITEDataRlp.clear();
 
     /// Encrypted key is not well formed -> should throw exception
-    randomEncryptedKeyObj.U.X.c0 = libff::alt_bn128_Fq::random_element();
-    randomEncryptedKeyObj.W.Y = libff::alt_bn128_Fq::random_element();
+    randomEncryptedKeyObj.U.setXC0( libBLS::algebra::FqElement::random() );
+    randomEncryptedKeyObj.W.setY( libBLS::algebra::FqElement::random() );
     randomEncryptedKeyByteArray = randomEncryptedKeyObj.toBytes();
     std::copy( randomEncryptedKeyByteArray.begin(), randomEncryptedKeyByteArray.end(),
         spoiledMessageBytes.begin() );
@@ -5497,10 +5494,10 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
         jsonrpc::JsonRpcException );
 
     // now send BITE txn with multiple epochIds / encryptedAESKeys
-    libBLS::TEPublicKey publicKey2( libff::alt_bn128_G2::random_element() );
+    libBLS::TEPublicKey publicKey2 = libBLS::TEPublicKey::random();
     u256 epochId2 = epochId + 5;
 
-    encryptedMessage = libBLS::ThresholdEncryption::encrypt( messageBytes, { libBLS::TEPublicKey( blsPublicKey ), publicKey2 } );
+    encryptedMessage = libBLS::ThresholdEncryption::encrypt( messageBytes, { libBLS::TEPublicKey( blsPublicKey, libBLS::Base::HEXA ), publicKey2 } );
     auto encryptedBITEDataBytes = encryptedMessage.toBytes();
 
     // Create payload with 2 encrypted AES keys
@@ -5536,7 +5533,7 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
                          jsonrpc::JsonRpcException );
 
     // epochId doesn't match and only 1 encrypted AES keys
-    libBLS::TEPublicKey publicKey3( libff::alt_bn128_G2::random_element() );
+    libBLS::TEPublicKey publicKey3 = libBLS::TEPublicKey::random();
 
     auto encryptedMessage1Key = libBLS::ThresholdEncryption::encrypt( messageBytes, publicKey3 );
     auto encryptedBITEDataBytes1Key = encryptedMessage1Key.toBytes();
@@ -5556,13 +5553,13 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
                          jsonrpc::JsonRpcException );
 
     // 2 encrypted AES keys submitted, but one key is corrupt
-    auto corruptEncryptedMessage = libBLS::ThresholdEncryption::encrypt( messageBytes, { libBLS::TEPublicKey( blsPublicKey ), publicKey2 } );
+    auto corruptEncryptedMessage = libBLS::ThresholdEncryption::encrypt( messageBytes, { libBLS::TEPublicKey( blsPublicKey, libBLS::Base::HEXA ), publicKey2 } );
 
     // Corrupt the first key by replacing it with a random one
     corruptEncryptedMessage.keys[0] = libBLS::CipheredKey(
-        libff::alt_bn128_G2::random_element(),
+        libBLS::algebra::G2Point::random(),
         corruptEncryptedMessage.keys[0].V,
-        libff::alt_bn128_G1::random_element()
+        libBLS::algebra::G1Point::random()
     );
 
     auto corruptEncryptedBITEDataBytes = corruptEncryptedMessage.toBytes();
@@ -5606,7 +5603,7 @@ BOOST_AUTO_TEST_CASE( BITETransactionCouldNotBeDecrypted ) {
     u256 epochId = biteInfo[0]["epochId"].asUInt64();
 
     auto ciphertext =
-        libBLS::ThresholdEncryption::encrypt( messageBytes, libBLS::TEPublicKey( blsPublicKey ) );
+        libBLS::ThresholdEncryption::encrypt( messageBytes, libBLS::TEPublicKey( blsPublicKey, libBLS::Base::HEXA ) );
     auto ciphertextBytes = ciphertext.toBytes();
 
     // spoil random element in decryptedData
@@ -5930,16 +5927,9 @@ BOOST_AUTO_TEST_CASE( committeeRotation ) {
     ret["skaleConfig"]["sChain"]["nodeGroups"]["0"]["finish_ts"] = secondGroupTs;
 
     auto blsPublicKeyStringToStringArray = [](const std::string& publicKeyStr) {
-        libBLS::TEPublicKey publicKey( publicKeyStr );
+        libBLS::TEPublicKey publicKey( publicKeyStr, libBLS::Base::HEXA );
         auto rawPublicKey = publicKey.getPublicKeyRaw();
-        std::vector< std::string > publicKeyVector = libBLS::ThresholdUtils::G2ToString( rawPublicKey, 10 );
-        std::array< std::string, 4 > publicKeyArray;
-
-        for (size_t i = 0; i < 4; ++i) {
-            publicKeyArray[i] = publicKeyVector[i];
-        }
-
-        return publicKeyArray;
+        return rawPublicKey.toStringArray( libBLS::Base::DEC );
     };
 
     Json::FastWriter fastWriter;

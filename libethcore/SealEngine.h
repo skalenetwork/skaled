@@ -107,8 +107,8 @@ public:
         return m_params.getPrecompiledContract( _a ).cost( _in, m_params, _blockNumber );
     }
     virtual std::pair< bool, bytes > executePrecompiled(
-        Address const& _a, bytesConstRef _in, u256 const& ) const {
-        return m_params.getPrecompiledContract( _a ).execute( _in );
+        Address const& _a, bytesConstRef _in, const PrecompiledCallContext& _ctx ) const {
+        return m_params.getPrecompiledContract( _a ).execute( _in, _ctx );
     }
 
     virtual bool precompiledExecutionAllowedFrom(

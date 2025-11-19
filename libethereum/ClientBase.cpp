@@ -308,7 +308,7 @@ unsigned ClientBase::installWatch(
     {
         Guard l( x_filtersWatches );
         if ( !m_filters.count( h ) ) {
-            LOG( m_loggerWatch ) << "FFF" << _f << h;
+            BOOST_LOG( m_loggerWatch ) << "FFF" << _f << h;
             m_filters.insert( make_pair( h, _f ) );
         }
     }
@@ -322,7 +322,7 @@ unsigned ClientBase::installWatch(
         Guard l( x_filtersWatches );
         ret = m_watches.size() ? m_watches.rbegin()->first + 1 : 0;
         m_watches[ret] = ClientWatch( isWS, _h, _r, fnOnNewChanges, ret );
-        LOG( m_loggerWatch ) << "+++" << ret << _h;
+        BOOST_LOG( m_loggerWatch ) << "+++" << ret << _h;
     }
 #if INITIAL_STATE_AS_CHANGES
     auto ch = logs( ret );
@@ -337,7 +337,7 @@ unsigned ClientBase::installWatch(
 }
 
 bool ClientBase::uninstallWatch( unsigned _i ) {
-    LOG( m_loggerWatch ) << "Uninstalling watch " << _i;
+    BOOST_LOG( m_loggerWatch ) << "Uninstalling watch " << _i;
 
     Guard l( x_filtersWatches );
 
@@ -350,7 +350,7 @@ bool ClientBase::uninstallWatch( unsigned _i ) {
     auto fit = m_filters.find( id );
     if ( fit != m_filters.end() )
         if ( !--fit->second.refCount ) {
-            LOG( m_loggerWatch ) << "*X*" << fit->first << ":" << fit->second.filter;
+            BOOST_LOG( m_loggerWatch ) << "*X*" << fit->first << ":" << fit->second.filter;
             m_filters.erase( fit );
         }
     return true;
@@ -360,9 +360,9 @@ LocalisedLogEntries ClientBase::checkWatch( unsigned _watchId ) {
     Guard l( x_filtersWatches );
     LocalisedLogEntries ret;
 
-    //	LOG(m_loggerWatch) << "checkWatch" << _watchId;
+    //	BOOST_LOG(m_loggerWatch) << "checkWatch" << _watchId;
     auto& w = m_watches.at( _watchId );
-    //	LOG(m_loggerWatch) << "lastPoll updated to " <<
+    //	BOOST_LOG(m_loggerWatch) << "lastPoll updated to " <<
     // chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
     w.swap_changes( ret );
     if ( w.lastPoll != chrono::system_clock::time_point::max() )

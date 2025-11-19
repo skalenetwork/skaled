@@ -67,7 +67,7 @@ string Test::test_getLogHash( string const& _txHash ) {
         }
         return toJS( dev::EmptyListSHA3 );
     } catch ( std::exception const& ex ) {
-        LOG( m_loggerWarning ) << ex.what();
+        BOOST_LOG( m_loggerWarning ) << ex.what();
         throw JsonRpcException( Errors::ERROR_RPC_INTERNAL_ERROR, ex.what() );
     }
 }

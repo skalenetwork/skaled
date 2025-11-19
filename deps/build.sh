@@ -100,10 +100,6 @@ WORKING_DIR_OLD=$("$READLINK" -f "$WORKING_DIR_OLD")
 WORKING_DIR_NEW=$("$READLINK" -f "$WORKING_DIR_NEW")
 cd "$WORKING_DIR_NEW"
 
-cd "$WORKING_DIR_NEW/../libconsensus/deps"
-bash ./build.sh DEBUG=$DEBUG
-cd ../../deps
-
 
 simple_find_tool_program () { # program_name, var_name_to_export_full_path, is_optional("yes" or "no")
 	echo -e "checking for tool program: $1"
@@ -364,6 +360,21 @@ then
 	export CONF_CROSSCOMPILING_OPTS_VPX=""
 	export CONF_CROSSCOMPILING_OPTS_X264=""
 	export CONF_CROSSCOMPILING_OPTS_FFMPEG=""
+
+	# disable FMA, ADX, AVX512 for better compatibility
+	if [ -z "$ISA_CEILING" ];
+	then
+		ISA_CEILING="-march=x86-64 -mtune=generic"
+	fi
+
+	if [ -z "$ISA_NO" ];
+	then 
+		ISA_NO="-mno-avx512f -mno-adx -mno-fma"
+	fi
+
+	export CFLAGS="$CFLAGS $ISA_CEILING $ISA_NO"
+	export CXXFLAGS="$CXXFLAGS $ISA_CEILING $ISA_NO"
+
 	#export CC=$(which gcc)
 	#export CXX=$(which g++)
 	if [ "$USE_LLVM" = "1" ];
@@ -525,6 +536,21 @@ then
 	exit 255
 fi
 export CMAKE="$CMAKE -DUSE_LLVM=$USE_LLVM -DCMAKE_C_COMPILER=$CC -DCMAKE_CXX_COMPILER=$CXX -DCMAKE_LINKER=$LD -DCMAKE_AR=$AR -DCMAKE_OBJCOPY=$OBJCOPY -DCMAKE_OBJDUMP=$OBJDUMP -DCMAKE_RANLIB=$RANLIB -DCMAKE_NM=$NM"
+
+
+echo -e "${COLOR_SEPARATOR}===================================================================${COLOR_RESET}"
+echo -e "${COLOR_YELLOW}SKALED building consensus...${COLOR_RESET}"
+echo -e "${COLOR_SEPARATOR}===================================================================${COLOR_RESET}"
+
+
+cd "$WORKING_DIR_NEW/../libconsensus/deps"
+bash ./build.sh DEBUG=$DEBUG
+cd ../../deps
+
+echo -e "${COLOR_SEPARATOR}===================================================================${COLOR_RESET}"
+echo -e "${COLOR_YELLOW}SKALED building dependencies...${COLOR_RESET}"
+echo -e "${COLOR_SEPARATOR}===================================================================${COLOR_RESET}"
+
 #
 echo -e "${COLOR_VAR_NAME}WORKING_DIR_OLD${COLOR_DOTS}........${COLOR_VAR_DESC}Started in directory${COLOR_DOTS}...................${COLOR_VAR_VAL}$WORKING_DIR_OLD${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}WORKING_DIR_NEW${COLOR_DOTS}........${COLOR_VAR_DESC}Switched to directory${COLOR_DOTS}..................${COLOR_VAR_VAL}$WORKING_DIR_NEW${COLOR_RESET}"
@@ -924,35 +950,6 @@ then
 	else
 		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
 	fi
-fi
-
-echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}ICONV${COLOR_SEPARATOR} ========================================${COLOR_RESET}"
-if [ ! -f "$INSTALL_ROOT/lib/libiconv.a" ];
-then
-	if [ "$UNIX_SYSTEM_NAME" = "Darwin" ];
-	then
-		echo -e "${COLOR_SUCCESS}skipping iconv on $UNIX_SYSTEM_NAME )))${COLOR_RESET}"
-	else
-		env_restore
-		cd "$SOURCES_ROOT"
-		if [ ! -d "libiconv-1.15" ];
-		then
-			echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
-			eval tar -xzf "$PREDOWNLOADED_ROOT/libiconv-1.15.tar.gz"
-			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
-			cd libiconv-1.15
-			eval ./configure "${CONF_CROSSCOMPILING_OPTS_GENERIC}" --enable-static --disable-shared --prefix="$INSTALL_ROOT" "${CONF_DEBUG_OPTIONS}"
-			cd ..
-		fi
-		echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
-		cd libiconv-1.15
-		eval "$MAKE" "${PARALLEL_MAKE_OPTIONS}"
-		eval "$MAKE" "${PARALLEL_MAKE_OPTIONS}" install
-		cd ..
-		cd "$SOURCES_ROOT"
-	fi
-else
-	echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
 fi
 
 if [ "$WITH_SDL" = "yes" ];

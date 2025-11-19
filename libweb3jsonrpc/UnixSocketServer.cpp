@@ -121,12 +121,15 @@ void UnixDomainSocketServer::Listen() {
                     GenerateResponse( connection );
                     CloseConnection( connection );
                 } catch ( const std::exception& ex ) {
-                    LOG( m_loggerError )
+                    BOOST_LOG( m_loggerError )
                         << "CRITICAL " << ex.what() << " in UnixDomainSocketServer";
-                    LOG( m_loggerError ) << "\n" << skutils::signal::generate_stack_trace() << "\n";
+                    BOOST_LOG( m_loggerError ) << "\n"
+                                               << skutils::signal::generate_stack_trace() << "\n";
                 } catch ( ... ) {
-                    LOG( m_loggerError ) << "CRITICAL unknown exception in UnixDomainSocketServer";
-                    LOG( m_loggerError ) << "\n" << skutils::signal::generate_stack_trace() << "\n";
+                    BOOST_LOG( m_loggerError )
+                        << "CRITICAL unknown exception in UnixDomainSocketServer";
+                    BOOST_LOG( m_loggerError ) << "\n"
+                                               << skutils::signal::generate_stack_trace() << "\n";
                 }  // catch
             } }.detach();
         }
