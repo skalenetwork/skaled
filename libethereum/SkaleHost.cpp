@@ -989,14 +989,8 @@ u256 SkaleHost::getBlockRandom( unsigned _blockNumber, bool _isCalledFromTxn ) c
     // if not - return value for previous block
     // works for historic calls, eth_call, eth_estimateGas
     // and regular transactions
-    if ( _blockNumber == 0 ) {
-        // handle corner case of genesis block
-        // is never a case unless called from debug_traceBlock / eth_call on genesis
-        return m_consensus->getRandomForBlockId( _blockNumber );
-    }
-    auto previousBlockTimestamp =
-        m_client.blockInfo( m_client.hashFromNumber( _blockNumber - 1 ) ).timestamp();
-    if ( CurrentBlockRandomPatch::isEnabledWhen( previousBlockTimestamp ) ) {
+    if ( CurrentBlockRandomPatch::isEnabledWhen(
+             m_client.blockInfo( m_client.hashFromNumber( _blockNumber - 1 ) ).timestamp() ) ) {
         if ( !_isCalledFromTxn ) {
             // means a call outside of block is being executed
             // if blockNumberToCall > currentBlockNumber, need to decrease it by 1
