@@ -134,7 +134,7 @@ public:
     void pushToBroadcastQueue( const dev::eth::Transaction& _transaction );
 
     dev::u256 getGasPrice( unsigned _blockNumber = dev::eth::LatestBlock ) const;
-    dev::u256 getBlockRandom( unsigned _blockNumber ) const;
+    dev::u256 getBlockRandom( unsigned _blockNumber, bool _isCalledFromTxn ) const;
     dev::eth::SyncStatus syncStatus() const;
     std::map< std::string, uint64_t > getConsensusDbUsage() const;
     consensus_engine_status getConsensusStatus() const;
