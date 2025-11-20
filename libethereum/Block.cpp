@@ -917,7 +917,7 @@ ExecutionResult Block::executeHistoricCall( LastBlockHashesFace const& _lh, Tran
 
                 auto resultReceipt = m_state.mutableHistoricState().execute(
                     envInfo, m_sealEngine->chainParams(), _t, skale::Permanence::Uncommitted, onOp
-#ifdef BITE
+#ifdef BITE2
                     ,
                     _transactionIndex
 #endif
@@ -937,7 +937,7 @@ ExecutionResult Block::executeHistoricCall( LastBlockHashesFace const& _lh, Tran
         } else {
             auto resultReceipt = m_state.mutableHistoricState().execute(
                 envInfo, m_sealEngine->chainParams(), _t, skale::Permanence::Reverted, onOp
-#ifdef BITE
+#ifdef BITE2
                 ,
                 _transactionIndex
 #endif

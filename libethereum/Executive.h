@@ -106,7 +106,7 @@ public:
     /// Simple constructor; executive will operate on given state, with the given environment info.
     Executive( skale::State& _s, EnvInfo const& _envInfo, ChainOperationParams const& _chainParams,
         const u256& _gasPrice, unsigned _level, bool _readOnly = true
-#ifdef BITE
+#ifdef BITE2
         ,
         const u256& _txnIndex = u256( -1 )
 #endif
@@ -117,7 +117,7 @@ public:
           m_readOnly( _readOnly ),
           m_chainParams( _chainParams ),
           m_systemGasPrice( _gasPrice )
-#ifdef BITE
+#ifdef BITE2
           ,
           m_txnIndex( _txnIndex )
 #endif
@@ -256,7 +256,7 @@ private:
     Address m_newAddress;
     size_t m_savepoint = 0;
 
-#ifdef BITE
+#ifdef BITE2
     u256 m_txnIndex = u256( -1 );  ///< Index of transaction under execution. -1 for external calls
 #endif
 

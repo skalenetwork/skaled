@@ -4519,7 +4519,7 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
     PrecompiledExecutor blockRandomExecutor = PrecompiledRegistrar::executor( "getBlockRandom" );
     auto blockNumberEarly = fixture.client->number();
     dev::eth::PrecompiledCallContext ctx( blockNumberEarly,
-#ifdef BITE
+#ifdef BITE2
                                           0,
 #endif
                                           true );
@@ -4577,7 +4577,7 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
     dev::bytes blockRandomFromContract = dev::fromHex( fixture.rpcClient->eth_call( callGetLast, "latest" ) );
 
     ctx = PrecompiledCallContext( fixture.client->number(),
-#ifdef BITE
+#ifdef BITE2
                                 0,
 #endif
                                 true );
@@ -4596,7 +4596,7 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
 
     // ask for blockRandom for early block
     ctx = PrecompiledCallContext( blockNumberEarly,
-#ifdef BITE
+#ifdef BITE2
                                 0,
 #endif
                                 true );
@@ -5244,6 +5244,8 @@ BOOST_AUTO_TEST_CASE( getCommonPublicKey ) {
     BOOST_REQUIRE_EQUAL( epochId, fixture.client->getCurrentEpochId() );
 }
 
+#ifdef BITE2
+
 BOOST_AUTO_TEST_CASE( getRandomWalletForCTX ) {
     JsonRpcFixture fixture( c_BITEConfigString, false, false, true, true );
 
@@ -5411,6 +5413,8 @@ BOOST_AUTO_TEST_CASE( getRandomWalletForCTX ) {
     BOOST_REQUIRE_EQUAL( addressFromPrecompiled, walletAddress );
     BOOST_REQUIRE_EQUAL( addressFromPrecompiled, randomAddress5 );
 }
+
+#endif // BITE2
 
 #ifdef FAIR
 BOOST_AUTO_TEST_CASE( getBLSPublicKey ) {

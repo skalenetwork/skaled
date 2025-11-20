@@ -1090,7 +1090,7 @@ ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef, const PrecompiledCall
     return { false, response };  // 1st false - means bad error occur
 }
 
-#ifdef BITE
+#ifdef BITE2
 
 ETH_REGISTER_PRECOMPILED( getRandomWalletForCTX )
 ( bytesConstRef _in, const PrecompiledCallContext& _ctx ) {

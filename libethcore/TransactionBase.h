@@ -485,7 +485,7 @@ public:
 
     static uint64_t howMany() { return Counter< TransactionBase >::howMany(); }
 
-#ifdef BITE
+#ifdef BITE2
     // Solidity adds 12 left-padded zero bytes when encoding an address parameter in the ABI format.
     static constexpr uint64_t BITE2_INPUT_DATA_MIN_LEN =
         12 + dev::Address::size + dev::h256::size + BITE_CIPHERTEXT_MIN_LEN;
