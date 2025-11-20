@@ -227,6 +227,19 @@ public:
         return Transaction( ts, ar.second );
     }
 
+#ifdef FAIR
+    ~TestClientFixture() {
+        const auto deadline = chrono::steady_clock::now() + chrono::seconds( 10 );
+        while ( m_ethereum->skaleHost()->ignoreNewBlocksEnabled() && chrono::steady_clock::now() < deadline ) {
+            usleep( 10 );
+        }
+        if ( m_ethereum->skaleHost()->isConsesusUpdateHappened() )
+            m_ethereum->skaleHost()->handleConsensusUpdate();
+        accountHolder.reset();
+        m_ethereum.reset();
+    }
+#endif
+
 private:
     TransientDirectory m_tmpDir;
     std::unique_ptr< dev::eth::Client > m_ethereum;
