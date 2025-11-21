@@ -37,7 +37,9 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cctype>
 #include <memory>
+#include <sstream>
 #include <thread>
 
 #include <libdevcore/microprofile.h>
@@ -91,6 +93,32 @@ std::string filtersToString( h256Hash const& _fs ) {
     }
     str << "}";
     return str.str();
+}
+
+size_t countSstFiles( const std::string& dump ) {
+    std::istringstream stream( dump );
+    std::string line;
+    size_t count = 0;
+    while ( std::getline( stream, line ) ) {
+        auto it = std::find_if( line.begin(), line.end(), []( unsigned char ch ) {
+            return !std::isspace( ch );
+        } );
+        if ( it != line.end() && std::isdigit( static_cast< unsigned char >( *it ) ) )
+            ++count;
+    }
+    return count;
+}
+
+void logStateDbSstFileCount( const db::LevelDB* db, BlockNumber blockNumber ) {
+    if ( !db )
+        return;
+
+    std::string propertyDump;
+    if ( !db->getProperty( "leveldb.sstables", propertyDump ) )
+        return;
+
+    const auto count = countSstFiles( propertyDump );
+    clog( VerbosityDebug, "client" ) << "block " << blockNumber << " state_sst_files=" << count;
 }
 
 #if ( defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__ )
@@ -935,6 +963,7 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
         ssBlockStats << ":CPU:" << getCPUUsage();
     }
     BOOST_LOG( m_loggerInfo ) << ssBlockStats.str();
+    logStateDbSstFileCount( m_state.getOriginalDb(), header_struct.number() );
 
 
     if ( submitToBlockChain ) {

@@ -99,6 +99,7 @@ public:
     bool hashBasePartially( secp256k1_sha256_t* ctx, std::string& lastHashedKey ) const;
 
     void doCompaction() const;
+    bool getProperty( std::string const& _name, std::string& _value ) const;
 
     // Return the total count of key deletes  since the start
     static uint64_t getKeyDeletesStats();
