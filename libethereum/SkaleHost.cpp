@@ -741,7 +741,7 @@ void SkaleHost::runCommitteeRotationForConsensus() {
     m_broadcastRestartNeeded = true;
     // stop all services first
     // exitGracefully() interferes with exit procedure
-    // TODO: make it more olegant to avoid collisions
+    // TODO: make it more elegant to avoid collisions
     m_consensus->exitGracefully();
     m_committeeRotationMonitorThread.reset( new std::thread( [this]() {
         while ( m_consensus->getStatus() != consensus_engine_status::CONSENSUS_EXITED ) {
