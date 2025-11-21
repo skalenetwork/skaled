@@ -1186,8 +1186,6 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
 
         h256 shaLastTx = _t.sha3();  // _t.hasSignature() ? _t.sha3() : _t.sha3(
                                      // dev::eth::WithoutSignature );
-        this->m_db_ptr->setLastExecutedTransactionHash( shaLastTx );
-
 
         TransactionReceipt receipt =
             TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() );

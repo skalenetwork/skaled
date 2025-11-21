@@ -506,13 +506,13 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
     for ( unsigned i = 0; i < _transactions.size(); ++i ) {
         Transaction const& tr = _transactions[i];
         try {
-            if ( i < saved_receipts.size() ) {
-                // this transaction has already been executed and we have a
-                // receipt for it. We do not need to execute it again
-                m_transactions.push_back( tr );
-                m_transactionSet.insert( tr.sha3() );
-                continue;
-            }
+            // if ( i < saved_receipts.size() ) {
+            //     // this transaction has already been executed and we have a
+            //     // receipt for it. We do not need to execute it again
+            //     m_transactions.push_back( tr );
+            //     m_transactionSet.insert( tr.sha3() );
+            //     continue;
+            // }
 
 
             // Tell skaled to fail in a middle of blog processing
@@ -576,15 +576,6 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
             BOOST_LOG( m_loggerError ) << "FAILED transaction after consensus! " << ex.what();
         }
     }
-#ifdef FAIR
-    auto lastRewardedBlockNumber = m_state.getLastRewardedBlockNumber();
-    if ( lastRewardedBlockNumber < m_currentBlock.number() ) {
-        auto blockTimestamp = m_previousBlock.timestamp();
-        auto reward = _bc.sealEngine()->blockReward( blockTimestamp, m_currentBlock.number() );
-        rewardAllForNonDefaultBlock( _bc.chainParams().getStakingContractAddress(), reward );
-        m_state.safeSetLastRewardedBlockNumber( m_currentBlock.number() );
-    }
-#endif
 
 #ifdef HISTORIC_STATE
     m_state.mutableHistoricState().saveRootForBlockNumber( m_currentBlock.number() );
@@ -633,8 +624,17 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
     }
     bool removeEmptyAccounts =
         m_currentBlock.number() >= _bc.chainParams().getEIP158ForkBlock();
+
+    auto lastRewardedBlockNumber = m_state.getLastRewardedBlockNumber();
+    if ( lastRewardedBlockNumber < m_currentBlock.number() ) {
+        auto blockTimestamp = m_previousBlock.timestamp();
+        auto reward = _bc.sealEngine()->blockReward( blockTimestamp, m_currentBlock.number() );
+        rewardAllForNonDefaultBlock( _bc.chainParams().getStakingContractAddress(), reward );
+    }
+    m_state.safeSetLastRewardedBlockNumber( m_currentBlock.number() );
     m_state.commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
                                           dev::eth::CommitBehaviour::KeepEmptyAccounts );
+
 
     return make_tuple( receipts, receipts.size() - countBad );
 }
