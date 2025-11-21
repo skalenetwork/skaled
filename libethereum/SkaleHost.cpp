@@ -907,9 +907,6 @@ void SkaleHost::stopWorking() {
         nanosleep( &ms100, nullptr );
     }
 
-
-    BOOST_LOG( m_loggerInfo ) << "Consensus status is exited. Skaled is waiting for consensus and "
-                                 "broadcast to finish.";
     BOOST_LOG( m_loggerInfo )
         << "Consensus status is exited. Skaled is waiting for consensus and broadcast to finish.";
 
