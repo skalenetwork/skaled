@@ -622,9 +622,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
             m_state.safeCommitLegacyPartialTransactionReceipts( receiptsOfCommitted );
         }
     }
-    bool removeEmptyAccounts =
-        m_currentBlock.number() >= _bc.chainParams().getEIP158ForkBlock();
-
+#ifdef FAIR
     auto lastRewardedBlockNumber = m_state.getLastRewardedBlockNumber();
     if ( lastRewardedBlockNumber < m_currentBlock.number() ) {
         auto blockTimestamp = m_previousBlock.timestamp();
@@ -632,6 +630,9 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
         rewardAllForNonDefaultBlock( _bc.chainParams().getStakingContractAddress(), reward );
     }
     m_state.safeSetLastRewardedBlockNumber( m_currentBlock.number() );
+#endif
+    bool removeEmptyAccounts =
+        m_currentBlock.number() >= _bc.chainParams().getEIP158ForkBlock();
     m_state.commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
                                           dev::eth::CommitBehaviour::KeepEmptyAccounts );
 

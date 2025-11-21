@@ -1184,9 +1184,6 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
 #endif
         // TODO: review logic|^
 
-        h256 shaLastTx = _t.sha3();  // _t.hasSignature() ? _t.sha3() : _t.sha3(
-                                     // dev::eth::WithoutSignature );
-
         TransactionReceipt receipt =
             TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() );
         if ( _p == Permanence::Committed &&
