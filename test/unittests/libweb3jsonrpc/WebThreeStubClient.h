@@ -169,6 +169,7 @@ public:
     Json::Value debug_doBlocksDbCompaction() noexcept( false );
     Json::Value debug_getFutureTransactions() noexcept( false );
     Json::Value debug_getPatchTimestamps() noexcept( false );
+    void debug_pauseConsensus( bool param1 ) noexcept( false );
 
 #ifdef BITE
     Json::Value bite_getCommitteesInfo() noexcept( false );

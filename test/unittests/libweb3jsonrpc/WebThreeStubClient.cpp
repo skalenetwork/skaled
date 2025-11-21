@@ -1421,6 +1421,12 @@ Json::Value WebThreeStubClient::debug_getPatchTimestamps() {
             jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
 }
 
+void WebThreeStubClient::debug_pauseConsensus( bool param1 ) {
+    Json::Value p;
+    p.append( param1 );
+    Json::Value result = this->CallMethod( "debug_pauseConsensus", p );
+}
+
 #ifdef BITE
 Json::Value WebThreeStubClient::bite_getCommitteesInfo() {
     Json::Value p;
