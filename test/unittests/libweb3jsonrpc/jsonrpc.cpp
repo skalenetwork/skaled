@@ -465,7 +465,6 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
                 std::string output = fastWriter.write( ret );
                 chainParams->loadConfig( output );
 
-
                 // insecure schain owner(originator) private key
                 // address is 0x5C4e11842E8be09264dc1976943571d7Af6d00F9
                 coinbase = dev::KeyPair( dev::Secret(
@@ -595,7 +594,6 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         // +3 because rand() seems to be called effectively simultaneously here and in "static"
         // section - thus giving same port for consensus
         serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ = std::rand() % 64000 + 1025 + 3;
-        std::cout << "PORT: " << serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ << std::endl;
         skale_server_connector = new SkaleServerOverride( chainParams, client.get(), serverOpts );
         rpcServer->addConnector( skale_server_connector );
         skale_server_connector->StartListening();
@@ -4526,7 +4524,11 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
 
     PrecompiledExecutor blockRandomExecutor = PrecompiledRegistrar::executor( "getBlockRandom" );
     auto blockNumberEarly = fixture.client->number();
-    dev::eth::PrecompiledCallContext ctx( blockNumberEarly, true );
+    dev::eth::PrecompiledCallContext ctx( blockNumberEarly,
+#ifdef BITE2
+                                          0,
+#endif
+                                          true );
     auto blockRandomEarly = blockRandomExecutor( dev::bytesConstRef(), ctx );
 
     // wait till patch is activated
@@ -4580,7 +4582,11 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
     callGetLast["from"] = toJS( senderAddress );
     dev::bytes blockRandomFromContract = dev::fromHex( fixture.rpcClient->eth_call( callGetLast, "latest" ) );
 
-    ctx = PrecompiledCallContext( fixture.client->number(), true );
+    ctx = PrecompiledCallContext( fixture.client->number(),
+#ifdef BITE2
+                                0,
+#endif
+                                true );
     auto executionResult = blockRandomExecutor( dev::bytesConstRef(), ctx );
 
     BOOST_REQUIRE( executionResult.first );
@@ -4595,7 +4601,11 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
     BOOST_REQUIRE( blockRandomFromHistoricCall == blockRandomFromContract );
 
     // ask for blockRandom for early block
-    ctx = PrecompiledCallContext( blockNumberEarly, true );
+    ctx = PrecompiledCallContext( blockNumberEarly,
+#ifdef BITE2
+                                0,
+#endif
+                                true );
     auto blockRandomEarlyHistoric = blockRandomExecutor(dev::bytesConstRef(), ctx );
     BOOST_REQUIRE( blockRandomEarlyHistoric.first );
     BOOST_REQUIRE( blockRandomEarlyHistoric.second == blockRandomEarly.second );
@@ -4900,7 +4910,9 @@ static std::string const c_BITEConfigString =
         "0000000000000000000000000000000000000001": { "precompiled": { "name": "ecrecover", "linear": { "base": 3000, "word": 0 } } },
         "0000000000000000000000000000000000000002": { "precompiled": { "name": "sha256", "linear": { "base": 60, "word": 12 } } },
         "0000000000000000000000000000000000000003": { "precompiled": { "name": "ripemd160", "linear": { "base": 600, "word": 120 } } },
-        "0000000000000000000000000000000000000004": { "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } } },)"
+        "0000000000000000000000000000000000000004": { "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } } },
+        "0000000000000000000000000000000000000005": { "precompiled": { "name": "getBlockRandom", "linear": { "base": 15, "word": 0 } } },
+        "0000000000000000000000000000000000000006": { "precompiled": { "name": "getRandomWalletForCTX", "linear": { "base": 15, "word": 0 } } },)"
     /*
 pragma solidity ^0.4.25;
 contract Caller {
@@ -5237,6 +5249,178 @@ BOOST_AUTO_TEST_CASE( getCommonPublicKey ) {
     BOOST_REQUIRE_EQUAL( libBLS::TEPublicKey( blsPublicKey, libBLS::Base::HEXA ).getPublicKeyRaw(), commonPublicKey );
     BOOST_REQUIRE_EQUAL( epochId, fixture.client->getCurrentEpochId() );
 }
+
+#ifdef BITE2
+
+BOOST_AUTO_TEST_CASE( getRandomWalletForCTX ) {
+    JsonRpcFixture fixture( c_BITEConfigString, false, false, true, true );
+
+    dev::eth::g_skaleHost = fixture.client->skaleHost();
+
+    string senderAddress = toJS( fixture.coinbase.address() );
+
+//    pragma solidity ^0.8.13;
+
+//    contract Precompile0x06Caller {
+//        address public constant PRECOMPILE_0X06 = address(0x06);
+//        address public lastGenerated;
+//        address public preLastGenerated;
+
+//        function generateRandomWallet() public returns (address) {
+//            // Prepare the input parameters
+//            address contractAddress = address(this);
+//            uint256 randomNumber = uint256(keccak256(abi.encodePacked(block.timestamp, block.number)));
+//            bytes[] memory randomBytes = new bytes[](3);
+//            randomBytes[0] = abi.encodePacked("random1");
+//            randomBytes[1] = abi.encodePacked("random2");
+//            randomBytes[2] = abi.encodePacked("random3");
+
+//            // Encode all parameters together
+//            bytes memory input = abi.encode(contractAddress, randomNumber, randomBytes);
+
+//            // Call the precompile with the combined parameters
+//            (bool success, bytes memory result) = PRECOMPILE_0X06.staticcall(input);
+//            require(success, "Call to precompile 0x06 failed");
+//            require(result.length >= 20, "Invalid result length");
+
+//            preLastGenerated = lastGenerated;
+//            address addr = address(bytes20(result));
+
+//            // Store the generated address in state variable
+//            lastGenerated = addr;
+
+//            return addr;
+//        }
+
+//        function generateRandomWalletWithInput(bytes calldata input) public returns (address) {
+//            // Call the precompile with the combined parameters
+//            (bool success, bytes memory result) = PRECOMPILE_0X06.staticcall(input);
+//            require(success, "Call to precompile 0x06 failed");
+//            require(result.length >= 20, "Invalid result length");
+
+//            preLastGenerated = lastGenerated;
+//            address addr = address(bytes20(result));
+
+//            // Store the generated address in state variable
+//            lastGenerated = addr;
+
+//            return addr;
+//        }
+
+//        function getLastGenerated() public view returns (address) {
+//            return lastGenerated;
+//        }
+
+//        function getPreLastGenerated() public view returns (address) {
+//            return preLastGenerated;
+//        }
+//    }
+    std::string bytecode = "6080604052348015600f57600080fd5b50610df58061001f6000396000f3fe608060405234801561001057600080fd5b506004361061007d5760003560e01c806352c928851161005b57806352c92885146100dc578063546c01c1146100fa5780638628f93a14610118578063cdf72f9e146101485761007d565b80630c2dd5f4146100825780632fbd5da7146100a05780634befb2cf146100be575b600080fd5b61008a610166565b6040516100979190610718565b60405180910390f35b6100a861018c565b6040516100b59190610718565b60405180910390f35b6100c66101b6565b6040516100d39190610718565b60405180910390f35b6100e46101df565b6040516100f19190610718565b60405180910390f35b6101026104f9565b60405161010f9190610718565b60405180910390f35b610132600480360381019061012d91906107a2565b6104fe565b60405161013f9190610718565b60405180910390f35b6101506106b3565b60405161015d9190610718565b60405180910390f35b600160009054906101000a900473ffffffffffffffffffffffffffffffffffffffff1681565b6000600160009054906101000a900473ffffffffffffffffffffffffffffffffffffffff16905090565b60008060009054906101000a900473ffffffffffffffffffffffffffffffffffffffff16905090565b600080309050600042436040516020016101fa92919061081a565b6040516020818303038152906040528051906020012060001c90506000600367ffffffffffffffff81111561023257610231610846565b5b60405190808252806020026020018201604052801561026557816020015b60608152602001906001900390816102505790505b509050604051602001610277906108cc565b6040516020818303038152906040528160008151811061029a576102996108e1565b5b60200260200101819052506040516020016102b49061095c565b604051602081830303815290604052816001815181106102d7576102d66108e1565b5b60200260200101819052506040516020016102f1906109bd565b60405160208183030381529060405281600281518110610314576103136108e1565b5b6020026020010181905250600083838360405160200161033693929190610b33565b6040516020818303038152906040529050600080600673ffffffffffffffffffffffffffffffffffffffff16836040516103709190610bad565b600060405180830381855afa9150503d80600081146103ab576040519150601f19603f3d011682016040523d82523d6000602084013e6103b0565b606091505b5091509150816103f5576040517f08c379a00000000000000000000000000000000000000000000000000000000081526004016103ec90610c21565b60405180910390fd5b60148151101561043a576040517f08c379a000000000000000000000000000000000000000000000000000000000815260040161043190610c8d565b60405180910390fd5b60008054906101000a900473ffffffffffffffffffffffffffffffffffffffff16600160006101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff1602179055506000816104a790610d0b565b60601c9050806000806101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff1602179055508097505050505050505090565b600681565b6000806000600673ffffffffffffffffffffffffffffffffffffffff16858560405161052b929190610da6565b600060405180830381855afa9150503d8060008114610566576040519150601f19603f3d011682016040523d82523d6000602084013e61056b565b606091505b5091509150816105b0576040517f08c379a00000000000000000000000000000000000000000000000000000000081526004016105a790610c21565b60405180910390fd5b6014815110156105f5576040517f08c379a00000000000000000000000000000000000000000000000000000000081526004016105ec90610c8d565b60405180910390fd5b60008054906101000a900473ffffffffffffffffffffffffffffffffffffffff16600160006101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff16021790555060008161066290610d0b565b60601c9050806000806101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff16021790555080935050505092915050565b60008054906101000a900473ffffffffffffffffffffffffffffffffffffffff1681565b600073ffffffffffffffffffffffffffffffffffffffff82169050919050565b6000610702826106d7565b9050919050565b610712816106f7565b82525050565b600060208201905061072d6000830184610709565b92915050565b600080fd5b600080fd5b600080fd5b600080fd5b600080fd5b60008083601f8401126107625761076161073d565b5b8235905067ffffffffffffffff81111561077f5761077e610742565b5b60208301915083600182028301111561079b5761079a610747565b5b9250929050565b600080602083850312156107b9576107b8610733565b5b600083013567ffffffffffffffff8111156107d7576107d6610738565b5b6107e38582860161074c565b92509250509250929050565b6000819050919050565b6000819050919050565b61081461080f826107ef565b6107f9565b82525050565b60006108268285610803565b6020820191506108368284610803565b6020820191508190509392505050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052604160045260246000fd5b600081905092915050565b7f72616e646f6d3100000000000000000000000000000000000000000000000000600082015250565b60006108b6600783610875565b91506108c182610880565b600782019050919050565b60006108d7826108a9565b9150819050919050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052603260045260246000fd5b7f72616e646f6d3200000000000000000000000000000000000000000000000000600082015250565b6000610946600783610875565b915061095182610910565b600782019050919050565b600061096782610939565b9150819050919050565b7f72616e646f6d3300000000000000000000000000000000000000000000000000600082015250565b60006109a7600783610875565b91506109b282610971565b600782019050919050565b60006109c88261099a565b9150819050919050565b6109db816107ef565b82525050565b600081519050919050565b600082825260208201905092915050565b6000819050602082019050919050565b600081519050919050565b600082825260208201905092915050565b60005b83811015610a47578082015181840152602081019050610a2c565b60008484015250505050565b6000601f19601f8301169050919050565b6000610a6f82610a0d565b610a798185610a18565b9350610a89818560208601610a29565b610a9281610a53565b840191505092915050565b6000610aa98383610a64565b905092915050565b6000602082019050919050565b6000610ac9826109e1565b610ad381856109ec565b935083602082028501610ae5856109fd565b8060005b85811015610b215784840389528151610b028582610a9d565b9450610b0d83610ab1565b925060208a01995050600181019050610ae9565b50829750879550505050505092915050565b6000606082019050610b486000830186610709565b610b5560208301856109d2565b8181036040830152610b678184610abe565b9050949350505050565b600081905092915050565b6000610b8782610a0d565b610b918185610b71565b9350610ba1818560208601610a29565b80840191505092915050565b6000610bb98284610b7c565b915081905092915050565b600082825260208201905092915050565b7f43616c6c20746f20707265636f6d70696c652030783036206661696c65640000600082015250565b6000610c0b601e83610bc4565b9150610c1682610bd5565b602082019050919050565b60006020820190508181036000830152610c3a81610bfe565b9050919050565b7f496e76616c696420726573756c74206c656e6774680000000000000000000000600082015250565b6000610c77601583610bc4565b9150610c8282610c41565b602082019050919050565b60006020820190508181036000830152610ca681610c6a565b9050919050565b6000819050602082019050919050565b60007fffffffffffffffffffffffffffffffffffffffff00000000000000000000000082169050919050565b6000610cf58251610cbd565b80915050919050565b600082821b905092915050565b6000610d1682610a0d565b82610d2084610cad565b9050610d2b81610ce9565b92506014821015610d6b57610d667fffffffffffffffffffffffffffffffffffffffff00000000000000000000000083601403600802610cfe565b831692505b5050919050565b82818337600083830152505050565b6000610d8d8385610b71565b9350610d9a838584610d72565b82840190509392505050565b6000610db3828486610d81565b9150819050939250505056fea2646970667358221220afbabfc9989d0bb945352bc82cf7013ba119ce1f212c984912a63ef8b2b1843864736f6c634300081e0033";
+
+    // deploy contract
+    Json::Value create;
+    create["from"] = toJS( senderAddress );
+    create["code"] = bytecode;
+    create["gas"] = "900000";
+    create["nonce"] = 0;
+    string txHash = fixture.rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    auto txReceipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    std::string contractAddress = txReceipt["contractAddress"].asString();
+
+    // submit 2 transactions in different blocks
+    Json::Value txGenerate;
+    txGenerate["to"] = contractAddress;
+    txGenerate["data"] = "0x52c92885";
+    txGenerate["from"] = toJS( senderAddress );
+    txGenerate["nonce"] = 1;
+
+    fixture.rpcClient->eth_sendTransaction( txGenerate );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    txGenerate["nonce"] = 2;
+    fixture.rpcClient->eth_sendTransaction( txGenerate );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    // read data from contract
+    Json::Value callGetLast;
+    callGetLast["to"] = contractAddress;
+    callGetLast["data"] = "0x4befb2cf";
+    callGetLast["from"] = toJS( senderAddress );
+    dev::Address randomAddress1( dev::unpadLeft( dev::fromHex( fixture.rpcClient->eth_call( callGetLast, "latest" ) ) ) );
+
+    Json::Value callGetPreLast;
+    callGetPreLast["to"] = contractAddress;
+    callGetPreLast["data"] = "0x2fbd5da7";
+    callGetPreLast["from"] = toJS( senderAddress );
+    dev::Address randomAddress2( dev::unpadLeft( dev::fromHex( fixture.rpcClient->eth_call( callGetPreLast, "latest" ) ) ) );
+
+    BOOST_REQUIRE( randomAddress1 != randomAddress2 );
+
+    // submit 2 transactions in one block
+    fixture.rpcClient->debug_pauseConsensus( true );
+    txGenerate["nonce"] = 3;
+    fixture.rpcClient->eth_sendTransaction( txGenerate );
+
+    txGenerate["nonce"] = 4;
+    fixture.rpcClient->eth_sendTransaction( txGenerate );
+    fixture.rpcClient->debug_pauseConsensus( false );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    Json::Value latestBlock = fixture.rpcClient->eth_getBlockByNumber( "latest", "false" );
+    BOOST_REQUIRE_EQUAL( latestBlock["transactions"].size(), 2 );
+
+    // read data from contract again
+    dev::Address randomAddress3( dev::unpadLeft( dev::fromHex( fixture.rpcClient->eth_call( callGetLast, "latest" ) ) ) );
+    dev::Address randomAddress4( dev::unpadLeft( dev::fromHex( fixture.rpcClient->eth_call( callGetPreLast, "latest" ) ) ) );
+    BOOST_REQUIRE( randomAddress1 != randomAddress3 );
+    BOOST_REQUIRE( randomAddress3 != randomAddress4 );
+
+    // verify data is parsed correctly
+    dev::Address randomAddress = dev::Address::random();
+    dev::bytes randomAddressBytes = randomAddress.asBytes();
+    dev::bytes randomAddressLeftPadded( 32, 0 );
+    std::copy( randomAddressBytes.begin(), randomAddressBytes.end(), randomAddressLeftPadded.begin() + 12 );
+    dev::u256 randomGasLimit = dev::h256::Arith( dev::h256::random() );
+    dev::bytes randomGasLimitBytes = dev::toBigEndian( randomGasLimit );
+    dev::bytes randomData = dev::h256::random().asBytes();
+    randomData.resize( dev::eth::TransactionBase::BITE2_INPUT_DATA_MIN_LEN );
+
+    dev::bytes resultData;
+    resultData.insert( resultData.end(), randomAddressLeftPadded.begin(), randomAddressLeftPadded.end() );
+    resultData.insert( resultData.end(), randomGasLimitBytes.begin(), randomGasLimitBytes.end() );
+    resultData.insert( resultData.end(), randomData.begin(), randomData.end() );
+
+    txGenerate["to"] = contractAddress;
+    txGenerate["data"] = "0x8628f93a" + dev::toHex( dev::u256( 32 ) ) + dev::toHex( dev::u256( resultData.size() ) ) + dev::toHex( resultData );
+    txGenerate["from"] = toJS( senderAddress );
+    txGenerate["nonce"] = 5;
+    fixture.rpcClient->eth_sendTransaction( txGenerate );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    dev::Address randomAddress5( dev::unpadLeft( dev::fromHex( fixture.rpcClient->eth_call( callGetLast, "latest" ) ) ) );
+
+    PrecompiledExecutor randomWalletExecutor = PrecompiledRegistrar::executor( "getRandomWalletForCTX" );
+    dev::eth::PrecompiledCallContext ctx( fixture.client->number(), 0, true );
+
+    dev::bytesConstRef input( resultData.data(), resultData.size() );
+    auto res = randomWalletExecutor( input, ctx );
+    BOOST_REQUIRE( res.first );
+
+    dev::Address addressFromPrecompiled( res.second );
+
+    PrecompiledExecutor blockRandomExecutor = PrecompiledRegistrar::executor( "getBlockRandom" );
+    auto vrs = dev::makeSignature( blockRandomExecutor( bytesConstRef(), ctx ).second, ctx.currentTxnIndex );
+    dev::u256 gasPrice = g_skaleHost->getGasPrice( ctx.blockNumber.convert_to< unsigned >() );
+
+    Transaction sampleTransaction( 0, gasPrice, randomGasLimit, randomAddress, randomData, 0 );
+    dev::h256 txnHash = sampleTransaction.sha3( dev::eth::WithoutSignature );
+    dev::Public publicKey = recover( vrs, txnHash );
+    dev::Address walletAddress = dev::toAddress( publicKey );
+    BOOST_REQUIRE_EQUAL( addressFromPrecompiled, walletAddress );
+    BOOST_REQUIRE_EQUAL( addressFromPrecompiled, randomAddress5 );
+}
+
+#endif // BITE2
 
 #ifdef FAIR
 BOOST_AUTO_TEST_CASE( getBLSPublicKey ) {

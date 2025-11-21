@@ -174,6 +174,10 @@ public:
 
     SkaleDebugInterface::handler getDebugHandler() const { return m_debugHandler; }
 
+#ifdef BITE2
+    const dev::eth::Client& client() const { return m_client; }
+#endif
+
 #ifdef FAIR
     bool isConsesusUpdateHappened() const { return m_consensusUpdateHappened; }
 
