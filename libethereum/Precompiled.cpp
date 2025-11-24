@@ -1092,7 +1092,25 @@ ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef, const PrecompiledCall
 
 #ifdef BITE2
 
-ETH_REGISTER_PRECOMPILED( getRandomWalletForCTX )
+ETH_REGISTER_PRECOMPILED( decryptAndExecuteCTX )( bytesConstRef , const PrecompiledCallContext& ) {
+    try {
+
+    } catch ( std::exception& ex ) {
+        std::string strError = ex.what();
+        if ( strError.empty() )
+            strError = "exception without description";
+        BOOST_LOG( getLogger( VerbosityError ) )
+            << "Exception in precompiled/decryptAndExecuteCTX(): " << strError << "\n";
+    } catch ( ... ) {
+        BOOST_LOG( getLogger( VerbosityError ) )
+            << "Unknown exception in precompiled/decryptAndExecuteCTX()\n";
+    }
+    dev::u256 code = 0;
+    bytes response = toBigEndian( code );
+    return { false, response };  // 1st false - means bad error occur
+}
+
+ETH_REGISTER_PRECOMPILED( getRandomWalletAndSignatureForCTX )
 ( bytesConstRef _in, const PrecompiledCallContext& _ctx ) {
     try {
         PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getBlockRandom" );
@@ -1137,8 +1155,22 @@ ETH_REGISTER_PRECOMPILED( getRandomWalletForCTX )
         dev::Public publicKey = recover( vrs, txnHash );
 
         dev::Address walletAddress = dev::toAddress( publicKey );
+        
+        // Encode response: address(20 bytes) + r(32 bytes) + s(32 bytes) + v(32 bytes)
+        dev::bytes response;
         dev::bytes addressBytes = walletAddress.asBytes();
-        return { true, addressBytes };
+        response.insert( response.end(), addressBytes.begin(), addressBytes.end() );
+
+        dev::bytes rBytes = toBigEndian( dev::u256( vrs.r ) );
+        response.insert( response.end(), rBytes.begin(), rBytes.end() );
+
+        dev::bytes sBytes = toBigEndian( dev::u256( vrs.s ) );
+        response.insert( response.end(), sBytes.begin(), sBytes.end() );
+
+        dev::bytes vBytes = toBigEndian( dev::u256( vrs.v ) );
+        response.insert( response.end(), vBytes.begin(), vBytes.end() );
+        
+        return { true, response };
     } catch ( std::exception& ex ) {
         std::string strError = ex.what();
         if ( strError.empty() )
