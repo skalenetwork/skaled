@@ -1124,9 +1124,8 @@ ETH_REGISTER_PRECOMPILED( getRandomWalletAndSignatureForCTX )
 
         // Parse ABI-encoded input: abi.encode(address destination, uint256 gasLimit, bytes data)
         // Format: address_value(32) + gasLimit_value(32) + offset_to_bytes(32) + bytes_length(32) +
-        // bytes_data
-        if ( _in.size() < 128 )  // Need at least address + gasLimit + offset + length (4 * 32
-                                 // bytes)
+        // bytes_data ( at least BITE_CIPHERTEXT_MIN_LEN ) bytes
+        if ( _in.size() < dev::eth::TransactionBase::BITE2_INPUT_DATA_MIN_LEN )
             return { false, toBigEndian( dev::u256( 1 ) ) };
 
         // Extract address from first 32 bytes (skip first 12 bytes of padding)
