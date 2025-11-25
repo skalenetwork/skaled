@@ -1123,24 +1123,39 @@ ETH_REGISTER_PRECOMPILED( getRandomWalletAndSignatureForCTX )
         SignatureStruct vrs =
             dev::makeSignature( rngPrecompiledResponse.second, _ctx.currentTxnIndex );
 
-        // parse input parameters
-        if ( _in.size() < dev::eth::TransactionBase::BITE2_INPUT_DATA_MIN_LEN )
+        // Parse ABI-encoded input: abi.encode(address destination, uint256 gasLimit, bytes data)
+        // Format: address_value(32) + gasLimit_value(32) + offset_to_bytes(32) + bytes_length(32) + bytes_data
+        if ( _in.size() < 128 )  // Need at least address + gasLimit + offset + length (4 * 32 bytes)
             return { false, toBigEndian( dev::u256( 1 ) ) };
-        // skip first 12 bytes - left-padded zero-bytes
+        
+        // Extract address from first 32 bytes (skip first 12 bytes of padding)
         dev::Address destination( _in.cropped( 12, 20 ) );
-        // validate address
         if ( destination == dev::ZeroAddress )
             return { false, toBigEndian( dev::u256( 2 ) ) };
+        
+        // Extract gas limit from next 32 bytes
         bigint const gas( parseBigEndianRightPadded( _in, 32, 32 ) );
-        dev::bytes data = _in.cropped( 64 ).toBytes();
-        // validate data size
-        if ( data.empty() )
+        
+        // Read offset to bytes data from third 32 bytes
+        bigint const dataOffset( parseBigEndianRightPadded( _in, 64, 32 ) );
+        
+        // Extract bytes data at the offset (has length prefix)
+        if ( _in.size() < dataOffset.convert_to< size_t >() + 32 )
             return { false, toBigEndian( dev::u256( 3 ) ) };
+        
+        bigint const dataLength( parseBigEndianRightPadded( _in, dataOffset, 32 ) );
+        if ( _in.size() < dataOffset.convert_to< size_t >() + 32 + dataLength.convert_to< size_t >() )
+            return { false, toBigEndian( dev::u256( 4 ) ) };
+        
+        dev::bytes data = _in.cropped( dataOffset.convert_to< size_t >() + 32, dataLength.convert_to< size_t >() ).toBytes();
+        if ( data.empty() )
+            return { false, toBigEndian( dev::u256( 5 ) ) };
+        
         // validate gasLimit
         auto evmSchedule = g_skaleHost->client().evmSchedule();
         if ( TransactionBase::baseGasRequired(
                  false, dev::bytesConstRef( data.data(), data.size() ), evmSchedule, true ) > gas )
-            return { false, toBigEndian( dev::u256( 4 ) ) };
+            return { false, toBigEndian( dev::u256( 6 ) ) };
 
         dev::u256 gasPrice = g_skaleHost->getGasPrice();
 
@@ -1148,7 +1163,7 @@ ETH_REGISTER_PRECOMPILED( getRandomWalletAndSignatureForCTX )
         Transaction sampleTransaction(
             0, gasPrice, gas.convert_to< dev::u256 >(), destination, data, 0 );
         if ( sampleTransaction.isInvalid() )
-            return { false, toBigEndian( dev::u256( 5 ) ) };
+            return { false, toBigEndian( dev::u256( 7 ) ) };
 
         dev::h256 txnHash = sampleTransaction.sha3( dev::eth::WithoutSignature );
 

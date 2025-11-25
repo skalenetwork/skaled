@@ -5452,9 +5452,22 @@ BOOST_AUTO_TEST_CASE( getRandomWalletAndSignatureForCTX ) {
     dev::bytes randomData = dev::h256::random().asBytes();
     randomData.resize( dev::eth::TransactionBase::BITE2_INPUT_DATA_MIN_LEN );
 
+    // Build ABI-encoded input: abi.encode(address, uint256, bytes)
+    // Format: address(32) + gasLimit(32) + offset_to_bytes(32) + bytes_length(32) + bytes_data
     dev::bytes resultData;
+    
+    // address value (left-padded to 32 bytes)
     resultData.insert( resultData.end(), randomAddressLeftPadded.begin(), randomAddressLeftPadded.end() );
+    
+    // gasLimit value (32 bytes)
     resultData.insert( resultData.end(), randomGasLimitBytes.begin(), randomGasLimitBytes.end() );
+    
+    // offset to bytes data (points to position 96 = 3 * 32)
+    dev::bytes dataOffset = dev::toBigEndian( dev::u256( 96 ) );
+    resultData.insert( resultData.end(), dataOffset.begin(), dataOffset.end() );
+    // bytes data (length + content)
+    dev::bytes dataLength = dev::toBigEndian( dev::u256( randomData.size() ) );
+    resultData.insert( resultData.end(), dataLength.begin(), dataLength.end() );
     resultData.insert( resultData.end(), randomData.begin(), randomData.end() );
 
     txGenerate["to"] = contractAddress;
@@ -5483,8 +5496,16 @@ BOOST_AUTO_TEST_CASE( getRandomWalletAndSignatureForCTX ) {
 
     PrecompiledExecutor blockRandomExecutor = PrecompiledRegistrar::executor( "getBlockRandom" );
     auto vrs = dev::makeSignature( blockRandomExecutor( bytesConstRef(), ctx ).second, ctx.currentTxnIndex );
+    dev::u256 gasPrice = g_skaleHost->getGasPrice( ctx.blockNumber.convert_to< unsigned >() );
+    
+    // Create expected transaction for signature verification
+    Transaction expectedTransaction( 0, gasPrice, randomGasLimit, randomAddress, randomData, 0 );
+    dev::h256 expectedTxnHash = expectedTransaction.sha3( dev::eth::WithoutSignature );
+    dev::Public expectedPublicKey = recover( vrs, expectedTxnHash );
+    dev::Address expectedWalletAddress = dev::toAddress( expectedPublicKey );
 
     BOOST_REQUIRE( signatureFromPrecompiled == vrs );
+    BOOST_REQUIRE_EQUAL( addressFromPrecompiled, expectedWalletAddress );
     BOOST_REQUIRE_EQUAL( addressFromPrecompiled, randomAddress5 );
 }
 
