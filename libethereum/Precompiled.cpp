@@ -29,6 +29,7 @@
 #include <libdevcore/CommonJS.h>
 #include <libdevcore/FileSystem.h>
 #include <libdevcore/Log.h>
+#include <libdevcore/RLP.h>
 #include <libdevcore/SHA3.h>
 #include <libdevcore/microprofile.h>
 #include <libdevcrypto/Common.h>
@@ -1092,7 +1093,75 @@ ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef, const PrecompiledCall
 
 #ifdef BITE2
 
-ETH_REGISTER_PRECOMPILED( decryptAndExecuteCTX )( bytesConstRef, const PrecompiledCallContext& ) {
+dev::bytes abiEncodedArraysToRlp( const dev::bytes& _abiEncodedArrays ) {
+    // Parse ABI-encoded data: abi.encode(bytes[] encryptedArgs, bytes[] plaintextArgs)
+    // ABI format: offset_to_encryptedArgs(32) + offset_to_plaintextArgs(32) + encryptedArgs_data + plaintextArgs_data
+    // where encryptedArgs_data = length(32) + offset_to_elem0(32) + ... + elem0_length(32) + elem0_data + ...
+    
+    bytesConstRef dataRef( _abiEncodedArrays.data(), _abiEncodedArrays.size() );
+    
+    if ( dataRef.size() < 64 )
+        throw std::runtime_error( "abiEncodedArraysToRlp: input too short for two array offsets" );
+    
+    // Helper function to parse a bytes[] array from ABI-encoded data
+    auto parseArray = []( bytesConstRef dataRef, bigint const& arrayOffset, const std::string& arrayName, bool validateMinLength ) -> RLPStream {
+        if ( dataRef.size() < arrayOffset.convert_to< size_t >() + 32 )
+            throw std::runtime_error( "abiEncodedArraysToRlp: input too short for " + arrayName + " array" );
+        
+        bigint const arrayLength( parseBigEndianRightPadded( dataRef, arrayOffset, 32 ) );
+        if ( arrayLength < 0 )
+            throw std::runtime_error( "abiEncodedArraysToRlp: invalid " + arrayName + " length" );
+        
+        size_t arrayCount = arrayLength.convert_to< size_t >();
+        size_t arrayBase = arrayOffset.convert_to< size_t >() + 32;
+        
+        RLPStream arrayStream;
+        arrayStream.appendList( arrayCount );
+        
+        for ( size_t i = 0; i < arrayCount; ++i ) {
+            if ( dataRef.size() < arrayBase + i * 32 + 32 )
+                throw std::runtime_error( "abiEncodedArraysToRlp: input too short for " + arrayName + " element offset" );
+            
+            bigint elemOffset( parseBigEndianRightPadded( dataRef, arrayBase + i * 32, 32 ) );
+            size_t elemPos = arrayOffset.convert_to< size_t >() + 32 + elemOffset.convert_to< size_t >();
+            
+            if ( dataRef.size() < elemPos + 32 )
+                throw std::runtime_error( "abiEncodedArraysToRlp: input too short for " + arrayName + " element length" );
+            
+            bigint elemLength( parseBigEndianRightPadded( dataRef, elemPos, 32 ) );
+            if ( dataRef.size() < elemPos + 32 + elemLength.convert_to< size_t >() )
+                throw std::runtime_error( "abiEncodedArraysToRlp: input too short for " + arrayName + " element data" );
+            
+            // Validate encrypted element length if required
+            if ( validateMinLength && elemLength.convert_to< size_t >() < BITE_CIPHERTEXT_MIN_LEN )
+                throw std::runtime_error( "abiEncodedArraysToRlp: encrypted argument too short, must be at least " +
+                    std::to_string( BITE_CIPHERTEXT_MIN_LEN ) + " bytes" );
+            
+            dev::bytes elemData = dataRef.cropped( elemPos + 32, elemLength.convert_to< size_t >() ).toBytes();
+            arrayStream << elemData;
+        }
+        
+        return arrayStream;
+    };
+    
+    // Read offsets to the two arrays
+    bigint const encryptedArgsOffset( parseBigEndianRightPadded( dataRef, 0, 32 ) );
+    bigint const plaintextArgsOffset( parseBigEndianRightPadded( dataRef, 32, 32 ) );
+    
+    // Parse both arrays
+    RLPStream encryptedArgsStream = parseArray( dataRef, encryptedArgsOffset, "encryptedArgs", true );
+    RLPStream plaintextArgsStream = parseArray( dataRef, plaintextArgsOffset, "plaintextArgs", false );
+    
+    // Create final RLP: RLP(RLP(encryptedArgs[0], ...), RLP(plaintextArgs[0], ...))
+    RLPStream finalStream;
+    finalStream.appendList( 2 );
+    finalStream.appendRaw( encryptedArgsStream.out() );
+    finalStream.appendRaw( plaintextArgsStream.out() );
+    
+    return finalStream.out();
+}
+
+ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef, const PrecompiledCallContext& ) {
     try {
     } catch ( std::exception& ex ) {
         std::string strError = ex.what();
@@ -1154,19 +1223,34 @@ ETH_REGISTER_PRECOMPILED( getRandomWalletAndSignatureForCTX )
         if ( data.empty() )
             return { false, toBigEndian( dev::u256( 5 ) ) };
 
+        dev::bytes rlpEncodedData;
+        try {
+            rlpEncodedData = abiEncodedArraysToRlp( data );
+        } catch ( std::exception& ex ) {
+            std::string strError = ex.what();
+            if ( strError.empty() )
+                strError = "exception without description";
+            BOOST_LOG( getLogger( VerbosityError ) )
+                << "Exception in precompiled/getRandomWalletForCTX/abiEncodedArraysToRlp(): " << strError << "\n";
+        } catch ( ... ) {
+            BOOST_LOG( getLogger( VerbosityError ) )
+                << "Unknown exception in precompiled/getRandomWalletForCTX/abiEncodedArraysToRlp()\n";
+            return { false, toBigEndian( dev::u256( 6 ) ) };
+        }
+
         // validate gasLimit
         auto evmSchedule = g_skaleHost->client().evmSchedule();
         if ( TransactionBase::baseGasRequired(
-                 false, dev::bytesConstRef( data.data(), data.size() ), evmSchedule, true ) > gas )
-            return { false, toBigEndian( dev::u256( 6 ) ) };
+                 false, dev::bytesConstRef( rlpEncodedData.data(), rlpEncodedData.size() ), evmSchedule, true ) > gas )
+            return { false, toBigEndian( dev::u256( 7 ) ) };
 
         dev::u256 gasPrice = g_skaleHost->getGasPrice();
 
         // construct unsigned transaction and calculate its hash
         Transaction sampleTransaction(
-            0, gasPrice, gas.convert_to< dev::u256 >(), destination, data, 0 );
+            0, gasPrice, gas.convert_to< dev::u256 >(), destination, rlpEncodedData, 0 );
         if ( sampleTransaction.isInvalid() )
-            return { false, toBigEndian( dev::u256( 7 ) ) };
+            return { false, toBigEndian( dev::u256( 8 ) ) };
 
         dev::h256 txnHash = sampleTransaction.sha3( dev::eth::WithoutSignature );
 

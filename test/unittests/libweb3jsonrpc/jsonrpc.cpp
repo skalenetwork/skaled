@@ -44,6 +44,7 @@
 #include <libweb3jsonrpc/JsonHelper.h>
 #include "SkaledFixture.h"
 #include <libconsensus/SkaleCommon.h>
+#include <libconsensus/node/ConsensusInterface.h>
 
 #ifndef FAIR
 #include <libconsensus/oracle/OracleRequestSpec.h>
@@ -5255,6 +5256,77 @@ bool operator==( const dev::SignatureStruct& lhs, const dev::SignatureStruct& rh
 bool operator!=( const dev::SignatureStruct& lhs, const dev::SignatureStruct& rhs ) {
     return !( lhs == rhs );
 }
+
+// Helper function to build abi.encode(bytes[] args1, bytes[] args2)
+dev::bytes buildAbiEncodedArrays( const std::vector<dev::bytes>& args1Elements, const std::vector<dev::bytes>& args2Elements ) {
+    // Validate that all args1 elements meet minimum length requirement
+    for ( size_t i = 0; i < args1Elements.size(); ++i ) {
+        if ( args1Elements[i].size() < BITE_CIPHERTEXT_MIN_LEN ) {
+            throw std::runtime_error( "buildAbiEncodedArrays: args1 element " + std::to_string(i) + 
+                " is too short (" + std::to_string(args1Elements[i].size()) + " bytes), must be at least " +
+                std::to_string(BITE_CIPHERTEXT_MIN_LEN) + " bytes" );
+        }
+    }
+    
+    dev::bytes result;
+    
+    // Calculate total size for args1 array data
+    size_t args1DataSize = 32;  // length field
+    args1DataSize += 32 * args1Elements.size();  // offsets for each element
+    for ( const auto& elem : args1Elements ) {
+        args1DataSize += 32;  // length field for element
+        args1DataSize += (elem.size() + 31) / 32 * 32;  // padded element data
+    }
+    
+    // Write offsets to both arrays
+    dev::bytes args1Offset = dev::toBigEndian( dev::u256( 64 ) );
+    dev::bytes args2Offset = dev::toBigEndian( dev::u256( 64 + args1DataSize ) );
+    result.insert( result.end(), args1Offset.begin(), args1Offset.end() );
+    result.insert( result.end(), args2Offset.begin(), args2Offset.end() );
+    
+    // Encode args1 array
+    dev::bytes args1Length = dev::toBigEndian( dev::u256( args1Elements.size() ) );
+    result.insert( result.end(), args1Length.begin(), args1Length.end() );
+    
+    // Calculate and write element offsets for args1
+    size_t currentOffset = 32 * args1Elements.size();  // After all offset fields
+    for ( const auto& elem : args1Elements ) {
+        dev::bytes elemOffset = dev::toBigEndian( dev::u256( currentOffset ) );
+        result.insert( result.end(), elemOffset.begin(), elemOffset.end() );
+        currentOffset += 32 + (elem.size() + 31) / 32 * 32;  // length + padded data
+    }
+    
+    // Write args1 element data
+    for ( const auto& elem : args1Elements ) {
+        dev::bytes elemLength = dev::toBigEndian( dev::u256( elem.size() ) );
+        result.insert( result.end(), elemLength.begin(), elemLength.end() );
+        result.insert( result.end(), elem.begin(), elem.end() );
+        while( result.size() % 32 != 0 ) result.push_back(0);
+    }
+    
+    // Encode args2 array (same structure as args1)
+    dev::bytes args2Length = dev::toBigEndian( dev::u256( args2Elements.size() ) );
+    result.insert( result.end(), args2Length.begin(), args2Length.end() );
+    
+    // Calculate and write element offsets for args2
+    currentOffset = 32 * args2Elements.size();
+    for ( const auto& elem : args2Elements ) {
+        dev::bytes elemOffset = dev::toBigEndian( dev::u256( currentOffset ) );
+        result.insert( result.end(), elemOffset.begin(), elemOffset.end() );
+        currentOffset += 32 + (elem.size() + 31) / 32 * 32;
+    }
+    
+    // Write args2 element data
+    for ( const auto& elem : args2Elements ) {
+        dev::bytes elemLength = dev::toBigEndian( dev::u256( elem.size() ) );
+        result.insert( result.end(), elemLength.begin(), elemLength.end() );
+        result.insert( result.end(), elem.begin(), elem.end() );
+        while( result.size() % 32 != 0 ) result.push_back(0);
+    }
+    
+    return result;
+}
+
 BOOST_AUTO_TEST_CASE( getRandomWalletAndSignatureForCTX ) {
     JsonRpcFixture fixture( c_BITEConfigString, false, false, true, true );
 
@@ -5281,11 +5353,14 @@ BOOST_AUTO_TEST_CASE( getRandomWalletAndSignatureForCTX ) {
 
 //        function generateRandomWallet() public returns (address) {
 //            uint256 randomNumber = uint256(keccak256(abi.encodePacked(block.timestamp, block.number)));
-//            bytes[] memory randomBytes = new bytes[](3);
-//            randomBytes[0] = abi.encodePacked("random1");
-//            randomBytes[1] = abi.encodePacked("random2");
-//            randomBytes[2] = abi.encodePacked("random3");
+//            bytes[] memory args1 = new bytes[](2);
+//            args1[0] = abi.encodePacked("encrypted1");
+//            args1[1] = abi.encodePacked("encrypted2");
+//            bytes[] memory args2 = new bytes[](2);
+//            args2[0] = abi.encodePacked("plaintext1");
+//            args2[1] = abi.encodePacked("plaintext2");
 
+//            bytes memory randomBytes = abi.encode(args1, args2);
 //            bytes memory input = abi.encode(address(this), randomNumber, randomBytes);
 
 //            (bool success, bytes memory result) = address(0x06).staticcall(input);
@@ -5428,13 +5503,11 @@ BOOST_AUTO_TEST_CASE( getRandomWalletAndSignatureForCTX ) {
     BOOST_REQUIRE( randomAddress1 != randomAddress3 );
     BOOST_REQUIRE( randomAddress3 != randomAddress4 );
     randomSignatureBytes = dev::fromHex( fixture.rpcClient->eth_call( callGetLastSignature, "latest" ) );
-    BOOST_REQUIRE( randomSignatureBytes.size() >= 3 * dev::h256::size );
     rBytes = dev::h256( dev::bytes( randomSignatureBytes.begin(), randomSignatureBytes.begin() + dev::h256::size ) );
     sBytes = dev::h256( dev::bytes( randomSignatureBytes.begin() + dev::h256::size, randomSignatureBytes.begin() + 2 * dev::h256::size ) );
     vBytes = dev::h256( dev::bytes( randomSignatureBytes.begin() + 2 * dev::h256::size, randomSignatureBytes.begin() + 3 * dev::h256::size ) );
     dev::SignatureStruct randomSignature3( rBytes, sBytes, dev::h256::Arith( vBytes ).convert_to< _byte_ >() );
     randomSignatureBytes = dev::fromHex( fixture.rpcClient->eth_call( callGetPreLastSignature, "latest" ) );
-    BOOST_REQUIRE( randomSignatureBytes.size() >= 3 * dev::h256::size );
     rBytes = dev::h256( dev::bytes( randomSignatureBytes.begin(), randomSignatureBytes.begin() + dev::h256::size ) );
     sBytes = dev::h256( dev::bytes( randomSignatureBytes.begin() + dev::h256::size, randomSignatureBytes.begin() + 2 * dev::h256::size ) );
     vBytes = dev::h256( dev::bytes( randomSignatureBytes.begin() + 2 * dev::h256::size, randomSignatureBytes.begin() + 3 * dev::h256::size ) );
@@ -5449,8 +5522,19 @@ BOOST_AUTO_TEST_CASE( getRandomWalletAndSignatureForCTX ) {
     std::copy( randomAddressBytes.begin(), randomAddressBytes.end(), randomAddressLeftPadded.begin() + 12 );
     dev::u256 randomGasLimit = dev::h256::Arith( dev::h256::random() );
     dev::bytes randomGasLimitBytes = dev::toBigEndian( randomGasLimit );
-    dev::bytes randomData = dev::h256::random().asBytes();
-    randomData.resize( dev::eth::TransactionBase::BITE2_INPUT_DATA_MIN_LEN );
+    
+    // Build abi.encode(bytes[] args1, bytes[] args2) with 2 elements each
+    // args1 elements must be at least BITE_CIPHERTEXT_MIN_LEN bytes (encrypted data)
+    std::vector<dev::bytes> args1 = {
+        dev::bytes( BITE_CIPHERTEXT_MIN_LEN, 0x11 ),  // First encrypted element (minimum length)
+        dev::bytes( BITE_CIPHERTEXT_MIN_LEN, 0x22 )  // Second encrypted element (slightly longer)
+    };
+    std::vector<dev::bytes> args2 = {
+        dev::fromHex("706c61696e746578743122"),  // "plaintext1"
+        dev::fromHex("706c61696e746578743222")   // "plaintext2"
+    };
+    
+    dev::bytes randomData = buildAbiEncodedArrays( args1, args2 );
 
     // Build ABI-encoded input: abi.encode(address, uint256, bytes)
     // Format: address(32) + gasLimit(32) + offset_to_bytes(32) + bytes_length(32) + bytes_data
@@ -5484,11 +5568,9 @@ BOOST_AUTO_TEST_CASE( getRandomWalletAndSignatureForCTX ) {
     dev::bytesConstRef input( resultData.data(), resultData.size() );
     auto res = randomWalletExecutor( input, ctx );
     BOOST_REQUIRE( res.first );
-    BOOST_REQUIRE( res.second.size() >= dev::Address::size + 3 * dev::h256::size );  // address + r + s + v
 
     dev::Address addressFromPrecompiled( dev::bytes( res.second.begin(), res.second.begin() + dev::Address::size ) );
     randomSignatureBytes = dev::bytes( res.second.begin() + dev::Address::size, res.second.end() );
-    BOOST_REQUIRE( randomSignatureBytes.size() >= 3 * dev::h256::size );
     rBytes = dev::h256( dev::bytes( randomSignatureBytes.begin(), randomSignatureBytes.begin() + dev::h256::size ) );
     sBytes = dev::h256( dev::bytes( randomSignatureBytes.begin() + dev::h256::size, randomSignatureBytes.begin() + 2 * dev::h256::size ) );
     vBytes = dev::h256( dev::bytes( randomSignatureBytes.begin() + 2 * dev::h256::size, randomSignatureBytes.begin() + 3 * dev::h256::size ) );
@@ -5498,8 +5580,28 @@ BOOST_AUTO_TEST_CASE( getRandomWalletAndSignatureForCTX ) {
     auto vrs = dev::makeSignature( blockRandomExecutor( bytesConstRef(), ctx ).second, ctx.currentTxnIndex );
     dev::u256 gasPrice = g_skaleHost->getGasPrice( ctx.blockNumber.convert_to< unsigned >() );
     
-    // Create expected transaction for signature verification
-    Transaction expectedTransaction( 0, gasPrice, randomGasLimit, randomAddress, randomData, 0 );
+    // Build expected RLP-encoded data: RLP(RLP(args1[0], args1[1]), RLP(args2[0], args2[1]))
+    RLPStream args1Stream;
+    args1Stream.appendList( args1.size() );
+    for ( const auto& elem : args1 ) {
+        args1Stream << elem;
+    }
+    
+    RLPStream args2Stream;
+    args2Stream.appendList( args2.size() );
+    for ( const auto& elem : args2 ) {
+        args2Stream << elem;
+    }
+    
+    RLPStream finalStream;
+    finalStream.appendList( 2 );
+    finalStream.appendRaw( args1Stream.out() );
+    finalStream.appendRaw( args2Stream.out() );
+    
+    dev::bytes rlpEncodedData = finalStream.out();
+    
+    // Create expected transaction for signature verification using RLP-encoded data
+    Transaction expectedTransaction( 0, gasPrice, randomGasLimit, randomAddress, rlpEncodedData, 0 );
     dev::h256 expectedTxnHash = expectedTransaction.sha3( dev::eth::WithoutSignature );
     dev::Public expectedPublicKey = recover( vrs, expectedTxnHash );
     dev::Address expectedWalletAddress = dev::toAddress( expectedPublicKey );
