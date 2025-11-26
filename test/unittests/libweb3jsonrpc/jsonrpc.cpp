@@ -5250,14 +5250,6 @@ BOOST_AUTO_TEST_CASE( getCommonPublicKey ) {
 
 #ifdef BITE2
 
-bool operator==( const dev::SignatureStruct& lhs, const dev::SignatureStruct& rhs ) {
-    return lhs.r == rhs.r && lhs.s == rhs.s && rhs.v == lhs.v;
-}
-
-bool operator!=( const dev::SignatureStruct& lhs, const dev::SignatureStruct& rhs ) {
-    return !( lhs == rhs );
-}
-
 // Helper function to build abi.encode(bytes[] args1, bytes[] args2)
 dev::bytes buildAbiEncodedArrays( const std::vector<dev::bytes>& args1Elements, const std::vector<dev::bytes>& args2Elements ) {
     // Validate that all args1 elements meet minimum length requirement

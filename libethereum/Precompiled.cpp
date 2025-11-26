@@ -1101,41 +1101,43 @@ dev::bytes abiEncodedArraysToRlp( const dev::bytes& _abiEncodedArrays ) {
 
     bytesConstRef dataRef( _abiEncodedArrays.data(), _abiEncodedArrays.size() );
 
-    if ( dataRef.size() < 64 )
+    if ( dataRef.size() < 2 * dev::h256::size )
         throw std::runtime_error( "abiEncodedArraysToRlp: input too short for two array offsets" );
 
     // Helper function to parse a bytes[] array from ABI-encoded data
     auto parseArray = []( bytesConstRef dataRef, bigint const& arrayOffset,
                           const std::string& arrayName, bool validateMinLength ) -> RLPStream {
-        if ( dataRef.size() < arrayOffset.convert_to< size_t >() + 32 )
+        if ( dataRef.size() < arrayOffset.convert_to< size_t >() + dev::h256::size )
             throw std::runtime_error(
                 "abiEncodedArraysToRlp: input too short for " + arrayName + " array" );
 
-        bigint const arrayLength( parseBigEndianRightPadded( dataRef, arrayOffset, 32 ) );
+        bigint const arrayLength(
+            parseBigEndianRightPadded( dataRef, arrayOffset, dev::h256::size ) );
         if ( arrayLength < 0 )
             throw std::runtime_error( "abiEncodedArraysToRlp: invalid " + arrayName + " length" );
 
         size_t arrayCount = arrayLength.convert_to< size_t >();
-        size_t arrayBase = arrayOffset.convert_to< size_t >() + 32;
+        size_t arrayBase = arrayOffset.convert_to< size_t >() + dev::h256::size;
 
         RLPStream arrayStream;
         arrayStream.appendList( arrayCount );
 
         for ( size_t i = 0; i < arrayCount; ++i ) {
-            if ( dataRef.size() < arrayBase + i * 32 + 32 )
+            if ( dataRef.size() < arrayBase + i * dev::h256::size + dev::h256::size )
                 throw std::runtime_error(
                     "abiEncodedArraysToRlp: input too short for " + arrayName + " element offset" );
 
-            bigint elemOffset( parseBigEndianRightPadded( dataRef, arrayBase + i * 32, 32 ) );
-            size_t elemPos =
-                arrayOffset.convert_to< size_t >() + 32 + elemOffset.convert_to< size_t >();
+            bigint elemOffset( parseBigEndianRightPadded(
+                dataRef, arrayBase + i * dev::h256::size, dev::h256::size ) );
+            size_t elemPos = arrayOffset.convert_to< size_t >() + dev::h256::size +
+                             elemOffset.convert_to< size_t >();
 
-            if ( dataRef.size() < elemPos + 32 )
+            if ( dataRef.size() < elemPos + dev::h256::size )
                 throw std::runtime_error(
                     "abiEncodedArraysToRlp: input too short for " + arrayName + " element length" );
 
-            bigint elemLength( parseBigEndianRightPadded( dataRef, elemPos, 32 ) );
-            if ( dataRef.size() < elemPos + 32 + elemLength.convert_to< size_t >() )
+            bigint elemLength( parseBigEndianRightPadded( dataRef, elemPos, dev::h256::size ) );
+            if ( dataRef.size() < elemPos + dev::h256::size + elemLength.convert_to< size_t >() )
                 throw std::runtime_error(
                     "abiEncodedArraysToRlp: input too short for " + arrayName + " element data" );
 
@@ -1146,7 +1148,8 @@ dev::bytes abiEncodedArraysToRlp( const dev::bytes& _abiEncodedArrays ) {
                     std::to_string( BITE_CIPHERTEXT_MIN_LEN ) + " bytes" );
 
             dev::bytes elemData =
-                dataRef.cropped( elemPos + 32, elemLength.convert_to< size_t >() ).toBytes();
+                dataRef.cropped( elemPos + dev::h256::size, elemLength.convert_to< size_t >() )
+                    .toBytes();
             arrayStream << elemData;
         }
 
@@ -1154,8 +1157,9 @@ dev::bytes abiEncodedArraysToRlp( const dev::bytes& _abiEncodedArrays ) {
     };
 
     // Read offsets to the two arrays
-    bigint const encryptedArgsOffset( parseBigEndianRightPadded( dataRef, 0, 32 ) );
-    bigint const plaintextArgsOffset( parseBigEndianRightPadded( dataRef, 32, 32 ) );
+    bigint const encryptedArgsOffset( parseBigEndianRightPadded( dataRef, 0, dev::h256::size ) );
+    bigint const plaintextArgsOffset(
+        parseBigEndianRightPadded( dataRef, dev::h256::size, dev::h256::size ) );
 
     // Parse both arrays
     RLPStream encryptedArgsStream =
@@ -1184,42 +1188,51 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
         // v(32) = 116 bytes Format: offset_to_walletAndSignature(32) + destination(32) +
         // gasLimit(32) + offset_to_data(32) + walletAndSignature_data + data_data
 
-        if ( _in.size() < 32 + 4 * 32 + dev::eth::TransactionBase::BITE2_INPUT_DATA_MIN_LEN )
+        if ( _in.size() <
+             5 * dev::h256::size + dev::eth::TransactionBase::BITE2_INPUT_DATA_MIN_LEN )
             return { false, toBigEndian( dev::u256( 1 ) ) };
 
         // Read offset to walletAndSignature
-        bigint const walletAndSigOffset( parseBigEndianRightPadded( _in, 0, 32 ) );
+        bigint const walletAndSigOffset( parseBigEndianRightPadded( _in, 0, dev::h256::size ) );
 
         // Extract destination address from second 32 bytes (skip first 12 bytes of padding)
-        dev::Address destination( _in.cropped( 44, 20 ) );
+        dev::Address destination( _in.cropped( dev::h256::size + 12, dev::Address::size ) );
         if ( destination == dev::ZeroAddress )
             return { false, toBigEndian( dev::u256( 2 ) ) };
 
         // Extract gas limit from third 32 bytes
-        bigint const gas( parseBigEndianRightPadded( _in, 64, 32 ) );
+        bigint const gas( parseBigEndianRightPadded( _in, 2 * dev::h256::size, dev::h256::size ) );
         if ( gas <= 0 )
             return { false, toBigEndian( dev::u256( 3 ) ) };
 
         // Read offset to data from fourth 32 bytes
-        bigint const dataOffset( parseBigEndianRightPadded( _in, 96, 32 ) );
+        bigint const dataOffset(
+            parseBigEndianRightPadded( _in, 3 * dev::h256::size, dev::h256::size ) );
 
         // Extract walletAndSignature data at the offset (has length prefix)
-        if ( _in.size() < walletAndSigOffset.convert_to< size_t >() + 32 )
+        if ( _in.size() < walletAndSigOffset.convert_to< size_t >() + dev::h256::size )
             return { false, toBigEndian( dev::u256( 4 ) ) };
 
-        bigint const walletAndSigLength( parseBigEndianRightPadded( _in, walletAndSigOffset, 32 ) );
-        if ( walletAndSigLength != 116 )  // wallet(20) + r(32) + s(32) + v(32)
+        bigint const walletAndSigLength(
+            parseBigEndianRightPadded( _in, walletAndSigOffset, dev::h256::size ) );
+        // address(20) + r(32) + s(32) + v(32)
+        static constexpr size_t WALLET_AND_SIGNATURE_LENGTH =
+            dev::Address::size + 3 * dev::h256::size;
+        if ( walletAndSigLength != WALLET_AND_SIGNATURE_LENGTH )
             return { false, toBigEndian( dev::u256( 5 ) ) };
 
-        if ( _in.size() < walletAndSigOffset.convert_to< size_t >() + 32 + 116 )
+        if ( _in.size() < walletAndSigOffset.convert_to< size_t >() + dev::h256::size +
+                              WALLET_AND_SIGNATURE_LENGTH )
             return { false, toBigEndian( dev::u256( 6 ) ) };
 
         dev::bytes walletAndSigBytes =
-            _in.cropped( walletAndSigOffset.convert_to< size_t >() + 32, 116 ).toBytes();
+            _in.cropped( walletAndSigOffset.convert_to< size_t >() + dev::h256::size,
+                   WALLET_AND_SIGNATURE_LENGTH )
+                .toBytes();
 
         // Extract wallet address (first 20 bytes)
-        dev::Address walletAddress(
-            dev::bytes( walletAndSigBytes.begin(), walletAndSigBytes.begin() + 20 ) );
+        dev::Address walletAddress( dev::bytes(
+            walletAndSigBytes.begin(), walletAndSigBytes.begin() + dev::Address::size ) );
         if ( walletAddress == dev::ZeroAddress )
             return { false, toBigEndian( dev::u256( 7 ) ) };
         // verify account is not active
@@ -1227,10 +1240,13 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
             return { false, toBigEndian( dev::u256( 8 ) ) };
 
         // Parse signature from remaining bytes: r(32), s(32), v(32)
-        dev::h256 r( dev::bytes( walletAndSigBytes.begin() + 20, walletAndSigBytes.begin() + 52 ) );
-        dev::h256 s( dev::bytes( walletAndSigBytes.begin() + 52, walletAndSigBytes.begin() + 84 ) );
+        dev::h256 r( dev::bytes( walletAndSigBytes.begin() + dev::Address::size,
+            walletAndSigBytes.begin() + dev::Address::size + dev::h256::size ) );
+        dev::h256 s( dev::bytes( walletAndSigBytes.begin() + dev::Address::size + dev::h256::size,
+            walletAndSigBytes.begin() + dev::Address::size + 2 * dev::h256::size ) );
         dev::h256 vBytes(
-            dev::bytes( walletAndSigBytes.begin() + 84, walletAndSigBytes.begin() + 116 ) );
+            dev::bytes( walletAndSigBytes.begin() + dev::Address::size + 2 * dev::h256::size,
+                walletAndSigBytes.begin() + WALLET_AND_SIGNATURE_LENGTH ) );
         _byte_ v = dev::h256::Arith( vBytes ).convert_to< _byte_ >();
 
         SignatureStruct signature( r, s, v );
@@ -1238,17 +1254,17 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
             return { false, toBigEndian( dev::u256( 9 ) ) };
 
         // Extract transaction data at the offset (has length prefix)
-        if ( _in.size() < dataOffset.convert_to< size_t >() + 32 )
+        if ( _in.size() < dataOffset.convert_to< size_t >() + dev::h256::size )
             return { false, toBigEndian( dev::u256( 10 ) ) };
 
-        bigint const dataLength( parseBigEndianRightPadded( _in, dataOffset, 32 ) );
-        if ( _in.size() <
-             dataOffset.convert_to< size_t >() + 32 + dataLength.convert_to< size_t >() )
+        bigint const dataLength( parseBigEndianRightPadded( _in, dataOffset, dev::h256::size ) );
+        if ( _in.size() < dataOffset.convert_to< size_t >() + dev::h256::size +
+                              dataLength.convert_to< size_t >() )
             return { false, toBigEndian( dev::u256( 11 ) ) };
 
-        dev::bytes txnData =
-            _in.cropped( dataOffset.convert_to< size_t >() + 32, dataLength.convert_to< size_t >() )
-                .toBytes();
+        dev::bytes txnData = _in.cropped( dataOffset.convert_to< size_t >() + dev::h256::size,
+                                    dataLength.convert_to< size_t >() )
+                                 .toBytes();
         if ( txnData.empty() )
             return { false, toBigEndian( dev::u256( 12 ) ) };
 

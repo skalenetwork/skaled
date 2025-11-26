@@ -572,7 +572,7 @@ void TransactionQueue::importBITE2Transaction( Transaction&& _t ) {
     m_bite2Current.push_back( std::move( _t ) );
 }
 
-std::vector< Transaction > TransactionQueue::pendingBITE2Transactions() {
+std::vector< Transaction > TransactionQueue::pendingBITE2Transactions() const {
     return m_bite2Current;
 }
 #endif
