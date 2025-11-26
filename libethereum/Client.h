@@ -124,7 +124,6 @@ public:
     h256 importTransaction( Transaction const& _t,
         TransactionBroadcast _txOrigin = TransactionBroadcast::DontBroadcast ) override;
 
-
     /// Makes the given call. Nothing is recorded into the state.
     ExecutionResult call( Address const& _secret, u256 _value, Address _dest, bytes const& _data,
         u256 _gas, u256 _gasPrice,
