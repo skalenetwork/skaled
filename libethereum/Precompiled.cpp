@@ -1095,145 +1095,163 @@ ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef, const PrecompiledCall
 
 dev::bytes abiEncodedArraysToRlp( const dev::bytes& _abiEncodedArrays ) {
     // Parse ABI-encoded data: abi.encode(bytes[] encryptedArgs, bytes[] plaintextArgs)
-    // ABI format: offset_to_encryptedArgs(32) + offset_to_plaintextArgs(32) + encryptedArgs_data + plaintextArgs_data
-    // where encryptedArgs_data = length(32) + offset_to_elem0(32) + ... + elem0_length(32) + elem0_data + ...
-    
+    // ABI format: offset_to_encryptedArgs(32) + offset_to_plaintextArgs(32) + encryptedArgs_data +
+    // plaintextArgs_data where encryptedArgs_data = length(32) + offset_to_elem0(32) + ... +
+    // elem0_length(32) + elem0_data + ...
+
     bytesConstRef dataRef( _abiEncodedArrays.data(), _abiEncodedArrays.size() );
-    
+
     if ( dataRef.size() < 64 )
         throw std::runtime_error( "abiEncodedArraysToRlp: input too short for two array offsets" );
-    
+
     // Helper function to parse a bytes[] array from ABI-encoded data
-    auto parseArray = []( bytesConstRef dataRef, bigint const& arrayOffset, const std::string& arrayName, bool validateMinLength ) -> RLPStream {
+    auto parseArray = []( bytesConstRef dataRef, bigint const& arrayOffset,
+                          const std::string& arrayName, bool validateMinLength ) -> RLPStream {
         if ( dataRef.size() < arrayOffset.convert_to< size_t >() + 32 )
-            throw std::runtime_error( "abiEncodedArraysToRlp: input too short for " + arrayName + " array" );
-        
+            throw std::runtime_error(
+                "abiEncodedArraysToRlp: input too short for " + arrayName + " array" );
+
         bigint const arrayLength( parseBigEndianRightPadded( dataRef, arrayOffset, 32 ) );
         if ( arrayLength < 0 )
             throw std::runtime_error( "abiEncodedArraysToRlp: invalid " + arrayName + " length" );
-        
+
         size_t arrayCount = arrayLength.convert_to< size_t >();
         size_t arrayBase = arrayOffset.convert_to< size_t >() + 32;
-        
+
         RLPStream arrayStream;
         arrayStream.appendList( arrayCount );
-        
+
         for ( size_t i = 0; i < arrayCount; ++i ) {
             if ( dataRef.size() < arrayBase + i * 32 + 32 )
-                throw std::runtime_error( "abiEncodedArraysToRlp: input too short for " + arrayName + " element offset" );
-            
+                throw std::runtime_error(
+                    "abiEncodedArraysToRlp: input too short for " + arrayName + " element offset" );
+
             bigint elemOffset( parseBigEndianRightPadded( dataRef, arrayBase + i * 32, 32 ) );
-            size_t elemPos = arrayOffset.convert_to< size_t >() + 32 + elemOffset.convert_to< size_t >();
-            
+            size_t elemPos =
+                arrayOffset.convert_to< size_t >() + 32 + elemOffset.convert_to< size_t >();
+
             if ( dataRef.size() < elemPos + 32 )
-                throw std::runtime_error( "abiEncodedArraysToRlp: input too short for " + arrayName + " element length" );
-            
+                throw std::runtime_error(
+                    "abiEncodedArraysToRlp: input too short for " + arrayName + " element length" );
+
             bigint elemLength( parseBigEndianRightPadded( dataRef, elemPos, 32 ) );
             if ( dataRef.size() < elemPos + 32 + elemLength.convert_to< size_t >() )
-                throw std::runtime_error( "abiEncodedArraysToRlp: input too short for " + arrayName + " element data" );
-            
+                throw std::runtime_error(
+                    "abiEncodedArraysToRlp: input too short for " + arrayName + " element data" );
+
             // Validate encrypted element length if required
             if ( validateMinLength && elemLength.convert_to< size_t >() < BITE_CIPHERTEXT_MIN_LEN )
-                throw std::runtime_error( "abiEncodedArraysToRlp: encrypted argument too short, must be at least " +
+                throw std::runtime_error(
+                    "abiEncodedArraysToRlp: encrypted argument too short, must be at least " +
                     std::to_string( BITE_CIPHERTEXT_MIN_LEN ) + " bytes" );
-            
-            dev::bytes elemData = dataRef.cropped( elemPos + 32, elemLength.convert_to< size_t >() ).toBytes();
+
+            dev::bytes elemData =
+                dataRef.cropped( elemPos + 32, elemLength.convert_to< size_t >() ).toBytes();
             arrayStream << elemData;
         }
-        
+
         return arrayStream;
     };
-    
+
     // Read offsets to the two arrays
     bigint const encryptedArgsOffset( parseBigEndianRightPadded( dataRef, 0, 32 ) );
     bigint const plaintextArgsOffset( parseBigEndianRightPadded( dataRef, 32, 32 ) );
-    
+
     // Parse both arrays
-    RLPStream encryptedArgsStream = parseArray( dataRef, encryptedArgsOffset, "encryptedArgs", true );
-    RLPStream plaintextArgsStream = parseArray( dataRef, plaintextArgsOffset, "plaintextArgs", false );
-    
+    RLPStream encryptedArgsStream =
+        parseArray( dataRef, encryptedArgsOffset, "encryptedArgs", true );
+    RLPStream plaintextArgsStream =
+        parseArray( dataRef, plaintextArgsOffset, "plaintextArgs", false );
+
     // Create final RLP: RLP(RLP(encryptedArgs[0], ...), RLP(plaintextArgs[0], ...))
     RLPStream finalStream;
     finalStream.appendList( 2 );
     finalStream.appendRaw( encryptedArgsStream.out() );
     finalStream.appendRaw( plaintextArgsStream.out() );
-    
+
     return finalStream.out();
 }
 
 ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallContext& _ctx ) {
     try {
-        // cannot be called from read-only context (e.g. eth_call, eth_estimateGas, debug_traceTransaction)
-        // simply return success here
+        // cannot be called from read-only context (e.g. eth_call, eth_estimateGas,
+        // debug_traceTransaction) simply return success here
         if ( _ctx.isReadOnly )
             return { true, toBigEndian( dev::u256( 1 ) ) };
 
-        // Parse ABI-encoded input: abi.encode(bytes walletAndSignature, address destination, uint256 gasLimit, bytes data)
-        // walletAndSignature = wallet_address(20) + r(32) + s(32) + v(32) = 116 bytes
-        // Format: offset_to_walletAndSignature(32) + destination(32) + gasLimit(32) + offset_to_data(32) + walletAndSignature_data + data_data
-        
+        // Parse ABI-encoded input: abi.encode(bytes walletAndSignature, address destination,
+        // uint256 gasLimit, bytes data) walletAndSignature = wallet_address(20) + r(32) + s(32) +
+        // v(32) = 116 bytes Format: offset_to_walletAndSignature(32) + destination(32) +
+        // gasLimit(32) + offset_to_data(32) + walletAndSignature_data + data_data
+
         if ( _in.size() < 32 + 4 * 32 + dev::eth::TransactionBase::BITE2_INPUT_DATA_MIN_LEN )
             return { false, toBigEndian( dev::u256( 1 ) ) };
-        
+
         // Read offset to walletAndSignature
         bigint const walletAndSigOffset( parseBigEndianRightPadded( _in, 0, 32 ) );
-        
+
         // Extract destination address from second 32 bytes (skip first 12 bytes of padding)
         dev::Address destination( _in.cropped( 44, 20 ) );
         if ( destination == dev::ZeroAddress )
             return { false, toBigEndian( dev::u256( 2 ) ) };
-        
+
         // Extract gas limit from third 32 bytes
         bigint const gas( parseBigEndianRightPadded( _in, 64, 32 ) );
         if ( gas <= 0 )
             return { false, toBigEndian( dev::u256( 3 ) ) };
-        
+
         // Read offset to data from fourth 32 bytes
         bigint const dataOffset( parseBigEndianRightPadded( _in, 96, 32 ) );
-        
+
         // Extract walletAndSignature data at the offset (has length prefix)
         if ( _in.size() < walletAndSigOffset.convert_to< size_t >() + 32 )
             return { false, toBigEndian( dev::u256( 4 ) ) };
-        
+
         bigint const walletAndSigLength( parseBigEndianRightPadded( _in, walletAndSigOffset, 32 ) );
         if ( walletAndSigLength != 116 )  // wallet(20) + r(32) + s(32) + v(32)
             return { false, toBigEndian( dev::u256( 5 ) ) };
-        
+
         if ( _in.size() < walletAndSigOffset.convert_to< size_t >() + 32 + 116 )
             return { false, toBigEndian( dev::u256( 6 ) ) };
-        
-        dev::bytes walletAndSigBytes = _in.cropped( walletAndSigOffset.convert_to< size_t >() + 32, 116 ).toBytes();
-        
+
+        dev::bytes walletAndSigBytes =
+            _in.cropped( walletAndSigOffset.convert_to< size_t >() + 32, 116 ).toBytes();
+
         // Extract wallet address (first 20 bytes)
-        dev::Address walletAddress( dev::bytes( walletAndSigBytes.begin(), walletAndSigBytes.begin() + 20 ) );
+        dev::Address walletAddress(
+            dev::bytes( walletAndSigBytes.begin(), walletAndSigBytes.begin() + 20 ) );
         if ( walletAddress == dev::ZeroAddress )
             return { false, toBigEndian( dev::u256( 7 ) ) };
         // verify account is not active
         if ( g_skaleHost->client().countAt( walletAddress ) > 0 )
             return { false, toBigEndian( dev::u256( 8 ) ) };
-        
+
         // Parse signature from remaining bytes: r(32), s(32), v(32)
         dev::h256 r( dev::bytes( walletAndSigBytes.begin() + 20, walletAndSigBytes.begin() + 52 ) );
         dev::h256 s( dev::bytes( walletAndSigBytes.begin() + 52, walletAndSigBytes.begin() + 84 ) );
-        dev::h256 vBytes( dev::bytes( walletAndSigBytes.begin() + 84, walletAndSigBytes.begin() + 116 ) );
+        dev::h256 vBytes(
+            dev::bytes( walletAndSigBytes.begin() + 84, walletAndSigBytes.begin() + 116 ) );
         _byte_ v = dev::h256::Arith( vBytes ).convert_to< _byte_ >();
-        
+
         SignatureStruct signature( r, s, v );
         if ( !signature.isValid() )
             return { false, toBigEndian( dev::u256( 9 ) ) };
-        
+
         // Extract transaction data at the offset (has length prefix)
         if ( _in.size() < dataOffset.convert_to< size_t >() + 32 )
             return { false, toBigEndian( dev::u256( 10 ) ) };
-        
+
         bigint const dataLength( parseBigEndianRightPadded( _in, dataOffset, 32 ) );
-        if ( _in.size() < dataOffset.convert_to< size_t >() + 32 + dataLength.convert_to< size_t >() )
+        if ( _in.size() <
+             dataOffset.convert_to< size_t >() + 32 + dataLength.convert_to< size_t >() )
             return { false, toBigEndian( dev::u256( 11 ) ) };
-        
-        dev::bytes txnData = _in.cropped( dataOffset.convert_to< size_t >() + 32, dataLength.convert_to< size_t >() ).toBytes();
+
+        dev::bytes txnData =
+            _in.cropped( dataOffset.convert_to< size_t >() + 32, dataLength.convert_to< size_t >() )
+                .toBytes();
         if ( txnData.empty() )
             return { false, toBigEndian( dev::u256( 12 ) ) };
-        
+
         // Convert ABI-encoded data to RLP
         dev::bytes rlpEncodedData;
         try {
@@ -1243,32 +1261,33 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
             if ( strError.empty() )
                 strError = "exception without description";
             BOOST_LOG( getLogger( VerbosityError ) )
-                << "Exception in precompiled/submitCTX/abiEncodedArraysToRlp(): " << strError << "\n";
+                << "Exception in precompiled/submitCTX/abiEncodedArraysToRlp(): " << strError
+                << "\n";
             return { false, toBigEndian( dev::u256( 13 ) ) };
         } catch ( ... ) {
             BOOST_LOG( getLogger( VerbosityError ) )
                 << "Unknown exception in precompiled/submitCTX/abiEncodedArraysToRlp()\n";
             return { false, toBigEndian( dev::u256( 14 ) ) };
         }
-        
+
         // Get gas price
         dev::u256 gasPrice = g_skaleHost->getGasPrice();
-        
+
         // Construct signed transaction from RLP
         RLPStream rlpStream;
         rlpStream.appendList( 9 );  // nonce, gasPrice, gas, to, value, data, v, r, s
         rlpStream << 0 << gasPrice << gas.convert_to< dev::u256 >();
         rlpStream << destination << 0 << rlpEncodedData;
         rlpStream << signature.v + 27 << signature.r << signature.s;
-        
+
         dev::bytes signedTxnRlp = rlpStream.out();
-        
+
         // Construct transaction from RLP
         Transaction signedTransaction( signedTxnRlp, CheckTransaction::Everything );
-        
+
         if ( signedTransaction.isInvalid() )
             return { false, toBigEndian( dev::u256( 15 ) ) };
-        
+
         // Verify that transaction sender matches the provided wallet address
         dev::Address txnSender = signedTransaction.sender();
         if ( txnSender != walletAddress )
@@ -1276,10 +1295,10 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
 
         // push txn to BITE2 queue
         g_skaleHost->pushToBITE2Queue( std::move( signedTransaction ) );
-        
+
         // Return success
         return { true, toBigEndian( dev::u256( 1 ) ) };
-        
+
     } catch ( std::exception& ex ) {
         std::string strError = ex.what();
         if ( strError.empty() )
@@ -1348,17 +1367,20 @@ ETH_REGISTER_PRECOMPILED( getRandomWalletAndSignatureForCTX )
             if ( strError.empty() )
                 strError = "exception without description";
             BOOST_LOG( getLogger( VerbosityError ) )
-                << "Exception in precompiled/getRandomWalletForCTX/abiEncodedArraysToRlp(): " << strError << "\n";
+                << "Exception in precompiled/getRandomWalletForCTX/abiEncodedArraysToRlp(): "
+                << strError << "\n";
         } catch ( ... ) {
             BOOST_LOG( getLogger( VerbosityError ) )
-                << "Unknown exception in precompiled/getRandomWalletForCTX/abiEncodedArraysToRlp()\n";
+                << "Unknown exception in "
+                   "precompiled/getRandomWalletForCTX/abiEncodedArraysToRlp()\n";
             return { false, toBigEndian( dev::u256( 6 ) ) };
         }
 
         // validate gasLimit
         auto evmSchedule = g_skaleHost->client().evmSchedule();
-        if ( TransactionBase::baseGasRequired(
-                 false, dev::bytesConstRef( rlpEncodedData.data(), rlpEncodedData.size() ), evmSchedule, true ) > gas )
+        if ( TransactionBase::baseGasRequired( false,
+                 dev::bytesConstRef( rlpEncodedData.data(), rlpEncodedData.size() ), evmSchedule,
+                 true ) > gas )
             return { false, toBigEndian( dev::u256( 7 ) ) };
 
         dev::u256 gasPrice = g_skaleHost->getGasPrice();

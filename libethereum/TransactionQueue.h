@@ -383,7 +383,7 @@ private:
 
 #ifdef BITE2
     std::vector< Transaction > m_bite2Current;  ///< Only one thread at a time accesses it.
-                                               ///< therefore no need in extra synchronisation
+                                                ///< therefore no need in extra synchronisation
 #endif
 
     Logger m_loggerInfo{ createLogger( VerbosityInfo, "TransactionQueue" ) };
