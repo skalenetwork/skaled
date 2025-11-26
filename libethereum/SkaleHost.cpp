@@ -982,11 +982,31 @@ u256 SkaleHost::getGasPrice( unsigned _blockNumber ) const {
     return m_consensus->getPriceForBlockId( _blockNumber );
 }
 
-u256 SkaleHost::getBlockRandom( unsigned _blockNumber ) const {
-    if ( CurrentBlockRandomPatch::isEnabledInWorkingBlock() ) {
+u256 SkaleHost::getBlockRandom( unsigned _blockNumber, bool _isCalledFromTxn ) const {
+    // for FAIR patch is always enabled
+    // check that patch enabled after block _blockNumber - 1
+    // if so - return correct value
+    // if not - return value for previous block
+    // works for historic calls, eth_call, eth_estimateGas
+    // and regular transactions
+    if ( _blockNumber == 0 ) {
+        // handle corner case of genesis block
+        // is never a case unless called from debug_traceBlock / eth_call on genesis
         return m_consensus->getRandomForBlockId( _blockNumber );
     }
-    return m_consensus->getRandomForBlockId( m_client.number() );
+    auto previousBlockTimestamp =
+        m_client.blockInfo( m_client.hashFromNumber( _blockNumber - 1 ) ).timestamp();
+    if ( CurrentBlockRandomPatch::isEnabledWhen( previousBlockTimestamp ) ) {
+        if ( !_isCalledFromTxn ) {
+            // means a call outside of block is being executed
+            // if blockNumberToCall > currentBlockNumber, need to decrease it by 1
+            // otherwise the exception is thrown
+            if ( _blockNumber > m_client.number() )
+                --_blockNumber;
+        }
+        return m_consensus->getRandomForBlockId( _blockNumber );
+    }
+    return m_consensus->getRandomForBlockId( _blockNumber - 1 );
 }
 
 dev::eth::SyncStatus SkaleHost::syncStatus() const {

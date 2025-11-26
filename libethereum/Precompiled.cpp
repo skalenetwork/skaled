@@ -36,6 +36,7 @@
 #include <libdevcrypto/LibSnark.h>
 #include <libethcore/ChainOperationParams.h>
 #include <libethcore/Common.h>
+#include <libethereum/Client.h>
 #include <libethereum/SchainPatch.h>
 #include <libethereum/SkaleHost.h>
 #include <libskale/State.h>
@@ -1071,12 +1072,7 @@ ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef, const PrecompiledCall
         if ( !g_skaleHost )
             throw std::runtime_error( "SkaleHost accessor was not initialized" );
         unsigned blockNumberToCall = _ctx.blockNumber.convert_to< unsigned >();
-        if ( _ctx.isReadOnly ) {
-            // means a call outside of block is being executed
-            // if blockNumberToCall > currentBlockNumber, need to decrease it by 1
-            --blockNumberToCall;
-        }
-        dev::u256 uValue = g_skaleHost->getBlockRandom( blockNumberToCall );
+        dev::u256 uValue = g_skaleHost->getBlockRandom( blockNumberToCall, !_ctx.isReadOnly );
         bytes response = toBigEndian( uValue );
         return { true, response };
     } catch ( std::exception& ex ) {
@@ -1093,6 +1089,71 @@ ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef, const PrecompiledCall
     bytes response = toBigEndian( code );
     return { false, response };  // 1st false - means bad error occur
 }
+
+#ifdef BITE2
+
+ETH_REGISTER_PRECOMPILED( getRandomWalletForCTX )
+( bytesConstRef _in, const PrecompiledCallContext& _ctx ) {
+    try {
+        PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getBlockRandom" );
+        auto rngPrecompiledResponse = exec( _in, _ctx );
+        // if call to getBlockRandom() fails, return error
+        if ( !rngPrecompiledResponse.first )
+            return rngPrecompiledResponse;
+
+        // generate a signature based on block random and txn index
+        SignatureStruct vrs =
+            dev::makeSignature( rngPrecompiledResponse.second, _ctx.currentTxnIndex );
+
+        // parse input parameters
+        if ( _in.size() < dev::eth::TransactionBase::BITE2_INPUT_DATA_MIN_LEN )
+            return { false, toBigEndian( dev::u256( 1 ) ) };
+        // skip first 12 bytes - left-padded zero-bytes
+        dev::Address destination( _in.cropped( 12, 20 ) );
+        // validate address
+        if ( destination == dev::ZeroAddress )
+            return { false, toBigEndian( dev::u256( 2 ) ) };
+        bigint const gas( parseBigEndianRightPadded( _in, 32, 32 ) );
+        dev::bytes data = _in.cropped( 64 ).toBytes();
+        // validate data size
+        if ( data.empty() )
+            return { false, toBigEndian( dev::u256( 3 ) ) };
+        // validate gasLimit
+        auto evmSchedule = g_skaleHost->client().evmSchedule();
+        if ( TransactionBase::baseGasRequired(
+                 false, dev::bytesConstRef( data.data(), data.size() ), evmSchedule, true ) > gas )
+            return { false, toBigEndian( dev::u256( 4 ) ) };
+
+        dev::u256 gasPrice = g_skaleHost->getGasPrice();
+
+        // construct unsigned transaction and calculate its hash
+        Transaction sampleTransaction(
+            0, gasPrice, gas.convert_to< dev::u256 >(), destination, data, 0 );
+        if ( sampleTransaction.isInvalid() )
+            return { false, toBigEndian( dev::u256( 5 ) ) };
+
+        dev::h256 txnHash = sampleTransaction.sha3( dev::eth::WithoutSignature );
+
+        dev::Public publicKey = recover( vrs, txnHash );
+
+        dev::Address walletAddress = dev::toAddress( publicKey );
+        dev::bytes addressBytes = walletAddress.asBytes();
+        return { true, addressBytes };
+    } catch ( std::exception& ex ) {
+        std::string strError = ex.what();
+        if ( strError.empty() )
+            strError = "exception without description";
+        BOOST_LOG( getLogger( VerbosityError ) )
+            << "Exception in precompiled/getRandomWalletForCTX(): " << strError << "\n";
+    } catch ( ... ) {
+        BOOST_LOG( getLogger( VerbosityError ) )
+            << "Unknown exception in precompiled/getRandomWalletForCTX()\n";
+    }
+    dev::u256 code = 0;
+    bytes response = toBigEndian( code );
+    return { false, response };  // 1st false - means bad error occur
+}
+#endif
 
 #ifndef FAIR
 ETH_REGISTER_PRECOMPILED( addBalance )

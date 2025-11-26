@@ -132,7 +132,7 @@ public:
     void pushToBroadcastQueue( const dev::eth::Transaction& _transaction );
 
     dev::u256 getGasPrice( unsigned _blockNumber = dev::eth::LatestBlock ) const;
-    dev::u256 getBlockRandom( unsigned _blockNumber ) const;
+    dev::u256 getBlockRandom( unsigned _blockNumber, bool _isCalledFromTxn ) const;
     dev::eth::SyncStatus syncStatus() const;
     std::map< std::string, uint64_t > getConsensusDbUsage() const;
     std::array< std::string, 4 > getCurrentBLSPublicKey() const;
@@ -168,6 +168,10 @@ public:
     void forcedBroadcast( const dev::eth::Transaction& _txn );
 
     SkaleDebugInterface::handler getDebugHandler() const { return m_debugHandler; }
+
+#ifdef BITE2
+    const dev::eth::Client& client() const { return m_client; }
+#endif
 
 #ifdef FAIR
     bool isConsesusUpdateHappened() const { return m_consensusUpdateHappened; }
