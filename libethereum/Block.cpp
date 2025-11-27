@@ -584,11 +584,6 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
     // we got to the end of the block so we do not need partial transaction receipts anymore
     m_state.safeRemoveAllPartialTransactionReceipts();
 
-    // since we committed changes corresponding to a particular block
-    // we need to create a new readonly snap
-    LDB_CHECK( m_state.getOriginalDb() );
-    m_state.getOriginalDb()->createBlockSnap( info().number() );
-
     // do a simple sanity check from time to time
     static uint64_t sanityCheckCounter = 0;
     if ( sanityCheckCounter++ % 10000 == 0 ) {
@@ -636,6 +631,12 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
     m_state.commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
                                           dev::eth::CommitBehaviour::KeepEmptyAccounts );
 
+
+    // since we committed changes corresponding to a particular block
+    // we need to create a new readonly snap
+    m_state.createStateCopyAndClearCaches();
+    LDB_CHECK( m_state.getOriginalDb() );
+    m_state.getOriginalDb()->createBlockSnap( info().number() );
 
     return make_tuple( receipts, receipts.size() - countBad );
 }
@@ -1012,9 +1013,7 @@ ExecutionResult Block::execute( LastBlockHashesFace const& _lh, Transaction cons
     // if we are doing real block processing with commit, we currently clear cache
     // on each transaction. This can be done safely because state changes are committed to
     // disk. In other cases we do not clear cache. This is specifically handy for tests
-    // because we do not commit to disk in some of the tests
-    // In the future we can test performance of not clearing
-    // cache on each commit
+    // because we do not commit to disk in some of the tests.
     if ( _p == Permanence::Committed ) {
         m_state = m_state.createStateCopyAndClearCaches();
     }

@@ -422,8 +422,11 @@ public:
 
     ChangeLog const& changeLog() const { return m_changeLog; }
 
-    /// Create State copy to modify data.
+    /// Create State copy with cleared cache to modify data.
     State createStateCopyAndClearCaches() const;
+
+    /// Create State copy.
+    State createStateCopy() const;
 
     /// Create State copy based on LevedlDB snaps that does not use any locking
     State createReadOnlySnapBasedCopy() const;
