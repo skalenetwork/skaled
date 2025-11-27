@@ -72,6 +72,10 @@
 #include <libconsensus/libBLS/threshold_encryption/ThresholdEncryption.h>
 #endif
 
+#ifdef BITE2
+#include <libethereum/BITEConstants.h>
+#endif
+
 #ifdef FAIR
 #include <libskale/BlockRewardsActivationPatch.h>
 #endif
@@ -5584,8 +5588,8 @@ BOOST_AUTO_TEST_CASE( getRandomWalletAndSignatureForCTX ) {
 
     dev::bytes rlpEncodedData = finalStream.out();
     rlpEncodedData.insert( rlpEncodedData.begin(),
-        dev::eth::TransactionBase::ON_DECRYPT_FUNCTION_SELECTOR.begin(),
-        dev::eth::TransactionBase::ON_DECRYPT_FUNCTION_SELECTOR.end() );
+        ON_DECRYPT_FUNCTION_SELECTOR.begin(),
+        ON_DECRYPT_FUNCTION_SELECTOR.end() );
 
     // Create expected transaction for signature verification using RLP-encoded data
     Transaction expectedTransaction( 0, gasPrice, randomGasLimit, randomAddress, rlpEncodedData, 0 );
@@ -5781,8 +5785,8 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
     dev::bytes rlpEncodedData = finalStream.out();
 
     rlpEncodedData.insert( rlpEncodedData.begin(),
-        dev::eth::TransactionBase::ON_DECRYPT_FUNCTION_SELECTOR.begin(),
-        dev::eth::TransactionBase::ON_DECRYPT_FUNCTION_SELECTOR.end() );
+        ON_DECRYPT_FUNCTION_SELECTOR.begin(),
+        ON_DECRYPT_FUNCTION_SELECTOR.end() );
 
     // Create expected transaction for signature verification using RLP-encoded data
     Transaction expectedTransaction( 0, gasPrice, randomGasLimit, dev::Address( contractAddress ), rlpEncodedData, 0 );

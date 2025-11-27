@@ -22,6 +22,7 @@
  */
 
 #include "Precompiled.h"
+#include "BITEConstants.h"
 #include "PrecompiledHelpers.h"
 
 #include <cryptopp/files.h>
@@ -946,8 +947,7 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
         // v(32) = 116 bytes Format: offset_to_walletAndSignature(32) + destination(32) +
         // gasLimit(32) + offset_to_data(32) + walletAndSignature_data + data_data
 
-        if ( _in.size() <
-             5 * dev::h256::size + dev::eth::TransactionBase::BITE2_INPUT_DATA_MIN_LEN )
+        if ( _in.size() < 5 * dev::h256::size + BITE2_INPUT_DATA_MIN_LEN )
             return { false, toBigEndian( dev::u256( 1 ) ) };
 
         // Read offset to walletAndSignature
@@ -1048,9 +1048,8 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
         }
 
         // add onDecrypt function selector at the beginning
-        rlpEncodedData.insert( rlpEncodedData.begin(),
-            dev::eth::TransactionBase::ON_DECRYPT_FUNCTION_SELECTOR.begin(),
-            dev::eth::TransactionBase::ON_DECRYPT_FUNCTION_SELECTOR.end() );
+        rlpEncodedData.insert( rlpEncodedData.begin(), ON_DECRYPT_FUNCTION_SELECTOR.begin(),
+            ON_DECRYPT_FUNCTION_SELECTOR.end() );
 
         // Get gas price
         dev::u256 gasPrice = g_skaleHost->getGasPrice();
@@ -1113,7 +1112,7 @@ ETH_REGISTER_PRECOMPILED( getRandomWalletAndSignatureForCTX )
         // Parse ABI-encoded input: abi.encode(address destination, uint256 gasLimit, bytes data)
         // Format: address_value(32) + gasLimit_value(32) + offset_to_bytes(32) + bytes_length(32) +
         // bytes_data ( at least BITE_CIPHERTEXT_MIN_LEN ) bytes
-        if ( _in.size() < dev::eth::TransactionBase::BITE2_INPUT_DATA_MIN_LEN )
+        if ( _in.size() < BITE2_INPUT_DATA_MIN_LEN )
             return { false, toBigEndian( dev::u256( 1 ) ) };
 
         // Extract address from first 32 bytes (skip first 12 bytes of padding)
@@ -1164,9 +1163,8 @@ ETH_REGISTER_PRECOMPILED( getRandomWalletAndSignatureForCTX )
         }
 
         // add onDecrypt function selector at the beginning
-        rlpEncodedData.insert( rlpEncodedData.begin(),
-            dev::eth::TransactionBase::ON_DECRYPT_FUNCTION_SELECTOR.begin(),
-            dev::eth::TransactionBase::ON_DECRYPT_FUNCTION_SELECTOR.end() );
+        rlpEncodedData.insert( rlpEncodedData.begin(), ON_DECRYPT_FUNCTION_SELECTOR.begin(),
+            ON_DECRYPT_FUNCTION_SELECTOR.end() );
 
         // validate gasLimit
         auto evmSchedule = g_skaleHost->client().evmSchedule();

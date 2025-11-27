@@ -18,8 +18,8 @@
 */
 /** @file PrecompiledHelpers.h
  * @author SKALE Labs
- * @date 2024
- * 
+ * @date 2025
+ *
  * Helper functions for precompiled contracts
  */
 

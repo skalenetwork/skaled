@@ -19,11 +19,14 @@
 /** @file PrecompiledHelpers.cpp
  * @author SKALE Labs
  * @date 2024
- * 
+ *
  * Helper functions for precompiled contracts
  */
 
 #include "PrecompiledHelpers.h"
+#ifdef BITE2
+#include <libconsensus/node/ConsensusInterface.h>
+#endif
 
 #include <libdevcore/CommonJS.h>
 #include <libdevcore/FileSystem.h>
@@ -213,8 +216,6 @@ dev::u256 stat_s2a( const std::string& saIn ) {
 #endif  // FAIR
 
 #ifdef BITE2
-
-static constexpr size_t BITE_CIPHERTEXT_MIN_LEN = 113;
 
 std::pair< RLPStream, size_t > parseAbiEncodedBytesArray( bytesConstRef dataRef,
     bigint const& arrayOffset, const std::string& arrayName, bool validateMinLength ) {

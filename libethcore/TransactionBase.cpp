@@ -32,9 +32,11 @@
 
 #include <libdevcore/microprofile.h>
 
+#ifdef BITE
 #include <libconsensus/libBLS/threshold_encryption/ThresholdEncryption.h>
+#include <libconsensus/node/ConsensusInterface.h>
+#endif
 using namespace std;
-#include <SkaleCommon.h>
 
 using namespace dev;
 using namespace dev::eth;
