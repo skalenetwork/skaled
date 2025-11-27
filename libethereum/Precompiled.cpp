@@ -1020,8 +1020,6 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
         dev::bytes txnData = _in.cropped( dataOffset.convert_to< size_t >() + dev::h256::size,
                                     dataLength.convert_to< size_t >() )
                                  .toBytes();
-        if ( txnData.empty() )
-            return { false, toBigEndian( dev::u256( 12 ) ) };
 
         // Convert ABI-encoded data to RLP
         dev::bytes rlpEncodedData;
@@ -1037,24 +1035,21 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
             BOOST_LOG( getLogger( VerbosityError ) )
                 << "Exception in precompiled/submitCTX/abiEncodedArraysToRlp(): " << strError
                 << "\n";
-            return { false, toBigEndian( dev::u256( 13 ) ) };
+            return { false, toBigEndian( dev::u256( 12 ) ) };
         } catch ( ... ) {
             BOOST_LOG( getLogger( VerbosityError ) )
                 << "Unknown exception in precompiled/submitCTX/abiEncodedArraysToRlp()\n";
-            return { false, toBigEndian( dev::u256( 14 ) ) };
+            return { false, toBigEndian( dev::u256( 13 ) ) };
         }
 
         // add onDecrypt function selector at the beginning
         rlpEncodedData.insert( rlpEncodedData.begin(), ON_DECRYPT_FUNCTION_SELECTOR.begin(),
             ON_DECRYPT_FUNCTION_SELECTOR.end() );
 
-        // Get gas price
-        dev::u256 gasPrice = g_skaleHost->getGasPrice();
-
         // Construct signed transaction from RLP
         RLPStream rlpStream;
         rlpStream.appendList( 9 );  // nonce, gasPrice, gas, to, value, data, v, r, s
-        rlpStream << 0 << gasPrice << gas.convert_to< dev::u256 >();
+        rlpStream << 0 << g_skaleHost->getGasPrice() << gas.convert_to< dev::u256 >();
         rlpStream << destination << 0 << rlpEncodedData;
         rlpStream << signature.v + 27 << signature.r << signature.s;
 
@@ -1065,12 +1060,7 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
         signedTransaction.setBITE2EncryptedArgsSize( encryptedArgsCount );
 
         if ( signedTransaction.isInvalid() )
-            return { false, toBigEndian( dev::u256( 15 ) ) };
-
-        // Verify that transaction sender matches the provided wallet address
-        dev::Address txnSender = signedTransaction.sender();
-        if ( txnSender != walletAddress )
-            return { false, toBigEndian( dev::u256( 16 ) ) };
+            return { false, toBigEndian( dev::u256( 14 ) ) };
 
         // push txn to BITE2 queue
         g_skaleHost->pushToBITE2Queue( std::move( signedTransaction ) );
@@ -1152,11 +1142,12 @@ ETH_REGISTER_PRECOMPILED( getRandomWalletAndSignatureForCTX )
             BOOST_LOG( getLogger( VerbosityError ) )
                 << "Exception in precompiled/getRandomWalletForCTX/abiEncodedArraysToRlp(): "
                 << strError << "\n";
+            return { false, toBigEndian( dev::u256( 6 ) ) };
         } catch ( ... ) {
             BOOST_LOG( getLogger( VerbosityError ) )
                 << "Unknown exception in "
                    "precompiled/getRandomWalletForCTX/abiEncodedArraysToRlp()\n";
-            return { false, toBigEndian( dev::u256( 6 ) ) };
+            return { false, toBigEndian( dev::u256( 7 ) ) };
         }
 
         // add onDecrypt function selector at the beginning
@@ -1169,7 +1160,7 @@ ETH_REGISTER_PRECOMPILED( getRandomWalletAndSignatureForCTX )
         if ( TransactionBase::baseGasRequired( false,
                  dev::bytesConstRef( rlpEncodedData.data(), rlpEncodedData.size() ), evmSchedule,
                  false, encryptedArgsCount ) > gas )
-            return { false, toBigEndian( dev::u256( 7 ) ) };
+            return { false, toBigEndian( dev::u256( 8 ) ) };
 
         dev::u256 gasPrice =
             g_skaleHost->getGasPrice( _ctx.blockNumber.convert_to< BlockNumber >() );
@@ -1178,7 +1169,7 @@ ETH_REGISTER_PRECOMPILED( getRandomWalletAndSignatureForCTX )
         Transaction sampleTransaction(
             0, gasPrice, gas.convert_to< dev::u256 >(), destination, rlpEncodedData, 0 );
         if ( sampleTransaction.isInvalid() )
-            return { false, toBigEndian( dev::u256( 8 ) ) };
+            return { false, toBigEndian( dev::u256( 9 ) ) };
 
         dev::h256 txnHash = sampleTransaction.sha3( dev::eth::WithoutSignature );
 
@@ -1187,7 +1178,7 @@ ETH_REGISTER_PRECOMPILED( getRandomWalletAndSignatureForCTX )
         dev::Address walletAddress = dev::toAddress( publicKey );
         // verify account is not active
         if ( g_skaleHost->client().countAt( walletAddress ) > 0 )
-            return { false, toBigEndian( dev::u256( 9 ) ) };
+            return { false, toBigEndian( dev::u256( 10 ) ) };
 
         // Encode response: address(20 bytes) + r(32 bytes) + s(32 bytes) + v(32 bytes)
         dev::bytes response;
