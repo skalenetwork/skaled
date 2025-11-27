@@ -945,9 +945,9 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
         // Parse ABI-encoded input: abi.encode(bytes walletAndSignature, address destination,
         // uint256 gasLimit, bytes data) walletAndSignature = wallet_address(20) + r(32) + s(32) +
         // v(32) = 116 bytes Format: offset_to_walletAndSignature(32) + destination(32) +
-        // gasLimit(32) + offset_to_data(32) + walletAndSignature_data + data_data
+        // gasLimit(32) + offset_to_data(32) + walletAndSignature_data(116) + data_data
 
-        if ( _in.size() < 5 * dev::h256::size + BITE2_INPUT_DATA_MIN_LEN )
+        if ( _in.size() < BITE2_TRANSACTION_SUBMITION_INPUT_DATA_MIN_LEN )
             return { false, toBigEndian( dev::u256( 1 ) ) };
 
         // Read offset to walletAndSignature
@@ -973,9 +973,6 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
 
         bigint const walletAndSigLength(
             parseBigEndianRightPadded( _in, walletAndSigOffset, dev::h256::size ) );
-        // address(20) + r(32) + s(32) + v(32)
-        static constexpr size_t WALLET_AND_SIGNATURE_LENGTH =
-            dev::Address::size + 3 * dev::h256::size;
         if ( walletAndSigLength != WALLET_AND_SIGNATURE_LENGTH )
             return { false, toBigEndian( dev::u256( 5 ) ) };
 
@@ -1112,7 +1109,7 @@ ETH_REGISTER_PRECOMPILED( getRandomWalletAndSignatureForCTX )
         // Parse ABI-encoded input: abi.encode(address destination, uint256 gasLimit, bytes data)
         // Format: address_value(32) + gasLimit_value(32) + offset_to_bytes(32) + bytes_length(32) +
         // bytes_data ( at least BITE_CIPHERTEXT_MIN_LEN ) bytes
-        if ( _in.size() < BITE2_INPUT_DATA_MIN_LEN )
+        if ( _in.size() < BITE2_WALLET_GENERATION_INPUT_DATA_MIN_LEN )
             return { false, toBigEndian( dev::u256( 1 ) ) };
 
         // Extract address from first 32 bytes (skip first 12 bytes of padding)
