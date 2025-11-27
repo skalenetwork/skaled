@@ -568,7 +568,7 @@ Transactions TransactionQueue::debugGetFutureTransactions() const {
 
 #ifdef BITE2
 void TransactionQueue::importBITE2Transaction( Transaction&& _t ) {
-    BOOST_LOG( m_loggerTrace ) << "BITE2 txn arrived: " << _t.sha3();
+    BOOST_LOG( m_loggerTrace ) << "BITE2 txn arrived";
     m_bite2Current.push_back( std::move( _t ) );
 }
 

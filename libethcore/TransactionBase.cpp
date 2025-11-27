@@ -35,7 +35,6 @@
 #include <libconsensus/libBLS/threshold_encryption/ThresholdEncryption.h>
 using namespace std;
 #include <SkaleCommon.h>
-#include <libconsensus/node/ConsensusInterface.h>
 
 using namespace dev;
 using namespace dev::eth;
@@ -558,6 +557,10 @@ int64_t TransactionBase::baseGasRequired(
     ,
     bool _isBITETxn
 #endif
+#ifdef BITE2
+    ,
+    std::optional< size_t > _bite2EncryptedArgsSize
+#endif
 ) {
     int64_t g = _contractCreation ? _es.txCreateGas : _es.txGas;
 
@@ -565,6 +568,13 @@ int64_t TransactionBase::baseGasRequired(
 #ifdef BITE
     if ( _isBITETxn )
         g += _es.BITETxnCost;
+#endif
+
+#ifdef BITE2
+    // BITE2 transaction - charge for every encrypted payload
+    if ( _bite2EncryptedArgsSize.has_value() ) {
+        g += _bite2EncryptedArgsSize.value() * _es.BITETxnCost;
+    }
 #endif
 
     // Calculate the cost of input data.
