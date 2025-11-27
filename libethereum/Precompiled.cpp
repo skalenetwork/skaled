@@ -1164,13 +1164,15 @@ ETH_REGISTER_PRECOMPILED( getRandomWalletAndSignatureForCTX )
             ON_DECRYPT_FUNCTION_SELECTOR.end() );
 
         // validate gasLimit
-        auto evmSchedule = g_skaleHost->client().evmSchedule();
+        auto evmSchedule = g_skaleHost->client().chainParams().makeEvmSchedule(
+            _ctx.latestBlockTimestamp, _ctx.blockNumber );
         if ( TransactionBase::baseGasRequired( false,
                  dev::bytesConstRef( rlpEncodedData.data(), rlpEncodedData.size() ), evmSchedule,
                  false, encryptedArgsCount ) > gas )
             return { false, toBigEndian( dev::u256( 7 ) ) };
 
-        dev::u256 gasPrice = g_skaleHost->getGasPrice();
+        dev::u256 gasPrice =
+            g_skaleHost->getGasPrice( _ctx.blockNumber.convert_to< BlockNumber >() );
 
         // construct unsigned transaction and calculate its hash
         Transaction sampleTransaction(

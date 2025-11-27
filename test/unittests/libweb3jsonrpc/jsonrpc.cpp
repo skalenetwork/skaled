@@ -4526,6 +4526,7 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
     dev::eth::PrecompiledCallContext ctx( blockNumberEarly,
 #ifdef BITE2
                                           0,
+                                          1,
 #endif
                                           true );
     auto blockRandomEarly = blockRandomExecutor( dev::bytesConstRef(), ctx );
@@ -4584,6 +4585,7 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
     ctx = PrecompiledCallContext( fixture.client->number(),
 #ifdef BITE2
                                 0,
+                                1,
 #endif
                                 true );
     auto executionResult = blockRandomExecutor( dev::bytesConstRef(), ctx );
@@ -5551,7 +5553,7 @@ BOOST_AUTO_TEST_CASE( getRandomWalletAndSignatureForCTX ) {
     dev::Address randomAddress5( dev::unpadLeft( dev::fromHex( fixture.rpcClient->eth_call( callGetLastAddress, "latest" ) ) ) );
 
     PrecompiledExecutor randomWalletExecutor = PrecompiledRegistrar::executor( "getRandomWalletAndSignatureForCTX" );
-    dev::eth::PrecompiledCallContext ctx( fixture.client->number(), 0, true );
+    dev::eth::PrecompiledCallContext ctx( fixture.client->number(), 0, 1, true );
 
     dev::bytesConstRef input( resultData.data(), resultData.size() );
     auto res = randomWalletExecutor( input, ctx );
@@ -5747,7 +5749,7 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
     PrecompiledExecutor randomWalletExecutor = PrecompiledRegistrar::executor( "getRandomWalletAndSignatureForCTX" );
-    dev::eth::PrecompiledCallContext ctx( fixture.client->number(), 0, true );
+    dev::eth::PrecompiledCallContext ctx( fixture.client->number(), 0, 1, true );
 
     dev::bytesConstRef input( resultData.data(), resultData.size() );
     auto res = randomWalletExecutor( input, ctx );
