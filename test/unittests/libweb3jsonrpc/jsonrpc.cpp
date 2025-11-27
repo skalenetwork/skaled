@@ -6360,7 +6360,7 @@ BOOST_AUTO_TEST_CASE( block_author_balance_reward_wallet ) {
     auto initialBlockNumber = jsToU256( fixture.rpcClient->eth_blockNumber() );
 
     // mine block without transactions
-    dev::eth::simulateMining( *( fixture.client ), 1, true );
+    dev::eth::simulateMining( *( fixture.client ), 1 );
     sleep( 3 );
 
     // mine transaction
