@@ -156,6 +156,7 @@ target_link_libraries( web3jsonrpc
                 jsoncpp           # ${CMAKE_SOURCE_DIR}/libconsensus/jsoncpp/build/src/lib_json/libjsoncpp.a
                 ${DEPS_INSTALL_ROOT}/lib/libmicrohttpd.a
                 ${DEPS_INSTALL_ROOT}/lib/libcurl.a
+                idn2
                 ${DEPS_INSTALL_ROOT}/lib/libssl.a
                 ${DEPS_INSTALL_ROOT}/lib/libcrypto.a
                 ${DEPS_INSTALL_ROOT}/lib/libz.a

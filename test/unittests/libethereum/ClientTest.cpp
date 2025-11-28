@@ -600,7 +600,7 @@ BOOST_AUTO_TEST_SUITE( EstimateGas )
 BOOST_AUTO_TEST_CASE( transactionWithData ) {
     TestClientFixture fixture( c_genesisInfoSkaleTest );
     ClientTest* testClient = asClientTest( fixture.ethereum() );
-    dev::eth::simulateMining( *( fixture.ethereum() ), 10, true );
+    dev::eth::simulateMining( *( fixture.ethereum() ), 10 );
 
     Address addr( "0xca4409573a5129a72edf85d6c51e26760fc9c903" );
 
@@ -618,7 +618,7 @@ BOOST_AUTO_TEST_CASE( constantConsumption ) {
     TestClientFixture fixture( c_genesisInfoSkaleTest );
     ClientTest* testClient = asClientTest( fixture.ethereum() );
 
-    dev::eth::simulateMining( *( fixture.ethereum() ), 10, true );
+    dev::eth::simulateMining( *( fixture.ethereum() ), 10 );
 
     //    This contract is predeployed on SKALE test network
     //    on address 0xD2001300000000000000000000000000000000D2
@@ -661,7 +661,7 @@ BOOST_AUTO_TEST_CASE( linearConsumption ) {
     TestClientFixture fixture( c_genesisInfoSkaleTest );
     ClientTest* testClient = asClientTest( fixture.ethereum() );
 
-    dev::eth::simulateMining( *( fixture.ethereum() ), 10, true );
+    dev::eth::simulateMining( *( fixture.ethereum() ), 10 );
 
     //    This contract is predeployed on SKALE test network
     //    on address 0xD2001300000000000000000000000000000000D2
@@ -702,7 +702,7 @@ BOOST_AUTO_TEST_CASE( exceedsGasLimit ) {
     TestClientFixture fixture( c_genesisInfoSkaleTest );
     ClientTest* testClient = asClientTest( fixture.ethereum() );
 
-    dev::eth::simulateMining( *( fixture.ethereum() ), 10, true );
+    dev::eth::simulateMining( *( fixture.ethereum() ), 10 );
 
     //    This contract is predeployed on SKALE test network
     //    on address 0xD2001300000000000000000000000000000000D2
@@ -746,7 +746,7 @@ BOOST_AUTO_TEST_CASE( runsInterference ) {
     TestClientFixture fixture( c_genesisInfoSkaleTest );
     ClientTest* testClient = asClientTest( fixture.ethereum() );
 
-    dev::eth::simulateMining( *( fixture.ethereum() ), 10, true );
+    dev::eth::simulateMining( *( fixture.ethereum() ), 10 );
 
     //    This contract is listed in c_genesisInfoSkaleTest, address:
     //    0xd40B3c51D0ECED279b1697DbdF45d4D19b872164
@@ -788,7 +788,7 @@ BOOST_AUTO_TEST_CASE( consumptionWithRefunds ) {
 
     sleep( 3 );
 
-    dev::eth::simulateMining( *( fixture.ethereum() ), 10, true );
+    dev::eth::simulateMining( *( fixture.ethereum() ), 10 );
 
     //    This contract is predeployed on SKALE test network
     //    on address 0xD2001300000000000000000000000000000000D3
@@ -840,7 +840,7 @@ BOOST_AUTO_TEST_CASE( consumptionWithRefunds2 ) {
     TestClientFixture fixture( c_genesisInfoSkaleTest );
     ClientTest* testClient = asClientTest( fixture.ethereum() );
 
-    dev::eth::simulateMining( *( fixture.ethereum() ), 10, true );
+    dev::eth::simulateMining( *( fixture.ethereum() ), 10 );
 
     //    This contract is listed in c_genesisInfoSkaleTest, address:
     //    0xD40b89C063a23eb85d739f6fA9B14341838eeB2b
@@ -902,7 +902,7 @@ BOOST_AUTO_TEST_CASE( nonLinearConsumption ) {
     TestClientFixture fixture( c_genesisInfoSkaleTest );
     ClientTest* testClient = asClientTest( fixture.ethereum() );
 
-    dev::eth::simulateMining( *( fixture.ethereum() ), 10, true );
+    dev::eth::simulateMining( *( fixture.ethereum() ), 10 );
 
     //    This contract is predeployed on SKALE test network
     //    on address 0xD2001300000000000000000000000000000000D4
@@ -957,7 +957,7 @@ BOOST_AUTO_TEST_CASE( consumptionWithReverts ) {
     TestClientFixture fixture( c_genesisInfoSkaleTest );
     ClientTest* testClient = asClientTest( fixture.ethereum() );
 
-    dev::eth::simulateMining( *( fixture.ethereum() ), 10, true );
+    dev::eth::simulateMining( *( fixture.ethereum() ), 10 );
 
     //    This contract is predeployed on SKALE test network
     //    on address 0xD2001300000000000000000000000000000000D4

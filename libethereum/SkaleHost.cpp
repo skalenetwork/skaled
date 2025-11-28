@@ -66,11 +66,8 @@ using namespace dev::eth;
 
 const int SkaleHost::REJECT_OLD_TRANSACTION_THROUGH_BROADCAST_INTERVAL_SEC = 600;
 
-std::atomic_uint64_t DefaultConsensusFactory::createdCounter{ 0 };
-
 std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
     ConsensusExtFace& _extFace ) const {
-    createdCounter.fetch_add( 1, std::memory_order_relaxed );
 #if CONSENSUS
     const auto& nfo = static_cast< const Interface& >( m_client ).blockInfo( LatestBlock );
 

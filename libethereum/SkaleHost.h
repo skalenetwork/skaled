@@ -77,12 +77,9 @@ class DefaultConsensusFactory : public ConsensusFactory {
 public:
     DefaultConsensusFactory( const dev::eth::Client& _client ) : m_client( _client ) {}
     virtual std::unique_ptr< ConsensusInterface > create( ConsensusExtFace& _extFace ) const;
-    static uint64_t getCreatedCounter() { return createdCounter.load( std::memory_order_relaxed ); }
 
 private:
     const dev::eth::Client& m_client;
-    static std::atomic_uint64_t createdCounter;
-
     /// Loggers
     mutable dev::Logger m_loggerInfo{ dev::createLogger(
         dev::VerbosityInfo, "DefaultConsensusFactory" ) };
