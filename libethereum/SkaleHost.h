@@ -134,7 +134,6 @@ public:
     dev::u256 getBlockRandom( unsigned _blockNumber, bool _isCalledFromTxn ) const;
     dev::eth::SyncStatus syncStatus() const;
     std::map< std::string, uint64_t > getConsensusDbUsage() const;
-    consensus_engine_status getConsensusStatus() const;
     bool ignoreNewBlocksEnabled() const;
 
     std::array< std::string, 4 > getCurrentBLSPublicKey() const;

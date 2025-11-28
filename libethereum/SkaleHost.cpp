@@ -1036,10 +1036,6 @@ std::map< std::string, uint64_t > SkaleHost::getConsensusDbUsage() const {
     return m_consensus->getConsensusDbUsage();
 }
 
-consensus_engine_status SkaleHost::getConsensusStatus() const {
-    return m_consensus->getStatus();
-}
-
 bool SkaleHost::ignoreNewBlocksEnabled() const {
     return m_ignoreNewBlocks;
 };
