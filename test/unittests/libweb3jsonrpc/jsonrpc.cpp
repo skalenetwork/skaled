@@ -4605,6 +4605,7 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
     ctx = PrecompiledCallContext( blockNumberEarly,
 #ifdef BITE2
                                 0,
+                                1,
 #endif
                                 true );
     auto blockRandomEarlyHistoric = blockRandomExecutor(dev::bytesConstRef(), ctx );
