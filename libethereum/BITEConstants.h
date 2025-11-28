@@ -26,7 +26,7 @@ static constexpr uint64_t BITE2_TRANSACTION_SUBMITION_INPUT_DATA_MIN_LEN =
 static inline const dev::bytes ON_DECRYPT_FUNCTION_SELECTOR = { 0x57, 0x98, 0x3a, 0xc8 };
 
 // Error codes for submitCTX precompiled contract
-namespace SubmitCTXErrors {
+namespace SubmitCTXStatus {
 constexpr uint64_t SUCCESS = 1;
 constexpr uint64_t INPUT_TOO_SHORT = 1;
 constexpr uint64_t INVALID_DESTINATION = 2;
@@ -42,10 +42,10 @@ constexpr uint64_t DATA_TOO_SHORT = 11;
 constexpr uint64_t ABI_TO_RLP_CONVERSION_FAILED = 12;
 constexpr uint64_t ABI_TO_RLP_UNKNOWN_ERROR = 13;
 constexpr uint64_t INVALID_TRANSACTION = 14;
-}  // namespace SubmitCTXErrors
+}  // namespace SubmitCTXStatus
 
 // Error codes for getRandomWalletAndSignatureForCTX precompiled contract
-namespace GetRandomWalletErrors {
+namespace GetRandomWalletStatus {
 constexpr uint64_t INPUT_TOO_SHORT = 1;
 constexpr uint64_t INVALID_DESTINATION = 2;
 constexpr uint64_t DATA_OFFSET_OUT_OF_BOUNDS = 3;
@@ -56,6 +56,6 @@ constexpr uint64_t ABI_TO_RLP_UNKNOWN_ERROR = 7;
 constexpr uint64_t INSUFFICIENT_GAS_LIMIT = 8;
 constexpr uint64_t INVALID_TRANSACTION = 9;
 constexpr uint64_t WALLET_ALREADY_ACTIVE = 10;
-}  // namespace GetRandomWalletErrors
+}  // namespace GetRandomWalletStatus
 
 #endif

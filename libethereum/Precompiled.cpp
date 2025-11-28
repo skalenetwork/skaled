@@ -22,7 +22,9 @@
  */
 
 #include "Precompiled.h"
+#ifdef BITE2
 #include "BITEConstants.h"
+#endif
 #include "PrecompiledHelpers.h"
 
 #include <cryptopp/files.h>
@@ -940,7 +942,7 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
         // cannot be called from read-only context (e.g. eth_call, eth_estimateGas,
         // debug_traceTransaction) simply return success here
         if ( _ctx.isReadOnly )
-            return { true, toBigEndian( dev::u256( SubmitCTXErrors::SUCCESS ) ) };
+            return { true, toBigEndian( dev::u256( SubmitCTXStatus::SUCCESS ) ) };
 
         // Parse ABI-encoded input: abi.encode(bytes walletAndSignature, address destination,
         // uint256 gasLimit, bytes data) walletAndSignature = wallet_address(20) + r(32) + s(32) +
@@ -948,7 +950,7 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
         // gasLimit(32) + offset_to_data(32) + walletAndSignature_data(116) + data_data
 
         if ( _in.size() < BITE2_TRANSACTION_SUBMITION_INPUT_DATA_MIN_LEN )
-            return { false, toBigEndian( dev::u256( SubmitCTXErrors::INPUT_TOO_SHORT ) ) };
+            return { false, toBigEndian( dev::u256( SubmitCTXStatus::INPUT_TOO_SHORT ) ) };
 
         // Read offset to walletAndSignature
         bigint const walletAndSigOffset( parseBigEndianRightPadded( _in, 0, dev::h256::size ) );
@@ -956,12 +958,12 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
         // Extract destination address from second 32 bytes (skip first 12 bytes of padding)
         dev::Address destination( _in.cropped( dev::h256::size + 12, dev::Address::size ) );
         if ( destination == dev::ZeroAddress )
-            return { false, toBigEndian( dev::u256( SubmitCTXErrors::INVALID_DESTINATION ) ) };
+            return { false, toBigEndian( dev::u256( SubmitCTXStatus::INVALID_DESTINATION ) ) };
 
         // Extract gas limit from third 32 bytes
         bigint const gas( parseBigEndianRightPadded( _in, 2 * dev::h256::size, dev::h256::size ) );
         if ( gas <= 0 )
-            return { false, toBigEndian( dev::u256( SubmitCTXErrors::INVALID_GAS_LIMIT ) ) };
+            return { false, toBigEndian( dev::u256( SubmitCTXStatus::INVALID_GAS_LIMIT ) ) };
 
         // Read offset to data from fourth 32 bytes
         bigint const dataOffset(
@@ -970,18 +972,18 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
         // Extract walletAndSignature data at the offset (has length prefix)
         if ( _in.size() < walletAndSigOffset.convert_to< size_t >() + dev::h256::size )
             return { false,
-                toBigEndian( dev::u256( SubmitCTXErrors::WALLET_AND_SIG_OFFSET_OUT_OF_BOUNDS ) ) };
+                toBigEndian( dev::u256( SubmitCTXStatus::WALLET_AND_SIG_OFFSET_OUT_OF_BOUNDS ) ) };
 
         bigint const walletAndSigLength(
             parseBigEndianRightPadded( _in, walletAndSigOffset, dev::h256::size ) );
         if ( walletAndSigLength != WALLET_AND_SIGNATURE_LENGTH )
             return { false,
-                toBigEndian( dev::u256( SubmitCTXErrors::INVALID_WALLET_AND_SIG_LENGTH ) ) };
+                toBigEndian( dev::u256( SubmitCTXStatus::INVALID_WALLET_AND_SIG_LENGTH ) ) };
 
         if ( _in.size() < walletAndSigOffset.convert_to< size_t >() + dev::h256::size +
                               WALLET_AND_SIGNATURE_LENGTH )
             return { false,
-                toBigEndian( dev::u256( SubmitCTXErrors::WALLET_AND_SIG_DATA_TOO_SHORT ) ) };
+                toBigEndian( dev::u256( SubmitCTXStatus::WALLET_AND_SIG_DATA_TOO_SHORT ) ) };
 
         dev::bytes walletAndSigBytes =
             _in.cropped( walletAndSigOffset.convert_to< size_t >() + dev::h256::size,
@@ -992,10 +994,10 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
         dev::Address walletAddress( dev::bytes(
             walletAndSigBytes.begin(), walletAndSigBytes.begin() + dev::Address::size ) );
         if ( walletAddress == dev::ZeroAddress )
-            return { false, toBigEndian( dev::u256( SubmitCTXErrors::INVALID_WALLET_ADDRESS ) ) };
+            return { false, toBigEndian( dev::u256( SubmitCTXStatus::INVALID_WALLET_ADDRESS ) ) };
         // verify account is not active
         if ( g_skaleHost->client().countAt( walletAddress ) > 0 )
-            return { false, toBigEndian( dev::u256( SubmitCTXErrors::WALLET_ALREADY_ACTIVE ) ) };
+            return { false, toBigEndian( dev::u256( SubmitCTXStatus::WALLET_ALREADY_ACTIVE ) ) };
 
         // Parse signature from remaining bytes: r(32), s(32), v(32)
         dev::h256 r( dev::bytes( walletAndSigBytes.begin() + dev::Address::size,
@@ -1009,17 +1011,17 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
 
         SignatureStruct signature( r, s, v );
         if ( !signature.isValid() )
-            return { false, toBigEndian( dev::u256( SubmitCTXErrors::INVALID_SIGNATURE ) ) };
+            return { false, toBigEndian( dev::u256( SubmitCTXStatus::INVALID_SIGNATURE ) ) };
 
         // Extract transaction data at the offset (has length prefix)
         if ( _in.size() < dataOffset.convert_to< size_t >() + dev::h256::size )
             return { false,
-                toBigEndian( dev::u256( SubmitCTXErrors::DATA_OFFSET_OUT_OF_BOUNDS ) ) };
+                toBigEndian( dev::u256( SubmitCTXStatus::DATA_OFFSET_OUT_OF_BOUNDS ) ) };
 
         bigint const dataLength( parseBigEndianRightPadded( _in, dataOffset, dev::h256::size ) );
         if ( _in.size() < dataOffset.convert_to< size_t >() + dev::h256::size +
                               dataLength.convert_to< size_t >() )
-            return { false, toBigEndian( dev::u256( SubmitCTXErrors::DATA_TOO_SHORT ) ) };
+            return { false, toBigEndian( dev::u256( SubmitCTXStatus::DATA_TOO_SHORT ) ) };
 
         dev::bytes txnData = _in.cropped( dataOffset.convert_to< size_t >() + dev::h256::size,
                                     dataLength.convert_to< size_t >() )
@@ -1040,11 +1042,11 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
                 << "Exception in precompiled/submitCTX/abiEncodedArraysToRlp(): " << strError
                 << "\n";
             return { false,
-                toBigEndian( dev::u256( SubmitCTXErrors::ABI_TO_RLP_CONVERSION_FAILED ) ) };
+                toBigEndian( dev::u256( SubmitCTXStatus::ABI_TO_RLP_CONVERSION_FAILED ) ) };
         } catch ( ... ) {
             BOOST_LOG( getLogger( VerbosityError ) )
                 << "Unknown exception in precompiled/submitCTX/abiEncodedArraysToRlp()\n";
-            return { false, toBigEndian( dev::u256( SubmitCTXErrors::ABI_TO_RLP_UNKNOWN_ERROR ) ) };
+            return { false, toBigEndian( dev::u256( SubmitCTXStatus::ABI_TO_RLP_UNKNOWN_ERROR ) ) };
         }
 
         // add onDecrypt function selector at the beginning
@@ -1065,13 +1067,13 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
         signedTransaction.setBITE2EncryptedArgsSize( encryptedArgsCount );
 
         if ( signedTransaction.isInvalid() )
-            return { false, toBigEndian( dev::u256( SubmitCTXErrors::INVALID_TRANSACTION ) ) };
+            return { false, toBigEndian( dev::u256( SubmitCTXStatus::INVALID_TRANSACTION ) ) };
 
         // push txn to BITE2 queue
         g_skaleHost->pushToBITE2Queue( std::move( signedTransaction ) );
 
         // Return success
-        return { true, toBigEndian( dev::u256( SubmitCTXErrors::SUCCESS ) ) };
+        return { true, toBigEndian( dev::u256( SubmitCTXStatus::SUCCESS ) ) };
 
     } catch ( std::exception& ex ) {
         std::string strError = ex.what();
@@ -1105,13 +1107,13 @@ ETH_REGISTER_PRECOMPILED( getRandomWalletAndSignatureForCTX )
         // Format: address_value(32) + gasLimit_value(32) + offset_to_bytes(32) + bytes_length(32) +
         // bytes_data ( at least BITE_CIPHERTEXT_MIN_LEN ) bytes
         if ( _in.size() < BITE2_WALLET_GENERATION_INPUT_DATA_MIN_LEN )
-            return { false, toBigEndian( dev::u256( GetRandomWalletErrors::INPUT_TOO_SHORT ) ) };
+            return { false, toBigEndian( dev::u256( GetRandomWalletStatus::INPUT_TOO_SHORT ) ) };
 
         // Extract address from first 32 bytes (skip first 12 bytes of padding)
         dev::Address destination( _in.cropped( 12, dev::Address::size ) );
         if ( destination == dev::ZeroAddress )
             return { false,
-                toBigEndian( dev::u256( GetRandomWalletErrors::INVALID_DESTINATION ) ) };
+                toBigEndian( dev::u256( GetRandomWalletStatus::INVALID_DESTINATION ) ) };
 
         // Extract gas limit from next 32 bytes
         bigint const gas( parseBigEndianRightPadded( _in, dev::h256::size, dev::h256::size ) );
@@ -1123,18 +1125,18 @@ ETH_REGISTER_PRECOMPILED( getRandomWalletAndSignatureForCTX )
         // Extract bytes data at the offset (has length prefix)
         if ( _in.size() < dataOffset.convert_to< size_t >() + dev::h256::size )
             return { false,
-                toBigEndian( dev::u256( GetRandomWalletErrors::DATA_OFFSET_OUT_OF_BOUNDS ) ) };
+                toBigEndian( dev::u256( GetRandomWalletStatus::DATA_OFFSET_OUT_OF_BOUNDS ) ) };
 
         bigint const dataLength( parseBigEndianRightPadded( _in, dataOffset, dev::h256::size ) );
         if ( _in.size() < dataOffset.convert_to< size_t >() + dev::h256::size +
                               dataLength.convert_to< size_t >() )
-            return { false, toBigEndian( dev::u256( GetRandomWalletErrors::DATA_TOO_SHORT ) ) };
+            return { false, toBigEndian( dev::u256( GetRandomWalletStatus::DATA_TOO_SHORT ) ) };
 
         dev::bytes data = _in.cropped( dataOffset.convert_to< size_t >() + dev::h256::size,
                                  dataLength.convert_to< size_t >() )
                               .toBytes();
         if ( data.empty() )
-            return { false, toBigEndian( dev::u256( GetRandomWalletErrors::EMPTY_DATA ) ) };
+            return { false, toBigEndian( dev::u256( GetRandomWalletStatus::EMPTY_DATA ) ) };
 
         dev::bytes rlpEncodedData;
         size_t encryptedArgsCount = 0;
@@ -1150,13 +1152,13 @@ ETH_REGISTER_PRECOMPILED( getRandomWalletAndSignatureForCTX )
                 << "Exception in precompiled/getRandomWalletForCTX/abiEncodedArraysToRlp(): "
                 << strError << "\n";
             return { false,
-                toBigEndian( dev::u256( GetRandomWalletErrors::ABI_TO_RLP_CONVERSION_FAILED ) ) };
+                toBigEndian( dev::u256( GetRandomWalletStatus::ABI_TO_RLP_CONVERSION_FAILED ) ) };
         } catch ( ... ) {
             BOOST_LOG( getLogger( VerbosityError ) )
                 << "Unknown exception in "
                    "precompiled/getRandomWalletForCTX/abiEncodedArraysToRlp()\n";
             return { false,
-                toBigEndian( dev::u256( GetRandomWalletErrors::ABI_TO_RLP_UNKNOWN_ERROR ) ) };
+                toBigEndian( dev::u256( GetRandomWalletStatus::ABI_TO_RLP_UNKNOWN_ERROR ) ) };
         }
 
         // add onDecrypt function selector at the beginning
@@ -1170,7 +1172,7 @@ ETH_REGISTER_PRECOMPILED( getRandomWalletAndSignatureForCTX )
                  dev::bytesConstRef( rlpEncodedData.data(), rlpEncodedData.size() ), evmSchedule,
                  false, encryptedArgsCount ) > gas )
             return { false,
-                toBigEndian( dev::u256( GetRandomWalletErrors::INSUFFICIENT_GAS_LIMIT ) ) };
+                toBigEndian( dev::u256( GetRandomWalletStatus::INSUFFICIENT_GAS_LIMIT ) ) };
 
         dev::u256 gasPrice =
             g_skaleHost->getGasPrice( _ctx.blockNumber.convert_to< BlockNumber >() );
@@ -1180,7 +1182,7 @@ ETH_REGISTER_PRECOMPILED( getRandomWalletAndSignatureForCTX )
             0, gasPrice, gas.convert_to< dev::u256 >(), destination, rlpEncodedData, 0 );
         if ( sampleTransaction.isInvalid() )
             return { false,
-                toBigEndian( dev::u256( GetRandomWalletErrors::INVALID_TRANSACTION ) ) };
+                toBigEndian( dev::u256( GetRandomWalletStatus::INVALID_TRANSACTION ) ) };
 
         dev::h256 txnHash = sampleTransaction.sha3( dev::eth::WithoutSignature );
 
@@ -1190,7 +1192,7 @@ ETH_REGISTER_PRECOMPILED( getRandomWalletAndSignatureForCTX )
         // verify account is not active
         if ( g_skaleHost->client().countAt( walletAddress ) > 0 )
             return { false,
-                toBigEndian( dev::u256( GetRandomWalletErrors::WALLET_ALREADY_ACTIVE ) ) };
+                toBigEndian( dev::u256( GetRandomWalletStatus::WALLET_ALREADY_ACTIVE ) ) };
 
         // Encode response: address(20 bytes) + r(32 bytes) + s(32 bytes) + v(32 bytes)
         dev::bytes response;
