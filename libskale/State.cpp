@@ -1118,7 +1118,8 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
     // transaction is bad in any way.
     // HACK 0 here is for gasPrice
     // TODO Not sure that 1st 0 as timestamp is acceptable here
-    Executive e( *this, _envInfo, _chainParams, 0, 0, _p != Permanence::Committed );
+    Executive e( *this, _envInfo, _chainParams, 0, 0,
+        _p != Permanence::Committed && _p != Permanence::BlockCommitted );
     ExecutionResult res;
     e.setResultRecipient( res );
 
@@ -1134,7 +1135,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
 #endif
     u256 const startGasUsed = _envInfo.gasUsed();
     bool statusCodeTmp = false;
-    if ( _p == Permanence::Committed &&
+    if ( ( _p == Permanence::Committed || _p == Permanence::BlockCommitted ) &&
          ifShouldSkipExecution( _chainParams.getChainId(), _t.sha3() ) ) {
         e.initialize( _t );
         e.execute();
@@ -1179,7 +1180,8 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
 #endif
         m_cache.clear();
         break;
-    case Permanence::Committed: {
+    case Permanence::Committed:
+    case Permanence::BlockCommitted: {
 #ifndef FAIR
         if ( account( _t.from() ) != nullptr && account( _t.from() )->code() == bytes() ) {
             totalStorageUsed_ += currentStorageUsed_;
@@ -1190,8 +1192,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
 
         TransactionReceipt receipt =
             TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() );
-        if ( _p == Permanence::Committed &&
-             ifShouldSkipExecution( _chainParams.getChainId(), _t.sha3() ) ) {
+        if ( ifShouldSkipExecution( _chainParams.getChainId(), _t.sha3() ) ) {
             receipt = TransactionReceipt( statusCode,
                 startGasUsed +
                     getGasUsedForSkippedTransaction( _chainParams.getChainId(), _t.sha3() ),
@@ -1211,31 +1212,32 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         m_db_ptr->setPartialTransactionReceipt( stream.out(),
             ( dev::eth::BlockNumber ) _envInfo.number(), ( uint64_t ) _transactionIndex );
 
+        if ( _p == Permanence::Committed ) {
 #ifndef FAIR
-        m_fs_ptr->commit();
+            m_fs_ptr->commit();
 #endif
 
-        removeEmptyAccounts = _envInfo.number() >= _chainParams.getEIP158ForkBlock();
-        commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
-                                      dev::eth::CommitBehaviour::KeepEmptyAccounts );
+            removeEmptyAccounts = _envInfo.number() >= _chainParams.getEIP158ForkBlock();
+            commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
+                                          dev::eth::CommitBehaviour::KeepEmptyAccounts );
 
 
-        // do a simple sanity check each millions transactions that we correctly
-        // saved partial transaction receipt
-        // at 1000 tps and 1 sec  block time this means that we are doing this roughly each 1000
-        // blocks so we are not slowing down the system by doing a check
-        static uint64_t sanityCheckCounter = 0;
-        sanityCheckCounter++;
-        if ( sanityCheckCounter % 1000000 == 0 ) {
-            auto receipts = safePartialTransactionReceipts( _envInfo.number() );
-            if ( receipts.back().rlp() != receipt.rlp() ) {
-                cerr << "Found incorrect deserialization of partial receipts at sanity check:"
-                     << sanityCheckCounter << endl
-                     << receipts.back() << endl
-                     << receipt;
+            // do a simple sanity check each millions transactions that we correctly
+            // saved partial transaction receipt
+            // at 1000 tps and 1 sec  block time this means that we are doing this roughly each 1000
+            // blocks so we are not slowing down the system by doing a check
+            static uint64_t sanityCheckCounter = 0;
+            sanityCheckCounter++;
+            if ( sanityCheckCounter % 1000000 == 0 ) {
+                auto receipts = safePartialTransactionReceipts( _envInfo.number() );
+                if ( receipts.back().rlp() != receipt.rlp() ) {
+                    cerr << "Found incorrect deserialization of partial receipts at sanity check:"
+                         << sanityCheckCounter << endl
+                         << receipts.back() << endl
+                         << receipt;
+                }
             }
         }
-
 
         break;
     }
@@ -1248,7 +1250,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
 
     TransactionReceipt receipt =
         TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() );
-    if ( _p == Permanence::Committed &&
+    if ( ( _p == Permanence::Committed || _p == Permanence::BlockCommitted ) &&
          ifShouldSkipExecution( _chainParams.getChainId(), _t.sha3() ) ) {
         receipt = TransactionReceipt( statusCode,
             startGasUsed + getGasUsedForSkippedTransaction( _chainParams.getChainId(), _t.sha3() ),

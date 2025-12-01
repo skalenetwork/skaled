@@ -553,7 +553,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
             }
 
             ExecutionResult res =
-                execute( _bc.lastBlockHashes(), tr, Permanence::Uncommitted, OnOpFunc(), i );
+                execute( _bc.lastBlockHashes(), tr, Permanence::BlockCommitted, OnOpFunc(), i );
 
             if ( !m_receipts.empty() &&
                  !ClearPartialReceiptsPatch::isEnabledWhen( m_previousBlock.timestamp() ) ) {
@@ -998,8 +998,8 @@ ExecutionResult Block::execute( LastBlockHashesFace const& _lh, Transaction cons
         resultReceipt.first.excepted = TransactionException::WouldNotBeInBlock;
     }  // catch
 
-    if ( _p == Permanence::Committed || _p == Permanence::CommittedWithoutState ||
-         _p == Permanence::Uncommitted ) {
+    if ( _p == Permanence::Committed || _p == Permanence::BlockCommitted ||
+         _p == Permanence::CommittedWithoutState || _p == Permanence::Uncommitted ) {
         // Add to the user-originated transactions that we've executed.
         if ( !SkipInvalidTransactionsPatch::isEnabledWhen( previousInfo().timestamp() ) ||
              resultReceipt.first.excepted != TransactionException::WouldNotBeInBlock ) {
