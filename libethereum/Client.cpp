@@ -1444,20 +1444,18 @@ void Client::initHistoricGroupIndex() {
 }
 
 bool Client::updateHistoricGroupIndex() {
-    auto nodeGroups = chainParams().getNodeGroups();
-    uint64_t blockTimestamp = blockInfo( hashFromNumber( number() ) ).timestamp();
-    uint64_t currentFinishTs = nodeGroups.at( historicGroupIndex ).finishTs;
-    bool updated = false;
-    if ( blockTimestamp >= currentFinishTs ) {
-        BOOST_LOG( m_loggerInfo ) << "Updating historic group index to " << historicGroupIndex + 1;
-        ++historicGroupIndex;
-        updated = true;
-    }
+    const auto& nodeGroups = chainParams().getNodeGroups();
     if ( historicGroupIndex >= nodeGroups.size() ) {
         BOOST_THROW_EXCEPTION( std::runtime_error(
             "Assertion failed: historicGroupIndex >= chainParams().sChain.nodeGroups.size())" ) );
     }
-    return updated;
+    uint64_t blockTs = blockInfo( hashFromNumber( number() ) ).timestamp();
+    if ( blockTs >= nodeGroups.at( historicGroupIndex ).finishTs ) {
+        BOOST_LOG( m_loggerInfo ) << "Updating historic group index to " << historicGroupIndex + 1;
+        ++historicGroupIndex;
+        return true;
+    }
+    return false;
 }
 
 // new block watch
