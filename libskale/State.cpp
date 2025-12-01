@@ -1191,25 +1191,14 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
             updateStorageUsage();
         }
 #endif
-        // TODO: review logic|^
-
-        // if we are committing we need to know transaction index in block since
-        // to save the receipt
-        LDB_CHECK( _transactionIndex >= 0 );
-        RLPStream stream;
-        receipt.streamRLP( stream );
-        m_db_ptr->setPartialTransactionReceipt( stream.out(),
-            ( dev::eth::BlockNumber ) _envInfo.number(), ( uint64_t ) _transactionIndex );
-
         if ( _p == Permanence::Committed ) {
-#ifndef FAIR
-            m_fs_ptr->commit();
-#endif
-
-            removeEmptyAccounts = _envInfo.number() >= _chainParams.getEIP158ForkBlock();
-            commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
-                                          dev::eth::CommitBehaviour::KeepEmptyAccounts );
-
+            // if we are committing we need to know transaction index in block since
+            // to save the receipt
+            LDB_CHECK( _transactionIndex >= 0 );
+            RLPStream stream;
+            receipt.streamRLP( stream );
+            m_db_ptr->setPartialTransactionReceipt( stream.out(),
+                ( dev::eth::BlockNumber ) _envInfo.number(), ( uint64_t ) _transactionIndex );
 
             // do a simple sanity check each millions transactions that we correctly
             // saved partial transaction receipt
@@ -1226,6 +1215,13 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
                          << receipt;
                 }
             }
+#ifndef FAIR
+            m_fs_ptr->commit();
+#endif
+
+            removeEmptyAccounts = _envInfo.number() >= _chainParams.getEIP158ForkBlock();
+            commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
+                                          dev::eth::CommitBehaviour::KeepEmptyAccounts );
         }
 
         break;
@@ -1244,20 +1240,19 @@ TransactionReceipt State::makeReceipt( bool _statusCode, dev::u256 const& _start
     eth::Executive const& _executive, eth::EnvInfo const& _envInfo,
     eth::ChainOperationParams const& _chainParams, Transaction const& _t, Permanence _p,
     std::string const& _revertReason ) const {
-    TransactionReceipt receipt = TransactionReceipt(
-        _statusCode, _startGasUsed + _executive.gasUsed(), _executive.logs() );
+    TransactionReceipt receipt =
+        TransactionReceipt( _statusCode, _startGasUsed + _executive.gasUsed(), _executive.logs() );
     if ( ( _p == Permanence::Committed || _p == Permanence::BlockCommitted ) &&
          ifShouldSkipExecution( _chainParams.getChainId(), _t.sha3() ) ) {
         receipt = TransactionReceipt( _statusCode,
-            _startGasUsed +
-                getGasUsedForSkippedTransaction( _chainParams.getChainId(), _t.sha3() ),
+            _startGasUsed + getGasUsedForSkippedTransaction( _chainParams.getChainId(), _t.sha3() ),
             _executive.logs() );
     } else {
         receipt = _envInfo.number() >= _chainParams.getByzantiumForkBlock() ?
-                      TransactionReceipt( _statusCode,
-                          _startGasUsed + _executive.gasUsed(), _executive.logs() ) :
-                      TransactionReceipt( EmptyTrie, _startGasUsed + _executive.gasUsed(),
-                          _executive.logs() );
+                      TransactionReceipt(
+                          _statusCode, _startGasUsed + _executive.gasUsed(), _executive.logs() ) :
+                      TransactionReceipt(
+                          EmptyTrie, _startGasUsed + _executive.gasUsed(), _executive.logs() );
     }
     receipt.setRevertReason( _revertReason );
     return receipt;
