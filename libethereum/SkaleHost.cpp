@@ -802,12 +802,9 @@ void SkaleHost::handleConsensusUpdate() const {
 }
 
 void SkaleHost::syncNodeGroups() {
-    bool isHistoricGroupIndexUpdated = false;
-    if ( m_client.chainParams().getNodeGroups().size() > 0 ) {
-        isHistoricGroupIndexUpdated = m_client.updateHistoricGroupIndex();
-    }
-    bool isGroupUpdated = m_client.updateGroupIfNeeded();
-    if ( isHistoricGroupIndexUpdated || isGroupUpdated ) {
+    const auto& nodeGroups = m_client.chainParams().getNodeGroups();
+    if ( ( !nodeGroups.empty() && m_client.updateHistoricGroupIndex() ) ||
+         m_client.updateGroupIfNeeded() ) {
         runCommitteeRotationForConsensus();
     }
 }
