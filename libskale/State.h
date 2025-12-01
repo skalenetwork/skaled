@@ -529,6 +529,11 @@ private:
 
     static uint64_t getGasUsedForSkippedTransaction( uint64_t _chainId, const dev::h256& _hash );
 
+    dev::eth::TransactionReceipt makeReceipt( bool _statusCode, dev::u256 const& _startGasUsed,
+        dev::eth::Executive const& _executive, dev::eth::EnvInfo const& _envInfo,
+        dev::eth::ChainOperationParams const& _chainParams, dev::eth::Transaction const& _t,
+        Permanence _p, std::string const& _revertReason ) const;
+
 public:
 #ifdef HISTORIC_STATE
     void populateHistoricStateFromSkaleState();
