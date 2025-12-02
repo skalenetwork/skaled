@@ -506,13 +506,13 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
     for ( unsigned i = 0; i < _transactions.size(); ++i ) {
         Transaction const& tr = _transactions[i];
         try {
-            // if ( i < saved_receipts.size() ) {
-            //     // this transaction has already been executed and we have a
-            //     // receipt for it. We do not need to execute it again
-            //     m_transactions.push_back( tr );
-            //     m_transactionSet.insert( tr.sha3() );
-            //     continue;
-            // }
+            if ( i < saved_receipts.size() ) {
+                // this transaction has already been executed and we have a
+                // receipt for it. We do not need to execute it again
+                m_transactions.push_back( tr );
+                m_transactionSet.insert( tr.sha3() );
+                continue;
+            }
 
 
             // Tell skaled to fail in a middle of blog processing
