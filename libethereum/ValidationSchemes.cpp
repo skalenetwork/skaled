@@ -286,6 +286,7 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "maxReservedStorageBytes", { { js::int_type }, JsonFieldPresence::Optional } },
             { "maxSkaledLeveldbStorageBytes", { { js::int_type }, JsonFieldPresence::Optional } },
             { "multiTransactionMode", { { js::bool_type }, JsonFieldPresence::Optional } },
+            { "commitPerBlock", { { js::bool_type }, JsonFieldPresence::Optional } },
             { "nodeGroups", { { js::obj_type }, JsonFieldPresence::Optional } }
 #ifdef FAIR
             ,

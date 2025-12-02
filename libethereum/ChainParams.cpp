@@ -347,6 +347,8 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
 
     if ( sChainObj.count( "multiTransactionMode" ) )
         s.multiTransactionMode = sChainObj.at( "multiTransactionMode" ).get_bool();
+    if ( sChainObj.count( "commitPerBlock" ) )
+        s.commitPerBlock = sChainObj.at( "commitPerBlock" ).get_bool();
 
 #ifdef FAIR
     if ( sChainObj.count( "constantGasPrice" ) )
@@ -748,6 +750,7 @@ const std::string& ChainParams::getOriginalJson() const {
     sChainObj["emptyBlockIntervalMs"] = sChain.emptyBlockIntervalMs;
     sChainObj["snpshotIntervalMs"] = sChain.snapshotIntervalSec;
     sChainObj["multiTransactionMode"] = sChain.multiTransactionMode;
+    sChainObj["commitPerBlock"] = sChain.commitPerBlock;
 #ifndef FAIR
     sChainObj["contractStorageLimit"] = ( int64_t ) sChain.contractStorageLimit;
 #endif

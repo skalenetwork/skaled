@@ -239,6 +239,7 @@ public:
     time_t snapshotDownloadTimeout = 3600;
     time_t snapshotDownloadInactiveTimeout = 60;
     bool multiTransactionMode = false;
+    bool commitPerBlock = false;
     int emptyBlockIntervalMs = -1;
     int64_t levelDBReopenIntervalMs = -1;
 #ifdef HISTORIC_STATE
