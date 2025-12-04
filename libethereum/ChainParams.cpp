@@ -349,6 +349,8 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
         s.multiTransactionMode = sChainObj.at( "multiTransactionMode" ).get_bool();
     if ( sChainObj.count( "commitPerBlock" ) )
         s.commitPerBlock = sChainObj.at( "commitPerBlock" ).get_bool();
+    else
+        s.commitPerBlock = true;
 
 #ifdef FAIR
     if ( sChainObj.count( "constantGasPrice" ) )
