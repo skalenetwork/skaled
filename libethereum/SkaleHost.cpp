@@ -611,7 +611,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
         m_debugTracer.tracepoint( "drop_good_transactions" );
 
 #ifdef BITE
-        auto decryptedTransactionFieldsIt = _decryptedTransactionFields.begin();
+        auto decryptedTransactionFieldsIt = _decryptedTransactionFields->begin();
 #endif
         for ( size_t i = 0; i < _approvedTransactions.size(); ++i ) {
             const bytes& data = _approvedTransactions.at( i );
