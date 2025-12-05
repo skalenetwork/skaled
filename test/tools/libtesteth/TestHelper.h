@@ -66,7 +66,7 @@ void mine( Client& c, int numBlocks );
  * instead of mine( Client& c, int numBlocks )
  */
 void simulateMining( Client& client, size_t numBlocks, const dev::Address &address );
-void simulateMining( Client& client, size_t numBlocks );
+void simulateMining( Client& client, size_t numBlocks, [[ maybe_unused ]] const bool handleConsensusUpdate = false );
 void mineMoney( Client& c, int numBlocks );
 void mineTransaction( Client& c, int numBlocks );
 void connectClients( Client& c1, Client& c2 );

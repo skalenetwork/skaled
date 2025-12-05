@@ -158,6 +158,7 @@ jobs:
       # we specifically run each test for easier log review
       - name: Testeth verbosity 1
         run : |
+          echo "======= RUNNING TESTS ======="
           mkdir -p /tmp/tests/
           sudo rm -rf /tmp/tests/*
           cd build/test
@@ -211,6 +212,7 @@ jobs:
       - name: Testeth verbosity 4
         run : |
           # Since a tests failed, we are rerunning the failed test with higher verbosity          
+          echo "======= RUNNING TESTS VERBOSITY ======="
           cd build/test      
           export NO_NTP_CHECK=1
           export NO_ULIMIT_CHECK=1          
@@ -283,6 +285,7 @@ jobs:
           ccache --show-stats
       - name: Testeth historic
         run : |
+          echo "======= RUNNING HISTORIC TESTS ======="
           cd build_historic/test
           export NO_NTP_CHECK=1
           export NO_ULIMIT_CHECK=1
@@ -310,6 +313,7 @@ jobs:
           ccache --show-stats
       - name: Testeth FAIR
         run : |
+          echo "======= RUNNING FAIR TESTS ======="
           mkdir -p /tmp/tests/
           sudo rm -rf /tmp/tests/*
           cd build_fair/test
@@ -385,6 +389,7 @@ jobs:
           ccache --show-stats
       - name: Testeth historic
         run : |
+          echo "======= RUNNING FAIR HISTORIC TESTS ======="
           cd build_fair_historic/test
           export NO_NTP_CHECK=1
           export NO_ULIMIT_CHECK=1

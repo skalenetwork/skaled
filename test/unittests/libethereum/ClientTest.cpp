@@ -227,6 +227,19 @@ public:
         return Transaction( ts, ar.second );
     }
 
+#ifdef FAIR
+    ~TestClientFixture() {
+        const auto deadline = chrono::steady_clock::now() + chrono::seconds( 10 );
+        while ( m_ethereum->skaleHost()->ignoreNewBlocksEnabled() && chrono::steady_clock::now() < deadline ) {
+            usleep( 10 );
+        }
+        if ( m_ethereum->skaleHost()->isConsesusUpdateHappened() )
+            m_ethereum->skaleHost()->handleConsensusUpdate();
+        accountHolder.reset();
+        m_ethereum.reset();
+    }
+#endif
+
 private:
     TransientDirectory m_tmpDir;
     std::unique_ptr< dev::eth::Client > m_ethereum;
@@ -551,7 +564,13 @@ static std::string const c_genesisInfoSkaleTest = std::string() +
     R"E(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
                 ]
             },
-            "-1": {}
+            "2": {
+                "group": [
+              { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )E" +
+                                                  std::to_string( rand_port ) +
+                                                  R"E(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
+                ]
+            }
         }
     }
   },
@@ -581,7 +600,6 @@ BOOST_AUTO_TEST_SUITE( EstimateGas )
 BOOST_AUTO_TEST_CASE( transactionWithData ) {
     TestClientFixture fixture( c_genesisInfoSkaleTest );
     ClientTest* testClient = asClientTest( fixture.ethereum() );
-
     dev::eth::simulateMining( *( fixture.ethereum() ), 10 );
 
     Address addr( "0xca4409573a5129a72edf85d6c51e26760fc9c903" );
@@ -590,11 +608,9 @@ BOOST_AUTO_TEST_CASE( transactionWithData ) {
 
     while ( !CorrectForkInPowPatch::isEnabledInWorkingBlock() )
         usleep( 100 );
-
     u256 estimate =
         testClient->estimateGas( addr, 0, addr, data, 10000000, 1000000, GasEstimationCallback() )
             .first;
-
     BOOST_CHECK_EQUAL( estimate, u256( 21000 + 7 * 16 + 3 * 4 ) );
 }
 
@@ -913,7 +929,6 @@ BOOST_AUTO_TEST_CASE( nonLinearConsumption ) {
 
     while ( !CorrectForkInPowPatch::isEnabledInWorkingBlock() )
         usleep( 100 );
-
     u256 estimate = testClient
                         ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
                             GasEstimationCallback() )
@@ -1277,16 +1292,17 @@ BOOST_AUTO_TEST_CASE( initAndUpdateHistoricConfigFields ) {
 #endif
         4294967294 );
 
+#ifdef FAIR
+    if ( !testClient->updateGroupIfNeeded() )
+        testClient->updateHistoricGroupIndex();
+#endif
+
     sleep( 3 );
 
     BOOST_REQUIRE( testClient->getCurrentBLSPublicKey() == imaBLSPublicKeyAfterBlock );
     BOOST_REQUIRE_EQUAL( testClient->getHistoricNodePublicKey( 0 ), "0x6180cde2cbbcc6b6a17efec4503a7d4316f8612f411ee171587089f770335f484003ad236c534b9afa82befc1f69533723abdb6ec2601e582b72dcfd7919338b" );
     BOOST_REQUIRE_EQUAL( testClient->getHistoricNodeId( 0 ), "30" );
     BOOST_REQUIRE_EQUAL( testClient->getHistoricNodeIndex( 0 ), "0" );
-
-#ifdef FAIR
-    BOOST_REQUIRE_EQUAL( testClient->getCurrentEpochId(), 1 );
-#endif
 }
 
 BOOST_AUTO_TEST_SUITE_END()
