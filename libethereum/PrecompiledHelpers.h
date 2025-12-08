@@ -58,7 +58,7 @@ size_t statComputeFileSize( const char* _strFileName );
 boost::filesystem::path getFileStorageDir( const Address& _address );
 
 // Check if JSON path is accessible for security
-bool stat_is_accessible_json_path( const std::string& strPath );
+bool statIsAccessibleJsonPath( const std::string& strPath );
 
 // Calculate string bytes count in 32-byte pages
 size_t statCalcStringBytesCountInPages32( size_t len_str );

@@ -681,7 +681,7 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableUint256 )
         size_t lengthName;
         std::string rawName;
         convertBytesToString( _in, 0, rawName, lengthName );
-        if ( !stat_is_accessible_json_path( rawName ) )
+        if ( !statIsAccessibleJsonPath( rawName ) )
             throw std::runtime_error(
                 "Security poicy violation, inaccessible configuration JSON path: " + rawName );
 
@@ -739,7 +739,7 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableAddress )
         size_t lengthName;
         std::string rawName;
         convertBytesToString( _in, 0, rawName, lengthName );
-        if ( !stat_is_accessible_json_path( rawName ) )
+        if ( !statIsAccessibleJsonPath( rawName ) )
             throw std::runtime_error(
                 "Security poicy violation, inaccessible configuration JSON path: " + rawName );
 
@@ -794,7 +794,7 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableString )
         size_t lengthName;
         std::string rawName;
         convertBytesToString( _in, 0, rawName, lengthName );
-        if ( !stat_is_accessible_json_path( rawName ) )
+        if ( !statIsAccessibleJsonPath( rawName ) )
             throw std::runtime_error(
                 "Security poicy violation, inaccessible configuration JSON path: " + rawName );
 
@@ -863,7 +863,7 @@ ETH_REGISTER_PRECOMPILED( getConfigPermissionFlag )
         size_t lengthName;
         std::string rawName;
         convertBytesToString( _in, 32, rawName, lengthName );
-        if ( !stat_is_accessible_json_path( rawName ) )
+        if ( !statIsAccessibleJsonPath( rawName ) )
             throw std::runtime_error(
                 "Security poicy violation, inaccessible configuration JSON path: " + rawName );
 
