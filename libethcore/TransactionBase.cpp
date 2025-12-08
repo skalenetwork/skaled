@@ -568,22 +568,41 @@ int64_t TransactionBase::baseGasRequired(
 
     // charge the cost of BITE transaction
 #ifdef BITE
-    if ( _isBITETxn )
+    if ( _isBITETxn ) {
+        if ( g > std::numeric_limits< int64_t >::max() - _es.BITETxnCost )
+            BOOST_THROW_EXCEPTION(
+                InvalidTransactionFormat() << errinfo_comment( "Gas calculation overflow" ) );
         g += _es.BITETxnCost;
+    }
 #endif
 
 #ifdef BITE2
     // BITE2 transaction - charge for every encrypted payload
     if ( _bite2EncryptedArgsSize.has_value() ) {
-        g += _bite2EncryptedArgsSize.value() * _es.BITETxnCost;
+        // Check for multiplication overflow
+        if ( _bite2EncryptedArgsSize.value() > 0 &&
+             _es.BITETxnCost >
+                 std::numeric_limits< int64_t >::max() / _bite2EncryptedArgsSize.value() )
+            BOOST_THROW_EXCEPTION(
+                InvalidTransactionFormat() << errinfo_comment( "Gas calculation overflow" ) );
+        int64_t bite2Cost = _bite2EncryptedArgsSize.value() * _es.BITETxnCost;
+        if ( g > std::numeric_limits< int64_t >::max() - bite2Cost )
+            BOOST_THROW_EXCEPTION(
+                InvalidTransactionFormat() << errinfo_comment( "Gas calculation overflow" ) );
+        g += bite2Cost;
     }
 #endif
 
     // Calculate the cost of input data.
     // No risk of overflow by using int64 until txDataNonZeroGas is quite small
     // (the value not in billions).
-    for ( auto i : _data )
-        g += i ? _es.txDataNonZeroGas : _es.txDataZeroGas;
+    for ( auto i : _data ) {
+        int64_t dataCost = i ? _es.txDataNonZeroGas : _es.txDataZeroGas;
+        if ( g > std::numeric_limits< int64_t >::max() - dataCost )
+            BOOST_THROW_EXCEPTION(
+                InvalidTransactionFormat() << errinfo_comment( "Gas calculation overflow" ) );
+        g += dataCost;
+    }
     return g;
 }
 
