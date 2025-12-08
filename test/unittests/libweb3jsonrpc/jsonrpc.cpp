@@ -617,6 +617,12 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
 
     ~JsonRpcFixture() {
 #ifdef FAIR
+        // Make sure safe consensus is properly updated before exit (epoch id in particular).
+        // Only related to FAIR
+        const auto deadline = chrono::steady_clock::now() + chrono::seconds( 10 );
+        while ( client->skaleHost()->ignoreNewBlocksEnabled() && chrono::steady_clock::now() < deadline ) {
+            usleep( 10 );
+        }
         if ( client->skaleHost()->isConsesusUpdateHappened() )
             client->skaleHost()->handleConsensusUpdate();
 #endif

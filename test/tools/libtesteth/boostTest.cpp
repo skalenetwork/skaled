@@ -28,7 +28,9 @@
 #include <libdevcore/microprofile.h>
 #include <libskale/UnsafeRegion.h>
 
+#include <boost/test/framework.hpp>
 #include <boost/test/included/unit_test.hpp>
+#include <boost/test/results_collector.hpp>
 
 #include <test/tools/jsontests/BlockChainTests.h>
 #include <test/tools/jsontests/StateTests.h>
@@ -38,9 +40,151 @@
 #include <clocale>
 #include <cstdlib>
 #include <iostream>
+#include <memory>
+#include <sstream>
+#include <string>
+#include <utility>
+#include <vector>
 #include <thread>
 
 using namespace boost::unit_test;
+
+namespace {
+
+class FailureSummaryObserver : public test_observer {
+public:
+    enum class Status { Failed, Errored, Aborted };
+
+    void setRunLabel( std::string _label ) { mRunLabel = std::move( _label ); }
+
+    void test_unit_finish( test_unit const& unit, unsigned long ) override {
+        if ( unit.p_type != boost::unit_test::TUT_CASE )
+            return;
+
+        auto const& results = boost::unit_test::results_collector.results( unit.p_id );
+        if ( results.passed() || results.skipped() )
+            return;
+
+        Entry entry;
+        entry.name = unit.full_name();
+        entry.status = classify( results );
+        entry.details = buildDetails( results );
+        mEntries.push_back( std::move( entry ) );
+    }
+
+    void test_finish() override { storeAndPrintCurrentRun(); }
+
+    int priority() override { return 6; }
+
+    static void printAggregatedReport() {
+        if ( sRunSummaries.empty() )
+            return;
+
+        std::cout << "\n=== Aggregated failing test summary (" << sRunSummaries.size()
+                  << " run(s)) ===" << std::endl;
+        for ( auto const& run : sRunSummaries ) {
+            std::cout << "Run: " << run.label << std::endl;
+            if ( run.entries.empty() ) {
+                std::cout << "  No failed/errored/aborted test cases." << std::endl;
+                continue;
+            }
+
+            std::cout << "  Failed/errored/aborted test cases (" << run.entries.size()
+                      << "):" << std::endl;
+            for ( auto const& entry : run.entries ) {
+                std::cout << "   - " << entry.name << " [" << statusToString( entry.status )
+                          << "]";
+                if ( !entry.details.empty() )
+                    std::cout << ": " << entry.details;
+                std::cout << std::endl;
+            }
+        }
+    }
+
+private:
+    struct Entry {
+        std::string name;
+        Status status;
+        std::string details;
+    };
+
+    static Status classify( boost::unit_test::test_results const& results ) {
+        if ( results.aborted() || results.p_test_cases_aborted > 0 || results.p_test_cases_timed_out > 0 )
+            return Status::Aborted;
+        if ( results.p_assertions_failed > 0 )
+            return Status::Failed;
+        return Status::Errored;
+    }
+
+    static std::string buildDetails( boost::unit_test::test_results const& results ) {
+        std::vector< std::string > parts;
+        auto failedAssertions = static_cast< unsigned long >( results.p_assertions_failed );
+        if ( failedAssertions > 0 )
+            parts.push_back( std::to_string( failedAssertions ) + " assertion(s) failed" );
+        auto warningCount = static_cast< unsigned long >( results.p_warnings_failed );
+        if ( warningCount > 0 )
+            parts.push_back( std::to_string( warningCount ) + " warning(s)" );
+        if ( results.p_test_cases_timed_out > 0 )
+            parts.push_back( "timed out" );
+        if ( results.aborted() )
+            parts.push_back( "aborted" );
+
+        std::string summary;
+        for ( size_t i = 0; i < parts.size(); ++i ) {
+            if ( i > 0 )
+                summary += ", ";
+            summary += parts[i];
+        }
+        return summary;
+    }
+
+    static const char* statusToString( Status status ) {
+        switch ( status ) {
+        case Status::Failed:
+            return "failed";
+        case Status::Errored:
+            return "errored";
+        case Status::Aborted:
+            return "aborted";
+        }
+        return "unknown";
+    }
+    struct RunSummary {
+        std::string label;
+        std::vector< Entry > entries;
+    };
+
+    void storeAndPrintCurrentRun() {
+        RunSummary summary{mRunLabel.empty() ? std::string( "default-run" ) : mRunLabel, mEntries};
+        printSummary( summary );
+        sRunSummaries.push_back( std::move( summary ) );
+        mEntries.clear();
+    }
+
+    static void printSummary( RunSummary const& summary ) {
+        std::cout << "\n=== Test execution summary (" << summary.label << ") ===\n";
+        if ( summary.entries.empty() ) {
+            std::cout << "No failed/errored/aborted test cases detected." << std::endl;
+            return;
+        }
+
+        std::cout << "Failed/errored/aborted test cases (" << summary.entries.size() << "):" << std::endl;
+        for ( auto const& entry : summary.entries ) {
+            std::cout << " - " << entry.name << " [" << statusToString( entry.status ) << "]";
+            if ( !entry.details.empty() )
+                std::cout << ": " << entry.details;
+            std::cout << std::endl;
+        }
+    }
+    std::vector< Entry > mEntries;
+    std::string mRunLabel;
+    static std::vector< RunSummary > sRunSummaries;
+};
+
+std::unique_ptr< FailureSummaryObserver > gFailureSummaryObserver = std::make_unique< FailureSummaryObserver >();
+std::vector< FailureSummaryObserver::RunSummary > FailureSummaryObserver::sRunSummaries;
+
+}  // namespace
 
 // printer-visitor for --list-tests
 struct TestTreeVisitor : test_tree_visitor {
@@ -150,6 +294,11 @@ int main( int argc, const char* argv[] ) {
     }
 
     dev::test::Options const& opt = dev::test::Options::get();
+    std::string runLabel = opt.rCurrentTestSuite.empty() ? std::string( "full-workflow" ) : opt.rCurrentTestSuite;
+    if ( opt.singleTestFile.is_initialized() )
+        runLabel += ":" + opt.singleTestFile.get();
+    gFailureSummaryObserver->setRunLabel( runLabel );
+    framework::register_observer( *gFailureSummaryObserver );
     if ( opt.createRandomTest || opt.singleTestFile.is_initialized() ) {
         bool testSuiteFound = false;
         for ( int i = 0; i < argc; i++ ) {
@@ -201,7 +350,7 @@ int main( int argc, const char* argv[] ) {
 
         MicroProfileDumpFileImmediately( "profile.html", "profile.csv", nullptr );
         MicroProfileShutdown();
-
+        FailureSummaryObserver::printAggregatedReport();
         return result;
     } else {
         // Initialize travis '.' output thread for log activity
@@ -214,7 +363,7 @@ int main( int argc, const char* argv[] ) {
 
         MicroProfileDumpFileImmediately( "profile.html", "profile.csv", nullptr );
         MicroProfileShutdown();
-
+        FailureSummaryObserver::printAggregatedReport();
         return result;
     }
 }
