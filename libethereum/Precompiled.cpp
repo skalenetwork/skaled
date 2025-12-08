@@ -296,7 +296,7 @@ ETH_REGISTER_FS_PRECOMPILED( uploadChunk )
         size_t const dataLength = byteDataLength.convert_to< size_t >();
 
         const fs::path filePath = getFileStorageDir( Address( address ) ) / filename;
-        if ( position + dataLength > stat_compute_file_size( filePath.c_str() ) ) {
+        if ( position + dataLength > statComputeFileSize( filePath.c_str() ) ) {
             throw std::runtime_error(
                 "uploadChunk() failed because chunk gets out of the file bounds" );
         }
@@ -348,8 +348,8 @@ ETH_REGISTER_PRECOMPILED( readChunk )( bytesConstRef _in, const PrecompiledCallC
              0 ) {
             throw std::runtime_error( "readChunk() failed because file couldn't be read" );
         }
-        if ( position > stat_compute_file_size( filePath.c_str() ) ||
-             position + chunkLength > stat_compute_file_size( filePath.c_str() ) ) {
+        if ( position > statComputeFileSize( filePath.c_str() ) ||
+             position + chunkLength > statComputeFileSize( filePath.c_str() ) ) {
             throw std::runtime_error(
                 "readChunk() failed because chunk gets out of the file bounds" );
         }
@@ -390,7 +390,7 @@ ETH_REGISTER_PRECOMPILED( getFileSize )( bytesConstRef _in, const PrecompiledCal
             throw std::runtime_error( "getFileSize() failed because file couldn't be read" );
         }
 
-        size_t const fileSize = stat_compute_file_size( filePath.c_str() );
+        size_t const fileSize = statComputeFileSize( filePath.c_str() );
         bytes response = toBigEndian( static_cast< u256 >( fileSize ) );
         return { true, response };
     } catch ( std::exception& ex ) {
@@ -858,7 +858,7 @@ ETH_REGISTER_PRECOMPILED( getConfigPermissionFlag )
         std::string addressParameter;
         boost::algorithm::hex( rawAddressParameter.begin(), rawAddressParameter.end(),
             back_inserter( addressParameter ) );
-        dev::u256 uParameter = stat_s2a( addressParameter );
+        dev::u256 uParameter = statS2A( addressParameter );
 
         size_t lengthName;
         std::string rawName;
@@ -876,7 +876,7 @@ ETH_REGISTER_PRECOMPILED( getConfigPermissionFlag )
             auto itWalk = joValue.cbegin(), itEnd = joValue.cend();
             for ( ; itWalk != itEnd; ++itWalk ) {
                 std::string strKey = itWalk.key();
-                dev::u256 uKey = stat_s2a( strKey );
+                dev::u256 uKey = statS2A( strKey );
                 if ( uKey == uParameter ) {
                     nlohmann::json joFlag = itWalk.value();
                     if ( joFlag.is_number_integer() ) {

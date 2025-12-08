@@ -104,7 +104,7 @@ void convertBytesToString(
     _out = std::string( ( char* ) byteFilename.data(), _stringLength );
 }
 
-size_t stat_compute_file_size( const char* _strFileName ) {
+size_t statComputeFileSize( const char* _strFileName ) {
     std::ifstream file( _strFileName, std::ios::binary );
     file.exceptions( std::ifstream::failbit | std::ifstream::badbit );
     file.seekg( 0, std::ios::end );
@@ -119,7 +119,7 @@ boost::filesystem::path getFileStorageDir( const Address& _address ) {
 static const std::list< std::string > g_listReadableConfigParts{ "skaleConfig.sChain.nodes.",
     "skaleConfig.nodeInfo.wallets.ima.n" };
 
-bool stat_is_accessible_json_path( const std::string& strPath ) {
+bool statIsAccessibleJsonPath( const std::string& strPath ) {
     if ( strPath.empty() )
         return false;
     std::list< std::string >::const_iterator itWalk = g_listReadableConfigParts.cbegin(),
@@ -132,37 +132,37 @@ bool stat_is_accessible_json_path( const std::string& strPath ) {
     return false;
 }
 
-size_t stat_calc_string_bytes_count_in_pages_32( size_t len_str ) {
+size_t statCalcStringBytesCountInPages32( size_t len_str ) {
     size_t rv = 32, blocks = len_str / 32 + ( ( ( len_str % 32 ) != 0 ) ? 1 : 0 );
     rv += blocks * 32;
     return rv;
 }
 
-void stat_check_ouput_string_size_overflow( std::string& s ) {
+void statCheckOuputStringSizeOverflow( std::string& s ) {
     static const size_t g_maxLen = 1024 * 1024 - 1;
     size_t len = s.length();
     if ( len > g_maxLen )
         s.erase( s.begin() + len, s.end() );
 }
 
-bytes& stat_bytes_add_pad_32( bytes& rv ) {
+bytes& statBytesAddPad32( bytes& rv ) {
     while ( ( rv.size() % 32 ) != 0 )
         rv.push_back( 0 );
     return rv;
 }
 
-bytes stat_string_to_bytes_with_length( std::string& s ) {
-    stat_check_ouput_string_size_overflow( s );
+bytes statStringToBytesWithLength( std::string& s ) {
+    statCheckOuputStringSizeOverflow( s );
     dev::u256 uLength( s.length() );
     bytes rv = toBigEndian( uLength );
-    stat_bytes_add_pad_32( rv );
+    statBytesAddPad32( rv );
     for ( std::string::const_iterator it = s.cbegin(); it != s.cend(); ++it )
         rv.push_back( ( *it ) );
-    stat_bytes_add_pad_32( rv );
+    statBytesAddPad32( rv );
     return rv;
 }
 
-dev::u256 stat_parse_u256_hex_or_dec( const std::string& strValue ) {
+dev::u256 statParseU256HexOrDec( const std::string& strValue ) {
     if ( strValue.empty() )
         return dev::u256( 0 );
     const size_t cnt = strValue.length();
@@ -203,7 +203,7 @@ std::pair< std::string, unsigned > parseHistoricFieldRequest( std::string callDa
     return { fieldName, id };
 }
 
-dev::u256 stat_s2a( const std::string& saIn ) {
+dev::u256 statS2A( const std::string& saIn ) {
     std::string sa;
     if ( !( saIn.length() > 2 && saIn[0] == '0' && ( saIn[1] == 'x' || saIn[1] == 'X' ) ) )
         sa = "0x" + saIn;
