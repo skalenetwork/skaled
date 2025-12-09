@@ -287,7 +287,7 @@ void ClientBase::appendLogsFromBlock( LogFilter const& _f, h256 const& _blockHas
                 }
 
                 if ( isGood ) {
-                    if ( limitEnabled && io_logs.size() + 1 > logCountLimit )
+                    if ( limitEnabled && io_logs.size() >= logCountLimit )
                         BOOST_THROW_EXCEPTION( LogCountLimitExceeded() );
 
                     io_logs.emplace_back( LocalisedLogEntry(
