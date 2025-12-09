@@ -376,6 +376,12 @@ void SkaleHost::pushToBroadcastQueue( const Transaction& _t ) {
     m_broadcastQueueCondition.notify_all();  // Notify the condition variable
 }
 
+#ifdef BITE2
+void SkaleHost::pushToBITE2Queue( dev::eth::Transaction&& _transaction ) {
+    m_tq.importBITE2Transaction( std::move( _transaction ) );
+}
+#endif
+
 h256 SkaleHost::receiveTransaction( std::string _rlp ) {
     // drop incoming transactions if skaled has an outdated state
     if ( m_client.bc().info().timestamp() + REJECT_OLD_TRANSACTION_THROUGH_BROADCAST_INTERVAL_SEC <
