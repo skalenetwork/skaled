@@ -565,3 +565,14 @@ Transactions TransactionQueue::debugGetFutureTransactions() const {
     }      // for address
     return res;
 }
+
+#ifdef BITE2
+void TransactionQueue::importBITE2Transaction( Transaction&& _t ) {
+    BOOST_LOG( m_loggerTrace ) << "BITE2 txn arrived";
+    m_bite2Current.push_back( std::move( _t ) );
+}
+
+std::vector< Transaction > TransactionQueue::pendingBITE2Transactions() const {
+    return m_bite2Current;
+}
+#endif

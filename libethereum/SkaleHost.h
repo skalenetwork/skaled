@@ -129,6 +129,9 @@ public:
     dev::h256 receiveTransaction( std::string );
 
     void pushToBroadcastQueue( const dev::eth::Transaction& _transaction );
+#ifdef BITE2
+    void pushToBITE2Queue( dev::eth::Transaction&& _transaction );
+#endif
 
     dev::u256 getGasPrice( unsigned _blockNumber = dev::eth::LatestBlock ) const;
     dev::u256 getBlockRandom( unsigned _blockNumber, bool _isCalledFromTxn ) const;
