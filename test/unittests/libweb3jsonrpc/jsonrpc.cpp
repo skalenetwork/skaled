@@ -8069,7 +8069,7 @@ BOOST_AUTO_TEST_CASE( test_transactions ) {
 
     client->importTransactionsAsBlock( Transactions{ invalid, valid },
 #ifdef BITE
-        std::make_shared< DecryptedTransactionFieldsMap >(),
+                                       DecryptedTransactions(),
 #endif
 
 #ifdef FAIR
@@ -8118,13 +8118,13 @@ BOOST_AUTO_TEST_CASE( test_exceptions ) {
 
     client->importTransactionsAsBlock( Transactions{ invalid, valid },
 #ifdef BITE
-        std::make_shared< DecryptedTransactionFieldsMap >(),
+                                       DecryptedTransactions(),
 #endif
 
 #ifdef FAIR
                                       1,
 #endif
-                                       1 );
+                                      1 );
     BOOST_REQUIRE_THROW( cache.realIndexFromGapped( LatestBlock, 1 ), std::out_of_range );
     BOOST_REQUIRE_THROW( cache.realIndexFromGapped( LatestBlock, 2 ), std::out_of_range );
     BOOST_REQUIRE_THROW( cache.gappedIndexFromReal( LatestBlock, 2 ), std::out_of_range );

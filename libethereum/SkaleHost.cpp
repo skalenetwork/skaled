@@ -961,14 +961,21 @@ void SkaleHost::broadcastFunc() {
 
 std::vector< Transaction > SkaleHost::processRegularTransactions(
     const ConsensusExtFace::Transactions& _approvedTransactions,
-    [[maybe_unused]] const BlockHeader& latestInfo,
+    [[maybe_unused]] const BlockHeader& latestInfo
 #ifdef BITE
+    ,
     DecryptedTransactions _decryptedTransactions
 #endif
 ) {
     std::vector< Transaction > outTxns;
+#ifdef BITE
     auto regularTxnsIterator = _decryptedTransactions.regularTxsMap->begin();
-    for ( size_t i = _approvedTransactions.sizeCAT(); i < _approvedTransactions.size(); ++i ) {
+#endif
+    size_t regularTxnsStartIndex = 0;
+#ifdef BITE2
+    regularTxnsStartIndex = _approvedTransactions.sizeCAT();
+#endif
+    for ( size_t i = regularTxnsStartIndex; i < _approvedTransactions.size(); ++i ) {
         const bytes& data = _approvedTransactions.at( i );
         h256 sha = sha3( data );
         BOOST_LOG( m_loggerTrace ) << "Arrived txn: " << sha;
@@ -1005,7 +1012,9 @@ std::vector< Transaction > SkaleHost::processRegularTransactions(
         outTxns.push_back( t );
         m_debugTracer.tracepoint( "drop_good" );
         m_tq.dropGood( t );
+#ifdef BITE
         ++regularTxnsIterator;
+#endif
     }
     return outTxns;
 }
