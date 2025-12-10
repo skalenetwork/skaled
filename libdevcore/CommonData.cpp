@@ -133,6 +133,7 @@ dev::bytes dev::rlpToAbiEncodedArrays( const dev::bytes& _rlpData ) {
         throw std::runtime_error( "rlpToAbiEncodedArrays: first element must be a list" );
 
     std::vector< dev::bytes > array1Elements;
+    array1Elements.reserve( array1Rlp.itemCount() );
     for ( size_t i = 0; i < array1Rlp.itemCount(); ++i ) {
         array1Elements.push_back( array1Rlp[i].toBytes() );
     }
@@ -143,6 +144,7 @@ dev::bytes dev::rlpToAbiEncodedArrays( const dev::bytes& _rlpData ) {
         throw std::runtime_error( "rlpToAbiEncodedArrays: second element must be a list" );
 
     std::vector< dev::bytes > array2Elements;
+    array2Elements.reserve( array2Rlp.itemCount() );
     for ( size_t i = 0; i < array2Rlp.itemCount(); ++i ) {
         array2Elements.push_back( array2Rlp[i].toBytes() );
     }
@@ -176,8 +178,6 @@ dev::bytes dev::rlpToAbiEncodedArrays( const dev::bytes& _rlpData ) {
 
     // Helper lambda to encode bytes array
     auto encodeArray = [&result]( const std::vector< dev::bytes >& elements ) {
-        size_t arrayStart = result.size();
-
         // Write array length
         dev::bytes lengthBytes = toBigEndian( dev::u256( elements.size() ) );
         result.insert( result.end(), lengthBytes.begin(), lengthBytes.end() );
