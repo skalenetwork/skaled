@@ -214,8 +214,9 @@ private:
 
     std::vector< dev::eth::Transaction > processRegularTransactions(
         const ConsensusExtFace::Transactions& _approvedTransactions,
-        const dev::eth::BlockHeader& latestInfo,
+        const dev::eth::BlockHeader& latestInfo
 #ifdef BITE
+        ,
         DecryptedTransactions _decryptedTransactions
 #endif
     );

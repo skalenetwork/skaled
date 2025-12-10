@@ -1677,7 +1677,7 @@ BOOST_AUTO_TEST_CASE(syncNodeGroupsUpdatesEpochIdWithoutRotation) {
     uint64_t blockId = client->number() + 1;
 
 #ifdef BITE
-    auto decryptedTransactions = std::make_shared< DecryptedTransactionFieldsMap >();
+    auto decryptedTransactions = DecryptedTransactions();
 #endif
 
     BOOST_REQUIRE_NO_THROW( stub->createBlock(
