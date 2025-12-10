@@ -2,7 +2,6 @@
 #define SKUTILS_HTTP_PG_H 1
 
 #include <atomic>
-
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-copy"
 #pragma GCC diagnostic ignored "-Waddress"
@@ -65,9 +64,19 @@ public:
     void onRequest( std::unique_ptr< proxygen::HTTPMessage > _headers ) noexcept override;
     void onBody( std::unique_ptr< folly::IOBuf > _body ) noexcept override;
     void onEOM() noexcept override;
+    void onEOMDefault() noexcept;
+    void onEOMEthGetLogs() noexcept;
     void onUpgrade( proxygen::UpgradeProtocol _proto ) noexcept override;
     void requestComplete() noexcept override;
     void onError( proxygen::ProxygenError _err ) noexcept override;
+
+private:
+    void sendHttpResponse( bool isBinary, const std::vector< uint8_t >& vecBytes,
+        const std::string& jsonString ) noexcept;
+
+    skutils::result_of_http_request_rapid createRapidJsonError(
+        int code, const std::string& id, const std::string& message ) noexcept;
+    void sendRapidJsonResponse( const skutils::result_of_http_request_rapid& rapidRslt ) noexcept;
 };  /// class request_site
 
 
@@ -95,6 +104,9 @@ public:
         const char* _errorDescription, const nlohmann::json& _joID );
     virtual skutils::result_of_http_request onRequest( const nlohmann::json& _joIn,
         const std::string& _origin, int _ipVer, const std::string& _dstAddress, int _dstPort ) = 0;
+    virtual skutils::result_of_http_request_rapid onRequestEthGetLogs(
+        const rapidjson::Document& _request, const std::string& _origin, int _ipVer,
+        const std::string& _dstAddress, int _dstPort ) = 0;
 };  /// class server_side_request_handler
 
 
@@ -102,6 +114,7 @@ class server : public server_side_request_handler {
     std::thread m_thread;
     std::unique_ptr< proxygen::HTTPServer > m_server;
     pg_on_request_handler_t m_h;
+    pg_on_request_eth_getLogs_handler_t m_h_getLogs;
     pg_accumulate_entries m_entries;
     int32_t m_threads = 0;
     int32_t m_threads_limit = 0;
@@ -109,14 +122,17 @@ class server : public server_side_request_handler {
     std::string m_logPrefix;
 
 public:
-    server( pg_on_request_handler_t _h, const pg_accumulate_entries& _entries, int32_t _threads = 0,
-        int32_t _threadsLimit = 0 );
+    server( pg_on_request_handler_t _h, pg_on_request_eth_getLogs_handler_t _h_getLogs,
+        const pg_accumulate_entries& _entries, int32_t _threads = 0, int32_t _threadsLimit = 0 );
     ~server() override;
     bool start();
     void stop();
     skutils::result_of_http_request onRequest( const nlohmann::json& _joIn,
         const std::string& _origin, int _ipVer, const std::string& _dstAddress,
         int _dstPort ) override;
+    virtual skutils::result_of_http_request_rapid onRequestEthGetLogs(
+        const rapidjson::Document& _joIn, const std::string& _origin, int _ipVer,
+        const std::string& _dstAddress, int _dstPort );
 };  /// class server
 
 

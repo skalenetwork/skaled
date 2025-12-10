@@ -87,7 +87,9 @@ std::string getBlockFromEIP1898Json( const rapidjson::Value& jo );
 
 TransactionSkeleton toTransactionSkeleton( Json::Value const& _json );
 TransactionSkeleton rapidJsonToTransactionSkeleton( rapidjson::Value const& _json );
+LogFilter rapidJsonToLogFilter( rapidjson::Value const& _json );
 LogFilter toLogFilter( Json::Value const& _json );
+Json::Value rapidDocumentToJson( const rapidjson::Document& doc, const char* errorContext );
 // LogFilter toLogFilter( Json::Value const& _json,
 //    Interface const& _client );  // commented to avoid warning. Uncomment once in use @ PoC-7.
 
