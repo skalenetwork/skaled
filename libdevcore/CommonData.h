@@ -379,4 +379,9 @@ template < class V >
 bool contains( std::unordered_set< V > const& _set, V const& _v ) {
     return _set.find( _v ) != _set.end();
 }
+
+#ifdef BITE2
+dev::bytes rlpToAbiEncodedArrays( const dev::bytes& _rlpData );
+#endif
+
 }  // namespace dev

@@ -540,7 +540,7 @@ void Client::syncBlockQueue() {
 
 size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
 #ifdef BITE
-    const std::shared_ptr< DecryptedTransactionFieldsMap >& _decryptedTransactionDataFields,
+    DecryptedTransactions _decryptedTransactions,
 #endif
     u256 _gasPrice,
 #ifdef FAIR
@@ -570,7 +570,7 @@ size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
     {
         // store encrypted transactions
         DEV_WRITE_GUARDED( x_working )
-        m_working.setDecryptedTransactionDataFields( _decryptedTransactionDataFields );
+        m_working.setDecryptedTransactionDataFields( _decryptedTransactions );
     }
 #endif
 

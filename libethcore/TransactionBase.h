@@ -27,6 +27,9 @@
 #include <libethcore/Counter.h>
 
 #include <SkaleCommon.h>
+#ifdef BITE2
+#include <libconsensus/node/ConsensusTypes.h>
+#endif
 #include <boost/optional.hpp>
 
 namespace dev {
@@ -226,13 +229,28 @@ public:
 
     // Tx is only valid BITE if is marked as BITE and has the decrypted fields set
     bool isInvalidBiteTransaction() const {
-        return m_isBITETxn && !m_decryptedData && !m_decryptedTo;
+        return m_isBITETxn && ( ( !m_decryptedData && !m_decryptedTo )
+#ifdef BITE2
+                                  || !m_ctxDecryptedArgs.has_value()
+#endif
+                              );
     }
 
     bool isBite() const { return m_isBITETxn; }
 
     void checkAndValidateBITETransaction( uint64_t _epochId ) const;
-#endif
+
+#ifdef BITE2
+    bool isBite2() const { return m_ctxEncryptedArgsSize.has_value(); }
+
+    void setDecryptedArgsCTX( const DecryptedCATArgs& _decryptedCTXArgs );
+
+    const std::vector< dev::bytes >& getDecryptedArgsCTX() const {
+        return m_ctxDecryptedArgs->args;
+    }
+#endif  // BITE2
+
+#endif  // BITE
 
     /// @throws TransactionIsUnsigned if signature was not initialized
     /// @throws InvalidSValue if the signature has an invalid S value.
@@ -368,7 +386,7 @@ public:
 #endif
 #ifdef BITE2
             ,
-            m_bite2EncryptedArgsSize
+            m_ctxEncryptedArgsSize
 #endif
         );
     }
@@ -397,7 +415,7 @@ public:
     );
 
 #ifdef BITE2
-    void setBITE2EncryptedArgsSize( size_t _s ) { m_bite2EncryptedArgsSize = _s; }
+    void setBITE2EncryptedArgsSize( size_t _s ) { m_ctxEncryptedArgsSize = _s; }
 #endif
 
 protected:
@@ -455,7 +473,8 @@ protected:
 #endif
 
 #ifdef BITE2
-    std::optional< size_t > m_bite2EncryptedArgsSize = std::nullopt;
+    std::optional< size_t > m_ctxEncryptedArgsSize = std::nullopt;
+    std::optional< DecryptedCATArgs > m_ctxDecryptedArgs = std::nullopt;
 #endif
 
     TransactionType m_txType = TransactionType::Legacy;
