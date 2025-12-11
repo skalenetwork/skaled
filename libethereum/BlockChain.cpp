@@ -783,7 +783,7 @@ void BlockChain::insertTransactionsDetailsToDb(
                 ( db::Slice ) dev::ref( ta.rlp() ) );
 
 #ifdef BITE
-            if ( decryptedTransactionFieldsIt != _block.decryptedTransactionDataFields->end() && 
+            if ( decryptedTransactionFieldsIt != _block.decryptedTransactionDataFields->end() &&
                  decryptedTransactionFieldsIt->first == ta.index ) {
                 DecryptedTransactionFields& txFields = decryptedTransactionFieldsIt->second;
                 dev::Address to = dev::Address( txFields.to.get() );
