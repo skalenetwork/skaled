@@ -240,7 +240,13 @@ skale::OverlayDB State::openDB(
 
     fs::path state_path = path / fs::path( "state" );
     try {
-        m_orig_db.reset( new db::DBImpl( state_path ) );
+        db::LevelDB::LevelDBOptions levelDbOptions;
+        levelDbOptions.dbOptions.write_buffer_size = 64 * 1024 * 1024;
+        levelDbOptions.dbOptions.max_file_size = 16 * 1024 * 1024;
+        levelDbOptions.dbOptions.max_open_files = 2000;
+        levelDbOptions.dbOptions.block_size = 32 * 1024;
+        levelDbOptions.dbOptions.filter_policy = leveldb::NewBloomFilterPolicy( 10 );
+        m_orig_db.reset( new db::DBImpl( state_path, levelDbOptions ) );
         std::unique_ptr< batched_io::batched_db > bdb = make_unique< batched_io::batched_db >();
         bdb->open( m_orig_db );
         assert( bdb->is_open() );
