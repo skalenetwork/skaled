@@ -1465,9 +1465,10 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getBlockRandom" );
     auto res = exec( bytesConstRef(), { 1,
 #ifdef BITE2
-                                          0,
+                                        0,
+                                        1,
 #endif
-                                          true } );
+                                        true } );
     u256 blockRandom = skaleHost->getBlockRandom( 0, false );
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( res.second == toBigEndian( static_cast< u256 >( blockRandom ) ) );

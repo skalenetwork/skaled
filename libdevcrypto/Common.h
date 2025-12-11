@@ -154,6 +154,14 @@ bool isValidSecp256k1X( const u256& x );
 
 // Return (r,s,v) fabricated from entropy bytes and transaction index.
 SignatureStruct makeSignature( const bytes& entropy, const dev::u256& txIndex );
+
+inline bool operator==( const dev::SignatureStruct& lhs, const dev::SignatureStruct& rhs ) {
+    return lhs.r == rhs.r && lhs.s == rhs.s && lhs.v == rhs.v;
+}
+
+inline bool operator!=( const dev::SignatureStruct& lhs, const dev::SignatureStruct& rhs ) {
+    return !( lhs == rhs );
+}
 #endif
 
 /// Simple class that represents a "key pair".

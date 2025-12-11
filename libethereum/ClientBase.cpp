@@ -26,6 +26,7 @@
 #include <libethereum/SchainPatch.h>
 
 #include <algorithm>
+#include <stdexcept>
 #include <utility>
 
 #include "BlockChain.h"
@@ -202,16 +203,9 @@ LocalisedLogEntries ClientBase::logs( LogFilter const& _f ) const {
     if ( begin >= end && begin - end > ( uint64_t ) bc().chainParams().getLogsBlocksLimit() )
         BOOST_THROW_EXCEPTION( TooBigResponse() );
 
-    // Handle pending transactions differently as they're not on the block chain.
+    bool addPending = false;
     if ( begin > bc().number() ) {
-        Block temp = postSeal();
-        for ( unsigned i = 0; i < temp.pending().size(); ++i ) {
-            // Might have a transaction that contains a matching log.
-            TransactionReceipt const& tr = temp.receipt( i );
-            LogEntries le = _f.matches( tr );
-            for ( unsigned j = 0; j < le.size(); ++j )
-                ret.insert( ret.begin(), LocalisedLogEntry( le[j] ) );
-        }
+        addPending = true;
         begin = bc().number();
     }
 
@@ -226,56 +220,85 @@ LocalisedLogEntries ClientBase::logs( LogFilter const& _f ) const {
         // if it is a range filter, we want to get all logs from all blocks in given range
         for ( unsigned i = end; i <= begin; i++ )
             matchingBlocks.insert( i );
-
     for ( auto n : matchingBlocks )
-        prependLogsFromBlock( _f, bc().numberHash( n ), BlockPolarity::Live, ret );
+        appendLogsFromBlock( _f, bc().numberHash( n ), BlockPolarity::Live, ret );
 
-    reverse( ret.begin(), ret.end() );
+    if ( addPending ) {
+        // Handle pending transactions differently as they're not on the block chain.
+        Block temp = postSeal();
+        for ( unsigned i = 0; i < temp.pending().size(); ++i ) {
+            // Might have a transaction that contains a matching log.
+            TransactionReceipt const& tr = temp.receipt( i );
+            LogEntries le = _f.matches( tr );
+            for ( unsigned j = 0; j < le.size(); ++j )
+                ret.emplace_back( LocalisedLogEntry( le[j] ) );
+        }
+    }
+
     return ret;
 }
 
-void ClientBase::prependLogsFromBlock( LogFilter const& _f, h256 const& _blockHash,
+void ClientBase::appendLogsFromBlock( LogFilter const& _f, h256 const& _blockHash,
     BlockPolarity _polarity, LocalisedLogEntries& io_logs ) const {
-    auto receipts = bc().receipts( _blockHash ).receipts;
+    auto receiptsBundle = bc().receipts( _blockHash );
+    const auto& receipts = receiptsBundle.receipts;
+    const auto& hashes = bc().transactionHashes( _blockHash );
+    auto blockNumber = ( BlockNumber ) bc().number( _blockHash );
+
     unsigned logIndex = 0;
+    const int64_t logCountLimit = bc().chainParams().getResponseLogCountLimit();
+    const bool limitEnabled = logCountLimit != -1;
+
     for ( size_t i = 0; i < receipts.size(); i++ ) {
-        TransactionReceipt receipt = receipts[i];
-        auto th = transaction( _blockHash, i ).sha3();
+        const TransactionReceipt& receipt = receipts[i];
+        const h256& th = hashes[i];
+
         if ( _f.isRangeFilter() ) {
             for ( const auto& e : receipt.log() ) {
-                io_logs.insert( io_logs.begin(),
-                    LocalisedLogEntry( e, _blockHash, ( BlockNumber ) bc().number( _blockHash ), th,
-                        i, logIndex++, _polarity ) );
+                if ( limitEnabled && io_logs.size() + 1 > logCountLimit )
+                    BOOST_THROW_EXCEPTION( LogCountLimitExceeded() );
+
+                io_logs.emplace_back(
+                    LocalisedLogEntry( e, _blockHash, blockNumber, th, i, logIndex++, _polarity ) );
             }
             continue;
         }
 
-        if ( _f.matches( receipt.bloom() ) )
+        if ( _f.matches( receipt.bloom() ) ) {
+            const auto& filterAddresses = _f.getAddresses();
+            const auto& filterTopicsArray = _f.getTopics();
+
             for ( const auto& e : receipt.log() ) {
-                auto addresses = _f.getAddresses();
-                if ( addresses.empty() || std::find( addresses.begin(), addresses.end(),
-                                              e.address ) != addresses.end() ) {
-                    bool isGood = true;
-                    for ( unsigned j = 0; j < 4; ++j ) {
-                        auto topics = _f.getTopics()[j];
-                        if ( !topics.empty() &&
-                             ( e.topics.size() < j || ( std::find( topics.begin(), topics.end(),
-                                                            e.topics[j] ) == topics.end() ) ) ) {
-                            isGood = false;
-                        }
-                    }
-                    if ( isGood )
-                        io_logs.insert(
-                            io_logs.begin(), LocalisedLogEntry( e, _blockHash,
-                                                 ( BlockNumber ) bc().number( _blockHash ), th, i,
-                                                 logIndex++, _polarity ) );
-                    else
-                        ++logIndex;
-                } else
+                if ( !filterAddresses.empty() &&
+                     std::find( filterAddresses.begin(), filterAddresses.end(), e.address ) ==
+                         filterAddresses.end() ) {
                     ++logIndex;
+                    continue;
+                }
+
+                bool isGood = true;
+                for ( unsigned j = 0; j < 4 && isGood; ++j ) {
+                    const auto& topics = filterTopicsArray[j];
+                    if ( !topics.empty() &&
+                         ( e.topics.size() <= j || std::find( topics.begin(), topics.end(),
+                                                       e.topics[j] ) == topics.end() ) ) {
+                        isGood = false;
+                    }
+                }
+
+                if ( isGood ) {
+                    if ( limitEnabled && io_logs.size() >= logCountLimit )
+                        BOOST_THROW_EXCEPTION( LogCountLimitExceeded() );
+
+                    io_logs.emplace_back( LocalisedLogEntry(
+                        e, _blockHash, blockNumber, th, i, logIndex++, _polarity ) );
+                } else {
+                    ++logIndex;
+                }
             }
-        else
+        } else {
             logIndex += receipt.log().size();
+        }
     }
 }
 
@@ -314,7 +337,7 @@ unsigned ClientBase::installWatch(
 }
 
 bool ClientBase::uninstallWatch( unsigned _i ) {
-    BOOST_LOG( m_loggerWatch ) << "XXX" << _i;
+    BOOST_LOG( m_loggerWatch ) << "Uninstalling watch " << _i;
 
     Guard l( x_filtersWatches );
 

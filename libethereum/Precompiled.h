@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include <libdevcore/Address.h>
 #include <libdevcore/CommonData.h>
 #include <libdevcore/Exceptions.h>
 #include <functional>
@@ -55,23 +54,26 @@ struct PrecompiledCallContext {
         : blockNumber( 0 ),
 #ifdef BITE2
           currentTxnIndex( -1 ),
+          latestBlockTimestamp( 0 ),
 #endif
           isReadOnly( true ) {
     }
     PrecompiledCallContext( const dev::u256& _bn,
 #ifdef BITE2
-        const dev::u256& _currentTxnIndex,
+        const dev::u256& _currentTxnIndex, int64_t _latestBlockTimestamp,
 #endif
         bool _readOnly )
         : blockNumber( _bn ),
 #ifdef BITE2
           currentTxnIndex( _currentTxnIndex ),
+          latestBlockTimestamp( _latestBlockTimestamp ),
 #endif
           isReadOnly( _readOnly ) {
     }
     dev::u256 blockNumber;
 #ifdef BITE2
     dev::u256 currentTxnIndex;
+    int64_t latestBlockTimestamp;
 #endif
     bool isReadOnly;
 };
