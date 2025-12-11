@@ -240,13 +240,7 @@ skale::OverlayDB State::openDB(
 
     fs::path state_path = path / fs::path( "state" );
     try {
-        db::LevelDB::LevelDBOptions levelDbOptions;
-        levelDbOptions.dbOptions.write_buffer_size = 64 * 1024 * 1024;
-        levelDbOptions.dbOptions.max_file_size = 16 * 1024 * 1024;
-        levelDbOptions.dbOptions.max_open_files = 2000;
-        levelDbOptions.dbOptions.block_size = 32 * 1024;
-        levelDbOptions.dbOptions.filter_policy = leveldb::NewBloomFilterPolicy( 10 );
-        m_orig_db.reset( new db::DBImpl( state_path, levelDbOptions ) );
+        m_orig_db.reset( new db::DBImpl( state_path, getLevelDBConfig() ) );
         std::unique_ptr< batched_io::batched_db > bdb = make_unique< batched_io::batched_db >();
         bdb->open( m_orig_db );
         assert( bdb->is_open() );
@@ -268,6 +262,16 @@ skale::OverlayDB State::openDB(
             BOOST_THROW_EXCEPTION( eth::DatabaseAlreadyOpen() );
         }
     }
+}
+
+db::LevelDB::LevelDBOptions State::getLevelDBConfig() const {
+    db::LevelDB::LevelDBOptions levelDbOptions;
+    levelDbOptions.dbOptions.write_buffer_size = 64 * 1024 * 1024;
+    levelDbOptions.dbOptions.max_file_size = 16 * 1024 * 1024;
+    levelDbOptions.dbOptions.max_open_files = 2000;
+    levelDbOptions.dbOptions.block_size = 32 * 1024;
+    levelDbOptions.dbOptions.filter_policy = leveldb::NewBloomFilterPolicy( 10 );
+    return levelDbOptions;
 }
 
 State::State( const State& _s )
