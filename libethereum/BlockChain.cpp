@@ -784,7 +784,7 @@ void BlockChain::insertTransactionsDetailsToDb(
 
 #ifdef BITE
             if ( decryptedTransactionFieldsIt != _block.decryptedTransactionDataFields->end() && 
-                decryptedTransactionFieldsIt->first == ta.index ) {
+                 decryptedTransactionFieldsIt->first == ta.index ) {
                 DecryptedTransactionFields& txFields = decryptedTransactionFieldsIt->second;
                 dev::Address to = dev::Address( txFields.to.get() );
                 DecryptedTransactionData txData( *txFields.data, to );
