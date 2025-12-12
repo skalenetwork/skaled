@@ -5,6 +5,17 @@
 #ifdef BITE
 #include <libconsensus/libBLS/threshold_encryption/ThresholdEncryption.h>
 #endif
+#ifdef BITE2
+#include <libconsensus/libBLS/threshold_encryption/TEPrivateKey.h>
+#include <libconsensus/libBLS/threshold_encryption/TEPrivateKeyShare.h>
+#include <libconsensus/libBLS/threshold_encryption/TEPublicKeyShare.h>
+#include <libconsensus/libBLS/threshold_encryption/TEDecryptSet.h>
+#include <libconsensus/libBLS/threshold_encryption/ThresholdEncryption.h>
+#include <test/utils.h>
+#endif
+
+
+
 #include <libskale/ConsensusGasPricer.h>
 
 #include <test/tools/libtesteth/TestHelper.h>
@@ -223,6 +234,10 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
     bytes bytes_from_json( const Json::Value& json ) {
         Transaction tx = tx_from_json( json );
         return tx.toBytes();
+    }
+
+    void setBlsPublicKey( const std::array< std::string, 4 >& _key ) {
+        chainParams->sChain.nodeGroups[0].blsPublicKey = _key;
     }
 
     TransactionQueue* tq;
@@ -1508,7 +1523,87 @@ BOOST_AUTO_TEST_CASE( biteTransactions ) {
 }
 #endif
 
+#ifdef BITE2
+BOOST_AUTO_TEST_CASE( encryptTE_success ) {
+    SkaleHostFixture fixture;
+
+    auto keys = generateKeys(1, 1);
+
+    // set test key
+    fixture.setBlsPublicKey(keys.commonPublic.getPublicKeyRaw().toStringArray(libBLS::Base::DEC));
+
+    // Get the executor for encryptTE
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptTE" );
+
+    // Create test input data
+    std::string testMessage = "Hello, threshold encryption!";
+    bytes inputData( testMessage.begin(), testMessage.end() );
+
+    // Call the precompiled contract
+    auto res = exec( bytesConstRef( inputData.data(), inputData.size() ),
+        { 1, 0, true } );
+
+    // Verify success
+    BOOST_REQUIRE( res.first );
+    BOOST_REQUIRE( !res.second.empty() );
+
+    // Parse output as Ciphertext
+    libBLS::Ciphertext ciphertext = libBLS::Ciphertext::fromBytes( res.second, /* validate */ true );
+
+    // Verify ciphertext is valid
+    ciphertext.validate();
+
+    // decrypt & check if decrypted = original
+    
+    // 1. Create a decryption share from the single private key share
+    libBLS::TEDecryptionShare share = libBLS::ThresholdEncryption::partialDecrypt(
+        ciphertext.getTargetKey(), keys.secretKeys[0] );
+    // 2. Add to decrypt set
+    libBLS::TEDecryptSet decryptSet( 1, 1 );  // t=1, n=1
+    decryptSet.addDecryptShare( share );
+    // 3. Combine shares → AES key
+    libBLS::AES256Key aesKey = libBLS::ThresholdEncryption::combineShares( 
+        ciphertext.getTargetKey(), decryptSet );
+    // 4. Decrypt using AES key
+    std::vector< uint8_t > decryptedMessage = 
+        libBLS::ThresholdEncryption::decrypt( ciphertext, aesKey );
+    // 5. Verify original message matches
+    BOOST_REQUIRE( decryptedMessage == inputData );    
+}
+
+BOOST_AUTO_TEST_CASE( encryptTE_emptyInput ) {
+    SkaleHostFixture fixture;
+
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptTE" );
+
+    // Call with empty input
+    bytes emptyInput;
+    auto res = exec( bytesConstRef( emptyInput.data(), emptyInput.size() ),
+        { 1, 0, true } );
+
+    // Verify failure with error code 2 (empty input)
+    BOOST_REQUIRE( !res.first );
+    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 2 ) ) );
+}
+
+BOOST_AUTO_TEST_CASE( encryptTE_inputTooLarge ) {
+    SkaleHostFixture fixture;
+
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptTE" );
+
+    // Create input larger than 64KB
+    bytes largeInput( 65 * 1024, 0x42 );  // 65KB of 'B's
+    auto res = exec( bytesConstRef( largeInput.data(), largeInput.size() ),
+        { 1, 0, true } );
+
+    // Verify failure with error code 1 (input too large)
+    BOOST_REQUIRE( !res.first );
+    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 1 ) ) );
+}
+#endif  // BITE2
+
 struct dummy {};
+
 
 // Test behavior of MTM if tx with big nonce was already mined as erroneous
 BOOST_FIXTURE_TEST_CASE(

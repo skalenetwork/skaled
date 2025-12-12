@@ -55,6 +55,11 @@
 #include <sstream>
 #include <string>
 
+#ifdef BITE2
+#include <libconsensus/libBLS/threshold_encryption/TEPublicKey.h>
+#include <libconsensus/libBLS/threshold_encryption/ThresholdEncryption.h>
+#endif
+
 
 namespace dev {
 namespace eth {
@@ -1153,6 +1158,58 @@ ETH_REGISTER_PRECOMPILED( getRandomWalletForCTX )
     bytes response = toBigEndian( code );
     return { false, response };  // 1st false - means bad error occur
 }
+
+
+ETH_REGISTER_PRECOMPILED( encryptTE )
+( bytesConstRef _in, const PrecompiledCallContext& ) {
+    try {
+        static constexpr size_t MAX_SIZE_BYTES = 64 * 1024;  // 64KB
+        if ( _in.size() > MAX_SIZE_BYTES ) {
+            return { false, toBigEndian( dev::u256( 1 ) ) };  // error 1: input too large
+        }
+
+        if ( _in.empty() ) {
+            return { false, toBigEndian( dev::u256( 2 ) ) };  // error 2: empty input
+        }
+
+        if ( !g_skaleHost ) {
+            throw std::runtime_error( "SkaleHost accessor was not initialized" );
+        }
+
+        // get network public key
+        auto blsPublicKeyArray = g_skaleHost->getCurrentBLSPublicKey();
+
+        // convert BLS public key to TE public key
+        libBLS::algebra::G2Point publicKeyG2 =
+            libBLS::algebra::G2Point::fromString( blsPublicKeyArray, libBLS::Base::DEC );
+        libBLS::TEPublicKey tePublicKey( publicKeyG2 );
+
+        // convert input to vector
+        std::vector< uint8_t > inputData( _in.begin(), _in.end() );
+
+        // encrypt using threshold encryption
+        libBLS::Ciphertext ciphertext =
+            libBLS::ThresholdEncryption::encrypt( inputData, tePublicKey );
+
+        // convert ciphertext to bytes
+        bytes response = ciphertext.toBytes();
+        return { true, response };
+        
+    } catch ( std::exception& ex ) {
+        std::string strError = ex.what();
+        if ( strError.empty() )
+            strError = "exception without description";
+        BOOST_LOG( getLogger( VerbosityError ) )
+            << "Exception in precompiled/encryptTE(): " << strError << "\n";
+    } catch ( ... ) {
+        BOOST_LOG( getLogger( VerbosityError ) )
+            << "Unknown exception in precompiled/encryptTE()\n";
+    }
+    dev::u256 code = 0;
+    bytes response = toBigEndian( code );
+    return { false, response };  // 1st false - means bad error occur
+}
+
 #endif
 
 #ifndef FAIR
