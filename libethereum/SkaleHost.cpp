@@ -616,6 +616,9 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     DEV_GUARDED( m_client.m_blockImportMutex ) {
         m_debugTracer.tracepoint( "drop_good_transactions" );
 
+#ifdef BITE
+        auto decryptedTransactionFieldsIt = _decryptedTransactionFields->begin();
+#endif
         for ( size_t i = 0; i < _approvedTransactions.size(); ++i ) {
             const bytes& data = _approvedTransactions.at( i );
             h256 sha = sha3( data );
@@ -625,12 +628,13 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                 EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
                 InvalidTransactionFormatPatch::isEnabledInWorkingBlock() );
 #ifdef BITE
-            auto it = _decryptedTransactionFields->find( i );
-            if ( it != _decryptedTransactionFields->end() ) {
-                DecryptedTransactionFields& txFields = it->second;
+            if ( decryptedTransactionFieldsIt != _decryptedTransactionFields->end() &&
+                 decryptedTransactionFieldsIt->first == i ) {
+                DecryptedTransactionFields& txFields = decryptedTransactionFieldsIt->second;
 
                 dev::Address to = dev::Address( txFields.to.get() );
                 t.setDecryptedFields( txFields.data, std::make_shared< dev::Address >( to ) );
+                ++decryptedTransactionFieldsIt;
             }
 
 #endif
