@@ -229,11 +229,12 @@ public:
 
     // Tx is only valid BITE if is marked as BITE and has the decrypted fields set
     bool isInvalidBiteTransaction() const {
-        return m_isBITETxn && ( ( !m_decryptedData && !m_decryptedTo )
+        return m_isBITETxn &&
+               ( ( !m_decryptedData && !m_decryptedTo )
 #ifdef BITE2
-                                  || !m_ctxDecryptedArgs.has_value()
+                   || ( m_ctxEncryptedArgsSize.has_value() && !m_ctxDecryptedArgs.has_value() )
 #endif
-                              );
+               );
     }
 
     bool isBite() const { return m_isBITETxn; }
