@@ -465,6 +465,8 @@ ConsensusExtFace::Transactions SkaleHost::pendingTransactions( size_t _limit, u2
     // CTXs are not the subject for block gas limit
     for ( const auto& ctx : bite2Transactions ) {
         out_vector.pushBackCAT( ctx.toBytes() );
+        m_debugTracer.tracepoint( "sent_txn" );
+        BOOST_LOG( m_loggerTrace ) << "Sent CTX: " << ctx.sha3().hex();
     }
 #endif
 
@@ -523,6 +525,7 @@ ConsensusExtFace::Transactions SkaleHost::pendingTransactions( size_t _limit, u2
             h256 sha = txn.sha3();
 
             out_vector.pushBackRegular( txn.toBytes() );
+            BOOST_LOG( m_loggerInfo ) << "Push regular tx into consensus";
 
             ++total_sent;
 
@@ -989,6 +992,7 @@ std::vector< Transaction > SkaleHost::processRegularTransactions(
             std::optional< DecryptedRegularTxFields > txFields = regularTxnsIterator->second;
             if ( txFields.has_value() ) {
                 dev::Address to( txFields->to.data(), dev::Address::ConstructFromPointer );
+                ;
                 t.setDecryptedFields( std::make_shared< dev::bytes >( txFields->data ),
                     std::make_shared< dev::Address >( to ) );
             }
@@ -1013,7 +1017,8 @@ std::vector< Transaction > SkaleHost::processRegularTransactions(
         m_debugTracer.tracepoint( "drop_good" );
         m_tq.dropGood( t );
 #ifdef BITE
-        ++regularTxnsIterator;
+        if ( regularTxnsIterator != _decryptedTransactions.regularTxsMap->end() )
+            ++regularTxnsIterator;
 #endif
     }
     return outTxns;
@@ -1034,7 +1039,7 @@ std::vector< Transaction > SkaleHost::processCTXTransactions(
     for ( size_t i = 0; i < _approvedTransactions.sizeCAT(); ++i ) {
         const bytes& data = _approvedTransactions.at( i );
         h256 sha = sha3( data );
-        BOOST_LOG( m_loggerTrace ) << "Arrived txn: " << sha;
+        BOOST_LOG( m_loggerTrace ) << "Arrived CTX: " << sha;
 
         Transaction t( data, CheckTransaction::Everything, true,
             EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
@@ -1055,7 +1060,8 @@ std::vector< Transaction > SkaleHost::processCTXTransactions(
         outTxns.push_back( t );
         m_debugTracer.tracepoint( "drop_good" );
         m_tq.dropGood( t );
-        ++ctxIterator;
+        if ( ctxIterator != _decryptedTransactions.catTxsMap->end() )
+            ++ctxIterator;
     }
     return outTxns;
 }
