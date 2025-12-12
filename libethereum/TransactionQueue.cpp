@@ -471,7 +471,7 @@ void TransactionQueue::dropGood( Transaction const& _t ) {
     // BITE2 transactions are stored separately
     // they are also stored in the strict order
     // delete and return
-    if ( _t.isBite2() ) {
+    if ( _t.isCTX() ) {
         CHECK_EXPRESSION( _t == m_bite2Current.front() );
         m_bite2Current.erase( m_bite2Current.begin() );
         return;

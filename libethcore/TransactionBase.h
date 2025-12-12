@@ -228,27 +228,18 @@ public:
     Address decryptedTo() const;
 
     // Tx is only valid BITE if is marked as BITE and has the decrypted fields set
-    bool isInvalidBiteTransaction() const {
-        return m_isBITETxn &&
-               ( ( !m_decryptedData && !m_decryptedTo )
-#ifdef BITE2
-                   || ( m_ctxEncryptedArgsSize.has_value() && !m_ctxDecryptedArgs.has_value() )
-#endif
-               );
-    }
+    bool isInvalidBiteTransaction() const;
 
     bool isBite() const { return m_isBITETxn; }
 
     void checkAndValidateBITETransaction( uint64_t _epochId ) const;
 
 #ifdef BITE2
-    bool isBite2() const { return m_ctxEncryptedArgsSize.has_value(); }
+    bool isCTX() const { return m_isCTX; }
+
+    void checkIfCTXAndSet( const dev::bytes& _data );
 
     void setDecryptedArgsCTX( const DecryptedCATArgs& _decryptedCTXArgs );
-
-    const std::vector< dev::bytes >& getDecryptedArgsCTX() const {
-        return m_ctxDecryptedArgs->args;
-    }
 #endif  // BITE2
 
 #endif  // BITE
@@ -475,7 +466,7 @@ protected:
 
 #ifdef BITE2
     std::optional< size_t > m_ctxEncryptedArgsSize = std::nullopt;
-    std::optional< DecryptedCATArgs > m_ctxDecryptedArgs = std::nullopt;
+    bool m_isCTX = false;
 #endif
 
     TransactionType m_txType = TransactionType::Legacy;

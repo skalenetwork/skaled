@@ -380,7 +380,15 @@ TransactionBase::TransactionBase( bytesConstRef _rlpData, CheckTransaction _chec
         // bad formatted txns cannot make it to the block
         // therefore no need to check it anywhere else
         checkIfBITETxnAndSet( m_receiveAddress );
-#endif
+
+#ifdef BITE2
+        // check if a txn is a CTX here
+        // bad formatted txns cannot make it to the block
+        // therefore no need to check it anywhere else
+        checkIfCTXAndSet( m_data );
+#endif  // BITE2
+
+#endif  // BITE
     } catch ( std::exception& e ) {
         m_type = Type::Invalid;
         RLPStream s;
@@ -669,6 +677,14 @@ bytesConstRef dev::eth::bytesRefFromTransactionRlp( const RLP& _rlp ) {
 }
 
 #ifdef BITE
+bool TransactionBase::isInvalidBiteTransaction() const {
+    return ( m_isBITETxn && ( !m_decryptedData && !m_decryptedTo ) )
+#ifdef BITE2
+           || ( m_isCTX && !m_decryptedData )
+#endif
+        ;
+}
+
 bytes const& TransactionBase::decryptedData() const {
     if ( !m_decryptedData )
         return data();
@@ -764,9 +780,16 @@ void TransactionBase::checkAndValidateBITETransaction( uint64_t _currentEpochId 
 }
 
 #ifdef BITE2
+
+void TransactionBase::checkIfCTXAndSet( const dev::bytes& _data ) {
+    m_isCTX = std::equal( _data.begin(), _data.begin() + BITE2_FUNCTION_SELECTOR_SIZE_BYTES,
+        BITE_FUNCTION_SELECTOR_AS_BYTE_ARRAY );
+}
+
 void TransactionBase::setDecryptedArgsCTX( const DecryptedCATArgs& _decryptedCTXArgs ) {
-    m_isBITETxn = true;
-    m_ctxDecryptedArgs = _decryptedCTXArgs;
+    if ( !isCTX() )
+        throw std::runtime_error( "Trying to set CTX arguments for not CTX-type transaction" );
+
     m_ctxEncryptedArgsSize = _decryptedCTXArgs.args.size();
 
     // Transform m_data from: selector(4 bytes) + RLP(RLP(encrypted_args), RLP(plaintext_args))
