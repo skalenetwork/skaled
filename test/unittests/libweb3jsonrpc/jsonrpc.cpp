@@ -5867,7 +5867,6 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
     txGenerate["from"] = toJS( senderAddress );
     txGenerate["nonce"] = 2;
     txHash = fixture.rpcClient->eth_sendTransaction( txGenerate );
-    std::cout << "SENT TXN FROM TEST: " << txHash << '\n';
     BOOST_REQUIRE_EQUAL( fixture.client->debugGetTransactionQueue()->pendingBITE2Transactions().size(), 1 );
     BOOST_REQUIRE_EQUAL( fixture.client->pending().size(), 1 );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
