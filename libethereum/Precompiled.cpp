@@ -918,8 +918,6 @@ ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef, const PrecompiledCall
             throw std::runtime_error( "SkaleHost accessor was not initialized" );
         unsigned blockNumberToCall = _ctx.blockNumber.convert_to< unsigned >();
         dev::u256 uValue = g_skaleHost->getBlockRandom( blockNumberToCall, !_ctx.isReadOnly );
-        BOOST_LOG( getLogger( VerbosityInfo ) )
-            << "RANDOM FOR BLOCK: " << blockNumberToCall << " : " << uValue;
         bytes response = toBigEndian( uValue );
         return { true, response };
     } catch ( std::exception& ex ) {
@@ -1067,9 +1065,6 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
         // Construct transaction from RLP
         Transaction signedTransaction( signedTxnRlp, CheckTransaction::Everything );
         signedTransaction.setBITE2EncryptedArgsSize( encryptedArgsCount );
-
-        BOOST_LOG( getLogger( VerbosityInfo ) )
-            << "CTX SENDER: " << signedTransaction.sender().hex();
 
         if ( signedTransaction.isInvalid() )
             return { false, toBigEndian( dev::u256( SubmitCTXStatus::INVALID_TRANSACTION ) ) };
