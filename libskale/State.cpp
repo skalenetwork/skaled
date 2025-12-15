@@ -269,8 +269,6 @@ db::LevelDB::LevelDBOptions State::getLevelDBConfig() const {
     levelDbOptions.dbOptions.write_buffer_size = 64 * 1024 * 1024;
     levelDbOptions.dbOptions.max_file_size = 16 * 1024 * 1024;
     levelDbOptions.dbOptions.max_open_files = 2000;
-    levelDbOptions.dbOptions.block_size = 32 * 1024;
-    levelDbOptions.dbOptions.filter_policy = leveldb::NewBloomFilterPolicy( 10 );
     return levelDbOptions;
 }
 
