@@ -172,14 +172,6 @@ public:
         auto res = future.get();
         block_promise = decltype( block_promise )();
 
-        //        transactions_vector approvedTransactions = txns;
-        //        uint64_t timeStamp = 11;
-        //        uint32_t timeStampMs = 1;
-        //        uint64_t blockID = 1;
-        //        u256 gasPrice = 4000;
-
-        // return make_tuple( approvedTransactions, timeStamp, timeStampMs, blockID, gasPrice );
-
         return res;
     }
 };
@@ -251,9 +243,6 @@ public:
         chainParams->nodeInfo.id = 2;
         chainParams->nodeInfo.name = "Node2";
         chainParams->resetJson();
-
-        //        web3.reset( new WebThreeDirect(
-        //            "eth tests", "", "", chainParams, WithExisting::Kill, {"eth"}, true ) );
 
         auto monitor = make_shared< InstanceMonitor >("test");
 
@@ -420,8 +409,8 @@ BOOST_AUTO_TEST_CASE( gasPriceIncrease ) {
 
     {
         ConsensusExtFace::Transactions v;
-        for ( auto& tx : v ) {
-            tx = dev::eth::Transaction(0, 0, 0, dev::Address(), dev::bytes(), 0, dev::Secret::random() ).toBytes();
+        for (size_t i = 0; i < 9000; ++i) {
+            v.pushBackRegular( dev::eth::Transaction(0, 0, 0, dev::Address(), dev::bytes(), 0, dev::Secret::random() ).toBytes() );
         }  // for
 
         std::tie( approvedTransactions, timeStamp, timeStampMs, blockID, gasPrice ) = singleRun( v );

@@ -602,6 +602,9 @@ void SkaleHost::createBlock( const ConsensusExtFace::Transactions& _approvedTran
     }
 
     BOOST_LOG( m_loggerDebug ) << "createBlock ID = #" << _blockID;
+#ifdef BITE2
+    BOOST_LOG( m_loggerDebug ) << "Got block with " << _approvedTransactions.sizeCAT() << " CTXs";
+#endif
     m_debugTracer.tracepoint( "create_block" );
 
     // convert bytes back to transactions (using caching), delete them from q and push results into
