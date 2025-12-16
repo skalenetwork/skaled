@@ -23,8 +23,11 @@
 
 #include "Precompiled.h"
 
+#include <cryptopp/aes.h>
 #include <cryptopp/files.h>
+#include <cryptopp/filters.h>
 #include <cryptopp/hex.h>
+#include <cryptopp/modes.h>
 #include <cryptopp/sha.h>
 #include <libdevcore/CommonJS.h>
 #include <libdevcore/FileSystem.h>
@@ -1168,12 +1171,52 @@ ETH_REGISTER_PRECOMPILED( encryptTE )
             return { false, toBigEndian( dev::u256( 1 ) ) };  // error 1: input too large
         }
 
-        if ( _in.empty() ) {
-            return { false, toBigEndian( dev::u256( 2 ) ) };  // error 2: empty input
+        // Input format: abi.encode(address scAddress, bytes data)
+        // ABI encoding: [scAddress(20 bytes, left-padded to 32)] [offset_to_data(32)]
+        //               [data_length(32)] [data(N)]
+        // Minimum: 32 (address) + 32 (offset) + 32 (length) = 96 bytes
+        if ( _in.size() < 96 ) {
+            return { false, toBigEndian( dev::u256( 2 ) ) };  // error 2: input too small
         }
 
         if ( !g_skaleHost ) {
             throw std::runtime_error( "SkaleHost accessor was not initialized" );
+        }
+
+        int headFieldSizeBytes = 32;
+
+        // First 32 bytes: SC address (20 bytes, left-padded to 32)
+        // Skip the first 12 bytes (padding), extract the 20-byte address
+        auto scAddressBytes = _in.cropped( 12, 20 ).toBytes();
+
+        // Next 32 bytes: offset to data (should be 64 = 2 * 32)
+        bigint const dataOffset( parseBigEndianRightPadded( _in, 32, headFieldSizeBytes ) );
+        const int expectedDataOffset = 2 * 32;  // 64
+        if ( dataOffset != expectedDataOffset ) {
+            return { false, toBigEndian( dev::u256( 3 ) ) };  // error 3: invalid ABI encoding
+        }
+
+        // Read data length at the data offset (position 64)
+        if ( _in.size() < expectedDataOffset + headFieldSizeBytes ) {
+            return { false, toBigEndian( dev::u256( 4 ) ) };  // error 4: data length mismatch
+        }
+        bigint const dataLength(
+            parseBigEndianRightPadded( _in, expectedDataOffset, headFieldSizeBytes ) );
+
+        // Extract data bytes
+        size_t dataStart = expectedDataOffset + headFieldSizeBytes;
+        if ( dataLength < 0 || dataStart + static_cast< size_t >( dataLength ) > _in.size() ) {
+            return { false, toBigEndian( dev::u256( 4 ) ) };  // error 4: data length mismatch
+        }
+
+        std::vector< uint8_t > dataToEncrypt;
+        if ( dataLength > 0 ) {
+            dataToEncrypt =
+                _in.cropped( dataStart, static_cast< size_t >( dataLength ) ).toBytes();
+        }
+
+        if ( dataToEncrypt.empty() ) {
+            return { false, toBigEndian( dev::u256( 5 ) ) };  // error 5: empty data
         }
 
         // get network public key
@@ -1184,17 +1227,16 @@ ETH_REGISTER_PRECOMPILED( encryptTE )
             libBLS::algebra::G2Point::fromString( blsPublicKeyArray, libBLS::Base::DEC );
         libBLS::TEPublicKey tePublicKey( publicKeyG2 );
 
-        // convert input to vector
-        std::vector< uint8_t > inputData( _in.begin(), _in.end() );
-
-        // encrypt using threshold encryption
+        // encrypt using threshold encryption with SC address as AAD
+        std::optional< std::vector< uint8_t > > aad =
+            std::vector< uint8_t >( scAddressBytes.begin(), scAddressBytes.end() );
         libBLS::Ciphertext ciphertext =
-            libBLS::ThresholdEncryption::encrypt( inputData, tePublicKey );
+            libBLS::ThresholdEncryption::encrypt( dataToEncrypt, tePublicKey, aad );
 
         // convert ciphertext to bytes
         bytes response = ciphertext.toBytes();
         return { true, response };
-        
+
     } catch ( std::exception& ex ) {
         std::string strError = ex.what();
         if ( strError.empty() )
@@ -1204,6 +1246,99 @@ ETH_REGISTER_PRECOMPILED( encryptTE )
     } catch ( ... ) {
         BOOST_LOG( getLogger( VerbosityError ) )
             << "Unknown exception in precompiled/encryptTE()\n";
+    }
+
+    dev::u256 code = 0;
+    bytes response = toBigEndian( code );
+    return { false, response };
+}
+
+
+ETH_REGISTER_PRECOMPILED( encryptECIES )
+( bytesConstRef _in, const PrecompiledCallContext& ) {
+    try {
+        static constexpr size_t MAX_SIZE_BYTES = 64 * 1024;  // 64KB
+
+        if ( _in.size() > MAX_SIZE_BYTES ) {
+            return { false, toBigEndian( dev::u256( 1 ) ) };  // error 1: input too large
+        }
+
+        // Minimum input: at least public key coordinates (64 bytes)
+        // Input format: abi.encode(bytes data, bytes32 x, bytes32 y)
+        // ABI encoding: [offset_to_data(32)] [x(32)] [y(32)] [data_length(32)] [data(N)]
+        // So minimum is: 32 + 32 + 32 + 32 = 128 bytes for empty data
+        if ( _in.size() < 128 ) {
+            return { false, toBigEndian( dev::u256( 2 ) ) };  // error 2: input too small
+        }
+
+        int offset = 0;
+        int headFieldSizeBytes = 32;
+
+        // Parse ABI-encoded input
+        // First 32 bytes: offset to data
+        bigint const dataOffset( parseBigEndianRightPadded( _in, offset, headFieldSizeBytes ) );
+        // should be 3 * 32 = 96
+        const int expectedDataOffset = 3 * 32;
+        if ( dataOffset != expectedDataOffset ) {
+            return { false, toBigEndian( dev::u256( 3 ) ) };  // error 3: invalid ABI encoding
+        }
+
+        // Next 32 bytes: public key x-coordinate
+        offset += headFieldSizeBytes;
+        bytes pubKeyX = _in.cropped( offset, headFieldSizeBytes ).toBytes();
+        
+        // Next 32 bytes: public key y-coordinate  
+        offset += headFieldSizeBytes;
+        bytes pubKeyY = _in.cropped( offset, headFieldSizeBytes ).toBytes();
+
+        // Next 32 bytes: data length
+        offset += headFieldSizeBytes;
+        bigint const dataLength( parseBigEndianRightPadded( _in, offset, headFieldSizeBytes ) );
+        
+        // 3 head fields + data size field (also 32 bytes)
+        int totalMinSizeExceptData = 3 * headFieldSizeBytes + headFieldSizeBytes;
+        if ( dataLength < 0 || totalMinSizeExceptData + dataLength > _in.size() ) {
+            return { false, toBigEndian( dev::u256( 4 ) ) };  // error 4: data length mismatch
+        }
+
+        // Extract data to encrypt
+        offset += headFieldSizeBytes;
+        bytes dataToEncrypt;
+        if ( dataLength > 0 ) {
+            dataToEncrypt = _in.cropped( offset, static_cast<size_t>( dataLength ) ).toBytes();
+        }
+
+        if ( dataToEncrypt.empty() ) {
+            return { false, toBigEndian( dev::u256( 5 ) ) };  // error 5: empty data
+        }
+
+        // Construct user public key from x,y bytes
+        dev::Public userPubKey;
+        memcpy( userPubKey.data(), pubKeyX.data(), 32 );
+        memcpy( userPubKey.data() + 32, pubKeyY.data(), 32 );
+
+        // Validate public key is on the secp256k1 curve
+        if ( !dev::isValidPublicKey( userPubKey ) ) {
+            return { false, toBigEndian( dev::u256( 6 ) ) };  // error 6: invalid public key
+        }
+
+        // Encrypt using ECIES-CBC helper
+        bytes response = dev::encryptECIES_CBC( userPubKey, bytesConstRef( &dataToEncrypt ) );
+        if ( response.empty() ) {
+            return { false, toBigEndian( dev::u256( 7 ) ) };  // error 7: encryption failed
+        }
+
+        return { true, response };
+
+    } catch ( std::exception& ex ) {
+        std::string strError = ex.what();
+        if ( strError.empty() )
+            strError = "exception without description";
+        BOOST_LOG( getLogger( VerbosityError ) )
+            << "Exception in precompiled/encryptECIES(): " << strError << "\n";
+    } catch ( ... ) {
+        BOOST_LOG( getLogger( VerbosityError ) )
+            << "Unknown exception in precompiled/encryptECIES()\n";
     }
     dev::u256 code = 0;
     bytes response = toBigEndian( code );
