@@ -197,7 +197,6 @@ void Client::stopWorking() {
     // TODO Try this in develop. For hotfix we will keep as is
     //    if ( !Worker::isWorking() )
     //        return;
-
     Worker::stopWorking();
 
     if ( m_skaleHost )
@@ -619,8 +618,10 @@ size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
     } else
         BOOST_LOG( m_loggerWarning ) << "Warning: UnsafeRegion still active!";
 
+#ifndef FAIR
     if ( chainParams().getNodeGroups().size() > 0 )
         updateHistoricGroupIndex();
+#endif
 
 #ifdef FAIR
     BOOST_LOG( m_loggerInfo ) << "Reward receiver for block " << number() << ": "
@@ -665,6 +666,10 @@ std::pair< std::array< std::string, 4 >, uint64_t > Client::getNextCommitteeBITE
         throw std::out_of_range( "Couldn't get next committee info" );
     return { chainParams().getBlsPublicKeyForHistoricGroup( currentGroupIndex + 1 ),
         currentGroupIndex + 1 };
+}
+
+bool Client::updateGroupIfNeeded() {
+    return bc().updateGroupIfNeeded();
 }
 #endif
 
@@ -1467,16 +1472,19 @@ void Client::initHistoricGroupIndex() {
     historicGroupIndex = std::distance( nodeGroups.begin(), it );
 }
 
-void Client::updateHistoricGroupIndex() {
-    auto nodeGroups = chainParams().getNodeGroups();
-    uint64_t blockTimestamp = blockInfo( hashFromNumber( number() ) ).timestamp();
-    uint64_t currentFinishTs = nodeGroups.at( historicGroupIndex ).finishTs;
-    if ( blockTimestamp >= currentFinishTs )
-        ++historicGroupIndex;
+bool Client::updateHistoricGroupIndex() {
+    const auto& nodeGroups = chainParams().getNodeGroups();
     if ( historicGroupIndex >= nodeGroups.size() ) {
         BOOST_THROW_EXCEPTION( std::runtime_error(
             "Assertion failed: historicGroupIndex >= chainParams().sChain.nodeGroups.size())" ) );
     }
+    uint64_t blockTs = blockInfo( hashFromNumber( number() ) ).timestamp();
+    if ( blockTs >= nodeGroups.at( historicGroupIndex ).finishTs ) {
+        BOOST_LOG( m_loggerInfo ) << "Updating historic group index to " << historicGroupIndex + 1;
+        ++historicGroupIndex;
+        return true;
+    }
+    return false;
 }
 
 // new block watch

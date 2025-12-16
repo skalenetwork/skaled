@@ -107,6 +107,9 @@ void ChainParams::loadConfig( string const& _json, const boost::filesystem::path
                                    false;
     logsBlocksLimit =
         params.count( "getLogsBlocksLimit" ) ? params.at( "getLogsBlocksLimit" ).get_int() : -1;
+    responseLogCountLimit = params.count( "getResponseLogCountLimit" ) ?
+                                params.at( "getResponseLogCountLimit" ).get_int() :
+                                -1;
 
     if ( obj.count( c_skaleConfig ) ) {
         processSkaleConfigItems( obj );
@@ -944,6 +947,7 @@ bool ChainParams::updateCurrentGroupIfNeeded( uint64_t _latestBlockTimestamp ) {
     // invariant here - relevant group MUST BE stored under index 1
     if ( _latestBlockTimestamp >= sChain.currentGroups[0].startTs &&
          sChain.currentGroups[0].startTs > sChain.currentGroups[1].startTs ) {
+        BOOST_LOG( m_loggerInfo ) << "Updating current group";
         std::unique_lock< std::shared_mutex > lock( m_mutex );
         std::swap( sChain.currentGroups[0], sChain.currentGroups[1] );
         BOOST_LOG( m_loggerInfo ) << "Using the group with startTs "

@@ -927,8 +927,13 @@ ExecutionResult Block::executeHistoricCall( LastBlockHashesFace const& _lh, Tran
             try {
                 HistoricState stateBefore( m_state.mutableHistoricState() );
 
-                auto resultReceipt = m_state.mutableHistoricState().execute( envInfo,
-                    m_sealEngine->chainParams(), _t, skale::Permanence::Uncommitted, onOp );
+                auto resultReceipt = m_state.mutableHistoricState().execute(
+                    envInfo, m_sealEngine->chainParams(), _t, skale::Permanence::Uncommitted, onOp
+#ifdef BITE2
+                    ,
+                    _transactionIndex
+#endif
+                );
 
                 _tracer->finalizeAndPrintTrace(
                     resultReceipt.first, stateBefore, m_state.mutableHistoricState() );
@@ -943,7 +948,12 @@ ExecutionResult Block::executeHistoricCall( LastBlockHashesFace const& _lh, Tran
             }
         } else {
             auto resultReceipt = m_state.mutableHistoricState().execute(
-                envInfo, m_sealEngine->chainParams(), _t, skale::Permanence::Reverted, onOp );
+                envInfo, m_sealEngine->chainParams(), _t, skale::Permanence::Reverted, onOp
+#ifdef BITE2
+                ,
+                _transactionIndex
+#endif
+            );
             return resultReceipt.first;
         }
     } catch ( std::exception& e ) {

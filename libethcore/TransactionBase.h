@@ -366,6 +366,10 @@ public:
             ,
             m_isBITETxn
 #endif
+#ifdef BITE2
+            ,
+            m_bite2EncryptedArgsSize
+#endif
         );
     }
 
@@ -386,7 +390,15 @@ public:
         ,
         bool _isBITETxn = false
 #endif
+#ifdef BITE2
+        ,
+        std::optional< size_t > _bite2EncryptedArgsSize = std::nullopt
+#endif
     );
+
+#ifdef BITE2
+    void setBITE2EncryptedArgsSize( size_t _s ) { m_bite2EncryptedArgsSize = _s; }
+#endif
 
 protected:
     /// Type of transaction.
@@ -440,6 +452,10 @@ protected:
     bool m_isBITETxn = false;  ///< Is this a BITE transaction
 
     static const Address BITE_ADDRESS;
+#endif
+
+#ifdef BITE2
+    std::optional< size_t > m_bite2EncryptedArgsSize = std::nullopt;
 #endif
 
     TransactionType m_txType = TransactionType::Legacy;

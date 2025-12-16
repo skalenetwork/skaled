@@ -116,6 +116,8 @@ DEV_SIMPLE_EXCEPTION( UnknownAccount );
 
 DEV_SIMPLE_EXCEPTION( TooBigResponse );
 
+DEV_SIMPLE_EXCEPTION( LogCountLimitExceeded );
+
 #ifdef BITE
 DEV_SIMPLE_EXCEPTION( InvalidBITETransaction );
 DEV_SIMPLE_EXCEPTION( BITETransactionTooShort );

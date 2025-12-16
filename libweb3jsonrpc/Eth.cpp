@@ -35,6 +35,9 @@
 #include <libskale/SkipInvalidTransactionsPatch.h>
 #include <libweb3jsonrpc/JsonHelper.h>
 
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/writer.h>
+
 #include <csignal>
 #include <exception>
 
@@ -885,26 +888,19 @@ Json::Value Eth::eth_getFilterChangesEx( string const& _filterId ) {
     }
 }
 
-Json::Value Eth::eth_getFilterLogs( string const& _filterId ) {
+rapidjson::Document Eth::eth_getLogs(
+    rapidjson::Value const& _json, rapidjson::Document::AllocatorType& _responseAllocator ) {
     try {
-        return toJson( client()->logs( static_cast< unsigned int >( jsToInt( _filterId ) ) ) );
-    } catch ( const TooBigResponse& ) {
-        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS,
-            "Log response size exceeded. Maximum allowed number of requested blocks is " +
-                to_string( this->client()->chainParams().getLogsBlocksLimit() ) ) );
-    } catch ( ... ) {
-        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
-    }
-}
+        rapidjson::StringBuffer buffer;
+        rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
+        _json.Accept( writer );
 
-Json::Value Eth::eth_getLogs( Json::Value const& _json ) {
-    try {
-        LogFilter filter = toLogFilter( _json );
-        if ( !_json["blockHash"].isNull() ) {
-            if ( !_json["fromBlock"].isNull() || !_json["toBlock"].isNull() )
+        LogFilter filter = rapidJsonToLogFilter( _json );
+        if ( _json.HasMember( "blockHash" ) && !_json["blockHash"].IsNull() ) {
+            if ( _json.HasMember( "fromBlock" ) || _json.HasMember( "toBlock" ) )
                 BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS,
                     "fromBlock and toBlock are not allowed if blockHash is present" ) );
-            string strHash = _json["blockHash"].asString();
+            string strHash = _json["blockHash"].GetString();
             if ( strHash.empty() )
                 throw std::invalid_argument( "blockHash cannot be an empty string" );
             uint64_t number = m_eth.numberFromHash( jsToFixed< 32 >( strHash ) );
@@ -915,16 +911,65 @@ Json::Value Eth::eth_getLogs( Json::Value const& _json ) {
             filter.withEarliest( number );
             filter.withLatest( number );
         }
-        return toJson( client()->logs( filter ) );
+        auto logs = client()->logs( filter );
+        auto result = toRapidJson( logs, _responseAllocator );
+
+        return result;
+
     } catch ( const TooBigResponse& ) {
-        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS,
-            "Log response size exceeded. Maximum allowed number of requested blocks is " +
+        BOOST_THROW_EXCEPTION( JsonRpcException( LIMIT_EXCEEDED_ERR_CODE,
+            "Block range limit exceeded. Maximum allowed number of requested blocks is " +
                 to_string( this->client()->chainParams().getLogsBlocksLimit() ) ) );
-    } catch ( const JsonRpcException& ) {
-        throw;
+    } catch ( const LogCountLimitExceeded& e ) {
+        BOOST_THROW_EXCEPTION( JsonRpcException( LIMIT_EXCEEDED_ERR_CODE,
+            "Response log count limit exceeded. Maximum allowed number of returned logs is " +
+                to_string( this->client()->chainParams().getResponseLogCountLimit() ) ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
+}
+
+rapidjson::Document Eth::eth_getFilterLogsAsRapid(
+    string const& _filterId, rapidjson::Document::AllocatorType& _responseAllocator ) {
+    try {
+        auto logs = client()->logs( static_cast< unsigned int >( jsToInt( _filterId ) ) );
+        auto result = toRapidJson( logs, _responseAllocator );
+        return result;
+    } catch ( const TooBigResponse& ) {
+        BOOST_THROW_EXCEPTION( JsonRpcException( LIMIT_EXCEEDED_ERR_CODE,
+            "Block range limit exceeded. Maximum allowed number of requested blocks is " +
+                to_string( this->client()->chainParams().getLogsBlocksLimit() ) ) );
+    } catch ( const LogCountLimitExceeded& e ) {
+        BOOST_THROW_EXCEPTION( JsonRpcException( LIMIT_EXCEEDED_ERR_CODE,
+            "Response log count limit exceeded. Maximum allowed number of returned logs is " +
+                to_string( this->client()->chainParams().getResponseLogCountLimit() ) ) );
+    } catch ( ... ) {
+        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
+    }
+}
+
+
+Json::Value Eth::eth_getLogs( Json::Value const& _json ) {
+    rapidjson::Document filterDoc;
+    {
+        Json::StreamWriterBuilder wbuilder;
+        std::string serialized = Json::writeString( wbuilder, _json );
+        filterDoc.Parse( serialized.c_str() );
+        if ( filterDoc.HasParseError() ) {
+            BOOST_THROW_EXCEPTION(
+                JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS, "Invalid filter JSON" ) );
+        }
+    }
+    rapidjson::Document rapidResult = eth_getLogs( filterDoc, filterDoc.GetAllocator() );
+    return dev::eth::rapidDocumentToJson( rapidResult, "logs" );
+}
+
+Json::Value Eth::eth_getFilterLogsAsJson( std::string const& _filterId ) {
+    rapidjson::Document allocHolder;
+    allocHolder.SetObject();
+    rapidjson::Document rapidResult =
+        eth_getFilterLogsAsRapid( _filterId, allocHolder.GetAllocator() );
+    return dev::eth::rapidDocumentToJson( rapidResult, "filter logs" );
 }
 
 Json::Value Eth::eth_getWork() {

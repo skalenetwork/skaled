@@ -148,6 +148,22 @@ bytesSec pbkdf2(
 bytesSec scrypt( std::string const& _pass, bytes const& _salt, uint64_t _n, uint32_t _r,
     uint32_t _p, unsigned _dkLen );
 
+#ifdef BITE2
+// Check if x is a valid x-coordinate on secp256k1 curve (y² = x³ + 7 mod p)
+bool isValidSecp256k1X( const u256& x );
+
+// Return (r,s,v) fabricated from entropy bytes and transaction index.
+SignatureStruct makeSignature( const bytes& entropy, const dev::u256& txIndex );
+
+inline bool operator==( const dev::SignatureStruct& lhs, const dev::SignatureStruct& rhs ) {
+    return lhs.r == rhs.r && lhs.s == rhs.s && lhs.v == rhs.v;
+}
+
+inline bool operator!=( const dev::SignatureStruct& lhs, const dev::SignatureStruct& rhs ) {
+    return !( lhs == rhs );
+}
+#endif
+
 /// Simple class that represents a "key pair".
 /// All of the data of the class can be regenerated from the secret key (m_secret) alone.
 /// Actually stores a tuplet of secret, public and address (the right 160-bits of the public).

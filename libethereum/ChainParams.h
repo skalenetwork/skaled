@@ -149,6 +149,8 @@ struct ChainParams : public ChainOperationParams {
 
     int getLogsBlocksLimit() const { return logsBlocksLimit; }
 
+    int getResponseLogCountLimit() const { return responseLogCountLimit; }
+
     bool isSyncNode() const { return nodeInfo.syncNode; }
 
     bool isArchiveModeEnabled() const { return nodeInfo.archiveMode; }
