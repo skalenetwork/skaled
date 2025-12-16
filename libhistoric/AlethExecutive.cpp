@@ -193,7 +193,7 @@ bool AlethExecutive::call(
             bool success;
             PrecompiledCallContext ctx{ m_envInfo.number(),
 #ifdef BITE2
-                m_txnIndex,
+                m_txnIndex, m_envInfo.committedBlockTimestamp(),
 #endif
                 true };
             tie( success, output ) =

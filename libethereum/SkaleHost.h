@@ -80,7 +80,6 @@ public:
 
 private:
     const dev::eth::Client& m_client;
-
     /// Loggers
     mutable dev::Logger m_loggerInfo{ dev::createLogger(
         dev::VerbosityInfo, "DefaultConsensusFactory" ) };
@@ -130,11 +129,16 @@ public:
     dev::h256 receiveTransaction( std::string );
 
     void pushToBroadcastQueue( const dev::eth::Transaction& _transaction );
+#ifdef BITE2
+    void pushToBITE2Queue( dev::eth::Transaction&& _transaction );
+#endif
 
     dev::u256 getGasPrice( unsigned _blockNumber = dev::eth::LatestBlock ) const;
     dev::u256 getBlockRandom( unsigned _blockNumber, bool _isCalledFromTxn ) const;
     dev::eth::SyncStatus syncStatus() const;
     std::map< std::string, uint64_t > getConsensusDbUsage() const;
+    bool ignoreNewBlocksEnabled() const;
+
     std::array< std::string, 4 > getCurrentBLSPublicKey() const;
 
     // get node id for historic node in chain
@@ -194,8 +198,14 @@ private:
         uint64_t _timeStamp, uint64_t _blockID, dev::u256 _gasPrice, u256 _stateRoot,
         uint64_t _winningNodeIndex );
 
+protected:
 #ifdef FAIR
-    void runCommitteeRotationForConsensus();
+    virtual void runCommitteeRotationForConsensus();
+#endif
+
+private:
+#ifdef FAIR
+    void syncNodeGroups();
 #endif
 
     void checkStateRoot( uint64_t _blockId, uint64_t _winningNodeIndex, u256 _stateRoot );
@@ -248,7 +258,6 @@ private:
 
     std::unique_ptr< ConsensusExtFace > m_extFace;
     std::unique_ptr< ConsensusInterface > m_consensus;
-
     std::optional< uint64_t > emptyBlockIntervalMsForRestore;  // used for temporary setting this
                                                                // to 0
     bool need_restore_emptyBlockInterval = false;

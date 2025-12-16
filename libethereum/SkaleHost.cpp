@@ -101,7 +101,6 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
 #ifdef BITE
     consensusEnginePtr->setEpochId( m_client.getCurrentEpochId() );
 #endif
-
     return consensusEnginePtr;
 #else
     unsigned block_number = m_client.number();
@@ -330,7 +329,6 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
             m_consensus = DefaultConsensusFactory( m_client ).create( *m_extFace );
         else
             m_consensus = _consFactory->create( *m_extFace );
-
     } catch ( const std::exception& e ) {
         BOOST_LOG( m_loggerError ) << "Could not create consensus in SkaleHost" << e.what();
         std::throw_with_nested( CreationException() );
@@ -377,6 +375,12 @@ void SkaleHost::pushToBroadcastQueue( const Transaction& _t ) {
     }
     m_broadcastQueueCondition.notify_all();  // Notify the condition variable
 }
+
+#ifdef BITE2
+void SkaleHost::pushToBITE2Queue( dev::eth::Transaction&& _transaction ) {
+    m_tq.importBITE2Transaction( std::move( _transaction ) );
+}
+#endif
 
 h256 SkaleHost::receiveTransaction( std::string _rlp ) {
     // drop incoming transactions if skaled has an outdated state
@@ -612,6 +616,9 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     DEV_GUARDED( m_client.m_blockImportMutex ) {
         m_debugTracer.tracepoint( "drop_good_transactions" );
 
+#ifdef BITE
+        auto decryptedTransactionFieldsIt = _decryptedTransactionFields->begin();
+#endif
         for ( size_t i = 0; i < _approvedTransactions.size(); ++i ) {
             const bytes& data = _approvedTransactions.at( i );
             h256 sha = sha3( data );
@@ -621,12 +628,13 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                 EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
                 InvalidTransactionFormatPatch::isEnabledInWorkingBlock() );
 #ifdef BITE
-            auto it = _decryptedTransactionFields->find( i );
-            if ( it != _decryptedTransactionFields->end() ) {
-                DecryptedTransactionFields& txFields = it->second;
+            if ( decryptedTransactionFieldsIt != _decryptedTransactionFields->end() &&
+                 decryptedTransactionFieldsIt->first == i ) {
+                DecryptedTransactionFields& txFields = decryptedTransactionFieldsIt->second;
 
                 dev::Address to = dev::Address( txFields.to.get() );
                 t.setDecryptedFields( txFields.data, std::make_shared< dev::Address >( to ) );
+                ++decryptedTransactionFieldsIt;
             }
 
 #endif
@@ -674,6 +682,10 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             _timeStamp );
     }  // m_blockImportMutex
 
+#ifdef FAIR
+    syncNodeGroups();
+#endif
+
     if ( n_succeeded != out_txns.size() )
         penalizePeer();
 
@@ -706,10 +718,6 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     BOOST_LOG( m_loggerDebug ) << "Successfully imported " << n_succeeded << " of "
                                << out_txns.size() << " transactions";
 
-#ifdef FAIR
-    if ( m_client.updateGroupIfNeeded() )
-        runCommitteeRotationForConsensus();
-#endif
 
     if ( m_instanceMonitor != nullptr ) {
         if ( m_instanceMonitor->isTimeToRotate( _timeStamp ) ) {
@@ -740,7 +748,7 @@ void SkaleHost::runCommitteeRotationForConsensus() {
     m_broadcastRestartNeeded = true;
     // stop all services first
     // exitGracefully() interferes with exit procedure
-    // TODO: make it more ellegant to avoid collisions
+    // TODO: make it more elegant to avoid collisions
     m_consensus->exitGracefully();
     m_committeeRotationMonitorThread.reset( new std::thread( [this]() {
         while ( m_consensus->getStatus() != consensus_engine_status::CONSENSUS_EXITED ) {
@@ -754,6 +762,7 @@ void SkaleHost::runCommitteeRotationForConsensus() {
         m_consensusUpdateHappened = true;
         // restart all services to fetch latest nodes info
         try {
+            BOOST_LOG( m_loggerDebug ) << "Starting consensus after rotation";
             m_consensus->startAll();
         } catch ( const std::exception& ex ) {
             BOOST_LOG( m_loggerError )
@@ -772,7 +781,6 @@ void SkaleHost::runCommitteeRotationForConsensus() {
             ExitHandler::exitHandler( -1, ExitHandler::ec_termninated_by_signal );
             return;
         }
-
         try {
             static const char g_strThreadName[] = "bootStrapAllAfterCommitteeRotation";
             dev::setThreadName( g_strThreadName );
@@ -801,6 +809,14 @@ void SkaleHost::runCommitteeRotationForConsensus() {
 void SkaleHost::handleConsensusUpdate() const {
     m_consensus->updateLogger();
     m_consensusUpdateHappened = false;
+}
+
+void SkaleHost::syncNodeGroups() {
+    bool groupUpdated = m_client.updateGroupIfNeeded();
+    const auto& nodeGroups = m_client.chainParams().getNodeGroups();
+    if ( ( !nodeGroups.empty() && m_client.updateHistoricGroupIndex() ) || groupUpdated ) {
+        runCommitteeRotationForConsensus();
+    }
 }
 #endif
 
@@ -894,7 +910,6 @@ void SkaleHost::stopWorking() {
         timespec ms100{ 0, 100000000 };
         nanosleep( &ms100, nullptr );
     }
-
 
     BOOST_LOG( m_loggerInfo )
         << "Consensus status is exited. Skaled is waiting for consensus and broadcast to finish.";
@@ -1027,6 +1042,10 @@ dev::eth::SyncStatus SkaleHost::syncStatus() const {
 std::map< std::string, uint64_t > SkaleHost::getConsensusDbUsage() const {
     return m_consensus->getConsensusDbUsage();
 }
+
+bool SkaleHost::ignoreNewBlocksEnabled() const {
+    return m_ignoreNewBlocks;
+};
 
 std::array< std::string, 4 > SkaleHost::getCurrentBLSPublicKey() const {
     return m_client.getCurrentBLSPublicKey();

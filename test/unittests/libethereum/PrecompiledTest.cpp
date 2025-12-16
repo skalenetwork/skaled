@@ -75,6 +75,7 @@ BOOST_AUTO_TEST_CASE( modexpFermatTheorem,
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
 #ifdef BITE2
                                                               0,
+                                                              1,
 #endif
                                                               true } );
 
@@ -97,6 +98,7 @@ BOOST_AUTO_TEST_CASE( modexpZeroBase,
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
 #ifdef BITE2
                                                               0,
+                                                              1,
 #endif
                                                               true } );
 
@@ -121,6 +123,7 @@ BOOST_AUTO_TEST_CASE( modexpExtraByteIgnored,
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
 #ifdef BITE2
                                                               0,
+                                                              1,
 #endif
                                                               true } );
 
@@ -144,6 +147,7 @@ BOOST_AUTO_TEST_CASE( modexpRightPadding,
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
 #ifdef BITE2
                                                               0,
+                                                              1,
 #endif
                                                               true } );
 
@@ -164,6 +168,7 @@ BOOST_AUTO_TEST_CASE( modexpMissingValues ) {
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
 #ifdef BITE2
                                                               0,
+                                                              1,
 #endif
                                                               true } );
 
@@ -186,6 +191,7 @@ BOOST_AUTO_TEST_CASE( modexpEmptyValue,
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
 #ifdef BITE2
                                                               0,
+                                                              1,
 #endif
                                                               true } );
 
@@ -209,6 +215,7 @@ BOOST_AUTO_TEST_CASE( modexpZeroPowerZero,
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
 #ifdef BITE2
                                                               0,
+                                                              1,
 #endif
                                                               true } );
 
@@ -232,6 +239,7 @@ BOOST_AUTO_TEST_CASE( modexpZeroPowerZeroModZero,
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
 #ifdef BITE2
                                                               0,
+                                                              1,
 #endif
                                                               true } );
 
@@ -254,6 +262,7 @@ BOOST_AUTO_TEST_CASE( modexpModLengthZero,
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
 #ifdef BITE2
                                                               0,
+                                                              1,
 #endif
                                                               true } );
 
@@ -1497,9 +1506,10 @@ void benchmarkPrecompiled( char const name[], vector_ref< const PrecompiledTest 
 
         auto res = exec( inputRef, { 1,
 #ifdef BITE2
-                                                              0,
+                                     0,
+                                     1,
 #endif
-                                                              true } );
+                                     true } );
         BOOST_REQUIRE_MESSAGE( res.first, test.name );
         BOOST_REQUIRE_EQUAL( toHex( res.second ), test.expected );
 
@@ -1507,9 +1517,10 @@ void benchmarkPrecompiled( char const name[], vector_ref< const PrecompiledTest 
         for ( int i = 0; i < n; ++i )
             exec( inputRef, { 1,
 #ifdef BITE2
-                                                              0,
+                              0,
+                              1,
 #endif
-                                                              true } );
+                              true } );
         auto d = timer.duration() / n;
 
         auto t = std::chrono::duration_cast< std::chrono::nanoseconds >( d ).count();

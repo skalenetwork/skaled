@@ -153,6 +153,15 @@ public:
     /// @param _t Transaction hash
     void dropGood( Transaction const& _t );
 
+#ifdef BITE2
+    /// Inserts new CTX into separate queue. Always called from block-executing thread
+    void importBITE2Transaction( Transaction&& _t );
+
+    /// Get all pending BITE2 transactions. Returned transactions are not removed from the queue
+    /// automatically.
+    std::vector< Transaction > pendingBITE2Transactions() const;
+#endif
+
     struct Status {
         size_t current;
         size_t future;
@@ -371,6 +380,11 @@ private:
     std::deque< UnverifiedTransaction > m_unverified;  ///< Pending verification queue
     mutable Mutex x_queue;                             ///< Verification queue mutex
     std::atomic_bool m_aborting;                       ///< Exit condition for verifier.
+
+#ifdef BITE2
+    std::vector< Transaction > m_bite2Current;  ///< Only one thread at a time accesses it.
+                                                ///< therefore no need in extra synchronisation
+#endif
 
     Logger m_loggerInfo{ createLogger( VerbosityInfo, "TransactionQueue" ) };
     Logger m_loggerDebug{ createLogger( VerbosityDebug, "TransactionQueue" ) };

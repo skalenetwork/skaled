@@ -35,6 +35,8 @@
 #include <libweb3jsonrpc/AccountHolder.h>
 #include <libweb3jsonrpc/JsonHelper.h>
 
+#include <json_spirit/JsonSpiritHeaders.h>
+
 #include <libethcore/SealEngine.h>
 
 #include <libdevcore/TransientDirectory.h>
@@ -44,6 +46,8 @@
 #include <boost/test/unit_test.hpp>
 
 #include <memory>
+#include <atomic>
+#include <limits>
 
 using namespace dev;
 using namespace dev::eth;
@@ -51,6 +55,20 @@ using namespace dev::test;
 using namespace std;
 
 static size_t rand_port = 1024 + rand() % 64000;
+
+#ifdef FAIR
+// We need this mock class to avoid broken consensus after rotation.
+// Since test client does not save persistent state, restart triggered by rotation causes SIGABRT.
+class MockRotationSkaleHost : public SkaleHost {
+public:
+    MockRotationSkaleHost( Client& _client, ConsensusFactory* _factory )
+        : SkaleHost( _client, _factory ) {}
+
+    void runCommitteeRotationForConsensus() override { ++rotationCallCount; }
+
+    std::atomic< uint32_t > rotationCallCount{0};
+};
+#endif
 
 class ConsensusTestStub : public ConsensusInterface {
 private:
@@ -151,7 +169,8 @@ public:
 // TODO Do not copy&paste from JsonRpcFixture
 struct SkaleHostFixture : public TestOutputHelperFixture {
     SkaleHostFixture( const std::map< std::string, std::string >& params =
-                          std::map< std::string, std::string >() ) {
+                          std::map< std::string, std::string >(),
+        bool mockCommitteeRotation = false ) {
         dev::p2p::NetworkPreferences nprefs;
         libBLS::init();
 
@@ -212,7 +231,16 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         client->setAuthor( coinbase.address() );
 
         ConsensusTestStubFactory test_stub_factory;
-        skaleHost = make_shared< SkaleHost >( *client, &test_stub_factory );
+#ifdef FAIR
+        if ( mockCommitteeRotation ) {
+            auto mockHost = std::make_shared< MockRotationSkaleHost >( *client, &test_stub_factory );
+            skaleHost = mockHost;
+            mockRotationHost = mockHost;
+        } else
+#endif
+        {
+            skaleHost = make_shared< SkaleHost >( *client, &test_stub_factory );
+        }
         stub = test_stub_factory.result;
 
         client->injectSkaleHost( skaleHost );
@@ -228,6 +256,21 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         client->setAuthor( Address( 5 ) );
         dev::eth::g_skaleHost = skaleHost;
     }
+
+#ifdef FAIR
+    void overwriteHistoricNodeGroups( const std::vector< dev::eth::NodeGroup >& _groups ) {
+        chainParams->sChain.nodeGroups = _groups;
+    }
+
+    void setCurrentGroupStartTimestamps( uint64_t _first, uint64_t _second ) {
+        chainParams->sChain.currentGroups[0].startTs = _first;
+        chainParams->sChain.currentGroups[1].startTs = _second;
+    }
+
+    uint64_t blockTimestamp( dev::eth::BlockNumber _number ) const {
+        return client->blockInfo( _number ).timestamp();
+    }
+#endif
 
     Transaction tx_from_json( const Json::Value& json ) {
         TransactionSkeleton ts = toTransactionSkeleton( json );
@@ -257,6 +300,9 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
     std::shared_ptr< eth::TrivialGasPricer > gasPricer;
 
     shared_ptr< SkaleHost > skaleHost;
+#ifdef FAIR
+    std::shared_ptr< MockRotationSkaleHost > mockRotationHost;
+#endif
     ConsensusTestStub* stub;
 };
 
@@ -1439,9 +1485,10 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getBlockRandom" );
     auto res = exec( bytesConstRef(), { 1,
 #ifdef BITE2
-                                          0,
+                                        0,
+                                        1,
 #endif
-                                          true } );
+                                        true } );
     u256 blockRandom = skaleHost->getBlockRandom( 0, false );
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( res.second == toBigEndian( static_cast< u256 >( blockRandom ) ) );
@@ -1842,6 +1889,71 @@ BOOST_AUTO_TEST_CASE( encryptECIES_invalidPublicKey ) {
     BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 6 ) ) );
 }
 #endif  // BITE2
+
+
+#ifdef FAIR
+BOOST_AUTO_TEST_CASE(syncNodeGroupsUpdatesEpochIdWithoutRotation) {
+    SkaleHostFixture fixture( {}, true );
+
+    auto& client = fixture.client;
+    auto& stub = fixture.stub;
+
+    uint64_t currentTimestamp = static_cast< uint64_t >( utcTime() );
+
+    fixture.overwriteHistoricNodeGroups( {
+        {
+         {
+          GroupNode{ u256( 0 ), u256( 8 ),
+            "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea"
+            "10"
+            "5a3d21845e5660bc3d4e7c82e7af1daa3baad393b1521467",
+            Address( "0x08151B8F80bfa7dEa760e461412AF24348224edf" )
+         }
+        },
+        currentTimestamp,
+        {
+            "15959969554621958245201075983340071881770733084910870228938077786643587385029",
+            "7970122607051572307517094692346020360016825923464107614135327251488152616550",
+            "3371162264373897025322009434717052197952692496405149486989861571246537813591",
+            "13678625751515504401110635369790787716744686498431213713911601759809559919693" }
+        },
+        {
+        {
+             GroupNode{ u256( 0 ), u256( 8 ),
+                 "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea"
+                 "10"
+                 "5a3d21845e5660bc3d4e7c82e7af1daa3baad393b1521467",
+                 Address( "0x08151B8F80bfa7dEa760e461412AF24348224edf" )
+             }
+         },
+         std::numeric_limits<uint64_t>::max(), {
+                "3842742177969966091367527274107524613106077736353521259727282251005583743182",
+                "3497912824016228906558906422247670474553186446469877598411863912329082553081",
+                "8173996886448941320370434854289578123609627835954133538412363037981850950343",
+                "20979370720689475348670582375026949105497642726992863932315517524004804784155"
+        }
+        }
+    });
+
+    BOOST_REQUIRE_EQUAL( client->getCurrentEpochId(), 0 );
+
+    uint64_t blockTimestamp = currentTimestamp + 1;
+    uint64_t blockId = client->number() + 1;
+
+#ifdef BITE
+    auto decryptedTransactions = std::make_shared< DecryptedTransactionFieldsMap >();
+#endif
+
+    BOOST_REQUIRE_NO_THROW( stub->createBlock(
+        ConsensusExtFace::transactions_vector{},
+#ifdef BITE
+        decryptedTransactions,
+#endif
+        blockTimestamp, blockId ) );
+
+    BOOST_REQUIRE_EQUAL( client->getCurrentEpochId(), 1 );
+}
+#endif
 
 struct dummy {};
 

@@ -464,6 +464,7 @@ protected:
     typedef std::vector< std::string > vecAdminOrigins_t;
     vecAdminOrigins_t vecAdminOrigins;  // wildcard based folters for IP addresses
     int logsBlocksLimit = -1;
+    int responseLogCountLimit = -1;
 };
 
 #ifdef FAIR

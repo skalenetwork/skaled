@@ -175,6 +175,14 @@ bytes encryptECIES_CBC( Public const& _recipientPubKey, bytesConstRef _plain );
 /// Input format: [IV(16)] [CompressedEphPubKey(33)] [Ciphertext]
 /// Returns empty bytes on failure.
 bytes decryptECIES_CBC( Secret const& _recipientPrivKey, bytesConstRef _cipher );
+
+inline bool operator==( const dev::SignatureStruct& lhs, const dev::SignatureStruct& rhs ) {
+    return lhs.r == rhs.r && lhs.s == rhs.s && lhs.v == rhs.v;
+}
+
+inline bool operator!=( const dev::SignatureStruct& lhs, const dev::SignatureStruct& rhs ) {
+    return !( lhs == rhs );
+}
 #endif
 
 /// Simple class that represents a "key pair".
