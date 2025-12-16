@@ -1249,43 +1249,65 @@ ETH_REGISTER_PRECOMPILED( encryptTE )
             return { false, toBigEndian( dev::u256( 2 ) ) };  // error 2: input too small
         }
 
+        // ABI encoding requires input to be a multiple of 32 bytes
+        if ( _in.size() % 32 != 0 ) {
+            return { false, toBigEndian( dev::u256( 3 ) ) };  // error 3: input not 32-byte aligned
+        }
+
         if ( !g_skaleHost ) {
             throw std::runtime_error( "SkaleHost accessor was not initialized" );
         }
 
-        int headFieldSizeBytes = 32;
+        size_t headFieldSizeBytes = 32;
 
         // First 32 bytes: SC address (20 bytes, left-padded to 32)
-        // Skip the first 12 bytes (padding), extract the 20-byte address
+        // Validate that the first 12 bytes are zeros (left-padding for 20-byte address)
+        if (! std::all_of( _in.data(), _in.data() + 12, []( uint8_t b ) { return b == 0; })) {
+            return { false, toBigEndian( dev::u256( 4 ) ) };  // error 4: address padding not zeros
+        }
+
+        // Extract the 20-byte address
         auto scAddressBytes = _in.cropped( 12, 20 ).toBytes();
 
         // Next 32 bytes: offset to data (should be 64 = 2 * 32)
         bigint const dataOffset( parseBigEndianRightPadded( _in, 32, headFieldSizeBytes ) );
-        const int expectedDataOffset = 2 * 32;  // 64
+        const size_t expectedDataOffset = 2 * 32;  // 64
         if ( dataOffset != expectedDataOffset ) {
-            return { false, toBigEndian( dev::u256( 3 ) ) };  // error 3: invalid ABI encoding
+            return { false, toBigEndian( dev::u256( 5 ) ) };  // error 5: invalid data offset
         }
 
         // Read data length at the data offset (position 64)
         if ( _in.size() < expectedDataOffset + headFieldSizeBytes ) {
-            return { false, toBigEndian( dev::u256( 4 ) ) };  // error 4: data length mismatch
+            return { false, toBigEndian( dev::u256( 6 ) ) };  // error 6: data length mismatch
         }
         bigint const dataLength(
             parseBigEndianRightPadded( _in, expectedDataOffset, headFieldSizeBytes ) );
 
-        // Extract data bytes
+        // Validate dataLength is non-negative and fits within reasonable bounds
+        // Header is 96 bytes (address + offset + length field), so max data = MAX_SIZE_BYTES - 96
+        static constexpr size_t HEADER_SIZE_BYTES = 96;
+        if ( dataLength < 0 || dataLength > MAX_SIZE_BYTES - HEADER_SIZE_BYTES ) {
+            return { false, toBigEndian( dev::u256( 6 ) ) };  // error 6: data length mismatch
+        }
+        size_t dataLengthSafe = static_cast< size_t >( dataLength );
+
+        // Calculate data start position and validate bounds
         size_t dataStart = expectedDataOffset + headFieldSizeBytes;
-        if ( dataLength < 0 || dataStart + static_cast< size_t >( dataLength ) > _in.size() ) {
-            return { false, toBigEndian( dev::u256( 4 ) ) };  // error 4: data length mismatch
+        if ( dataStart + dataLengthSafe > _in.size() ) {
+            return { false, toBigEndian( dev::u256( 6 ) ) };  // error 6: data length mismatch
         }
 
+        // Extract data bytes
         std::vector< uint8_t > dataToEncrypt;
-        if ( dataLength > 0 ) {
-            dataToEncrypt = _in.cropped( dataStart, static_cast< size_t >( dataLength ) ).toBytes();
+        if ( dataLengthSafe > 0 ) {
+            dataToEncrypt = _in.cropped( dataStart, dataLengthSafe ).toBytes();
         }
 
-        if ( dataToEncrypt.empty() ) {
-            return { false, toBigEndian( dev::u256( 5 ) ) };  // error 5: empty data
+        // Validate trailing padding bytes are all zeros (ABI compliance)
+        size_t dataEnd = dataStart + dataLengthSafe;
+        if ( !std::all_of( _in.data() + dataEnd, _in.data() + _in.size(),
+                 []( uint8_t b ) { return b == 0; } ) ) {
+            return { false, toBigEndian( dev::u256( 7 ) ) };  // error 7: trailing padding not zeros
         }
 
         // get network public key
@@ -1340,16 +1362,21 @@ ETH_REGISTER_PRECOMPILED( encryptECIES )
             return { false, toBigEndian( dev::u256( 2 ) ) };  // error 2: input too small
         }
 
-        int offset = 0;
-        int headFieldSizeBytes = 32;
+        // ABI encoding requires input to be a multiple of 32 bytes
+        if ( _in.size() % 32 != 0 ) {
+            return { false, toBigEndian( dev::u256( 3 ) ) };  // error 3: input not 32-byte aligned
+        }
+
+        size_t offset = 0;
+        size_t headFieldSizeBytes = 32;
 
         // Parse ABI-encoded input
         // First 32 bytes: offset to data
         bigint const dataOffset( parseBigEndianRightPadded( _in, offset, headFieldSizeBytes ) );
         // should be 3 * 32 = 96
-        const int expectedDataOffset = 3 * 32;
+        const size_t expectedDataOffset = 3 * 32;
         if ( dataOffset != expectedDataOffset ) {
-            return { false, toBigEndian( dev::u256( 3 ) ) };  // error 3: invalid ABI encoding
+            return { false, toBigEndian( dev::u256( 4 ) ) };  // error 4: invalid data offset
         }
 
         // Next 32 bytes: public key x-coordinate
@@ -1364,21 +1391,31 @@ ETH_REGISTER_PRECOMPILED( encryptECIES )
         offset += headFieldSizeBytes;
         bigint const dataLength( parseBigEndianRightPadded( _in, offset, headFieldSizeBytes ) );
 
-        // 3 head fields + data size field (also 32 bytes)
-        int totalMinSizeExceptData = 3 * headFieldSizeBytes + headFieldSizeBytes;
-        if ( dataLength < 0 || totalMinSizeExceptData + dataLength > _in.size() ) {
-            return { false, toBigEndian( dev::u256( 4 ) ) };  // error 4: data length mismatch
+        // Validate dataLength is non-negative and fits within reasonable bounds
+        // Header is 128 bytes (offset + x + y + length field), so max data = MAX_SIZE_BYTES - 128
+        static constexpr size_t HEADER_SIZE_BYTES = 128;
+        if ( dataLength < 0 || dataLength > MAX_SIZE_BYTES - HEADER_SIZE_BYTES ) {
+            return { false, toBigEndian( dev::u256( 5 ) ) };  // error 5: data length mismatch
+        }
+        size_t dataLengthSafe = static_cast< size_t >( dataLength );
+
+        // 4 header fields (offset, x, y, length) = 128 bytes
+        size_t dataStart = 4 * headFieldSizeBytes;
+        if ( dataStart + dataLengthSafe > _in.size() ) {
+            return { false, toBigEndian( dev::u256( 5 ) ) };  // error 5: data length mismatch
         }
 
         // Extract data to encrypt
-        offset += headFieldSizeBytes;
         bytes dataToEncrypt;
-        if ( dataLength > 0 ) {
-            dataToEncrypt = _in.cropped( offset, static_cast< size_t >( dataLength ) ).toBytes();
+        if ( dataLengthSafe > 0 ) {
+            dataToEncrypt = _in.cropped( dataStart, dataLengthSafe ).toBytes();
         }
 
-        if ( dataToEncrypt.empty() ) {
-            return { false, toBigEndian( dev::u256( 5 ) ) };  // error 5: empty data
+        // Validate trailing padding bytes are all zeros (ABI compliance)
+        size_t dataEnd = dataStart + dataLengthSafe;
+        if ( !std::all_of( _in.data() + dataEnd, _in.data() + _in.size(),
+                 []( uint8_t b ) { return b == 0; } ) ) {
+            return { false, toBigEndian( dev::u256( 6 ) ) };  // error 6: trailing padding not zeros
         }
 
         // Construct user public key from x,y bytes
@@ -1388,13 +1425,13 @@ ETH_REGISTER_PRECOMPILED( encryptECIES )
 
         // Validate public key is on the secp256k1 curve
         if ( !dev::isValidPublicKey( userPubKey ) ) {
-            return { false, toBigEndian( dev::u256( 6 ) ) };  // error 6: invalid public key
+            return { false, toBigEndian( dev::u256( 7 ) ) };  // error 7: invalid public key
         }
 
         // Encrypt using ECIES-CBC helper
         bytes response = dev::encryptECIES_CBC( userPubKey, bytesConstRef( &dataToEncrypt ) );
         if ( response.empty() ) {
-            return { false, toBigEndian( dev::u256( 7 ) ) };  // error 7: encryption failed
+            return { false, toBigEndian( dev::u256( 8 ) ) };  // error 8: encryption failed
         }
 
         return { true, response };
