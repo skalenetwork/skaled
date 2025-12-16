@@ -417,7 +417,7 @@ bytes dev::compressPublicKey( Public const& _pub ) {
     auto* ctx = getCtx();
 
     // Build uncompressed format: 0x04 || x || y (65 bytes)
-    std::array<uint8_t, 65> uncompressedPubKey;
+    std::array< uint8_t, 65 > uncompressedPubKey;
     uncompressedPubKey[0] = 0x04;
     memcpy( uncompressedPubKey.data() + 1, _pub.data(), 64 );
 
@@ -449,7 +449,7 @@ Public dev::decompressPublicKey( bytesConstRef _compressed ) {
         return {};
 
     // Serialize to uncompressed format (65 bytes: 0x04 prefix + 64 bytes)
-    std::array<uint8_t, 65> uncompressedPubKey;
+    std::array< uint8_t, 65 > uncompressedPubKey;
     size_t outputLen = 65;
     secp256k1_ec_pubkey_serialize(
         ctx, uncompressedPubKey.data(), &outputLen, &parsedPubKey, SECP256K1_EC_UNCOMPRESSED );
@@ -465,7 +465,7 @@ bool dev::isValidPublicKey( Public const& _pub ) {
     auto* ctx = getCtx();
 
     // Build uncompressed format: 0x04 || x || y (65 bytes)
-    std::array<uint8_t, 65> uncompressedPubKey;
+    std::array< uint8_t, 65 > uncompressedPubKey;
     uncompressedPubKey[0] = 0x04;
     memcpy( uncompressedPubKey.data() + 1, _pub.data(), 64 );
 
@@ -494,7 +494,7 @@ bytes dev::encryptECIES_CBC( Public const& _recipientPubKey, bytesConstRef _plai
     h128 iv = h128::random();
 
     // AES-256-CBC encryption with PKCS7 padding
-    CryptoPP::CBC_Mode<CryptoPP::AES>::Encryption aesEncryptor;
+    CryptoPP::CBC_Mode< CryptoPP::AES >::Encryption aesEncryptor;
     aesEncryptor.SetKeyWithIV( encryptionKey.data(), encryptionKey.size, iv.data() );
 
     std::string ciphertextStr;
@@ -543,13 +543,13 @@ bytes dev::decryptECIES_CBC( Secret const& _recipientPrivKey, bytesConstRef _cip
     h256 encryptionKey = sha256( sharedSecret.ref() );
 
     // AES-256-CBC decryption with PKCS7 unpadding
-    CryptoPP::CBC_Mode<CryptoPP::AES>::Decryption aesDecryptor;
+    CryptoPP::CBC_Mode< CryptoPP::AES >::Decryption aesDecryptor;
     aesDecryptor.SetKeyWithIV( encryptionKey.data(), encryptionKey.size, iv.data() );
 
     std::string plaintextStr;
     try {
-        CryptoPP::StreamTransformationFilter stfDecryptor(
-            aesDecryptor, new CryptoPP::StringSink( plaintextStr ),
+        CryptoPP::StreamTransformationFilter stfDecryptor( aesDecryptor,
+            new CryptoPP::StringSink( plaintextStr ),
             CryptoPP::BlockPaddingSchemeDef::PKCS_PADDING );
         stfDecryptor.Put( ciphertext.data(), ciphertext.size() );
         stfDecryptor.MessageEnd();

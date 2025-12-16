@@ -1211,8 +1211,7 @@ ETH_REGISTER_PRECOMPILED( encryptTE )
 
         std::vector< uint8_t > dataToEncrypt;
         if ( dataLength > 0 ) {
-            dataToEncrypt =
-                _in.cropped( dataStart, static_cast< size_t >( dataLength ) ).toBytes();
+            dataToEncrypt = _in.cropped( dataStart, static_cast< size_t >( dataLength ) ).toBytes();
         }
 
         if ( dataToEncrypt.empty() ) {
@@ -1286,15 +1285,15 @@ ETH_REGISTER_PRECOMPILED( encryptECIES )
         // Next 32 bytes: public key x-coordinate
         offset += headFieldSizeBytes;
         bytes pubKeyX = _in.cropped( offset, headFieldSizeBytes ).toBytes();
-        
-        // Next 32 bytes: public key y-coordinate  
+
+        // Next 32 bytes: public key y-coordinate
         offset += headFieldSizeBytes;
         bytes pubKeyY = _in.cropped( offset, headFieldSizeBytes ).toBytes();
 
         // Next 32 bytes: data length
         offset += headFieldSizeBytes;
         bigint const dataLength( parseBigEndianRightPadded( _in, offset, headFieldSizeBytes ) );
-        
+
         // 3 head fields + data size field (also 32 bytes)
         int totalMinSizeExceptData = 3 * headFieldSizeBytes + headFieldSizeBytes;
         if ( dataLength < 0 || totalMinSizeExceptData + dataLength > _in.size() ) {
@@ -1305,7 +1304,7 @@ ETH_REGISTER_PRECOMPILED( encryptECIES )
         offset += headFieldSizeBytes;
         bytes dataToEncrypt;
         if ( dataLength > 0 ) {
-            dataToEncrypt = _in.cropped( offset, static_cast<size_t>( dataLength ) ).toBytes();
+            dataToEncrypt = _in.cropped( offset, static_cast< size_t >( dataLength ) ).toBytes();
         }
 
         if ( dataToEncrypt.empty() ) {
