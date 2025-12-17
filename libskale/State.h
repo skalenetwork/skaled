@@ -440,6 +440,8 @@ public:
     /// Check if state is empty
     bool empty() const;
 
+    bool isReadOnlySnapBasedState() const { return m_isReadOnlySnapBasedState; }
+
     dev::db::DBImpl* getOriginalDb() const { return m_orig_db.get(); }
 
 #ifndef FAIR

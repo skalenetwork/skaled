@@ -479,7 +479,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
 
     m_state = m_state.createStateCopyAndClearCaches();  // mainly for debugging
 
-    const bool commitPerBlock = _bc.chainParams().isCommitPerBlockEnabled();
+    const bool commitPerBlock = SingleStateCommitPerBlockPatch::isEnabledInWorkingBlock();
 
     TransactionReceipts saved_receipts;
     if ( !commitPerBlock ) {
@@ -639,17 +639,19 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
 	if ( !_transactions.empty() ) {
 		m_state.safeSetLastExecutedTransactionHash( _transactions.back().sha3() );
 	}
-    bool removeEmptyAccounts =
-        m_currentBlock.number() >= _bc.chainParams().getEIP158ForkBlock();
-    m_state.commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
-                                          dev::eth::CommitBehaviour::KeepEmptyAccounts );
+    const bool stateWritable = m_state.connected() && !m_state.isReadOnlySnapBasedState();
+    if ( stateWritable ) {
+        bool removeEmptyAccounts =
+            m_currentBlock.number() >= _bc.chainParams().getEIP158ForkBlock();
+        m_state.commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
+                                              dev::eth::CommitBehaviour::KeepEmptyAccounts );
 
-
-    // since we committed changes corresponding to a particular block
-    // we need to create a new readonly snap
-    m_state.createStateCopyAndClearCaches();
-    LDB_CHECK( m_state.getOriginalDb() );
-    m_state.getOriginalDb()->createBlockSnap( info().number() );
+        // since we committed changes corresponding to a particular block
+        // we need to create a new readonly snap
+        m_state.createStateCopyAndClearCaches();
+        LDB_CHECK( m_state.getOriginalDb() );
+        m_state.getOriginalDb()->createBlockSnap( info().number() );
+    }
 
     return make_tuple( receipts, receipts.size() - countBad );
 }

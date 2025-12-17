@@ -239,7 +239,6 @@ public:
     time_t snapshotDownloadTimeout = 3600;
     time_t snapshotDownloadInactiveTimeout = 60;
     bool multiTransactionMode = false;
-    bool commitPerBlock = false;
     int emptyBlockIntervalMs = -1;
     int64_t levelDBReopenIntervalMs = -1;
 #ifdef HISTORIC_STATE
@@ -272,6 +271,9 @@ public:
             "0xfa", { "0", "1", "0", "1" } };
 #endif
         nodes.push_back( me );
+
+        _patchTimestamps[static_cast< size_t >( SchainPatchEnum::SingleStateCommitPerBlockPatch )] =
+            1;
 #ifdef FAIR
         currentGroups[0] = { nodes, 1, "",
             { "1085704699902305713594457076223282948137075635957851808699051999328"

@@ -84,7 +84,6 @@ struct ChainParams : public ChainOperationParams {
     // GENERAL CHAIN GETTERS
 
     bool isAllowFutureBlocks() const { return allowFutureBlocks; }
-    bool isCommitPerBlockEnabled() const { return sChain.commitPerBlock; }
 
     int getNetworkId() const { return networkID; }
 

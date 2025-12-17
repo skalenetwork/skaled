@@ -185,6 +185,11 @@ DEFINE_SIMPLE_PATCH( CurrentBlockRandomPatch );
  */
 DEFINE_AMNESIC_PATCH( GroupIndexInitPatch );
 
+/*
+ * Purpose: enable commit-per-block transaction handling based on timestamp
+ */
+DEFINE_SIMPLE_PATCH( SingleStateCommitPerBlockPatch );
+
 #ifdef FAIR
 DEFINE_SIMPLE_PATCH( DisableSelfDestructPatch );
 #endif
