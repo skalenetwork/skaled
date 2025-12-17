@@ -629,7 +629,8 @@ void SkaleHost::createBlock( const ConsensusExtFace::Transactions& _approvedTran
 #endif
         );
 #ifdef BITE2
-        auto ctxTxns = processCTXTransactions( _approvedTransactions, _decryptedTransactions );
+        auto ctxTxns =
+            processCTXTransactions( _approvedTransactions, latestInfo, _decryptedTransactions );
         outTxns.insert( outTxns.begin(), ctxTxns.begin(), ctxTxns.end() );
 #endif
 
@@ -1030,6 +1031,7 @@ std::vector< Transaction > SkaleHost::processRegularTransactions(
 #ifdef BITE2
 std::vector< Transaction > SkaleHost::processCTXTransactions(
     const ConsensusExtFace::Transactions& _approvedTransactions,
+    [[maybe_unused]] const dev::eth::BlockHeader& latestInfo,
     DecryptedTransactions _decryptedTransactions ) {
     std::vector< Transaction > outTxns;
     if ( _approvedTransactions.sizeCAT() != m_tq.pendingBITE2Transactions().size() ) {
@@ -1060,6 +1062,22 @@ std::vector< Transaction > SkaleHost::processCTXTransactions(
             BOOST_LOG( m_loggerInfo ) << "Received unexpected CTX. Exiting.";
             ExitHandler::exitHandler( -1, ExitHandler::ec_state_root_mismatch );
         }
+
+#ifndef FAIR
+        t.checkOutExternalGas( m_client.chainParams(), latestInfo.timestamp(), m_client.number() );
+
+        if ( !ExternalGasPatch::isEnabledWhen( latestInfo.timestamp() ) ) {
+            auto hash = t.sha3();
+            if ( m_client.m_tq.isTransactionKnown( hash ) ) {
+                // if a transaction is in the pending queue
+                // do checkOutExternal gas twice to repeat incorrect behavior that
+                // existed before the patch
+                t.checkOutExternalGas(
+                    m_client.chainParams(), latestInfo.timestamp(), m_client.number() );
+            }
+        }
+#endif
+
         outTxns.push_back( t );
         m_debugTracer.tracepoint( "drop_good" );
         m_tq.dropGood( t );
