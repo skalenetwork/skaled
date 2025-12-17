@@ -119,7 +119,7 @@ std::string dev::toString( string32 const& _s ) {
 }
 
 #ifdef BITE2
-dev::bytes encodeArray( const std::vector< dev::bytes >& _elements ) {
+dev::bytes dev::encodeArray( const std::vector< dev::bytes >& _elements ) {
     dev::bytes result;
 
     // Write array length
