@@ -119,6 +119,41 @@ std::string dev::toString( string32 const& _s ) {
 }
 
 #ifdef BITE2
+dev::bytes encodeArray( const std::vector< dev::bytes >& _elements ) {
+    dev::bytes result;
+
+    // Write array length
+    dev::bytes lengthBytes = toBigEndian( dev::u256( _elements.size() ) );
+    result.insert( result.end(), lengthBytes.begin(), lengthBytes.end() );
+
+    // Calculate and write element offsets
+    size_t dataOffset = _elements.size() * dev::h256::size;  // After all offset fields
+    for ( const auto& elem : _elements ) {
+        dev::bytes offsetBytes = toBigEndian( dev::u256( dataOffset ) );
+        result.insert( result.end(), offsetBytes.begin(), offsetBytes.end() );
+
+        size_t paddedSize = dev::h256::size + elem.size();  // length + data
+        paddedSize = ( paddedSize + 31 ) / 32 * 32;         // round up to 32
+        dataOffset += paddedSize;
+    }
+
+    // Write element data
+    for ( const auto& elem : _elements ) {
+        // Write element length
+        dev::bytes elemLengthBytes = toBigEndian( dev::u256( elem.size() ) );
+        result.insert( result.end(), elemLengthBytes.begin(), elemLengthBytes.end() );
+
+        // Write element data
+        result.insert( result.end(), elem.begin(), elem.end() );
+
+        // Pad to 32 bytes
+        size_t padding = ( 32 - ( elem.size() % 32 ) ) % 32;
+        result.insert( result.end(), padding, 0 );
+    }
+
+    return result;
+}
+
 dev::bytes dev::rlpToAbiEncodedArrays( const dev::bytes& _rlpData ) {
     // Parse RLP: RLP(RLP(arg0_1, arg0_2, ...), RLP(arg1_1, arg1_2, ...))
     // Convert to ABI format: abi.encode(bytes[] args1, bytes[] args2)
@@ -176,41 +211,12 @@ dev::bytes dev::rlpToAbiEncodedArrays( const dev::bytes& _rlpData ) {
     dev::bytes offset2Bytes = toBigEndian( dev::u256( offset2 ) );
     result.insert( result.end(), offset2Bytes.begin(), offset2Bytes.end() );
 
-    // Helper lambda to encode bytes array
-    auto encodeArray = [&result]( const std::vector< dev::bytes >& elements ) {
-        // Write array length
-        dev::bytes lengthBytes = toBigEndian( dev::u256( elements.size() ) );
-        result.insert( result.end(), lengthBytes.begin(), lengthBytes.end() );
-
-        // Calculate and write element offsets
-        size_t dataOffset = elements.size() * dev::h256::size;  // After all offset fields
-        for ( const auto& elem : elements ) {
-            dev::bytes offsetBytes = toBigEndian( dev::u256( dataOffset ) );
-            result.insert( result.end(), offsetBytes.begin(), offsetBytes.end() );
-
-            size_t paddedSize = dev::h256::size + elem.size();  // length + data
-            paddedSize = ( paddedSize + 31 ) / 32 * 32;         // round up to 32
-            dataOffset += paddedSize;
-        }
-
-        // Write element data
-        for ( const auto& elem : elements ) {
-            // Write element length
-            dev::bytes elemLengthBytes = toBigEndian( dev::u256( elem.size() ) );
-            result.insert( result.end(), elemLengthBytes.begin(), elemLengthBytes.end() );
-
-            // Write element data
-            result.insert( result.end(), elem.begin(), elem.end() );
-
-            // Pad to 32 bytes
-            size_t padding = ( 32 - ( elem.size() % 32 ) ) % 32;
-            result.insert( result.end(), padding, 0 );
-        }
-    };
-
     // Encode both arrays
-    encodeArray( array1Elements );
-    encodeArray( array2Elements );
+    auto array1Encoded = dev::encodeArray( array1Elements );
+    auto array2Encoded = dev::encodeArray( array2Elements );
+
+    result.insert( result.end(), array1Encoded.begin(), array1Encoded.end() );
+    result.insert( result.end(), array2Encoded.begin(), array2Encoded.end() );
 
     return result;
 }
