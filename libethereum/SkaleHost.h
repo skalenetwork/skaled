@@ -223,6 +223,7 @@ private:
 #ifdef BITE2
     std::vector< dev::eth::Transaction > processCTXTransactions(
         const ConsensusExtFace::Transactions& _approvedTransactions,
+        [[maybe_unused]] const dev::eth::BlockHeader& latestInfo,
         DecryptedTransactions _decryptedTransactions );
 #endif
 
