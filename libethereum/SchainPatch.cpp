@@ -40,6 +40,8 @@ SchainPatchEnum getEnumForPatchName( const std::string& _patchName ) {
         return SchainPatchEnum::ExternalGasPatch;
     else if ( _patchName == "ClearPartialReceiptsPatch" )
         return SchainPatchEnum::ClearPartialReceiptsPatch;
+    else if ( _patchName == "KeepPartialReceiptsUntilNextBlockPatch" )
+        return SchainPatchEnum::KeepPartialReceiptsUntilNextBlockPatch;
     else if ( _patchName == "InvalidTransactionFormatPatch" )
         return SchainPatchEnum::InvalidTransactionFormatPatch;
     else
@@ -80,6 +82,8 @@ std::string getPatchNameForEnum( SchainPatchEnum _enumValue ) {
         return "ExternalGasPatch";
     case SchainPatchEnum::ClearPartialReceiptsPatch:
         return "ClearPartialReceiptsPatch";
+    case SchainPatchEnum::KeepPartialReceiptsUntilNextBlockPatch:
+        return "KeepPartialReceiptsUntilNextBlockPatch";
     case SchainPatchEnum::InvalidTransactionFormatPatch:
         return "InvalidTransactionFormatPatch";
     default:
