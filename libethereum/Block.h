@@ -382,8 +382,13 @@ private:
 #ifdef BITE
     // decrypted transaction data fields to be stored with the block and their indexes
     // only filled for a working block
-    DecryptedTransactions m_decryptedTransactions;
-#endif
+    DecryptedTransactions m_decryptedTransactions = DecryptedTransactions{
+#ifdef BITE2
+        std::make_shared< DecryptedCATxsMap >(),
+#endif  // BITE2
+        std::make_shared< DecryptedRegularTxsMap >()
+    };
+#endif  // BITE
 
     Logger m_loggerDebug{ createLogger( VerbosityDebug, "block" ) };
     Logger m_loggerTrace{ createLogger( VerbosityTrace, "block" ) };
