@@ -636,6 +636,9 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
     }
     m_state.safeSetLastRewardedBlockNumber( m_currentBlock.number() );
 #endif
+	if ( !_transactions.empty() ) {
+		m_state.safeSetLastExecutedTransactionHash( _transactions.back().sha3() );
+	}
     bool removeEmptyAccounts =
         m_currentBlock.number() >= _bc.chainParams().getEIP158ForkBlock();
     m_state.commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :

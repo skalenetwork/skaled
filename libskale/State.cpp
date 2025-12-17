@@ -411,6 +411,12 @@ void State::safeSetAndCommitPartialTransactionReceipt(
     }
 }
 
+void State::safeSetLastExecutedTransactionHash( const dev::h256& _hash ) {
+    if ( m_db_ptr ) {
+        m_db_ptr->setLastExecutedTransactionHash( _hash );
+    }
+}
+
 #ifdef FAIR
 void State::safeSetLastRewardedBlockNumber( dev::eth::BlockNumber _blockNumber ) {
     if ( m_db_ptr ) {

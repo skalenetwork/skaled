@@ -261,6 +261,7 @@ public:
 
     void safeSetAndCommitPartialTransactionReceipt( const dev::bytes& _receipt,
         dev::eth::BlockNumber _blockNumber, uint64_t _transactionIndex );
+    void safeSetLastExecutedTransactionHash( const dev::h256& _hash );
 
 #ifdef FAIR
     /// Save last block for which rewards has been applied
