@@ -50,8 +50,10 @@
 #include <libdevcore/CommonData.h>
 #include <libethashseal/EthashClient.h>
 #include <libethcore/CommonJS.h>
+#include <libethcore/Exceptions.h>
 #include <libethereum/Client.h>
 #include <libweb3jsonrpc/JsonHelper.h>
+#include <sys/types.h>
 
 #if ( defined MSIZE )
 #undef MSIZE
@@ -64,6 +66,10 @@
 #include <libethereum/Transaction.h>
 #include <libweb3jsonrpc/Eth.h>
 #include <libweb3jsonrpc/Skale.h>
+
+#include <rapidjson/document.h>
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/writer.h>
 
 #include <skutils/eth_utils.h>
 #include <skutils/multithreading.h>
@@ -1714,6 +1720,30 @@ void SkaleServerOverride::logTraceServerTraffic( bool isRX, dev::Logger logger, 
                         << strDirect << strPayload;
 }
 
+void SkaleServerOverride::logTraceServerTrafficEthGetLogs( bool isRX, int ipVer,
+    const std::string& origin, const std::string& dstAddress, uint16_t dstPort,
+    const std::string& methodName, const rapidjson::Document& payload, bool isRequest ) {
+    skutils::url u( origin );
+    string schemeUC = skutils::tools::to_upper( skutils::tools::trim_copy( u.scheme() ) );
+    int serverIndex = 0;
+    e_server_mode_t esm = implGuessProxygenRequestESM( dstAddress, dstPort );
+
+    std::unique_ptr< dev::Logger > logger;
+    if ( !methodName.empty() ) {
+        logger = getLoggerFromMethodTraceVerbosity( methodName );
+    }
+
+    if ( logger ) {
+        rapidjson::StringBuffer buffer;
+        rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
+        payload.Accept( writer );
+        string strPayload = buffer.GetString();
+        string strFormattedPayload = implPreformatTrafficJsonMessage( strPayload, isRequest );
+        logTraceServerTraffic( isRX, *logger, ipVer, schemeUC.c_str(), serverIndex, esm,
+            origin.c_str(), strFormattedPayload );
+    }
+}
+
 static void stat_check_port_availability_for_server_to_start_listen( int ipVer, const char* strAddr,
     int nPort, e_server_mode_t esm, const char* strProtocolName, int nServerIndex,
     SkaleServerOverride* pSO ) {
@@ -2241,35 +2271,123 @@ bool SkaleServerOverride::implGuessProxygenRequestESM(
     return false;
 }
 
+skutils::result_of_http_request SkaleServerOverride::handleProxygenHttpRequest(
+    const nlohmann::json& joIn, const string& origin, int ipVer, const string& dstAddress,
+    uint16_t dstPort ) {
+    if ( isShutdownMode() )
+        throw std::runtime_error( "query was cancelled due to server shutdown mode" );
+    skutils::url u( origin );
+    string schemeUC = skutils::tools::to_upper( skutils::tools::trim_copy( u.scheme() ) );
+    string portStringRepr = skutils::tools::trim_copy( u.port() );
+    uint16_t port = 0;
+    if ( portStringRepr.empty() ) {
+        if ( schemeUC == "HTTPS" )
+            port = 443;
+        else
+            port = 80;
+    } else
+        port = ( uint16_t ) atoi( u.port().c_str() );
+    int serverIndex = 0;  // TO-FIX: detect server index here"
+    e_server_mode_t esm = implGuessProxygenRequestESM( dstAddress, dstPort );
+    skutils::result_of_http_request rslt =
+        implHandleHttpRequest( joIn, schemeUC, serverIndex, origin, ipVer, port, esm );
+    return rslt;
+}
+
+skutils::result_of_http_request_rapid SkaleServerOverride::handleProxygenHttpEthGetLogsRequest(
+    const rapidjson::Document& request, const string& origin, int ipVer, const string& dstAddress,
+    uint16_t dstPort ) {
+    if ( isShutdownMode() )
+        throw std::runtime_error( "query was cancelled due to server shutdown mode" );
+
+    string methodName;
+    if ( request.HasMember( "method" ) && request["method"].IsString() ) {
+        methodName = request["method"].GetString();
+    }
+
+    logTraceServerTrafficEthGetLogs(
+        true, ipVer, origin, dstAddress, dstPort, methodName, request, true );
+
+    skutils::result_of_http_request_rapid result;
+    result.isBinary_ = false;
+    result.out_.SetObject();
+    rapidjson::Document::AllocatorType& allocator = result.out_.GetAllocator();
+    const int internalErrorCode = -32603;
+
+    if ( request.HasMember( "id" ) ) {
+        rapidjson::Value idValue;
+        idValue.CopyFrom( request["id"], allocator );
+        result.out_.AddMember( "id", idValue, allocator );
+    }
+
+    result.out_.AddMember( "jsonrpc", "2.0", allocator );
+
+    try {
+        rapidjson::Document response;
+        response.SetObject();
+
+        if ( methodName == "eth_getFilterLogs" ) {
+            eth_getFilterLogs( origin, request, response );
+        } else {
+            eth_getLogs( origin, request, response );
+        }
+
+        if ( response.HasMember( "result" ) ) {
+            rapidjson::Value resultValue;
+            resultValue.CopyFrom( response["result"], allocator );
+            result.out_.AddMember( "result", resultValue, allocator );
+        } else if ( response.HasMember( "error" ) ) {
+            rapidjson::Value errorValue;
+            errorValue.CopyFrom( response["error"], allocator );
+            result.out_.AddMember( "error", errorValue, allocator );
+        }
+    } catch ( const jsonrpc::JsonRpcException& ex ) {
+        SkaleServerOverride::addRapidJsonError( result.out_, ex.GetCode(), ex.GetMessage() );
+    } catch ( const std::exception& ex ) {
+        SkaleServerOverride::addRapidJsonError( result.out_, internalErrorCode, ex.what() );
+    } catch ( ... ) {
+        SkaleServerOverride::addRapidJsonError(
+            result.out_, internalErrorCode, "unknown exception" );
+    }
+
+    logTraceServerTrafficEthGetLogs(
+        false, ipVer, origin, dstAddress, dstPort, methodName, result.out_, false );
+
+    return result;
+}
+
+void SkaleServerOverride::addRapidJsonError(
+    rapidjson::Document& target, int code, const std::string& message ) {
+    auto& a = target.GetAllocator();
+    rapidjson::Value error( rapidjson::kObjectType );
+    error.AddMember( "code", code, a );
+    rapidjson::Value msg;
+    msg.SetString( message.c_str(), message.size(), a );
+    error.AddMember( "message", msg, a );
+    target.AddMember( "error", error, a );
+}
+
 bool SkaleServerOverride::StartListening() {
     if ( StartListening( e_server_mode_t::esm_standard ) &&
          StartListening( e_server_mode_t::esm_informational ) ) {
         if ( skutils::http_pg::pg_accumulate_size() > 0 ) {
             skutils::http_pg::pg_on_request_handler_t fnHandler =
-                [this]( const json& joIn, const string& strOrigin, int ipVer,
-                    const string& strDstAddress, int nDstPort ) -> skutils::result_of_http_request {
-                if ( isShutdownMode() )
-                    throw std::runtime_error( "query was cancelled due to server shutdown mode" );
-                skutils::url u( strOrigin );
-                string strSchemeUC =
-                    skutils::tools::to_upper( skutils::tools::trim_copy( u.scheme() ) );
-                string strPort = skutils::tools::trim_copy( u.port() );
-                int nPort = 0;
-                if ( strPort.empty() ) {
-                    if ( strSchemeUC == "HTTPS" )
-                        nPort = 443;
-                    else
-                        nPort = 80;
-                } else
-                    nPort = atoi( u.port().c_str() );
-                int nServerIndex = 0;  // TO-FIX: detect server index here"
-                e_server_mode_t esm = implGuessProxygenRequestESM( strDstAddress, nDstPort );
-                skutils::result_of_http_request rslt = implHandleHttpRequest(
-                    joIn, strSchemeUC, nServerIndex, strOrigin, ipVer, nPort, esm );
-                return rslt;
+                [this]( const nlohmann::json& request, const string& origin, int ipVer,
+                    const string& dstAddress,
+                    uint16_t dstPort ) -> skutils::result_of_http_request {
+                return handleProxygenHttpRequest( request, origin, ipVer, dstAddress, dstPort );
             };
-            m_proxygenServer =
-                skutils::http_pg::pg_accumulate_start( fnHandler, pg_threads_, pg_threads_limit_ );
+
+            skutils::http_pg::pg_on_request_eth_getLogs_handler_t fnGetLogsHandler =
+                [this]( const rapidjson::Document& request, const string& origin, int ipVer,
+                    const string& dstAddress,
+                    uint16_t dstPort ) -> skutils::result_of_http_request_rapid {
+                return handleProxygenHttpEthGetLogsRequest(
+                    request, origin, ipVer, dstAddress, dstPort );
+            };
+
+            m_proxygenServer = skutils::http_pg::pg_accumulate_start(
+                fnHandler, fnGetLogsHandler, pg_threads_, pg_threads_limit_ );
             skutils::http_pg::pg_accumulate_clear();
             if ( !m_proxygenServer ) {
                 BOOST_LOG( m_loggerError ) << "Failed to start proxygen server";
@@ -2456,7 +2574,8 @@ void SkaleServerOverride::on_connection_overflow_peer_closed(
                                << ( int ) esm;
 }
 
-SkaleServerOverride& SkaleServerOverride::getSSO() {  // abstract in SkaleStatsSubscriptionManager
+SkaleServerOverride& SkaleServerOverride::getSSO() {  // abstract in
+                                                      // SkaleStatsSubscriptionManager
     return ( *this );
 }
 
@@ -2657,7 +2776,9 @@ const SkaleServerOverride::protocol_rpc_map_t SkaleServerOverride::g_protocol_rp
     { "eth_getBalance", &SkaleServerOverride::eth_getBalance },
     { "eth_getStorageAt", &SkaleServerOverride::eth_getStorageAt },
     { "eth_getTransactionCount", &SkaleServerOverride::eth_getTransactionCount },
-    { "eth_getCode", &SkaleServerOverride::eth_getCode }
+    { "eth_getCode", &SkaleServerOverride::eth_getCode },
+    { "eth_getLogs", &SkaleServerOverride::eth_getLogs },
+    { "eth_getFilterLogs", &SkaleServerOverride::eth_getFilterLogs }
 };
 
 
@@ -2690,7 +2811,6 @@ void SkaleServerOverride::setSchainExitTime( const string& strOrigin,
             }
         }
         const rapidjson::Value& joParams = joRequest["params"];
-        // parse value of "finishTime"
         size_t finishTime = 0;
         if ( joParams.HasMember( "finishTime" ) > 0 ) {
             const rapidjson::Value& joValue = joParams["finishTime"];
@@ -2717,9 +2837,11 @@ void SkaleServerOverride::setSchainExitTime( const string& strOrigin,
         // return call error if call from outside of local network
         if ( !isLocalAddress )
             throw std::runtime_error(
-                "caller have no permition for this action" );  // NOTICE: just throw exception and
-                                                               // RPC call will extract text from it
-                                                               // and return it as call error
+                "caller have no permition for this action" );  // NOTICE: just throw
+                                                               // exception and RPC call
+                                                               // will extract text from it
+                                                               // and return it as call
+                                                               // error
         rapidjson::StringBuffer buffer;
         rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
         joResponse.Accept( writer );
@@ -2788,6 +2910,16 @@ void SkaleServerOverride::eth_getTransactionCount( const string& /*strOrigin*/,
 void SkaleServerOverride::eth_getCode( const string& /*strOrigin*/,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
     opts_.fn_eth_getCode_( joRequest, joResponse );
+}
+
+void SkaleServerOverride::eth_getLogs( const string& strOrigin,
+    const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
+    opts_.fn_eth_getLogs_( joRequest, joResponse );
+}
+
+void SkaleServerOverride::eth_getFilterLogs( const string& strOrigin,
+    const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
+    opts_.fn_eth_getFilterLogs_( joRequest, joResponse );
 }
 
 bool SkaleServerOverride::handleHttpSpecificRequest(

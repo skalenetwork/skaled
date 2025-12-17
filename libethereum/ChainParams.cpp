@@ -107,6 +107,9 @@ void ChainParams::loadConfig( string const& _json, const boost::filesystem::path
                                    false;
     logsBlocksLimit =
         params.count( "getLogsBlocksLimit" ) ? params.at( "getLogsBlocksLimit" ).get_int() : -1;
+    responseLogCountLimit = params.count( "getResponseLogCountLimit" ) ?
+                                params.at( "getResponseLogCountLimit" ).get_int() :
+                                -1;
 
     if ( obj.count( c_skaleConfig ) ) {
         processSkaleConfigItems( obj );

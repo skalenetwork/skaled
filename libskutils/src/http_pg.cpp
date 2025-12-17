@@ -17,6 +17,10 @@
 #include <skutils/multithreading.h>
 #include <skutils/rest_call.h>
 
+#include <rapidjson/document.h>
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/writer.h>
+
 #define PG_LOG( __EXPRESSION__ )  \
     if ( pg_logging_get() ) {     \
         pg_log( __EXPRESSION__ ); \
@@ -155,16 +159,35 @@ void request_site::onEOM() noexcept {
     PG_LOG( m_strLogPrefix + __FUNCTION__ + " body size: " + to_string( m_strBody.size() ) );
     PG_LOG( m_strLogPrefix + __FUNCTION__ + " body content: " + m_strBody );
 
-    nlohmann::json joID = "0xBADF00D", joIn;
+    try {
+        nlohmann::json request = nlohmann::json::parse( m_strBody );
+        string method = "";
+        if ( request.count( "method" ) > 0 && request["method"].is_string() ) {
+            method = request["method"].get< string >();
+        }
+        if ( method == "eth_getLogs" || method == "eth_getFilterLogs" ) {
+            onEOMEthGetLogs();
+        } else {
+            onEOMDefault();
+        }
+    } catch ( ... ) {
+        PG_LOG( m_strLogPrefix + "unknown routing error" );
+        onEOMDefault();
+    }
+}
+
+void request_site::onEOMDefault() noexcept {
+    nlohmann::json id = "0xBADF00D", request;
     skutils::result_of_http_request rslt;
     rslt.isBinary_ = false;
-    try {
-        joIn = nlohmann::json::parse( m_strBody );
-        PG_LOG( m_strLogPrefix + "body JSON " + joIn.dump() );
-        if ( joIn.count( "id" ) > 0 )
-            joID = joIn["id"];
 
-        rslt = m_SSRQ->onRequest( joIn, m_origin, m_ipVer, m_dstAddress_, m_dstPort );
+    try {
+        request = nlohmann::json::parse( m_strBody );
+        PG_LOG( m_strLogPrefix + "body JSON " + request.dump() );
+        if ( request.count( "id" ) > 0 )
+            id = request["id"];
+
+        rslt = m_SSRQ->onRequest( request, m_origin, m_ipVer, m_dstAddress_, m_dstPort );
 
         if ( rslt.isBinary_ ) {
             PG_LOG( m_strLogPrefix + "binary answer " +
@@ -176,31 +199,82 @@ void request_site::onEOM() noexcept {
     } catch ( const std::exception& ex ) {
         PG_LOG( m_strLogPrefix + "problem with body " + m_strBody + ", error info: " + ex.what() );
         rslt.isBinary_ = false;
-        rslt.joOut_ = server_side_request_handler::json_from_error_text( ex.what(), joID );
+        rslt.joOut_ = server_side_request_handler::json_from_error_text( ex.what(), id );
         PG_LOG( m_strLogPrefix + "got error answer JSON " + rslt.joOut_.dump() );
     } catch ( ... ) {
         PG_LOG( m_strLogPrefix + "problem with body " + m_strBody +
                 ", error info: " + "unknown exception in HTTP handler" );
         rslt.isBinary_ = false;
         rslt.joOut_ = server_side_request_handler::json_from_error_text(
-            "unknown exception in HTTP handler", joID );
+            "unknown exception in HTTP handler", id );
         PG_LOG( m_strLogPrefix + "got error answer JSON " + rslt.joOut_.dump() );
     }
-    proxygen::ResponseBuilder bldr( downstream_ );
-    bldr.status( 200, "OK" );
-    bldr.header( "access-control-allow-origin", "*" );
-    if ( rslt.isBinary_ ) {
-        bldr.header( "content-length", skutils::tools::format( "%zu", rslt.vecBytes_.size() ) );
-        bldr.header( "Content-Type", "application/octet-stream" );
-        string buffer( rslt.vecBytes_.begin(), rslt.vecBytes_.end() );
-        bldr.body( buffer );
-    } else {
-        string strOut = rslt.joOut_.dump();
-        bldr.header( "content-length", skutils::tools::format( "%zu", strOut.size() ) );
-        bldr.header( "Content-Type", "application/json" );
-        bldr.body( strOut );
+    std::string jsonString = rslt.isBinary_ ? "" : rslt.joOut_.dump();
+    sendHttpResponse( rslt.isBinary_, rslt.vecBytes_, jsonString );
+}
+
+void request_site::onEOMEthGetLogs() noexcept {
+    rapidjson::Document request;
+    skutils::result_of_http_request_rapid result;
+    result.isBinary_ = false;
+    const int invalidInputCode = -32000;
+    const string errId( "0xBADF00D" );
+
+    try {
+        request.Parse( m_strBody.c_str() );
+        PG_LOG( m_strLogPrefix + "body JSON parsed with rapidjson for eth_getLogs" );
+
+        if ( request.HasParseError() ) {
+            throw std::runtime_error( "rapidjson parse error" );
+        }
+
+        result =
+            m_SSRQ->onRequestEthGetLogs( request, m_origin, m_ipVer, m_dstAddress_, m_dstPort );
+    } catch ( const std::exception& ex ) {
+        PG_LOG( m_strLogPrefix + "problem with body " + m_strBody + ", error info: " + ex.what() );
+        result = createRapidJsonError( invalidInputCode, errId, ex.what() );
+    } catch ( ... ) {
+        PG_LOG( m_strLogPrefix + "problem with body " + m_strBody +
+                ", error info: unknown exception in HTTP handler" );
+        result =
+            createRapidJsonError( invalidInputCode, errId, "unknown exception in HTTP handler" );
     }
-    bldr.sendWithEOM();
+
+    sendRapidJsonResponse( result );
+}
+
+skutils::result_of_http_request_rapid request_site::createRapidJsonError(
+    int code, const std::string& id, const std::string& message ) noexcept {
+    skutils::result_of_http_request_rapid result;
+    result.isBinary_ = false;
+    result.out_.SetObject();
+    auto& a = result.out_.GetAllocator();
+
+    result.out_.AddMember( "jsonrpc", "2.0", a );
+
+    rapidjson::Value vId;
+    vId.SetString( id.c_str(), static_cast< rapidjson::SizeType >( id.size() ), a );
+    result.out_.AddMember( "id", vId, a );
+
+    rapidjson::Value err( rapidjson::kObjectType );
+    err.AddMember( "code", code, a );
+
+    rapidjson::Value vMsg;
+    vMsg.SetString( message.c_str(), static_cast< rapidjson::SizeType >( message.size() ), a );
+    err.AddMember( "message", vMsg, a );
+
+    result.out_.AddMember( "error", err, a );
+    return result;
+}
+
+void request_site::sendRapidJsonResponse(
+    const skutils::result_of_http_request_rapid& rapidRslt ) noexcept {
+    std::string jsonString;
+    rapidjson::StringBuffer buffer;
+    rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
+    rapidRslt.out_.Accept( writer );
+    jsonString = buffer.GetString();
+    sendHttpResponse( rapidRslt.isBinary_, rapidRslt.vecBytes_, jsonString );
 }
 
 void request_site::onUpgrade( proxygen::UpgradeProtocol ) noexcept {
@@ -216,6 +290,25 @@ void request_site::requestComplete() noexcept {
 void request_site::onError( proxygen::ProxygenError _err ) noexcept {
     PG_LOG( m_strLogPrefix + __FUNCTION__ + to_string( size_t( _err ) ) );
     delete this;
+}
+
+void request_site::sendHttpResponse( bool isBinary, const std::vector< uint8_t >& vecBytes,
+    const std::string& jsonString ) noexcept {
+    proxygen::ResponseBuilder bldr( downstream_ );
+    bldr.status( 200, "OK" );
+    bldr.header( "access-control-allow-origin", "*" );
+
+    if ( isBinary ) {
+        bldr.header( "content-length", skutils::tools::format( "%zu", vecBytes.size() ) );
+        bldr.header( "Content-Type", "application/octet-stream" );
+        string buffer( vecBytes.begin(), vecBytes.end() );
+        bldr.body( buffer );
+    } else {
+        bldr.header( "content-length", skutils::tools::format( "%zu", jsonString.size() ) );
+        bldr.header( "Content-Type", "application/json" );
+        bldr.body( jsonString );
+    }
+    bldr.sendWithEOM();
 }
 
 request_site_factory::request_site_factory( server_side_request_handler* _SSRQ )
@@ -259,9 +352,13 @@ string server_side_request_handler::answer_from_error_text(
 }
 
 
-server::server( pg_on_request_handler_t _h, const pg_accumulate_entries& _entries, int32_t _threads,
-    int32_t _threadsLimit )
-    : m_h( _h ), m_entries( _entries ), m_threads( _threads ), m_threads_limit( _threadsLimit ) {
+server::server( pg_on_request_handler_t _h, pg_on_request_eth_getLogs_handler_t _h_getLogs,
+    const pg_accumulate_entries& _entries, int32_t _threads, int32_t _threadsLimit )
+    : m_h( _h ),
+      m_h_getLogs( _h_getLogs ),
+      m_entries( _entries ),
+      m_threads( _threads ),
+      m_threads_limit( _threadsLimit ) {
     m_logPrefix = "PG/server ";
     PG_LOG( m_logPrefix + "constructor" );
 }
@@ -361,7 +458,13 @@ skutils::result_of_http_request server::onRequest( const nlohmann::json& _joIn,
     return rslt;
 }
 
-
+skutils::result_of_http_request_rapid server::onRequestEthGetLogs(
+    const rapidjson::Document& _request, const string& _origin, int _ipVer,
+    const string& _dstAddress, int _dstPort ) {
+    skutils::result_of_http_request_rapid rslt =
+        m_h_getLogs( _request, _origin, _ipVer, _dstAddress, _dstPort );
+    return rslt;
+}
 bool g_pbLogging = false;
 
 bool pg_logging_get() {
@@ -373,16 +476,18 @@ void pg_logging_set( bool _isLoggingMode ) {
 }
 
 wrapped_proxygen_server_handle pg_start( pg_on_request_handler_t _h,
-    const pg_accumulate_entry& _pge, int32_t _threads, int32_t _threadsLimit ) {
+    pg_on_request_eth_getLogs_handler_t _h_getLogs, const pg_accumulate_entry& _pge,
+    int32_t _threads, int32_t _threadsLimit ) {
     pg_accumulate_entries entries;
     entries.push_back( _pge );
-    return pg_start( _h, entries, _threads, _threadsLimit );
+    return pg_start( _h, _h_getLogs, entries, _threads, _threadsLimit );
 }
 
 wrapped_proxygen_server_handle pg_start( pg_on_request_handler_t _h,
-    const pg_accumulate_entries& _entries, int32_t _threads, int32_t _threadsLimit ) {
+    pg_on_request_eth_getLogs_handler_t _h_getLogs, const pg_accumulate_entries& _entries,
+    int32_t _threads, int32_t _threadsLimit ) {
     skutils::http_pg::server* ptrServer =
-        new skutils::http_pg::server( _h, _entries, _threads, _threadsLimit );
+        new skutils::http_pg::server( _h, _h_getLogs, _entries, _threads, _threadsLimit );
     ptrServer->start();
     return wrapped_proxygen_server_handle( ptrServer );
 }
@@ -411,10 +516,10 @@ void pg_accumulate_add( const pg_accumulate_entry& pge ) {
     g_accumulatedEntries.push_back( pge );
 }
 
-wrapped_proxygen_server_handle pg_accumulate_start(
-    pg_on_request_handler_t h, int32_t threads, int32_t threads_limit ) {
+wrapped_proxygen_server_handle pg_accumulate_start( pg_on_request_handler_t h,
+    pg_on_request_eth_getLogs_handler_t h_getLogs, int32_t threads, int32_t threads_limit ) {
     skutils::http_pg::server* ptrServer =
-        new skutils::http_pg::server( h, g_accumulatedEntries, threads, threads_limit );
+        new skutils::http_pg::server( h, h_getLogs, g_accumulatedEntries, threads, threads_limit );
     ptrServer->start();
     return wrapped_proxygen_server_handle( ptrServer );
 }

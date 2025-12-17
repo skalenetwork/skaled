@@ -40,17 +40,6 @@ typedef intptr_t ssize_t;
 #include <unistd.h>
 #endif
 
-
-#include <stdexcept>
-
-#ifndef RAPIDJSON_ASSERT
-#define RAPIDJSON_ASSERT( x )                                       \
-    if ( !( x ) ) {                                                 \
-        throw std::out_of_range( #x " failed with provided JSON" ); \
-    }
-#endif
-
-#define RAPIDJSON_ASSERT_THROWS
 #include <rapidjson/document.h>
 #include <rapidjson/prettywriter.h>
 
@@ -417,6 +406,8 @@ public:
         fn_jsonrpc_call_t fn_eth_getStorageAt_;
         fn_jsonrpc_call_t fn_eth_getTransactionCount_;
         fn_jsonrpc_call_t fn_eth_getCode_;
+        fn_jsonrpc_call_t fn_eth_getLogs_;
+        fn_jsonrpc_call_t fn_eth_getFilterLogs_;
         double lfExecutionDurationMaxForPerformanceWarning_ = 0;  // in seconds
         bool isTraceCalls_ = false;
         bool isTraceSpecialCalls_ = false;
@@ -434,6 +425,8 @@ public:
             fn_eth_getStorageAt_ = other.fn_eth_getStorageAt_;
             fn_eth_getTransactionCount_ = other.fn_eth_getTransactionCount_;
             fn_eth_getCode_ = other.fn_eth_getCode_;
+            fn_eth_getLogs_ = other.fn_eth_getLogs_;
+            fn_eth_getFilterLogs_ = other.fn_eth_getFilterLogs_;
             lfExecutionDurationMaxForPerformanceWarning_ =
                 other.lfExecutionDurationMaxForPerformanceWarning_;
             isTraceCalls_ = other.isTraceCalls_;
@@ -496,6 +489,9 @@ public:
     void logTraceServerTraffic( bool isRX, dev::Logger verbosity, int ipVer,
         const char* strProtocol, int nServerIndex, e_server_mode_t esm, const char* strOrigin,
         const string& strPayload );
+    void logTraceServerTrafficEthGetLogs( bool isRX, int ipVer, const string& origin,
+        const string& dstAddress, uint16_t dstPort, const string& methodName,
+        const rapidjson::Document& payload, bool isRequest );
 
 private:
     std::map< string, jsonrpc::IClientConnectionHandler* > urlhandler;
@@ -515,6 +511,13 @@ private:
     e_server_mode_t implGuessProxygenRequestESM( const string& strDstAddress, int nDstPort );
     bool implGuessProxygenRequestESM( std::list< std::shared_ptr< SkaleRelayProxygenHTTP > >& lst,
         const string& strDstAddress, int nDstPort, e_server_mode_t& esm );
+
+    skutils::result_of_http_request handleProxygenHttpRequest( const nlohmann::json& request,
+        const string& origin, int ipVer, const string& dstAddress, uint16_t port );
+    skutils::result_of_http_request_rapid handleProxygenHttpEthGetLogsRequest(
+        const rapidjson::Document& request, const string& origin, int ipVer,
+        const string& dstAddress, uint16_t port );
+
 
     /// Loggers
     dev::Logger m_loggerDebug{ createLogger( dev::VerbosityDebug, "SkaleServerOverride" ) };
@@ -592,6 +595,12 @@ protected:
     void eth_getCode( const string& strOrigin, const rapidjson::Document& joRequest,
         rapidjson::Document& joResponse );
 
+    void eth_getLogs( const string& strOrigin, const rapidjson::Document& joRequest,
+        rapidjson::Document& joResponse );
+
+    void eth_getFilterLogs( const string& strOrigin, const rapidjson::Document& joRequest,
+        rapidjson::Document& joResponse );
+
     unsigned iwBlockStats_ = unsigned( -1 ), iwPendingTransactionStats_ = unsigned( -1 );
     mutex_type mtxStats_;
     nlohmann::json generateBlocksStats();
@@ -618,6 +627,11 @@ public:
     friend class SkaleRelayProxygenHTTP;
     friend class SkaleRelayWS;
     friend class SkaleWsPeer;
+
+private:
+    static void addRapidJsonError(
+        rapidjson::Document& target, int code, const std::string& message );
+
 };  /// class SkaleServerOverride
 
 
