@@ -466,7 +466,7 @@ ConsensusExtFace::Transactions SkaleHost::pendingTransactions( size_t _limit, u2
     for ( const auto& ctx : bite2Transactions ) {
         out_vector.pushBackCAT( ctx.toBytes() );
         m_debugTracer.tracepoint( "sent_txn" );
-        BOOST_LOG( m_loggerTrace ) << "Sent CTX: " << ctx.sha3().hex();
+        BOOST_LOG( m_loggerTrace ) << "Sent CTX";
     }
 #endif
 
@@ -525,7 +525,6 @@ ConsensusExtFace::Transactions SkaleHost::pendingTransactions( size_t _limit, u2
             h256 sha = txn.sha3();
 
             out_vector.pushBackRegular( txn.toBytes() );
-            BOOST_LOG( m_loggerInfo ) << "Push regular tx into consensus";
 
             ++total_sent;
 
@@ -602,9 +601,11 @@ void SkaleHost::createBlock( const ConsensusExtFace::Transactions& _approvedTran
     }
 
     BOOST_LOG( m_loggerDebug ) << "createBlock ID = #" << _blockID;
+
 #ifdef BITE2
     BOOST_LOG( m_loggerDebug ) << "Got block with " << _approvedTransactions.sizeCAT() << " CTXs";
 #endif
+
     m_debugTracer.tracepoint( "create_block" );
 
     // convert bytes back to transactions (using caching), delete them from q and push results into
