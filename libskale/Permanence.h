@@ -8,8 +8,8 @@ namespace skale {
 enum class Permanence {
     Reverted,
     Committed,
-    BlockCommitted,  /// Committed at the end of the block
-    Uncommitted,     /// Uncommitted state for change log readings in tests.
+    BlockCommitted,  ///< Committed at the end of the block
+    Uncommitted,     ///< Uncommitted state for change log readings in tests.
     CommittedWithoutState
 };
 }

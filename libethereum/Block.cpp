@@ -617,7 +617,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
         m_state.safeRemoveAllPartialTransactionReceipts();
 
         if ( !commitPerBlock ) {
-            // if commitPerBlock is not actrivated managing partial receipts
+            // if commitPerBlock is not activated managing partial receipts
             m_state.safeRemoveAllPartialTransactionReceipts();
 
             // do a simple sanity check from time to time
@@ -654,7 +654,6 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
 
         LDB_CHECK( receipts.size() >= countBad );
     }
-
 
     return make_tuple( receipts, receipts.size() - countBad );
 }

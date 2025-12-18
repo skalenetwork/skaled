@@ -19,6 +19,8 @@
 
 #pragma GCC diagnostic ignored "-Wdeprecated"
 
+#include <limits>
+
 #include "WebThreeStubClient.h"
 
 
@@ -32,7 +34,6 @@
 #include <libskale/OverlayDB.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/TransientDirectory.h>
-#include <limits>
 #include <libethcore/CommonJS.h>
 #include <libethcore/KeyManager.h>
 #include <libethereum/ChainParams.h>
