@@ -29,6 +29,7 @@
 #include <jsonrpccpp/server/abstractserverconnector.h>
 #include <libconsensus/SkaleCommon.h>
 #include <libconsensus/oracle/OracleRequestSpec.h>
+#include <libskale/OverlayDB.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/TransientDirectory.h>
 #include <libethcore/CommonJS.h>
@@ -2225,6 +2226,65 @@ BOOST_AUTO_TEST_CASE( clearPartialReceipts ) {
         int64_t expectedSize = block == expectedNoLegacyReceiptsBlock ? 0 : 1;
         BOOST_REQUIRE_EQUAL( state.safeLegacyPartialTransactionReceipts().size(), expectedSize );
     }
+}
+
+BOOST_AUTO_TEST_CASE( single_state_commit_per_block_patch_transition ) {
+    Json::Value configJson;
+    Json::Reader().parse( c_genesisConfigString, configJson );
+    time_t activationTimestamp = time( nullptr ) + 5;
+    configJson["skaleConfig"]["sChain"]["singleStateCommitPerBlockPatchTimestamp"] =
+        static_cast< Json::Int64 >( activationTimestamp );
+
+    Json::FastWriter fastWriter;
+    JsonRpcFixture fixture( fastWriter.write( configJson ), true, true, false, true );
+    dev::eth::simulateMining( *( fixture.client ), 1 );
+
+    struct DbCommitCounterGuard {
+        DbCommitCounterGuard() { skale::test::enableDbCommitCounter( true ); }
+        ~DbCommitCounterGuard() { skale::test::enableDbCommitCounter( false ); }
+    } guard;
+
+    u256 nextNonce;
+
+    auto sendPayment = [&]( const dev::Address& _to ) {
+        Json::Value tx;
+        tx["from"] = fixture.coinbase.address().hex();
+        tx["to"] = _to.hex();
+        tx["value"] = toJS( 1 );
+        tx["gas"] = toJS( 21000 );
+        tx["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+        tx["nonce"] = toJS( nextNonce );
+        nextNonce++;
+        std::string hash = fixture.rpcClient->eth_sendTransaction( tx );
+        BOOST_REQUIRE( !hash.empty() );
+    };
+
+    auto produceBlockWithTransactions = [&]() {
+        nextNonce = jsToU256( fixture.rpcClient->eth_getTransactionCount(
+            fixture.coinbase.address().hex(), "pending" ) );
+        sendPayment( fixture.account2.address() );
+        sendPayment( fixture.account3.address() );
+        dev::eth::mineTransaction( *( fixture.client ), 1 );
+        fixture.client->state().getOriginalDb()->createBlockSnap( fixture.client->number() );
+    };
+
+    auto expectCommitCount = []( uint64_t expectedCommits ) {
+        BOOST_REQUIRE_EQUAL( skale::test::dbCommitCounter(), expectedCommits );
+    };
+
+    skale::test::resetDbCommitCounter();
+    produceBlockWithTransactions();
+    expectCommitCount( 3 );
+
+    sleep( 6 );
+
+    // Produce a block after the activation timestamp so subsequent blocks observe
+    // commit-per-block semantics.
+    produceBlockWithTransactions();
+
+    skale::test::resetDbCommitCounter();
+    produceBlockWithTransactions();
+    expectCommitCount( 1 );
 }
 
 BOOST_AUTO_TEST_CASE( recalculateExternalGas ) {

@@ -52,6 +52,11 @@ using dev::db::Slice;
 
 namespace skale {
 
+namespace {
+std::atomic< bool > g_dbCommitCounterEnabled{ false };
+std::atomic< uint64_t > g_dbCommitCounter{ 0 };
+}
+
 namespace slicing {
 
 dev::db::Slice toSlice( dev::h256 const& _h ) {
@@ -257,6 +262,9 @@ void OverlayDB::commitStorageValues() {
 
 
 void OverlayDB::commit() {
+    if ( g_dbCommitCounterEnabled.load( std::memory_order_relaxed ) )
+        g_dbCommitCounter.fetch_add( 1, std::memory_order_relaxed );
+
     if ( m_db_face ) {
         for ( unsigned commitTry = 0; commitTry < 10; ++commitTry ) {
 //      cnote << "Committing nodes to disk DB:";
@@ -623,4 +631,17 @@ void OverlayDB::updateStorageUsage( dev::s256 const& _storageUsed ) {
     storageUsed_ = _storageUsed;
 }
 
+namespace test {
+void enableDbCommitCounter( bool enable ) {
+    g_dbCommitCounterEnabled.store( enable, std::memory_order_relaxed );
+}
+
+void resetDbCommitCounter() {
+    g_dbCommitCounter.store( 0, std::memory_order_relaxed );
+}
+
+uint64_t dbCommitCounter() {
+    return g_dbCommitCounter.load( std::memory_order_relaxed );
+}
+}  // namespace test
 }  // namespace skale

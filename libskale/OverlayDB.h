@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <functional>
 #include <memory>
 
@@ -154,5 +155,11 @@ public:
     void copyStorageIntoAccountMap(
         std::unordered_map< dev::Address, dev::eth::Account >& _map ) const;
 };
+
+namespace test {
+void enableDbCommitCounter( bool enable );
+void resetDbCommitCounter();
+uint64_t dbCommitCounter();
+}  // namespace test
 
 }  // namespace skale
