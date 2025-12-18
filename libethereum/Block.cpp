@@ -479,13 +479,14 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
 
     m_state = m_state.createStateCopyAndClearCaches();  // mainly for debugging
 
-    const bool commitPerBlock = SingleStateCommitPerBlockPatch::isEnabledInWorkingBlock();
+    const bool singleCommitPerBlockEnabled = SingleStateCommitPerBlockPatch::isEnabledInWorkingBlock();
 
     TransactionReceipts saved_receipts;
-    if ( !commitPerBlock ) {
-        saved_receipts = m_receipts = m_state.safePartialTransactionReceipts( info().number() );
-    } else {
+    if ( singleCommitPerBlockEnabled ) {
+        // make sure receipts vector is clear before transactions execution
         m_receipts.clear();
+    } else {
+        saved_receipts = m_receipts = m_state.safePartialTransactionReceipts( info().number() );
     }
 
     TransactionReceipts receipts = m_receipts;
@@ -512,7 +513,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
     for ( unsigned i = 0; i < _transactions.size(); ++i ) {
         Transaction const& tr = _transactions[i];
         try {
-            if ( !commitPerBlock && i < saved_receipts.size() ) {
+            if ( !singleCommitPerBlockEnabled && i < saved_receipts.size() ) {
                 // this transaction has already been executed and we have a
                 // receipt for it. We do not need to execute it again
                 m_transactions.push_back( tr );
@@ -549,7 +550,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
 
                     m_receipts.push_back( null_receipt );
                     receipts.push_back( null_receipt );
-                    if ( !commitPerBlock ) {
+                    if ( !singleCommitPerBlockEnabled ) {
                         // we need to record the receipt in case we crash
                         m_state.safeSetAndCommitPartialTransactionReceipt(
                             null_receipt.rlp(), info().number(), i );
@@ -561,10 +562,10 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
             }
 
             const Permanence& permanence =
-                commitPerBlock ? Permanence::BlockCommitted : Permanence::Committed;
+                singleCommitPerBlockEnabled ? Permanence::BlockCommitted : Permanence::Committed;
             ExecutionResult res = execute( _bc.lastBlockHashes(), tr, permanence, OnOpFunc(), i );
 
-            if ( !commitPerBlock && !m_receipts.empty() &&
+            if ( !singleCommitPerBlockEnabled && !m_receipts.empty() &&
                  !ClearPartialReceiptsPatch::isEnabledWhen( m_previousBlock.timestamp() ) ) {
                 receiptsOfCommitted.push_back( m_receipts.back() );
             }
@@ -616,7 +617,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
         // Making sure no partial receipts are present at the end of the block
         m_state.safeRemoveAllPartialTransactionReceipts();
 
-        if ( !commitPerBlock ) {
+        if ( !singleCommitPerBlockEnabled ) {
             // if commitPerBlock is not activated managing partial receipts
             m_state.safeRemoveAllPartialTransactionReceipts();
 
