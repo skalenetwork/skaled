@@ -440,13 +440,6 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         libBLS::init();
 
         if ( _config != "" ) {
-            // insecure schain owner(originator) private key
-            // address is 0x5C4e11842E8be09264dc1976943571d7Af6d00F9
-            coinbase = dev::KeyPair( dev::Secret(
-                "0x1c2cd4b70c2b8c6cd7144bbbfbd1e5c6eacb4a5efd9c86d0e29cbbec4e8483b9" ) );
-            // address is 0x7aa5e36aa15e93d10f4f26357c30f052dacdde5f
-            account3 = dev::KeyPair( dev::Secret(
-                "0x23ABDBD3C61B5330AF61EBE8BEF582F4E5CC08E554053A718BDCE7813B9DC1FC" ) );
             if ( !_generation2 ) {
                 Json::Value ret;
                 Json::Reader().parse( _config, ret );
@@ -480,6 +473,14 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
 #endif
                 std::string output = fastWriter.write( ret );
                 chainParams->loadConfig( output );
+
+                // insecure schain owner(originator) private key
+                // address is 0x5C4e11842E8be09264dc1976943571d7Af6d00F9
+                coinbase = dev::KeyPair( dev::Secret(
+                    "0x1c2cd4b70c2b8c6cd7144bbbfbd1e5c6eacb4a5efd9c86d0e29cbbec4e8483b9" ) );
+                // address is 0x7aa5e36aa15e93d10f4f26357c30f052dacdde5f
+                account3 = dev::KeyPair( dev::Secret(
+                    "0x23ABDBD3C61B5330AF61EBE8BEF582F4E5CC08E554053A718BDCE7813B9DC1FC" ) );
             }
         } else {
             chainParams->sealEngineName = NoProof::name();
@@ -4897,6 +4898,7 @@ revert();
             "balance": "0",
             "code": "0x608060405234801561001057600080fd5b50600436106100455760003560e01c806313f44d101461005557806338eada1c146100af5780634ba79dfe146100f357610046565b5b6002801461005357600080fd5b005b6100976004803603602081101561006b57600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff169060200190929190505050610137565b60405180821515815260200191505060405180910390f35b6100f1600480360360208110156100c557600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff1690602001909291905050506101f4565b005b6101356004803603602081101561010957600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff16906020019092919050505061030f565b005b60008060009054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff168273ffffffffffffffffffffffffffffffffffffffff16148061019957506101988261042b565b5b806101ed5750600160008373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060009054906101000a900460ff165b9050919050565b60008054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff163373ffffffffffffffffffffffffffffffffffffffff16146102b5576040517f08c379a00000000000000000000000000000000000000000000000000000000081526004018080602001828103825260178152602001807f43616c6c6572206973206e6f7420746865206f776e657200000000000000000081525060200191505060405180910390fd5b60018060008373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060006101000a81548160ff02191690831515021790555050565b60008054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff163373ffffffffffffffffffffffffffffffffffffffff16146103d0576040517f08c379a00000000000000000000000000000000000000000000000000000000081526004018080602001828103825260178152602001807f43616c6c6572206973206e6f7420746865206f776e657200000000000000000081525060200191505060405180910390fd5b6000600160008373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060006101000a81548160ff02191690831515021790555050565b600080823b90506000811191505091905056fea26469706673582212202aca1f7abb7d02061b58de9b559eabe1607c880fda3932bbdb2b74fa553e537c64736f6c634300060c0033",
             "storage": {
+                "0x0": "0x5C4e11842E8be09264dc1976943571d7Af6d00F9"
             },
             "nonce": "0"
         },
@@ -5442,7 +5444,7 @@ dev::bytes buildAbiEncodedArrays( const std::vector<dev::bytes>& args1Elements, 
 }
 
 BOOST_AUTO_TEST_CASE( getRandomWalletAndSignatureForCTX ) {
-    JsonRpcFixture fixture( c_BITEConfigString, true, true, false, true, false, -1, {{ "contractStorageLimit", "100000" }} );
+    JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true, false, -1, {{ "contractStorageLimit", "100000" }} );
 
     dev::eth::g_skaleHost = fixture.client->skaleHost();
 
@@ -5728,7 +5730,7 @@ BOOST_AUTO_TEST_CASE( getRandomWalletAndSignatureForCTX ) {
 }
 
 BOOST_AUTO_TEST_CASE( submitCTX ) {
-    JsonRpcFixture fixture( c_BITEConfigString, true, true, false, true, false, -1, {{ "contractStorageLimit", "100000" }} );
+    JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true, false, -1, {{ "contractStorageLimit", "100000" }} );
 
     dev::eth::g_skaleHost = fixture.client->skaleHost();
 
@@ -5816,7 +5818,7 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
     create["from"] = toJS( senderAddress );
     create["code"] = bytecode;
     create["gas"] = "1800000";
-    create["value"] = "1000000000000000000";
+    create["value"] = "10000000000000000000";
     create["nonce"] = 0;
     string txHash = fixture.rpcClient->eth_sendTransaction( create );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
