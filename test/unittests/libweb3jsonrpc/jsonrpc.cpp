@@ -32,6 +32,7 @@
 #include <libskale/OverlayDB.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/TransientDirectory.h>
+#include <limits>
 #include <libethcore/CommonJS.h>
 #include <libethcore/KeyManager.h>
 #include <libethereum/ChainParams.h>
@@ -2190,6 +2191,8 @@ BOOST_AUTO_TEST_CASE( clearPartialReceipts ) {
     time_t clearPartialReceiptsActivationTs = time( nullptr ) + 10;
     ret["skaleConfig"]["sChain"]["clearPartialReceiptsPatchTimestamp"] =
         clearPartialReceiptsActivationTs;
+    ret["skaleConfig"]["sChain"]["singleStateCommitPerBlockPatchTimestamp"] =
+        std::numeric_limits< time_t >::max();
 
     Json::FastWriter fastWriter;
     std::string config = fastWriter.write( ret );
