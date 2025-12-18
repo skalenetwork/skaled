@@ -562,8 +562,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
 
             const Permanence& permanence =
                 commitPerBlock ? Permanence::BlockCommitted : Permanence::Committed;
-            ExecutionResult res =
-                execute( _bc.lastBlockHashes(), tr, permanence, OnOpFunc(), i );
+            ExecutionResult res = execute( _bc.lastBlockHashes(), tr, permanence, OnOpFunc(), i );
 
             if ( !commitPerBlock && !m_receipts.empty() &&
                  !ClearPartialReceiptsPatch::isEnabledWhen( m_previousBlock.timestamp() ) ) {
@@ -587,46 +586,6 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
         }
     }
 
-#ifdef HISTORIC_STATE
-    m_state.mutableHistoricState().saveRootForBlockNumber( m_currentBlock.number() );
-#endif
-
-    if ( !commitPerBlock ) {
-        // we got to the end of the block so we do not need partial transaction receipts anymore
-        m_state.safeRemoveAllPartialTransactionReceipts();
-
-        // do a simple sanity check from time to time
-        static uint64_t sanityCheckCounter = 0;
-        if ( sanityCheckCounter++ % 10000 == 0 ) {
-            LDB_CHECK( m_state.safePartialTransactionReceipts( info().number() ).empty() );
-        }
-
-        bool weAreAtTheTimeStampBoundary = false;
-        auto latestCommittedBlockTimeStamp = m_previousBlock.timestamp();
-
-        if ( m_previousBlock.number() > 0 ) {
-            auto beforeLatestCommittedBlockTimeStamp =
-                _bc.info( m_previousBlock.parentHash() ).timestamp();
-            weAreAtTheTimeStampBoundary =
-                ClearPartialReceiptsPatch::isEnabledWhen( latestCommittedBlockTimeStamp ) &&
-                !ClearPartialReceiptsPatch::isEnabledWhen( beforeLatestCommittedBlockTimeStamp );
-        }
-
-        if ( weAreAtTheTimeStampBoundary ) {
-            BOOST_LOG( m_loggerTrace ) << "Removing legacy partial receipts";
-            m_state.safeRemoveLegacyPartialTransactionReceipts();
-        }
-
-        if ( !ClearPartialReceiptsPatch::isEnabledWhen( latestCommittedBlockTimeStamp ) ) {
-            if ( !receiptsOfCommitted.empty() ) {
-                BOOST_LOG( m_loggerTrace )
-                    << "Saving partial transaction receipts. Size: " << receiptsOfCommitted.size();
-                m_state.safeCommitLegacyPartialTransactionReceipts( receiptsOfCommitted );
-            }
-        }
-    }
-
-    LDB_CHECK( receipts.size() >= countBad );
 #ifdef FAIR
     auto lastRewardedBlockNumber = m_state.getLastRewardedBlockNumber();
     if ( lastRewardedBlockNumber < m_currentBlock.number() ) {
@@ -636,9 +595,9 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
     }
     m_state.safeSetLastRewardedBlockNumber( m_currentBlock.number() );
 #endif
-	if ( !_transactions.empty() ) {
-		m_state.safeSetLastExecutedTransactionHash( _transactions.back().sha3() );
-	}
+    if ( !_transactions.empty() ) {
+        m_state.safeSetLastExecutedTransactionHash( _transactions.back().sha3() );
+    }
     const bool stateWritable = m_state.connected() && !m_state.isReadOnlySnapBasedState();
     if ( stateWritable ) {
         bool removeEmptyAccounts =
@@ -651,7 +610,51 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
         m_state.createStateCopyAndClearCaches();
         LDB_CHECK( m_state.getOriginalDb() );
         m_state.getOriginalDb()->createBlockSnap( info().number() );
+#ifdef HISTORIC_STATE
+        m_state.mutableHistoricState().saveRootForBlockNumber( m_currentBlock.number() );
+#endif
+        // Making sure no partial receipts are present at the end of the block
+        m_state.safeRemoveAllPartialTransactionReceipts();
+
+        if ( !commitPerBlock ) {
+            // if commitPerBlock is not actrivated managing partial receipts
+            m_state.safeRemoveAllPartialTransactionReceipts();
+
+            // do a simple sanity check from time to time
+            static uint64_t sanityCheckCounter = 0;
+            if ( sanityCheckCounter++ % 10000 == 0 ) {
+                LDB_CHECK( m_state.safePartialTransactionReceipts( info().number() ).empty() );
+            }
+
+            bool weAreAtTheTimeStampBoundary = false;
+            auto latestCommittedBlockTimeStamp = m_previousBlock.timestamp();
+
+            if ( m_previousBlock.number() > 0 ) {
+                auto beforeLatestCommittedBlockTimeStamp =
+                    _bc.info( m_previousBlock.parentHash() ).timestamp();
+                weAreAtTheTimeStampBoundary =
+                    ClearPartialReceiptsPatch::isEnabledWhen( latestCommittedBlockTimeStamp ) &&
+                    !ClearPartialReceiptsPatch::isEnabledWhen(
+                        beforeLatestCommittedBlockTimeStamp );
+            }
+
+            if ( weAreAtTheTimeStampBoundary ) {
+                BOOST_LOG( m_loggerTrace ) << "Removing legacy partial receipts";
+                m_state.safeRemoveLegacyPartialTransactionReceipts();
+            }
+
+            if ( !ClearPartialReceiptsPatch::isEnabledWhen( latestCommittedBlockTimeStamp ) ) {
+                if ( !receiptsOfCommitted.empty() ) {
+                    BOOST_LOG( m_loggerTrace ) << "Saving partial transaction receipts. Size: "
+                                               << receiptsOfCommitted.size();
+                    m_state.safeCommitLegacyPartialTransactionReceipts( receiptsOfCommitted );
+                }
+            }
+        }
+
+        LDB_CHECK( receipts.size() >= countBad );
     }
+
 
     return make_tuple( receipts, receipts.size() - countBad );
 }

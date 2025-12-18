@@ -55,7 +55,7 @@ namespace skale {
 namespace {
 std::atomic< bool > g_dbCommitCounterEnabled{ false };
 std::atomic< uint64_t > g_dbCommitCounter{ 0 };
-}
+}  // namespace
 
 namespace slicing {
 
