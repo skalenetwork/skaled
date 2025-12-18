@@ -1201,6 +1201,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
             totalStorageUsed_ += currentStorageUsed_;
             updateStorageUsage();
         }
+        m_fs_ptr->commit();
 #endif
         if ( _p == Permanence::Committed ) {
             // if we are committing we need to know transaction index in block since
@@ -1226,10 +1227,6 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
                          << receipt;
                 }
             }
-#ifndef FAIR
-            m_fs_ptr->commit();
-#endif
-
             removeEmptyAccounts = _envInfo.number() >= _chainParams.getEIP158ForkBlock();
             commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
                                           dev::eth::CommitBehaviour::KeepEmptyAccounts );
