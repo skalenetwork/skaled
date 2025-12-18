@@ -142,6 +142,9 @@ private:
 
     mutable std::optional< dev::h256 > lastExecutedTransactionHash;
 
+#ifdef FAIR
+    mutable std::optional< dev::eth::BlockNumber > lastRewardedBlockNumber_;
+#endif
 
     /// Loggers
     mutable dev::Logger m_loggerDebug{ dev::createLogger( dev::VerbosityDebug, "OverlayDB" ) };

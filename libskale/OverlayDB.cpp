@@ -217,19 +217,23 @@ std::uint64_t OverlayDB::hexToUint64( const std::string& hexValue ) {
 }
 
 void OverlayDB::setLastRewardedBlockNumber( const dev::eth::BlockNumber _blockNumber ) {
-    string key = "lastRewardedBlockNumber";
-    string blockNumberFixedLengthHex =
-        uint64ToFixedLengthHex( static_cast< uint64_t >( _blockNumber ) );
-    m_db_face->insert( skale::slicing::toSlice( key ), blockNumberFixedLengthHex );
+    this->lastRewardedBlockNumber_ = _blockNumber;
 }
 
 dev::eth::BlockNumber OverlayDB::getLastRewardedBlockNumber() {
-    string key = "lastRewardedBlockNumber";
-    auto lookupResult = m_db_face->lookup( skale::slicing::toSlice( key ) );
+    if ( lastRewardedBlockNumber_.has_value() )
+        return lastRewardedBlockNumber_.value();
+
     dev::eth::BlockNumber number = 0;
-    if ( !lookupResult.empty() ) {
-        number = static_cast< dev::eth::BlockNumber >( hexToUint64( lookupResult ) );
+    if ( m_db_face ) {
+        string key = "lastRewardedBlockNumber";
+        auto lookupResult = m_db_face->lookup( skale::slicing::toSlice( key ) );
+        if ( !lookupResult.empty() ) {
+            number = static_cast< dev::eth::BlockNumber >( hexToUint64( lookupResult ) );
+        }
     }
+
+    lastRewardedBlockNumber_ = number;
     return number;
 }
 #endif
@@ -297,6 +301,11 @@ void OverlayDB::commit() {
 
             m_db_face->insert( skale::slicing::toSlice( "safeLastExecutedTransactionHash" ),
                 skale::slicing::toSlice( getLastExecutedTransactionHash() ) );
+
+#ifdef FAIR
+            m_db_face->insert( skale::slicing::toSlice( "lastRewardedBlockNumber" ),
+                uint64ToFixedLengthHex( static_cast< uint64_t >( getLastRewardedBlockNumber() ) ) );
+#endif
 
             try {
                 m_db_face->commit( "OverlayDB_commit" );
