@@ -462,13 +462,6 @@ void LevelDB::doCompaction() const {
     m_db->CompactRange( nullptr, nullptr );
 }
 
-bool LevelDB::getProperty( std::string const& _name, std::string& _value ) const {
-    SharedDBGuard lock( *this );
-    if ( !m_db )
-        return false;
-    return m_db->GetProperty( _name, &_value );
-}
-
 std::atomic< uint64_t > LevelDB::g_keysToBeDeletedStats = 0;
 std::atomic< uint64_t > LevelDB::g_keyDeletesStats = 0;
 
