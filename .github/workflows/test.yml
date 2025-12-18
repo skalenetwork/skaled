@@ -394,3 +394,76 @@ jobs:
           export NO_NTP_CHECK=1
           export NO_ULIMIT_CHECK=1
           ./testeth -t JsonRpcSuite -- --express --verbosity 4
+
+      - name: Configure all BITE2
+        run: |
+          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
+          export TARGET=all
+          export CMAKE_BUILD_TYPE=Debug
+          mkdir -p build_bite2
+          cd build_bite2
+          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE -DBITE2=1 ..
+          cd ..
+      - name: Build all BITE2
+        run: |
+          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
+          export TARGET=all
+          export CMAKE_BUILD_TYPE=Debug
+          cd build_bite2
+          make testeth -j$(nproc)          
+          cd ..
+      - name: Print ccache stats after full BITE2 build
+        run : |
+          ccache --show-stats
+      - name: Testeth BITE2
+        run : |
+          echo "======= RUNNING BITE2 TESTS ======="
+          mkdir -p /tmp/tests/
+          sudo rm -rf /tmp/tests/*
+          cd build_bite2/test
+          export NO_NTP_CHECK=1
+          export NO_ULIMIT_CHECK=1
+          function run_test() { ./testeth --report_level=detailed -t "$1" -- --express && touch "/tmp/tests/${1}Passed"; }                    
+          run_test TransitionTests 
+          run_test TransactionTests 
+          run_test VMTests 
+          run_test LevelDBTests 
+          run_test CoreLibTests 
+          run_test RlpTests 
+          run_test SharedSpaceTests 
+          run_test EthashTests 
+          run_test SealEngineTests 
+          run_test DifficultyTests 
+          run_test BlockSuite
+          run_test BlockChainMainNetworkSuite
+          run_test BlockChainFrontierSuite
+          run_test BlockQueueSuite 
+          run_test ClientBase
+          run_test EstimateGas 
+          run_test getHistoricNodesData
+          run_test ExtVmSuite
+          run_test GasPricer
+          run_test BasicTests
+          run_test InstanceMonitorSuite
+          run_test PrecompiledTests 
+          run_test SkaleHostSuite 
+          run_test StateUnitTests 
+          run_test libethereum 
+          run_test TransactionQueueSuite 
+          run_test LegacyVMSuite 
+          run_test SkaleInterpreterSuite 
+          run_test SnapshotSigningTestSuite 
+          run_test SkUtils 
+          run_test BlockChainTestSuite 
+          run_test TestHelperSuite 
+          run_test LevelDBHashBase 
+          run_test memDB 
+          run_test OverlayDBTests 
+          run_test AccountHolderTest 
+          run_test ClientTests
+          run_test JsonRpcSuite   
+          run_test SingleConsensusTests  
+          run_test ConsensusTests
+          sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t BtrfsTestSuite -- --all && touch /tmp/tests/BtrfsTestSuitePassed
+          sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t HashSnapshotTestSuite -- --all && touch /tmp/tests/HashSnapshotTestSuitePassed
+          sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t ClientSnapshotsSuite -- --all && touch /tmp/tests/ClientSnapshotsSuitePassed
