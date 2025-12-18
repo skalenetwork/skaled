@@ -440,13 +440,6 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         libBLS::init();
 
         if ( _config != "" ) {
-            // insecure schain owner(originator) private key
-            // address is 0x5C4e11842E8be09264dc1976943571d7Af6d00F9
-            coinbase = dev::KeyPair( dev::Secret(
-                "0x1c2cd4b70c2b8c6cd7144bbbfbd1e5c6eacb4a5efd9c86d0e29cbbec4e8483b9" ) );
-            // address is 0x7aa5e36aa15e93d10f4f26357c30f052dacdde5f
-            account3 = dev::KeyPair( dev::Secret(
-                "0x23ABDBD3C61B5330AF61EBE8BEF582F4E5CC08E554053A718BDCE7813B9DC1FC" ) );
             if ( !_generation2 ) {
                 Json::Value ret;
                 Json::Reader().parse( _config, ret );
@@ -480,6 +473,14 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
 #endif
                 std::string output = fastWriter.write( ret );
                 chainParams->loadConfig( output );
+
+                // insecure schain owner(originator) private key
+                // address is 0x5C4e11842E8be09264dc1976943571d7Af6d00F9
+                coinbase = dev::KeyPair( dev::Secret(
+                    "0x1c2cd4b70c2b8c6cd7144bbbfbd1e5c6eacb4a5efd9c86d0e29cbbec4e8483b9" ) );
+                // address is 0x7aa5e36aa15e93d10f4f26357c30f052dacdde5f
+                account3 = dev::KeyPair( dev::Secret(
+                    "0x23ABDBD3C61B5330AF61EBE8BEF582F4E5CC08E554053A718BDCE7813B9DC1FC" ) );
             }
         } else {
             chainParams->sealEngineName = NoProof::name();
@@ -5443,7 +5444,7 @@ dev::bytes buildAbiEncodedArrays( const std::vector<dev::bytes>& args1Elements, 
 }
 
 BOOST_AUTO_TEST_CASE( getRandomWalletAndSignatureForCTX ) {
-    JsonRpcFixture fixture( c_BITEConfigString, true, true, false, true, false, -1, {{ "contractStorageLimit", "100000" }} );
+    JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true, false, -1, {{ "contractStorageLimit", "100000" }} );
 
     dev::eth::g_skaleHost = fixture.client->skaleHost();
 
@@ -5729,7 +5730,7 @@ BOOST_AUTO_TEST_CASE( getRandomWalletAndSignatureForCTX ) {
 }
 
 BOOST_AUTO_TEST_CASE( submitCTX ) {
-    JsonRpcFixture fixture( c_BITEConfigString, true, true, false, true, false, -1, {{ "contractStorageLimit", "100000" }} );
+    JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true, false, -1, {{ "contractStorageLimit", "100000" }} );
 
     dev::eth::g_skaleHost = fixture.client->skaleHost();
 
@@ -5817,7 +5818,7 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
     create["from"] = toJS( senderAddress );
     create["code"] = bytecode;
     create["gas"] = "1800000";
-    create["value"] = "1000000000000000000";
+    create["value"] = "10000000000000000000";
     create["nonce"] = 0;
     string txHash = fixture.rpcClient->eth_sendTransaction( create );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
