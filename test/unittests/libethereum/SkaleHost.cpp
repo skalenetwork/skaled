@@ -1703,7 +1703,7 @@ BOOST_AUTO_TEST_CASE( biteTransactions ) {
 
     DecryptedTransactions decryptedTxnDataMap(
 #ifdef BITE2
-                std::shared_ptr< DecryptedCATxsMap >(),
+                std::make_shared< DecryptedCATxsMap >(),
 #endif
                 regularTxsMap
                 );
