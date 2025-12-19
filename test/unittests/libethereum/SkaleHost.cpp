@@ -1465,7 +1465,7 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getBlockRandom" );
     auto res = exec( bytesConstRef(), { 1,
 #ifdef BITE2
-                                        0,
+                                        { 0 },
                                         1,
 #endif
                                         true } );
@@ -1482,9 +1482,9 @@ BOOST_AUTO_TEST_CASE( getCurrentBLSPublicKey ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getIMABLSPublicKey" );
     auto res = exec( bytesConstRef(), { 1,
 #ifdef BITE2
-                                          0,
+                                        { 0 },
 #endif
-                                          true } );
+                                        true } );
     std::array< std::string, 4 > imaBLSPublicKey = skaleHost->getCurrentBLSPublicKey();
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( res.second == toBigEndian( dev::u256( imaBLSPublicKey[0] ) ) +
