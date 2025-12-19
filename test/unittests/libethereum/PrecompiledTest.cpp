@@ -1802,6 +1802,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
 #ifdef BITE2
                                                               { 0 },
+                                                              -1,
 #endif
                                                               true } );
 
@@ -1814,6 +1815,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     res = exec( bytesConstRef( in.data(), in.size() ), { 1,
 #ifdef BITE2
                                                          { 0 },
+                                                         -1,
 #endif
                                                          true } );
 
@@ -1826,6 +1828,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     res = exec( bytesConstRef( in.data(), in.size() ), { 1,
 #ifdef BITE2
                                                          { 0 },
+                                                         -1,
 #endif
                                                          true } );
 
@@ -1837,6 +1840,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     res = exec( bytesConstRef( in.data(), in.size() ), { 1,
 #ifdef BITE2
                                                          { 0 },
+                                                         -1,
 #endif
                                                          true } );
 
@@ -1848,6 +1852,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     res = exec( bytesConstRef( in.data(), in.size() ), { 1,
 #ifdef BITE2
                                                          { 0 },
+                                                         -1,
 #endif
                                                          true } );
 
@@ -1860,6 +1865,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     res = exec( bytesConstRef( in.data(), in.size() ), { 1,
 #ifdef BITE2
                                                          { 0 },
+                                                         -1,
 #endif
                                                          true } );
 
@@ -1873,6 +1879,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     res = exec( bytesConstRef( in.data(), in.size() ), { 1,
 #ifdef BITE2
                                                          { 0 },
+                                                         -1,
 #endif
                                                          true } );
 
@@ -1886,6 +1893,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     res = exec( bytesConstRef( in.data(), in.size() ), { 1,
 #ifdef BITE2
                                                          { 0 },
+                                                         -1,
 #endif
                                                          true } );
 
@@ -1897,6 +1905,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     res = exec( bytesConstRef( in.data(), in.size() ), { 1,
 #ifdef BITE2
                                                          { 0 },
+                                                         -1,
 #endif
                                                          true } );
 
@@ -1908,6 +1917,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     res = exec( bytesConstRef( in.data(), in.size() ), { 1,
 #ifdef BITE2
                                                          { 0 },
+                                                         -1,
 #endif
                                                          true } );
 
@@ -1967,6 +1977,7 @@ BOOST_AUTO_TEST_CASE( createFile ) {
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
 #ifdef BITE2
                                                               { 0 },
+                                                              -1,
 #endif
                                                               true }, m_overlayFS.get() );
 
@@ -1989,6 +2000,7 @@ BOOST_AUTO_TEST_CASE( fileWithHashExtension ) {
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
 #ifdef BITE2
                                                               { 0 },
+                                                              -1,
 #endif
                                                               true }, m_overlayFS.get() );
     BOOST_REQUIRE( res.first == false);
@@ -2006,6 +2018,7 @@ BOOST_AUTO_TEST_CASE( uploadChunk ) {
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
 #ifdef BITE2
                                                               { 0 },
+                                                              -1,
 #endif
                                                               true }, m_overlayFS.get() );
     BOOST_REQUIRE( res.first );
@@ -2026,6 +2039,7 @@ BOOST_AUTO_TEST_CASE( readChunk ) {
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
 #ifdef BITE2
                                                               { 0 },
+                                                              -1,
 #endif
                                                               true }, m_overlayFS.get() );
     BOOST_REQUIRE( res.first );
@@ -2047,6 +2061,7 @@ BOOST_AUTO_TEST_CASE( readMaliciousChunk ) {
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
 #ifdef BITE2
                                                               { 0 },
+                                                              -1,
 #endif
                                                               true }, m_overlayFS.get() );
     BOOST_REQUIRE( res.first == false);
@@ -2059,6 +2074,7 @@ BOOST_AUTO_TEST_CASE( getFileSize ) {
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
 #ifdef BITE2
                                                               { 0 },
+                                                              -1,
 #endif
                                                               true }, m_overlayFS.get() );
     BOOST_REQUIRE( res.first );
@@ -2074,6 +2090,7 @@ BOOST_AUTO_TEST_CASE( getMaliciousFileSize ) {
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
 #ifdef BITE2
                                                               { 0 },
+                                                              -1,
 #endif
                                                               true }, m_overlayFS.get() );
     BOOST_REQUIRE( !res.first );
@@ -2086,6 +2103,7 @@ BOOST_AUTO_TEST_CASE( deleteFile ) {
     execCreate( bytesConstRef( inCreate.data(), inCreate.size() ), { 1,
 #ifdef BITE2
                                                               { 0 },
+                                                              -1,
 #endif
                                                               true }, m_overlayFS.get() );
     m_overlayFS->commit();
@@ -2096,6 +2114,7 @@ BOOST_AUTO_TEST_CASE( deleteFile ) {
     execHash( bytesConstRef( inHash.data(), inHash.size() ), { 1,
 #ifdef BITE2
                                                               { 0 },
+                                                               -1,
 #endif
                                                               true }, m_overlayFS.get() );
     m_overlayFS->commit();
@@ -2107,6 +2126,7 @@ BOOST_AUTO_TEST_CASE( deleteFile ) {
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
 #ifdef BITE2
                                                               { 0 },
+                                                              -1,
 #endif
                                                               true }, m_overlayFS.get() );
     BOOST_REQUIRE( res.first );
@@ -2127,6 +2147,7 @@ BOOST_AUTO_TEST_CASE( createDirectory ) {
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
 #ifdef BITE2
                                                               { 0 },
+                                                              -1,
 #endif
                                                               true }, m_overlayFS.get() );
     BOOST_REQUIRE( res.first );
@@ -2148,6 +2169,7 @@ BOOST_AUTO_TEST_CASE( deleteDirectory ) {
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
 #ifdef BITE2
                                                               { 0 },
+                                                              -1,
 #endif
                                                               true }, m_overlayFS.get() );
 
@@ -2174,6 +2196,7 @@ BOOST_AUTO_TEST_CASE( calculateFileHash ) {
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
 #ifdef BITE2
                                                               { 0 },
+                                                              -1,
 #endif
                                                               true }, m_overlayFS.get() );
 

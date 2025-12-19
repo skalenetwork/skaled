@@ -1483,6 +1483,7 @@ BOOST_AUTO_TEST_CASE( getCurrentBLSPublicKey ) {
     auto res = exec( bytesConstRef(), { 1,
 #ifdef BITE2
                                         { 0 },
+                                        -1,
 #endif
                                         true } );
     std::array< std::string, 4 > imaBLSPublicKey = skaleHost->getCurrentBLSPublicKey();
