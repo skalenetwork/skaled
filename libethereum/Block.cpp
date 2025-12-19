@@ -479,7 +479,8 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
 
     m_state = m_state.createStateCopyAndClearCaches();  // mainly for debugging
 
-    const bool singleCommitPerBlockEnabled = SingleStateCommitPerBlockPatch::isEnabledInWorkingBlock();
+    const bool singleCommitPerBlockEnabled =
+        SingleStateCommitPerBlockPatch::isEnabledInWorkingBlock();
 
     TransactionReceipts saved_receipts;
     if ( singleCommitPerBlockEnabled ) {
