@@ -271,9 +271,6 @@ public:
             "0xfa", { "0", "1", "0", "1" } };
 #endif
         nodes.push_back( me );
-
-        _patchTimestamps[static_cast< size_t >( SchainPatchEnum::SingleStateCommitPerBlockPatch )] =
-            1;
 #ifdef FAIR
         currentGroups[0] = { nodes, 1, "",
             { "1085704699902305713594457076223282948137075635957851808699051999328"

@@ -614,13 +614,10 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
 #ifdef HISTORIC_STATE
         m_state.mutableHistoricState().saveRootForBlockNumber( m_currentBlock.number() );
 #endif
-        // Making sure no partial receipts are present at the end of the block
+        // remove partial receipts at the end of the block (also cleans up after migration)
         m_state.safeRemoveAllPartialTransactionReceipts();
 
         if ( !singleCommitPerBlockEnabled ) {
-            // if commitPerBlock is not activated managing partial receipts
-            m_state.safeRemoveAllPartialTransactionReceipts();
-
             // do a simple sanity check from time to time
             static uint64_t sanityCheckCounter = 0;
             if ( sanityCheckCounter++ % 10000 == 0 ) {
