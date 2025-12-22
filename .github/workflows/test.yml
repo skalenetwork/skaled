@@ -135,249 +135,144 @@ jobs:
           ./build.sh DEBUG=1 PARALLEL_COUNT=$(nproc)
           cd ..
 
-      - name: Configure all
-        run: |
-          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
-          mkdir -p build
-          cd build
-          cmake -DCMAKE_BUILD_TYPE="$CMAKE_BUILD_TYPE" -DCOVERAGE="$CODE_COVERAGE" ..
-          cd ..
-      - name: Print ccache stats for deps
-        run: |
-          ccache --show-stats
-      - name: Build all
-        run: |
-          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
-          cd build
-          make testeth -j"$(nproc)"
-          cd ..
+      - name: Build (default)
+        uses: ./.github/workflows/cmake-build.yml
+        with:
+          build_dir: build
+          cmake_build_type: ${{ env.CMAKE_BUILD_TYPE }}
+          coverage: ${{ env.CODE_COVERAGE }}
+          cmake_args: ""
+          make_target: testeth
 
-      # ----------------------
-      # Reusable test step bodies (default/FAIR/BITE2 share the same suite list)
-      # ----------------------
-      - name: Testeth verbosity 1
-        env:
-          BUILD_DIR: build
-        run: &testeth_v1_run |
-          set -euo pipefail
-          echo "======= RUNNING TESTS ($BUILD_DIR) ======="
-          mkdir -p /tmp/tests/
-          sudo rm -rf /tmp/tests/*
-          cd "$BUILD_DIR/test"
+      - name: Testeth (full) verbosity 1
+        uses: ./.github/workflows/testeth-run.yml
+        with:
+          build_dir: build
+          mode: full
+          verbosity: "1"
 
-          TEST_SUITES=(
-            TransitionTests TransactionTests VMTests LevelDBTests CoreLibTests RlpTests SharedSpaceTests
-            EthashTests SealEngineTests DifficultyTests BlockSuite BlockChainMainNetworkSuite
-            BlockChainFrontierSuite BlockQueueSuite ClientBase EstimateGas getHistoricNodesData
-            ExtVmSuite GasPricer BasicTests InstanceMonitorSuite PrecompiledTests SkaleHostSuite
-            StateUnitTests libethereum TransactionQueueSuite LegacyVMSuite SkaleInterpreterSuite
-            SnapshotSigningTestSuite SkUtils BlockChainTestSuite TestHelperSuite LevelDBHashBase
-            memDB OverlayDBTests AccountHolderTest ClientTests JsonRpcSuite SingleConsensusTests ConsensusTests
-          )
-
-          run_test() { ./testeth --report_level=detailed -t "$1" -- --express && touch "/tmp/tests/${1}Passed" || true; }
-          for s in "${TEST_SUITES[@]}"; do run_test "$s"; done
-
-          run_sudo_all() {
-            sudo NO_ULIMIT_CHECK="$NO_ULIMIT_CHECK" NO_NTP_CHECK="$NO_NTP_CHECK" ./testeth -t "$1" -- --all \
-              && touch "/tmp/tests/${1}Passed" || true
-          }
-          run_sudo_all BtrfsTestSuite
-          run_sudo_all HashSnapshotTestSuite
-          run_sudo_all ClientSnapshotsSuite
-
-          cd ../..
-
-      - name: Testeth verbosity 4
-        env:
-          BUILD_DIR: build
-        run: &testeth_v4_run |
-          set -euo pipefail
-          echo "======= RUNNING TESTS VERBOSITY ($BUILD_DIR) ======="
-          cd "$BUILD_DIR/test"
-
-          TEST_SUITES=(
-            TransitionTests TransactionTests VMTests LevelDBTests CoreLibTests RlpTests SharedSpaceTests
-            EthashTests SealEngineTests DifficultyTests BlockSuite BlockChainMainNetworkSuite
-            BlockChainFrontierSuite BlockQueueSuite ClientBase EstimateGas getHistoricNodesData
-            ExtVmSuite GasPricer BasicTests InstanceMonitorSuite PrecompiledTests SkaleHostSuite
-            StateUnitTests libethereum TransactionQueueSuite LegacyVMSuite SkaleInterpreterSuite
-            SnapshotSigningTestSuite SkUtils BlockChainTestSuite TestHelperSuite LevelDBHashBase
-            memDB OverlayDBTests AccountHolderTest ClientTests JsonRpcSuite SingleConsensusTests ConsensusTests
-          )
-
-          rerun_test() { ls "/tmp/tests/${1}Passed" 2>/dev/null || ./testeth --report_level=detailed -t "$1" -- --express --verbosity 4; }
-          for s in "${TEST_SUITES[@]}"; do rerun_test "$s"; done
-
-          rerun_sudo_all() {
-            ls "/tmp/tests/${1}Passed" 2>/dev/null || sudo NO_ULIMIT_CHECK="$NO_ULIMIT_CHECK" NO_NTP_CHECK="$NO_NTP_CHECK" \
-              ./testeth -t "$1" -- --all --verbosity 4
-          }
-          rerun_sudo_all BtrfsTestSuite
-          rerun_sudo_all HashSnapshotTestSuite
-          rerun_sudo_all ClientSnapshotsSuite
-
-          cd ../..
+      - name: Testeth (full) verbosity 4
+        uses: ./.github/workflows/testeth-run.yml
+        with:
+          build_dir: build
+          mode: full
+          verbosity: "4"
 
       - name: Print ccache stats after full build
         run: |
           ccache --show-stats
-      # first run with verbosity 1. If test fails, rerun with verbosity 4
-      # we specifically run each test for easier log review
-      - name: Testeth verbosity 1
-        env:
-          BUILD_DIR: build
-        run: *testeth_v1_run
 
-      - name: Testeth verbosity 4
-        env:
-          BUILD_DIR: build
-        run: *testeth_v4_run
+      - name: Build (historic)
+        uses: ./.github/workflows/cmake-build.yml
+        with:
+          build_dir: build_historic
+          cmake_build_type: ${{ env.CMAKE_BUILD_TYPE }}
+          coverage: ${{ env.CODE_COVERAGE }}
+          cmake_args: "-DHISTORIC_STATE=1"
+          make_target: testeth
 
-      - name: Configure all as historic
-        run: |
-          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
-          export TARGET=all
-          export CMAKE_BUILD_TYPE=Debug
-          mkdir -p build_historic
-          cd build_historic
-          # -DCMAKE_C_FLAGS=-O3 -DCMAKE_CXX_FLAGS=-O3
-          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE -DHISTORIC_STATE=1 ..
-          cd ..
-      - name: Build all historic
-        run: |
-          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
-          export TARGET=all
-          export CMAKE_BUILD_TYPE=Debug
-          cd build_historic
-          make testeth -j$(nproc)          
-          cd ..
-      - name: Print ccache stats after full historic build
-        run : |
-          ccache --show-stats
-      - name: Testeth historic verbosity 1
-        run : |
-          echo "======= RUNNING HISTORIC TESTS ======="
-          mkdir -p /tmp/tests/
-          sudo rm -rf /tmp/tests/*
-          cd build_historic/test
-          ./testeth -t JsonRpcSuite -- --express && touch /tmp/tests/JsonRpcSuitePassed || true
-      - name: Testeth historic verbosity 4
-        run : |
-          echo "======= RUNNING HISTORIC TESTS VERBOSITY ======="
-          cd build_historic/test
-          ls /tmp/tests/JsonRpcSuitePassed || ./testeth -t JsonRpcSuite -- --express --verbosity 4
-      
-      - name: Configure all FAIR
-        run: |
-          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
-          mkdir -p build_fair
-          cd build_fair
-          cmake -DCMAKE_BUILD_TYPE="$CMAKE_BUILD_TYPE" -DCOVERAGE="$CODE_COVERAGE" -DFAIR=1 ..
-          cd ..
-      - name: Build all FAIR
-        run: |
-          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
-          cd build_fair
-          make testeth -j"$(nproc)"
-          cd ..
+      - name: Testeth historic (JsonRpcSuite) verbosity 1
+        uses: ./.github/workflows/testeth-run.yml
+        with:
+          build_dir: build_historic
+          mode: historic
+          verbosity: "1"
 
-      - name: Testeth FAIR verbosity 1
-        env:
-          BUILD_DIR: build_fair
-        run: *testeth_v1_run
+      - name: Testeth historic (JsonRpcSuite) verbosity 4
+        uses: ./.github/workflows/testeth-run.yml
+        with:
+          build_dir: build_historic
+          mode: historic
+          verbosity: "4"
 
-      - name: Testeth FAIR verbosity 4
-        env:
-          BUILD_DIR: build_fair
-        run: *testeth_v4_run
+      - name: Build (FAIR)
+        uses: ./.github/workflows/cmake-build.yml
+        with:
+          build_dir: build_fair
+          cmake_build_type: ${{ env.CMAKE_BUILD_TYPE }}
+          coverage: ${{ env.CODE_COVERAGE }}
+          cmake_args: "-DFAIR=1"
+          make_target: testeth
 
-      - name: Configure all as FAIR-historic
-        run: |
-          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
-          mkdir -p build_fair_historic
-          cd build_fair_historic
-          cmake -DCMAKE_BUILD_TYPE="$CMAKE_BUILD_TYPE" -DCOVERAGE="$CODE_COVERAGE" -DFAIR=1 -DHISTORIC_STATE=1 ..
-          cd ..
+      - name: Testeth FAIR (full) verbosity 1
+        uses: ./.github/workflows/testeth-run.yml
+        with:
+          build_dir: build_fair
+          mode: full
+          verbosity: "1"
 
-      - name: Build all FAIR-historic
-        run: |
-          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
-          cd build_fair_historic
-          make testeth -j"$(nproc)"
-          cd ..
+      - name: Testeth FAIR (full) verbosity 4
+        uses: ./.github/workflows/testeth-run.yml
+        with:
+          build_dir: build_fair
+          mode: full
+          verbosity: "4"
 
-      - name: Print ccache stats after full FAIR-historic build
-        run: |
-          ccache --show-stats
+      - name: Build (FAIR-historic)
+        uses: ./.github/workflows/cmake-build.yml
+        with:
+          build_dir: build_fair_historic
+          cmake_build_type: ${{ env.CMAKE_BUILD_TYPE }}
+          coverage: ${{ env.CODE_COVERAGE }}
+          cmake_args: "-DFAIR=1 -DHISTORIC_STATE=1"
+          make_target: testeth
 
-      - name: Testeth FAIR-historic verbosity 1
-        run: |
-          echo "======= RUNNING FAIR HISTORIC TESTS ======="
-          mkdir -p /tmp/tests/
-          sudo rm -rf /tmp/tests/*
-          cd build_fair_historic/test
-          ./testeth -t JsonRpcSuite -- --express && touch /tmp/tests/JsonRpcSuitePassed || true
+      - name: Testeth FAIR-historic (JsonRpcSuite) verbosity 1
+        uses: ./.github/workflows/testeth-run.yml
+        with:
+          build_dir: build_fair_historic
+          mode: historic
+          verbosity: "1"
 
-      - name: Testeth FAIR-historic verbosity 4
-        run: |
-          echo "======= RUNNING FAIR HISTORIC TESTS VERBOSITY ======="
-          cd build_fair_historic/test
-          ls /tmp/tests/JsonRpcSuitePassed || ./testeth -t JsonRpcSuite -- --express --verbosity 4
+      - name: Testeth FAIR-historic (JsonRpcSuite) verbosity 4
+        uses: ./.github/workflows/testeth-run.yml
+        with:
+          build_dir: build_fair_historic
+          mode: historic
+          verbosity: "4"
 
-      - name: Configure all BITE2
-        run: |
-          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
-          mkdir -p build_bite2
-          cd build_bite2
-          cmake -DCMAKE_BUILD_TYPE="$CMAKE_BUILD_TYPE" -DCOVERAGE="$CODE_COVERAGE" -DBITE2=1 ..
-          cd ..
-      - name: Build all BITE2
-        run: |
-          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
-          cd build_bite2
-          make testeth -j"$(nproc)"
-          cd ..
+      - name: Build (BITE2)
+        uses: ./.github/workflows/cmake-build.yml
+        with:
+          build_dir: build_bite2
+          cmake_build_type: ${{ env.CMAKE_BUILD_TYPE }}
+          coverage: ${{ env.CODE_COVERAGE }}
+          cmake_args: "-DBITE2=1"
+          make_target: testeth
 
-      - name: Testeth BITE2 verbosity 1
-        env:
-          BUILD_DIR: build_bite2
-        run: *testeth_v1_run
+      - name: Testeth BITE2 (full) verbosity 1
+        uses: ./.github/workflows/testeth-run.yml
+        with:
+          build_dir: build_bite2
+          mode: full
+          verbosity: "1"
 
-      - name: Testeth BITE2 verbosity 4
-        env:
-          BUILD_DIR: build_bite2
-        run: *testeth_v4_run
+      - name: Testeth BITE2 (full) verbosity 4
+        uses: ./.github/workflows/testeth-run.yml
+        with:
+          build_dir: build_bite2
+          mode: full
+          verbosity: "4"
 
-      - name: Configure all as BITE2-historic
-        run: |
-          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
-          mkdir -p build_bite2_historic
-          cd build_bite2_historic
-          cmake -DCMAKE_BUILD_TYPE="$CMAKE_BUILD_TYPE" -DCOVERAGE="$CODE_COVERAGE" -DBITE2=1 -DHISTORIC_STATE=1 ..
-          cd ..
+      - name: Build (BITE2-historic)
+        uses: ./.github/workflows/cmake-build.yml
+        with:
+          build_dir: build_bite2_historic
+          cmake_build_type: ${{ env.CMAKE_BUILD_TYPE }}
+          coverage: ${{ env.CODE_COVERAGE }}
+          cmake_args: "-DBITE2=1 -DHISTORIC_STATE=1"
+          make_target: testeth
 
-      - name: Build all BITE2-historic
-        run: |
-          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
-          cd build_bite2_historic
-          make testeth -j"$(nproc)"
-          cd ..
+      - name: Testeth BITE2-historic (JsonRpcSuite) verbosity 1
+        uses: ./.github/workflows/testeth-run.yml
+        with:
+          build_dir: build_bite2_historic
+          mode: historic
+          verbosity: "1"
 
-      - name: Print ccache stats after full BITE2-historic build
-        run: |
-          ccache --show-stats
-
-      - name: Testeth BITE2-historic verbosity 1
-        run: |
-          echo "======= RUNNING BITE2 HISTORIC TESTS ======="
-          mkdir -p /tmp/tests/
-          sudo rm -rf /tmp/tests/*
-          cd build_bite2_historic/test
-          ./testeth -t JsonRpcSuite -- --express && touch /tmp/tests/JsonRpcSuitePassed || true
-
-      - name: Testeth BITE2-historic verbosity 4
-        run: |
-          echo "======= RUNNING BITE2 HISTORIC TESTS VERBOSITY ======="
-          cd build_bite2_historic/test
-          ls /tmp/tests/JsonRpcSuitePassed || ./testeth -t JsonRpcSuite -- --express --verbosity 4
+      - name: Testeth BITE2-historic (JsonRpcSuite) verbosity 4
+        uses: ./.github/workflows/testeth-run.yml
+        with:
+          build_dir: build_bite2_historic
+          mode: historic
+          verbosity: "4"
