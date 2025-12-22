@@ -1244,22 +1244,20 @@ TransactionReceipt State::makeReceipt( bool _statusCode, dev::u256 const& _start
     eth::Executive const& _executive, eth::EnvInfo const& _envInfo,
     eth::ChainOperationParams const& _chainParams, Transaction const& _t, Permanence _p,
     std::string const& _revertReason ) const {
-    TransactionReceipt receipt =
-        TransactionReceipt( _statusCode, _startGasUsed + _executive.gasUsed(), _executive.logs() );
     if ( ( _p == Permanence::Committed || _p == Permanence::BlockCommitted ) &&
          ifShouldSkipExecution( _chainParams.getChainId(), _t.sha3() ) ) {
-        receipt = TransactionReceipt( _statusCode,
+        return TransactionReceipt( _statusCode,
             _startGasUsed + getGasUsedForSkippedTransaction( _chainParams.getChainId(), _t.sha3() ),
-            _executive.logs() );
-    } else {
-        receipt = _envInfo.number() >= _chainParams.getByzantiumForkBlock() ?
-                      TransactionReceipt(
-                          _statusCode, _startGasUsed + _executive.gasUsed(), _executive.logs() ) :
-                      TransactionReceipt(
-                          EmptyTrie, _startGasUsed + _executive.gasUsed(), _executive.logs() );
+            _executive.logs(), _revertReason );
     }
-    receipt.setRevertReason( _revertReason );
-    return receipt;
+
+    if ( _envInfo.number() >= _chainParams.getByzantiumForkBlock() ) {
+        return TransactionReceipt(
+            _statusCode, _startGasUsed + _executive.gasUsed(), _executive.logs(), _revertReason );
+    }
+
+    return TransactionReceipt(
+        EmptyTrie, _startGasUsed + _executive.gasUsed(), _executive.logs(), _revertReason );
 }
 
 /// @returns true when normally halted; false when exceptionally halted; throws when internal VM
