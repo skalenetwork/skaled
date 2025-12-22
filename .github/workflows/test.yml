@@ -155,11 +155,10 @@ jobs:
       # ----------------------
       # Reusable test step bodies (default/FAIR/BITE2 share the same suite list)
       # ----------------------
-      - &testeth_v1_all
-        name: Testeth verbosity 1
+      - name: Testeth verbosity 1
         env:
           BUILD_DIR: build
-        run: |
+        run: &testeth_v1_run |
           set -euo pipefail
           echo "======= RUNNING TESTS ($BUILD_DIR) ======="
           mkdir -p /tmp/tests/
@@ -189,11 +188,10 @@ jobs:
 
           cd ../..
 
-      - &testeth_v4_all
-        name: Testeth verbosity 4
+      - name: Testeth verbosity 4
         env:
           BUILD_DIR: build
-        run: |
+        run: &testeth_v4_run |
           set -euo pipefail
           echo "======= RUNNING TESTS VERBOSITY ($BUILD_DIR) ======="
           cd "$BUILD_DIR/test"
@@ -222,7 +220,7 @@ jobs:
           cd ../..
 
       - name: Print ccache stats after full build
-        run : |
+        run: |
           ccache --show-stats
       # first run with verbosity 1. If test fails, rerun with verbosity 4
       # we specifically run each test for easier log review
