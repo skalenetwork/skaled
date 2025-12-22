@@ -37,6 +37,14 @@ jobs:
           ACTIONS_ALLOW_UNSECURE_COMMANDS: true
       - name: checkout
         uses: actions/checkout@v2
+
+      - name: Prepend ccache to PATH for all following steps
+        run: |
+          IFS=':' read -ra _ccache_dirs <<< "$CCACHE_PATH"
+          for d in "${_ccache_dirs[@]}"; do
+            echo "$d" >> "$GITHUB_PATH"
+          done
+
       - name: Cache apt packages
         uses: actions/cache@v4.2.0
         with:
