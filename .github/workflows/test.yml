@@ -38,13 +38,6 @@ jobs:
       - name: checkout
         uses: actions/checkout@v2
 
-      - name: Prepend ccache to PATH for all following steps
-        run: |
-          IFS=':' read -ra _ccache_dirs <<< "$CCACHE_PATH"
-          for d in "${_ccache_dirs[@]}"; do
-            echo "$d" >> "$GITHUB_PATH"
-          done
-
       - name: Cache apt packages
         uses: actions/cache@v4.2.0
         with:
@@ -134,7 +127,7 @@ jobs:
           ccache --show-stats
       - name: Build dependencies
         run: |
-          export PATH="$CCACHE_PATH:$PATH"
+          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
           cd deps
           #######################################./clean.sh
           # prepare boost library
@@ -145,7 +138,7 @@ jobs:
 
       - name: Configure all
         run: |
-          export PATH="$CCACHE_PATH:$PATH"
+          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
           mkdir -p build
           cd build
           cmake -DCMAKE_BUILD_TYPE="$CMAKE_BUILD_TYPE" -DCOVERAGE="$CODE_COVERAGE" ..
@@ -155,7 +148,7 @@ jobs:
           ccache --show-stats
       - name: Build all
         run: |
-          export PATH="$CCACHE_PATH:$PATH"
+          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
           cd build
           make testeth -j"$(nproc)"
           cd ..
@@ -278,14 +271,14 @@ jobs:
       
       - name: Configure all FAIR
         run: |
-          export PATH="$CCACHE_PATH:$PATH"
+          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
           mkdir -p build_fair
           cd build_fair
           cmake -DCMAKE_BUILD_TYPE="$CMAKE_BUILD_TYPE" -DCOVERAGE="$CODE_COVERAGE" -DFAIR=1 ..
           cd ..
       - name: Build all FAIR
         run: |
-          export PATH="$CCACHE_PATH:$PATH"
+          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
           cd build_fair
           make testeth -j"$(nproc)"
           cd ..
