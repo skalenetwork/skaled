@@ -1024,8 +1024,7 @@ ExecutionResult Block::execute( LastBlockHashesFace const& _lh, Transaction cons
         resultReceipt.first.excepted = TransactionException::WouldNotBeInBlock;
     }  // catch
 
-    if ( _p == Permanence::Committed || _p == Permanence::BlockCommitted ||
-         _p == Permanence::CommittedWithoutState || _p == Permanence::Uncommitted ) {
+    if ( _p != Permanence::Reverted ) {
         // Add to the user-originated transactions that we've executed.
         if ( !SkipInvalidTransactionsPatch::isEnabledWhen( previousInfo().timestamp() ) ||
              resultReceipt.first.excepted != TransactionException::WouldNotBeInBlock ) {

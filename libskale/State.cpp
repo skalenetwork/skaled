@@ -1059,14 +1059,10 @@ void State::clearAllCaches() {
 
 
 State State::createStateCopyAndClearCaches() const {
-    State stateCopy = createStateCopy();
+    LDB_CHECK( !m_isReadOnlySnapBasedState );
+    State stateCopy( *this );
     stateCopy.clearCaches();
     return stateCopy;
-}
-
-State State::createStateCopy() const {
-    LDB_CHECK( !m_isReadOnlySnapBasedState );
-    return State( *this );
 }
 
 
