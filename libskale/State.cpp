@@ -1130,9 +1130,12 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
     ExecutionResult res;
     e.setResultRecipient( res );
 
-    bool isCacheEnabled = RevertableFSPatch::isEnabledWhen( _envInfo.committedBlockTimestamp() );
 #ifndef FAIR
-    resetOverlayFS( isCacheEnabled );
+    if ( _p == Permanence::Committed ) {
+        bool isCacheEnabled =
+            RevertableFSPatch::isEnabledWhen( _envInfo.committedBlockTimestamp() );
+        resetOverlayFS( isCacheEnabled );
+    }
 #endif
 
     auto onOp = _onOp;
@@ -1197,9 +1200,11 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
             totalStorageUsed_ += currentStorageUsed_;
             updateStorageUsage();
         }
-        m_fs_ptr->commit();
 #endif
         if ( _p == Permanence::Committed ) {
+#ifndef FAIR
+            m_fs_ptr->commit();
+#endif
             // if we are committing we need to know transaction index in block since
             // to save the receipt
             LDB_CHECK( _transactionIndex >= 0 );

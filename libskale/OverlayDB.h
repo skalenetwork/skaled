@@ -159,10 +159,10 @@ public:
         std::unordered_map< dev::Address, dev::eth::Account >& _map ) const;
 };
 
-namespace test {
-void enableDbCommitCounter( bool enable );
-void resetDbCommitCounter();
-uint64_t dbCommitCounter();
-}  // namespace test
+namespace commit_counter_test {
+void enable( bool value );
+void reset();
+uint64_t count();
+}  // namespace commit_counter_test
 
 }  // namespace skale

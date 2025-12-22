@@ -519,10 +519,6 @@ private:
             m_fs_ptr->reset();
         }
     };
-
-    void resetOverlayFS( bool _enableCache ) {
-        m_fs_ptr = std::make_shared< OverlayFS >( _enableCache );
-    };
 #endif
 
     static bool ifShouldSkipExecution( uint64_t _chainId, const dev::h256& _hash );
@@ -608,6 +604,9 @@ public:
     }
 #ifndef FAIR
     std::shared_ptr< OverlayFS > fs() { return m_fs_ptr; }
+    void resetOverlayFS( bool _enableCache ) {
+        m_fs_ptr = std::make_shared< OverlayFS >( _enableCache );
+    }
 #endif
 
     void clearAllCaches();

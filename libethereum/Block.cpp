@@ -482,6 +482,15 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
     const bool singleCommitPerBlockEnabled =
         SingleStateCommitPerBlockPatch::isEnabledInWorkingBlock();
 
+#ifndef FAIR
+    if ( singleCommitPerBlockEnabled ) {
+        assert( RevertableFSPatch::isEnabledWhen( m_previousBlock.timestamp() ) );
+        bool isCacheEnabled =
+            RevertableFSPatch::isEnabledWhen( m_previousBlock.timestamp() );
+        m_state.resetOverlayFS( isCacheEnabled );
+    }
+#endif
+
     TransactionReceipts saved_receipts;
     if ( singleCommitPerBlockEnabled ) {
         // make sure receipts vector is clear before transactions execution
@@ -606,6 +615,12 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
             m_currentBlock.number() >= _bc.chainParams().getEIP158ForkBlock();
         m_state.commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
                                               dev::eth::CommitBehaviour::KeepEmptyAccounts );
+
+#ifndef FAIR
+        if ( singleCommitPerBlockEnabled ) {
+            m_state.fs()->commit();
+        }
+#endif
 
         // since we committed changes corresponding to a particular block
         // we need to create a new readonly snap

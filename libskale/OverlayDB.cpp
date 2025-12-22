@@ -52,10 +52,10 @@ using dev::db::Slice;
 
 namespace skale {
 
-namespace {
-std::atomic< bool > g_dbCommitCounterEnabled{ false };
-std::atomic< uint64_t > g_dbCommitCounter{ 0 };
-}  // namespace
+namespace commit_counter_test {
+std::atomic< bool > enabled{ false };
+std::atomic< uint64_t > counter{ 0 };
+}  // namespace commit_counter_test
 
 namespace slicing {
 
@@ -266,8 +266,8 @@ void OverlayDB::commitStorageValues() {
 
 
 void OverlayDB::commit() {
-    if ( g_dbCommitCounterEnabled.load( std::memory_order_relaxed ) )
-        g_dbCommitCounter.fetch_add( 1, std::memory_order_relaxed );
+    if ( commit_counter_test::enabled.load( std::memory_order_relaxed ) )
+        commit_counter_test::counter.fetch_add( 1, std::memory_order_relaxed );
 
     if ( m_db_face ) {
         for ( unsigned commitTry = 0; commitTry < 10; ++commitTry ) {
@@ -640,17 +640,17 @@ void OverlayDB::updateStorageUsage( dev::s256 const& _storageUsed ) {
     storageUsed_ = _storageUsed;
 }
 
-namespace test {
-void enableDbCommitCounter( bool enable ) {
-    g_dbCommitCounterEnabled.store( enable, std::memory_order_relaxed );
+namespace commit_counter_test {
+void enable( bool value ) {
+    enabled.store( value, std::memory_order_relaxed );
 }
 
-void resetDbCommitCounter() {
-    g_dbCommitCounter.store( 0, std::memory_order_relaxed );
+void reset() {
+    counter.store( 0, std::memory_order_relaxed );
 }
 
-uint64_t dbCommitCounter() {
-    return g_dbCommitCounter.load( std::memory_order_relaxed );
+uint64_t count() {
+    return counter.load( std::memory_order_relaxed );
 }
-}  // namespace test
+}  // namespace commit_counter_test
 }  // namespace skale

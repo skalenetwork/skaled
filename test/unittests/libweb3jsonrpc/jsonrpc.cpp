@@ -2244,8 +2244,8 @@ BOOST_AUTO_TEST_CASE( single_state_commit_per_block_patch_transition ) {
     dev::eth::simulateMining( *( fixture.client ), 1 );
 
     struct DbCommitCounterGuard {
-        DbCommitCounterGuard() { skale::test::enableDbCommitCounter( true ); }
-        ~DbCommitCounterGuard() { skale::test::enableDbCommitCounter( false ); }
+        DbCommitCounterGuard() { skale::commit_counter_test::enable( true ); }
+        ~DbCommitCounterGuard() { skale::commit_counter_test::enable( false ); }
     } guard;
 
     u256 nextNonce;
@@ -2273,10 +2273,10 @@ BOOST_AUTO_TEST_CASE( single_state_commit_per_block_patch_transition ) {
     };
 
     auto expectCommitCount = []( uint64_t expectedCommits ) {
-        BOOST_REQUIRE_EQUAL( skale::test::dbCommitCounter(), expectedCommits );
+        BOOST_REQUIRE_EQUAL( skale::commit_counter_test::count(), expectedCommits );
     };
 
-    skale::test::resetDbCommitCounter();
+    skale::commit_counter_test::reset();
     produceBlockWithTransactions();
     expectCommitCount( 3 );
 
@@ -2286,7 +2286,7 @@ BOOST_AUTO_TEST_CASE( single_state_commit_per_block_patch_transition ) {
     // commit-per-block semantics.
     produceBlockWithTransactions();
 
-    skale::test::resetDbCommitCounter();
+    skale::commit_counter_test::reset();
     produceBlockWithTransactions();
     expectCommitCount( 1 );
 }
