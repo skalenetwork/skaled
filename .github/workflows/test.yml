@@ -6,11 +6,6 @@ on:
       - 'beta'
       - 'stable'
 
-# Use native cancellation instead of an extra action step.
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 defaults:
   run:
     shell: bash
@@ -26,7 +21,16 @@ jobs:
         NO_NTP_CHECK: 1
         ccache_compress: 'true'
         ccache_compresslevel: 9
+        # Centralize these (they were exported repeatedly in many steps)
+        CCACHE_PATH: /usr/lib/ccache:/usr/local/opt/ccache/libexec
+        TARGET: all
+        CMAKE_BUILD_TYPE: Debug
+
     steps:
+      - name: Cancel Previous Runs
+        uses: styfle/cancel-workflow-action@0.9.1
+        with:
+          access_token: ${{ github.token }}
       - name: Extract repo name
         run: echo ::set-env name=REPOSITORY_NAME::$(echo "$GITHUB_REPOSITORY" | awk -F / '{print $2}')
         shell: bash
@@ -123,9 +127,7 @@ jobs:
           ccache --show-stats
       - name: Build dependencies
         run: |
-          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
-          export TARGET=all
-          export CMAKE_BUILD_TYPE=Debug
+          export PATH="$CCACHE_PATH:$PATH"
           cd deps
           #######################################./clean.sh
           # prepare boost library
@@ -136,131 +138,104 @@ jobs:
 
       - name: Configure all
         run: |
-          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
-          export TARGET=all
-          export CMAKE_BUILD_TYPE=Debug
+          export PATH="$CCACHE_PATH:$PATH"
           mkdir -p build
           cd build
-          # -DCMAKE_C_FLAGS=-O3 -DCMAKE_CXX_FLAGS=-O3
-          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE ..
+          cmake -DCMAKE_BUILD_TYPE="$CMAKE_BUILD_TYPE" -DCOVERAGE="$CODE_COVERAGE" ..
           cd ..
       - name: Print ccache stats for deps
         run: |
           ccache --show-stats
       - name: Build all
         run: |
-          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
-          export TARGET=all
-          export CMAKE_BUILD_TYPE=Debug
+          export PATH="$CCACHE_PATH:$PATH"
           cd build
-          make testeth -j$(nproc)
+          make testeth -j"$(nproc)"
           cd ..
+
+      # ----------------------
+      # Reusable test step bodies (default/FAIR/BITE2 share the same suite list)
+      # ----------------------
+      - &testeth_v1_all
+        name: Testeth verbosity 1
+        env:
+          BUILD_DIR: build
+        run: |
+          set -euo pipefail
+          echo "======= RUNNING TESTS ($BUILD_DIR) ======="
+          mkdir -p /tmp/tests/
+          sudo rm -rf /tmp/tests/*
+          cd "$BUILD_DIR/test"
+
+          TEST_SUITES=(
+            TransitionTests TransactionTests VMTests LevelDBTests CoreLibTests RlpTests SharedSpaceTests
+            EthashTests SealEngineTests DifficultyTests BlockSuite BlockChainMainNetworkSuite
+            BlockChainFrontierSuite BlockQueueSuite ClientBase EstimateGas getHistoricNodesData
+            ExtVmSuite GasPricer BasicTests InstanceMonitorSuite PrecompiledTests SkaleHostSuite
+            StateUnitTests libethereum TransactionQueueSuite LegacyVMSuite SkaleInterpreterSuite
+            SnapshotSigningTestSuite SkUtils BlockChainTestSuite TestHelperSuite LevelDBHashBase
+            memDB OverlayDBTests AccountHolderTest ClientTests JsonRpcSuite SingleConsensusTests ConsensusTests
+          )
+
+          run_test() { ./testeth --report_level=detailed -t "$1" -- --express && touch "/tmp/tests/${1}Passed" || true; }
+          for s in "${TEST_SUITES[@]}"; do run_test "$s"; done
+
+          run_sudo_all() {
+            sudo NO_ULIMIT_CHECK="$NO_ULIMIT_CHECK" NO_NTP_CHECK="$NO_NTP_CHECK" ./testeth -t "$1" -- --all \
+              && touch "/tmp/tests/${1}Passed" || true
+          }
+          run_sudo_all BtrfsTestSuite
+          run_sudo_all HashSnapshotTestSuite
+          run_sudo_all ClientSnapshotsSuite
+
+          cd ../..
+
+      - &testeth_v4_all
+        name: Testeth verbosity 4
+        env:
+          BUILD_DIR: build
+        run: |
+          set -euo pipefail
+          echo "======= RUNNING TESTS VERBOSITY ($BUILD_DIR) ======="
+          cd "$BUILD_DIR/test"
+
+          TEST_SUITES=(
+            TransitionTests TransactionTests VMTests LevelDBTests CoreLibTests RlpTests SharedSpaceTests
+            EthashTests SealEngineTests DifficultyTests BlockSuite BlockChainMainNetworkSuite
+            BlockChainFrontierSuite BlockQueueSuite ClientBase EstimateGas getHistoricNodesData
+            ExtVmSuite GasPricer BasicTests InstanceMonitorSuite PrecompiledTests SkaleHostSuite
+            StateUnitTests libethereum TransactionQueueSuite LegacyVMSuite SkaleInterpreterSuite
+            SnapshotSigningTestSuite SkUtils BlockChainTestSuite TestHelperSuite LevelDBHashBase
+            memDB OverlayDBTests AccountHolderTest ClientTests JsonRpcSuite SingleConsensusTests ConsensusTests
+          )
+
+          rerun_test() { ls "/tmp/tests/${1}Passed" 2>/dev/null || ./testeth --report_level=detailed -t "$1" -- --express --verbosity 4; }
+          for s in "${TEST_SUITES[@]}"; do rerun_test "$s"; done
+
+          rerun_sudo_all() {
+            ls "/tmp/tests/${1}Passed" 2>/dev/null || sudo NO_ULIMIT_CHECK="$NO_ULIMIT_CHECK" NO_NTP_CHECK="$NO_NTP_CHECK" \
+              ./testeth -t "$1" -- --all --verbosity 4
+          }
+          rerun_sudo_all BtrfsTestSuite
+          rerun_sudo_all HashSnapshotTestSuite
+          rerun_sudo_all ClientSnapshotsSuite
+
+          cd ../..
+
       - name: Print ccache stats after full build
         run : |
           ccache --show-stats
       # first run with verbosity 1. If test fails, rerun with verbosity 4
       # we specifically run each test for easier log review
-      - name: Testeth verbosity 1
-        run : |
-          echo "======= RUNNING TESTS ======="
-          mkdir -p /tmp/tests/
-          sudo rm -rf /tmp/tests/*
-          cd build/test
-          function run_test() { ./testeth --report_level=detailed -t "$1" -- --express && touch "/tmp/tests/${1}Passed" || true; }                    
-          run_test TransitionTests 
-          run_test TransactionTests 
-          run_test VMTests 
-          run_test LevelDBTests 
-          run_test CoreLibTests 
-          run_test RlpTests 
-          run_test SharedSpaceTests 
-          run_test EthashTests 
-          run_test SealEngineTests 
-          run_test DifficultyTests 
-          run_test BlockSuite
-          run_test BlockChainMainNetworkSuite
-          run_test BlockChainFrontierSuite
-          run_test BlockQueueSuite 
-          run_test ClientBase
-          run_test EstimateGas 
-          run_test getHistoricNodesData
-          run_test ExtVmSuite
-          run_test GasPricer
-          run_test BasicTests
-          run_test InstanceMonitorSuite
-          run_test PrecompiledTests 
-          run_test SkaleHostSuite 
-          run_test StateUnitTests 
-          run_test libethereum 
-          run_test TransactionQueueSuite 
-          run_test LegacyVMSuite 
-          run_test SkaleInterpreterSuite 
-          run_test SnapshotSigningTestSuite 
-          run_test SkUtils 
-          run_test BlockChainTestSuite 
-          run_test TestHelperSuite 
-          run_test LevelDBHashBase 
-          run_test memDB 
-          run_test OverlayDBTests 
-          run_test AccountHolderTest 
-          run_test ClientTests 
-          run_test JsonRpcSuite   
-          run_test SingleConsensusTests  
-          run_test ConsensusTests
-          sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t BtrfsTestSuite -- --all && touch /tmp/tests/BtrfsTestSuitePassed
-          sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t HashSnapshotTestSuite -- --all && touch /tmp/tests/HashSnapshotTestSuitePassed
-          sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t ClientSnapshotsSuite -- --all && touch /tmp/tests/ClientSnapshotsSuitePassed
-          cd ..
-      - name: Testeth verbosity 4
-        run : |
-          # Since a tests failed, we are rerunning the failed test with higher verbosity
-          echo "======= RUNNING TESTS VERBOSITY ======="
-          cd build/test
-          function rerun_test() { ls "/tmp/tests/${1}Passed" 2>/dev/null || ./testeth --report_level=detailed -t "$1" -- --express --verbosity 4; }                      
-          rerun_test TransitionTests 
-          rerun_test TransactionTests 
-          rerun_test VMTests 
-          rerun_test LevelDBTests 
-          rerun_test CoreLibTests 
-          rerun_test RlpTests 
-          rerun_test SharedSpaceTests 
-          rerun_test EthashTests 
-          rerun_test SealEngineTests 
-          rerun_test DifficultyTests 
-          rerun_test BlockSuite
-          rerun_test BlockChainMainNetworkSuite
-          rerun_test BlockChainFrontierSuite
-          rerun_test BlockQueueSuite 
-          rerun_test ClientBase
-          rerun_test EstimateGas 
-          rerun_test getHistoricNodesData
-          rerun_test ExtVmSuite
-          rerun_test GasPricer
-          rerun_test BasicTests
-          rerun_test InstanceMonitorSuite
-          rerun_test PrecompiledTests 
-          rerun_test SkaleHostSuite 
-          rerun_test StateUnitTests 
-          rerun_test libethereum 
-          rerun_test TransactionQueueSuite 
-          rerun_test LegacyVMSuite 
-          rerun_test SkaleInterpreterSuite 
-          rerun_test SnapshotSigningTestSuite 
-          rerun_test SkUtils 
-          rerun_test BlockChainTestSuite 
-          rerun_test TestHelperSuite 
-          rerun_test LevelDBHashBase 
-          rerun_test memDB 
-          rerun_test OverlayDBTests 
-          rerun_test AccountHolderTest 
-          rerun_test ClientTests 
-          rerun_test JsonRpcSuite   
-          rerun_test SingleConsensusTests  
-          rerun_test ConsensusTests
-          ls /tmp/tests/BtrfsTestSuitePassed || sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t BtrfsTestSuite -- --all --verbosity 4
-          ls /tmp/tests/HashSnapshotTestSuitePassed || sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t HashSnapshotTestSuite -- --all --verbosity 4
-          ls /tmp/tests/ClientSnapshotsSuitePassed || sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t ClientSnapshotsSuite -- --all --verbosity 4
-          cd ..
+      - <<: *testeth_v1_all
+        name: Testeth verbosity 1
+        env:
+          BUILD_DIR: build
+
+      - <<: *testeth_v4_all
+        name: Testeth verbosity 4
+        env:
+          BUILD_DIR: build
 
       - name: Configure all as historic
         run: |
@@ -298,272 +273,48 @@ jobs:
       
       - name: Configure all FAIR
         run: |
-          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
-          export TARGET=all
-          export CMAKE_BUILD_TYPE=Debug
+          export PATH="$CCACHE_PATH:$PATH"
           mkdir -p build_fair
           cd build_fair
-          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE -DFAIR=1 ..
+          cmake -DCMAKE_BUILD_TYPE="$CMAKE_BUILD_TYPE" -DCOVERAGE="$CODE_COVERAGE" -DFAIR=1 ..
           cd ..
       - name: Build all FAIR
         run: |
-          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
-          export TARGET=all
-          export CMAKE_BUILD_TYPE=Debug
+          export PATH="$CCACHE_PATH:$PATH"
           cd build_fair
-          make testeth -j$(nproc)          
+          make testeth -j"$(nproc)"
           cd ..
-      - name: Print ccache stats after full FAIR build
-        run : |
-          ccache --show-stats
-      - name: Testeth FAIR verbosity 1
-        run : |
-          echo "======= RUNNING FAIR TESTS ======="
-          mkdir -p /tmp/tests/
-          sudo rm -rf /tmp/tests/*
-          cd build_fair/test
-          function run_test() { ./testeth --report_level=detailed -t "$1" -- --express && touch "/tmp/tests/${1}Passed" || true; }                    
-          run_test TransitionTests 
-          run_test TransactionTests 
-          run_test VMTests 
-          run_test LevelDBTests 
-          run_test CoreLibTests 
-          run_test RlpTests 
-          run_test SharedSpaceTests 
-          run_test EthashTests 
-          run_test SealEngineTests 
-          run_test DifficultyTests 
-          run_test BlockSuite
-          run_test BlockChainMainNetworkSuite
-          run_test BlockChainFrontierSuite
-          run_test BlockQueueSuite 
-          run_test ClientBase
-          run_test EstimateGas 
-          run_test getHistoricNodesData
-          run_test ExtVmSuite
-          run_test GasPricer
-          run_test BasicTests
-          run_test InstanceMonitorSuite
-          run_test PrecompiledTests 
-          run_test SkaleHostSuite 
-          run_test StateUnitTests 
-          run_test libethereum 
-          run_test TransactionQueueSuite 
-          run_test LegacyVMSuite 
-          run_test SkaleInterpreterSuite 
-          run_test SnapshotSigningTestSuite 
-          run_test SkUtils 
-          run_test BlockChainTestSuite 
-          run_test TestHelperSuite 
-          run_test LevelDBHashBase 
-          run_test memDB 
-          run_test OverlayDBTests 
-          run_test AccountHolderTest 
-          run_test ClientTests
-          run_test JsonRpcSuite   
-          run_test SingleConsensusTests  
-          run_test ConsensusTests
-          sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t BtrfsTestSuite -- --all && touch /tmp/tests/BtrfsTestSuitePassed || true
-          sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t HashSnapshotTestSuite -- --all && touch /tmp/tests/HashSnapshotTestSuitePassed || true
-          sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t ClientSnapshotsSuite -- --all && touch /tmp/tests/ClientSnapshotsSuitePassed || true
-      - name: Testeth FAIR verbosity 4
-        run : |
-          echo "======= RUNNING FAIR TESTS VERBOSITY ======="
-          cd build_fair/test
-          function rerun_test() { ls "/tmp/tests/${1}Passed" 2>/dev/null || ./testeth --report_level=detailed -t "$1" -- --express --verbosity 4; }                      
-          rerun_test TransitionTests 
-          rerun_test TransactionTests 
-          rerun_test VMTests 
-          rerun_test LevelDBTests 
-          rerun_test CoreLibTests 
-          rerun_test RlpTests 
-          rerun_test SharedSpaceTests 
-          rerun_test EthashTests 
-          rerun_test SealEngineTests 
-          rerun_test DifficultyTests 
-          rerun_test BlockSuite
-          rerun_test BlockChainMainNetworkSuite
-          rerun_test BlockChainFrontierSuite
-          rerun_test BlockQueueSuite 
-          rerun_test ClientBase
-          rerun_test EstimateGas 
-          rerun_test getHistoricNodesData
-          rerun_test ExtVmSuite
-          rerun_test GasPricer
-          rerun_test BasicTests
-          rerun_test InstanceMonitorSuite
-          rerun_test PrecompiledTests 
-          rerun_test SkaleHostSuite 
-          rerun_test StateUnitTests 
-          rerun_test libethereum 
-          rerun_test TransactionQueueSuite 
-          rerun_test LegacyVMSuite 
-          rerun_test SkaleInterpreterSuite 
-          rerun_test SnapshotSigningTestSuite 
-          rerun_test SkUtils 
-          rerun_test BlockChainTestSuite 
-          rerun_test TestHelperSuite 
-          rerun_test LevelDBHashBase 
-          rerun_test memDB 
-          rerun_test OverlayDBTests 
-          rerun_test AccountHolderTest 
-          rerun_test ClientTests
-          rerun_test JsonRpcSuite   
-          rerun_test SingleConsensusTests  
-          rerun_test ConsensusTests
-          ls /tmp/tests/BtrfsTestSuitePassed || sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t BtrfsTestSuite -- --all --verbosity 4
-          ls /tmp/tests/HashSnapshotTestSuitePassed || sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t HashSnapshotTestSuite -- --all --verbosity 4
-          ls /tmp/tests/ClientSnapshotsSuitePassed || sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t ClientSnapshotsSuite -- --all --verbosity 4
 
-      - name: Configure all as FAIR-historic
-        run: |
-          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
-          export TARGET=all
-          export CMAKE_BUILD_TYPE=Debug
-          mkdir -p build_fair_historic
-          cd build_fair_historic
-          # -DCMAKE_C_FLAGS=-O3 -DCMAKE_CXX_FLAGS=-O3
-          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE -DFAIR=1 -DHISTORIC_STATE=1 ..
-          cd ..
-      - name: Build all FAIR-historic
-        run: |
-          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
-          export TARGET=all
-          export CMAKE_BUILD_TYPE=Debug
-          cd build_fair_historic
-          make testeth -j$(nproc)          
-          cd ..
-      - name: Print ccache stats after full historic build
-        run : |
-          ccache --show-stats
-      - name: Testeth FAIR-historic verbosity 1
-        run : |
-          echo "======= RUNNING FAIR HISTORIC TESTS ======="
-          mkdir -p /tmp/tests/
-          sudo rm -rf /tmp/tests/*
-          cd build_fair_historic/test
-          ./testeth -t JsonRpcSuite -- --express && touch /tmp/tests/JsonRpcSuitePassed || true
-      - name: Testeth FAIR-historic verbosity 4
-        run : |
-          echo "======= RUNNING FAIR HISTORIC TESTS VERBOSITY ======="
-          cd build_fair_historic/test
-          ls /tmp/tests/JsonRpcSuitePassed || ./testeth -t JsonRpcSuite -- --express --verbosity 4
+      - <<: *testeth_v1_all
+        name: Testeth FAIR verbosity 1
+        env:
+          BUILD_DIR: build_fair
+
+      - <<: *testeth_v4_all
+        name: Testeth FAIR verbosity 4
+        env:
+          BUILD_DIR: build_fair
 
       - name: Configure all BITE2
         run: |
-          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
-          export TARGET=all
-          export CMAKE_BUILD_TYPE=Debug
+          export PATH="$CCACHE_PATH:$PATH"
           mkdir -p build_bite2
           cd build_bite2
-          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE -DBITE2=1 ..
+          cmake -DCMAKE_BUILD_TYPE="$CMAKE_BUILD_TYPE" -DCOVERAGE="$CODE_COVERAGE" -DBITE2=1 ..
           cd ..
       - name: Build all BITE2
         run: |
-          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
-          export TARGET=all
-          export CMAKE_BUILD_TYPE=Debug
+          export PATH="$CCACHE_PATH:$PATH"
           cd build_bite2
-          make testeth -j$(nproc)          
+          make testeth -j"$(nproc)"
           cd ..
-      - name: Print ccache stats after full BITE2 build
-        run : |
-          ccache --show-stats
-      - name: Testeth BITE2 verbosity 1
-        run : |
-          echo "======= RUNNING BITE2 TESTS ======="
-          mkdir -p /tmp/tests/
-          sudo rm -rf /tmp/tests/*
-          cd build_bite2/test
-          function run_test() { ./testeth --report_level=detailed -t "$1" -- --express && touch "/tmp/tests/${1}Passed" || true; }                    
-          run_test TransitionTests 
-          run_test TransactionTests 
-          run_test VMTests 
-          run_test LevelDBTests 
-          run_test CoreLibTests 
-          run_test RlpTests 
-          run_test SharedSpaceTests 
-          run_test EthashTests 
-          run_test SealEngineTests 
-          run_test DifficultyTests 
-          run_test BlockSuite
-          run_test BlockChainMainNetworkSuite
-          run_test BlockChainFrontierSuite
-          run_test BlockQueueSuite 
-          run_test ClientBase
-          run_test EstimateGas 
-          run_test getHistoricNodesData
-          run_test ExtVmSuite
-          run_test GasPricer
-          run_test BasicTests
-          run_test InstanceMonitorSuite
-          run_test PrecompiledTests 
-          run_test SkaleHostSuite 
-          run_test StateUnitTests 
-          run_test libethereum 
-          run_test TransactionQueueSuite 
-          run_test LegacyVMSuite 
-          run_test SkaleInterpreterSuite 
-          run_test SnapshotSigningTestSuite 
-          run_test SkUtils 
-          run_test BlockChainTestSuite 
-          run_test TestHelperSuite 
-          run_test LevelDBHashBase 
-          run_test memDB 
-          run_test OverlayDBTests 
-          run_test AccountHolderTest 
-          run_test ClientTests
-          run_test JsonRpcSuite   
-          run_test SingleConsensusTests  
-          run_test ConsensusTests
-          sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t BtrfsTestSuite -- --all && touch /tmp/tests/BtrfsTestSuitePassed || true
-          sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t HashSnapshotTestSuite -- --all && touch /tmp/tests/HashSnapshotTestSuitePassed || true
-          sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t ClientSnapshotsSuite -- --all && touch /tmp/tests/ClientSnapshotsSuitePassed || true
-      - name: Testeth BITE2 verbosity 4
-        run : |
-          echo "======= RUNNING BITE2 TESTS VERBOSITY ======="
-          cd build_bite2/test
-          function rerun_test() { ls "/tmp/tests/${1}Passed" 2>/dev/null || ./testeth --report_level=detailed -t "$1" -- --express --verbosity 4; }                      
-          rerun_test TransitionTests 
-          rerun_test TransactionTests 
-          rerun_test VMTests 
-          rerun_test LevelDBTests 
-          rerun_test CoreLibTests 
-          rerun_test RlpTests 
-          rerun_test SharedSpaceTests 
-          rerun_test EthashTests 
-          rerun_test SealEngineTests 
-          rerun_test DifficultyTests 
-          rerun_test BlockSuite
-          rerun_test BlockChainMainNetworkSuite
-          rerun_test BlockChainFrontierSuite
-          rerun_test BlockQueueSuite 
-          rerun_test ClientBase
-          rerun_test EstimateGas 
-          rerun_test getHistoricNodesData
-          rerun_test ExtVmSuite
-          rerun_test GasPricer
-          rerun_test BasicTests
-          rerun_test InstanceMonitorSuite
-          rerun_test PrecompiledTests 
-          rerun_test SkaleHostSuite 
-          rerun_test StateUnitTests 
-          rerun_test libethereum 
-          rerun_test TransactionQueueSuite 
-          rerun_test LegacyVMSuite 
-          rerun_test SkaleInterpreterSuite 
-          rerun_test SnapshotSigningTestSuite 
-          rerun_test SkUtils 
-          rerun_test BlockChainTestSuite 
-          rerun_test TestHelperSuite 
-          rerun_test LevelDBHashBase 
-          rerun_test memDB 
-          rerun_test OverlayDBTests 
-          rerun_test AccountHolderTest 
-          rerun_test ClientTests
-          rerun_test JsonRpcSuite   
-          rerun_test SingleConsensusTests  
-          rerun_test ConsensusTests
-          ls /tmp/tests/BtrfsTestSuitePassed || sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t BtrfsTestSuite -- --all --verbosity 4
-          ls /tmp/tests/HashSnapshotTestSuitePassed || sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t HashSnapshotTestSuite -- --all --verbosity 4
-          ls /tmp/tests/ClientSnapshotsSuitePassed || sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t ClientSnapshotsSuite -- --all --verbosity 4
+
+      - <<: *testeth_v1_all
+        name: Testeth BITE2 verbosity 1
+        env:
+          BUILD_DIR: build_bite2
+
+      - <<: *testeth_v4_all
+        name: Testeth BITE2 verbosity 4
+        env:
+          BUILD_DIR: build_bite2
