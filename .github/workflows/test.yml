@@ -136,7 +136,7 @@ jobs:
           cd ..
 
       - name: Build (default)
-        uses: ./.github/actions/cmake-build.yml
+        uses: ./.github/actions/cmake-build
         with:
           build_dir: build
           cmake_build_type: ${{ env.CMAKE_BUILD_TYPE }}
@@ -145,14 +145,14 @@ jobs:
           make_target: testeth
 
       - name: Testeth (full) verbosity 1
-        uses: ./.github/actions/testeth-run.yml
+        uses: ./.github/actions/testeth-run
         with:
           build_dir: build
           mode: full
           verbosity: "1"
 
       - name: Testeth (full) verbosity 4
-        uses: ./.github/actions/testeth-run.yml
+        uses: ./.github/actions/testeth-run
         with:
           build_dir: build
           mode: full
@@ -163,7 +163,7 @@ jobs:
           ccache --show-stats
 
       - name: Build (historic)
-        uses: ./.github/actions/cmake-build.yml
+        uses: ./.github/actions/cmake-build
         with:
           build_dir: build_historic
           cmake_build_type: ${{ env.CMAKE_BUILD_TYPE }}
@@ -172,21 +172,21 @@ jobs:
           make_target: testeth
 
       - name: Testeth historic (JsonRpcSuite) verbosity 1
-        uses: ./.github/actions/testeth-run.yml
+        uses: ./.github/actions/testeth-run
         with:
           build_dir: build_historic
           mode: historic
           verbosity: "1"
 
       - name: Testeth historic (JsonRpcSuite) verbosity 4
-        uses: ./.github/actions/testeth-run.yml
+        uses: ./.github/actions/testeth-run
         with:
           build_dir: build_historic
           mode: historic
           verbosity: "4"
 
       - name: Build (FAIR)
-        uses: ./.github/actions/cmake-build.yml
+        uses: ./.github/actions/cmake-build
         with:
           build_dir: build_fair
           cmake_build_type: ${{ env.CMAKE_BUILD_TYPE }}
@@ -195,21 +195,21 @@ jobs:
           make_target: testeth
 
       - name: Testeth FAIR (full) verbosity 1
-        uses: ./.github/actions/testeth-run.yml
+        uses: ./.github/actions/testeth-run
         with:
           build_dir: build_fair
           mode: full
           verbosity: "1"
 
       - name: Testeth FAIR (full) verbosity 4
-        uses: ./.github/actions/testeth-run.yml
+        uses: ./.github/actions/testeth-run
         with:
           build_dir: build_fair
           mode: full
           verbosity: "4"
 
       - name: Build (FAIR-historic)
-        uses: ./.github/actions/cmake-build.yml
+        uses: ./.github/actions/cmake-build
         with:
           build_dir: build_fair_historic
           cmake_build_type: ${{ env.CMAKE_BUILD_TYPE }}
@@ -218,21 +218,21 @@ jobs:
           make_target: testeth
 
       - name: Testeth FAIR-historic (JsonRpcSuite) verbosity 1
-        uses: ./.github/actions/testeth-run.yml
+        uses: ./.github/actions/testeth-run
         with:
           build_dir: build_fair_historic
           mode: historic
           verbosity: "1"
 
       - name: Testeth FAIR-historic (JsonRpcSuite) verbosity 4
-        uses: ./.github/actions/testeth-run.yml
+        uses: ./.github/actions/testeth-run
         with:
           build_dir: build_fair_historic
           mode: historic
           verbosity: "4"
 
       - name: Build (BITE2)
-        uses: ./.github/actions/cmake-build.yml
+        uses: ./.github/actions/cmake-build
         with:
           build_dir: build_bite2
           cmake_build_type: ${{ env.CMAKE_BUILD_TYPE }}
@@ -241,21 +241,21 @@ jobs:
           make_target: testeth
 
       - name: Testeth BITE2 (full) verbosity 1
-        uses: ./.github/actions/testeth-run.yml
+        uses: ./.github/actions/testeth-run
         with:
           build_dir: build_bite2
           mode: full
           verbosity: "1"
 
       - name: Testeth BITE2 (full) verbosity 4
-        uses: ./.github/actions/testeth-run.yml
+        uses: ./.github/actions/testeth-run
         with:
           build_dir: build_bite2
           mode: full
           verbosity: "4"
 
       - name: Build (BITE2-historic)
-        uses: ./.github/actions/cmake-build.yml
+        uses: ./.github/actions/cmake-build
         with:
           build_dir: build_bite2_historic
           cmake_build_type: ${{ env.CMAKE_BUILD_TYPE }}
@@ -264,14 +264,14 @@ jobs:
           make_target: testeth
 
       - name: Testeth BITE2-historic (JsonRpcSuite) verbosity 1
-        uses: ./.github/actions/testeth-run.yml
+        uses: ./.github/actions/testeth-run
         with:
           build_dir: build_bite2_historic
           mode: historic
           verbosity: "1"
 
       - name: Testeth BITE2-historic (JsonRpcSuite) verbosity 4
-        uses: ./.github/actions/testeth-run.yml
+        uses: ./.github/actions/testeth-run
         with:
           build_dir: build_bite2_historic
           mode: historic
