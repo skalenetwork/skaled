@@ -21,7 +21,6 @@ jobs:
         NO_NTP_CHECK: 1
         ccache_compress: 'true'
         ccache_compresslevel: 9
-        # Centralize these (they were exported repeatedly in many steps)
         CCACHE_PATH: /usr/lib/ccache:/usr/local/opt/ccache/libexec
         TARGET: all
         CMAKE_BUILD_TYPE: Debug
@@ -227,15 +226,15 @@ jobs:
           ccache --show-stats
       # first run with verbosity 1. If test fails, rerun with verbosity 4
       # we specifically run each test for easier log review
-      - <<: *testeth_v1_all
-        name: Testeth verbosity 1
+      - name: Testeth verbosity 1
         env:
           BUILD_DIR: build
+        run: *testeth_v1_run
 
-      - <<: *testeth_v4_all
-        name: Testeth verbosity 4
+      - name: Testeth verbosity 4
         env:
           BUILD_DIR: build
+        run: *testeth_v4_run
 
       - name: Configure all as historic
         run: |
@@ -285,15 +284,15 @@ jobs:
           make testeth -j"$(nproc)"
           cd ..
 
-      - <<: *testeth_v1_all
-        name: Testeth FAIR verbosity 1
+      - name: Testeth FAIR verbosity 1
         env:
           BUILD_DIR: build_fair
+        run: *testeth_v1_run
 
-      - <<: *testeth_v4_all
-        name: Testeth FAIR verbosity 4
+      - name: Testeth FAIR verbosity 4
         env:
           BUILD_DIR: build_fair
+        run: *testeth_v4_run
 
       - name: Configure all BITE2
         run: |
@@ -309,12 +308,12 @@ jobs:
           make testeth -j"$(nproc)"
           cd ..
 
-      - <<: *testeth_v1_all
-        name: Testeth BITE2 verbosity 1
+      - name: Testeth BITE2 verbosity 1
         env:
           BUILD_DIR: build_bite2
+        run: *testeth_v1_run
 
-      - <<: *testeth_v4_all
-        name: Testeth BITE2 verbosity 4
+      - name: Testeth BITE2 verbosity 4
         env:
           BUILD_DIR: build_bite2
+        run: *testeth_v4_run
