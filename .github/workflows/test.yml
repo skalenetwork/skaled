@@ -5,9 +5,16 @@ on:
       - 'master'
       - 'beta'
       - 'stable'
+
+# Use native cancellation instead of an extra action step.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 defaults:
   run:
     shell: bash
+
 jobs:
   build:
     runs-on: self-hosted
@@ -16,13 +23,10 @@ jobs:
         DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
         DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
         NO_ULIMIT_CHECK: 1
+        NO_NTP_CHECK: 1
         ccache_compress: 'true'
         ccache_compresslevel: 9
     steps:
-      - name: Cancel Previous Runs
-        uses: styfle/cancel-workflow-action@0.9.1
-        with:
-          access_token: ${{ github.token }}
       - name: Extract repo name
         run: echo ::set-env name=REPOSITORY_NAME::$(echo "$GITHUB_REPOSITORY" | awk -F / '{print $2}')
         shell: bash
@@ -162,8 +166,6 @@ jobs:
           mkdir -p /tmp/tests/
           sudo rm -rf /tmp/tests/*
           cd build/test
-          export NO_NTP_CHECK=1
-          export NO_ULIMIT_CHECK=1
           function run_test() { ./testeth --report_level=detailed -t "$1" -- --express && touch "/tmp/tests/${1}Passed" || true; }                    
           run_test TransitionTests 
           run_test TransactionTests 
@@ -211,11 +213,9 @@ jobs:
           cd ..
       - name: Testeth verbosity 4
         run : |
-          # Since a tests failed, we are rerunning the failed test with higher verbosity          
+          # Since a tests failed, we are rerunning the failed test with higher verbosity
           echo "======= RUNNING TESTS VERBOSITY ======="
-          cd build/test      
-          export NO_NTP_CHECK=1
-          export NO_ULIMIT_CHECK=1          
+          cd build/test
           function rerun_test() { ls "/tmp/tests/${1}Passed" 2>/dev/null || ./testeth --report_level=detailed -t "$1" -- --express --verbosity 4; }                      
           rerun_test TransitionTests 
           rerun_test TransactionTests 
@@ -289,15 +289,11 @@ jobs:
           mkdir -p /tmp/tests/
           sudo rm -rf /tmp/tests/*
           cd build_historic/test
-          export NO_NTP_CHECK=1
-          export NO_ULIMIT_CHECK=1
           ./testeth -t JsonRpcSuite -- --express && touch /tmp/tests/JsonRpcSuitePassed || true
       - name: Testeth historic verbosity 4
         run : |
           echo "======= RUNNING HISTORIC TESTS VERBOSITY ======="
           cd build_historic/test
-          export NO_NTP_CHECK=1
-          export NO_ULIMIT_CHECK=1
           ls /tmp/tests/JsonRpcSuitePassed || ./testeth -t JsonRpcSuite -- --express --verbosity 4
       
       - name: Configure all FAIR
@@ -326,10 +322,6 @@ jobs:
           mkdir -p /tmp/tests/
           sudo rm -rf /tmp/tests/*
           cd build_fair/test
-          export NO_NTP_CHECK=1
-          export NO_ULIMIT_CHECK=1
-          export NO_NTP_CHECK=1
-          export NO_ULIMIT_CHECK=1
           function run_test() { ./testeth --report_level=detailed -t "$1" -- --express && touch "/tmp/tests/${1}Passed" || true; }                    
           run_test TransitionTests 
           run_test TransactionTests 
@@ -378,8 +370,6 @@ jobs:
         run : |
           echo "======= RUNNING FAIR TESTS VERBOSITY ======="
           cd build_fair/test
-          export NO_NTP_CHECK=1
-          export NO_ULIMIT_CHECK=1
           function rerun_test() { ls "/tmp/tests/${1}Passed" 2>/dev/null || ./testeth --report_level=detailed -t "$1" -- --express --verbosity 4; }                      
           rerun_test TransitionTests 
           rerun_test TransactionTests 
@@ -452,15 +442,11 @@ jobs:
           mkdir -p /tmp/tests/
           sudo rm -rf /tmp/tests/*
           cd build_fair_historic/test
-          export NO_NTP_CHECK=1
-          export NO_ULIMIT_CHECK=1
           ./testeth -t JsonRpcSuite -- --express && touch /tmp/tests/JsonRpcSuitePassed || true
       - name: Testeth FAIR-historic verbosity 4
         run : |
           echo "======= RUNNING FAIR HISTORIC TESTS VERBOSITY ======="
           cd build_fair_historic/test
-          export NO_NTP_CHECK=1
-          export NO_ULIMIT_CHECK=1
           ls /tmp/tests/JsonRpcSuitePassed || ./testeth -t JsonRpcSuite -- --express --verbosity 4
 
       - name: Configure all BITE2
@@ -489,8 +475,6 @@ jobs:
           mkdir -p /tmp/tests/
           sudo rm -rf /tmp/tests/*
           cd build_bite2/test
-          export NO_NTP_CHECK=1
-          export NO_ULIMIT_CHECK=1
           function run_test() { ./testeth --report_level=detailed -t "$1" -- --express && touch "/tmp/tests/${1}Passed" || true; }                    
           run_test TransitionTests 
           run_test TransactionTests 
@@ -539,8 +523,6 @@ jobs:
         run : |
           echo "======= RUNNING BITE2 TESTS VERBOSITY ======="
           cd build_bite2/test
-          export NO_NTP_CHECK=1
-          export NO_ULIMIT_CHECK=1
           function rerun_test() { ls "/tmp/tests/${1}Passed" 2>/dev/null || ./testeth --report_level=detailed -t "$1" -- --express --verbosity 4; }                      
           rerun_test TransitionTests 
           rerun_test TransactionTests 
