@@ -21,7 +21,6 @@ jobs:
         NO_NTP_CHECK: 1
         ccache_compress: 'true'
         ccache_compresslevel: 9
-        CCACHE_PATH: /usr/lib/ccache:/usr/local/opt/ccache/libexec
         TARGET: all
         CMAKE_BUILD_TYPE: Debug
 
@@ -293,16 +292,49 @@ jobs:
           BUILD_DIR: build_fair
         run: *testeth_v4_run
 
+      - name: Configure all as FAIR-historic
+        run: |
+          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
+          mkdir -p build_fair_historic
+          cd build_fair_historic
+          cmake -DCMAKE_BUILD_TYPE="$CMAKE_BUILD_TYPE" -DCOVERAGE="$CODE_COVERAGE" -DFAIR=1 -DHISTORIC_STATE=1 ..
+          cd ..
+
+      - name: Build all FAIR-historic
+        run: |
+          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
+          cd build_fair_historic
+          make testeth -j"$(nproc)"
+          cd ..
+
+      - name: Print ccache stats after full FAIR-historic build
+        run: |
+          ccache --show-stats
+
+      - name: Testeth FAIR-historic verbosity 1
+        run: |
+          echo "======= RUNNING FAIR HISTORIC TESTS ======="
+          mkdir -p /tmp/tests/
+          sudo rm -rf /tmp/tests/*
+          cd build_fair_historic/test
+          ./testeth -t JsonRpcSuite -- --express && touch /tmp/tests/JsonRpcSuitePassed || true
+
+      - name: Testeth FAIR-historic verbosity 4
+        run: |
+          echo "======= RUNNING FAIR HISTORIC TESTS VERBOSITY ======="
+          cd build_fair_historic/test
+          ls /tmp/tests/JsonRpcSuitePassed || ./testeth -t JsonRpcSuite -- --express --verbosity 4
+
       - name: Configure all BITE2
         run: |
-          export PATH="$CCACHE_PATH:$PATH"
+          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
           mkdir -p build_bite2
           cd build_bite2
           cmake -DCMAKE_BUILD_TYPE="$CMAKE_BUILD_TYPE" -DCOVERAGE="$CODE_COVERAGE" -DBITE2=1 ..
           cd ..
       - name: Build all BITE2
         run: |
-          export PATH="$CCACHE_PATH:$PATH"
+          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
           cd build_bite2
           make testeth -j"$(nproc)"
           cd ..
@@ -316,3 +348,36 @@ jobs:
         env:
           BUILD_DIR: build_bite2
         run: *testeth_v4_run
+
+      - name: Configure all as BITE2-historic
+        run: |
+          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
+          mkdir -p build_bite2_historic
+          cd build_bite2_historic
+          cmake -DCMAKE_BUILD_TYPE="$CMAKE_BUILD_TYPE" -DCOVERAGE="$CODE_COVERAGE" -DBITE2=1 -DHISTORIC_STATE=1 ..
+          cd ..
+
+      - name: Build all BITE2-historic
+        run: |
+          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
+          cd build_bite2_historic
+          make testeth -j"$(nproc)"
+          cd ..
+
+      - name: Print ccache stats after full BITE2-historic build
+        run: |
+          ccache --show-stats
+
+      - name: Testeth BITE2-historic verbosity 1
+        run: |
+          echo "======= RUNNING BITE2 HISTORIC TESTS ======="
+          mkdir -p /tmp/tests/
+          sudo rm -rf /tmp/tests/*
+          cd build_bite2_historic/test
+          ./testeth -t JsonRpcSuite -- --express && touch /tmp/tests/JsonRpcSuitePassed || true
+
+      - name: Testeth BITE2-historic verbosity 4
+        run: |
+          echo "======= RUNNING BITE2 HISTORIC TESTS VERBOSITY ======="
+          cd build_bite2_historic/test
+          ls /tmp/tests/JsonRpcSuitePassed || ./testeth -t JsonRpcSuite -- --express --verbosity 4
