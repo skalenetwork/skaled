@@ -456,6 +456,9 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
 #ifndef FAIR
                 ret["skaleConfig"]["sChain"]["contractStorageLimit"] = 128;
 #endif
+                if ( params.count( "contractStorageLimit" ) )
+                    ret["skaleConfig"]["sChain"]["contractStorageLimit"] = std::stoi( params.at( "contractStorageLimit" ) );
+
                 Json::FastWriter fastWriter;
                 std::string output = fastWriter.write( ret );
                 chainParams->loadConfig( output );
@@ -4739,12 +4742,14 @@ static std::string const c_BITEConfigString =
          "constantinopleForkBlock": "0x00",
          "istanbulForkBlock": "0x00",
          "skaleDisableChainIdCheck": true,
-         "externalGasDifficulty": "0x1"
+         "externalGasDifficulty": "0x1",
+         "minGasLimit": "0xFFFFFFF",
+         "maxGasLimit": "7fffffffffffffff"
     },
     "genesis": {
         "author" : "0x2adc25665018aa1fe0e6bc666dac8fc2697ff9ba",
         "difficulty" : "0x20000",
-        "gasLimit" : "0x0f4240",
+        "gasLimit": "0xFFFFFFF",
         "nonce" : "0x00",
         "extraData" : "0x00",
         "timestamp" : "0x00",
@@ -4833,7 +4838,10 @@ static std::string const c_BITEConfigString =
         "0000000000000000000000000000000000000001": { "precompiled": { "name": "ecrecover", "linear": { "base": 3000, "word": 0 } } },
         "0000000000000000000000000000000000000002": { "precompiled": { "name": "sha256", "linear": { "base": 60, "word": 12 } } },
         "0000000000000000000000000000000000000003": { "precompiled": { "name": "ripemd160", "linear": { "base": 600, "word": 120 } } },
-        "0000000000000000000000000000000000000004": { "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } } },)"
+        "0000000000000000000000000000000000000004": { "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } } },
+        "0000000000000000000000000000000000000005": { "precompiled": { "name": "getBlockRandom", "linear": { "base": 15, "word": 0 } } },
+        "0000000000000000000000000000000000000006": { "precompiled": { "name": "getRandomWalletAndSignatureForCTX", "linear": { "base": 15, "word": 0 } } },
+        "0000000000000000000000000000000000000007": { "precompiled": { "name": "submitCTX", "linear": { "base": 15, "word": 0 } } },)"
     /*
 pragma solidity ^0.4.25;
 contract Caller {
@@ -4889,6 +4897,7 @@ revert();
             "balance": "0",
             "code": "0x608060405234801561001057600080fd5b50600436106100455760003560e01c806313f44d101461005557806338eada1c146100af5780634ba79dfe146100f357610046565b5b6002801461005357600080fd5b005b6100976004803603602081101561006b57600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff169060200190929190505050610137565b60405180821515815260200191505060405180910390f35b6100f1600480360360208110156100c557600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff1690602001909291905050506101f4565b005b6101356004803603602081101561010957600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff16906020019092919050505061030f565b005b60008060009054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff168273ffffffffffffffffffffffffffffffffffffffff16148061019957506101988261042b565b5b806101ed5750600160008373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060009054906101000a900460ff165b9050919050565b60008054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff163373ffffffffffffffffffffffffffffffffffffffff16146102b5576040517f08c379a00000000000000000000000000000000000000000000000000000000081526004018080602001828103825260178152602001807f43616c6c6572206973206e6f7420746865206f776e657200000000000000000081525060200191505060405180910390fd5b60018060008373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060006101000a81548160ff02191690831515021790555050565b60008054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff163373ffffffffffffffffffffffffffffffffffffffff16146103d0576040517f08c379a00000000000000000000000000000000000000000000000000000000081526004018080602001828103825260178152602001807f43616c6c6572206973206e6f7420746865206f776e657200000000000000000081525060200191505060405180910390fd5b6000600160008373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060006101000a81548160ff02191690831515021790555050565b600080823b90506000811191505091905056fea26469706673582212202aca1f7abb7d02061b58de9b559eabe1607c880fda3932bbdb2b74fa553e537c64736f6c634300060c0033",
             "storage": {
+                "0x0": "0x5C4e11842E8be09264dc1976943571d7Af6d00F9"
             },
             "nonce": "0"
         },
@@ -5434,7 +5443,7 @@ dev::bytes buildAbiEncodedArrays( const std::vector<dev::bytes>& args1Elements, 
 }
 
 BOOST_AUTO_TEST_CASE( getRandomWalletAndSignatureForCTX ) {
-    JsonRpcFixture fixture( c_BITEConfigString, false, false, true, true );
+    JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true, false, -1, {{ "contractStorageLimit", "100000" }} );
 
     dev::eth::g_skaleHost = fixture.client->skaleHost();
 
@@ -5720,7 +5729,7 @@ BOOST_AUTO_TEST_CASE( getRandomWalletAndSignatureForCTX ) {
 }
 
 BOOST_AUTO_TEST_CASE( submitCTX ) {
-    JsonRpcFixture fixture( c_BITEConfigString, false, false, true, true );
+    JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true, false, -1, {{ "contractStorageLimit", "100000" }} );
 
     dev::eth::g_skaleHost = fixture.client->skaleHost();
 
@@ -6372,7 +6381,7 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
 
     Json::FastWriter fastWriter;
     std::string config = fastWriter.write( ret );
-    JsonRpcFixture fixture( config );
+    JsonRpcFixture fixture( config, true, true, false, false, false, -1, {{ "contractStorageLimit", "1000000" }} );
 
     dev::eth::simulateMining( *( fixture.client ), 20 );
     string senderAddress = toJS( fixture.coinbase.address() );
