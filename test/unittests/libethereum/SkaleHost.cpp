@@ -1621,7 +1621,7 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getBlockRandom" );
     auto res = exec( bytesConstRef(), { 1,
 #ifdef BITE2
-                                        0,
+                                        { 0 },
                                         1,
 #endif
                                         true } );
