@@ -32,6 +32,9 @@
 #include <libconsensus/SkaleCommon.h>
 #include <libconsensus/oracle/OracleRequestSpec.h>
 #include <libskale/OverlayDB.h>
+#ifndef FAIR
+#include <libskale/OverlayFS.h>
+#endif
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/TransientDirectory.h>
 #include <libethcore/CommonJS.h>
@@ -685,8 +688,9 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
 
 #ifndef FAIR
 struct RestrictedAddressFixture : public JsonRpcFixture {
-    RestrictedAddressFixture( const std::string& _config = c_genesisConfigString )
-        : JsonRpcFixture( _config ) {
+    RestrictedAddressFixture(
+        const std::string& _config = c_genesisConfigString, bool _mtmEnabled = false )
+        : JsonRpcFixture( _config, true, true, false, _mtmEnabled ) {
         setenv( "HOME", tempDir.path().c_str(), 1 );  // getDataDir() now points to the different
                                                       // directories for different tests
         ownerAddress = Address( "00000000000000000000000000000000000000AA" );
@@ -2290,6 +2294,71 @@ BOOST_AUTO_TEST_CASE( single_state_commit_per_block_patch_transition ) {
     produceBlockWithTransactions();
     expectCommitCount( 1 );
 }
+
+#ifndef FAIR
+BOOST_AUTO_TEST_CASE( single_fs_commit_per_block_patch_transition ) {
+    Json::Value configJson;
+    Json::Reader().parse( c_genesisConfigString, configJson );
+    time_t activationTimestamp = time( nullptr ) + 5;
+    configJson["skaleConfig"]["sChain"]["singleStateCommitPerBlockPatchTimestamp"] =
+        static_cast< Json::Int64 >( activationTimestamp );
+    configJson["skaleConfig"]["sChain"]["revertableFSPatchTimestamp"] =
+        static_cast< Json::Int64 >( 1 );
+
+    Json::FastWriter fastWriter;
+    RestrictedAddressFixture fixture( fastWriter.write( configJson ), true );
+    dev::eth::simulateMining( *( fixture.client ), 1 );
+
+    struct FsCommitCounterGuard {
+        FsCommitCounterGuard() { skale::fs_commit_counter_test::enable( true ); }
+        ~FsCommitCounterGuard() { skale::fs_commit_counter_test::enable( false ); }
+    } guard;
+
+    auto senderAddress = fixture.coinbase.address();
+    fixture.client->setAuthor( senderAddress );
+
+    u256 nextNonce;
+
+    auto executeFilestorageOperation = [&]() {
+        Json::Value tx;
+        tx["from"] = toJS( senderAddress );
+        tx["to"] = "0x692a70d2e424a56d2c6c27aa97d1a86395877b3a";
+        tx["data"] = "0xf38fb65b";
+        tx["nonce"] = toJS( nextNonce );
+        nextNonce++;
+        TransactionSkeleton ts = toTransactionSkeleton( tx );
+        ts = fixture.client->populateTransactionWithDefaults( ts );
+        pair< bool, Secret > ar = fixture.accountHolder->authenticate( ts );
+        Transaction transaction( ts, ar.second );
+        fixture.rpcClient->eth_sendRawTransaction( toJS( transaction.toBytes() ) );
+    };
+
+    auto produceBlockWithFilestorageOperations = [&]() {
+        nextNonce = jsToU256( fixture.rpcClient->eth_getTransactionCount(
+            toJS( senderAddress ), "pending" ) );
+        executeFilestorageOperation();
+        executeFilestorageOperation();
+        dev::eth::mineTransaction( *( fixture.client ), 1 );
+        fixture.client->state().getOriginalDb()->createBlockSnap( fixture.client->number() );
+    };
+
+    auto expectFsCommitCount = []( uint64_t expectedCommits ) {
+        BOOST_REQUIRE_EQUAL( skale::fs_commit_counter_test::count(), expectedCommits );
+    };
+
+    skale::fs_commit_counter_test::reset();
+    produceBlockWithFilestorageOperations();
+    expectFsCommitCount( 2 );
+
+    sleep( 6 );
+
+    produceBlockWithFilestorageOperations();
+
+    skale::fs_commit_counter_test::reset();
+    produceBlockWithFilestorageOperations();
+    expectFsCommitCount( 1 );
+}
+#endif
 
 BOOST_AUTO_TEST_CASE( recalculateExternalGas ) {
     std::string _config = c_genesisConfigString;

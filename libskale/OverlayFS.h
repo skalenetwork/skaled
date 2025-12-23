@@ -134,4 +134,10 @@ private:
     bool m_isCacheEnabled;
 };
 
+namespace fs_commit_counter_test {
+void enable( bool value );
+void reset();
+uint64_t count();
+}  // namespace fs_commit_counter_test
+
 }  // namespace skale
