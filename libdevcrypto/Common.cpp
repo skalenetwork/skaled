@@ -57,7 +57,7 @@ secp256k1_context const& getCtx() {
         &secp256k1_context_destroy
     };
 
-    if (!s_ctx) {
+    if ( !s_ctx ) {
         throw std::runtime_error( "Failed to create secp256k1 context" );
     }
 
@@ -222,7 +222,7 @@ static const u256 c_secp256k1n(
 Signature dev::sign( Secret const& _k, h256 const& _hash ) {
     auto& ctx = getCtx();
     secp256k1_ecdsa_recoverable_signature rawSig;
-    if ( !secp256k1_ecdsa_sign_recoverable( 
+    if ( !secp256k1_ecdsa_sign_recoverable(
              &ctx, &rawSig, _hash.data(), _k.data(), nullptr, nullptr ) )
         return {};
 

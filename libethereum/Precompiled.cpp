@@ -1262,7 +1262,7 @@ ETH_REGISTER_PRECOMPILED( encryptTE )
 
         // First 32 bytes: SC address (20 bytes, left-padded to 32)
         // Validate that the first 12 bytes are zeros (left-padding for 20-byte address)
-        if (! std::all_of( _in.data(), _in.data() + 12, []( uint8_t b ) { return b == 0; })) {
+        if ( !std::all_of( _in.data(), _in.data() + 12, []( uint8_t b ) { return b == 0; } ) ) {
             return { false, toBigEndian( dev::u256( 4 ) ) };  // error 4: address padding not zeros
         }
 
