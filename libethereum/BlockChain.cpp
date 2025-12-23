@@ -773,7 +773,7 @@ void BlockChain::insertTransactionsDetailsToDb(
         RLP txns_rlp = blockRLP[1];
 
 #ifdef BITE
-        //        CHECK_EXPRESSION( _block.decryptedTransactions.regularTxsMap );
+        CHECK_EXPRESSION( _block.decryptedTransactions.regularTxsMap );
         auto regularTxnsIterator = _block.decryptedTransactions.regularTxsMap->begin();
 #endif
         for ( RLP::iterator it = txns_rlp.begin(); it != txns_rlp.end(); ++it ) {
