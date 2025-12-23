@@ -997,7 +997,6 @@ std::vector< Transaction > SkaleHost::processRegularTransactions(
             std::optional< DecryptedRegularTxFields > txFields = regularTxnsIterator->second;
             if ( txFields.has_value() ) {
                 dev::Address to( txFields->to.data(), dev::Address::ConstructFromPointer );
-                ;
                 t.setDecryptedFields( std::make_shared< dev::bytes >( txFields->data ),
                     std::make_shared< dev::Address >( to ) );
             }

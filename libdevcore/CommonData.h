@@ -381,7 +381,7 @@ bool contains( std::unordered_set< V > const& _set, V const& _v ) {
 }
 
 #ifdef BITE2
-dev::bytes encodeArray( const std::vector< dev::bytes >& _elements );
+dev::bytes abiEncodeArray( const std::vector< dev::bytes >& _elements );
 
 dev::bytes rlpToAbiEncodedArrays( const dev::bytes& _rlpData );
 #endif

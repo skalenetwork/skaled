@@ -119,7 +119,7 @@ std::string dev::toString( string32 const& _s ) {
 }
 
 #ifdef BITE2
-dev::bytes dev::encodeArray( const std::vector< dev::bytes >& _elements ) {
+dev::bytes dev::abiEncodeArray( const std::vector< dev::bytes >& _elements ) {
     dev::bytes result;
 
     // Write array length
@@ -212,8 +212,8 @@ dev::bytes dev::rlpToAbiEncodedArrays( const dev::bytes& _rlpData ) {
     result.insert( result.end(), offset2Bytes.begin(), offset2Bytes.end() );
 
     // Encode both arrays
-    auto array1Encoded = dev::encodeArray( array1Elements );
-    auto array2Encoded = dev::encodeArray( array2Elements );
+    auto array1Encoded = dev::abiEncodeArray( array1Elements );
+    auto array2Encoded = dev::abiEncodeArray( array2Elements );
 
     result.insert( result.end(), array1Encoded.begin(), array1Encoded.end() );
     result.insert( result.end(), array2Encoded.begin(), array2Encoded.end() );
