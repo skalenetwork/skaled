@@ -1060,7 +1060,8 @@ std::vector< Transaction > SkaleHost::processCTXTransactions(
                     << "Couldn't decrypt CTX: " << sha << " with index: " << i;
             }
         } else {
-            BOOST_LOG( m_loggerInfo ) << "Received unexpected CTX. Exiting.";
+            BOOST_LOG( m_loggerInfo )
+                << "Received unexpected CTX. Exiting with code 200, repair will be needed.";
             ExitHandler::exitHandler( -1, ExitHandler::ec_state_root_mismatch );
         }
 
