@@ -485,8 +485,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
 #ifndef FAIR
     if ( singleCommitPerBlockEnabled ) {
         assert( RevertableFSPatch::isEnabledWhen( m_previousBlock.timestamp() ) );
-        bool isCacheEnabled =
-            RevertableFSPatch::isEnabledWhen( m_previousBlock.timestamp() );
+        bool isCacheEnabled = RevertableFSPatch::isEnabledWhen( m_previousBlock.timestamp() );
         m_state.resetOverlayFS( isCacheEnabled );
     }
 #endif
