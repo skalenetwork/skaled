@@ -24,6 +24,7 @@
 #pragma once
 
 #include <array>
+#include <optional>
 #include <unordered_map>
 
 #include <libdevcore/Common.h>
@@ -334,10 +335,30 @@ public:
 #endif
 
 private:
+    struct SyncContext {
+        bool singleCommitEnabled = false;
+        TransactionReceipts receipts;
+        TransactionReceipts receiptsOfCommitted;
+        unsigned badCount = 0;
+    };
+
     SealEngineFace* sealEngine() const;
 
     /// Undo the changes to the state for committing to mine.
     void uncommitToSeal();
+
+    void prepareStateForSync( uint64_t _timestamp, SyncContext& _ctx );
+    void executeTransactions( BlockChain const& _bc, const Transactions& _transactions,
+        u256 _gasPrice, SyncContext& _ctx );
+    std::optional< TransactionReceipt > executeSingleTransaction( BlockChain const& _bc,
+        Transaction const& _tx, unsigned _txIndex, u256 _gasPrice, skale::Permanence _permanence,
+        SyncContext& _ctx );
+    bool checkIfAlreadyCommitted( const Transactions& _transactions );
+    void saveStateChanges(
+        BlockChain const& _bc, const Transactions& _transactions, const SyncContext& _ctx );
+    void commitStateToDatabase( BlockChain const& _bc, const SyncContext& _ctx );
+    void createBlockSnapshot();
+    void handleLegacyPartialReceipts( BlockChain const& _bc, const SyncContext& _ctx );
 
     /// Execute the given block, assuming it corresponds to m_currentBlock.
     /// Throws on failure.
