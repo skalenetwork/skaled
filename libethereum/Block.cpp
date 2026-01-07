@@ -481,6 +481,8 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
     prepareStateForSync( _timestamp, ctx );
     executeTransactions( _bc, _transactions, _gasPrice, ctx );
 
+    // We need to commit to state db every time before single commit mode was introduced,
+    // since double commit avoided using partial recipts and checkIfAlreadyCommitted has no effect there
     if ( !ctx.singleCommitEnabled || !checkIfAlreadyCommitted( _transactions ) ) {
         saveStateChanges( _bc, _transactions, ctx );
     }
@@ -494,7 +496,6 @@ void Block::prepareStateForSync( uint64_t _timestamp, SyncContext& _ctx ) {
 
 #ifndef FAIR
     if ( _ctx.singleCommitEnabled ) {
-        assert( RevertableFSPatch::isEnabledWhen( m_previousBlock.timestamp() ) );
         bool isCacheEnabled = RevertableFSPatch::isEnabledWhen( m_previousBlock.timestamp() );
         m_state.resetOverlayFS( isCacheEnabled );
     }
@@ -598,6 +599,7 @@ std::optional< TransactionReceipt > Block::executeSingleTransaction( BlockChain 
 }
 
 bool Block::checkIfAlreadyCommitted( const Transactions& ) {
+    // This check only works for single commit mode
     auto progressLog = m_state.getProgressLog();
     if ( !progressLog ) {
         return false;
