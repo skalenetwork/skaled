@@ -42,6 +42,7 @@
 
 #include "BaseState.h"
 #include "OverlayDB.h"
+#include "StateProgressLog.h"
 #ifndef FAIR
 #include "OverlayFS.h"
 #endif
@@ -441,6 +442,10 @@ public:
 
     dev::db::DBImpl* getOriginalDb() const { return m_orig_db.get(); }
 
+    const boost::filesystem::path& getDataDir() const { return m_dataDir; }
+
+    std::shared_ptr< StateProgressLog > getProgressLog() const { return m_progressLog; }
+
 #ifndef FAIR
     void resetStorageChanges() {
         storageUsage.clear();
@@ -574,6 +579,9 @@ private:
     // if the state is based on a LevelDB snap, the instance of the snap goes here
     std::shared_ptr< dev::db::LevelDBSnap > m_snap = nullptr;
     bool m_isReadOnlySnapBasedState = false;
+
+    boost::filesystem::path m_dataDir;
+    std::shared_ptr< StateProgressLog > m_progressLog;
 
     /// Loggers
     mutable dev::Logger m_loggerDebug{ dev::createLogger( dev::VerbosityDebug, "State" ) };

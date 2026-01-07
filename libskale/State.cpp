@@ -105,6 +105,10 @@ State::State( dev::u256 const& _accountStartNonce, boost::filesystem::path const
               _bs == BaseState::PreExisting ? dev::WithExisting::Trust : dev::WithExisting::Kill ) )
 #endif
 {
+    m_dataDir = _dbPath;
+    if ( !m_dataDir.empty() ) {
+        m_progressLog = std::make_shared< StateProgressLog >( m_dataDir );
+    }
     m_db_ptr = make_shared< OverlayDB >( openDB( _dbPath, _genesis,
         _bs == BaseState::PreExisting ? dev::WithExisting::Trust : dev::WithExisting::Kill ) );
 
@@ -303,6 +307,8 @@ State::State( const State& _s )
     m_initial_funds = _s.m_initial_funds;
     m_snap = _s.m_snap;
     m_isReadOnlySnapBasedState = _s.m_isReadOnlySnapBasedState;
+    m_dataDir = _s.m_dataDir;
+    m_progressLog = _s.m_progressLog;
 #ifndef FAIR
     contractStorageLimit_ = _s.contractStorageLimit_;
     totalStorageUsed_ = _s.storageUsedTotal();
@@ -319,6 +325,8 @@ State& State::operator=( const State& _s ) {
     m_accountStartNonce = _s.m_accountStartNonce;
     m_changeLog = _s.m_changeLog;
     m_initial_funds = _s.m_initial_funds;
+    m_dataDir = _s.m_dataDir;
+    m_progressLog = _s.m_progressLog;
 #ifndef FAIR
     contractStorageLimit_ = _s.contractStorageLimit_;
     totalStorageUsed_ = _s.storageUsedTotal();

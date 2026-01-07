@@ -36,8 +36,10 @@
 #include <libethcore/SealEngine.h>
 #include <libevm/VMFactory.h>
 #include <libskale/SkipInvalidTransactionsPatch.h>
+#include <libskale/StateProgressLog.h>
 #include <boost/filesystem.hpp>
 #include <ctime>
+#include <memory>
 
 #include <libdevcore/microprofile.h>
 
@@ -595,34 +597,27 @@ std::optional< TransactionReceipt > Block::executeSingleTransaction( BlockChain 
     return std::nullopt;
 }
 
-bool Block::checkIfAlreadyCommitted( const Transactions& _transactions ) {
-#ifdef FAIR
-    auto lastRewardedBlockNumber = m_state.getLastRewardedBlockNumber();
-    if ( lastRewardedBlockNumber >= m_currentBlock.number() ) {
-        BOOST_LOG( m_loggerDebug )
-            << "Skipping state commit - block " << m_currentBlock.number()
-            << " already rewarded (lastRewardedBlockNumber=" << lastRewardedBlockNumber << ")";
+bool Block::checkIfAlreadyCommitted( const Transactions& ) {
+    auto progressLog = m_state.getProgressLog();
+    if ( !progressLog ) {
+        return false;
+    }
+
+    if ( progressLog->isBlockCommitCompleted( m_currentBlock.number() ) ) {
+        BOOST_LOG( m_loggerDebug ) << "Skipping state commit - block " << m_currentBlock.number()
+                                   << " already completed according to progress log";
         return true;
     }
-#else
-    // For non FAIR build if there are no transactions state is not changed at all, so we can safely commit again
-    if ( !_transactions.empty() ) {
-        dev::h256 savedLastTxHash = m_state.safeLastExecutedTransactionHash();
-        dev::h256 currentLastTxHash = _transactions.back().sha3();
-
-        if ( savedLastTxHash == currentLastTxHash ) {
-            BOOST_LOG( m_loggerDebug )
-                << "Skipping state commit - last executed tx hash matches: "
-                << savedLastTxHash.hex();
-            return true;
-        }
-    }
-#endif
     return false;
 }
 
 void Block::saveStateChanges(
     BlockChain const& _bc, const Transactions& _transactions, const SyncContext& _ctx ) {
+    auto progressLog = m_state.getProgressLog();
+    if ( progressLog ) {
+        progressLog->markBlockCommitStarted( m_currentBlock.number() );
+    }
+
 #ifdef FAIR
     auto lastRewardedBlockNumber = m_state.getLastRewardedBlockNumber();
     if ( lastRewardedBlockNumber < m_currentBlock.number() ) {
@@ -643,6 +638,10 @@ void Block::saveStateChanges(
 
     commitStateToDatabase( _bc, _ctx );
     createBlockSnapshot();
+
+    if ( progressLog ) {
+        progressLog->markBlockCommitCompleted( m_currentBlock.number() );
+    }
 
     if ( !_ctx.singleCommitEnabled ) {
         handleLegacyPartialReceipts( _bc, _ctx );
