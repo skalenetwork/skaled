@@ -2298,6 +2298,118 @@ BOOST_AUTO_TEST_CASE( single_state_commit_per_block_patch_transition ) {
     expectCommitCount( 1 );
 }
 
+BOOST_AUTO_TEST_CASE( state_progress_log_skip_already_committed ) {
+    Json::Value configJson;
+    Json::Reader().parse( c_genesisConfigString, configJson );
+    configJson["skaleConfig"]["sChain"]["singleStateCommitPerBlockPatchTimestamp"] =
+        static_cast< Json::Int64 >( 1 );
+
+    Json::FastWriter fastWriter;
+    JsonRpcFixture fixture( fastWriter.write( configJson ), true, true, false, true );
+    dev::eth::simulateMining( *( fixture.client ), 1 );
+
+    struct DbCommitCounterGuard {
+        DbCommitCounterGuard() { skale::commit_counter_test::enable( true ); }
+        ~DbCommitCounterGuard() { skale::commit_counter_test::enable( false ); }
+    } guard;
+
+    u256 nextNonce;
+
+    auto sendPayment = [&]( const dev::Address& _to ) {
+        Json::Value tx;
+        tx["from"] = fixture.coinbase.address().hex();
+        tx["to"] = _to.hex();
+        tx["value"] = toJS( 1 );
+        tx["gas"] = toJS( 21000 );
+        tx["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+        tx["nonce"] = toJS( nextNonce );
+        nextNonce++;
+        std::string hash = fixture.rpcClient->eth_sendTransaction( tx );
+        BOOST_REQUIRE( !hash.empty() );
+    };
+
+    auto produceBlockWithTransactions = [&]() {
+        nextNonce = jsToU256( fixture.rpcClient->eth_getTransactionCount(
+            fixture.coinbase.address().hex(), "pending" ) );
+        sendPayment( fixture.account2.address() );
+        sendPayment( fixture.account3.address() );
+        dev::eth::mineTransaction( *( fixture.client ), 1 );
+        fixture.client->state().getOriginalDb()->createBlockSnap( fixture.client->number() );
+    };
+
+    auto expectCommitCount = []( uint64_t expectedCommits ) {
+        BOOST_REQUIRE_EQUAL( skale::commit_counter_test::count(), expectedCommits );
+    };
+
+    produceBlockWithTransactions();
+    uint64_t currentBlock = fixture.client->number();
+
+    skale::commit_counter_test::reset();
+    produceBlockWithTransactions();
+    expectCommitCount( 1 );
+
+    auto progressLog = fixture.client->state().getProgressLog();
+    BOOST_REQUIRE( progressLog );
+    BOOST_CHECK( progressLog->isBlockCommitCompleted( fixture.client->number() ) );
+}
+
+BOOST_AUTO_TEST_CASE( state_progress_log_crash_recovery ) {
+    Json::Value configJson;
+    Json::Reader().parse( c_genesisConfigString, configJson );
+    configJson["skaleConfig"]["sChain"]["singleStateCommitPerBlockPatchTimestamp"] =
+        static_cast< Json::Int64 >( 1 );
+
+    Json::FastWriter fastWriter;
+    JsonRpcFixture fixture( fastWriter.write( configJson ), true, true, false, true );
+    dev::eth::simulateMining( *( fixture.client ), 1 );
+
+    struct DbCommitCounterGuard {
+        DbCommitCounterGuard() { skale::commit_counter_test::enable( true ); }
+        ~DbCommitCounterGuard() { skale::commit_counter_test::enable( false ); }
+    } guard;
+
+    u256 nextNonce;
+
+    auto sendPayment = [&]( const dev::Address& _to ) {
+        Json::Value tx;
+        tx["from"] = fixture.coinbase.address().hex();
+        tx["to"] = _to.hex();
+        tx["value"] = toJS( 1 );
+        tx["gas"] = toJS( 21000 );
+        tx["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+        tx["nonce"] = toJS( nextNonce );
+        nextNonce++;
+        std::string hash = fixture.rpcClient->eth_sendTransaction( tx );
+        BOOST_REQUIRE( !hash.empty() );
+    };
+
+    auto produceBlockWithTransactions = [&]() {
+        nextNonce = jsToU256( fixture.rpcClient->eth_getTransactionCount(
+            fixture.coinbase.address().hex(), "pending" ) );
+        sendPayment( fixture.account2.address() );
+        sendPayment( fixture.account3.address() );
+        dev::eth::mineTransaction( *( fixture.client ), 1 );
+        fixture.client->state().getOriginalDb()->createBlockSnap( fixture.client->number() );
+    };
+
+    produceBlockWithTransactions();
+
+    auto progressLog = fixture.client->state().getProgressLog();
+    BOOST_REQUIRE( progressLog );
+
+    uint64_t completedBlock = fixture.client->number();
+    BOOST_CHECK( progressLog->isBlockCommitCompleted( completedBlock ) );
+
+    progressLog->markBlockCommitStarted( completedBlock + 1 );
+    BOOST_CHECK( !progressLog->isBlockCommitCompleted( completedBlock + 1 ) );
+
+    skale::commit_counter_test::reset();
+    produceBlockWithTransactions();
+    BOOST_REQUIRE_EQUAL( skale::commit_counter_test::count(), 1 );
+
+    BOOST_CHECK( progressLog->isBlockCommitCompleted( fixture.client->number() ) );
+}
+
 #ifndef FAIR
 BOOST_AUTO_TEST_CASE( single_fs_commit_per_block_patch_transition ) {
     Json::Value configJson;

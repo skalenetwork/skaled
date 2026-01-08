@@ -482,7 +482,8 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
     executeTransactions( _bc, _transactions, _gasPrice, ctx );
 
     // We need to commit to state db every time before single commit mode was introduced,
-    // since double commit avoided using partial recipts and checkIfAlreadyCommitted has no effect there
+    // since double commit avoided using partial recipts and checkIfAlreadyCommitted has no effect
+    // there
     if ( !ctx.singleCommitEnabled || !checkIfAlreadyCommitted( _transactions ) ) {
         saveStateChanges( _bc, _transactions, ctx );
     }

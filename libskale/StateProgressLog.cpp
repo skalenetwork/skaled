@@ -22,6 +22,11 @@ StateProgressLog::StateProgressLog( const fs::path& _dataDir ) {
 }
 
 void StateProgressLog::markBlockCommitStarted( uint64_t _blockNumber ) {
+    uint64_t storedBlockNumber = 0;
+    Status storedStatus = Status::Started;
+    if ( readStatus( storedBlockNumber, storedStatus ) ) {
+        assert( storedStatus == Status::Completed || storedBlockNumber == _blockNumber );
+    }
     writeStatus( _blockNumber, Status::Started );
 }
 
