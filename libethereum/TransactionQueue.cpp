@@ -467,17 +467,6 @@ void TransactionQueue::dropGood( Transaction const& _t ) {
     WriteGuard l( m_lock );
     MICROPROFILE_LEAVE();
 
-#ifdef BITE2
-    // BITE2 transactions are stored separately
-    // they are also stored in the strict order
-    // delete and return
-    if ( _t.isCTX() ) {
-        CHECK_EXPRESSION( _t == m_bite2Current.front() );
-        m_bite2Current.erase( m_bite2Current.begin() );
-        return;
-    }
-#endif
-
     if ( !_t.isInvalid() )
         makeCurrent_WITH_LOCK( _t );
 
@@ -579,13 +568,11 @@ Transactions TransactionQueue::debugGetFutureTransactions() const {
 
 #ifdef BITE2
 void TransactionQueue::importBITE2Transaction( Transaction&& _t ) {
-    WriteGuard l( m_lock );
     BOOST_LOG( m_loggerTrace ) << "BITE2 txn arrived";
     m_bite2Current.push_back( std::move( _t ) );
 }
 
-const std::vector< Transaction >& TransactionQueue::pendingBITE2Transactions() const {
-    ReadGuard l( m_lock );
+std::vector< Transaction > TransactionQueue::pendingBITE2Transactions() const {
     return m_bite2Current;
 }
 #endif

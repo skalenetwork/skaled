@@ -1063,7 +1063,7 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
         dev::bytes signedTxnRlp = rlpStream.out();
 
         // Construct transaction from RLP
-        Transaction signedTransaction( signedTxnRlp, CheckTransaction::None );
+        Transaction signedTransaction( signedTxnRlp, CheckTransaction::Everything );
         signedTransaction.setBITE2EncryptedArgsSize( encryptedArgsCount );
 
         if ( signedTransaction.isInvalid() )

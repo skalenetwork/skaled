@@ -1284,12 +1284,7 @@ BOOST_AUTO_TEST_CASE( initAndUpdateHistoricConfigFields ) {
 
     testClient->importTransactionsAsBlock( Transactions(),
 #ifdef BITE
-       DecryptedTransactions{
-#ifdef BITE2
-               std::make_shared< DecryptedCATxsMap >(),
-#endif  // BITE2
-               std::make_shared< DecryptedRegularTxsMap >()
-           },
+    make_shared< DecryptedTransactionFieldsMap >(),
 #endif
         1000,
 #ifdef FAIR
