@@ -189,11 +189,10 @@ private:
     std::unique_ptr< Broadcaster > m_broadcaster;
 
 private:
-    virtual ConsensusExtFace::transactions_vector pendingTransactions(
-        size_t _limit, u256& _stateRoot );
-    virtual void createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
+    virtual ConsensusExtFace::Transactions pendingTransactions( size_t _limit, u256& _stateRoot );
+    virtual void createBlock( const ConsensusExtFace::Transactions& _approvedTransactions,
 #ifdef BITE
-        shared_ptr< DecryptedTransactionFieldsMap > _decryptedTransactions,
+        DecryptedTransactions _decryptedTransactions,
 #endif
         uint64_t _timeStamp, uint64_t _blockID, dev::u256 _gasPrice, u256 _stateRoot,
         uint64_t _winningNodeIndex );
@@ -213,6 +212,20 @@ private:
     std::thread m_broadcastThread;
     void broadcastFunc();
 
+    std::vector< dev::eth::Transaction > processRegularTransactions(
+        const ConsensusExtFace::Transactions& _approvedTransactions,
+        const dev::eth::BlockHeader& latestInfo
+#ifdef BITE
+        ,
+        DecryptedTransactions _decryptedTransactions
+#endif
+    );
+#ifdef BITE2
+    std::vector< dev::eth::Transaction > processCTXTransactions(
+        const ConsensusExtFace::Transactions& _approvedTransactions,
+        [[maybe_unused]] const dev::eth::BlockHeader& latestInfo,
+        DecryptedTransactions _decryptedTransactions );
+#endif
 
     list< dev::eth::Transaction > m_broadcastQueue;
     std::mutex m_broadcastQueueMutex;

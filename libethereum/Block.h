@@ -322,15 +322,13 @@ public:
     void startReadState();
 
 #ifdef BITE
-    void setDecryptedTransactionDataFields(
-        const std::shared_ptr< DecryptedTransactionFieldsMap >& _decryptedTransactionDataFields ) {
-        CHECK_EXPRESSION( _decryptedTransactionDataFields );
-        m_decryptedTransactionDataFields = _decryptedTransactionDataFields;
+    void setDecryptedTransactionDataFields( DecryptedTransactions _decryptedTransactions ) {
+        CHECK_EXPRESSION( _decryptedTransactions.catTxsMap );
+        CHECK_EXPRESSION( _decryptedTransactions.regularTxsMap );
+        m_decryptedTransactions = _decryptedTransactions;
     }
 
-    const std::shared_ptr< DecryptedTransactionFieldsMap >& decryptedTransactionDataFields() const {
-        return m_decryptedTransactionDataFields;
-    }
+    const DecryptedTransactions& decryptedTransactions() const { return m_decryptedTransactions; }
 #endif
 
 private:
@@ -384,9 +382,13 @@ private:
 #ifdef BITE
     // decrypted transaction data fields to be stored with the block and their indexes
     // only filled for a working block
-    std::shared_ptr< DecryptedTransactionFieldsMap > m_decryptedTransactionDataFields =
-        std::make_shared< DecryptedTransactionFieldsMap >();
-#endif
+    DecryptedTransactions m_decryptedTransactions = DecryptedTransactions{
+#ifdef BITE2
+        std::make_shared< DecryptedCATxsMap >(),
+#endif  // BITE2
+        std::make_shared< DecryptedRegularTxsMap >()
+    };
+#endif  // BITE
 
     Logger m_loggerDebug{ createLogger( VerbosityDebug, "block" ) };
     Logger m_loggerTrace{ createLogger( VerbosityTrace, "block" ) };

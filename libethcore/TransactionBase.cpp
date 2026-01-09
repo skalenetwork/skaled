@@ -25,6 +25,7 @@
 
 #include "EVMSchedule.h"
 
+#include <libdevcore/CommonData.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/vector_ref.h>
 #include <libdevcrypto/Common.h>
@@ -379,7 +380,15 @@ TransactionBase::TransactionBase( bytesConstRef _rlpData, CheckTransaction _chec
         // bad formatted txns cannot make it to the block
         // therefore no need to check it anywhere else
         checkIfBITETxnAndSet( m_receiveAddress );
-#endif
+
+#ifdef BITE2
+        // check if a txn is a CTX here
+        // bad formatted txns cannot make it to the block
+        // therefore no need to check it anywhere else
+        checkIfCTXAndSet( m_data );
+#endif  // BITE2
+
+#endif  // BITE
     } catch ( std::exception& e ) {
         m_type = Type::Invalid;
         RLPStream s;
@@ -668,6 +677,14 @@ bytesConstRef dev::eth::bytesRefFromTransactionRlp( const RLP& _rlp ) {
 }
 
 #ifdef BITE
+bool TransactionBase::isInvalidBiteTransaction() const {
+    return ( m_isBITETxn && ( !m_decryptedData && !m_decryptedTo ) )
+#ifdef BITE2
+           || ( m_isCTX && !m_decryptedData )
+#endif
+        ;
+}
+
 bytes const& TransactionBase::decryptedData() const {
     if ( !m_decryptedData )
         return data();
@@ -761,4 +778,89 @@ void TransactionBase::checkAndValidateBITETransaction( uint64_t _currentEpochId 
         throw;
     }
 }
-#endif
+
+#ifdef BITE2
+
+void TransactionBase::checkIfCTXAndSet( const dev::bytes& _data ) {
+    if ( _data.size() < BITE2_FUNCTION_SELECTOR_SIZE_BYTES )
+        return;
+    m_isCTX = std::equal( _data.begin(), _data.begin() + BITE2_FUNCTION_SELECTOR_SIZE_BYTES,
+        BITE_FUNCTION_SELECTOR_AS_BYTE_ARRAY );
+}
+
+void TransactionBase::setDecryptedArgsCTX( const DecryptedCATArgs& _decryptedCTXArgs ) {
+    if ( !isCTX() )
+        throw std::runtime_error( "Trying to set CTX arguments for not CTX-type transaction" );
+
+    m_ctxEncryptedArgsSize = _decryptedCTXArgs.args.size();
+
+    // Transform m_data from: selector(4 bytes) + RLP(RLP(encrypted_args), RLP(plaintext_args))
+    // to: selector(4 bytes) + abi.encode(bytes[] decrypted_args, bytes[] plaintext_args)
+    // Store result in m_decryptedData
+
+    if ( m_data.size() < 4 )
+        BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment(
+                                   "CTX transaction data too short - missing function selector" ) );
+
+    // Extract function selector (first 4 bytes)
+    dev::bytes functionSelector( m_data.begin(), m_data.begin() + 4 );
+
+    // Parse RLP structure from remaining data
+    dev::bytes rlpData( m_data.begin() + 4, m_data.end() );
+    RLP rlp( rlpData );
+
+    if ( !rlp.isList() || rlp.itemCount() != 2 )
+        BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment(
+                                   "CTX transaction data must contain RLP list with 2 elements" ) );
+
+    // Parse encrypted args array (first RLP list)
+    RLP encryptedArgsRlp = rlp[0];
+    if ( !encryptedArgsRlp.isList() )
+        BOOST_THROW_EXCEPTION( InvalidBITETransaction()
+                               << errinfo_comment( "CTX encrypted args must be an RLP list" ) );
+
+    if ( encryptedArgsRlp.itemCount() != _decryptedCTXArgs.args.size() )
+        BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment(
+                                   "CTX decrypted args count mismatch: expected " +
+                                   std::to_string( encryptedArgsRlp.itemCount() ) + ", got " +
+                                   std::to_string( _decryptedCTXArgs.args.size() ) ) );
+
+    // Parse plaintext args array (second RLP list)
+    RLP plaintextArgsRlp = rlp[1];
+    if ( !plaintextArgsRlp.isList() )
+        BOOST_THROW_EXCEPTION( InvalidBITETransaction()
+                               << errinfo_comment( "CTX plaintext args must be an RLP list" ) );
+
+    // Build new RLP structure with decrypted args
+    RLPStream decryptedArgsStream;
+    decryptedArgsStream.appendList( _decryptedCTXArgs.args.size() );
+    for ( const auto& decryptedArg : _decryptedCTXArgs.args ) {
+        decryptedArgsStream << decryptedArg;
+    }
+
+    // Reuse plaintext args as-is
+    RLPStream plaintextArgsStream;
+    plaintextArgsStream.appendList( plaintextArgsRlp.itemCount() );
+    for ( size_t i = 0; i < plaintextArgsRlp.itemCount(); ++i ) {
+        plaintextArgsStream << plaintextArgsRlp[i].toBytes();
+    }
+
+    // Create final RLP: RLP(RLP(decrypted_args), RLP(plaintext_args))
+    RLPStream finalRlp;
+    finalRlp.appendList( 2 );
+    finalRlp.appendRaw( decryptedArgsStream.out() );
+    finalRlp.appendRaw( plaintextArgsStream.out() );
+
+    // Convert RLP to ABI-encoded format using helper function
+    dev::bytes abiEncodedArrays = rlpToAbiEncodedArrays( finalRlp.out() );
+
+    // Reconstruct decrypted data: selector + abi_encoded_arrays
+    m_decryptedData = std::make_shared< dev::bytes >();
+    m_decryptedData->insert(
+        m_decryptedData->end(), functionSelector.begin(), functionSelector.end() );
+    m_decryptedData->insert(
+        m_decryptedData->end(), abiEncodedArrays.begin(), abiEncodedArrays.end() );
+}
+#endif  // BITE2
+
+#endif  // BITE
