@@ -154,12 +154,6 @@ public:
 
     Transactions debugGetFutureTransactions() const { return m_tq.debugGetFutureTransactions(); }
 
-#ifdef BITE2
-    const Transactions& debugGetPendingBITE2Transactions() const {
-        return m_tq.pendingBITE2Transactions();
-    }
-#endif
-
     /// Queues a block for import.
     ImportResult queueBlock( bytes const& _block, bool _isSafe = false );
 
@@ -301,7 +295,7 @@ public:
     // main entry point after consensus
     size_t importTransactionsAsBlock( const Transactions& _transactions,
 #ifdef BITE
-        DecryptedTransactions _decryptedTransactions,
+        const std::shared_ptr< DecryptedTransactionFieldsMap >& _decryptedTransactionDataFields,
 #endif
         u256 _gasPrice,
 #ifdef FAIR

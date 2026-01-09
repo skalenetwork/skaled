@@ -159,7 +159,7 @@ public:
 
     /// Get all pending BITE2 transactions. Returned transactions are not removed from the queue
     /// automatically.
-    const std::vector< Transaction >& pendingBITE2Transactions() const;
+    std::vector< Transaction > pendingBITE2Transactions() const;
 #endif
 
     struct Status {

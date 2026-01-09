@@ -57,10 +57,6 @@ public:
 
     virtual Json::Value debug_getPatchTimestamps() override;
 
-#ifdef BITE2
-    virtual Json::Value debug_getPendingBITE2Transactions() override;
-#endif
-
 private:
     eth::Client& m_eth;
     SkaleDebugInterface* m_debugInterface = nullptr;

@@ -240,10 +240,10 @@ void DefaultConsensusFactory::fillRotationHistory( ConsensusEngine& consensus ) 
 class ConsensusExtImpl : public ConsensusExtFace {
 public:
     ConsensusExtImpl( SkaleHost& _host );
-    virtual Transactions pendingTransactions( size_t _limit, u256& _stateRoot ) override;
-    virtual void createBlock( const Transactions& _approvedTransactions,
+    virtual transactions_vector pendingTransactions( size_t _limit, u256& _stateRoot ) override;
+    virtual void createBlock( const transactions_vector& _approvedTransactions,
 #ifdef BITE
-        DecryptedTransactions _decryptedTransactions,
+        shared_ptr< DecryptedTransactionFieldsMap > _decryptedTransactionFields,
 #endif
         uint64_t _timeStamp, uint32_t _timeStampMs, uint64_t _blockID, u256 _gasPrice,
         u256 _stateRoot, uint64_t _winningNodeIndex ) override;
@@ -256,22 +256,23 @@ private:
 
 ConsensusExtImpl::ConsensusExtImpl( SkaleHost& _host ) : m_host( _host ) {}
 
-ConsensusExtFace::Transactions ConsensusExtImpl::pendingTransactions(
+ConsensusExtFace::transactions_vector ConsensusExtImpl::pendingTransactions(
     size_t _limit, u256& _stateRoot ) {
     auto ret = m_host.pendingTransactions( _limit, _stateRoot );
     return ret;
 }
 
-void ConsensusExtImpl::createBlock( const ConsensusExtFace::Transactions& _approvedTransactions,
+void ConsensusExtImpl::createBlock(
+    const ConsensusExtFace::transactions_vector& _approvedTransactions,
 #ifdef BITE
-    DecryptedTransactions _decryptedTransactions,
+    shared_ptr< DecryptedTransactionFieldsMap > _decryptedTransactionFields,
 #endif
     uint64_t _timeStamp, uint32_t, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot,
     uint64_t _winningNodeIndex ) {
     MICROPROFILE_SCOPEI( "ConsensusExtFace", "createBlock", MP_INDIANRED );
     m_host.createBlock( _approvedTransactions,
 #ifdef BITE
-        _decryptedTransactions,
+        _decryptedTransactionFields,
 #endif
         _timeStamp, _blockID, _gasPrice, _stateRoot, _winningNodeIndex );
 }
@@ -428,16 +429,23 @@ public:
     void will_exit() { m_will_exit = true; }
 };
 
-ConsensusExtFace::Transactions SkaleHost::pendingTransactions( size_t _limit, u256& _stateRoot ) {
+ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
+    size_t _limit, u256& _stateRoot ) {
     assert( _limit > 0 );
     assert( _limit <= numeric_limits< unsigned int >::max() );
 
-    ConsensusExtFace::Transactions out_vector;
+    ConsensusExtFace::transactions_vector out_vector;
+
+    if ( m_exitNeeded )
+        return out_vector;
 
     if ( m_exitNeeded )
         return out_vector;
 
     std::lock_guard< std::mutex > pauseLock( m_consensusPauseMutex );
+
+    if ( m_exitNeeded )
+        return out_vector;
 
     if ( m_exitNeeded )
         return out_vector;
@@ -459,16 +467,6 @@ ConsensusExtFace::Transactions SkaleHost::pendingTransactions( size_t _limit, u2
 
     int counter = 0;
     BlockHeader latestInfo = static_cast< const Interface& >( m_client ).blockInfo( LatestBlock );
-
-#ifdef BITE2
-    auto bite2Transactions = m_tq.pendingBITE2Transactions();
-    // CTXs are not the subject for block gas limit
-    for ( const auto& ctx : bite2Transactions ) {
-        out_vector.pushBackCAT( ctx.toBytes() );
-        m_debugTracer.tracepoint( "sent_txn" );
-        BOOST_LOG( m_loggerTrace ) << "Sent CTX";
-    }
-#endif
 
     Transactions txns = m_tq.topTransactionsSync(
         _limit, [this, &to_delete, &counter, &latestInfo]( const Transaction& tx ) -> bool {
@@ -524,7 +522,7 @@ ConsensusExtFace::Transactions SkaleHost::pendingTransactions( size_t _limit, u2
 
             h256 sha = txn.sha3();
 
-            out_vector.pushBackRegular( txn.toBytes() );
+            out_vector.push_back( txn.toBytes() );
 
             ++total_sent;
 
@@ -583,9 +581,9 @@ void SkaleHost::checkStateRoot( uint64_t _blockID, uint64_t _winningNodeIndex, u
                                      << _stateRoot.str() << " with block ID #" << _blockID;
 }
 
-void SkaleHost::createBlock( const ConsensusExtFace::Transactions& _approvedTransactions,
+void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
 #ifdef BITE
-    DecryptedTransactions _decryptedTransactions,
+    shared_ptr< DecryptedTransactionFieldsMap > _decryptedTransactionFields,
 #endif
     uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot,
     uint64_t _winningNodeIndex ) try {
@@ -601,11 +599,6 @@ void SkaleHost::createBlock( const ConsensusExtFace::Transactions& _approvedTran
     }
 
     BOOST_LOG( m_loggerDebug ) << "createBlock ID = #" << _blockID;
-
-#ifdef BITE2
-    BOOST_LOG( m_loggerDebug ) << "Got block with " << _approvedTransactions.sizeCAT() << " CTXs";
-#endif
-
     m_debugTracer.tracepoint( "create_block" );
 
     // convert bytes back to transactions (using caching), delete them from q and push results into
@@ -614,7 +607,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::Transactions& _approvedTran
     if ( this->m_client.chainParams().getSnapshotIntervalSec() > 0 )
         checkStateRoot( _blockID, _winningNodeIndex, _stateRoot );
 
-    std::vector< Transaction > outTxns;  // resultant Transaction vector
+    std::vector< Transaction > out_txns;  // resultant Transaction vector
 
     size_t n_succeeded;
 
@@ -623,19 +616,50 @@ void SkaleHost::createBlock( const ConsensusExtFace::Transactions& _approvedTran
     DEV_GUARDED( m_client.m_blockImportMutex ) {
         m_debugTracer.tracepoint( "drop_good_transactions" );
 
-        outTxns = processRegularTransactions( _approvedTransactions, latestInfo
 #ifdef BITE
-            ,
-            _decryptedTransactions
+        auto decryptedTransactionFieldsIt = _decryptedTransactionFields->begin();
 #endif
-        );
-#ifdef BITE2
-        auto ctxTxns =
-            processCTXTransactions( _approvedTransactions, latestInfo, _decryptedTransactions );
-        outTxns.insert( outTxns.begin(), ctxTxns.begin(), ctxTxns.end() );
+        for ( size_t i = 0; i < _approvedTransactions.size(); ++i ) {
+            const bytes& data = _approvedTransactions.at( i );
+            h256 sha = sha3( data );
+            BOOST_LOG( m_loggerTrace ) << "Arrived txn: " << sha;
+
+            Transaction t( data, CheckTransaction::Everything, true,
+                EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
+                InvalidTransactionFormatPatch::isEnabledInWorkingBlock() );
+#ifdef BITE
+            if ( decryptedTransactionFieldsIt != _decryptedTransactionFields->end() &&
+                 decryptedTransactionFieldsIt->first == i ) {
+                DecryptedTransactionFields& txFields = decryptedTransactionFieldsIt->second;
+
+                dev::Address to = dev::Address( txFields.to.get() );
+                t.setDecryptedFields( txFields.data, std::make_shared< dev::Address >( to ) );
+                ++decryptedTransactionFieldsIt;
+            }
+
 #endif
 
-        total_arrived += outTxns.size();
+#ifndef FAIR
+            t.checkOutExternalGas(
+                m_client.chainParams(), latestInfo.timestamp(), m_client.number() );
+
+            if ( !ExternalGasPatch::isEnabledWhen( latestInfo.timestamp() ) ) {
+                auto hash = t.sha3();
+                if ( m_client.m_tq.isTransactionKnown( hash ) ) {
+                    // if a transaction is in the pending queue
+                    // do checkOutExternal gas twice to repeat incorrect behavior that
+                    // existed before the patch
+                    t.checkOutExternalGas(
+                        m_client.chainParams(), latestInfo.timestamp(), m_client.number() );
+                }
+            }
+#endif
+            out_txns.push_back( t );
+            m_debugTracer.tracepoint( "drop_good" );
+            m_tq.dropGood( t );
+        }
+
+        total_arrived += out_txns.size();
 
         if ( _blockID != m_client.number() + 1 ) {
             BOOST_LOG( m_loggerError )
@@ -646,10 +670,10 @@ void SkaleHost::createBlock( const ConsensusExtFace::Transactions& _approvedTran
 
         m_debugTracer.tracepoint( "import_block" );
 
-        n_succeeded = m_client.importTransactionsAsBlock( outTxns,
+        n_succeeded = m_client.importTransactionsAsBlock( out_txns,
 
 #ifdef BITE
-            _decryptedTransactions,
+            _decryptedTransactionFields,
 #endif
             _gasPrice,
 #ifdef FAIR
@@ -662,7 +686,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::Transactions& _approvedTran
     syncNodeGroups();
 #endif
 
-    if ( n_succeeded != outTxns.size() )
+    if ( n_succeeded != out_txns.size() )
         penalizePeer();
 
 
@@ -692,7 +716,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::Transactions& _approvedTran
 
     latestBlockTime = skaledTimeFinish;
     BOOST_LOG( m_loggerDebug ) << "Successfully imported " << n_succeeded << " of "
-                               << outTxns.size() << " transactions";
+                               << out_txns.size() << " transactions";
 
 
     if ( m_instanceMonitor != nullptr ) {
@@ -966,128 +990,6 @@ void SkaleHost::broadcastFunc() {
 
     m_broadcaster->stopService();
 }
-
-std::vector< Transaction > SkaleHost::processRegularTransactions(
-    const ConsensusExtFace::Transactions& _approvedTransactions,
-    [[maybe_unused]] const BlockHeader& latestInfo
-#ifdef BITE
-    ,
-    DecryptedTransactions _decryptedTransactions
-#endif
-) {
-    std::vector< Transaction > outTxns;
-#ifdef BITE
-    auto regularTxnsIterator = _decryptedTransactions.regularTxsMap->begin();
-#endif
-    size_t regularTxnsStartIndex = 0;
-#ifdef BITE2
-    regularTxnsStartIndex = _approvedTransactions.sizeCAT();
-#endif
-    for ( size_t i = regularTxnsStartIndex; i < _approvedTransactions.size(); ++i ) {
-        const bytes& data = _approvedTransactions.at( i );
-        h256 sha = sha3( data );
-        BOOST_LOG( m_loggerTrace ) << "Arrived txn: " << sha;
-
-        Transaction t( data, CheckTransaction::Everything, true,
-            EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
-            InvalidTransactionFormatPatch::isEnabledInWorkingBlock() );
-#ifdef BITE
-        if ( regularTxnsIterator != _decryptedTransactions.regularTxsMap->end() &&
-             regularTxnsIterator->first == i ) {
-            std::optional< DecryptedRegularTxFields > txFields = regularTxnsIterator->second;
-            if ( txFields.has_value() ) {
-                dev::Address to( txFields->to.data(), dev::Address::ConstructFromPointer );
-                t.setDecryptedFields( std::make_shared< dev::bytes >( txFields->data ),
-                    std::make_shared< dev::Address >( to ) );
-            }
-        }
-#endif
-
-#ifndef FAIR
-        t.checkOutExternalGas( m_client.chainParams(), latestInfo.timestamp(), m_client.number() );
-
-        if ( !ExternalGasPatch::isEnabledWhen( latestInfo.timestamp() ) ) {
-            auto hash = t.sha3();
-            if ( m_client.m_tq.isTransactionKnown( hash ) ) {
-                // if a transaction is in the pending queue
-                // do checkOutExternal gas twice to repeat incorrect behavior that
-                // existed before the patch
-                t.checkOutExternalGas(
-                    m_client.chainParams(), latestInfo.timestamp(), m_client.number() );
-            }
-        }
-#endif
-        outTxns.push_back( t );
-        m_debugTracer.tracepoint( "drop_good" );
-        m_tq.dropGood( t );
-#ifdef BITE
-        if ( regularTxnsIterator != _decryptedTransactions.regularTxsMap->end() )
-            ++regularTxnsIterator;
-#endif
-    }
-    return outTxns;
-}
-
-#ifdef BITE2
-std::vector< Transaction > SkaleHost::processCTXTransactions(
-    const ConsensusExtFace::Transactions& _approvedTransactions,
-    [[maybe_unused]] const dev::eth::BlockHeader& latestInfo,
-    DecryptedTransactions _decryptedTransactions ) {
-    std::vector< Transaction > outTxns;
-    if ( _approvedTransactions.sizeCAT() != m_tq.pendingBITE2Transactions().size() ) {
-        BOOST_LOG( m_loggerInfo ) << "Expected " << m_tq.pendingBITE2Transactions().size()
-                                  << " CTX, but received " << _approvedTransactions.sizeCAT()
-                                  << ".\n Exiting with code 200, repair will be needed.";
-        ExitHandler::exitHandler( -1, ExitHandler::ec_state_root_mismatch );
-    }
-    auto ctxIterator = _decryptedTransactions.catTxsMap->begin();
-    for ( size_t i = 0; i < _approvedTransactions.sizeCAT(); ++i ) {
-        const bytes& data = _approvedTransactions.at( i );
-        h256 sha = sha3( data );
-        BOOST_LOG( m_loggerTrace ) << "Arrived CTX: " << sha;
-
-        Transaction t( data, CheckTransaction::Everything, true,
-            EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
-            InvalidTransactionFormatPatch::isEnabledInWorkingBlock() );
-
-        if ( ctxIterator != _decryptedTransactions.catTxsMap->end() && ctxIterator->first == i ) {
-            std::optional< DecryptedCATArgs > decryptedArgs = ctxIterator->second;
-            if ( decryptedArgs.has_value() ) {
-                t.setDecryptedArgsCTX( decryptedArgs.value() );
-            } else {
-                BOOST_LOG( m_loggerTrace )
-                    << "Couldn't decrypt CTX: " << sha << " with index: " << i;
-            }
-        } else {
-            BOOST_LOG( m_loggerInfo )
-                << "Received unexpected CTX. Exiting with code 200, repair will be needed.";
-            ExitHandler::exitHandler( -1, ExitHandler::ec_state_root_mismatch );
-        }
-
-#ifndef FAIR
-        t.checkOutExternalGas( m_client.chainParams(), latestInfo.timestamp(), m_client.number() );
-
-        if ( !ExternalGasPatch::isEnabledWhen( latestInfo.timestamp() ) ) {
-            auto hash = t.sha3();
-            if ( m_client.m_tq.isTransactionKnown( hash ) ) {
-                // if a transaction is in the pending queue
-                // do checkOutExternal gas twice to repeat incorrect behavior that
-                // existed before the patch
-                t.checkOutExternalGas(
-                    m_client.chainParams(), latestInfo.timestamp(), m_client.number() );
-            }
-        }
-#endif
-
-        outTxns.push_back( t );
-        m_debugTracer.tracepoint( "drop_good" );
-        m_tq.dropGood( t );
-        if ( ctxIterator != _decryptedTransactions.catTxsMap->end() )
-            ++ctxIterator;
-    }
-    return outTxns;
-}
-#endif
 
 u256 SkaleHost::getGasPrice( unsigned _blockNumber ) const {
     if ( _blockNumber == dev::eth::LatestBlock )
