@@ -939,11 +939,6 @@ ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef, const PrecompiledCall
 
 ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallContext& _ctx ) {
     try {
-        // cannot be called from read-only context (e.g. eth_call, eth_estimateGas,
-        // debug_traceTransaction) simply return success here
-        if ( _ctx.isReadOnly )
-            return { true, toBigEndian( dev::u256( SubmitCTXStatus::SUCCESS ) ) };
-
         // Parse ABI-encoded input: abi.encode(uint256 gasLimit, bytes data)
         // Format: gasLimit(32) + offset_to_data(32) + data_length(32) + data_bytes
 
@@ -1034,11 +1029,18 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
         // Get sender address before moving the transaction
         dev::Address senderAddress = signedTransaction.sender();
 
-        // push txn to BITE2 queue
-        g_skaleHost->pushToBITE2Queue( std::move( signedTransaction ) );
+        // state must not be changed as a result of executing external calls
+        // (e.g. eth_call, eth_estimateGasm, debug_traceBlock)
+        // skip adding CTX to BITE2 queue for external calls
+        bytes response = senderAddress.asBytes();
+        if ( _ctx.isReadOnly ) {
+            return { true, response };
+        } else {
+            // push txn to BITE2 queue
+            g_skaleHost->pushToBITE2Queue( std::move( signedTransaction ) );
+        }
 
         // Return sender address
-        bytes response = senderAddress.asBytes();
         return { true, response };
 
     } catch ( std::exception& ex ) {
