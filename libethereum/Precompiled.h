@@ -62,8 +62,7 @@ struct PrecompiledCallContext {
     }
     PrecompiledCallContext( const dev::u256& _bn,
 #ifdef BITE2
-        const dev::u256& _currentTxnIndex, int64_t _latestBlockTimestamp,
-        const dev::Address& _from,
+        const dev::u256& _currentTxnIndex, int64_t _latestBlockTimestamp, const dev::Address& _from,
 #endif
         bool _readOnly )
         : blockNumber( _bn ),

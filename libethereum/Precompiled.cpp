@@ -961,7 +961,8 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
             return { false, toBigEndian( dev::u256( SubmitCTXStatus::INVALID_GAS_LIMIT ) ) };
 
         // Read offset to data from second 32 bytes
-        bigint const dataOffset( parseBigEndianRightPadded( _in, dev::h256::size, dev::h256::size ) );
+        bigint const dataOffset(
+            parseBigEndianRightPadded( _in, dev::h256::size, dev::h256::size ) );
 
         // Extract transaction data at the offset (has length prefix)
         if ( _in.size() < dataOffset.convert_to< size_t >() + dev::h256::size )

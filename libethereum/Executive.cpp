@@ -368,8 +368,7 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
             bool success;
             PrecompiledCallContext ctx{ m_envInfo.number(),
 #ifdef BITE2
-                m_txnIndex, m_envInfo.committedBlockTimestamp(),
-                _p.senderAddress,
+                m_txnIndex, m_envInfo.committedBlockTimestamp(), _p.senderAddress,
 #endif
                 m_readOnly };
 #ifdef FAIR
