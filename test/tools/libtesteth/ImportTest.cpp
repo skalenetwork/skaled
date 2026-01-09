@@ -50,7 +50,7 @@ vector< h256 > lastHashes( u256 _currentBlockNumber ) {
 
 int mainnetChainID() {
     static auto const c_mainnetChainID =
-        ChainParams( genesisInfo( eth::Network::MainNetworkTest ) ).chainID;
+        ChainParams( genesisInfo( eth::Network::MainNetworkTest ) ).getChainId();
     return c_mainnetChainID;
 }
 }  // namespace
@@ -60,8 +60,10 @@ ImportTest::ImportTest( json_spirit::mObject const& _input, json_spirit::mObject
       m_statePost( 0 ),
       m_testInputObject( _input ),
       m_testOutputObject( _output ) {
+#ifndef FAIR
     m_statePre.setStorageLimit(1000000000);
     m_statePost.setStorageLimit(1000000000);
+#endif
     importEnv( _input.at( "env" ).get_obj() );
     importTransaction( _input.at( "transaction" ).get_obj() );
     importState( _input.at( "pre" ).get_obj(), m_statePre );
@@ -100,11 +102,6 @@ void ImportTest::makeBlockchainTestFromStateTest( set< eth::Network > const& _ne
         for ( auto const& net : _networks ) {
             auto trDup = tr;
             trDup.netId = net;
-
-            // Calculate the block reward
-            ChainParams const chainParams{genesisInfo( net )};
-            EVMSchedule const schedule = chainParams.makeEvmSchedule( 0, 1 );
-            // u256 const blockReward = chainParams.blockReward(schedule);
 
             TrExpectSection search{trDup, smap};
             for ( auto const& exp : m_testInputObject.at( "expect" ).get_array() ) {
@@ -209,7 +206,9 @@ bytes ImportTest::executeTest( bool _isFilling ) {
             if ( statePreIsChanged ) {
                 // revert changes in m_statePre
                 m_statePre = State( 0 );
+#ifndef FAIR
                 m_statePre.setStorageLimit(1000000000);
+#endif
                 importState( m_testInputObject.at( "pre" ).get_obj(), m_statePre );
             }
 
@@ -256,7 +255,7 @@ std::tuple< State, ImportTest::ExecOutput, skale::ChangeLog > ImportTest::execut
     try {
         unique_ptr< SealEngineFace > se(
             ChainParams( genesisInfo( _sealEngineNetwork ) ).createSealEngine() );
-        removeEmptyAccounts = m_envInfo->number() >= se->chainParams().EIP158ForkBlock;
+        removeEmptyAccounts = m_envInfo->number() >= se->chainParams().getEIP158ForkBlock();
         if ( Options::get().jsontrace ) {
             StandardTrace st;
             st.setShowMnemonics();
@@ -417,7 +416,9 @@ void ImportTest::importTransaction( json_spirit::mObject const& _o, eth::Transac
                        toInt( _o.at( "gasLimit" ) ), Address( _o.at( "to" ).get_str() ),
                        importData( _o ), toInt( _o.at( "nonce" ) ),
                        Secret( _o.at( "secretKey" ).get_str() ) );
+#ifndef FAIR
         o_tr.ignoreExternalGas();
+#endif
     } else {
         requireJsonFields( _o, "transaction",
             {{"data", jsonVType::str_type}, {"gasLimit", jsonVType::str_type},
@@ -429,7 +430,9 @@ void ImportTest::importTransaction( json_spirit::mObject const& _o, eth::Transac
         RLP transactionRLP( transactionRLPStream.out() );
         try {
             o_tr = Transaction( transactionRLP.data(), CheckTransaction::Everything );
+#ifndef FAIR
             o_tr.ignoreExternalGas();
+#endif
         } catch ( InvalidSignature const& ) {
             // create unsigned transaction
             o_tr = _o.at( "to" ).get_str().empty() ?
@@ -439,7 +442,9 @@ void ImportTest::importTransaction( json_spirit::mObject const& _o, eth::Transac
                        Transaction( toInt( _o.at( "value" ) ), toInt( _o.at( "gasPrice" ) ),
                            toInt( _o.at( "gasLimit" ) ), Address( _o.at( "to" ).get_str() ),
                            importData( _o ), toInt( _o.at( "nonce" ) ) );
+#ifndef FAIR
             o_tr.ignoreExternalGas();
+#endif
         } catch ( Exception& _e ) {
             cnote << "invalid transaction" << boost::diagnostic_information( _e );
         }
@@ -487,6 +492,106 @@ void ImportTest::importTransaction( json_spirit::mObject const& o_tr ) {
                 m_transactions.push_back( execData );
             }
 }
+
+#ifdef FAIR
+int ImportTest::compareStatesFAIR( State const& _stateExpect, State const& _statePost,
+    unordered_set<Address> const& owners,
+    AccountMaskMap const _expectedStateOptions, WhenError _throw ) {
+    bool wasError = false;
+#define CHECK( a, b )                       \
+    {                                       \
+            if ( _throw == WhenError::Throw ) { \
+                BOOST_CHECK_MESSAGE( a, b );    \
+                if ( !a )                       \
+                return 1;                   \
+        } else {                            \
+                BOOST_WARN_MESSAGE( a, b );     \
+                if ( !a )                       \
+                wasError = true;            \
+        }                                   \
+    }
+
+    for ( auto const& a : _stateExpect.addresses() ) {
+        AccountMask addressOptions( true );
+        auto accountAddress = a.first;
+        if ( _expectedStateOptions.size() ) {
+            try {
+                addressOptions = _expectedStateOptions.at( accountAddress );
+            } catch ( std::out_of_range const& ) {
+                BOOST_ERROR( TestOutputHelper::get().testName() +
+                             " expectedStateOptions map does not match expectedState in "
+                             "checkExpectedState!" );
+                break;
+            }
+        }
+
+        if ( addressOptions.shouldExist() ) {
+            CHECK( _statePost.addressInUse( accountAddress ),
+                TestOutputHelper::get().testName() + " Compare States: "
+                    << accountAddress << " missing expected address!" );
+        } else {
+            CHECK( !_statePost.addressInUse( accountAddress ),
+                TestOutputHelper::get().testName() + " Compare States: "
+                    << accountAddress << " address not expected to exist!" );
+        }
+
+        if ( _statePost.addressInUse( accountAddress ) ) {
+            // Check only non owner accounts
+            if ( owners.find( accountAddress ) == owners.end() ) {
+                if ( addressOptions.hasBalance() )
+                    CHECK( ( _stateExpect.balance( accountAddress ) == _statePost.balance( accountAddress ) ),
+                        TestOutputHelper::get().testName() + " Check State: "
+                            << accountAddress << ": incorrect balance " << _statePost.balance( accountAddress )
+                            << ", expected " << _stateExpect.balance( accountAddress ) );
+            }
+            if ( addressOptions.hasNonce() )
+                CHECK( ( _stateExpect.getNonce( accountAddress ) == _statePost.getNonce( accountAddress ) ),
+                    TestOutputHelper::get().testName() + " Check State: "
+                        << accountAddress << ": incorrect nonce " << _statePost.getNonce( accountAddress )
+                        << ", expected " << _stateExpect.getNonce( accountAddress ) );
+
+            if ( addressOptions.hasStorage() ) {
+                map< h256, pair< u256, u256 > > stateStorage = _statePost.storage( accountAddress );
+                for ( auto const& s : _stateExpect.storage( accountAddress ) )
+                    CHECK( ( stateStorage[s.first] == s.second ),
+                        TestOutputHelper::get().testName() + " Check State: "
+                            << accountAddress << ": incorrect storage ["
+                            << toCompactHexPrefixed( s.second.first )
+                            << "] = " << toCompactHexPrefixed( stateStorage[s.first].second )
+                            << ", expected [" << toCompactHexPrefixed( s.second.first )
+                            << "] = " << toCompactHexPrefixed( s.second.second ) );
+
+                        // Check for unexpected storage values
+                map< h256, pair< u256, u256 > > expectedStorage = _stateExpect.storage( accountAddress );
+                for ( auto const& s : _statePost.storage( accountAddress ) ) {
+                    if (s.second.second == 0 && expectedStorage.count( s.first ) == 0 ) {
+                        // take into account fact that storage() in skaled historically
+                        // can return zero values of storage, which could just be omitted
+                        // since Ethereum default value for storage is zero anyway
+                        continue;
+                    }
+                    CHECK( ( expectedStorage[s.first] == s.second ),
+                        TestOutputHelper::get().testName() + " Check State: "
+                            << accountAddress << ": unexpected incorrect storage ["
+                            << toCompactHexPrefixed( s.second.first )
+                            << "] = " << toCompactHexPrefixed( s.second.second ) << ", expected ["
+                            << toCompactHexPrefixed( s.second.first )
+                            << "] = " << toCompactHexPrefixed( expectedStorage[s.first].second ) );
+                }
+            }
+
+            if ( addressOptions.hasCode() )
+                CHECK( ( _stateExpect.code( accountAddress ) == _statePost.code( accountAddress) ),
+                    TestOutputHelper::get().testName() + " Check State: "
+                        << accountAddress << ": incorrect code '"
+                        << toHexPrefixed( _statePost.code( accountAddress ) ) << "', expected '"
+                        << toHexPrefixed( _stateExpect.code( accountAddress ) ) << "'" );
+        }
+    }
+
+    return wasError;
+}
+#endif
 
 int ImportTest::compareStates( State const& _stateExpect, State const& _statePost,
     AccountMaskMap const _expectedStateOptions, WhenError _throw ) {
@@ -714,8 +819,11 @@ bool ImportTest::checkGeneralTestSectionSearch( json_spirit::mObject const& _exp
                         _search->second.second = stateMap;
                         return true;
                     }
-                    int errcode =
-                        compareStates( expectState, postState, stateMap, WhenError::Throw );
+#ifdef FAIR
+                    int errcode = ImportTest::compareStatesFAIR( expectState, postState, unordered_set< Address >(), stateMap, WhenError::Throw );
+#else
+                    int errcode = ImportTest::compareStates( expectState, postState, stateMap, WhenError::Throw );
+#endif
                     if ( errcode > 0 ) {
                         cerr << trInfo << "\n";
                         _errorTransactions.push_back( i );
@@ -769,7 +877,7 @@ void ImportTest::traceStateDiff() {
                 log << "trNetID: " << netIdToString( tr.netId ) << "\n";
                 log << "trDataInd: " << tr.dataInd << " tdGasInd: " << tr.gasInd
                     << " trValInd: " << tr.valInd << "\n";
-                LOG( m_loggerInfo ) << log.str();
+                BOOST_LOG( m_loggerInfo ) << log.str();
                 fillJsonWithStateChange( m_statePre, tr.postState, tr.changeLog );  // output std
                                                                                     // log
             }

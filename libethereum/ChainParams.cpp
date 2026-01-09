@@ -78,98 +78,114 @@ ChainParams::ChainParams() {
 }
 
 ChainParams::ChainParams( string const& _json ) {
-    *this = loadConfig( _json );
+    loadConfig( _json );
 }
 
-ChainParams ChainParams::loadConfig(
-    string const& _json, const boost::filesystem::path& _configPath ) const {
-    ChainParams cp( *this );
-    cp.originalJSON = _json;
+void ChainParams::loadConfig( string const& _json, const boost::filesystem::path& _configPath ) {
+    originalJSON = _json;
 
     js::mValue val;
     json_spirit::read_string_or_throw( _json, val );
     js::mObject obj = val.get_obj();
 
     validateConfigJson( obj );
-    cp.sealEngineName = obj[c_sealEngine].get_str();
+    sealEngineName = obj[c_sealEngine].get_str();
     // params
     js::mObject params = obj[c_params].get_obj();
     //    validateFieldNames(params, c_knownParamNames);
-    cp.accountStartNonce =
+    accountStartNonce =
         u256( fromBigEndian< u256 >( fromHex( params[c_accountStartNonce].get_str() ) ) );
-    cp.maximumExtraDataSize =
+    maximumExtraDataSize =
         u256( fromBigEndian< u256 >( fromHex( params[c_maximumExtraDataSize].get_str() ) ) );
-    cp.tieBreakingGas =
-        params.count( c_tieBreakingGas ) ? params[c_tieBreakingGas].get_bool() : true;
-    cp.setBlockReward(
-        u256( fromBigEndian< u256 >( fromHex( params[c_blockReward].get_str() ) ) ) );
-    cp.skaleDisableChainIdCheck = params.count( c_skaleDisableChainIdCheck ) ?
-                                      params[c_skaleDisableChainIdCheck].get_bool() :
-                                      false;
-    cp.getLogsBlocksLimit =
+    tieBreakingGas = params.count( c_tieBreakingGas ) ? params[c_tieBreakingGas].get_bool() : true;
+    // block rewards for FAIR are set in EVMSchedule
+#ifndef FAIR
+    setBlockReward( u256( fromBigEndian< u256 >( fromHex( params[c_blockReward].get_str() ) ) ) );
+#endif
+    skaleDisableChainIdCheck = params.count( c_skaleDisableChainIdCheck ) ?
+                                   params[c_skaleDisableChainIdCheck].get_bool() :
+                                   false;
+    logsBlocksLimit =
         params.count( "getLogsBlocksLimit" ) ? params.at( "getLogsBlocksLimit" ).get_int() : -1;
+    responseLogCountLimit = params.count( "getResponseLogCountLimit" ) ?
+                                params.at( "getResponseLogCountLimit" ).get_int() :
+                                -1;
 
     if ( obj.count( c_skaleConfig ) ) {
-        processSkaleConfigItems( cp, obj );
+        processSkaleConfigItems( obj );
     }
 
     auto setOptionalU256Parameter = [&params]( u256& _destination, string const& _name ) {
         if ( params.count( _name ) )
             _destination = u256( fromBigEndian< u256 >( fromHex( params.at( _name ).get_str() ) ) );
     };
-    setOptionalU256Parameter( cp.minGasLimit, c_minGasLimit );
-    setOptionalU256Parameter( cp.maxGasLimit, c_maxGasLimit );
-    setOptionalU256Parameter( cp.gasLimitBoundDivisor, c_gasLimitBoundDivisor );
-    setOptionalU256Parameter( cp.homesteadForkBlock, c_homesteadForkBlock );
-    setOptionalU256Parameter( cp.EIP150ForkBlock, c_EIP150ForkBlock );
-    setOptionalU256Parameter( cp.EIP158ForkBlock, c_EIP158ForkBlock );
-    setOptionalU256Parameter( cp.byzantiumForkBlock, c_byzantiumForkBlock );
-    setOptionalU256Parameter( cp.eWASMForkBlock, c_eWASMForkBlock );
-    setOptionalU256Parameter( cp.constantinopleForkBlock, c_constantinopleForkBlock );
-    setOptionalU256Parameter( cp.constantinopleFixForkBlock, c_constantinopleFixForkBlock );
-    setOptionalU256Parameter( cp.istanbulForkBlock, c_istanbulForkBlock );
-    setOptionalU256Parameter( cp.experimentalForkBlock, c_experimentalForkBlock );
+    setOptionalU256Parameter( minGasLimit, c_minGasLimit );
+    setOptionalU256Parameter( maxGasLimit, c_maxGasLimit );
+    setOptionalU256Parameter( gasLimitBoundDivisor, c_gasLimitBoundDivisor );
+    setOptionalU256Parameter( homesteadForkBlock, c_homesteadForkBlock );
+    setOptionalU256Parameter( EIP150ForkBlock, c_EIP150ForkBlock );
+    setOptionalU256Parameter( EIP158ForkBlock, c_EIP158ForkBlock );
+    setOptionalU256Parameter( byzantiumForkBlock, c_byzantiumForkBlock );
+    setOptionalU256Parameter( eWASMForkBlock, c_eWASMForkBlock );
+    setOptionalU256Parameter( constantinopleForkBlock, c_constantinopleForkBlock );
+    setOptionalU256Parameter( constantinopleFixForkBlock, c_constantinopleFixForkBlock );
+    setOptionalU256Parameter( istanbulForkBlock, c_istanbulForkBlock );
+    setOptionalU256Parameter( experimentalForkBlock, c_experimentalForkBlock );
 
-    setOptionalU256Parameter( cp.skale16ForkBlock, c_skale16ForkBlock );
-    setOptionalU256Parameter( cp.skale32ForkBlock, c_skale32ForkBlock );
-    setOptionalU256Parameter( cp.skale64ForkBlock, c_skale64ForkBlock );
-    setOptionalU256Parameter( cp.skale128ForkBlock, c_skale128ForkBlock );
-    setOptionalU256Parameter( cp.skale256ForkBlock, c_skale256ForkBlock );
-    setOptionalU256Parameter( cp.skale512ForkBlock, c_skale512ForkBlock );
-    setOptionalU256Parameter( cp.skale1024ForkBlock, c_skale1024ForkBlock );
-    setOptionalU256Parameter( cp.skaleUnlimitedForkBlock, c_skaleUnlimitedForkBlock );
+    setOptionalU256Parameter( skale16ForkBlock, c_skale16ForkBlock );
+    setOptionalU256Parameter( skale32ForkBlock, c_skale32ForkBlock );
+    setOptionalU256Parameter( skale64ForkBlock, c_skale64ForkBlock );
+    setOptionalU256Parameter( skale128ForkBlock, c_skale128ForkBlock );
+    setOptionalU256Parameter( skale256ForkBlock, c_skale256ForkBlock );
+    setOptionalU256Parameter( skale512ForkBlock, c_skale512ForkBlock );
+    setOptionalU256Parameter( skale1024ForkBlock, c_skale1024ForkBlock );
+    setOptionalU256Parameter( skaleUnlimitedForkBlock, c_skaleUnlimitedForkBlock );
 
-    setOptionalU256Parameter( cp.daoHardforkBlock, c_daoHardforkBlock );
-    setOptionalU256Parameter( cp.minimumDifficulty, c_minimumDifficulty );
-    setOptionalU256Parameter( cp.difficultyBoundDivisor, c_difficultyBoundDivisor );
-    setOptionalU256Parameter( cp.durationLimit, c_durationLimit );
-    setOptionalU256Parameter( cp.accountInitialFunds, c_accountInitialFunds );
-    setOptionalU256Parameter( cp.externalGasDifficulty, c_externalGasDifficulty );
+    setOptionalU256Parameter( daoHardforkBlock, c_daoHardforkBlock );
+    setOptionalU256Parameter( minimumDifficulty, c_minimumDifficulty );
+    setOptionalU256Parameter( difficultyBoundDivisor, c_difficultyBoundDivisor );
+    setOptionalU256Parameter( durationLimit, c_durationLimit );
+    setOptionalU256Parameter( accountInitialFunds, c_accountInitialFunds );
+
+#ifdef FAIR
+    allowPreEIP155Txns =
+        params.count( c_allowPreEIP155Txns ) ? params[c_allowPreEIP155Txns].get_bool() : true;
+#else
+    setOptionalU256Parameter( externalGasDifficulty, c_externalGasDifficulty );
+#endif
 
     if ( params.count( c_chainID ) )
-        cp.chainID = uint64_t(
+        chainID = uint64_t(
             u256( fromBigEndian< u256 >( fromHex( params.at( c_chainID ).get_str() ) ) ) );
     if ( params.count( c_networkID ) )
-        cp.networkID =
+        networkID =
             int( u256( fromBigEndian< u256 >( fromHex( params.at( c_networkID ).get_str() ) ) ) );
-    cp.allowFutureBlocks = params.count( c_allowFutureBlocks );
-    if ( cp.externalGasDifficulty == 0 ) {
-        cp.externalGasDifficulty = -1;
+
+    allowFutureBlocks = params.count( c_allowFutureBlocks );
+
+#ifndef FAIR
+    if ( externalGasDifficulty == 0 ) {
+        externalGasDifficulty = -1;
     }
+#endif
 
     // genesis
     string genesisStr = json_spirit::write_string( obj[c_genesis], false );
-    cp = cp.loadGenesis( genesisStr );
+    loadGenesis( genesisStr );
     // genesis state
     string genesisStateStr = json_spirit::write_string( obj[c_accounts], false );
 
-    cp.genesisState = jsonToAccountMap(
-        genesisStateStr, cp.accountStartNonce, nullptr, &cp.precompiled, _configPath );
-
-    return cp;
+    genesisState =
+        jsonToAccountMap( genesisStateStr, accountStartNonce, nullptr, &precompiled, _configPath );
 }
-void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject& obj ) {
+void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
     auto skaleObj = obj[c_skaleConfig].get_obj();
+
+#ifdef FAIR
+    // keep original SKL-style config for compatibility (only for tests)
+    bool isLegacy =
+        skaleObj.at( "sChain" ).get_obj().at( "nodes" ).type() == json_spirit::array_type;
+#endif
 
     auto infoObj = skaleObj.at( "nodeInfo" ).get_obj();
 
@@ -179,7 +195,9 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
     bool archiveMode = false;
     bool syncFromCatchup = false;
     string ip, ip6, keyShareName, sgxServerUrl;
+
     size_t t = 0;
+
     uint64_t port = 0, port6 = 0;
     try {
         ip = infoObj.at( "bindIP" ).get_str();
@@ -211,11 +229,11 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
     }
 
     try {
-        cp.rotateAfterBlock_ = infoObj.at( "rotateAfterBlock" ).get_int();
+        rotateAfterBlock_ = infoObj.at( "rotateAfterBlock" ).get_int();
     } catch ( ... ) {
     }
-    if ( cp.rotateAfterBlock_ < 0 )
-        cp.rotateAfterBlock_ = 0;
+    if ( rotateAfterBlock_ < 0 )
+        rotateAfterBlock_ = 0;
 
     bool testSignatures = false;
     try {
@@ -234,33 +252,42 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
 
         ecdsaKeyName = infoObj.at( "ecdsaKeyName" ).get_str();
 
-        if ( infoObj.count( "wallets" ) == 0 ) {
-            throw std::runtime_error(
-                "No wallets section in test config, and testSignatures is not set to true" );
+#ifdef FAIR
+        if ( isLegacy ) {
+#endif
+            if ( infoObj.count( "wallets" ) == 0 ) {
+                throw std::runtime_error(
+                    "No wallets section in test config, and testSignatures is not set to true" );
+            }
+
+            js::mObject ima = infoObj.at( "wallets" ).get_obj().at( "ima" ).get_obj();
+
+            commonBLSPublicKeys[0] = ima["commonBLSPublicKey0"].get_str();
+            commonBLSPublicKeys[1] = ima["commonBLSPublicKey1"].get_str();
+            commonBLSPublicKeys[2] = ima["commonBLSPublicKey2"].get_str();
+            commonBLSPublicKeys[3] = ima["commonBLSPublicKey3"].get_str();
+
+            if ( !syncNode ) {
+                keyShareName = ima.at( "keyShareName" ).get_str();
+
+                t = ima.at( "t" ).get_int();
+
+                BLSPublicKeys[0] = ima["BLSPublicKey0"].get_str();
+                BLSPublicKeys[1] = ima["BLSPublicKey1"].get_str();
+                BLSPublicKeys[2] = ima["BLSPublicKey2"].get_str();
+                BLSPublicKeys[3] = ima["BLSPublicKey3"].get_str();
+            }
+#ifdef FAIR
         }
-
-        js::mObject ima = infoObj.at( "wallets" ).get_obj().at( "ima" ).get_obj();
-
-        commonBLSPublicKeys[0] = ima["commonBLSPublicKey0"].get_str();
-        commonBLSPublicKeys[1] = ima["commonBLSPublicKey1"].get_str();
-        commonBLSPublicKeys[2] = ima["commonBLSPublicKey2"].get_str();
-        commonBLSPublicKeys[3] = ima["commonBLSPublicKey3"].get_str();
-
-        if ( !syncNode ) {
-            keyShareName = ima.at( "keyShareName" ).get_str();
-
-            t = ima.at( "t" ).get_int();
-
-            BLSPublicKeys[0] = ima["BLSPublicKey0"].get_str();
-            BLSPublicKeys[1] = ima["BLSPublicKey1"].get_str();
-            BLSPublicKeys[2] = ima["BLSPublicKey2"].get_str();
-            BLSPublicKeys[3] = ima["BLSPublicKey3"].get_str();
-        }
+#endif
     }
 
-    cp.nodeInfo = { nodeName, nodeID, ip, static_cast< uint16_t >( port ), ip6,
-        static_cast< uint16_t >( port6 ), sgxServerUrl, ecdsaKeyName, keyShareName, BLSPublicKeys,
-        commonBLSPublicKeys, syncNode, archiveMode, syncFromCatchup, testSignatures };
+    nodeInfo = { nodeName, nodeID, ip, static_cast< uint16_t >( port ), ip6,
+        static_cast< uint16_t >( port6 ), sgxServerUrl, ecdsaKeyName,
+#ifndef FAIR
+        keyShareName, BLSPublicKeys, commonBLSPublicKeys,
+#endif
+        syncNode, archiveMode, syncFromCatchup, testSignatures };
 
     auto sChainObj = skaleObj.at( "sChain" ).get_obj();
     SChain s{};
@@ -268,7 +295,9 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
 
     s.name = sChainObj.at( "schainName" ).get_str();
     s.id = sChainObj.at( "schainID" ).get_uint64();
+#ifndef FAIR
     s.t = t;
+#endif
     if ( sChainObj.count( "schainOwner" ) ) {
         s.owner = jsToAddress( sChainObj.at( "schainOwner" ).get_str() );
         s.blockAuthor = jsToAddress( sChainObj.at( "schainOwner" ).get_str() );
@@ -305,9 +334,11 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
                                    -1;
 #endif
 
+#ifndef FAIR
     s.contractStorageLimit = sChainObj.count( "contractStorageLimit" ) ?
                                  sChainObj.at( "contractStorageLimit" ).get_int64() :
                                  0;
+#endif
 
     s.dbStorageLimit =
         sChainObj.count( "dbStorageLimit" ) ? sChainObj.at( "dbStorageLimit" ).get_int64() : 0;
@@ -317,11 +348,13 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
         s.consensusStorageLimit = sChainObj.at( "maxConsensusStorageBytes" ).get_int64();
     }
 
-    if ( sChainObj.count( "freeContractDeployment" ) )
-        s.freeContractDeployment = sChainObj.at( "freeContractDeployment" ).get_bool();
-
     if ( sChainObj.count( "multiTransactionMode" ) )
         s.multiTransactionMode = sChainObj.at( "multiTransactionMode" ).get_bool();
+
+#ifdef FAIR
+    if ( sChainObj.count( "constantGasPrice" ) )
+        s.constantGasPrice = sChainObj.at( "constantGasPrice" ).get_uint64();
+#endif
 
     // extract all "*PatchTimestamp" records
     for ( const auto& it : sChainObj ) {
@@ -351,10 +384,20 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
                 u256 sChainIndex = groupNodeConfObj.at( 0 ).get_uint64();
                 u256 id = groupNodeConfObj.at( 1 ).get_uint64();
                 string publicKey = groupNodeConfObj.at( 2 ).get_str();
+#ifdef FAIR
+                Address rewardWalletAddress = ZeroAddress;
+                if ( groupNodeConfObj.size() == 4 ) {
+                    rewardWalletAddress = Address( groupNodeConfObj.at( 3 ).get_str() );
+                }
+#endif
                 if ( publicKey.empty() ) {
                     BOOST_THROW_EXCEPTION( runtime_error( "Empty public key in config" ) );
                 }
-                groupNodes.push_back( { id, sChainIndex, publicKey } );
+                groupNodes.push_back( { id, sChainIndex, publicKey,
+#ifdef FAIR
+                    rewardWalletAddress
+#endif
+                } );
             }
             sort( groupNodes.begin(), groupNodes.end(),
                 []( const GroupNode& lhs, const GroupNode& rhs ) {
@@ -383,10 +426,33 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
         s.nodeGroups = nodeGroups;
     }
 
-    for ( auto nodeConf : sChainObj.at( "nodes" ).get_array() ) {
-        auto nodeConfObj = nodeConf.get_obj();
+    auto parseNodeDetails = [
+#ifdef FAIR
+                                this,
+#endif
+                                testSignatures]( const auto& jsonNodeObj ) -> sChainNode {
+        auto nodeConfObj = jsonNodeObj.get_obj();
         sChainNode node{};
         node.id = nodeConfObj.at( "nodeID" ).get_uint64();
+#ifdef FAIR
+        try {
+            node.owner = jsToAddress( nodeConfObj.at( "owner" ).get_str() );
+        } catch ( ... ) {
+            BOOST_LOG( m_loggerWarning )
+                << "Node " << node.id << ": owner is not set, using zero address as fallback";
+            node.owner = ZeroAddress;
+        }
+
+        try {
+            node.rewardWalletAddress =
+                jsToAddress( nodeConfObj.at( "rewardWalletAddress" ).get_str() );
+        } catch ( ... ) {
+            BOOST_LOG( m_loggerWarning )
+                << "Node " << node.id
+                << ": rewardWalletAddress is not set, using zero address as fallback";
+            node.rewardWalletAddress = ZeroAddress;
+        }
+#endif
         node.ip = nodeConfObj.at( "ip" ).get_str();
         node.port = nodeConfObj.at( "basePort" ).get_uint64();
         try {
@@ -404,7 +470,7 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
             node.publicKey = nodeConfObj.at( "publicKey" ).get_str();
         } catch ( ... ) {
         }
-        if ( !keyShareName.empty() ) {
+        if ( !testSignatures ) {
             try {
                 node.blsPublicKey[0] = nodeConfObj.at( "blsPublicKey0" ).get_str();
                 node.blsPublicKey[1] = nodeConfObj.at( "blsPublicKey1" ).get_str();
@@ -417,54 +483,141 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
                 node.blsPublicKey[3] = "";
             }
         }
+        return node;
+    };
+
+    // read current group(s) details
+#ifndef FAIR
+    for ( const auto& nodeConf : sChainObj.at( "nodes" ).get_array() ) {
+        auto node = parseNodeDetails( nodeConf );
         s.nodes.push_back( node );
     }
-    cp.sChain = s;
+#else
+    if ( isLegacy ) {
+        // read only nodes details here
+        // we got BLS related info earlier
+        for ( const auto& nodeConf : sChainObj.at( "nodes" ).get_array() ) {
+            auto node = parseNodeDetails( nodeConf );
+            s.nodes.push_back( node );
+        }
+        s.t = t;
+        s.currentGroups[1] = { s.nodes, 1, keyShareName, BLSPublicKeys, commonBLSPublicKeys,
+            dev::ZeroAddress };
+        // make it default
+        s.currentGroups[0] = { {}, 0, "", {}, {}, dev::Address() };
+    } else {
+        auto nodesObjects = sChainObj.at( "nodes" ).get_obj();
+        if ( nodesObjects.size() != c_currentGroupsSize )
+            BOOST_THROW_EXCEPTION( runtime_error( std::string( "Nodes must have exactly " ) +
+                                                  std::to_string( c_currentGroupsSize ) +
+                                                  std::string( " groups provided." ) ) );
+        for ( auto it = nodesObjects.begin(); it != nodesObjects.end(); ++it ) {
+            int64_t startTs;
+            try {
+                startTs = std::stoll( it->first );
+            } catch ( const std::exception& ) {
+                BOOST_THROW_EXCEPTION( runtime_error( "Invalid startTs in nodes section." ) );
+            }
 
-    cp.vecAdminOrigins.clear();
+            dev::Address stakingContractAddress = dev::ZeroAddress;
+
+            std::vector< sChainNode > nodes;
+
+            if ( startTs > 0 ) {
+                // read nodes details
+                for ( const auto& nodeConf : it->second.get_obj().at( "group" ).get_array() ) {
+                    auto node = parseNodeDetails( nodeConf );
+                    nodes.push_back( node );
+                }
+                // read bls related info
+                if ( !testSignatures ) {
+                    const js::mObject& blsKeyInfo = it->second.get_obj().at( "blsKey" ).get_obj();
+                    commonBLSPublicKeys[0] = blsKeyInfo.at( "commonBLSPublicKey0" ).get_str();
+                    commonBLSPublicKeys[1] = blsKeyInfo.at( "commonBLSPublicKey1" ).get_str();
+                    commonBLSPublicKeys[2] = blsKeyInfo.at( "commonBLSPublicKey2" ).get_str();
+                    commonBLSPublicKeys[3] = blsKeyInfo.at( "commonBLSPublicKey3" ).get_str();
+
+                    bool isInCommittee = this->isInCommittee( nodes );
+                    if ( isInCommittee ) {
+                        keyShareName = blsKeyInfo.at( "keyShareName" ).get_str();
+
+                        t = blsKeyInfo.at( "t" ).get_int();
+
+                        BLSPublicKeys[0] = blsKeyInfo.at( "BLSPublicKey0" ).get_str();
+                        BLSPublicKeys[1] = blsKeyInfo.at( "BLSPublicKey1" ).get_str();
+                        BLSPublicKeys[2] = blsKeyInfo.at( "BLSPublicKey2" ).get_str();
+                        BLSPublicKeys[3] = blsKeyInfo.at( "BLSPublicKey3" ).get_str();
+                    }
+                }
+                // read staking contract address
+                try {
+                    stakingContractAddress = dev::Address(
+                        it->second.get_obj().at( "stakingContractAddress" ).get_str() );
+                } catch ( ... ) {
+                }
+            } else {
+                // timestamp is set to 0 for BOOT group
+                startTs = 0;
+            }
+            s.currentGroups[std::distance( nodesObjects.begin(), it )] = { nodes,
+                ( uint64_t ) startTs, keyShareName, BLSPublicKeys, commonBLSPublicKeys,
+                stakingContractAddress };
+            s.t = t;
+        }
+    }
+
+    // for BOOT group timestamp is set to 0
+    // invariant here - relevant group MUST BE stored under index 1
+    if ( s.currentGroups[0].startTs < s.currentGroups[1].startTs &&
+         s.currentGroups[0].startTs != 0 )
+        std::swap( s.currentGroups[0], s.currentGroups[1] );
+
+    s.nodes = s.currentGroups.back().nodes;
+
+    switchSyncMode( s.nodes );
+#endif
+
+    sChain = s;
+
+    vecAdminOrigins.clear();
     if ( infoObj.count( "adminOrigins" ) ) {
-        for ( auto nodeOrigun : infoObj.at( "adminOrigins" ).get_array() ) {
-            string strOriginWildcardFilter = nodeOrigun.get_str();
-            cp.vecAdminOrigins.push_back( strOriginWildcardFilter );
+        for ( const auto& nodeOrigin : infoObj.at( "adminOrigins" ).get_array() ) {
+            string strOriginWildcardFilter = nodeOrigin.get_str();
+            vecAdminOrigins.push_back( strOriginWildcardFilter );
         }
     } else {
-        cp.vecAdminOrigins.push_back( "*" );
+        vecAdminOrigins.push_back( "*" );
     }
 }
 
-ChainParams ChainParams::loadGenesis( string const& _json ) const {
-    ChainParams cp( *this );
-
+void ChainParams::loadGenesis( string const& _json ) {
     js::mValue val;
     js::read_string( _json, val );
     js::mObject genesis = val.get_obj();
 
-    cp.parentHash = h256( 0 );  // required by the YP
-    cp.author = genesis.count( c_coinbase ) ? h160( genesis[c_coinbase].get_str() ) :
-                                              h160( genesis[c_author].get_str() );
-    cp.difficulty =
-        genesis.count( c_difficulty ) ?
-            u256( fromBigEndian< u256 >( fromHex( genesis[c_difficulty].get_str() ) ) ) :
-            cp.minimumDifficulty;
-    cp.gasLimit = u256( fromBigEndian< u256 >( fromHex( genesis[c_gasLimit].get_str() ) ) );
-    cp.gasUsed = genesis.count( c_gasUsed ) ?
-                     u256( fromBigEndian< u256 >( fromHex( genesis[c_gasUsed].get_str() ) ) ) :
-                     0;
-    cp.timestamp = u256( fromBigEndian< u256 >( fromHex( genesis[c_timestamp].get_str() ) ) );
-    cp.extraData = bytes( fromHex( genesis[c_extraData].get_str() ) );
+    parentHash = h256( 0 );  // required by the YP
+    author = genesis.count( c_coinbase ) ? h160( genesis[c_coinbase].get_str() ) :
+                                           h160( genesis[c_author].get_str() );
+    difficulty = genesis.count( c_difficulty ) ?
+                     u256( fromBigEndian< u256 >( fromHex( genesis[c_difficulty].get_str() ) ) ) :
+                     minimumDifficulty;
+    gasLimit = u256( fromBigEndian< u256 >( fromHex( genesis[c_gasLimit].get_str() ) ) );
+    gasUsed = genesis.count( c_gasUsed ) ?
+                  u256( fromBigEndian< u256 >( fromHex( genesis[c_gasUsed].get_str() ) ) ) :
+                  0;
+    timestamp = u256( fromBigEndian< u256 >( fromHex( genesis[c_timestamp].get_str() ) ) );
+    extraData = bytes( fromHex( genesis[c_extraData].get_str() ) );
 
     if ( genesis.count( c_stateRoot ) )
-        cp.stateRoot = h256( fromHex( genesis[c_stateRoot].get_str() ), h256::AlignRight );
+        stateRoot = h256( fromHex( genesis[c_stateRoot].get_str() ), h256::AlignRight );
 
     // magic code for handling ethash stuff:
     if ( genesis.count( c_mixHash ) && genesis.count( c_nonce ) ) {
         h256 mixHash( genesis[c_mixHash].get_str() );
         h64 nonce( genesis[c_nonce].get_str() );
-        cp.sealFields = 2;
-        cp.sealRLP = rlp( mixHash ) + rlp( nonce );
+        sealFields = 2;
+        sealRLP = rlp( mixHash ) + rlp( nonce );
     }
-
-    return cp;
 }
 
 SealEngineFace* ChainParams::createSealEngine() {
@@ -500,10 +653,10 @@ void ChainParams::populateFromGenesis( bytes const& _genesisRLP, AccountMap cons
 
     auto b = genesisBlock();
     if ( b != _genesisRLP ) {
-        LOG( m_loggerDebug ) << "Block passed:" << bi.hash() << bi.hash( WithoutSeal );
-        LOG( m_loggerDebug ) << "Genesis now:" << BlockHeader::headerHashFromBlock( b );
-        LOG( m_loggerDebug ) << RLP( b );
-        LOG( m_loggerDebug ) << RLP( _genesisRLP );
+        BOOST_LOG( m_loggerDebug ) << "Block passed:" << bi.hash() << bi.hash( WithoutSeal );
+        BOOST_LOG( m_loggerDebug ) << "Genesis now:" << BlockHeader::headerHashFromBlock( b );
+        BOOST_LOG( m_loggerDebug ) << RLP( b );
+        BOOST_LOG( m_loggerDebug ) << RLP( _genesisRLP );
         throw 0;
     }
 }
@@ -597,14 +750,19 @@ const std::string& ChainParams::getOriginalJson() const {
     sChainObj["schainID"] = ( int64_t ) sChain.id;
     sChainObj["emptyBlockIntervalMs"] = sChain.emptyBlockIntervalMs;
     sChainObj["snpshotIntervalMs"] = sChain.snapshotIntervalSec;
-    sChainObj["freeContractDeployment"] = sChain.freeContractDeployment;
     sChainObj["multiTransactionMode"] = sChain.multiTransactionMode;
+#ifndef FAIR
     sChainObj["contractStorageLimit"] = ( int64_t ) sChain.contractStorageLimit;
+#endif
     sChainObj["dbStorageLimit"] = sChain.dbStorageLimit;
 
+#ifdef FAIR
+    auto addNodeToArray = []( const sChainNode& node, js::mArray& nodes ) {
+#else
     js::mArray nodes;
 
-    for ( auto node : sChain.nodes ) {
+    for ( const auto& node : sChain.nodes ) {
+#endif
         js::mObject nodeConfObj;
         nodeConfObj["nodeID"] = ( int64_t ) node.id;
         nodeConfObj["ip"] = node.ip;
@@ -615,7 +773,29 @@ const std::string& ChainParams::getOriginalJson() const {
         nodeConfObj["publicKey"] = node.publicKey;
 
         nodes.push_back( nodeConfObj );
+    };
+
+#ifdef FAIR
+    js::mObject nodes;
+
+    for ( const auto& currentGroup : sChain.currentGroups ) {
+        js::mObject group;
+
+        js::mArray currentNodes;
+        for ( const auto& schainNode : currentGroup.nodes ) {
+            addNodeToArray( schainNode, currentNodes );
+        }
+        group["group"] = currentNodes;
+
+        js::mObject blsKey;
+        blsKey["keyShareName"] = currentGroup.keyShareName;
+
+        group["blsKey"] = blsKey;
+
+        nodes[std::to_string( currentGroup.startTs )] = group;
     }
+#endif
+
     sChainObj["nodes"] = nodes;
 
     skaleObj["sChain"] = sChainObj;
@@ -656,3 +836,161 @@ bool ChainParams::checkAdminOriginAllowed( const std::string& origin ) const {
     }
     return false;
 }
+
+std::vector< sChainNode > ChainParams::getSchainNodes() const {
+#ifdef FAIR
+    std::shared_lock< std::shared_mutex > lock( m_mutex );
+#endif
+    return sChain.nodes;
+}
+
+sChainNode ChainParams::getNodeByIndex( size_t _idx ) const {
+#ifdef FAIR
+    std::shared_lock< std::shared_mutex > lock( m_mutex );
+#endif
+    return sChain.nodes.at( _idx );
+}
+
+size_t ChainParams::getNodesCount() const {
+#ifdef FAIR
+    std::shared_lock< std::shared_mutex > lock( m_mutex );
+#endif
+    return sChain.nodes.size();
+}
+
+std::array< std::string, 4 > ChainParams::getSelfBlsPublicKey() const {
+#ifndef FAIR
+    return nodeInfo.BLSPublicKeys;
+#else
+    std::shared_lock< std::shared_mutex > lock( m_mutex );
+    return sChain.currentGroups.back().BLSPublicKeys;
+#endif
+}
+
+std::array< std::string, 4 > ChainParams::getCommonBlsPublicKey() const {
+#ifndef FAIR
+    return nodeInfo.commonBLSPublicKeys;
+#else
+    std::shared_lock< std::shared_mutex > lock( m_mutex );
+    return sChain.currentGroups.back().commonBLSPublicKeys;
+#endif
+}
+
+std::string ChainParams::getKeyShareName() const {
+#ifndef FAIR
+    return nodeInfo.keyShareName;
+#else
+    std::shared_lock< std::shared_mutex > lock( m_mutex );
+    return sChain.currentGroups.back().keyShareName;
+#endif
+}
+
+void ChainParams::fillDefaultTestsParameters( size_t _port ) {
+    sealEngineName = NoProof::name();
+    allowFutureBlocks = true;
+    difficulty = getMinimumDifficulty();
+    gasLimit = getMaxGasLimit();
+    nodeInfo.port = nodeInfo.port6 = _port;
+    sChain.nodes[0].port = sChain.nodes[0].port6 = _port;
+}
+
+#ifdef FAIR
+Address ChainParams::getStakingContractAddress() const {
+    std::shared_lock< std::shared_mutex > lock( m_mutex );
+    return sChain.currentGroups.back().stakingContractAddress;
+}
+
+std::string ChainParams::getConfigForConsensus() const {
+    js::mValue val;
+    json_spirit::read_string_or_throw( getOriginalJson(), val );
+    js::mObject obj = val.get_obj();
+
+    js::mObject skaleConfigObj = obj["skaleConfig"].get_obj();
+    js::mObject sChainObj = skaleConfigObj["sChain"].get_obj();
+    js::mObject nodeInfoObj = skaleConfigObj["nodeInfo"].get_obj();
+
+    nodeInfoObj["syncNode"] = isSyncNode();
+
+    js::mArray newNodesObj;
+    if ( sChainObj["nodes"].type() == json_spirit::obj_type ) {
+        js::mObject nodesObj = sChainObj["nodes"].get_obj();
+
+        if ( sChain.nodes == sChain.currentGroups[0].nodes )
+            newNodesObj = nodesObj[std::to_string( sChain.currentGroups[0].startTs )]
+                              .get_obj()
+                              .at( "group" )
+                              .get_array();
+        else
+            newNodesObj = nodesObj[std::to_string( sChain.currentGroups[1].startTs )]
+                              .get_obj()
+                              .at( "group" )
+                              .get_array();
+    } else {
+        newNodesObj = sChainObj["nodes"].get_array();
+    }
+
+    sChainObj["nodes"] = newNodesObj;
+    skaleConfigObj["sChain"] = sChainObj;
+    skaleConfigObj["nodeInfo"] = nodeInfoObj;
+    obj["skaleConfig"] = skaleConfigObj;
+
+    return js::write_string( js::mValue( obj ), true );
+}
+
+bool ChainParams::updateCurrentGroupIfNeeded( uint64_t _latestBlockTimestamp ) {
+    // for BOOT group timestamp is set to 0
+    // invariant here - relevant group MUST BE stored under index 1
+    if ( _latestBlockTimestamp >= sChain.currentGroups[0].startTs &&
+         sChain.currentGroups[0].startTs > sChain.currentGroups[1].startTs ) {
+        BOOST_LOG( m_loggerInfo ) << "Updating current group";
+        std::unique_lock< std::shared_mutex > lock( m_mutex );
+        std::swap( sChain.currentGroups[0], sChain.currentGroups[1] );
+        BOOST_LOG( m_loggerInfo ) << "Using the group with startTs "
+                                  << sChain.currentGroups[1].startTs;
+        sChain.nodes = sChain.currentGroups[1].nodes;
+        switchSyncMode( sChain.nodes );
+        return true;
+    }
+    return false;
+}
+
+CurrentGroup ChainParams::getNewestGroup() const {
+    size_t newestIndex = 0;
+    if ( sChain.currentGroups[1].startTs >= sChain.currentGroups[0].startTs ) {
+        newestIndex = 1;
+    }
+    return sChain.currentGroups[newestIndex];
+}
+
+Address ChainParams::getNodeBeneficiaryInHistoricGroup(
+    const unsigned _historicGroupIndex, const uint64_t _sChainIndex ) const {
+    // shifting since sChain indices are numbered from 0
+    if ( _sChainIndex == 0 ) {
+        throw std::runtime_error( "Cannot get beneficiary for zero sChainIndex" );
+    }
+    uint64_t shiftedIndex = _sChainIndex - 1;
+    if ( sChain.nodeGroups.size() > 0 ) {
+        return getHistoricNodeRewardWalletAddress( _historicGroupIndex, shiftedIndex );
+    } else {
+        return sChain.currentGroups.at( 1 ).nodes.at( shiftedIndex ).owner;
+    }
+}
+
+bool ChainParams::isInCommittee( const std::vector< sChainNode >& _committee ) const {
+    u256 thisNodeId = nodeInfo.id;
+    auto it = std::find_if( _committee.begin(), _committee.end(),
+        [thisNodeId]( const sChainNode& node ) { return node.id == thisNodeId; } );
+    return it != _committee.end();
+}
+
+// if a node is not in active committee
+// it should switch to sync mode
+// use it only after sChain.nodes was initialized / updated
+void ChainParams::switchSyncMode( const std::vector< sChainNode >& _nodes ) {
+    if ( !isInCommittee( _nodes ) ) {
+        nodeInfo.syncNode = true;
+    } else {
+        nodeInfo.syncNode = false;
+    }
+}
+#endif

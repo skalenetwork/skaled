@@ -27,7 +27,6 @@
 #include <mutex>
 
 #include <boost/filesystem.hpp>
-#include <boost/timer.hpp>
 #include <boost/utility/in_place_factory.hpp>
 
 #include <libdevcore/DBImpl.h>
@@ -72,8 +71,11 @@ const std::map< std::pair< uint64_t, std::string >, uint64_t > State::txnsToSkip
 };  // the last value is for the test
 
 State::State( dev::u256 const& _accountStartNonce, boost::filesystem::path const& _dbPath,
-    dev::h256 const& _genesis, BaseState _bs, dev::u256 _initialFunds,
+    dev::h256 const& _genesis, BaseState _bs, dev::u256 _initialFunds
+#ifndef FAIR
+    ,
     dev::s256 _contractStorageLimit
+#endif
 #ifdef HISTORIC_STATE
     ,
     dev::s256 _maxHistoricStateDbSize
@@ -81,8 +83,11 @@ State::State( dev::u256 const& _accountStartNonce, boost::filesystem::path const
     )
     : x_db_ptr( make_shared< boost::shared_mutex >() ),
       m_accountStartNonce( _accountStartNonce ),
-      m_initial_funds( _initialFunds ),
+      m_initial_funds( _initialFunds )
+#ifndef FAIR
+      ,
       contractStorageLimit_( _contractStorageLimit )
+#endif
 #ifdef HISTORIC_STATE
       ,
       m_historicState( _accountStartNonce, _maxHistoricStateDbSize,
@@ -104,13 +109,18 @@ State::State( dev::u256 const& _accountStartNonce, boost::filesystem::path const
         _bs == BaseState::PreExisting ? dev::WithExisting::Trust : dev::WithExisting::Kill ) );
 
     auto state = createStateCopyAndClearCaches();
+#ifndef FAIR
     totalStorageUsed_ = state.storageUsedTotal();
+#endif
 #ifdef HISTORIC_STATE
     m_historicState.setRootFromDB();
 #endif
+
+#ifndef FAIR
     m_fs_ptr = state.fs();
+#endif
     if ( _bs == BaseState::PreExisting ) {
-        LOG( m_loggerDebug ) << "Using existing database";
+        BOOST_LOG( m_loggerDebug ) << "Using existing database";
     } else if ( _bs == BaseState::Empty ) {
         // Initialise to the state entailed by the genesis block; this guarantees the trie is built
         // correctly.
@@ -127,7 +137,11 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
     std::pair< dev::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > > const&
         _historicBlockToStateRootDb,
 #endif
-    skale::BaseState _bs, u256 _initialFunds, s256 _contractStorageLimit
+    skale::BaseState _bs, u256 _initialFunds
+#ifndef FAIR
+    ,
+    s256 _contractStorageLimit
+#endif
 #ifdef HISTORIC_STATE
     ,
     s256 _maxHistoricStateDbSize
@@ -136,8 +150,11 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
     : x_db_ptr( make_shared< boost::shared_mutex >() ),
       m_db_ptr( make_shared< OverlayDB >( _db ) ),
       m_accountStartNonce( _accountStartNonce ),
-      m_initial_funds( _initialFunds ),
+      m_initial_funds( _initialFunds )
+#ifndef FAIR
+      ,
       contractStorageLimit_( _contractStorageLimit )
+#endif
 #ifdef HISTORIC_STATE
       ,
       m_historicState( _accountStartNonce, _maxHistoricStateDbSize, _historicDb,
@@ -145,13 +162,18 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
 #endif
 {
     auto state = createStateCopyAndClearCaches();
+#ifndef FAIR
     totalStorageUsed_ = state.storageUsedTotal();
+#endif
 #ifdef HISTORIC_STATE
     m_historicState.setRootFromDB();
 #endif
+
+#ifndef FAIR
     m_fs_ptr = state.fs();
+#endif
     if ( _bs == BaseState::PreExisting ) {
-        LOG( m_loggerDebug ) << "Using existing database";
+        BOOST_LOG( m_loggerDebug ) << "Using existing database";
     } else if ( _bs == BaseState::Empty ) {
         // Initialise to the state entailed by the genesis block; this guarantees the trie is built
         // correctly.
@@ -169,9 +191,10 @@ const uint64_t STATE_IMPORT_BATCH_COUNT = 16;
 void State::populateHistoricStateFromSkaleState() {
     auto allAccountAddresses = this->addresses();
 
-    LOG( m_loggerInfo ) << "Number of addresses in statedb:" << allAccountAddresses.size();
-    LOG( m_loggerInfo ) << "Historic state does not yet exist. Populating historic state ...";
-    LOG( m_loggerInfo ) << "Please be patient as it may take up to several hours for a large state";
+    BOOST_LOG( m_loggerInfo ) << "Number of addresses in statedb:" << allAccountAddresses.size();
+    BOOST_LOG( m_loggerInfo ) << "Historic state does not yet exist. Populating historic state ...";
+    BOOST_LOG( m_loggerInfo )
+        << "Please be patient as it may take up to several hours for a large state";
 
 
     // this is done to save memory, otherwise OverlayDB will frow
@@ -179,7 +202,7 @@ void State::populateHistoricStateFromSkaleState() {
         populateHistoricStateBatchFromSkaleState( allAccountAddresses, i );
     }
 
-    LOG( m_loggerInfo ) << "Completed state import";
+    BOOST_LOG( m_loggerInfo ) << "Completed state import";
 }
 
 
@@ -213,8 +236,8 @@ dev::eth::AccountMap State::getBatchOfAccounts(
 
 void State::populateHistoricStateBatchFromSkaleState(
     std::unordered_map< Address, u256 >& _allAccountAddresses, uint64_t _batchNumber ) {
-    LOG( m_loggerInfo ) << "Now running batch " << _batchNumber << " out of "
-                        << STATE_IMPORT_BATCH_COUNT;
+    BOOST_LOG( m_loggerInfo ) << "Now running batch " << _batchNumber << " out of "
+                              << STATE_IMPORT_BATCH_COUNT;
 
     dev::eth::AccountMap accountMap = getBatchOfAccounts( _allAccountAddresses, _batchNumber );
 
@@ -229,7 +252,7 @@ skale::OverlayDB State::openDB(
     fs::path path = _basePath.empty() ? eth::Defaults::dbPath() : _basePath;
 
     if ( _we == WithExisting::Kill ) {
-        LOG( m_loggerDebug ) << "Killing state database (WithExisting::Kill).";
+        BOOST_LOG( m_loggerDebug ) << "Killing state database (WithExisting::Kill).";
         fs::remove_all( path / fs::path( "state" ) );
     }
 
@@ -244,18 +267,18 @@ skale::OverlayDB State::openDB(
         std::unique_ptr< batched_io::batched_db > bdb = make_unique< batched_io::batched_db >();
         bdb->open( m_orig_db );
         assert( bdb->is_open() );
-        LOG( m_loggerDebug ) << "Opened state DB.";
+        BOOST_LOG( m_loggerDebug ) << "Opened state DB.";
         return OverlayDB( std::move( bdb ) );
     } catch ( boost::exception const& ex ) {
-        LOG( m_loggerWarning ) << boost::diagnostic_information( ex );
+        BOOST_LOG( m_loggerWarning ) << boost::diagnostic_information( ex );
         if ( fs::space( path / fs::path( "state" ) ).available < 1024 ) {
-            LOG( m_loggerWarning )
+            BOOST_LOG( m_loggerWarning )
                 << "Not enough available space found on hard drive. Please free some up and "
                    "then "
                    "re-run. Bailing.";
             BOOST_THROW_EXCEPTION( eth::NotEnoughAvailableSpace() );
         } else {
-            LOG( m_loggerWarning )
+            BOOST_LOG( m_loggerWarning )
                 << "Database " << ( path / fs::path( "state" ) )
                 << "already open. You appear to have another instance of ethereum running. "
                    "Bailing.";
@@ -289,8 +312,10 @@ State::State( const State& _s )
     m_initial_funds = _s.m_initial_funds;
     m_snap = _s.m_snap;
     m_isReadOnlySnapBasedState = _s.m_isReadOnlySnapBasedState;
+#ifndef FAIR
     contractStorageLimit_ = _s.contractStorageLimit_;
     totalStorageUsed_ = _s.storageUsedTotal();
+#endif
 }
 
 State& State::operator=( const State& _s ) {
@@ -303,12 +328,16 @@ State& State::operator=( const State& _s ) {
     m_accountStartNonce = _s.m_accountStartNonce;
     m_changeLog = _s.m_changeLog;
     m_initial_funds = _s.m_initial_funds;
+#ifndef FAIR
     contractStorageLimit_ = _s.contractStorageLimit_;
     totalStorageUsed_ = _s.storageUsedTotal();
+#endif
 #ifdef HISTORIC_STATE
     m_historicState = _s.m_historicState;
 #endif
+#ifndef FAIR
     m_fs_ptr = _s.m_fs_ptr;
+#endif
     m_snap = _s.m_snap;
     m_isReadOnlySnapBasedState = _s.m_isReadOnlySnapBasedState;
 
@@ -397,6 +426,21 @@ void State::safeSetAndCommitPartialTransactionReceipt(
     }
 }
 
+#ifdef FAIR
+void State::safeSetLastRewardedBlockNumber( dev::eth::BlockNumber _blockNumber ) {
+    if ( m_db_ptr ) {
+        m_db_ptr->setLastRewardedBlockNumber( _blockNumber );
+    }
+}
+
+dev::eth::BlockNumber State::getLastRewardedBlockNumber() {
+    dev::eth::BlockNumber blockNumber = 0;
+    if ( m_db_ptr ) {
+        blockNumber = m_db_ptr->getLastRewardedBlockNumber();
+    }
+    return blockNumber;
+}
+#endif
 
 void State::populateFrom( eth::AccountMap const& _map ) {
     for ( auto const& addressAccountPair : _map ) {
@@ -418,8 +462,10 @@ void State::populateFrom( eth::AccountMap const& _map ) {
                 if ( account.hasNewCode() ) {
                     setCode( address, account.code(), account.version() );
                 }
+#ifndef FAIR
                 totalStorageUsed_ += currentStorageUsed_;
                 updateStorageUsage();
+#endif
             }
         }
     }
@@ -518,13 +564,20 @@ eth::Account* State::account( Address const& _address ) {
     u256 nonce = state[0].toInt< u256 >();
     u256 balance = state[1].toInt< u256 >();
     h256 codeHash = state[2].toInt< u256 >();
+#ifndef FAIR
     s256 storageUsed = state[3].toInt< s256 >();
+#endif
     // version is 0 if absent from RLP
     auto const version = state[4] ? state[4].toInt< u256 >() : 0;
 
     auto i = m_cache.emplace( std::piecewise_construct, std::forward_as_tuple( _address ),
         std::forward_as_tuple( nonce, balance, dev::eth::StorageRoot( EmptyTrie ), codeHash,
-            version, dev::eth::Account::Changedness::Unchanged, storageUsed ) );
+            version, dev::eth::Account::Changedness::Unchanged
+#ifndef FAIR
+            ,
+            storageUsed
+#endif
+            ) );
     m_unchangedCacheEntries.push_back( _address );
     return &i.first->second;
 }
@@ -571,10 +624,16 @@ void State::commit( dev::eth::CommitBehaviour _commitBehaviour ) {
                     }
 
                 } else {
+#ifndef FAIR
                     RLPStream rlpStream( 4 );
 
                     rlpStream << account.nonce() << account.balance() << u256( account.codeHash() )
                               << account.storageUsed();
+#else
+                    RLPStream rlpStream( 3 );
+
+                    rlpStream << account.nonce() << account.balance() << u256( account.codeHash() );
+#endif
                     auto rawValue = rlpStream.out();
 
                     m_db_ptr->insert( address, ref( rawValue ) );
@@ -593,7 +652,9 @@ void State::commit( dev::eth::CommitBehaviour _commitBehaviour ) {
                 }
             }
         }
+#ifndef FAIR
         m_db_ptr->updateStorageUsage( totalStorageUsed_ );
+#endif
         m_db_ptr->commit();
     }
 
@@ -782,6 +843,7 @@ void State::setStorage( Address const& _contract, u256 const& _key, u256 const& 
     m_changeLog.emplace_back( _contract, _key, _currentValue );
     m_cache[_contract].setStorage( _key, _value );
 
+#ifndef FAIR
     int count = 0;
 
     if ( ( _value > 0 && _currentValue > 0 ) || ( _value == 0 && _currentValue == 0 ) ) {
@@ -796,6 +858,7 @@ void State::setStorage( Address const& _contract, u256 const& _key, u256 const& 
     if ( totalStorageUsed_ + currentStorageUsed_ > contractStorageLimit_ ) {
         BOOST_THROW_EXCEPTION( dev::StorageOverflow() << errinfo_comment( _contract.hex() ) );
     }
+#endif
 }
 
 void State::clearStorageValue(
@@ -803,6 +866,7 @@ void State::clearStorageValue(
     m_changeLog.emplace_back( _contract, _key, _currentValue );
     m_cache[_contract].setStorage( _key, 0 );
 
+#ifndef FAIR
     int count;
 
     if ( _currentValue == 0 ) {
@@ -813,6 +877,7 @@ void State::clearStorageValue(
 
     storageUsage[_contract] += count * 32;
     currentStorageUsed_ += count * 32;
+#endif
 }
 
 u256 State::originalStorageValue( Address const& _contract, u256 const& _key ) const {
@@ -837,11 +902,13 @@ void State::clearStorage( Address const& _contract ) {
     cdebug << "Self-destructing" << _contract;
 
     Account* acc = account( _contract );
+#ifndef FAIR
     dev::s256 accStorageUsed = acc->storageUsed();
 
     if ( accStorageUsed == 0 && storageUsage[_contract] == 0 ) {
         return;
     }
+#endif
 
     // clearStorage is called from functions that already hold a read
     // or write lock over the state Therefore, we can use
@@ -864,8 +931,10 @@ void State::clearStorage( Address const& _contract ) {
         m_db_ptr->insert( _contract, key, ZERO );
     }
 
+#ifndef FAIR
     totalStorageUsed_ -= ( accStorageUsed + storageUsage[_contract] );
     acc->updateStorageUsage( -accStorageUsed );
+#endif
 }
 
 bytes const& State::code( Address const& _addr ) const {
@@ -941,11 +1010,15 @@ void State::rollback( size_t _savepoint ) {
         // change log entry.
         switch ( change.kind ) {
         case Change::Storage:
+#ifndef FAIR
             if ( ContractStoragePatch::isEnabledInWorkingBlock() ) {
                 rollbackStorageChange( change, account );
             } else {
                 account.setStorage( change.key, change.value );
             }
+#else
+            account.setStorage( change.key, change.value );
+#endif
             break;
         case Change::StorageRoot:
             account.setStorageRoot( change.value );
@@ -969,10 +1042,13 @@ void State::rollback( size_t _savepoint ) {
         }
         m_changeLog.pop_back();
     }
+#ifndef FAIR
     clearFileStorageCache();
+
     if ( !ContractStoragePatch::isEnabledInWorkingBlock() ) {
         resetStorageChanges();
     }
+#endif
 }
 
 void State::clearCaches() {
@@ -1053,12 +1129,19 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
     // transaction is bad in any way.
     // HACK 0 here is for gasPrice
     // TODO Not sure that 1st 0 as timestamp is acceptable here
-    Executive e( *this, _envInfo, _chainParams, 0, 0, _p != Permanence::Committed );
+    Executive e( *this, _envInfo, _chainParams, 0, 0, _p != Permanence::Committed
+#ifdef BITE2
+        ,
+        dev::u256( _transactionIndex )
+#endif
+    );
     ExecutionResult res;
     e.setResultRecipient( res );
 
     bool isCacheEnabled = RevertableFSPatch::isEnabledWhen( _envInfo.committedBlockTimestamp() );
+#ifndef FAIR
     resetOverlayFS( isCacheEnabled );
+#endif
 
     auto onOp = _onOp;
 #if ETH_VMTRACE
@@ -1067,7 +1150,8 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
 #endif
     u256 const startGasUsed = _envInfo.gasUsed();
     bool statusCodeTmp = false;
-    if ( _p == Permanence::Committed && ifShouldSkipExecution( _chainParams.chainID, _t.sha3() ) ) {
+    if ( _p == Permanence::Committed &&
+         ifShouldSkipExecution( _chainParams.getChainId(), _t.sha3() ) ) {
         e.initialize( _t );
         e.execute();
         statusCodeTmp = false;
@@ -1082,21 +1166,42 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         if ( strRevertReason.empty() )
             strRevertReason = "EVM revert instruction without description message";
         std::string strOut = "Error message from State::execute(): " + strRevertReason;
-        LOG( m_loggerDebug ) << strOut;
+        BOOST_LOG( m_loggerDebug ) << strOut;
     }
+#ifdef BITE
+    if ( res.excepted == dev::eth::TransactionException::InvalidBITEAESData ) {
+        strRevertReason = "Could not decrypt BITE transaction.";
+        std::string strOut = "Error message from State::execute(): " + strRevertReason;
+        BOOST_LOG( m_loggerDebug ) << strOut;
+    }
+#endif
+
+#ifdef FAIR
+    if ( res.excepted == dev::eth::TransactionException::UnsupportedDencunOpcode ) {
+        strRevertReason =
+            "Contract uses unsupported Dencun opcode. Please ensure it is compiled for EVM <= "
+            "Shanghai";
+        std::string strOut = "Error message from State::execute(): " + strRevertReason;
+        BOOST_LOG( m_loggerDebug ) << strOut;
+    }
+#endif
 
     bool removeEmptyAccounts = false;
     switch ( _p ) {
     case Permanence::Reverted:
     case Permanence::CommittedWithoutState:
+#ifndef FAIR
         resetStorageChanges();
+#endif
         m_cache.clear();
         break;
     case Permanence::Committed: {
+#ifndef FAIR
         if ( account( _t.from() ) != nullptr && account( _t.from() )->code() == bytes() ) {
             totalStorageUsed_ += currentStorageUsed_;
             updateStorageUsage();
         }
+#endif
         // TODO: review logic|^
 
         h256 shaLastTx = _t.sha3();  // _t.hasSignature() ? _t.sha3() : _t.sha3(
@@ -1107,12 +1212,13 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         TransactionReceipt receipt =
             TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() );
         if ( _p == Permanence::Committed &&
-             ifShouldSkipExecution( _chainParams.chainID, _t.sha3() ) ) {
+             ifShouldSkipExecution( _chainParams.getChainId(), _t.sha3() ) ) {
             receipt = TransactionReceipt( statusCode,
-                startGasUsed + getGasUsedForSkippedTransaction( _chainParams.chainID, _t.sha3() ),
+                startGasUsed +
+                    getGasUsedForSkippedTransaction( _chainParams.getChainId(), _t.sha3() ),
                 e.logs() );
         } else {
-            receipt = _envInfo.number() >= _chainParams.byzantiumForkBlock ?
+            receipt = _envInfo.number() >= _chainParams.getByzantiumForkBlock() ?
                           TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
                           TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
         }
@@ -1126,9 +1232,11 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         m_db_ptr->setPartialTransactionReceipt( stream.out(),
             ( dev::eth::BlockNumber ) _envInfo.number(), ( uint64_t ) _transactionIndex );
 
+#ifndef FAIR
         m_fs_ptr->commit();
+#endif
 
-        removeEmptyAccounts = _envInfo.number() >= _chainParams.EIP158ForkBlock;
+        removeEmptyAccounts = _envInfo.number() >= _chainParams.getEIP158ForkBlock();
         commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
                                       dev::eth::CommitBehaviour::KeepEmptyAccounts );
 
@@ -1153,18 +1261,21 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         break;
     }
     case Permanence::Uncommitted:
+#ifndef FAIR
         resetStorageChanges();
+#endif
         break;
     }
 
     TransactionReceipt receipt =
         TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() );
-    if ( _p == Permanence::Committed && ifShouldSkipExecution( _chainParams.chainID, _t.sha3() ) ) {
+    if ( _p == Permanence::Committed &&
+         ifShouldSkipExecution( _chainParams.getChainId(), _t.sha3() ) ) {
         receipt = TransactionReceipt( statusCode,
-            startGasUsed + getGasUsedForSkippedTransaction( _chainParams.chainID, _t.sha3() ),
+            startGasUsed + getGasUsedForSkippedTransaction( _chainParams.getChainId(), _t.sha3() ),
             e.logs() );
     } else {
-        receipt = _envInfo.number() >= _chainParams.byzantiumForkBlock ?
+        receipt = _envInfo.number() >= _chainParams.getByzantiumForkBlock() ?
                       TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
                       TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
     }
@@ -1193,6 +1304,7 @@ bool State::executeTransaction(
     }
 }
 
+#ifndef FAIR
 void State::rollbackStorageChange( const Change& _change, eth::Account& _acc ) {
     dev::u256 _currentValue = storage( _change.address, _change.key );
     int count = 0;
@@ -1222,7 +1334,7 @@ dev::s256 State::storageUsed( const dev::Address& _addr ) const {
         return 0;
     }
 }
-
+#endif
 
 std::ostream& skale::operator<<( std::ostream& _out, State const& _s ) {
     _out << "--- Cache ---"

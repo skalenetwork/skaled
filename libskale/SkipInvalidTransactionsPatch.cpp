@@ -4,6 +4,9 @@ using namespace dev::eth;
 
 bool SkipInvalidTransactionsPatch::hasPotentialInvalidTransactionsInBlock(
     dev::eth::BlockNumber _bn, const dev::eth::BlockChain& _bc ) {
+#ifdef FAIR
+    return false;
+#endif
     if ( _bn == 0 )
         return false;
 

@@ -76,6 +76,14 @@ using _byte_ = uint8_t;
         X;                 \
     } catch ( ... )
 
+#define CHECK_EXPRESSION( X )                                                                      \
+    if ( !( X ) ) {                                                                                \
+        std::string errorMsg = std::string( "Check failed: " ) + #X + "\n" +                       \
+                               std::string( __FILE__ ) + ":" + std::string( __FUNCTION__ ) + ":" + \
+                               std::to_string( __LINE__ );                                         \
+        throw std::invalid_argument( errorMsg );                                                   \
+    }
+
 namespace dev {
 using namespace boost::multiprecision::literals;
 
@@ -220,6 +228,10 @@ template < class N >
 inline N diff( N const& _a, N const& _b ) {
     return std::max( _a, _b ) - std::min( _a, _b );
 }
+
+#ifdef FAIR
+u256 calculateShareWithPrecision( const u256& _base, size_t _sharePromile );
+#endif
 
 /// RAII utility class whose destructor calls a given function.
 class ScopeGuard {

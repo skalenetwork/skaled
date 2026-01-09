@@ -316,7 +316,7 @@ Json::Value CurlClient::eth_getTransactionReceipt( const std::string& _hash ) {
 string SkaledFixture::readFile( const std::string& _path ) {
     CHECK( boost::filesystem::exists( _path ) );
 
-    boost::filesystem::ifstream stream( _path, std::ios::in | std::ios::binary );
+    std::ifstream stream( _path, std::ios::in | std::ios::binary );
 
     CHECK( stream.is_open() );
 
@@ -867,9 +867,11 @@ void SkaledFixture::sendSingleTransferOrBatch( u256 _amount, std::shared_ptr< Sk
             transaction.forceType2Fees( _gasPrice, _gasPrice );
         }
 
+#ifndef FAIR
         if (usePow) {
             calculateAndSetPowGas(transaction);
         }
+#endif
 
         transaction.sign( _from->getKey() );
         CHECK( transaction.chainId() );
@@ -1081,6 +1083,7 @@ unique_ptr< WebThreeStubClient > SkaledFixture::rpcClient() const {
     return rpcClient;
 }
 
+#ifndef FAIR
 void SkaledFixture::calculateAndSetPowGas( Transaction& _t ) const {
 
     for ( u256 i = 1;; i++ ) {
@@ -1096,6 +1099,7 @@ void SkaledFixture::calculateAndSetPowGas( Transaction& _t ) const {
         }
     }
 }
+#endif
 
 SkaledAccount::SkaledAccount( const Secret _key, const u256 _currentTransactionCountOnChain )
     : key( _key ), currentTransactionCountOnChain( _currentTransactionCountOnChain ) {

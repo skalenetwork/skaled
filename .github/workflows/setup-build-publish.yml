@@ -53,7 +53,7 @@ jobs:
       PLAIN_VERSION: ${{ inputs.use_plain_version }}
     steps:
       - name: Prepare workflow variables
-        if: inputs.node_type != 'historic'
+        if: inputs.node_type == 'core'
         run: |
           export VERSION_SUFFIX=$(echo "$BUILD_TYPE" | tr '[:upper:]' '[:lower:]')
           [[ $PLAIN_VERSION = "true" ]] && export VERSION=${{ inputs.image_version }} || \
@@ -69,6 +69,60 @@ jobs:
             export VERSION=${{ inputs.image_version }}-$VERSION_SUFFIX-historic
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           export CMAKE_OPTS="-DHISTORIC_STATE=1 ${{ inputs.cmake_options }}"
+          echo "CMAKE_OPTS=$CMAKE_OPTS" >> $GITHUB_ENV
+      - name: Prepare workflow variables (BITE)
+        if: inputs.node_type == 'bite'
+        run: |
+          export VERSION_SUFFIX=$(echo "$BUILD_TYPE" | tr '[:upper:]' '[:lower:]')
+          [[ $PLAIN_VERSION = "true" ]] && export VERSION=${{ inputs.image_version }} || \
+            export VERSION=${{ inputs.image_version }}-$VERSION_SUFFIX
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          export CMAKE_OPTS="-DBITE=1 ${{ inputs.cmake_options }}"
+          echo "CMAKE_OPTS=$CMAKE_OPTS" >> $GITHUB_ENV
+      - name: Prepare workflow variables (BITE-HISTORIC)
+        if: inputs.node_type == 'bite-historic'
+        run: |
+          export VERSION_SUFFIX=$(echo "$BUILD_TYPE" | tr '[:upper:]' '[:lower:]')
+          [[ $PLAIN_VERSION = "true" ]] && export VERSION=${{ inputs.image_version }} || \
+            export VERSION=${{ inputs.image_version }}-$VERSION_SUFFIX
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          export CMAKE_OPTS="-DBITE=1 -DHISTORIC_STATE=1 ${{ inputs.cmake_options }}"
+          echo "CMAKE_OPTS=$CMAKE_OPTS" >> $GITHUB_ENV
+      - name: Prepare workflow variables (FAIR)
+        if: inputs.node_type == 'fair'
+        run: |
+          export VERSION_SUFFIX=$(echo "$BUILD_TYPE" | tr '[:upper:]' '[:lower:]')
+          [[ $PLAIN_VERSION = "true" ]] && export VERSION=${{ inputs.image_version }} || \
+            export VERSION=${{ inputs.image_version }}-$VERSION_SUFFIX
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          export CMAKE_OPTS="-DFAIR=1 ${{ inputs.cmake_options }}"
+          echo "CMAKE_OPTS=$CMAKE_OPTS" >> $GITHUB_ENV
+      - name: Prepare workflow variables (FAIR-HISTORIC)
+        if: inputs.node_type == 'fair-historic'
+        run: |
+          export VERSION_SUFFIX=$(echo "$BUILD_TYPE" | tr '[:upper:]' '[:lower:]')
+          [[ $PLAIN_VERSION = "true" ]] && export VERSION=${{ inputs.image_version }} || \
+            export VERSION=${{ inputs.image_version }}-$VERSION_SUFFIX
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          export CMAKE_OPTS="-DFAIR=1 -DHISTORIC_STATE=1 ${{ inputs.cmake_options }}"
+          echo "CMAKE_OPTS=$CMAKE_OPTS" >> $GITHUB_ENV
+      - name: Prepare workflow variables (BITE2)
+        if: inputs.node_type == 'bite2'
+        run: |
+          export VERSION_SUFFIX=$(echo "$BUILD_TYPE" | tr '[:upper:]' '[:lower:]')
+          [[ $PLAIN_VERSION = "true" ]] && export VERSION=${{ inputs.image_version }} || \
+            export VERSION=${{ inputs.image_version }}-$VERSION_SUFFIX
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          export CMAKE_OPTS="-DBITE2=1 ${{ inputs.cmake_options }}"
+          echo "CMAKE_OPTS=$CMAKE_OPTS" >> $GITHUB_ENV
+      - name: Prepare workflow variables (BITE2-HISTORIC)
+        if: inputs.node_type == 'bite2-historic'
+        run: |
+          export VERSION_SUFFIX=$(echo "$BUILD_TYPE" | tr '[:upper:]' '[:lower:]')
+          [[ $PLAIN_VERSION = "true" ]] && export VERSION=${{ inputs.image_version }} || \
+            export VERSION=${{ inputs.image_version }}-$VERSION_SUFFIX
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          export CMAKE_OPTS="-DBITE2=1 -DHISTORIC_STATE=1 ${{ inputs.cmake_options }}"
           echo "CMAKE_OPTS=$CMAKE_OPTS" >> $GITHUB_ENV
       - name: update apt
         run: |
@@ -144,6 +198,8 @@ jobs:
           [[ $CMAKE_BUILD_TYPE = "Debug" ]] && export DEBUG_FLAG=1 || export DEBUG_FLAG=0
           cd deps
           ./clean.sh
+          # prepare boost library
+          cp ~/skaled_deps_predownloaded/boost_1_87_0.tar.bz2 ../libconsensus/libBLS/deps/boost_1_87_0.tar.bz2
           rm -f ./libwebsockets-from-git.tar.gz
           ./build.sh PARALLEL_COUNT=$(nproc) DEBUG=$DEBUG_FLAG
           cd ..

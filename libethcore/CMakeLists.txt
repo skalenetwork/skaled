@@ -8,11 +8,15 @@ target_compile_options( ethcore PRIVATE
 
 target_include_directories( ethcore PRIVATE
 	"${UTILS_INCLUDE_DIR}"
-	${SKUTILS_INCLUDE_DIRS}
+        ${SKUTILS_INCLUDE_DIRS}
 	)
 
 target_link_libraries( ethcore PUBLIC
 	devcrypto
 	devcore
 	skale
+	bls
 	)
+if (BITE)
+    target_link_libraries( ethcore PUBLIC te )
+endif()

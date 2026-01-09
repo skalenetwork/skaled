@@ -76,7 +76,7 @@ public:
     void verify( TestBlockChain const& _bc ) const;
 
     void setBlockHeader( BlockHeader const& _header );
-    void setState( State const& _state );
+    void setState( skale::State const& _state );
     void clearState();
 
     BlockHeader const& premineHeader() {
@@ -152,6 +152,7 @@ public:
     static eth::Network s_sealEngineNetwork;
 
 private:
+    std::shared_ptr< ChainParams > m_chainParams;
     std::unique_ptr< BlockChain > m_blockChain;
     TestBlock m_genesisBlock;
     TestBlock m_lastBlock;

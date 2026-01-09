@@ -32,7 +32,7 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
 #include <libethcore/Common.h>
-//#include <libethereum/Account.h>
+// #include <libethereum/Account.h>
 
 namespace dev {
 namespace eth {
@@ -80,6 +80,12 @@ public:
     dev::bytes getLegacyPartialTransactionReceipts() const;
     void setLegacyPartialTransactionReceipts( const dev::bytes& _newReceipt );
     void cleanupLegacyTransactionReceipts();
+
+#ifdef FAIR
+    std::uint64_t hexToUint64( const std::string& hexValue );
+    void setLastRewardedBlockNumber( const dev::eth::BlockNumber _blockNumber );
+    dev::eth::BlockNumber getLastRewardedBlockNumber();
+#endif
 
     // commit key-value pairs in storage
     void commitStorageValues();

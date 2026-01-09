@@ -44,6 +44,14 @@ SchainPatchEnum getEnumForPatchName( const std::string& _patchName ) {
         return SchainPatchEnum::KeepPartialReceiptsUntilNextBlockPatch;
     else if ( _patchName == "InvalidTransactionFormatPatch" )
         return SchainPatchEnum::InvalidTransactionFormatPatch;
+    else if ( _patchName == "CurrentBlockRandomPatch" )
+        return SchainPatchEnum::CurrentBlockRandomPatch;
+    else if ( _patchName == "GroupIndexInitPatch" )
+        return SchainPatchEnum::GroupIndexInitPatch;
+#ifdef FAIR
+    else if ( _patchName == "DisableSelfDestructPatch" )
+        return SchainPatchEnum::DisableSelfDestructPatch;
+#endif
     else
         throw std::out_of_range( _patchName );
 }
@@ -86,17 +94,42 @@ std::string getPatchNameForEnum( SchainPatchEnum _enumValue ) {
         return "KeepPartialReceiptsUntilNextBlockPatch";
     case SchainPatchEnum::InvalidTransactionFormatPatch:
         return "InvalidTransactionFormatPatch";
+    case SchainPatchEnum::CurrentBlockRandomPatch:
+        return "CurrentBlockRandomPatch";
+    case SchainPatchEnum::GroupIndexInitPatch:
+        return "GroupIndexInitPatch";
+#ifdef FAIR
+    case SchainPatchEnum::DisableSelfDestructPatch:
+        return "DisableSelfDestructPatch";
+#endif
     default:
         throw std::out_of_range(
             "UnknownPatch #" + std::to_string( static_cast< size_t >( _enumValue ) ) );
     }
 }
 
+#ifdef FAIR
+const std::unordered_set< SchainPatchEnum > SchainPatch::preEnabledForFAIR = {
+    SchainPatchEnum::PowCheckPatch, SchainPatchEnum::CorrectForkInPowPatch,
+    SchainPatchEnum::ContractStorageZeroValuePatch, SchainPatchEnum::PushZeroPatch,
+    SchainPatchEnum::ContractStoragePatch, SchainPatchEnum::StorageDestructionPatch,
+    SchainPatchEnum::SkipInvalidTransactionsPatch, SchainPatchEnum::VerifyDaSigsPatch,
+    SchainPatchEnum::FastConsensusPatch, SchainPatchEnum::EIP1559TransactionsPatch,
+    SchainPatchEnum::VerifyBlsSyncPatch, SchainPatchEnum::ClearPartialReceiptsPatch,
+    SchainPatchEnum::InvalidTransactionFormatPatch, SchainPatchEnum::CurrentBlockRandomPatch,
+    SchainPatchEnum::GroupIndexInitPatch
+};
+const std::unordered_set< SchainPatchEnum > SchainPatch::preDisabledForFAIR = {
+    SchainPatchEnum::RevertableFSPatch, SchainPatchEnum::FlexibleDeploymentPatch,
+    SchainPatchEnum::ExternalGasPatch
+};
+#endif
+
 void SchainPatch::init( const dev::eth::ChainOperationParams& _cp ) {
     chainParams = _cp;
-    for ( size_t i = 0; i < _cp.sChain._patchTimestamps.size(); ++i ) {
+    for ( size_t i = 0; i < static_cast< size_t >( SchainPatchEnum::PatchesCount ); ++i ) {
         printInfo( getPatchNameForEnum( static_cast< SchainPatchEnum >( i ) ),
-            _cp.sChain._patchTimestamps[i] );
+            _cp.getPatchTimestamp( static_cast< SchainPatchEnum >( i ) ) );
     }
 }
 
@@ -105,6 +138,16 @@ void SchainPatch::useLatestBlockTimestamp( time_t _timestamp ) {
 }
 
 void SchainPatch::printInfo( const std::string& _patchName, time_t _timeStamp ) {
+#ifdef FAIR
+    if ( preEnabledForFAIR.count( getEnumForPatchName( _patchName ) ) > 0 ) {
+        cnote << "Patch " << _patchName << " is enabled";
+        return;
+    }
+    if ( preDisabledForFAIR.count( getEnumForPatchName( _patchName ) ) > 0 ) {
+        cnote << "Patch " << _patchName << " is disabled";
+        return;
+    }
+#endif
     if ( _timeStamp == 0 ) {
         cnote << "Patch " << _patchName << " is disabled";
     } else {
@@ -114,6 +157,12 @@ void SchainPatch::printInfo( const std::string& _patchName, time_t _timeStamp ) 
 
 bool SchainPatch::isPatchEnabledWhen(
     SchainPatchEnum _patchEnum, time_t _committedBlockTimestamp ) {
+#ifdef FAIR
+    if ( preEnabledForFAIR.count( _patchEnum ) > 0 )
+        return true;
+    if ( preDisabledForFAIR.count( _patchEnum ) > 0 )
+        return false;
+#endif
     time_t activationTimestamp = chainParams.getPatchTimestamp( _patchEnum );
     return activationTimestamp != 0 && _committedBlockTimestamp >= activationTimestamp;
 }
