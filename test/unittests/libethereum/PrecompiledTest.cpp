@@ -76,6 +76,7 @@ BOOST_AUTO_TEST_CASE( modexpFermatTheorem,
 #ifdef BITE2
                                                               0,
                                                               1,
+                                                              dev::ZeroAddress,
 #endif
                                                               true } );
 
@@ -99,6 +100,7 @@ BOOST_AUTO_TEST_CASE( modexpZeroBase,
 #ifdef BITE2
                                                               0,
                                                               1,
+                                                              dev::ZeroAddress,
 #endif
                                                               true } );
 
@@ -124,6 +126,7 @@ BOOST_AUTO_TEST_CASE( modexpExtraByteIgnored,
 #ifdef BITE2
                                                               0,
                                                               1,
+                                                              dev::ZeroAddress,
 #endif
                                                               true } );
 
@@ -148,6 +151,7 @@ BOOST_AUTO_TEST_CASE( modexpRightPadding,
 #ifdef BITE2
                                                               0,
                                                               1,
+                                                              dev::ZeroAddress,
 #endif
                                                               true } );
 
@@ -169,6 +173,7 @@ BOOST_AUTO_TEST_CASE( modexpMissingValues ) {
 #ifdef BITE2
                                                               0,
                                                               1,
+                                                              dev::ZeroAddress,
 #endif
                                                               true } );
 
@@ -192,6 +197,7 @@ BOOST_AUTO_TEST_CASE( modexpEmptyValue,
 #ifdef BITE2
                                                               0,
                                                               1,
+                                                              dev::ZeroAddress,
 #endif
                                                               true } );
 
@@ -216,6 +222,7 @@ BOOST_AUTO_TEST_CASE( modexpZeroPowerZero,
 #ifdef BITE2
                                                               0,
                                                               1,
+                                                              dev::ZeroAddress,
 #endif
                                                               true } );
 
@@ -240,6 +247,7 @@ BOOST_AUTO_TEST_CASE( modexpZeroPowerZeroModZero,
 #ifdef BITE2
                                                               0,
                                                               1,
+                                                              dev::ZeroAddress,
 #endif
                                                               true } );
 
@@ -263,6 +271,7 @@ BOOST_AUTO_TEST_CASE( modexpModLengthZero,
 #ifdef BITE2
                                                               0,
                                                               1,
+                                                              dev::ZeroAddress,
 #endif
                                                               true } );
 
@@ -1508,6 +1517,7 @@ void benchmarkPrecompiled( char const name[], vector_ref< const PrecompiledTest 
 #ifdef BITE2
                                      0,
                                      1,
+                                     dev::ZeroAddress,
 #endif
                                      true } );
         BOOST_REQUIRE_MESSAGE( res.first, test.name );
@@ -1519,6 +1529,7 @@ void benchmarkPrecompiled( char const name[], vector_ref< const PrecompiledTest 
 #ifdef BITE2
                               0,
                               1,
+                              dev::ZeroAddress,
 #endif
                               true } );
         auto d = timer.duration() / n;
@@ -1807,6 +1818,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
 #ifdef BITE2
                                                               { -1 },
                                                               0,
+                                                              dev::ZeroAddress,
 #endif
                                                               true } );
 
@@ -1820,6 +1832,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
 #ifdef BITE2
                                                          { -1 },
                                                          0,
+                                                         dev::ZeroAddress,
 #endif
                                                          true } );
 
@@ -1833,6 +1846,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
 #ifdef BITE2
                                                          { -1 },
                                                          0,
+                                                         dev::ZeroAddress,
 #endif
                                                          true } );
 
@@ -1845,6 +1859,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
 #ifdef BITE2
                                                          { -1 },
                                                          0,
+                                                         dev::ZeroAddress,
 #endif
                                                          true } );
 
@@ -1857,6 +1872,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
 #ifdef BITE2
                                                          { -1 },
                                                          0,
+                                                         dev::ZeroAddress,
 #endif
                                                          true } );
 
@@ -1870,6 +1886,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
 #ifdef BITE2
                                                          { -1 },
                                                          0,
+                                                         dev::ZeroAddress,
 #endif
                                                          true } );
 
@@ -1884,6 +1901,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
 #ifdef BITE2
                                                          { -1 },
                                                          0,
+                                                         dev::ZeroAddress,
 #endif
                                                          true } );
 
@@ -1898,6 +1916,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
 #ifdef BITE2
                                                          { -1 },
                                                          0,
+                                                         dev::ZeroAddress,
 #endif
                                                          true } );
 
@@ -1910,6 +1929,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
 #ifdef BITE2
                                                          { -1 },
                                                          0,
+                                                         dev::ZeroAddress,
 #endif
                                                          true } );
 
@@ -1922,6 +1942,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
 #ifdef BITE2
                                                          { -1 },
                                                          0,
+                                                         dev::ZeroAddress,
 #endif
                                                          true } );
 
@@ -1982,6 +2003,7 @@ BOOST_AUTO_TEST_CASE( createFile ) {
 #ifdef BITE2
                                                               { -1 },
                                                               0,
+                                                              dev::ZeroAddress,
 #endif
                                                               true }, m_overlayFS.get() );
 
@@ -2005,6 +2027,7 @@ BOOST_AUTO_TEST_CASE( fileWithHashExtension ) {
 #ifdef BITE2
                                                               { -1 },
                                                               0,
+                                                              dev::ZeroAddress,
 #endif
                                                               true }, m_overlayFS.get() );
     BOOST_REQUIRE( res.first == false);
@@ -2023,6 +2046,7 @@ BOOST_AUTO_TEST_CASE( uploadChunk ) {
 #ifdef BITE2
                                                               { -1 },
                                                               0,
+                                                              dev::ZeroAddress,
 #endif
                                                               true }, m_overlayFS.get() );
     BOOST_REQUIRE( res.first );
@@ -2044,6 +2068,7 @@ BOOST_AUTO_TEST_CASE( readChunk ) {
 #ifdef BITE2
                                                               { -1 },
                                                               0,
+                                                              dev::ZeroAddress,
 #endif
                                                               true }, m_overlayFS.get() );
     BOOST_REQUIRE( res.first );
@@ -2066,6 +2091,7 @@ BOOST_AUTO_TEST_CASE( readMaliciousChunk ) {
 #ifdef BITE2
                                                               { -1 },
                                                               0,
+                                                              dev::ZeroAddress,
 #endif
                                                               true }, m_overlayFS.get() );
     BOOST_REQUIRE( res.first == false);
@@ -2079,6 +2105,7 @@ BOOST_AUTO_TEST_CASE( getFileSize ) {
 #ifdef BITE2
                                                               { -1 },
                                                               0,
+                                                              dev::ZeroAddress,
 #endif
                                                               true }, m_overlayFS.get() );
     BOOST_REQUIRE( res.first );
@@ -2095,6 +2122,7 @@ BOOST_AUTO_TEST_CASE( getMaliciousFileSize ) {
 #ifdef BITE2
                                                               { -1 },
                                                               0,
+                                                              dev::ZeroAddress,
 #endif
                                                               true }, m_overlayFS.get() );
     BOOST_REQUIRE( !res.first );
@@ -2108,6 +2136,7 @@ BOOST_AUTO_TEST_CASE( deleteFile ) {
 #ifdef BITE2
                                                                      { -1 },
                                                                      0,
+                                                                     dev::ZeroAddress,
 #endif
                                                                      true }, m_overlayFS.get() );
     m_overlayFS->commit();
@@ -2119,6 +2148,7 @@ BOOST_AUTO_TEST_CASE( deleteFile ) {
 #ifdef BITE2
                                                                { -1 },
                                                                0,
+                                                               dev::ZeroAddress,
 #endif
                                                                true }, m_overlayFS.get() );
     m_overlayFS->commit();
@@ -2131,6 +2161,7 @@ BOOST_AUTO_TEST_CASE( deleteFile ) {
 #ifdef BITE2
                                                               { -1 },
                                                               0,
+                                                              dev::ZeroAddress,
 #endif
                                                               true }, m_overlayFS.get() );
     BOOST_REQUIRE( res.first );
@@ -2152,6 +2183,7 @@ BOOST_AUTO_TEST_CASE( createDirectory ) {
 #ifdef BITE2
                                                               { -1 },
                                                               0,
+                                                              dev::ZeroAddress,
 #endif
                                                               true }, m_overlayFS.get() );
     BOOST_REQUIRE( res.first );
@@ -2174,6 +2206,7 @@ BOOST_AUTO_TEST_CASE( deleteDirectory ) {
 #ifdef BITE2
                                                               { -1 },
                                                               0,
+                                                              dev::ZeroAddress,
 #endif
                                                               true }, m_overlayFS.get() );
 
@@ -2201,6 +2234,7 @@ BOOST_AUTO_TEST_CASE( calculateFileHash ) {
 #ifdef BITE2
                                                               { -1 },
                                                               0,
+                                                              dev::ZeroAddress,
 #endif
                                                               true }, m_overlayFS.get() );
 

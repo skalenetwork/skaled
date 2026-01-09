@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <libdevcore/Address.h>
 #include <libdevcore/CommonData.h>
 #include <libdevcore/Exceptions.h>
 #include <functional>
