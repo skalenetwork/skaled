@@ -39,14 +39,14 @@ struct VerifiedBlockRef {
     BlockHeader info;                         ///< Prepopulated block info
     std::vector< Transaction > transactions;  ///< Verified list of block transactions
 #ifdef BITE
-    std::shared_ptr< DecryptedTransactionFieldsMap > decryptedTransactionDataFields =
-        std::make_shared< DecryptedTransactionFieldsMap >();  ///< Decrypted
-                                                              ///< transaction
-                                                              ///< data fields
-                                                              ///< to be stored
-                                                              ///< in
-                                                              ///< blockchain
-#endif
+    DecryptedTransactions decryptedTransactions = DecryptedTransactions{
+#ifdef BITE2
+        std::make_shared< DecryptedCATxsMap >(),
+#endif  // BITE2
+        std::make_shared< DecryptedRegularTxsMap >()
+    };  ///< Decrypted transactions
+        ///< to be stored in blockchain
+#endif  // BITE
 };
 
 /// @brief Verified block info, combines block data and verified info/transactions

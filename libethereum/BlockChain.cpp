@@ -623,8 +623,9 @@ ImportRoute BlockChain::import( const Block& _block ) {
     verifiedBlock.block = ref( _block.blockData() );
     verifiedBlock.transactions = _block.pending();
 #ifdef BITE
-    verifiedBlock.decryptedTransactionDataFields = _block.decryptedTransactionDataFields();
-    CHECK_EXPRESSION( verifiedBlock.decryptedTransactionDataFields );
+    verifiedBlock.decryptedTransactions = _block.decryptedTransactions();
+    CHECK_EXPRESSION( verifiedBlock.decryptedTransactions.catTxsMap );
+    CHECK_EXPRESSION( verifiedBlock.decryptedTransactions.regularTxsMap );
 #endif
     //    verifyBlock( ref( _block.blockData() ), m_onBad, ImportRequirements::OutOfOrderChecks );
 
@@ -772,9 +773,9 @@ void BlockChain::insertTransactionsDetailsToDb(
         RLP txns_rlp = blockRLP[1];
 
 #ifdef BITE
-        auto decryptedTransactionFieldsIt = _block.decryptedTransactionDataFields->begin();
+        CHECK_EXPRESSION( _block.decryptedTransactions.regularTxsMap );
+        auto regularTxnsIterator = _block.decryptedTransactions.regularTxsMap->begin();
 #endif
-
         for ( RLP::iterator it = txns_rlp.begin(); it != txns_rlp.end(); ++it ) {
             MICROPROFILE_SCOPEI( "insertBlockAndExtras", "for2", MP_HONEYDEW );
 
@@ -783,14 +784,18 @@ void BlockChain::insertTransactionsDetailsToDb(
                 ( db::Slice ) dev::ref( ta.rlp() ) );
 
 #ifdef BITE
-            if ( decryptedTransactionFieldsIt != _block.decryptedTransactionDataFields->end() &&
-                 decryptedTransactionFieldsIt->first == ta.index ) {
-                DecryptedTransactionFields& txFields = decryptedTransactionFieldsIt->second;
-                dev::Address to = dev::Address( txFields.to.get() );
-                DecryptedTransactionData txData( *txFields.data, to );
-                _extrasWriteBatch.insert( toSlice( sha3( txBytes ), ExtraTransactionDecryptedData ),
-                    ( db::Slice ) dev::ref( txData.rlp() ) );
-                ++decryptedTransactionFieldsIt;
+            if ( regularTxnsIterator != _block.decryptedTransactions.regularTxsMap->end() &&
+                 regularTxnsIterator->first == ta.index ) {
+                if ( regularTxnsIterator->second.has_value() ) {
+                    const DecryptedRegularTxFields& txFields = regularTxnsIterator->second.value();
+                    dev::Address to =
+                        dev::Address( txFields.to.data(), dev::Address::ConstructFromPointer );
+                    DecryptedTransactionData txData( txFields.data, to );
+                    _extrasWriteBatch.insert(
+                        toSlice( sha3( txBytes ), ExtraTransactionDecryptedData ),
+                        ( db::Slice ) dev::ref( txData.rlp() ) );
+                    ++regularTxnsIterator;
+                }
             }
 #endif
 

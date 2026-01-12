@@ -75,13 +75,13 @@ public:
     }
     void stop() {}
 
-    ConsensusExtFace::transactions_vector pendingTransactions( size_t _limit ) {
+    ConsensusExtFace::Transactions pendingTransactions( size_t _limit ) {
         u256 stateRoot = 0;
         return m_extFace.pendingTransactions( _limit, stateRoot );
     }
-    void createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
+    void createBlock( const ConsensusExtFace::Transactions& _approvedTransactions,
 #ifdef BITE
-        shared_ptr< DecryptedTransactionFieldsMap > _decryptedTransactions,
+        DecryptedTransactions _decryptedTransactions,
 #endif
         uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice = 0, u256 _stateRoot = 0,
 #ifdef FAIR
@@ -370,10 +370,17 @@ BOOST_DATA_TEST_CASE(
     CHECK_BALANCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
+    ConsensusExtFace::Transactions txns;
+    txns.pushBackRegular( tx.toBytes() );
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{ tx.toBytes() },
+        stub->createBlock( txns,
 #ifdef BITE
-            make_shared< DecryptedTransactionFieldsMap >(),
+                           DecryptedTransactions{
+#ifdef BITE2
+                                   std::make_shared< DecryptedCATxsMap >(),
+#endif  // BITE2
+                                   std::make_shared< DecryptedRegularTxsMap >()
+                               },
 #endif
             utcTime(), 1U ) );
 
@@ -416,10 +423,21 @@ BOOST_DATA_TEST_CASE(
     CHECK_BALANCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
+    ConsensusExtFace::Transactions blockTxns;
+    blockTxns.pushBackRegular( small_tx1 );
+    blockTxns.pushBackRegular( small_tx2 );
+    blockTxns.pushBackRegular( bad_tx1 );
+    blockTxns.pushBackRegular( bad_tx2 );
+
     BOOST_REQUIRE_NO_THROW( stub->createBlock(
-        ConsensusExtFace::transactions_vector{ small_tx1, small_tx2, bad_tx1, bad_tx2 },
+        blockTxns,
 #ifdef BITE
-        make_shared< DecryptedTransactionFieldsMap >(),
+                                DecryptedTransactions{
+#ifdef BITE2
+                                        std::make_shared< DecryptedCATxsMap >(),
+#endif  // BITE2
+                                        std::make_shared< DecryptedRegularTxsMap >()
+                                    },
 #endif
         utcTime(), 1U ) );
 
@@ -512,10 +530,18 @@ BOOST_DATA_TEST_CASE(
     CHECK_BALANCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
+    ConsensusExtFace::Transactions txns;
+    txns.pushBackRegular( tx.toBytes() );
+
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{ tx.toBytes() },
+            stub->createBlock( txns,
 #ifdef BITE
-            make_shared< DecryptedTransactionFieldsMap >(),
+                               DecryptedTransactions{
+#ifdef BITE2
+                                       std::make_shared< DecryptedCATxsMap >(),
+#endif  // BITE2
+                                       std::make_shared< DecryptedRegularTxsMap >()
+                                   },
 #endif
             utcTime(), 1U ) );
 
@@ -580,9 +606,17 @@ BOOST_DATA_TEST_CASE(
     CHECK_BALANCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
-    BOOST_REQUIRE_NO_THROW( stub->createBlock( ConsensusExtFace::transactions_vector{ rlpBytes },
+    ConsensusExtFace::Transactions txns;
+    txns.pushBackRegular( rlpBytes );
+
+    BOOST_REQUIRE_NO_THROW( stub->createBlock( txns,
 #ifdef BITE
-        make_shared< DecryptedTransactionFieldsMap >(),
+                                               DecryptedTransactions{
+#ifdef BITE2
+                                                       std::make_shared< DecryptedCATxsMap >(),
+#endif  // BITE2
+                                                       std::make_shared< DecryptedRegularTxsMap >()
+                                                   },
 #endif
         utcTime(), 1U ) );
 
@@ -636,10 +670,18 @@ BOOST_DATA_TEST_CASE(
     CHECK_BALANCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
+    ConsensusExtFace::Transactions txns;
+    txns.pushBackRegular( tx.toBytes() );
+
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{ tx.toBytes() },
+        stub->createBlock( txns,
 #ifdef BITE
-            make_shared< DecryptedTransactionFieldsMap >(),
+                           DecryptedTransactions{
+#ifdef BITE2
+                                   std::make_shared< DecryptedCATxsMap >(),
+#endif  // BITE2
+                                   std::make_shared< DecryptedRegularTxsMap >()
+                               },
 #endif
             utcTime(), 1U ) );
 
@@ -708,10 +750,18 @@ BOOST_DATA_TEST_CASE(
     CHECK_BALANCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
+    ConsensusExtFace::Transactions txns;
+    txns.pushBackRegular( tx.toBytes() );
+
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{ tx.toBytes() },
+        stub->createBlock( txns,
 #ifdef BITE
-            make_shared< DecryptedTransactionFieldsMap >(),
+                           DecryptedTransactions{
+#ifdef BITE2
+                                   std::make_shared< DecryptedCATxsMap >(),
+#endif  // BITE2
+                                   std::make_shared< DecryptedRegularTxsMap >()
+                               },
 #endif
             utcTime(), 1U ) );
 
@@ -757,10 +807,18 @@ BOOST_DATA_TEST_CASE(
     CHECK_BALANCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
+    ConsensusExtFace::Transactions txns;
+    txns.pushBackRegular( tx.toBytes() );
+
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{ tx.toBytes() },
+        stub->createBlock( txns,
 #ifdef BITE
-            make_shared< DecryptedTransactionFieldsMap >(),
+                           DecryptedTransactions{
+#ifdef BITE2
+                                   std::make_shared< DecryptedCATxsMap >(),
+#endif  // BITE2
+                                   std::make_shared< DecryptedRegularTxsMap >()
+                               },
 #endif
             utcTime(), 1U ) );
 
@@ -806,11 +864,19 @@ BOOST_DATA_TEST_CASE(
     pair< bool, Secret > ar = accountHolder->authenticate( ts );
     Transaction tx1( ts, ar.second );
 
+    ConsensusExtFace::Transactions block1Txns;
+    block1Txns.pushBackRegular( tx1.toBytes() );
+
     // create 1 txns in 1 block
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{ tx1.toBytes() },
+        stub->createBlock( block1Txns,
 #ifdef BITE
-            make_shared< DecryptedTransactionFieldsMap >(),
+                           DecryptedTransactions{
+#ifdef BITE2
+                                   std::make_shared< DecryptedCATxsMap >(),
+#endif  // BITE2
+                                   std::make_shared< DecryptedRegularTxsMap >()
+                               },
 #endif
             utcTime(), 1U ) );
 
@@ -827,10 +893,18 @@ BOOST_DATA_TEST_CASE(
     CHECK_BALANCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
+    ConsensusExtFace::Transactions block2Txns;
+    block2Txns.pushBackRegular( tx2.toBytes() );
+
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{ tx2.toBytes() },
+        stub->createBlock( block2Txns,
 #ifdef BITE
-            make_shared< DecryptedTransactionFieldsMap >(),
+                           DecryptedTransactions{
+#ifdef BITE2
+                                   std::make_shared< DecryptedCATxsMap >(),
+#endif  // BITE2
+                                   std::make_shared< DecryptedRegularTxsMap >()
+                               },
 #endif
             utcTime(), 2U ) );
 
@@ -888,10 +962,18 @@ BOOST_DATA_TEST_CASE(
     CHECK_BALANCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
+    ConsensusExtFace::Transactions block1Txns;
+    block1Txns.pushBackRegular( tx.toBytes() );
+
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{ tx.toBytes() },
+        stub->createBlock( block1Txns,
 #ifdef BITE
-            make_shared< DecryptedTransactionFieldsMap >(),
+                           DecryptedTransactions{
+#ifdef BITE2
+                                   std::make_shared< DecryptedCATxsMap >(),
+#endif  // BITE2
+                                   std::make_shared< DecryptedRegularTxsMap >()
+                               },
 #endif
             utcTime(), 1U ) );
 
@@ -921,9 +1003,17 @@ BOOST_DATA_TEST_CASE(
     // make money
     dev::eth::simulateMining( *client, 1, senderAddress );
 
-    stub->createBlock( ConsensusExtFace::transactions_vector{ tx.toBytes() },
+    ConsensusExtFace::Transactions block2Txns;
+    block2Txns.pushBackRegular( tx.toBytes() );
+
+    stub->createBlock( block2Txns,
 #ifdef BITE
-        make_shared< DecryptedTransactionFieldsMap >(),
+                       DecryptedTransactions{
+#ifdef BITE2
+                               std::make_shared< DecryptedCATxsMap >(),
+#endif  // BITE2
+                               std::make_shared< DecryptedRegularTxsMap >()
+                           },
 #endif
         utcTime(), 2U );
 
@@ -981,10 +1071,19 @@ BOOST_DATA_TEST_CASE(
     CHECK_BALANCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
+    ConsensusExtFace::Transactions txns;
+    txns.pushBackRegular( tx1.toBytes() );
+    txns.pushBackRegular( tx2.toBytes() );
+
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{ tx1.toBytes(), tx2.toBytes() },
+        stub->createBlock( txns,
 #ifdef BITE
-            make_shared< DecryptedTransactionFieldsMap >(),
+                           DecryptedTransactions{
+#ifdef BITE2
+                                   std::make_shared< DecryptedCATxsMap >(),
+#endif  // BITE2
+                                   std::make_shared< DecryptedRegularTxsMap >()
+                               },
 #endif
             utcTime(), 1U ) );
     BOOST_REQUIRE_EQUAL( client->number(), 1 );
@@ -1046,10 +1145,10 @@ BOOST_AUTO_TEST_CASE( gasLimitInBlockProposal ) {
 
     sleep( 1 );  // allow broadcast thread to move them
 
-    ConsensusExtFace::transactions_vector proposal = stub->pendingTransactions( 100 );
+    ConsensusExtFace::Transactions proposal = stub->pendingTransactions( 100 );
 
     BOOST_REQUIRE_EQUAL( proposal.size(), 1 );
-    BOOST_REQUIRE( proposal[0] == tx1.toBytes() );
+    BOOST_REQUIRE( proposal.at( 0 ) == tx1.toBytes() );
 }
 
 // positive test for 4 next ones
@@ -1106,9 +1205,17 @@ BOOST_AUTO_TEST_CASE( transactionDropReceive
     CHECK_BLOCK_BEGIN;
     CHECK_NONCE_BEGIN( senderAddress );
 
-    BOOST_REQUIRE_NO_THROW( stub->createBlock( ConsensusExtFace::transactions_vector{ tx3 },
+    ConsensusExtFace::Transactions txns;
+    txns.pushBackRegular( tx3 );
+
+    BOOST_REQUIRE_NO_THROW( stub->createBlock( txns,
 #ifdef BITE
-        make_shared< DecryptedTransactionFieldsMap >(),
+                                               DecryptedTransactions{
+        #ifdef BITE2
+                                                       std::make_shared< DecryptedCATxsMap >(),
+        #endif  // BITE2
+                                                       std::make_shared< DecryptedRegularTxsMap >()
+                                                   },
 #endif
         utcTime(), 1U ) );
     stub->setPriceForBlockId( 1, 1000 );
@@ -1119,8 +1226,8 @@ BOOST_AUTO_TEST_CASE( transactionDropReceive
     // both should be known, but
     BOOST_REQUIRE_EQUAL( tq->knownTransactions().size(), 2 );
     // 2nd should be dropped, 1st kept
-    ConsensusExtFace::transactions_vector txns = stub->pendingTransactions( 3 );
-    BOOST_REQUIRE_EQUAL( txns.size(), 1 );
+    ConsensusExtFace::Transactions pendingTxns = stub->pendingTransactions( 3 );
+    BOOST_REQUIRE_EQUAL( pendingTxns.size(), 1 );
 }
 
 BOOST_AUTO_TEST_CASE(
@@ -1170,10 +1277,18 @@ BOOST_AUTO_TEST_CASE(
     CHECK_BALANCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
+    ConsensusExtFace::Transactions txns;
+    txns.pushBackRegular( tx2.toBytes() );
+
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{ tx2.toBytes() },
+        stub->createBlock( txns,
 #ifdef BITE
-            make_shared< DecryptedTransactionFieldsMap >(),
+                           DecryptedTransactions{
+#ifdef BITE2
+                                   std::make_shared< DecryptedCATxsMap >(),
+#endif  // BITE2
+                                   std::make_shared< DecryptedRegularTxsMap >()
+                               },
 #endif
             utcTime(), 1U ) );
     stub->setPriceForBlockId( 1, 1000 );
@@ -1185,8 +1300,8 @@ BOOST_AUTO_TEST_CASE(
     REQUIRE_BALANCE_DECREASE( senderAddress, value2 );
 
     // should not be accessible from queue
-    ConsensusExtFace::transactions_vector txns = stub->pendingTransactions( 1 );
-    BOOST_REQUIRE_EQUAL( txns.size(), 0 );
+    ConsensusExtFace::Transactions pendingTxns = stub->pendingTransactions( 1 );
+    BOOST_REQUIRE_EQUAL( pendingTxns.size(), 0 );
 }
 
 // TODO Check exact dropping reason!
@@ -1238,10 +1353,18 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPrice
     CHECK_BALANCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
+    ConsensusExtFace::Transactions txns;
+    txns.pushBackRegular( tx2.toBytes() );
+
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{ tx2.toBytes() },
+        stub->createBlock( txns,
 #ifdef BITE
-            make_shared< DecryptedTransactionFieldsMap >(),
+                           DecryptedTransactions{
+#ifdef BITE2
+                                   std::make_shared< DecryptedCATxsMap >(),
+#endif  // BITE2
+                                   std::make_shared< DecryptedRegularTxsMap >()
+                               },
 #endif
             utcTime(), 1U, 1000 ) );
     stub->setPriceForBlockId( 1, 1100 );
@@ -1253,8 +1376,8 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPrice
     REQUIRE_BALANCE_DECREASE( senderAddress, value2 + 21000 * 1000 );
 
     // should not be accessible from queue
-    ConsensusExtFace::transactions_vector txns = stub->pendingTransactions( 1 );
-    BOOST_REQUIRE_EQUAL( txns.size(), 0 );
+    ConsensusExtFace::Transactions pendingTxns = stub->pendingTransactions( 1 );
+    BOOST_REQUIRE_EQUAL( pendingTxns.size(), 0 );
 }
 
 // TODO Check exact dropping reason!
@@ -1315,10 +1438,18 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive
     CHECK_BALANCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
+    ConsensusExtFace::Transactions txns;
+    txns.pushBackRegular( tx2.toBytes() );
+
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{ tx2.toBytes() },
+        stub->createBlock( txns,
 #ifdef BITE
-            make_shared< DecryptedTransactionFieldsMap >(),
+                           DecryptedTransactions{
+#ifdef BITE2
+                                   std::make_shared< DecryptedCATxsMap >(),
+#endif  // BITE2
+                                   std::make_shared< DecryptedRegularTxsMap >()
+                               },
 #endif
             utcTime(), 1U, 1000 ) );
     stub->setPriceForBlockId( 1, 1100 );
@@ -1330,8 +1461,8 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive
     REQUIRE_BALANCE_DECREASE_GE( account2.address(), value2 );
 
     // should not be accessible from queue
-    ConsensusExtFace::transactions_vector txns = stub->pendingTransactions( 1 );
-    BOOST_REQUIRE_EQUAL( txns.size(), 0 );
+    ConsensusExtFace::Transactions pendingTxns = stub->pendingTransactions( 1 );
+    BOOST_REQUIRE_EQUAL( pendingTxns.size(), 0 );
 }
 
 BOOST_AUTO_TEST_CASE( transactionRace
@@ -1365,11 +1496,19 @@ BOOST_AUTO_TEST_CASE( transactionRace
     CHECK_BALANCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
+    ConsensusExtFace::Transactions txns;
+    txns.pushBackRegular( tx.toBytes() );
+
     // 2 get it from consensus
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{ tx.toBytes() },
+        stub->createBlock( txns,
 #ifdef BITE
-            make_shared< DecryptedTransactionFieldsMap >(),
+                           DecryptedTransactions{
+#ifdef BITE2
+                                   std::make_shared< DecryptedCATxsMap >(),
+#endif  // BITE2
+                                   std::make_shared< DecryptedRegularTxsMap >()
+                               },
 #endif
             utcTime(), 1U ) );
     stub->setPriceForBlockId( 1, 1000 );
@@ -1382,7 +1521,7 @@ BOOST_AUTO_TEST_CASE( transactionRace
     REQUIRE_BALANCE_DECREASE( senderAddress, value + gasPrice * 21000 );
 
     // 2 should be dropped from q
-    ConsensusExtFace::transactions_vector tx_from_q = stub->pendingTransactions( 1 );
+    ConsensusExtFace::Transactions tx_from_q = stub->pendingTransactions( 1 );
     BOOST_REQUIRE_EQUAL( tx_from_q.size(), 0 );
 
     // 3 send new tx and see nonce
@@ -1416,11 +1555,19 @@ BOOST_AUTO_TEST_CASE( partialCatchUp
     pair< bool, Secret > ar = accountHolder->authenticate( ts );
     Transaction tx1( ts, ar.second );
 
+    ConsensusExtFace::Transactions block1txns;
+    block1txns.pushBackRegular( tx1.toBytes() );
+
     // create 1 txns in 1 block
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{ tx1.toBytes() },
+        stub->createBlock( block1txns,
 #ifdef BITE
-            make_shared< DecryptedTransactionFieldsMap >(),
+                           DecryptedTransactions{
+#ifdef BITE2
+                                   std::make_shared< DecryptedCATxsMap >(),
+#endif  // BITE2
+                                   std::make_shared< DecryptedRegularTxsMap >()
+                               },
 #endif
             utcTime(), 1U ) );
 
@@ -1439,10 +1586,19 @@ BOOST_AUTO_TEST_CASE( partialCatchUp
     CHECK_BALANCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
+    ConsensusExtFace::Transactions block2Txns;
+    block2Txns.pushBackRegular( tx1.toBytes() );
+    block2Txns.pushBackRegular( tx2.toBytes() );
+
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{ tx1.toBytes(), tx2.toBytes() },
+        stub->createBlock( block2Txns,
 #ifdef BITE
-            make_shared< DecryptedTransactionFieldsMap >(),
+                           DecryptedTransactions{
+#ifdef BITE2
+                                   std::make_shared< DecryptedCATxsMap >(),
+#endif  // BITE2
+                                   std::make_shared< DecryptedRegularTxsMap >()
+                               },
 #endif
             utcTime(), 2U ) );
 
@@ -1482,8 +1638,8 @@ BOOST_AUTO_TEST_CASE( getCurrentBLSPublicKey ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getIMABLSPublicKey" );
     auto res = exec( bytesConstRef(), { 1,
 #ifdef BITE2
-                                        { 0 },
-                                        -1,
+                                        { -1 },
+                                        0,
 #endif
                                         true } );
     std::array< std::string, 4 > imaBLSPublicKey = skaleHost->getCurrentBLSPublicKey();
@@ -1539,15 +1695,25 @@ BOOST_AUTO_TEST_CASE( biteTransactions ) {
     shared_ptr< vector< uint8_t > > originalDataBytesPtr =
         std::make_shared< vector< uint8_t > >( messageToEncrypt );
 
-    DecryptedTransactionFields txFields = { originalDataBytesPtr,
-        std::make_shared< dev::bytes >( receiver.address().asBytes() ) };
+    DecryptedRegularTxFields txFields{ messageToEncrypt, receiver.address().asArray() };
+    std::shared_ptr< DecryptedRegularTxsMap > regularTxsMap =
+        std::make_shared< DecryptedRegularTxsMap >(
+            DecryptedRegularTxsMap{ { 0, std::make_optional( txFields ) } }
+        );
 
-    DecryptedTransactionFieldsMap decryptedTxnDataMap{ { 0, txFields } };
+    DecryptedTransactions decryptedTxnDataMap(
+#ifdef BITE2
+                std::make_shared< DecryptedCATxsMap >(),
+#endif
+                regularTxsMap
+                );
+
+    ConsensusExtFace::Transactions txns;
+    txns.pushBackRegular( txEncrypted.toBytes() );
 
     // simulate new block
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{ txEncrypted.toBytes() },
-            make_shared< DecryptedTransactionFieldsMap >( decryptedTxnDataMap ), utcTime(), 1U ) );
+        stub->createBlock( txns, decryptedTxnDataMap, utcTime(), 1U ) );
 
     BOOST_REQUIRE( client->transaction( encryptedTxHash ).toBytes() == txEncrypted.toBytes() );
     BOOST_REQUIRE(
@@ -1605,14 +1771,15 @@ BOOST_AUTO_TEST_CASE(syncNodeGroupsUpdatesEpochIdWithoutRotation) {
     uint64_t blockTimestamp = currentTimestamp + 1;
     uint64_t blockId = client->number() + 1;
 
-#ifdef BITE
-    auto decryptedTransactions = std::make_shared< DecryptedTransactionFieldsMap >();
-#endif
-
     BOOST_REQUIRE_NO_THROW( stub->createBlock(
-        ConsensusExtFace::transactions_vector{},
+        ConsensusExtFace::Transactions{},
 #ifdef BITE
-        decryptedTransactions,
+                                DecryptedTransactions{
+#ifdef BITE2
+                                        std::make_shared< DecryptedCATxsMap >(),
+#endif  // BITE2
+                                        std::make_shared< DecryptedRegularTxsMap >()
+                                    },
 #endif
         blockTimestamp, blockId ) );
 
@@ -1656,18 +1823,26 @@ BOOST_FIXTURE_TEST_CASE(
     // it will be put to "future" queue
     skaleHost->receiveTransaction( toJS( tx1.toBytes() ) );
     sleep( 1 );
-    ConsensusExtFace::transactions_vector proposal = stub->pendingTransactions( 100 );
+    ConsensusExtFace::Transactions proposal = stub->pendingTransactions( 100 );
     // and not proposed
     BOOST_REQUIRE_EQUAL( proposal.size(), 0 );
 
     CHECK_NONCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
+    ConsensusExtFace::Transactions block1Txns;
+    block1Txns.pushBackRegular( tx1.toBytes() );
+
     // simulate it coming from another node
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{ tx1.toBytes() },
+        stub->createBlock( block1Txns,
 #ifdef BITE
-            make_shared< DecryptedTransactionFieldsMap >(),
+                           DecryptedTransactions{
+#ifdef BITE2
+                                   std::make_shared< DecryptedCATxsMap >(),
+#endif  // BITE2
+                                   std::make_shared< DecryptedRegularTxsMap >()
+                               },
 #endif
             utcTime(), 1U ) );
 
@@ -1695,9 +1870,17 @@ BOOST_FIXTURE_TEST_CASE(
     proposal = stub->pendingTransactions( 100 );
     BOOST_REQUIRE_EQUAL( proposal.size(), 2 );
 
-    BOOST_REQUIRE_NO_THROW( stub->createBlock( ConsensusExtFace::transactions_vector{ proposal[0] },
+    ConsensusExtFace::Transactions block2Txns;
+    block2Txns.pushBackRegular( proposal.at( 0 ) );
+
+    BOOST_REQUIRE_NO_THROW( stub->createBlock( block2Txns,
 #ifdef BITE
-        make_shared< DecryptedTransactionFieldsMap >(),
+                                               DecryptedTransactions{
+#ifdef BITE2
+                                                       std::make_shared< DecryptedCATxsMap >(),
+#endif  // BITE2
+                                                       std::make_shared< DecryptedRegularTxsMap >()
+                                                   },
 #endif
         utcTime(), 2U ) );
 
@@ -1715,10 +1898,18 @@ BOOST_FIXTURE_TEST_CASE(
     proposal = stub->pendingTransactions( 100 );
     BOOST_REQUIRE_EQUAL( proposal.size(), 1 );
 
+    ConsensusExtFace::Transactions block3Txns;
+    block3Txns.pushBackRegular( proposal.at( 0 ) );
+
     // submit it for sure
-    BOOST_REQUIRE_NO_THROW( stub->createBlock( ConsensusExtFace::transactions_vector{ proposal[0] },
+    BOOST_REQUIRE_NO_THROW( stub->createBlock( block3Txns,
 #ifdef BITE
-        make_shared< DecryptedTransactionFieldsMap >(),
+                                               DecryptedTransactions{
+#ifdef BITE2
+                                                       std::make_shared< DecryptedCATxsMap >(),
+#endif  // BITE2
+                                                       std::make_shared< DecryptedRegularTxsMap >()
+                                                   },
 #endif
         utcTime(), 3U ) );
 }
