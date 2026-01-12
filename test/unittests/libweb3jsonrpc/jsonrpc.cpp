@@ -2220,7 +2220,7 @@ BOOST_AUTO_TEST_CASE( keepPartialReceiptsUntilNextBlock ) {
     dev::eth::BlockNumber preActivationBlockNumber = 0;
     sendAndMine( preActivationBlockNumber );
     {
-        State state( fixture.client->state() );
+        skale::State state( fixture.client->state() );
         BOOST_REQUIRE_EQUAL(
             state.safePartialTransactionReceipts( preActivationBlockNumber ).size(), 0 );
     }
@@ -2233,7 +2233,7 @@ BOOST_AUTO_TEST_CASE( keepPartialReceiptsUntilNextBlock ) {
     dev::eth::BlockNumber firstPostActivationBlockNumber = 0;
     sendAndMine( firstPostActivationBlockNumber );
     {
-        State state( fixture.client->state() );
+        skale::State state( fixture.client->state() );
         BOOST_REQUIRE_EQUAL(
             state.safePartialTransactionReceipts( firstPostActivationBlockNumber ).size(), 0 );
     }
@@ -2241,7 +2241,7 @@ BOOST_AUTO_TEST_CASE( keepPartialReceiptsUntilNextBlock ) {
     dev::eth::BlockNumber secondPostActivationBlockNumber = 0;
     sendAndMine( secondPostActivationBlockNumber );
     {
-        State state( fixture.client->state() );
+        skale::State state( fixture.client->state() );
         BOOST_REQUIRE_EQUAL(
             state.safePartialTransactionReceipts( secondPostActivationBlockNumber ).size(), 1 );
     }
@@ -2249,7 +2249,7 @@ BOOST_AUTO_TEST_CASE( keepPartialReceiptsUntilNextBlock ) {
     dev::eth::BlockNumber thirdPostActivationBlockNumber = 0;
     sendAndMine( thirdPostActivationBlockNumber );
     {
-        State state( fixture.client->state() );
+        skale::State state( fixture.client->state() );
         BOOST_REQUIRE_EQUAL(
             state.safePartialTransactionReceipts( secondPostActivationBlockNumber ).size(), 0 );
         BOOST_REQUIRE_EQUAL(
