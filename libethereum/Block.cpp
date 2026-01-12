@@ -468,8 +468,8 @@ inline void Block::doPartialCatchupTestIfRequested( unsigned i ) {
 void Block::cleanupPartialTransactionReceiptsForPreviousBlock() {
     if ( KeepPartialReceiptsUntilNextBlockPatch::isEnabledInWorkingBlock() &&
          m_previousBlock.number() > 0 ) {
-        BOOST_LOG( m_loggerDebug ) << "Removing partial transaction receipts for block "
-                             << m_previousBlock.number();
+        BOOST_LOG( m_loggerDebug )
+            << "Removing partial transaction receipts for block " << m_previousBlock.number();
         m_state.safeRemovePartialTransactionReceiptsForBlock( m_previousBlock.number() );
     }
     sanityCheckPartialTransactionReceipts( m_previousBlock.number() );
