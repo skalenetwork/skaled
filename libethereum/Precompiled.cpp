@@ -1321,7 +1321,8 @@ ETH_REGISTER_PRECOMPILED( encryptTE )
         // Get blockRandom to use as seed for deterministic encryption
         // This ensures all nodes encrypt identically for consensus
         unsigned blockNumberToCall = _ctx.blockNumber.convert_to< unsigned >();
-        dev::u256 blockRandomValue = g_skaleHost->getBlockRandom( blockNumberToCall, !_ctx.isReadOnly );
+        dev::u256 blockRandomValue =
+            g_skaleHost->getBlockRandom( blockNumberToCall, !_ctx.isReadOnly );
         bytes blockRandomBytes = toBigEndian( blockRandomValue );
 
         // Create seed array from blockRandom (32 bytes)
@@ -1331,7 +1332,8 @@ ETH_REGISTER_PRECOMPILED( encryptTE )
         // Build EncryptMetaData with seed and SC address as TE AAD
         libBLS::EncryptMetaData metaData;
         metaData.seed = seed;
-        metaData.associatedDataTE = std::vector< uint8_t >( scAddressBytes.begin(), scAddressBytes.end() );
+        metaData.associatedDataTE =
+            std::vector< uint8_t >( scAddressBytes.begin(), scAddressBytes.end() );
 
         // encrypt using threshold encryption
         libBLS::Ciphertext ciphertext =
