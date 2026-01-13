@@ -1632,6 +1632,11 @@ BOOST_AUTO_TEST_CASE( encryptTE_success ) {
     // Parse output as Ciphertext and validate
     libBLS::Ciphertext ciphertext = libBLS::Ciphertext::fromBytes( res.second, /* validate */ true );
 
+    // Validate the TE ciphertext with SC address as TE AAD
+    std::vector< uint8_t > scAddressVec( scAddressBytes.begin(), scAddressBytes.end() );
+    BOOST_REQUIRE_NO_THROW(
+        libBLS::ThresholdEncryption::validateEncryption( ciphertext.getTargetKey(), &scAddressVec ) );
+
     // decrypt & check if decrypted = original
     
     // 1. Create a decryption share from the single private key share
@@ -1643,10 +1648,9 @@ BOOST_AUTO_TEST_CASE( encryptTE_success ) {
     // 3. Combine shares → AES key
     libBLS::AES256Key aesKey = libBLS::ThresholdEncryption::combineShares( 
         ciphertext.getTargetKey(), decryptSet );
-    // 4. Decrypt using AES key with AAD
-    std::vector< uint8_t > scAddressVec( scAddressBytes.begin(), scAddressBytes.end() );
+    // 4. Decrypt using AES key (no AES AAD - we use TE AAD for validation instead)
     std::vector< uint8_t > decryptedMessage = 
-        libBLS::ThresholdEncryption::decrypt( ciphertext, aesKey, scAddressVec );
+        libBLS::ThresholdEncryption::decrypt( ciphertext, aesKey );
     // 5. Verify original message matches
     BOOST_REQUIRE( decryptedMessage == dataToEncrypt );    
 }
@@ -1917,18 +1921,40 @@ BOOST_AUTO_TEST_CASE( encryptECIES_dataLengthMismatch ) {
 BOOST_AUTO_TEST_CASE( encryptECIES_emptyData ) {
     SkaleHostFixture fixture;
 
+    // Generate a valid user keypair
+    dev::KeyPair userKeys = dev::KeyPair::create();
+    dev::Public userPublicKey = userKeys.pub();
+    dev::Secret userPrivateKey = userKeys.secret();
+
+    // Extract x and y coordinates from public key (64 bytes total)
+    bytes pubKeyX( userPublicKey.data(), userPublicKey.data() + 32 );
+    bytes pubKeyY( userPublicKey.data() + 32, userPublicKey.data() + 64 );
+
+    // Build ABI-encoded input with EMPTY data
+    // Format: [offset_to_data(32)] [x(32)] [y(32)] [data_length(32)] [no data]
+    bytes input;
+    // Offset to data = 96 (0x60) = 3 * 32
+    input.insert( input.end(), 32, 0 );
+    input[31] = 96;
+    // x-coordinate (32 bytes)
+    input.insert( input.end(), pubKeyX.begin(), pubKeyX.end() );
+    // y-coordinate (32 bytes)
+    input.insert( input.end(), pubKeyY.begin(), pubKeyY.end() );
+    // Data length = 0 (32 bytes of zeros)
+    input.insert( input.end(), 32, 0 );
+
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptECIES" );
 
-    // Build valid input but with data_length = 0
-    bytes input( 128, 0 );
-    input[31] = 96;  // Correct offset
-    // data_length at position [96..127] = 0 (already zeroed)
-
+    // Call the precompiled contract
     auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, true ) );
 
-    // Verify failure with error code 6 (empty data)
-    BOOST_REQUIRE( !res.first );
-    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 6 ) ) );
+    // Verify success - empty data encryption should succeed
+    BOOST_REQUIRE( res.first );
+    BOOST_REQUIRE( !res.second.empty() );
+
+    // Verify we can decrypt back to empty data
+    auto decryptedBytes = dev::decryptECIES_CBC( userPrivateKey, &res.second );
+    BOOST_REQUIRE( decryptedBytes.empty() );
 }
 
 BOOST_AUTO_TEST_CASE( encryptECIES_trailingPaddingNotZeros ) {
@@ -1951,9 +1977,9 @@ BOOST_AUTO_TEST_CASE( encryptECIES_trailingPaddingNotZeros ) {
 
     auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, true ) );
 
-    // Verify failure with error code 7 (trailing padding not zeros)
+    // Verify failure with error code 6 (trailing padding not zeros)
     BOOST_REQUIRE( !res.first );
-    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 7 ) ) );
+    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 6 ) ) );
 }
 
 BOOST_AUTO_TEST_CASE( encryptECIES_invalidPublicKey ) {
@@ -1983,9 +2009,9 @@ BOOST_AUTO_TEST_CASE( encryptECIES_invalidPublicKey ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptECIES" );
     auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, true ) );
 
-    // Verify failure with error code 8 (invalid public key)
+    // Verify failure with error code 7 (invalid public key)
     BOOST_REQUIRE( !res.first );
-    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 8 ) ) );
+    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 7 ) ) );
 }
 #endif  // BITE2
 

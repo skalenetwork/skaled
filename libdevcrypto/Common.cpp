@@ -481,8 +481,8 @@ bool dev::isValidPublicKey( Public const& _pub ) {
 }
 
 bytes dev::encryptECIES_CBC( Public const& _recipientPubKey, bytesConstRef _plain ) {
-    if ( _plain.empty() )
-        return {};
+    // Note: Empty plaintext is allowed - with PKCS7 padding it produces a 16-byte padding block
+    // This prevents distinguishing between empty and non-empty encrypted payloads
 
     // Generate ephemeral key pair
     KeyPair ephemeralKeyPair = KeyPair::create();

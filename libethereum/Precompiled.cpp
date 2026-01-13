@@ -1234,7 +1234,7 @@ ETH_REGISTER_PRECOMPILED( getRandomWalletAndSignatureForCTX )
 
 
 ETH_REGISTER_PRECOMPILED( encryptTE )
-( bytesConstRef _in, const PrecompiledCallContext& ) {
+( bytesConstRef _in, const PrecompiledCallContext& _ctx ) {
     try {
         static constexpr size_t MAX_SIZE_BYTES = 64 * 1024;  // 64KB
         if ( _in.size() > MAX_SIZE_BYTES ) {
@@ -1318,11 +1318,24 @@ ETH_REGISTER_PRECOMPILED( encryptTE )
             libBLS::algebra::G2Point::fromString( blsPublicKeyArray, libBLS::Base::DEC );
         libBLS::TEPublicKey tePublicKey( publicKeyG2 );
 
-        // encrypt using threshold encryption with SC address as AAD
-        std::optional< std::vector< uint8_t > > aad =
-            std::vector< uint8_t >( scAddressBytes.begin(), scAddressBytes.end() );
+        // Get blockRandom to use as seed for deterministic encryption
+        // This ensures all nodes encrypt identically for consensus
+        unsigned blockNumberToCall = _ctx.blockNumber.convert_to< unsigned >();
+        dev::u256 blockRandomValue = g_skaleHost->getBlockRandom( blockNumberToCall, !_ctx.isReadOnly );
+        bytes blockRandomBytes = toBigEndian( blockRandomValue );
+
+        // Create seed array from blockRandom (32 bytes)
+        std::array< uint8_t, libBLS::AES_256_KEY_SIZE_BYTES > seed;
+        std::copy_n( blockRandomBytes.begin(), libBLS::AES_256_KEY_SIZE_BYTES, seed.begin() );
+
+        // Build EncryptMetaData with seed and SC address as TE AAD
+        libBLS::EncryptMetaData metaData;
+        metaData.seed = seed;
+        metaData.associatedDataTE = std::vector< uint8_t >( scAddressBytes.begin(), scAddressBytes.end() );
+
+        // encrypt using threshold encryption
         libBLS::Ciphertext ciphertext =
-            libBLS::ThresholdEncryption::encrypt( dataToEncrypt, tePublicKey, aad );
+            libBLS::ThresholdEncryption::encrypt( dataToEncrypt, tePublicKey, metaData );
 
         // convert ciphertext to bytes
         bytes response = ciphertext.toBytes();
