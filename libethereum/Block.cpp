@@ -465,6 +465,28 @@ inline void Block::doPartialCatchupTestIfRequested( unsigned i ) {
     }
 }
 
+void Block::cleanupPartialTransactionReceiptsForPreviousBlock() {
+    if ( KeepPartialReceiptsUntilNextBlockPatch::isEnabledInWorkingBlock() &&
+         m_previousBlock.number() > 0 ) {
+        BOOST_LOG( m_loggerDebug )
+            << "Removing partial transaction receipts for block " << m_previousBlock.number();
+        m_state.safeRemovePartialTransactionReceiptsForBlock( m_previousBlock.number() );
+    }
+    sanityCheckPartialTransactionReceipts( m_previousBlock.number() );
+}
+
+void Block::sanityCheckPartialTransactionReceipts( std::optional< BlockNumber > blockNumber ) {
+    // do a simple sanity check from time to time
+    static uint64_t sanityCheckCounter = 0;
+    if ( sanityCheckCounter++ % 10000 == 0 ) {
+        if ( blockNumber.has_value() ) {
+            LDB_CHECK( m_state.safePartialTransactionReceipts( blockNumber.value() ).empty() );
+        } else {
+            LDB_CHECK( m_state.safeLegacyPartialTransactionReceipts().empty() );
+        }
+    }
+}
+
 tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _bc,
     const Transactions& _transactions, uint64_t _timestamp, u256 _gasPrice ) {
     if ( isSealed() )
@@ -502,6 +524,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
         }
     }
 
+    cleanupPartialTransactionReceiptsForPreviousBlock();
 
     for ( unsigned i = 0; i < _transactions.size(); ++i ) {
         Transaction const& tr = _transactions[i];
@@ -595,18 +618,15 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
 #endif
 
     // we got to the end of the block so we do not need partial transaction receipts anymore
-    m_state.safeRemoveAllPartialTransactionReceipts();
+    if ( !KeepPartialReceiptsUntilNextBlockPatch::isEnabledInWorkingBlock() ) {
+        m_state.safeRemoveAllPartialTransactionReceipts();
+        sanityCheckPartialTransactionReceipts();
+    }
 
     // since we committed changes corresponding to a particular block
     // we need to create a new readonly snap
     LDB_CHECK( m_state.getOriginalDb() );
     m_state.getOriginalDb()->createBlockSnap( info().number() );
-
-    // do a simple sanity check from time to time
-    static uint64_t sanityCheckCounter = 0;
-    if ( sanityCheckCounter++ % 10000 == 0 ) {
-        LDB_CHECK( m_state.safePartialTransactionReceipts( info().number() ).empty() );
-    }
 
     LDB_CHECK( receipts.size() >= countBad );
 
