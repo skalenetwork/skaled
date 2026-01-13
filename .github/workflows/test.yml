@@ -184,6 +184,52 @@ jobs:
           build_dir: build_historic
           mode: historic
           verbosity: "4"
+      
+      - name: Build (BITE)
+        uses: ./.github/actions/cmake-build
+        with:
+          build_dir: build_bite
+          cmake_build_type: ${{ env.CMAKE_BUILD_TYPE }}
+          coverage: ${{ env.CODE_COVERAGE }}
+          cmake_args: "-DBITE=1"
+          make_target: testeth
+
+      - name: Testeth BITE (full) verbosity 1
+        uses: ./.github/actions/testeth-run
+        with:
+          build_dir: build_bite
+          mode: full
+          verbosity: "1"
+
+      - name: Testeth BITE (full) verbosity 4
+        uses: ./.github/actions/testeth-run
+        with:
+          build_dir: build_bite
+          mode: full
+          verbosity: "4"
+
+      - name: Build (BITE-historic)
+        uses: ./.github/actions/cmake-build
+        with:
+          build_dir: build_bite_historic
+          cmake_build_type: ${{ env.CMAKE_BUILD_TYPE }}
+          coverage: ${{ env.CODE_COVERAGE }}
+          cmake_args: "-DBITE=1 -DHISTORIC_STATE=1"
+          make_target: testeth
+
+      - name: Testeth BITE-historic (JsonRpcSuite) verbosity 1
+        uses: ./.github/actions/testeth-run
+        with:
+          build_dir: build_bite_historic
+          mode: historic
+          verbosity: "1"
+
+      - name: Testeth BITE-historic (JsonRpcSuite) verbosity 4
+        uses: ./.github/actions/testeth-run
+        with:
+          build_dir: build_bite_historic
+          mode: historic
+          verbosity: "4"
 
       - name: Build (FAIR)
         uses: ./.github/actions/cmake-build
