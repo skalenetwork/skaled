@@ -1623,6 +1623,7 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
 #ifdef BITE2
                                         { 0 },
                                         1,
+                                        dev::ZeroAddress,
 #endif
                                         true } );
     u256 blockRandom = skaleHost->getBlockRandom( 0, false );
@@ -1640,6 +1641,7 @@ BOOST_AUTO_TEST_CASE( getCurrentBLSPublicKey ) {
 #ifdef BITE2
                                         { -1 },
                                         0,
+                                        dev::ZeroAddress,
 #endif
                                         true } );
     std::array< std::string, 4 > imaBLSPublicKey = skaleHost->getCurrentBLSPublicKey();
