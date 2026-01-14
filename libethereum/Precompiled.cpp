@@ -25,9 +25,9 @@
 
 #ifdef BITE2
 #include "BITEConstants.h"
-#include <libdevcore/RLP.h>
 #include <libconsensus/libBLS/threshold_encryption/TEPublicKey.h>
 #include <libconsensus/libBLS/threshold_encryption/ThresholdEncryption.h>
+#include <libdevcore/RLP.h>
 #endif
 
 #include "PrecompiledHelpers.h"
@@ -1258,8 +1258,7 @@ ETH_REGISTER_PRECOMPILED( encryptTE )
         }
 
         // Extract data bytes (empty data is allowed)
-        std::vector< uint8_t > dataToEncrypt =
-            _in.cropped( dataStart, dataLengthSafe ).toBytes();
+        std::vector< uint8_t > dataToEncrypt = _in.cropped( dataStart, dataLengthSafe ).toBytes();
 
         // Validate trailing padding bytes are all zeros (ABI compliance)
         size_t dataEnd = dataStart + dataLengthSafe;
