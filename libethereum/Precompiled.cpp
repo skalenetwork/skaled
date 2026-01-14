@@ -1297,11 +1297,9 @@ ETH_REGISTER_PRECOMPILED( encryptTE )
             return { false, toBigEndian( dev::u256( 6 ) ) };  // error 6: data length mismatch
         }
 
-        // Extract data bytes
-        std::vector< uint8_t > dataToEncrypt;
-        if ( dataLengthSafe > 0 ) {
-            dataToEncrypt = _in.cropped( dataStart, dataLengthSafe ).toBytes();
-        }
+        // Extract data bytes (empty data is allowed)
+        std::vector< uint8_t > dataToEncrypt =
+            _in.cropped( dataStart, dataLengthSafe ).toBytes();
 
         // Validate trailing padding bytes are all zeros (ABI compliance)
         size_t dataEnd = dataStart + dataLengthSafe;
@@ -1331,7 +1329,7 @@ ETH_REGISTER_PRECOMPILED( encryptTE )
 
         // Build EncryptMetaData with seed and SC address as TE AAD
         libBLS::EncryptMetaData metaData;
-        metaData.seed = seed;
+        metaData.seed = libBLS::Seed256{ seed };
         metaData.associatedDataTE =
             std::vector< uint8_t >( scAddressBytes.begin(), scAddressBytes.end() );
 
