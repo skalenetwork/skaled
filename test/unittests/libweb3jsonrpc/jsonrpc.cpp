@@ -4843,9 +4843,12 @@ static std::string const c_BITEConfigString =
         "0000000000000000000000000000000000000002": { "precompiled": { "name": "sha256", "linear": { "base": 60, "word": 12 } } },
         "0000000000000000000000000000000000000003": { "precompiled": { "name": "ripemd160", "linear": { "base": 600, "word": 120 } } },
         "0000000000000000000000000000000000000004": { "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } } },
-        "0000000000000000000000000000000000000005": { "precompiled": { "name": "getBlockRandom", "linear": { "base": 15, "word": 0 } } },
+        "0000000000000000000000000000000000000005": { "precompiled": { "name": "getBlockRandom", "linear": { "base": 15, "word": 0 } } },)"
+#ifdef BITE2
+    R"(
         "0000000000000000000000000000000000000006": { "precompiled": { "name": "getRandomWalletAndSignatureForCTX", "linear": { "base": 15, "word": 0 } } },
         "0000000000000000000000000000000000000007": { "precompiled": { "name": "submitCTX", "linear": { "base": 15, "word": 0 } } },)"
+#endif
     /*
 pragma solidity ^0.4.25;
 contract Caller {
@@ -5034,9 +5037,12 @@ static std::string const c_BITEConfigString =
         "0000000000000000000000000000000000000002": { "precompiled": { "name": "sha256", "linear": { "base": 60, "word": 12 } } },
         "0000000000000000000000000000000000000003": { "precompiled": { "name": "ripemd160", "linear": { "base": 600, "word": 120 } } },
         "0000000000000000000000000000000000000004": { "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } } },
-        "0000000000000000000000000000000000000005": { "precompiled": { "name": "getBlockRandom", "linear": { "base": 15, "word": 0 } } },
+        "0000000000000000000000000000000000000005": { "precompiled": { "name": "getBlockRandom", "linear": { "base": 15, "word": 0 } } },)"
+#ifdef BITE2
+    R"(
         "0000000000000000000000000000000000000006": { "precompiled": { "name": "getRandomWalletAndSignatureForCTX", "linear": { "base": 15, "word": 0 } } },
         "0000000000000000000000000000000000000007": { "precompiled": { "name": "submitCTX", "linear": { "base": 15, "word": 0 } } },)"
+#endif
     /*
 pragma solidity ^0.4.25;
 contract Caller {
