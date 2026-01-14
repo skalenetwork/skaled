@@ -115,7 +115,6 @@ target_link_libraries(testeth PRIVATE
   $<$<BOOL:${HISTORIC_STATE}>:historic>
   $<$<BOOL:${CONSENSUS}>:consensus>
   $<$<BOOL:${BITE}>:te>
-  $<$<BOOL:${BITE2}>:te>
 
   "${DEPS_INSTALL_ROOT}/lib/libunwind.a"
 
