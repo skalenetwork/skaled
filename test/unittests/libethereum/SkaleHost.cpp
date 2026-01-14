@@ -7,6 +7,20 @@
 #endif
 #include <libskale/ConsensusGasPricer.h>
 
+#ifdef BITE2
+#include <libconsensus/libBLS/threshold_encryption/TEPrivateKey.h>
+#include <libconsensus/libBLS/threshold_encryption/TEPrivateKeyShare.h>
+#include <libconsensus/libBLS/threshold_encryption/TEPublicKeyShare.h>
+#include <libconsensus/libBLS/threshold_encryption/TEDecryptSet.h>
+#include <libconsensus/libBLS/threshold_encryption/ThresholdEncryption.h>
+#include <test/utils.h>
+#include <secp256k1.h>
+#include <secp256k1_ecdh.h>
+#include <secp256k1_sha256.h>
+#include <cryptopp/aes.h>
+#include <cryptopp/modes.h>
+#endif
+
 #include <test/tools/libtesteth/TestHelper.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>
 
@@ -266,6 +280,10 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
     bytes bytes_from_json( const Json::Value& json ) {
         Transaction tx = tx_from_json( json );
         return tx.toBytes();
+    }
+
+    void setBlsPublicKey( const std::array< std::string, 4 >& _key ) {
+        chainParams->sChain.nodeGroups[0].blsPublicKey = _key;
     }
 
     TransactionQueue* tq;
@@ -1652,6 +1670,445 @@ BOOST_AUTO_TEST_CASE( getCurrentBLSPublicKey ) {
                                      toBigEndian( dev::u256( imaBLSPublicKey[3] ) ) );
 }
 #endif
+
+#ifdef BITE2
+BOOST_AUTO_TEST_CASE( encryptTE_success ) {
+    SkaleHostFixture fixture;
+
+    // TE helper from libBLS
+    auto keys = generateKeys(1, 1);
+
+    // set test key
+    fixture.setBlsPublicKey(keys.commonPublic.getPublicKeyRaw().toStringArray(libBLS::Base::DEC));
+
+    // Get the executor for encryptTE
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptTE" );
+
+    // Create test input data
+    std::string testMessage = "Hello, threshold encryption!";
+    bytes dataToEncrypt( testMessage.begin(), testMessage.end() );
+
+    // Create a test SC address (20 bytes)
+    dev::Address testScAddress = dev::Address( "0x1234567890123456789012345678901234567890" );
+    bytes scAddressBytes = testScAddress.asBytes();
+
+    // Build ABI-encoded input: abi.encode(address scAddress, bytes data)
+    // Format: [scAddress(20 bytes, left-padded to 32)] [offset_to_data(32)] [data_length(32)] [data(N)]
+    bytes input;
+
+    // SC address (20 bytes, left-padded to 32)
+    bytes addressPadding( 12, 0 );  // 12 bytes of zero padding
+    input.insert( input.end(), addressPadding.begin(), addressPadding.end() );
+    input.insert( input.end(), scAddressBytes.begin(), scAddressBytes.end() );
+
+    // Offset to data = 64 (2 * 32, after address and offset fields)
+    bytes offsetData( 32, 0 );
+    offsetData[31] = 64;
+    input.insert( input.end(), offsetData.begin(), offsetData.end() );
+
+    // data length
+    bytes dataLenBytes( 32, 0 );
+    dataLenBytes[31] = static_cast<uint8_t>( dataToEncrypt.size() );
+    input.insert( input.end(), dataLenBytes.begin(), dataLenBytes.end() );
+
+    // data (with ABI-compliant padding to 32-byte boundary)
+    input.insert( input.end(), dataToEncrypt.begin(), dataToEncrypt.end() );
+    size_t paddingNeeded = 32 - ( dataToEncrypt.size() % 32 );
+    input.insert( input.end(), paddingNeeded, 0 );
+
+    // Call the precompiled contract
+    auto res = exec( bytesConstRef( input.data(), input.size() ),
+        PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+
+    // Verify success
+    BOOST_REQUIRE( res.first );
+    BOOST_REQUIRE( !res.second.empty() );
+
+    // Parse output as Ciphertext and validate
+    libBLS::Ciphertext ciphertext = libBLS::Ciphertext::fromBytes( res.second, /* validate */ true );
+
+    // Validate the TE ciphertext with SC address as TE AAD
+    std::vector< uint8_t > scAddressVec( scAddressBytes.begin(), scAddressBytes.end() );
+    BOOST_REQUIRE_NO_THROW(
+        libBLS::ThresholdEncryption::validateEncryption( ciphertext.getTargetKey(), &scAddressVec ) );
+
+    // decrypt & check if decrypted = original
+    
+    // 1. Create a decryption share from the single private key share
+    libBLS::TEDecryptionShare share = libBLS::ThresholdEncryption::partialDecrypt(
+        ciphertext.getTargetKey(), keys.secretKeys[0] );
+    // 2. Add to decrypt set
+    libBLS::TEDecryptSet decryptSet( 1, 1 );  // t=1, n=1
+    decryptSet.addDecryptShare( share );
+    // 3. Combine shares → AES key
+    libBLS::AES256Key aesKey = libBLS::ThresholdEncryption::combineShares( 
+        ciphertext.getTargetKey(), decryptSet );
+    // 4. Decrypt using AES key (no AES AAD - we use TE AAD for validation instead)
+    std::vector< uint8_t > decryptedMessage = 
+        libBLS::ThresholdEncryption::decrypt( ciphertext, aesKey );
+    // 5. Verify original message matches
+    BOOST_REQUIRE( decryptedMessage == dataToEncrypt );    
+}
+
+BOOST_AUTO_TEST_CASE( encryptTE_inputTooLarge ) {
+    SkaleHostFixture fixture;
+
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptTE" );
+
+    // Create input larger than 64KB
+    bytes largeInput( 65 * 1024, 0x42 );  // 65KB of 'B's
+    auto res = exec( bytesConstRef( largeInput.data(), largeInput.size() ),
+        PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+
+    // Verify failure with error code 1 (input too large)
+    BOOST_REQUIRE( !res.first );
+    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 1 ) ) );
+}
+
+BOOST_AUTO_TEST_CASE( encryptTE_inputTooSmall ) {
+    SkaleHostFixture fixture;
+
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptTE" );
+
+    // Call with input smaller than minimum (96 bytes for ABI format)
+    bytes smallInput( 64, 0x42 );
+    auto res = exec( bytesConstRef( smallInput.data(), smallInput.size() ),
+        PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+
+    // Verify failure with error code 2 (input too small)
+    BOOST_REQUIRE( !res.first );
+    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 2 ) ) );
+}
+
+BOOST_AUTO_TEST_CASE( encryptTE_inputNotAligned ) {
+    SkaleHostFixture fixture;
+
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptTE" );
+
+    // Build input that is not a multiple of 32 bytes (97 bytes)
+    bytes input( 97, 0 );
+
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+
+    // Verify failure with error code 3 (input not 32-byte aligned)
+    BOOST_REQUIRE( !res.first );
+    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 3 ) ) );
+}
+
+BOOST_AUTO_TEST_CASE( encryptTE_addressPaddingNotZeros ) {
+    SkaleHostFixture fixture;
+
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptTE" );
+
+    // Build input where the first 12 bytes (address padding) are not zeros
+    bytes input( 96, 0 );
+    input[0] = 0xFF;  // Non-zero byte in address padding
+    input[63] = 64;   // Correct data offset
+
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+
+    // Verify failure with error code 4 (address padding not zeros)
+    BOOST_REQUIRE( !res.first );
+    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 4 ) ) );
+}
+
+BOOST_AUTO_TEST_CASE( encryptTE_invalidABIEncoding ) {
+    SkaleHostFixture fixture;
+
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptTE" );
+
+    // Build input with wrong data offset (at position 32, should be 64, we set 32)
+    bytes input( 96, 0 );
+    input[63] = 32;  // Wrong data offset at position 32 (should be 64)
+
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+
+    // Verify failure with error code 5 (invalid data offset)
+    BOOST_REQUIRE( !res.first );
+    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 5 ) ) );
+}
+
+BOOST_AUTO_TEST_CASE( encryptTE_dataLengthMismatch ) {
+    SkaleHostFixture fixture;
+
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptTE" );
+
+    // Build valid ABI structure but claim more data than available
+    bytes input( 128, 0 );
+    // address padding (0-11): zeros
+    // address (12-31): some address
+    input[20] = 0x12;
+    // offset (32-63): 64
+    input[63] = 64;
+    // data_length (64-95): claim 100 bytes, but only 32 bytes total remain
+    input[95] = 100;
+    // actual data (96-127): only 32 bytes of zeros
+
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+
+    // Verify failure with error code 6 (data length mismatch)
+    BOOST_REQUIRE( !res.first );
+    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 6 ) ) );
+}
+
+BOOST_AUTO_TEST_CASE( encryptTE_trailingPaddingNotZeros ) {
+    SkaleHostFixture fixture;
+
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptTE" );
+
+    // Build valid ABI structure with 1 byte of data, but non-zero trailing padding
+    bytes input( 128, 0 );
+    // address padding (0-11): zeros
+    // address (12-31): some address
+    input[20] = 0x12;
+    // offset (32-63): 64
+    input[63] = 64;
+    // data_length (64-95): 1 byte
+    input[95] = 1;
+    // actual data (96): one byte of data
+    input[96] = 0xAB;
+    // trailing padding (97-127): should be zeros but we set one to non-zero
+    input[100] = 0xFF;
+
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+
+    // Verify failure with error code 7 (trailing padding not zeros)
+    BOOST_REQUIRE( !res.first );
+    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 7 ) ) );
+}
+
+BOOST_AUTO_TEST_CASE( encryptECIES_success ) {
+    SkaleHostFixture fixture;
+
+    // Generate a user keypair
+    dev::KeyPair userKeys = dev::KeyPair::create();
+    dev::Public userPublicKey = userKeys.pub();
+    dev::Secret userPrivateKey = userKeys.secret();
+
+    // Extract x and y coordinates from public key (64 bytes total)
+    bytes pubKeyX( userPublicKey.data(), userPublicKey.data() + 32 );
+    bytes pubKeyY( userPublicKey.data() + 32, userPublicKey.data() + 64 );
+
+    // Create test data to encrypt
+    std::string testMessage = "Hello, ECIES encryption!";
+    bytes dataToEncrypt( testMessage.begin(), testMessage.end() );
+
+    // Build ABI-encoded input: [offset_to_data(32)] [x(32)] [y(32)] [data_length(32)] [data(N)]
+    bytes input;
+    // Offset to data = 96 (0x60) = 3 * 32
+    input.insert( input.end(), 32, 0 );
+    input[31] = 96;
+    // x-coordinate (32 bytes)
+    input.insert( input.end(), pubKeyX.begin(), pubKeyX.end() );
+    // y-coordinate (32 bytes)
+    input.insert( input.end(), pubKeyY.begin(), pubKeyY.end() );
+    // Data length (32 bytes)
+    bytes lenBytes( 32, 0 );
+    lenBytes[31] = static_cast<uint8_t>( dataToEncrypt.size() );
+    input.insert( input.end(), lenBytes.begin(), lenBytes.end() );
+    // Data (with ABI-compliant padding to 32-byte boundary)
+    input.insert( input.end(), dataToEncrypt.begin(), dataToEncrypt.end() );
+    size_t paddingNeeded = 32 - ( dataToEncrypt.size() % 32 );
+    input.insert( input.end(), paddingNeeded, 0 );
+
+    // Get the executor for encryptECIES
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptECIES" );
+
+    // Call the precompiled contract
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+
+    // Verify success
+    BOOST_REQUIRE( res.first );
+    BOOST_REQUIRE( !res.second.empty() );
+
+    // Output format: [IV (16 bytes)] [Ephemeral Public Key (33 bytes)] [Ciphertext (N bytes)]
+    BOOST_REQUIRE( res.second.size() >= 16 + 33 + 16 );  // IV + pubkey + min ciphertext
+
+    // Parse output
+    bytes iv( res.second.begin(), res.second.begin() + 16 );
+    bytes ephemeralPubKeyCompressed( res.second.begin() + 16, res.second.begin() + 16 + 33 );
+
+    // Verify ephemeral public key prefix (0x02 or 0x03 for compressed format)
+    BOOST_REQUIRE( ephemeralPubKeyCompressed[0] == 0x02 || ephemeralPubKeyCompressed[0] == 0x03 );
+
+    auto decryptedBytes = dev::decryptECIES_CBC( userPrivateKey, &res.second );
+
+    // 7. Verify decrypted matches original
+    BOOST_REQUIRE( decryptedBytes == dataToEncrypt );
+}
+
+BOOST_AUTO_TEST_CASE( encryptECIES_inputTooLarge ) {
+    SkaleHostFixture fixture;
+
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptECIES" );
+
+    // Input larger than 64KB
+    bytes largeInput( 65 * 1024, 0x42 );
+    auto res = exec( bytesConstRef( largeInput.data(), largeInput.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+
+    // Verify failure with error code 1 (input too large)
+    BOOST_REQUIRE( !res.first );
+    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 1 ) ) );
+}
+
+BOOST_AUTO_TEST_CASE( encryptECIES_inputTooSmall ) {
+    SkaleHostFixture fixture;
+
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptECIES" );
+
+    // Input smaller than 128 bytes
+    bytes smallInput( 64, 0x42 );
+    auto res = exec( bytesConstRef( smallInput.data(), smallInput.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+
+    // Verify failure with error code 2 (input too small)
+    BOOST_REQUIRE( !res.first );
+    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 2 ) ) );
+}
+
+BOOST_AUTO_TEST_CASE( encryptECIES_inputNotAligned ) {
+    SkaleHostFixture fixture;
+
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptECIES" );
+
+    // Build input that is not a multiple of 32 bytes (129 bytes)
+    bytes input( 129, 0 );
+
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+
+    // Verify failure with error code 3 (input not 32-byte aligned)
+    BOOST_REQUIRE( !res.first );
+    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 3 ) ) );
+}
+
+BOOST_AUTO_TEST_CASE( encryptECIES_invalidABIOffset ) {
+    SkaleHostFixture fixture;
+
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptECIES" );
+
+    // Build input with wrong data offset (should be 96, we set 64)
+    bytes input( 128, 0 );
+    input[31] = 64;  // Wrong offset (should be 96)
+
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+
+    // Verify failure with error code 4 (invalid data offset)
+    BOOST_REQUIRE( !res.first );
+    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 4 ) ) );
+}
+
+BOOST_AUTO_TEST_CASE( encryptECIES_dataLengthMismatch ) {
+    SkaleHostFixture fixture;
+
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptECIES" );
+
+    // Build input where data_length claims more data than actually present
+    bytes input( 128, 0 );
+    input[31] = 96;   // Correct offset
+    input[127] = 100; // Claim 100 bytes of data, but none actually present
+
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+
+    // Verify failure with error code 5 (data length mismatch)
+    BOOST_REQUIRE( !res.first );
+    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 5 ) ) );
+}
+
+BOOST_AUTO_TEST_CASE( encryptECIES_emptyData ) {
+    SkaleHostFixture fixture;
+
+    // Generate a valid user keypair
+    dev::KeyPair userKeys = dev::KeyPair::create();
+    dev::Public userPublicKey = userKeys.pub();
+    dev::Secret userPrivateKey = userKeys.secret();
+
+    // Extract x and y coordinates from public key (64 bytes total)
+    bytes pubKeyX( userPublicKey.data(), userPublicKey.data() + 32 );
+    bytes pubKeyY( userPublicKey.data() + 32, userPublicKey.data() + 64 );
+
+    // Build ABI-encoded input with EMPTY data
+    // Format: [offset_to_data(32)] [x(32)] [y(32)] [data_length(32)] [no data]
+    bytes input;
+    // Offset to data = 96 (0x60) = 3 * 32
+    input.insert( input.end(), 32, 0 );
+    input[31] = 96;
+    // x-coordinate (32 bytes)
+    input.insert( input.end(), pubKeyX.begin(), pubKeyX.end() );
+    // y-coordinate (32 bytes)
+    input.insert( input.end(), pubKeyY.begin(), pubKeyY.end() );
+    // Data length = 0 (32 bytes of zeros)
+    input.insert( input.end(), 32, 0 );
+
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptECIES" );
+
+    // Call the precompiled contract
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+
+    // Verify success - empty data encryption should succeed
+    BOOST_REQUIRE( res.first );
+    BOOST_REQUIRE( !res.second.empty() );
+
+    // Verify we can decrypt back to empty data
+    auto decryptedBytes = dev::decryptECIES_CBC( userPrivateKey, &res.second );
+    BOOST_REQUIRE( decryptedBytes.empty() );
+}
+
+BOOST_AUTO_TEST_CASE( encryptECIES_trailingPaddingNotZeros ) {
+    SkaleHostFixture fixture;
+
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptECIES" );
+
+    // Build valid ABI structure with 1 byte of data, but non-zero trailing padding
+    bytes input( 192, 0 );
+    // offset (0-31): 96
+    input[31] = 96;
+    // pubKeyX (32-63): zeros (valid x coordinate check happens later)
+    // pubKeyY (64-95): zeros
+    // data_length (96-127): 1 byte
+    input[127] = 1;
+    // actual data (128): one byte of data
+    input[128] = 0xAB;
+    // trailing padding (129-191): should be zeros but we set one to non-zero
+    input[150] = 0xFF;
+
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+
+    // Verify failure with error code 6 (trailing padding not zeros)
+    BOOST_REQUIRE( !res.first );
+    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 6 ) ) );
+}
+
+BOOST_AUTO_TEST_CASE( encryptECIES_invalidPublicKey ) {
+    SkaleHostFixture fixture;
+
+    // Create invalid public key (not on curve)
+    bytes invalidPubKeyX( 32, 0xFF );
+    bytes invalidPubKeyY( 32, 0xFF );
+
+    std::string testMessage = "Test";
+    bytes dataToEncrypt( testMessage.begin(), testMessage.end() );
+
+    // Build ABI-encoded input
+    bytes input;
+    input.insert( input.end(), 32, 0 );
+    input[31] = 96;  // offset
+    input.insert( input.end(), invalidPubKeyX.begin(), invalidPubKeyX.end() );
+    input.insert( input.end(), invalidPubKeyY.begin(), invalidPubKeyY.end() );
+    bytes lenBytes( 32, 0 );
+    lenBytes[31] = static_cast<uint8_t>( dataToEncrypt.size() );
+    input.insert( input.end(), lenBytes.begin(), lenBytes.end() );
+    input.insert( input.end(), dataToEncrypt.begin(), dataToEncrypt.end() );
+    // Add ABI-compliant padding to 32-byte boundary
+    size_t paddingNeeded = 32 - ( dataToEncrypt.size() % 32 );
+    input.insert( input.end(), paddingNeeded, 0 );
+
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptECIES" );
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+
+    // Verify failure with error code 7 (invalid public key)
+    BOOST_REQUIRE( !res.first );
+    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 7 ) ) );
+}
+#endif  // BITE2
 
 #ifdef BITE
 BOOST_AUTO_TEST_CASE( biteTransactions ) {
