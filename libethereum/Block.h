@@ -323,7 +323,9 @@ public:
 
 #ifdef BITE
     void setDecryptedTransactionDataFields( DecryptedTransactions _decryptedTransactions ) {
+#ifdef BITE2
         CHECK_EXPRESSION( _decryptedTransactions.catTxsMap );
+#endif
         CHECK_EXPRESSION( _decryptedTransactions.regularTxsMap );
         m_decryptedTransactions = _decryptedTransactions;
     }

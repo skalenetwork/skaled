@@ -624,7 +624,9 @@ ImportRoute BlockChain::import( const Block& _block ) {
     verifiedBlock.transactions = _block.pending();
 #ifdef BITE
     verifiedBlock.decryptedTransactions = _block.decryptedTransactions();
+#ifdef BITE2
     CHECK_EXPRESSION( verifiedBlock.decryptedTransactions.catTxsMap );
+#endif
     CHECK_EXPRESSION( verifiedBlock.decryptedTransactions.regularTxsMap );
 #endif
     //    verifyBlock( ref( _block.blockData() ), m_onBad, ImportRequirements::OutOfOrderChecks );
