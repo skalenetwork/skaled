@@ -1201,11 +1201,10 @@ ETH_REGISTER_PRECOMPILED( encryptTE )
             return { false, toBigEndian( dev::u256( 1 ) ) };  // error 1: input too large
         }
 
-        // Input format: abi.encode(address scAddress, bytes data)
-        // ABI encoding: [scAddress(20 bytes, left-padded to 32)] [offset_to_data(32)]
-        //               [data_length(32)] [data(N)]
-        // Minimum: 32 (address) + 32 (offset) + 32 (length) = 96 bytes
-        if ( _in.size() < 96 ) {
+        // Input format: abi.encode(bytes data)
+        // ABI encoding: [offset_to_data(32)] [data_length(32)] [data(N)]
+        // Minimum: 32 (offset) + 32 (length) = 64 bytes
+        if ( _in.size() < 64 ) {
             return { false, toBigEndian( dev::u256( 2 ) ) };  // error 2: input too small
         }
 
@@ -1220,23 +1219,14 @@ ETH_REGISTER_PRECOMPILED( encryptTE )
 
         size_t headFieldSizeBytes = 32;
 
-        // First 32 bytes: SC address (20 bytes, left-padded to 32)
-        // Validate that the first 12 bytes are zeros (left-padding for 20-byte address)
-        if ( !std::all_of( _in.data(), _in.data() + 12, []( uint8_t b ) { return b == 0; } ) ) {
-            return { false, toBigEndian( dev::u256( 4 ) ) };  // error 4: address padding not zeros
-        }
-
-        // Extract the 20-byte address
-        auto scAddressBytes = _in.cropped( 12, 20 ).toBytes();
-
-        // Next 32 bytes: offset to data (should be 64 = 2 * 32)
-        bigint const dataOffset( parseBigEndianRightPadded( _in, 32, headFieldSizeBytes ) );
-        const size_t expectedDataOffset = 2 * 32;  // 64
+        // First 32 bytes: offset to data (should be 32)
+        bigint const dataOffset( parseBigEndianRightPadded( _in, 0, headFieldSizeBytes ) );
+        const size_t expectedDataOffset = 32;
         if ( dataOffset != expectedDataOffset ) {
             return { false, toBigEndian( dev::u256( 5 ) ) };  // error 5: invalid data offset
         }
 
-        // Read data length at the data offset (position 64)
+        // Read data length at the data offset (position 32)
         if ( _in.size() < expectedDataOffset + headFieldSizeBytes ) {
             return { false, toBigEndian( dev::u256( 6 ) ) };  // error 6: data length mismatch
         }
@@ -1244,8 +1234,8 @@ ETH_REGISTER_PRECOMPILED( encryptTE )
             parseBigEndianRightPadded( _in, expectedDataOffset, headFieldSizeBytes ) );
 
         // Validate dataLength is non-negative and fits within reasonable bounds
-        // Header is 96 bytes (address + offset + length field), so max data = MAX_SIZE_BYTES - 96
-        static constexpr size_t HEADER_SIZE_BYTES = 96;
+        // Header is 64 bytes (offset + length field), so max data = MAX_SIZE_BYTES - 64
+        static constexpr size_t HEADER_SIZE_BYTES = 64;
         if ( dataLength < 0 || dataLength > MAX_SIZE_BYTES - HEADER_SIZE_BYTES ) {
             return { false, toBigEndian( dev::u256( 6 ) ) };  // error 6: data length mismatch
         }
@@ -1285,6 +1275,9 @@ ETH_REGISTER_PRECOMPILED( encryptTE )
         // Create seed array from blockRandom (32 bytes)
         std::array< uint8_t, libBLS::AES_256_KEY_SIZE_BYTES > seed;
         std::copy_n( blockRandomBytes.begin(), libBLS::AES_256_KEY_SIZE_BYTES, seed.begin() );
+
+        // Use caller's address as the associated data for TE
+        auto scAddressBytes = _ctx.from.asBytes();
 
         // Build EncryptMetaData with seed and SC address as TE AAD
         libBLS::EncryptMetaData metaData;
