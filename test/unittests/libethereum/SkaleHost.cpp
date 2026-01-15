@@ -12,7 +12,6 @@
 #include <libconsensus/libBLS/threshold_encryption/TEPrivateKeyShare.h>
 #include <libconsensus/libBLS/threshold_encryption/TEPublicKeyShare.h>
 #include <libconsensus/libBLS/threshold_encryption/TEDecryptSet.h>
-#include <libconsensus/libBLS/threshold_encryption/ThresholdEncryption.h>
 #include <test/utils.h>
 #include <secp256k1.h>
 #include <secp256k1_ecdh.h>
