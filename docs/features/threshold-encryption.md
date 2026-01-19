@@ -82,7 +82,7 @@ To decrypt the encrypted message `inputBytes`:
 2. After collecting `2/3 * N + 1` decryption shares, combine them together.
 
 3. Decrypt `aesKey` using threshold decryption:
-   `aesKey = threshold_decrypt(aesKeyEncrypted, decryption_shares)`
+   `aesKey = threshold_decrypt(aesKeyEncrypted, decryption_shares, AAD_TE)`
 
 4. Decrypt `plaintextBytes` as:
    `plaintextBytes = aes_gcm_decrypt(ciphertextBytes, aesKey, AAD_AES)`
