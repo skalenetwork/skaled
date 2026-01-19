@@ -154,6 +154,12 @@ DEFINE_SIMPLE_PATCH( ExternalGasPatch );
 DEFINE_SIMPLE_PATCH( ClearPartialReceiptsPatch );
 
 /*
+ * Purpose: keep partial receipts until next block to ensure sync state with consensus
+ * Version introduced: 4.0.3+
+ */
+DEFINE_AMNESIC_PATCH( KeepPartialReceiptsUntilNextBlockPatch );
+
+/*
  * Context: fix the check in transaction constructor
  * maxFeePerGas cannot be less than maxPriorityFeePerGas
  */
