@@ -316,12 +316,11 @@ public:
 #ifdef BITE
     uint64_t getCurrentEpochId() const { return historicGroupIndex.load(); }
     bool isCommitteeRotationSoon() const;
+    std::pair< std::array< std::string, 4 >, uint64_t > getNextCommitteeBITEInfo() const;
 #endif
 
 #ifdef FAIR
     bool updateGroupIfNeeded();
-
-    std::pair< std::array< std::string, 4 >, uint64_t > getNextCommitteeBITEInfo() const;
 #endif
 
     // set exiting time for node rotation

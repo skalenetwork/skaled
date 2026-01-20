@@ -624,6 +624,14 @@ bool Client::isCommitteeRotationSoon() const {
     return false;
 }
 
+std::pair< std::array< std::string, 4 >, uint64_t > Client::getNextCommitteeBITEInfo() const {
+    auto currentGroupIndex = historicGroupIndex.load();
+    if ( currentGroupIndex + 1 >= chainParams().getNodeGroups().size() )
+        throw std::out_of_range( "Couldn't get next committee info" );
+    return { chainParams().getBlsPublicKeyForHistoricGroup( currentGroupIndex + 1 ),
+        currentGroupIndex + 1 };
+}
+
 #ifdef FAIR
 Address Client::getWinningNodeBeneficiary( uint64_t _winningNodeIndex ) const {
     if ( _winningNodeIndex > 0 ) {
@@ -632,15 +640,6 @@ Address Client::getWinningNodeBeneficiary( uint64_t _winningNodeIndex ) const {
     } else {
         return Block::DEFAULT_BLOCK_OWNER_ADDRESS;
     }
-}
-
-
-std::pair< std::array< std::string, 4 >, uint64_t > Client::getNextCommitteeBITEInfo() const {
-    auto currentGroupIndex = historicGroupIndex.load();
-    if ( currentGroupIndex + 1 >= chainParams().getNodeGroups().size() )
-        throw std::out_of_range( "Couldn't get next committee info" );
-    return { chainParams().getBlsPublicKeyForHistoricGroup( currentGroupIndex + 1 ),
-        currentGroupIndex + 1 };
 }
 
 bool Client::updateGroupIfNeeded() {
