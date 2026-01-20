@@ -1257,13 +1257,25 @@ ETH_REGISTER_PRECOMPILED( encryptTE )
             return { false, toBigEndian( dev::u256( 7 ) ) };  // error 7: trailing padding not zeros
         }
 
+        std::vector< libBLS::TEPublicKey > publicKeys;
+
         // get network public key
         auto blsPublicKeyArray = g_skaleHost->getCurrentBLSPublicKey();
 
         // convert BLS public key to TE public key
         libBLS::algebra::G2Point publicKeyG2 =
             libBLS::algebra::G2Point::fromString( blsPublicKeyArray, libBLS::Base::DEC );
-        libBLS::TEPublicKey tePublicKey( publicKeyG2 );
+        publicKeys.emplace_back( publicKeyG2 );
+
+        // Check if committee rotation is soon
+        if ( g_skaleHost->client().isCommitteeRotationSoon() ) {
+            auto nextCommitteeInfo = g_skaleHost->client().getNextCommitteeBITEInfo();
+            // nextCommitteeInfo.first is the public key array
+            auto nextBlsPublicKeyArray = nextCommitteeInfo.first;
+            libBLS::algebra::G2Point nextPublicKeyG2 =
+                libBLS::algebra::G2Point::fromString( nextBlsPublicKeyArray, libBLS::Base::DEC );
+            publicKeys.emplace_back( nextPublicKeyG2 );
+        }
 
         // Get blockRandom to use as seed for deterministic encryption
         // This ensures all nodes encrypt identically for consensus
@@ -1287,10 +1299,18 @@ ETH_REGISTER_PRECOMPILED( encryptTE )
 
         // encrypt using threshold encryption
         libBLS::Ciphertext ciphertext =
-            libBLS::ThresholdEncryption::encrypt( dataToEncrypt, tePublicKey, metaData );
+            libBLS::ThresholdEncryption::encrypt( dataToEncrypt, publicKeys, metaData );
 
-        // convert ciphertext to bytes
-        bytes response = ciphertext.toBytes();
+        // Return: RLP List [epochId, ciphertext]
+        uint64_t epochId = g_skaleHost->client().getCurrentEpochId();
+
+        RLPStream rlpStream;
+        rlpStream.appendList( 2 );
+        rlpStream.append( epochId );
+        rlpStream.append( ciphertext.toBytes() );
+
+        bytes response = rlpStream.out();
+
         return { true, response };
 
     } catch ( std::exception& ex ) {
