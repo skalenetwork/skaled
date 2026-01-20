@@ -607,15 +607,7 @@ size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
     return cntSucceeded;
 }
 
-#ifdef FAIR
-Address Client::getWinningNodeBeneficiary( uint64_t _winningNodeIndex ) const {
-    if ( _winningNodeIndex > 0 ) {
-        return bc().chainParams().getNodeBeneficiaryInHistoricGroup(
-            historicGroupIndex, _winningNodeIndex );
-    } else {
-        return Block::DEFAULT_BLOCK_OWNER_ADDRESS;
-    }
-}
+#ifdef BITE
 
 bool Client::isCommitteeRotationSoon() const {
     auto currentGroupIndex = historicGroupIndex.load();
@@ -632,6 +624,17 @@ bool Client::isCommitteeRotationSoon() const {
     return false;
 }
 
+#ifdef FAIR
+Address Client::getWinningNodeBeneficiary( uint64_t _winningNodeIndex ) const {
+    if ( _winningNodeIndex > 0 ) {
+        return bc().chainParams().getNodeBeneficiaryInHistoricGroup(
+            historicGroupIndex, _winningNodeIndex );
+    } else {
+        return Block::DEFAULT_BLOCK_OWNER_ADDRESS;
+    }
+}
+
+
 std::pair< std::array< std::string, 4 >, uint64_t > Client::getNextCommitteeBITEInfo() const {
     auto currentGroupIndex = historicGroupIndex.load();
     if ( currentGroupIndex + 1 >= chainParams().getNodeGroups().size() )
@@ -643,6 +646,8 @@ std::pair< std::array< std::string, 4 >, uint64_t > Client::getNextCommitteeBITE
 bool Client::updateGroupIfNeeded() {
     return bc().updateGroupIfNeeded();
 }
+#endif
+
 #endif
 
 size_t Client::syncTransactions(
