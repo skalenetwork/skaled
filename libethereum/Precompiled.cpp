@@ -1331,7 +1331,7 @@ ETH_REGISTER_PRECOMPILED( encryptTE )
 
 
 ETH_REGISTER_PRECOMPILED( encryptECIES )
-( bytesConstRef _in, const PrecompiledCallContext& ) {
+( bytesConstRef _in, const PrecompiledCallContext& _ctx ) {
     try {
         static constexpr size_t MAX_SIZE_BYTES = 64 * 1024;  // 64KB
 
@@ -1413,8 +1413,22 @@ ETH_REGISTER_PRECOMPILED( encryptECIES )
             return { false, toBigEndian( dev::u256( 7 ) ) };  // error 7: invalid public key
         }
 
-        // Encrypt using ECIES-CBC helper
-        bytes response = dev::encryptECIES_CBC( userPubKey, bytesConstRef( &dataToEncrypt ) );
+        if ( !g_skaleHost )
+            throw std::runtime_error( "SkaleHost accessor was not initialized" );
+
+        // Get blockRandom to use as seed for deterministic encryption
+        // This ensures all nodes encrypt identically for consensus
+        unsigned blockNumberToCall = _ctx.blockNumber.convert_to< unsigned >();
+        dev::u256 blockRandomValue =
+            g_skaleHost->getBlockRandom( blockNumberToCall, !_ctx.isReadOnly );
+        bytes blockRandomBytes = toBigEndian( blockRandomValue );
+
+        // Create seed from blockRandom (32 bytes)
+        h256 seed( blockRandomBytes.data(), h256::ConstructFromPointer );
+
+        // Encrypt using ECIES-CBC helper with deterministic seed
+        bytes response =
+            dev::encryptECIES_CBC( userPubKey, bytesConstRef( &dataToEncrypt ), &seed );
         if ( response.empty() ) {
             return { false, toBigEndian( dev::u256( 8 ) ) };  // error 8: encryption failed
         }

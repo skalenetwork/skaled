@@ -475,12 +475,47 @@ bool dev::isValidPublicKey( Public const& _pub ) {
         ctx, &parsedPubKey, uncompressedPubKey.data(), uncompressedPubKey.size() );
 }
 
-bytes dev::encryptECIES_CBC( Public const& _recipientPubKey, bytesConstRef _plain ) {
+bytes dev::encryptECIES_CBC(
+    Public const& _recipientPubKey, bytesConstRef _plain, h256 const* _seed ) {
     // Note: Empty plaintext is allowed - with PKCS7 padding it produces a 16-byte padding block
     // This prevents distinguishing between empty and non-empty encrypted payloads
 
-    // Generate ephemeral key pair
-    KeyPair ephemeralKeyPair = KeyPair::create();
+    KeyPair ephemeralKeyPair{ Secret() };
+    h128 iv;
+
+    if ( _seed ) {
+        // Deterministic mode: derive ephemeral key and IV from seed with context strings
+        // Derive ephemeral private key: SHA256(seed || "ECIES_EPHEMERAL_KEY" || counter)
+        // Retry with incrementing counter until valid key is found
+        // attempt 255 times
+        h256 ephemeralPrivateKey;
+        for ( uint8_t attempt = 0; attempt < 255; ++attempt ) {
+            bytes seedWithKeyContext = _seed->asBytes();
+            const std::string keyContext = "ECIES_EPHEMERAL_KEY";
+            seedWithKeyContext.insert(
+                seedWithKeyContext.end(), keyContext.begin(), keyContext.end() );
+            seedWithKeyContext.push_back( attempt );  // Append counter for retries
+            ephemeralPrivateKey = dev::sha256( bytesConstRef( &seedWithKeyContext ) );
+
+            ephemeralKeyPair = KeyPair( Secret( ephemeralPrivateKey ) );
+            if ( ephemeralKeyPair.pub() )
+                break;  // Valid key found
+        }
+        if ( !ephemeralKeyPair.pub() ) {
+            return {};  // Failed after all attempts (extremely unlikely)
+        }
+
+        // Derive IV: SHA256(seed || "ECIES_IV"), take first 16 bytes
+        bytes seedWithIvContext = _seed->asBytes();
+        const std::string ivContext = "ECIES_IV";
+        seedWithIvContext.insert( seedWithIvContext.end(), ivContext.begin(), ivContext.end() );
+        h256 ivHash = dev::sha256( bytesConstRef( &seedWithIvContext ) );
+        iv = h128( ivHash.data(), h128::ConstructFromPointer );
+    } else {
+        // Random mode: generate ephemeral key pair and IV randomly
+        ephemeralKeyPair = KeyPair::create();
+        iv = h128::random();
+    }
 
     // ECDH: shared secret = ephemeral_private * recipient_public
     Secret sharedSecret;
@@ -489,9 +524,6 @@ bytes dev::encryptECIES_CBC( Public const& _recipientPubKey, bytesConstRef _plai
 
     // KDF: encryption_key = SHA-256(shared_secret)
     h256 encryptionKey = dev::sha256( sharedSecret.ref() );
-
-    // Generate random IV (16 bytes)
-    h128 iv = h128::random();
 
     // AES-256-CBC encryption with PKCS7 padding
     CryptoPP::CBC_Mode< CryptoPP::AES >::Encryption aesEncryptor;

@@ -2027,6 +2027,49 @@ BOOST_AUTO_TEST_CASE( encryptECIES_success ) {
     BOOST_REQUIRE( decryptedBytes == dataToEncrypt );
 }
 
+BOOST_AUTO_TEST_CASE( encryptECIES_deterministic ) {
+    SkaleHostFixture fixture;
+
+    // Generate a user keypair
+    dev::KeyPair userKeys = dev::KeyPair::create();
+    dev::Public userPublicKey = userKeys.pub();
+
+    // Extract x and y coordinates from public key
+    bytes pubKeyX( userPublicKey.data(), userPublicKey.data() + 32 );
+    bytes pubKeyY( userPublicKey.data() + 32, userPublicKey.data() + 64 );
+
+    // Create test data to encrypt
+    std::string testMessage = "Deterministic test";
+    bytes dataToEncrypt( testMessage.begin(), testMessage.end() );
+
+    // Build ABI-encoded input
+    bytes input;
+    input.insert( input.end(), 32, 0 );
+    input[31] = 96;  // offset
+    input.insert( input.end(), pubKeyX.begin(), pubKeyX.end() );
+    input.insert( input.end(), pubKeyY.begin(), pubKeyY.end() );
+    bytes lenBytes( 32, 0 );
+    lenBytes[31] = static_cast<uint8_t>( dataToEncrypt.size() );
+    input.insert( input.end(), lenBytes.begin(), lenBytes.end() );
+    input.insert( input.end(), dataToEncrypt.begin(), dataToEncrypt.end() );
+    size_t paddingNeeded = 32 - ( dataToEncrypt.size() % 32 );
+    input.insert( input.end(), paddingNeeded, 0 );
+
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptECIES" );
+
+    // Call the precompiled contract twice in the same context (same block random)
+    auto res1 = exec( bytesConstRef( input.data(), input.size() ),
+        PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+    auto res2 = exec( bytesConstRef( input.data(), input.size() ),
+        PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+
+    BOOST_REQUIRE( res1.first );
+    BOOST_REQUIRE( res2.first );
+    
+    // Verify results are identical
+    BOOST_REQUIRE( res1.second == res2.second );
+}
+
 BOOST_AUTO_TEST_CASE( encryptECIES_inputTooLarge ) {
     SkaleHostFixture fixture;
 
