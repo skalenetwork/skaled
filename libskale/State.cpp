@@ -266,8 +266,8 @@ skale::OverlayDB State::openDB(
 
 db::LevelDB::LevelDBOptions State::getLevelDBConfig() const {
     db::LevelDB::LevelDBOptions levelDbOptions;
-    levelDbOptions.dbOptions.write_buffer_size = 64 * 1024 * 1024;
-    levelDbOptions.dbOptions.max_file_size = 16 * 1024 * 1024;
+    levelDbOptions.dbOptions.write_buffer_size = 128 * 1024 * 1024;
+    levelDbOptions.dbOptions.max_file_size = 32 * 1024 * 1024;
     levelDbOptions.dbOptions.max_open_files = 2000;
     levelDbOptions.dbOptions.block_size = 32 * 1024;
     return levelDbOptions;
