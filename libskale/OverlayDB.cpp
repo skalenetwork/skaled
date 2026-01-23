@@ -272,6 +272,8 @@ void OverlayDB::commitStorageValues() {
 
 
 void OverlayDB::commit() {
+    BOOST_LOG( m_loggerDebug ) << "Running OverlayDB::commit()";
+
     if ( commit_counter_test::enabled.load( std::memory_order_relaxed ) )
         commit_counter_test::counter.fetch_add( 1, std::memory_order_relaxed );
 
