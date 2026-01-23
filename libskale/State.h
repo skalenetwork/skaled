@@ -257,6 +257,7 @@ public:
     dev::eth::TransactionReceipts safeLegacyPartialTransactionReceipts();
 
     void safeRemoveAllPartialTransactionReceipts();
+    void safeRemovePartialTransactionReceiptsForBlock( dev::eth::BlockNumber _blockNumber );
     void safeCommitZeroBlockLegacyPartialTransactionReceipts();
 
 
@@ -491,6 +492,7 @@ private:
     /// necessary.
     OverlayDB openDB( boost::filesystem::path const& _path, dev::h256 const& _genesisHash,
         dev::WithExisting _we = dev::WithExisting::Trust );
+    dev::db::LevelDB::LevelDBOptions getLevelDBConfig() const;
 
     /// Turns all "touched" empty accounts into non-alive accounts.
     void removeEmptyAccounts();

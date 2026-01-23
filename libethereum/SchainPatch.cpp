@@ -90,8 +90,13 @@ std::string getPatchNameForEnum( SchainPatchEnum _enumValue ) {
         return "ExternalGasPatch";
     case SchainPatchEnum::ClearPartialReceiptsPatch:
         return "ClearPartialReceiptsPatch";
+<<<<<<< HEAD
     case SchainPatchEnum::SingleStateCommitPerBlockPatch:
         return "SingleStateCommitPerBlockPatch";
+=======
+    case SchainPatchEnum::KeepPartialReceiptsUntilNextBlockPatch:
+        return "KeepPartialReceiptsUntilNextBlockPatch";
+>>>>>>> v4.1.0
     case SchainPatchEnum::InvalidTransactionFormatPatch:
         return "InvalidTransactionFormatPatch";
     case SchainPatchEnum::CurrentBlockRandomPatch:

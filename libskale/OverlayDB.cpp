@@ -157,25 +157,31 @@ void OverlayDB::cleanupLegacyTransactionReceipts() {
     }
 }
 
-void OverlayDB::removeAllPartialTransactionReceipts() {
-    // first we get all keys
-
-    string prefix( "safeLastTransactionReceipts." );
+void OverlayDB::removePartialTransactionReceiptsByPrefix(
+    std::string& prefix, const string& commitLabel ) {
+    if ( !m_db_face )
+        return;
     vector< string > keys;
-    if ( m_db_face ) {
-        m_db_face->forEachWithPrefix( prefix, [&keys]( Slice key, Slice ) {
-            const std::string keyStr( key.begin(), key.end() );
-            keys.push_back( keyStr );
-            return true;
-        } );
-
-        for ( auto&& key : keys ) {
-            // now remove all of them
-            m_db_face->kill( key );
-        }
+    m_db_face->forEachWithPrefix( prefix, [&keys]( Slice key, Slice ) {
+        const std::string keyStr( key.begin(), key.end() );
+        keys.push_back( keyStr );
+        return true;
+    } );
+    for ( const auto& key : keys ) {
+        m_db_face->kill( key );
     }
+    m_db_face->commit( commitLabel );
+}
 
-    m_db_face->commit( "Clean partial keys" );
+void OverlayDB::removeAllPartialTransactionReceipts() {
+    std::string prefix = "safeLastTransactionReceipts.";
+    removePartialTransactionReceiptsByPrefix( prefix, "Clean partial keys" );
+}
+
+void OverlayDB::removePartialTransactionReceiptsForBlock( dev::eth::BlockNumber _blockNumber ) {
+    std::string blockPrefix =
+        "safeLastTransactionReceipts." + uint64ToFixedLengthHex( ( uint64_t ) _blockNumber ) + ".";
+    removePartialTransactionReceiptsByPrefix( blockPrefix, "Clean partial keys for block" );
 }
 
 void OverlayDB::setLastExecutedTransactionHash( const dev::h256& _newHash ) {
