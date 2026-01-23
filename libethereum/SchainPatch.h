@@ -166,12 +166,6 @@ DEFINE_SIMPLE_PATCH( ExternalGasPatch );
 DEFINE_SIMPLE_PATCH( ClearPartialReceiptsPatch );
 
 /*
- * Purpose: keep partial receipts until next block to ensure sync state with consensus
- * Version introduced: 4.0.3+
- */
-DEFINE_AMNESIC_PATCH( KeepPartialReceiptsUntilNextBlockPatch );
-
-/*
  * Context: fix the check in transaction constructor
  * maxFeePerGas cannot be less than maxPriorityFeePerGas
  */
@@ -192,7 +186,7 @@ DEFINE_SIMPLE_PATCH( CurrentBlockRandomPatch );
 DEFINE_AMNESIC_PATCH( GroupIndexInitPatch );
 
 /*
- * Purpose: enable commit-per-block transaction handling based on timestamp
+ * Purpose: enable state mode so the database commit is executed only once per block.
  */
 DEFINE_SIMPLE_PATCH( SingleStateCommitPerBlockPatch );
 

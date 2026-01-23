@@ -382,9 +382,6 @@ private:
     /// Creates and updates the special contract for storing block hashes according to EIP96
     void updateBlockhashContract();
 
-    // Clear partial transaction receipts for previous block
-    void cleanupPartialTransactionReceiptsForPreviousBlock();
-
     // Sanity check for partial transaction receipts
     void sanityCheckPartialTransactionReceipts(
         std::optional< BlockNumber > blockNumber = std::nullopt );
