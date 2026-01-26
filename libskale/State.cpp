@@ -1214,7 +1214,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
 
 #ifdef BITE2
         if ( g_skaleHost ) {
-            if( statusCode )
+            if ( statusCode )
                 g_skaleHost->commitTempBITE2Transactions();
             else
                 g_skaleHost->clearTempBITE2Transactions();

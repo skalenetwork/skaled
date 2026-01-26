@@ -31,28 +31,26 @@ namespace eth {
 
 class BITE2TransactionQueue {
 public:
-    void import(Transaction&& _t);
+    void import( Transaction&& _t );
     
-    // Warning: Caller must ensure no other thread modifies the queue while using the reference
-    // if reliance on internal lock is intended, this method is unsafe as it returns reference after unlocking.
     const std::deque<Transaction>& pending() const;
 
-    void addTemp(Transaction&& _t);
+    void addTemp( Transaction&& _t );
     void commitTemp();
     void clearTemp();
     void clear();
 
     // Returns true if transaction was a BITE2 transaction (isCTX) and was handled
     // Returns false if it's not a BITE2 transaction.
-    bool dropGood(const Transaction& _t);
+    bool dropGood( const Transaction& _t );
 
 private:
-    std::deque<Transaction> m_current;
-    std::vector<Transaction> m_temp;
+    std::deque< Transaction > m_current;
+    std::vector< Transaction > m_temp;
     mutable SharedMutex m_lock;
 
     Logger m_loggerTrace{ createLogger( VerbosityTrace, "BITE2Queue" ) };
 };
 
-}
-}
+}  // namespace eth
+}  // namespace dev

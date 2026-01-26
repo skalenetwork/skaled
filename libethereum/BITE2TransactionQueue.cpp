@@ -23,25 +23,25 @@
 using namespace dev;
 using namespace dev::eth;
 
-void BITE2TransactionQueue::import(Transaction&& _t) {
-    WriteGuard l(m_lock);
-    BOOST_LOG(m_loggerTrace) << "BITE2 txn arrived";
-    m_current.push_back(std::move(_t));
+void BITE2TransactionQueue::import( Transaction&& _t ) {
+    WriteGuard l( m_lock );
+    BOOST_LOG( m_loggerTrace ) << "BITE2 txn arrived";
+    m_current.push_back( std::move( _t ) );
 }
 
 const std::deque<Transaction>& BITE2TransactionQueue::pending() const {
-    ReadGuard l(m_lock);
+    ReadGuard l( m_lock );
     return m_current;
 }
 
-void BITE2TransactionQueue::addTemp(Transaction&& _t) {
-    m_temp.emplace_back(std::move(_t));
+void BITE2TransactionQueue::addTemp( Transaction&& _t ) {
+    m_temp.emplace_back( std::move( _t ) );
 }
 
 void BITE2TransactionQueue::commitTemp() {
-    WriteGuard l(m_lock);
+    WriteGuard l( m_lock );
     for (auto& tx : m_temp) {
-        m_current.push_back(std::move(tx));
+        m_current.push_back( std::move( tx ) );
     }
     m_temp.clear();
 }
@@ -51,17 +51,17 @@ void BITE2TransactionQueue::clearTemp() {
 }
 
 void BITE2TransactionQueue::clear() {
-    WriteGuard l(m_lock);
+    WriteGuard l( m_lock );
     m_current.clear();
     m_temp.clear();
 }
 
-bool BITE2TransactionQueue::dropGood(const Transaction& _t) {
-    if (_t.isCTX()) {
-        WriteGuard l(m_lock);
+bool BITE2TransactionQueue::dropGood( const Transaction& _t ) {
+    if ( _t.isCTX() ) {
+        WriteGuard l( m_lock );
         // BITE2 transactions are stored separately
         // they are also stored in the strict order
-        if (!m_current.empty()) {
+        if ( !m_current.empty() ) {
             // Check that we indeed are dropping the front transaction
             // If stricter checking is needed, we can re-enable assertion
             CHECK_EXPRESSION( _t == m_current.front() );
