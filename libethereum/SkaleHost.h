@@ -130,8 +130,6 @@ public:
 
     void pushToBroadcastQueue( const dev::eth::Transaction& _transaction );
 #ifdef BITE2
-    void pushToBITE2Queue( dev::eth::Transaction&& _transaction );
-
     void addTempBITE2Transaction( dev::eth::Transaction&& _transaction );
     void commitTempBITE2Transactions();
     void clearTempBITE2Transactions();
@@ -229,8 +227,6 @@ private:
         const ConsensusExtFace::Transactions& _approvedTransactions,
         [[maybe_unused]] const dev::eth::BlockHeader& latestInfo,
         DecryptedTransactions _decryptedTransactions );
-
-    std::vector< dev::eth::Transaction > m_tempBITE2Transactions;
 #endif
 
     list< dev::eth::Transaction > m_broadcastQueue;

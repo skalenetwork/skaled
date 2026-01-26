@@ -376,23 +376,16 @@ void SkaleHost::pushToBroadcastQueue( const Transaction& _t ) {
 }
 
 #ifdef BITE2
-void SkaleHost::pushToBITE2Queue( dev::eth::Transaction&& _transaction ) {
-    m_tq.importBITE2Transaction( std::move( _transaction ) );
-}
-
 void SkaleHost::addTempBITE2Transaction( dev::eth::Transaction&& _transaction ) {
-    m_tempBITE2Transactions.push_back( std::move( _transaction ) );
+    m_tq.addTempBITE2Transaction( std::move( _transaction ) );
 }
 
 void SkaleHost::commitTempBITE2Transactions() {
-    for ( auto& tx : m_tempBITE2Transactions ) {
-        pushToBITE2Queue( std::move( tx ) );
-    }
-    m_tempBITE2Transactions.clear();
+    m_tq.commitTempBITE2Transactions();
 }
 
 void SkaleHost::clearTempBITE2Transactions() {
-    m_tempBITE2Transactions.clear();
+    m_tq.clearTempBITE2Transactions();
 }
 #endif
 

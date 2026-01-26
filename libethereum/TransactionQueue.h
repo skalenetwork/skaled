@@ -160,6 +160,10 @@ public:
     /// Get all pending BITE2 transactions. Returned transactions are not removed from the queue
     /// automatically.
     const std::vector< Transaction >& pendingBITE2Transactions() const;
+
+    void addTempBITE2Transaction( dev::eth::Transaction&& _transaction );
+    void commitTempBITE2Transactions();
+    void clearTempBITE2Transactions();
 #endif
 
     struct Status {
@@ -384,6 +388,7 @@ private:
 #ifdef BITE2
     std::vector< Transaction > m_bite2Current;  ///< Only one thread at a time accesses it.
                                                 ///< therefore no need in extra synchronisation
+    std::vector< dev::eth::Transaction > m_tempBITE2Transactions;
 #endif
 
     Logger m_loggerInfo{ createLogger( VerbosityInfo, "TransactionQueue" ) };

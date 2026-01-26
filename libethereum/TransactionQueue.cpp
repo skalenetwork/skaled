@@ -588,4 +588,22 @@ const std::vector< Transaction >& TransactionQueue::pendingBITE2Transactions() c
     ReadGuard l( m_lock );
     return m_bite2Current;
 }
+
+void TransactionQueue::addTempBITE2Transaction( dev::eth::Transaction&& _transaction ) {
+    m_tempBITE2Transactions.emplace_back( std::move( _transaction ) );
+}
+
+void TransactionQueue::commitTempBITE2Transactions() {
+    // Move all transactions from temporary storage to the main BITE2 queue
+    for ( auto& tx : m_tempBITE2Transactions ) {
+        m_bite2Current.push_back( std::move( tx ) );
+    }
+    
+    // Clear temporary storage
+    m_tempBITE2Transactions.clear();
+}
+
+void TransactionQueue::clearTempBITE2Transactions() {
+    m_tempBITE2Transactions.clear();
+}
 #endif

@@ -42,6 +42,9 @@
 
 #include <libethereum/BlockDetails.h>
 #include <libethereum/SchainPatch.h>
+#ifdef BITE2
+#include <libethereum/SkaleHost.h>
+#endif
 
 namespace fs = boost::filesystem;
 
@@ -1198,6 +1201,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
             TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() );
         if ( _p == Permanence::Committed &&
              ifShouldSkipExecution( _chainParams.getChainId(), _t.sha3() ) ) {
+
             receipt = TransactionReceipt( statusCode,
                 startGasUsed +
                     getGasUsedForSkippedTransaction( _chainParams.getChainId(), _t.sha3() ),
@@ -1207,6 +1211,15 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
                           TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
                           TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
         }
+
+#ifdef BITE2
+        if ( g_skaleHost ) {
+            if( statusCode )
+                g_skaleHost->commitTempBITE2Transactions();
+            else
+                g_skaleHost->clearTempBITE2Transactions();
+        }
+#endif
         receipt.setRevertReason( strRevertReason );
 
         // if we are committing we need to know transaction index in block since
