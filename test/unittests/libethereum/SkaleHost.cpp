@@ -1743,9 +1743,11 @@ BOOST_AUTO_TEST_CASE( encryptTE_success ) {
     // Verify exactly 1 key is present
     BOOST_REQUIRE_EQUAL( ciphertext.getKeys().size(), 1 );
 
-    // Validate the TE ciphertext
+    // Validate the TE ciphertext with SC address as AAD
+    auto ScBytes = testScAddress.asBytes();
+    std::vector< uint8_t > aadBytes{ ScBytes.begin(), ScBytes.end() };
     BOOST_REQUIRE_NO_THROW(
-        libBLS::ThresholdEncryption::validateEncryption( ciphertext.getTargetKey() ) );
+        libBLS::ThresholdEncryption::validateEncryption( ciphertext.getTargetKey(), &aadBytes ) );
 
     // decrypt & check if decrypted = original
     
@@ -1758,7 +1760,7 @@ BOOST_AUTO_TEST_CASE( encryptTE_success ) {
     // 3. Combine shares → AES key
     libBLS::AES256Key aesKey = libBLS::ThresholdEncryption::combineShares( 
         ciphertext.getTargetKey(), decryptSet );
-    // 4. Decrypt using AES key (no AES AAD - we use TE AAD for validation instead)
+    // 4. Decrypt using AES key
     std::vector< uint8_t > decryptedMessage = 
         libBLS::ThresholdEncryption::decrypt( ciphertext, aesKey );
     // 5. Verify original message matches
@@ -1831,11 +1833,20 @@ BOOST_AUTO_TEST_CASE( encryptTE_rotation_soon ) {
     // Verify exactly 2 keys are present because rotation is soon
     BOOST_REQUIRE_EQUAL( ciphertext.getKeys().size(), 2 );
 
-    // Verify decryption with both keys
+    // SC address used as AAD
+    auto ScBytes = dev::Address().asBytes();
+    std::vector< uint8_t > aadBytes{ ScBytes.begin(), ScBytes.end() };
+
+    // Validate and decrypt with both keys
     // Key 0 (current)
     {
         libBLS::Ciphertext ctCopy = ciphertext;
         ctCopy.keepKey(0);
+        
+        // Validate the TE ciphertext with SC address as AAD
+        BOOST_REQUIRE_NO_THROW(
+            libBLS::ThresholdEncryption::validateEncryption( ctCopy.getTargetKey(), &aadBytes ) );
+        
         libBLS::TEDecryptionShare share = libBLS::ThresholdEncryption::partialDecrypt(
             ctCopy.getTargetKey(), keys0.secretKeys[0] );
         libBLS::TEDecryptSet decryptSet( 1, 1 );
@@ -1851,6 +1862,11 @@ BOOST_AUTO_TEST_CASE( encryptTE_rotation_soon ) {
     {
         libBLS::Ciphertext ctCopy = ciphertext;
         ctCopy.keepKey(1);
+        
+        // Validate the TE ciphertext with SC address as AAD
+        BOOST_REQUIRE_NO_THROW(
+            libBLS::ThresholdEncryption::validateEncryption( ctCopy.getTargetKey(), &aadBytes ) );
+        
         libBLS::TEDecryptionShare share = libBLS::ThresholdEncryption::partialDecrypt(
             ctCopy.getTargetKey(), keys1.secretKeys[0] );
         libBLS::TEDecryptSet decryptSet( 1, 1 );
