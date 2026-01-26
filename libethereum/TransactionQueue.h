@@ -41,6 +41,10 @@
 #include <mutex>
 #include <thread>
 
+#ifdef BITE2
+#include "BITE2TransactionQueue.h"
+#endif
+
 namespace dev {
 namespace eth {
 
@@ -159,7 +163,7 @@ public:
 
     /// Get all pending BITE2 transactions. Returned transactions are not removed from the queue
     /// automatically.
-    const std::vector< Transaction >& pendingBITE2Transactions() const;
+    const std::deque< Transaction >& pendingBITE2Transactions() const;
 
     void addTempBITE2Transaction( dev::eth::Transaction&& _transaction );
     void commitTempBITE2Transactions();
@@ -386,9 +390,7 @@ private:
     std::atomic_bool m_aborting;                       ///< Exit condition for verifier.
 
 #ifdef BITE2
-    std::vector< Transaction > m_bite2Current;  ///< Only one thread at a time accesses it.
-                                                ///< therefore no need in extra synchronisation
-    std::vector< dev::eth::Transaction > m_tempBITE2Transactions;
+    BITE2TransactionQueue m_bite2Queue;
 #endif
 
     Logger m_loggerInfo{ createLogger( VerbosityInfo, "TransactionQueue" ) };
