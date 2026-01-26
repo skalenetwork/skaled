@@ -163,7 +163,7 @@ public:
 
     /// Get all pending BITE2 transactions. Returned transactions are not removed from the queue
     /// automatically.
-    const std::deque< Transaction >& pendingBITE2Transactions() const;
+    Transactions pendingBITE2Transactions() const;
 
     void addTempBITE2Transaction( dev::eth::Transaction&& _transaction );
     void commitTempBITE2Transactions();

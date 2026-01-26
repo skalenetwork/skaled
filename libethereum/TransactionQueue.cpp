@@ -579,7 +579,7 @@ void TransactionQueue::importBITE2Transaction( Transaction&& _t ) {
     m_bite2Queue.import( std::move( _t ) );
 }
 
-const std::deque< Transaction >& TransactionQueue::pendingBITE2Transactions() const {
+Transactions TransactionQueue::pendingBITE2Transactions() const {
     return m_bite2Queue.pending();
 }
 

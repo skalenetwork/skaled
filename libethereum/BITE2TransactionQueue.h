@@ -33,7 +33,7 @@ class BITE2TransactionQueue {
 public:
     void import( Transaction&& _t );
 
-    const std::deque< Transaction >& pending() const;
+    std::vector< Transaction > pending() const;
 
     void addTemp( Transaction&& _t );
     void commitTemp();
