@@ -28,6 +28,10 @@
 #include "Executive.h"
 #include "ExtVM.h"
 #include "GenesisInfo.h"
+#ifdef BITE2
+#include "Precompiled.h"
+#include "SkaleHost.h"
+#endif
 #include "TransactionQueue.h"
 #include <libdevcore/Assertions.h>
 #include <libdevcore/CommonIO.h>
