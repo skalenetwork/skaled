@@ -29,7 +29,7 @@ void BITE2TransactionQueue::import( Transaction&& _t ) {
     m_current.push_back( std::move( _t ) );
 }
 
-const std::deque<Transaction>& BITE2TransactionQueue::pending() const {
+const std::deque< Transaction >& BITE2TransactionQueue::pending() const {
     ReadGuard l( m_lock );
     return m_current;
 }
@@ -40,7 +40,7 @@ void BITE2TransactionQueue::addTemp( Transaction&& _t ) {
 
 void BITE2TransactionQueue::commitTemp() {
     WriteGuard l( m_lock );
-    for (auto& tx : m_temp) {
+    for ( auto& tx : m_temp ) {
         m_current.push_back( std::move( tx ) );
     }
     m_temp.clear();

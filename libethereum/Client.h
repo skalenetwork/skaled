@@ -155,7 +155,7 @@ public:
     Transactions debugGetFutureTransactions() const { return m_tq.debugGetFutureTransactions(); }
 
 #ifdef BITE2
-    const std::deque<Transaction>& debugGetPendingBITE2Transactions() const {
+    const std::deque< Transaction >& debugGetPendingBITE2Transactions() const {
         return m_tq.pendingBITE2Transactions();
     }
 #endif

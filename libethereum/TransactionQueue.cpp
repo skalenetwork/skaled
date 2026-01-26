@@ -471,7 +471,7 @@ void TransactionQueue::dropGood( Transaction const& _t ) {
     // BITE2 transactions are stored separately
     // they are also stored in the strict order
     // delete and return
-    if ( m_bite2Queue.dropGood(_t) )
+    if ( m_bite2Queue.dropGood( _t ) )
         return;
 #endif
 
