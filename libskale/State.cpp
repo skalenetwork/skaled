@@ -1201,7 +1201,6 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
             TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() );
         if ( _p == Permanence::Committed &&
              ifShouldSkipExecution( _chainParams.getChainId(), _t.sha3() ) ) {
-
             receipt = TransactionReceipt( statusCode,
                 startGasUsed +
                     getGasUsedForSkippedTransaction( _chainParams.getChainId(), _t.sha3() ),
