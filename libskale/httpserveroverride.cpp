@@ -1563,23 +1563,6 @@ SkaleServerOverride::SkaleServerOverride(
         dev::Logger logger{ createLogger( dev::VerbosityError, "SkaleServerOverride" ) };
         BOOST_LOG( logger ) << "CRITICAL ERROR: Proxygen abort handler called.";
     } );
-
-    {  // block
-        std::function< void( const unsigned& iw, const dev::eth::Block& block ) >
-            fnOnSunscriptionEvent =
-                [this]( const unsigned& /*iw*/, const dev::eth::Block& block ) -> void {
-            dev::h256 h = block.info().hash();
-            dev::eth::TransactionHashes arrTxHashes = ethereum()->transactionHashes( h );
-        };
-        iwBlockStats_ = ethereum()->installNewBlockWatch( fnOnSunscriptionEvent );
-    }
-    {
-        std::function< void( const unsigned& iw, const dev::eth::Transaction& tx ) >
-            fnOnSunscriptionEvent =
-                [this]( const unsigned& /*iw*/, const dev::eth::Transaction& /*tx*/ ) -> void {};
-        iwPendingTransactionStats_ =
-            ethereum()->installNewPendingTransactionWatch( fnOnSunscriptionEvent );
-    }
 }
 
 SkaleServerOverride::~SkaleServerOverride() {}
