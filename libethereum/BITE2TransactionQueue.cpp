@@ -74,4 +74,4 @@ bool BITE2TransactionQueue::dropGood( const Transaction& _t ) {
     return false;
 }
 
-#endif // BITE2
+#endif  // BITE2

@@ -33,6 +33,9 @@
 #include <libethcore/SealEngine.h>
 #include <libethereum/CodeSizeCache.h>
 #include <libethereum/Defaults.h>
+#ifdef BITE2
+#include <libethereum/Precompiled.h>
+#endif
 
 #include "libweb3jsonrpc/Eth.h"
 #include "libweb3jsonrpc/JsonHelper.h"
@@ -1212,11 +1215,11 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         }
 
 #ifdef BITE2
-        if ( g_skaleHost ) {
+        if ( dev::eth::g_skaleHost ) {
             if ( statusCode )
-                g_skaleHost->commitTempBITE2Transactions();
+                dev::eth::g_skaleHost->commitTempBITE2Transactions();
             else
-                g_skaleHost->clearTempBITE2Transactions();
+                dev::eth::g_skaleHost->clearTempBITE2Transactions();
         }
 #endif
         receipt.setRevertReason( strRevertReason );

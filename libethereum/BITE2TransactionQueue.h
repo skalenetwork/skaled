@@ -57,4 +57,4 @@ private:
 }  // namespace eth
 }  // namespace dev
 
-#endif // BITE2
+#endif  // BITE2
