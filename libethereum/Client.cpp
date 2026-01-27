@@ -645,9 +645,9 @@ Address Client::getWinningNodeBeneficiary( uint64_t _winningNodeIndex ) const {
 bool Client::updateGroupIfNeeded() {
     return bc().updateGroupIfNeeded();
 }
-#endif
+#endif // FAIR
 
-#endif
+#endif // BITE
 
 size_t Client::syncTransactions(
     const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {
