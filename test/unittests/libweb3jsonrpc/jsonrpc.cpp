@@ -6111,7 +6111,7 @@ BOOST_AUTO_TEST_CASE( bite2InvalidTransaction ) {
 
 
     // call submitCTXWithRevert()
-    // BITE2 queue size should not change
+    // BITE2 queue size should remain empty
     Json::Value txFailGenerate;
     txFailGenerate["to"] = contractAddress;
     txFailGenerate["gas"] = "1000000";
@@ -6125,7 +6125,7 @@ BOOST_AUTO_TEST_CASE( bite2InvalidTransaction ) {
     txReceipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE( txReceipt["status"] == "0x0" );
 
-    BOOST_REQUIRE_EQUAL( fixture.client->debugGetTransactionQueue()->pendingBITE2Transactions().size(), 1 );
+    BOOST_REQUIRE_EQUAL( fixture.client->debugGetTransactionQueue()->pendingBITE2Transactions().size(), 0 );
 }
 
 #endif // BITE2
