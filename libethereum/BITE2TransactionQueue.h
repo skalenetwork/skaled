@@ -19,6 +19,8 @@
 
 #pragma once
 
+#ifdef BITE2
+
 #include "Transaction.h"
 #include <libdevcore/Guards.h>
 #include <libdevcore/Log.h>
@@ -54,3 +56,5 @@ private:
 
 }  // namespace eth
 }  // namespace dev
+
+#endif // BITE2
