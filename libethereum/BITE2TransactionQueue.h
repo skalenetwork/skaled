@@ -46,7 +46,7 @@ public:
     void clearTemp();
     void clear();
 
-    // Returns true if transaction was a BITE2 transaction (isCTX) and was handled
+    // Returns true if transaction was a BITE2 transaction and was handled
     // Returns false if it's not a BITE2 transaction.
     bool dropGood( const Transaction& _t );
 
