@@ -33,9 +33,6 @@
 #include <libethcore/SealEngine.h>
 #include <libethereum/CodeSizeCache.h>
 #include <libethereum/Defaults.h>
-#ifdef BITE2
-#include <libethereum/Precompiled.h>
-#endif
 
 #include "libweb3jsonrpc/Eth.h"
 #include "libweb3jsonrpc/JsonHelper.h"
@@ -45,7 +42,9 @@
 
 #include <libethereum/BlockDetails.h>
 #include <libethereum/SchainPatch.h>
+
 #ifdef BITE2
+#include <libethereum/Precompiled.h>
 #include <libethereum/SkaleHost.h>
 #endif
 
