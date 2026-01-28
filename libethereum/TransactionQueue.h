@@ -162,12 +162,17 @@ public:
     void importBITE2Transaction( Transaction&& _t );
 
     /// Get all pending BITE2 transactions. Returned transactions are not removed from the queue
-    /// automatically.
-    Transactions pendingBITE2Transactions() const;
+    /// automatically. For internal logic.
+    const Transactions& pendingBITE2Transactions() const;
+
+    /// Get all pending BITE2 transactions. Returned transactions are not removed from the queue
+    /// automatically. For Debug/RPC.
+    std::vector< Transaction > debug_pendingBITE2Transactions() const;
 
     void addTempBITE2Transaction( dev::eth::Transaction&& _transaction );
     void commitTempBITE2Transactions();
     void clearTempBITE2Transactions();
+    void clearAllBITE2Transactions();
 #endif
 
     struct Status {

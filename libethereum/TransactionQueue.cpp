@@ -579,8 +579,12 @@ void TransactionQueue::importBITE2Transaction( Transaction&& _t ) {
     m_bite2Queue.import( std::move( _t ) );
 }
 
-Transactions TransactionQueue::pendingBITE2Transactions() const {
-    return m_bite2Queue.pending();
+const Transactions& TransactionQueue::pendingBITE2Transactions() const {
+    return m_bite2Queue.pendingBITE2Transactions();
+}
+
+Transactions TransactionQueue::debug_pendingBITE2Transactions() const {
+    return m_bite2Queue.debug_pendingBITE2Transactions();
 }
 
 void TransactionQueue::addTempBITE2Transaction( dev::eth::Transaction&& _transaction ) {
@@ -593,5 +597,9 @@ void TransactionQueue::commitTempBITE2Transactions() {
 
 void TransactionQueue::clearTempBITE2Transactions() {
     m_bite2Queue.clearTemp();
+}
+
+void TransactionQueue::clearAllBITE2Transactions() {
+    m_bite2Queue.clear();
 }
 #endif

@@ -1093,6 +1093,7 @@ std::vector< Transaction > SkaleHost::processCTXTransactions(
         if ( ctxIterator != _decryptedTransactions.catTxsMap->end() )
             ++ctxIterator;
     }
+    m_tq.clearAllBITE2Transactions();
     return outTxns;
 }
 #endif

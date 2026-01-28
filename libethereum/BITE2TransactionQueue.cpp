@@ -31,9 +31,13 @@ void BITE2TransactionQueue::import( Transaction&& _t ) {
     m_current.push_back( std::move( _t ) );
 }
 
-std::vector< Transaction > BITE2TransactionQueue::pending() const {
+std::vector< Transaction > BITE2TransactionQueue::debug_pendingBITE2Transactions() const {
     ReadGuard l( m_lock );
-    return { m_current.begin(), m_current.end() };
+    return m_current;
+}
+
+const std::vector< Transaction >& BITE2TransactionQueue::pendingBITE2Transactions() const {
+    return m_current;
 }
 
 void BITE2TransactionQueue::addTemp( Transaction&& _t ) {
@@ -55,23 +59,22 @@ void BITE2TransactionQueue::clearTemp() {
 void BITE2TransactionQueue::clear() {
     WriteGuard l( m_lock );
     m_current.clear();
+    m_currentHeadIndex.store( 0, std::memory_order_relaxed );
     m_temp.clear();
 }
 
 bool BITE2TransactionQueue::dropGood( const Transaction& _t ) {
     if ( _t.isCTX() ) {
-        WriteGuard l( m_lock );
         // BITE2 transactions are stored separately
         // they are also stored in the strict order
-        if ( !m_current.empty() ) {
-            // Check that we indeed are dropping the front transaction
-            // If stricter checking is needed, we can re-enable assertion
-            CHECK_EXPRESSION( _t == m_current.front() );
-            m_current.pop_front();
-        }
+        CHECK_EXPRESSION( m_currentHeadIndex < m_current.size() );
+        // Check that we indeed are dropping the front transaction
+        CHECK_EXPRESSION( _t == m_current[m_currentHeadIndex] );
+        m_currentHeadIndex.fetch_add( 1, std::memory_order_relaxed );
         return true;
     }
     return false;
 }
+
 
 #endif  // BITE2

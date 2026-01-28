@@ -156,7 +156,7 @@ public:
 
 #ifdef BITE2
     Transactions debugGetPendingBITE2Transactions() const {
-        return m_tq.pendingBITE2Transactions();
+        return m_tq.debug_pendingBITE2Transactions();
     }
 #endif
 

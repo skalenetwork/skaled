@@ -5997,7 +5997,7 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
     }
 }
 
-BOOST_AUTO_TEST_CASE( bite2InvalidTransaction ) {
+BOOST_AUTO_TEST_CASE( CTXTransactionAfterRevert ) {
     JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true, false, -1, {{ "contractStorageLimit", "100000" }} );
 
     dev::eth::g_skaleHost = fixture.client->skaleHost();

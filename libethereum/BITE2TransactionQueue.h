@@ -25,7 +25,7 @@
 #include <libdevcore/Guards.h>
 #include <libdevcore/Log.h>
 
-#include <deque>
+#include <atomic>
 #include <vector>
 
 namespace dev {
@@ -35,7 +35,11 @@ class BITE2TransactionQueue {
 public:
     void import( Transaction&& _t );
 
-    std::vector< Transaction > pending() const;
+    /// Thread-safe, locks and returns a copy. For Debug/RPC.
+    std::vector< Transaction > debug_pendingBITE2Transactions() const;
+
+    /// No lock, returns reference to entire buffer. For internal logic.
+    const std::vector< Transaction >& pendingBITE2Transactions() const;
 
     void addTemp( Transaction&& _t );
     void commitTemp();
@@ -47,10 +51,12 @@ public:
     bool dropGood( const Transaction& _t );
 
 private:
-    std::deque< Transaction > m_current;
+    std::vector< Transaction > m_current;
+    std::atomic_size_t m_currentHeadIndex = 0;
     std::vector< Transaction > m_temp;
     mutable SharedMutex m_lock;
 
+    Logger m_loggerWarning{ createLogger( VerbosityWarning, "BITE2Queue" ) };
     Logger m_loggerTrace{ createLogger( VerbosityTrace, "BITE2Queue" ) };
 };
 
