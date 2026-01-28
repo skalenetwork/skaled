@@ -33,13 +33,13 @@ namespace eth {
 
 class BITE2TransactionQueue {
 public:
-    void import( Transaction&& _t );
-
     /// Thread-safe, locks and returns a copy. For Debug/RPC.
     std::vector< Transaction > debug_pendingBITE2Transactions() const;
 
     /// No lock, returns reference to entire buffer. For internal logic.
     const std::vector< Transaction >& pendingBITE2Transactions() const;
+
+    void finalize();
 
     void addTemp( Transaction&& _t );
     void commitTemp();
@@ -52,8 +52,7 @@ public:
 
 private:
     std::vector< Transaction > m_current;
-    std::atomic_size_t m_currentHeadIndex = 0;
-    std::vector< Transaction > m_temp;
+    std::atomic_int m_currentHeadIndex = -1;
     mutable SharedMutex m_lock;
 
     Logger m_loggerWarning{ createLogger( VerbosityWarning, "BITE2Queue" ) };

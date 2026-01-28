@@ -1214,6 +1214,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         }
 
 #ifdef BITE2
+        // commit CTXs from temp buffer to permanent iff txn was executed without revert
         if ( dev::eth::g_skaleHost ) {
             if ( statusCode )
                 dev::eth::g_skaleHost->commitTempBITE2Transactions();

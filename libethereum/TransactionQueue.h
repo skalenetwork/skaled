@@ -158,9 +158,6 @@ public:
     void dropGood( Transaction const& _t );
 
 #ifdef BITE2
-    /// Inserts new CTX into separate queue. Always called from block-executing thread
-    void importBITE2Transaction( Transaction&& _t );
-
     /// Get all pending BITE2 transactions. Returned transactions are not removed from the queue
     /// automatically. For internal logic.
     const Transactions& pendingBITE2Transactions() const;

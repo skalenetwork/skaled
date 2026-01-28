@@ -25,12 +25,6 @@
 using namespace dev;
 using namespace dev::eth;
 
-void BITE2TransactionQueue::import( Transaction&& _t ) {
-    WriteGuard l( m_lock );
-    BOOST_LOG( m_loggerTrace ) << "BITE2 txn arrived";
-    m_current.push_back( std::move( _t ) );
-}
-
 std::vector< Transaction > BITE2TransactionQueue::debug_pendingBITE2Transactions() const {
     ReadGuard l( m_lock );
     return m_current;
@@ -41,33 +35,42 @@ const std::vector< Transaction >& BITE2TransactionQueue::pendingBITE2Transaction
 }
 
 void BITE2TransactionQueue::addTemp( Transaction&& _t ) {
-    m_temp.emplace_back( std::move( _t ) );
+    WriteGuard l( m_lock );
+    BOOST_LOG( m_loggerTrace ) << "BITE2 txn arrived";
+    m_current.push_back( std::move( _t ) );
 }
 
 void BITE2TransactionQueue::commitTemp() {
-    WriteGuard l( m_lock );
-    for ( auto& tx : m_temp ) {
-        m_current.push_back( std::move( tx ) );
-    }
-    m_temp.clear();
+    // m_currentHeadIndex should always point to last element during block execution
+    // used as checkpoint for rollbacks
+    m_currentHeadIndex.store( m_current.size() - 1, std::memory_order_relaxed );
 }
 
 void BITE2TransactionQueue::clearTemp() {
-    m_temp.clear();
+    WriteGuard l( m_lock );
+    // delete all temporary CTXs until last checkpoint
+    while ( int( m_current.size() ) > m_currentHeadIndex + 1 ) {
+        m_current.pop_back();
+    }
 }
 
 void BITE2TransactionQueue::clear() {
     WriteGuard l( m_lock );
     m_current.clear();
-    m_currentHeadIndex.store( 0, std::memory_order_relaxed );
-    m_temp.clear();
+    m_currentHeadIndex.store( -1, std::memory_order_relaxed );
+}
+
+void BITE2TransactionQueue::finalize() {
+    // prepare for the next block processing
+    // m_currentHeadIndex points to first not yet verified CTX
+    m_currentHeadIndex = 0;
 }
 
 bool BITE2TransactionQueue::dropGood( const Transaction& _t ) {
     if ( _t.isCTX() ) {
         // BITE2 transactions are stored separately
         // they are also stored in the strict order
-        CHECK_EXPRESSION( m_currentHeadIndex < m_current.size() );
+        CHECK_EXPRESSION( m_currentHeadIndex < int( m_current.size() ) );
         // Check that we indeed are dropping the front transaction
         CHECK_EXPRESSION( _t == m_current[m_currentHeadIndex] );
         m_currentHeadIndex.fetch_add( 1, std::memory_order_relaxed );

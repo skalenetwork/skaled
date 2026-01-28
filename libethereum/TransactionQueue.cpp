@@ -575,10 +575,6 @@ Transactions TransactionQueue::debugGetFutureTransactions() const {
 }
 
 #ifdef BITE2
-void TransactionQueue::importBITE2Transaction( Transaction&& _t ) {
-    m_bite2Queue.import( std::move( _t ) );
-}
-
 const Transactions& TransactionQueue::pendingBITE2Transactions() const {
     return m_bite2Queue.pendingBITE2Transactions();
 }
