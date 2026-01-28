@@ -43,11 +43,6 @@
 #include <libethereum/BlockDetails.h>
 #include <libethereum/SchainPatch.h>
 
-#ifdef BITE2
-#include <libethereum/Precompiled.h>
-#include <libethereum/SkaleHost.h>
-#endif
-
 namespace fs = boost::filesystem;
 
 using namespace std;
@@ -1213,15 +1208,6 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
                           TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
         }
 
-#ifdef BITE2
-        // commit CTXs from temp buffer to permanent iff txn was executed without revert
-        if ( dev::eth::g_skaleHost ) {
-            if ( statusCode )
-                dev::eth::g_skaleHost->commitTempBITE2Transactions();
-            else
-                dev::eth::g_skaleHost->clearTempBITE2Transactions();
-        }
-#endif
         receipt.setRevertReason( strRevertReason );
 
         // if we are committing we need to know transaction index in block since

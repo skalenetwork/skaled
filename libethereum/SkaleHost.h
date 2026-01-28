@@ -133,6 +133,7 @@ public:
     void addTempBITE2Transaction( dev::eth::Transaction&& _transaction );
     void commitTempBITE2Transactions();
     void clearTempBITE2Transactions();
+    void finalizeBITE2Queue();
 #endif
 
     dev::u256 getGasPrice( unsigned _blockNumber = dev::eth::LatestBlock ) const;

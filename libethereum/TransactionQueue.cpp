@@ -598,4 +598,8 @@ void TransactionQueue::clearTempBITE2Transactions() {
 void TransactionQueue::clearAllBITE2Transactions() {
     m_bite2Queue.clear();
 }
+
+void TransactionQueue::finalizeBITE2Queue() {
+    m_bite2Queue.finalize();
+}
 #endif

@@ -166,10 +166,16 @@ public:
     /// automatically. For Debug/RPC.
     std::vector< Transaction > debug_pendingBITE2Transactions() const;
 
+    /// Add BITE2 txn as temporary
     void addTempBITE2Transaction( dev::eth::Transaction&& _transaction );
+    /// Move BITE2 txn from temporary to permanent
     void commitTempBITE2Transactions();
+
     void clearTempBITE2Transactions();
     void clearAllBITE2Transactions();
+
+    /// finalizes BITE2 queue to be ready to start processing next block
+    void finalizeBITE2Queue();
 #endif
 
     struct Status {

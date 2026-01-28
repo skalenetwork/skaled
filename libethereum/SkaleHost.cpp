@@ -387,6 +387,10 @@ void SkaleHost::commitTempBITE2Transactions() {
 void SkaleHost::clearTempBITE2Transactions() {
     m_tq.clearTempBITE2Transactions();
 }
+
+void SkaleHost::finalizeBITE2Queue() {
+    m_tq.finalizeBITE2Queue();
+}
 #endif
 
 h256 SkaleHost::receiveTransaction( std::string _rlp ) {
