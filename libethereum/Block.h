@@ -356,7 +356,8 @@ private:
     bool checkIfAlreadyCommitted( const Transactions& _transactions );
     void saveStateChanges(
         BlockChain const& _bc, const Transactions& _transactions, const SyncContext& _ctx );
-    void runCommit( BlockChain const& _bc, const SyncContext& _ctx ); // run commit for state and filestorage
+    void runCommit( BlockChain const& _bc, const SyncContext& _ctx );  // run commit for state and
+                                                                       // filestorage
     void createBlockSnapshot();
     void handleLegacyPartialReceipts( BlockChain const& _bc, const SyncContext& _ctx );
 
