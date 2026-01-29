@@ -13,9 +13,12 @@ set(sources
     UnsafeRegion.cpp
     TotalStorageUsedPatch.cpp
     AmsterdamFixPatch.cpp
-    OverlayFS.cpp
     SkipInvalidTransactionsPatch.cpp
 )
+
+if (NOT DEFINED FAIR)
+    list(APPEND sources OverlayFS.cpp)
+endif()
 
 set(headers
     State.h    
@@ -30,9 +33,15 @@ set(headers
     UnsafeRegion.h
     TotalStorageUsedPatch.h
     AmsterdamFixPatch.h
-    OverlayFS.h
     SkipInvalidTransactionsPatch.h
 )
+
+if (NOT DEFINED FAIR)
+    list(APPEND headers OverlayFS.h)
+else()
+    list(APPEND sources BlockRewardsActivationPatch.cpp)
+    list(APPEND headers BlockRewardsActivationPatch.h)
+endif()
 
 add_library(skale ${sources} ${headers})
 target_compile_options( skale PRIVATE -Wno-error=unused-variable )

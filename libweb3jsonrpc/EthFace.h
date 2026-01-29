@@ -10,6 +10,9 @@
 #include <libdevcore/CommonJS.h>
 #include <libethereum/TransactionReceipt.h>
 #include <libweb3jsonrpc/JsonHelper.h>
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/writer.h>
+#include <sstream>
 
 namespace dev {
 namespace rpc {
@@ -56,6 +59,7 @@ public:
         this->bindAndAddMethod( jsonrpc::Procedure( "eth_pendingTransactions",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_ARRAY, NULL ),
             &dev::rpc::EthFace::eth_pendingTransactionsI );
+
         this->bindAndAddMethod(
             jsonrpc::Procedure( "eth_getBlockTransactionCountByHash", jsonrpc::PARAMS_BY_POSITION,
                 jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_STRING, NULL ),
@@ -369,7 +373,7 @@ public:
         response = this->eth_getFilterChangesEx( request[0u].asString() );
     }
     inline virtual void eth_getFilterLogsI( const Json::Value& request, Json::Value& response ) {
-        response = this->eth_getFilterLogs( request[0u].asString() );
+        response = this->eth_getFilterLogsAsJson( request[0u].asString() );
     }
     //    inline virtual void eth_getFilterLogsExI( const Json::Value& request, Json::Value&
     //    response ) {
@@ -381,6 +385,7 @@ public:
     //    inline virtual void eth_getLogsExI( const Json::Value& request, Json::Value& response ) {
     //        response = this->eth_getLogsEx( request[0u] );
     //    }
+
     inline virtual void eth_getWorkI( const Json::Value& request, Json::Value& response ) {
         ( void ) request;
         response = this->eth_getWork();
@@ -505,8 +510,8 @@ public:
     virtual bool eth_uninstallFilter( const std::string& param1 ) = 0;
     virtual Json::Value eth_getFilterChanges( const std::string& param1 ) = 0;
     virtual Json::Value eth_getFilterChangesEx( const std::string& param1 ) = 0;
-    virtual Json::Value eth_getFilterLogs( const std::string& param1 ) = 0;
     //    virtual Json::Value eth_getFilterLogsEx( const std::string& param1 ) = 0;
+    virtual Json::Value eth_getFilterLogsAsJson( std::string const& _filterId ) = 0;
     virtual Json::Value eth_getLogs( const Json::Value& param1 ) = 0;
     //    virtual Json::Value eth_getLogsEx( const Json::Value& param1 ) = 0;
     virtual Json::Value eth_getWork() = 0;

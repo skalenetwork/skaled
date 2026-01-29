@@ -28,6 +28,10 @@
 #include <libdevcore/CommonData.h>
 #include <libdevcore/Log.h>
 
+#ifdef FAIR
+#include <libskale/BlockRewardsActivationPatch.h>
+#endif
+
 #include <skutils/utils.h>
 
 using namespace std;
@@ -54,14 +58,18 @@ time_t SChain::getPatchTimestamp( SchainPatchEnum _patchEnum ) const {
 }
 
 ChainOperationParams::ChainOperationParams()
-    : m_blockReward( "0x4563918244F40000" ),
+    :
+#ifndef FAIR
+      m_blockReward( "0x4563918244F40000" ),
+#endif
       minGasLimit( 0x1388 ),
       maxGasLimit( "0x7fffffffffffffff" ),
       gasLimitBoundDivisor( 0x0400 ),
       networkID( 0x0 ),
       minimumDifficulty( 0x020000 ),
       difficultyBoundDivisor( 0x0800 ),
-      durationLimit( 0x0d ) {}
+      durationLimit( 0x0d ) {
+}
 
 EVMSchedule const ChainOperationParams::makeEvmSchedule(
     time_t _committedBlockTimestamp, u256 const& _workingBlockNumber ) const {
@@ -83,22 +91,31 @@ EVMSchedule const ChainOperationParams::makeEvmSchedule(
     else if ( _workingBlockNumber >= EIP150ForkBlock )
         result = EIP150Schedule;
     else if ( _workingBlockNumber >= homesteadForkBlock )
-        return HomesteadSchedule;
+        result = HomesteadSchedule;
     else
-        return FrontierSchedule;
+        result = FrontierSchedule;
 
     // 2 based on previous - decide by timestamp
     if ( PushZeroPatch::isEnabledWhen( _committedBlockTimestamp ) )
         result = PushZeroPatch::makeSchedule( result );
 
+#ifdef FAIR
+    if ( BlockRewardsActivationPatch::isEnabled( chainID ) )
+        result = BlockRewardsActivationPatch::makeSchedule( result );
+#endif
+
     return result;
 }
 
 u256 ChainOperationParams::blockReward( EVMSchedule const& _schedule ) const {
+#ifndef FAIR
     if ( _schedule.blockRewardOverwrite )
         return *_schedule.blockRewardOverwrite;
     else
         return m_blockReward;
+#else
+    return _schedule.blockRewardOverwrite;
+#endif
 }
 
 u256 ChainOperationParams::blockReward(
@@ -107,9 +124,11 @@ u256 ChainOperationParams::blockReward(
     return blockReward( schedule );
 }
 
+#ifndef FAIR
 void ChainOperationParams::setBlockReward( u256 const& _newBlockReward ) {
     m_blockReward = _newBlockReward;
 }
+#endif
 
 time_t ChainOperationParams::getPatchTimestamp( SchainPatchEnum _patchEnum ) const {
     return sChain.getPatchTimestamp( _patchEnum );

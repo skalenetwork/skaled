@@ -243,8 +243,8 @@ eth::OnOpFunc FakeExtVM::simpleTrace() const {
         for ( auto const& i : std::get< 2 >( ext.addresses.find( ext.myAddress )->second ) )
             o << std::showbase << std::hex << i.first << ": " << i.second << "\n";
 
-        LOG( ext.m_loggerTrace ) << o.str();
-        LOG( ext.m_loggerTrace ) << " | " << std::dec << ext.depth << " | " << ext.myAddress << " | #"
+        BOOST_LOG( ext.m_loggerTrace ) << o.str();
+        BOOST_LOG( ext.m_loggerTrace ) << " | " << std::dec << ext.depth << " | " << ext.myAddress << " | #"
                             << steps << " | " << std::hex << std::setw( 4 ) << std::setfill( '0' )
                             << pc << " : " << instructionInfo( inst ).name << " | " << std::dec
                             << gas << " | -" << std::dec << gasCost << " | " << newMemSize << "x32"
@@ -368,15 +368,25 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
                     BOOST_REQUIRE_MESSAGE(
                         testInput.count( "expect" ) == 1, testname + " multiple expect set!" );
                     State postState = State();
+#ifndef FAIR
                     postState.setStorageLimit(1000000000);
+#endif
                     State expectState = State();
+#ifndef FAIR
                     expectState.setStorageLimit(1000000000);
+#endif
                     AccountMaskMap expectStateMap;
                     ImportTest::importState( mValue( fev.exportState() ).get_obj(), postState );
                     ImportTest::importState(
                         testInput.at( "expect" ).get_obj(), expectState, expectStateMap );
+#ifdef FAIR
+                    unordered_set< Address > owners;
+                    ImportTest::compareStatesFAIR(
+                        expectState, postState, owners, expectStateMap, WhenError::Throw );
+#else
                     ImportTest::compareStates(
                         expectState, postState, expectStateMap, WhenError::Throw );
+#endif
                 }
                 BOOST_REQUIRE_MESSAGE( testOutput.count( "expect" ) == 0,
                     testname + " expect should have been erased!" );
@@ -390,9 +400,13 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
                         testInput.count( "expect" ) == 1, testname + " multiple expect set!" );
 
                     State postState = State();
+#ifndef FAIR
                     postState.setStorageLimit(1000000000);
+#endif
                     State expectState = State();
+#ifndef FAIR
                     expectState.setStorageLimit(1000000000);
+#endif
                     AccountMaskMap expectStateMap;
 
                     // json_spirit::mObject const& debug_var = testOutput.at("post").get_obj();
@@ -400,8 +414,14 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
                     ImportTest::importState( testOutput.at( "post" ).get_obj(), postState );
                     ImportTest::importState(
                         testInput.at( "expect" ).get_obj(), expectState, expectStateMap );
+#ifdef FAIR
+                    unordered_set< Address > owners;
+                    ImportTest::compareStatesFAIR(
+                        expectState, postState, owners, expectStateMap, WhenError::Throw );
+#else
                     ImportTest::compareStates(
                         expectState, postState, expectStateMap, WhenError::Throw );
+#endif
                 }
 
                 BOOST_REQUIRE_MESSAGE( testOutput.count( "expect" ) == 0,
@@ -456,14 +476,22 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
                 BOOST_CHECK_EQUAL( toInt( testInput.at( "gas" ) ), fev.gas );
 
                 State postState = State();
+#ifndef FAIR
                 postState.setStorageLimit(1000000000);
+#endif
                 State expectState = State();
+#ifndef FAIR
                 expectState.setStorageLimit(1000000000);
+#endif
                 mObject mPostState = fev.exportState();
                 ImportTest::importState( mPostState, postState );
                 ImportTest::importState( testInput.at( "post" ).get_obj(), expectState );
+#ifdef FAIR
+                unordered_set< Address > owners;
+                ImportTest::compareStatesFAIR( expectState, postState, owners );
+#else
                 ImportTest::compareStates( expectState, postState );
-
+#endif
                 // checkAddresses<std::map<Address, std::tuple<u256, u256, std::map<u256, u256>,
                 // bytes> > >(test.addresses, fev.addresses);
 

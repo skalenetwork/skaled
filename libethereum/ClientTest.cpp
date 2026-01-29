@@ -41,7 +41,7 @@ ClientTest* dev::eth::asClientTest( Interface* _c ) {
     return &dynamic_cast< ClientTest& >( *_c );
 }
 
-ClientTest::ClientTest( ChainParams const& _params, int _networkID,
+ClientTest::ClientTest( std::shared_ptr< const ChainParams > _params, int _networkID,
     std::shared_ptr< GasPricer > _gpForAdoption,
     std::shared_ptr< SnapshotManager > _snapshotManager,
     std::shared_ptr< InstanceMonitor > _instanceMonitor, fs::path const& _dbPath,
@@ -55,7 +55,7 @@ ClientTest::~ClientTest() {
 }
 
 void ClientTest::modifyTimestamp( int64_t _timestamp ) {
-    Block block( chainParams().accountStartNonce );
+    Block block( chainParams().getAccountStartNonce() );
     DEV_READ_GUARDED( x_preSeal )
     block = m_preSeal;
 
@@ -81,7 +81,7 @@ void ClientTest::modifyTimestamp( int64_t _timestamp ) {
 }
 
 bool ClientTest::mineBlocks( unsigned _count ) noexcept {
-    LOG( m_loggerDebug ) << "mineBlocks begin " << _count << "\n";
+    BOOST_LOG( m_loggerDebug ) << "mineBlocks begin " << _count << "\n";
     if ( wouldSeal() )
         return false;
     try {
@@ -97,10 +97,10 @@ bool ClientTest::mineBlocks( unsigned _count ) noexcept {
         startSealing();
         future_status ret = allBlocksImported.get_future().wait_for(
             std::chrono::seconds( m_singleBlockMaxMiningTimeInSeconds * _count ) );
-        LOG( m_loggerDebug ) << "mineBlocks end 0 is OK:" << ( int ) ret << "\n";
+        BOOST_LOG( m_loggerDebug ) << "mineBlocks end 0 is OK:" << ( int ) ret << "\n";
         return ( ret == future_status::ready );
     } catch ( std::exception const& ) {
-        LOG( m_loggerDebug ) << boost::current_exception_diagnostic_information();
+        BOOST_LOG( m_loggerDebug ) << boost::current_exception_diagnostic_information();
         return false;
     }
 }

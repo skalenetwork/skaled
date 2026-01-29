@@ -197,6 +197,7 @@ std::string OverlayDB::uint64ToFixedLengthHex( uint64_t value ) {
     return res.str();
 }
 
+
 void OverlayDB::setPartialTransactionReceipt( const dev::bytes& _newReceipt,
     dev::eth::BlockNumber _blockNumber, uint64_t _transactionIndex ) {
     string key = "safeLastTransactionReceipts." + uint64ToFixedLengthHex( _blockNumber ) + "." +
@@ -206,6 +207,33 @@ void OverlayDB::setPartialTransactionReceipt( const dev::bytes& _newReceipt,
     m_db_face->insert( skale::slicing::toSlice( key ), skale::slicing::toSlice( _newReceipt ) );
 }
 
+
+#ifdef FAIR
+// Converts a hexadecimal string to a uint64_t value.
+std::uint64_t OverlayDB::hexToUint64( const std::string& hexValue ) {
+    std::stringstream valueStream( hexValue );
+    std::uint64_t result;
+    valueStream >> std::hex >> result;
+    return result;
+}
+
+void OverlayDB::setLastRewardedBlockNumber( const dev::eth::BlockNumber _blockNumber ) {
+    string key = "lastRewardedBlockNumber";
+    string blockNumberFixedLengthHex =
+        uint64ToFixedLengthHex( static_cast< uint64_t >( _blockNumber ) );
+    m_db_face->insert( skale::slicing::toSlice( key ), blockNumberFixedLengthHex );
+}
+
+dev::eth::BlockNumber OverlayDB::getLastRewardedBlockNumber() {
+    string key = "lastRewardedBlockNumber";
+    auto lookupResult = m_db_face->lookup( skale::slicing::toSlice( key ) );
+    dev::eth::BlockNumber number = 0;
+    if ( !lookupResult.empty() ) {
+        number = static_cast< dev::eth::BlockNumber >( hexToUint64( lookupResult ) );
+    }
+    return number;
+}
+#endif
 
 void OverlayDB::commitStorageValues() {
     for ( auto const& addressStoragePair : m_storageCache ) {
@@ -273,27 +301,29 @@ void OverlayDB::commit() {
                 break;
             } catch ( boost::exception const& ex ) {
                 if ( commitTry == 9 ) {
-                    LOG( m_loggerWarning ) << "Fail(1) writing to state database. Bombing out. ";
-                    LOG( m_loggerWarning ) << DETAILED_ERROR;
+                    BOOST_LOG( m_loggerWarning )
+                        << "Fail(1) writing to state database. Bombing out. ";
+                    BOOST_LOG( m_loggerWarning ) << DETAILED_ERROR;
                     exit( -1 );
                 }
                 cerror << "Error(2) writing to state database (during DB commit): "
                        << boost::diagnostic_information( ex );
-                LOG( m_loggerWarning )
+                BOOST_LOG( m_loggerWarning )
                     << "Error writing to state database: " << boost::diagnostic_information( ex );
-                LOG( m_loggerWarning )
+                BOOST_LOG( m_loggerWarning )
                     << "Sleeping for" << ( commitTry + 1 ) << "seconds, then retrying.";
                 std::this_thread::sleep_for( std::chrono::seconds( commitTry + 1 ) );
             } catch ( std::exception const& ex ) {
                 if ( commitTry == 9 ) {
-                    LOG( m_loggerWarning ) << "Fail(2) writing to state database. Bombing out. ";
-                    LOG( m_loggerWarning ) << DETAILED_ERROR;
+                    BOOST_LOG( m_loggerWarning )
+                        << "Fail(2) writing to state database. Bombing out. ";
+                    BOOST_LOG( m_loggerWarning ) << DETAILED_ERROR;
                     exit( -1 );
                 }
-                LOG( m_loggerError )
+                BOOST_LOG( m_loggerError )
                     << "Error(2) writing to state database (during DB commit): " << ex.what();
-                LOG( m_loggerWarning ) << "Error(2) writing to state database: " << ex.what();
-                LOG( m_loggerWarning )
+                BOOST_LOG( m_loggerWarning ) << "Error(2) writing to state database: " << ex.what();
+                BOOST_LOG( m_loggerWarning )
                     << "Sleeping for" << ( commitTry + 1 ) << "seconds, then retrying.";
                 std::this_thread::sleep_for( std::chrono::seconds( commitTry + 1 ) );
             }
@@ -308,7 +338,7 @@ void OverlayDB::commit() {
             m_db_face->revert();
         }
     } else {
-        LOG( m_loggerInfo ) << "Try to commit into closed or not initialized DB";
+        BOOST_LOG( m_loggerInfo ) << "Try to commit into closed or not initialized DB";
     }
 }
 
@@ -327,7 +357,7 @@ string OverlayDB::lookupAuxiliary( h160 const& _address, _byte_ _space ) const {
     std::string const loadedValue =
         m_db_face->lookup( skale::slicing::toSlice( getAuxiliaryKey( _address, _space ) ) );
     if ( loadedValue.empty() )
-        LOG( m_loggerWarning ) << "Aux not found: " << _address;
+        BOOST_LOG( m_loggerWarning ) << "Aux not found: " << _address;
 
     return loadedValue;
 }
@@ -352,7 +382,7 @@ void OverlayDB::killAuxiliary( const dev::h160& _address, _byte_ _space ) {
                 // NB! This is not committed! So, this can be reverted
                 m_db_face->kill( skale::slicing::toSlice( key ) );
             } else {
-                LOG( m_loggerTrace )
+                BOOST_LOG( m_loggerTrace )
                     << "Try to delete non existing key " << _address << "(" << _space << ")";
             }
         }
@@ -375,7 +405,7 @@ void OverlayDB::insertAuxiliary(
 }
 
 std::unordered_map< h160, string > OverlayDB::accounts() const {
-    LOG( m_loggerInfo ) << "Iterating over all accounts in state";
+    BOOST_LOG( m_loggerInfo ) << "Iterating over all accounts in state";
     unordered_map< h160, string > accounts;
     if ( m_db_face ) {
         m_db_face->forEach( [&accounts]( Slice key, Slice value ) {
@@ -400,7 +430,7 @@ std::unordered_map< u256, u256 > OverlayDB::storage( const dev::h160& _address )
         string prefix( ( const char* ) _address.data(), _address.size );
         m_db_face->forEachWithPrefix(
             prefix, [this, &storage, &_address]( Slice key, Slice value ) {
-                if ( key.size() == h160::size + h256::size ) {
+                if ( key.size() == size_t( h160::size ) + size_t( h256::size ) ) {
                     // key is storage address
                     string keyString( key.begin(), key.end() );
                     h160 address = h160( keyString.substr( 0, h160::size ),
@@ -412,7 +442,7 @@ std::unordered_map< u256, u256 > OverlayDB::storage( const dev::h160& _address )
                             h256::ConstructFromStringType::FromBinary );
                         storage[memoryAddress] = memoryValue;
                     } else {
-                        LOG( m_loggerError ) << "Address mismatch in:" << __FUNCTION__;
+                        BOOST_LOG( m_loggerError ) << "Address mismatch in:" << __FUNCTION__;
                     }
                 }
                 return true;
@@ -428,7 +458,7 @@ void OverlayDB::copyStorageIntoAccountMap( dev::eth::AccountMap& _map ) const {
 
     if ( m_db_face ) {
         m_db_face->forEach( [this, &_map]( Slice key, Slice value ) {
-            if ( key.size() == h160::size + h256::size ) {
+            if ( key.size() == size_t( h160::size ) + size_t( h256::size ) ) {
                 // key is storage address
                 string keyString( key.begin(), key.end() );
                 [[maybe_unused]] h160 address = h160(
@@ -445,14 +475,14 @@ void OverlayDB::copyStorageIntoAccountMap( dev::eth::AccountMap& _map ) const {
                 _map.at( address ).setStorage( memoryAddress, memoryValue );
                 counter++;
                 if ( counter % 1000000 == 0 ) {
-                    LOG( m_loggerDebug ) << ".";
-                    LOG( m_loggerDebug ).flush();
+                    BOOST_LOG( m_loggerDebug ) << ".";
+                    BOOST_LOG( m_loggerDebug ).flush();
                 }
             }
             return true;
         } );
 
-        LOG( m_loggerInfo ) << "\n";
+        BOOST_LOG( m_loggerInfo ) << "\n";
     } else {
         cerror << "Try to load account's storage but connection to database is not established";
     }
@@ -541,7 +571,7 @@ void OverlayDB::kill( h160 const& _h ) {
                 // NB! This is not committed! So, this can be reverted
                 m_db_face->kill( skale::slicing::toSlice( _h ) );
             } else {
-                LOG( m_loggerTrace ) << "Try to delete non existing key " << _h;
+                BOOST_LOG( m_loggerTrace ) << "Try to delete non existing key " << _h;
             }
         }
     }

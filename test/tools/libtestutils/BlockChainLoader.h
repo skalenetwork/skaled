@@ -45,6 +45,7 @@ public:
 
 private:
     TransientDirectory m_dir;
+    std::shared_ptr< dev::eth::ChainParams > m_chainParams;
     std::unique_ptr< eth::BlockChain > m_bc;
     eth::Block m_block;
 };

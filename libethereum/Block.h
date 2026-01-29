@@ -42,6 +42,7 @@
 #include "Transaction.h"
 #include "TransactionReceipt.h"
 
+#include "libconsensus/node/ConsensusInterface.h"
 
 namespace skale {
 class State;
@@ -120,6 +121,17 @@ public:
         m_author = _id;
         resetCurrent();
     }
+
+#ifdef FAIR
+    /// Set the author address for any transactions we do and rewards we get.
+    /// No reset of current block
+    void safeSetAuthor( Address const& _id ) {
+        m_author = _id;
+        m_currentBlock.setAuthor( m_author );
+    }
+
+    static const Address DEFAULT_BLOCK_OWNER_ADDRESS;
+#endif
 
     /// Note the fact that this block is being used with a particular chain.
     /// Call this before using any non-const methods.
@@ -309,6 +321,18 @@ public:
 
     void startReadState();
 
+#ifdef BITE
+    void setDecryptedTransactionDataFields(
+        const std::shared_ptr< DecryptedTransactionFieldsMap >& _decryptedTransactionDataFields ) {
+        CHECK_EXPRESSION( _decryptedTransactionDataFields );
+        m_decryptedTransactionDataFields = _decryptedTransactionDataFields;
+    }
+
+    const std::shared_ptr< DecryptedTransactionFieldsMap >& decryptedTransactionDataFields() const {
+        return m_decryptedTransactionDataFields;
+    }
+#endif
+
 private:
     SealEngineFace* sealEngine() const;
 
@@ -319,6 +343,11 @@ private:
     /// Throws on failure.
     u256 enact( VerifiedBlockRef const& _block, BlockChain const& _bc );
 
+#ifdef FAIR
+    // Distribute block rewards to block author and staking contract, if it is not default block
+    void rewardAllForNonDefaultBlock(
+        const dev::Address& _stakingContractAddress, u256 const& _blockReward );
+#endif
     /// Finalise the block, applying the earned rewards.
     void applyRewards(
         std::vector< BlockHeader > const& _uncleBlockHeaders, u256 const& _blockReward );
@@ -339,7 +368,7 @@ private:
     void sanityCheckPartialTransactionReceipts(
         std::optional< BlockNumber > blockNumber = std::nullopt );
 
-    State m_state;                ///< Our state.
+    skale::State m_state;         ///< Our state.
     Transactions m_transactions;  ///< The current list of transactions that we've included in the
                                   ///< state.
     TransactionReceipts m_receipts;  ///< The corresponding list of transaction receipts.
@@ -359,13 +388,19 @@ private:
 
     SealEngineFace* m_sealEngine = nullptr;  ///< The chain's seal engine.
 
+#ifdef BITE
+    // decrypted transaction data fields to be stored with the block and their indexes
+    // only filled for a working block
+    std::shared_ptr< DecryptedTransactionFieldsMap > m_decryptedTransactionDataFields =
+        std::make_shared< DecryptedTransactionFieldsMap >();
+#endif
+
     Logger m_loggerDebug{ createLogger( VerbosityDebug, "block" ) };
     Logger m_loggerTrace{ createLogger( VerbosityTrace, "block" ) };
     Logger m_loggerWarning{ createLogger( VerbosityWarning, "block" ) };
     Logger m_loggerError{ createLogger( VerbosityError, "block" ) };
 
     Counter< Block > c;
-    ;
 
 public:
     static uint64_t howMany() { return Counter< Block >::howMany(); }

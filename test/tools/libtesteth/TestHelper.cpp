@@ -22,6 +22,7 @@
 
 #include "TestHelper.h"
 
+#include <chrono>
 #include <set>
 #include <string>
 
@@ -127,8 +128,9 @@ void simulateMining( Client& client, size_t numBlocks, const dev::Address &addre
     assert( balanceAfter > balanceBefore );
 }
 
-void simulateMining( Client& client, size_t numBlocks ) {
+void simulateMining( Client& client, size_t numBlocks,  const bool waitForConsensusRotation ) {
     const dev::Address address = client.author();
+    shared_ptr<SkaleHost> skaleHost = client.skaleHost();
     simulateMining( client, numBlocks, address );
 }
 
@@ -654,8 +656,8 @@ string prepareLLLCVersionString() {
 }
 
 void copyFile( fs::path const& _source, fs::path const& _destination ) {
-    fs::ifstream src( _source, ios::binary );
-    fs::ofstream dst( _destination, ios::binary );
+    std::ifstream src( _source, ios::binary );
+    std::ofstream dst( _destination, ios::binary );
     dst << src.rdbuf();
 }
 

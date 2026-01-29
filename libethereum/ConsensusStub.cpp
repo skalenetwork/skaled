@@ -38,8 +38,6 @@
 
 using namespace dev;
 
-using namespace std;
-
 ConsensusStub::ConsensusStub(
     ConsensusExtFace& _extFace, uint64_t _lastCommittedBlockID, u256 _stateRoot )
     : dev::Worker( "consensus_stub", 0 ),  // call doWork in a tight loop
@@ -88,8 +86,8 @@ void ConsensusStub::doWork() {
     if ( txns.size() == 0 )  // check for exit
         return;
 
-    LOG( m_loggerDebug ) << "Taken " << txns.size() << " transactions for consensus"
-                         << "\n";
+    BOOST_LOG( m_loggerDebug ) << "Taken " << txns.size() << " transactions for consensus"
+                               << "\n";
 
     size_t txns_in_block = txns.size();  // rand()%txns.size();
                                          // any subset but not zero
@@ -107,12 +105,15 @@ void ConsensusStub::doWork() {
 
     try {
         ++blockCounter;
-        m_extFace.createBlock( out_vector, time( NULL ), 0, blockCounter,
-            getPriceForBlockId( blockCounter ), stateRoot, -1 );
-        LOG( m_loggerDebug ) << "createBlock"
-                             << "\n";
+        m_extFace.createBlock( out_vector,
+#ifdef BITE
+            shared_ptr< DecryptedTransactionFieldsMap >(),
+#endif
+            time( NULL ), 0, blockCounter, getPriceForBlockId( blockCounter ), stateRoot, -1 );
+        BOOST_LOG( m_loggerDebug ) << "createBlock"
+                                   << "\n";
     } catch ( const dev::Exception& x ) {
-        LOG( m_loggerDebug ) << x.what() << "\n";
+        BOOST_LOG( m_loggerDebug ) << x.what() << "\n";
     }  // catch
 }
 

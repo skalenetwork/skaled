@@ -787,8 +787,22 @@ void LegacyVM::interpretCases() {
         }
         NEXT
 #else
-        CASE( JUMPTO ) CASE( JUMPIF ) CASE( JUMPV ) CASE( JUMPSUB ) CASE( JUMPSUBV )
-            CASE( RETURNSUB ) CASE( BEGINSUB ) CASE( BEGINDATA ) CASE( GETLOCAL ) CASE( PUTLOCAL ) {
+
+
+#ifdef FAIR
+        CASE( TLOAD ) CASE( TSTORE ) CASE( MCOPY ) {
+            ON_OP();
+            throwUnsupportedDencunOpcode();
+        }
+        CONTINUE
+#endif
+
+        CASE( JUMPTO )
+        CASE( JUMPIF )
+        CASE( JUMPV )
+        CASE( JUMPSUB )
+        CASE( JUMPSUBV )
+        CASE( RETURNSUB ) CASE( BEGINSUB ) CASE( BEGINDATA ) CASE( GETLOCAL ) CASE( PUTLOCAL ) {
             ON_OP();
             throwBadInstruction();
         }
@@ -1545,11 +1559,15 @@ void LegacyVM::interpretCases() {
 
             updateIOGas();
 
+#ifndef FAIR
             try {
                 m_ext->setStore( m_SP[0], m_SP[1] );
             } catch ( dev::StorageOverflow& ex ) {
                 throwStorageOverflow( ex.what() );
             }
+#else
+            m_ext->setStore( m_SP[0], m_SP[1] );
+#endif
         }
         NEXT
 

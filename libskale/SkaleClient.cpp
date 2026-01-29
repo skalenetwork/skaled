@@ -80,6 +80,22 @@ Json::Value SkaleClient::skale_getSnapshotSignature( unsigned blockNumber ) {
     }
 }
 
+#ifdef FAIR
+Json::Value SkaleClient::skale_getBLSPublicKey() {
+    Json::Value p;
+    p = Json::nullValue;
+    Json::Value result;
+
+    result = this->CallMethod( "skale_getBLSPublicKey", p );
+
+    if ( result.isObject() ) {
+        return result;
+    } else {
+        throw jsonrpc::JsonRpcException(
+            jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
+    }
+}
+#else
 Json::Value SkaleClient::skale_imaInfo() {
     Json::Value p;
     p = Json::nullValue;
@@ -94,6 +110,7 @@ Json::Value SkaleClient::skale_imaInfo() {
             jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
     }
 }
+#endif
 
 unsigned SkaleClient::skale_getLatestSnapshotBlockNumber() {
     Json::Value p;

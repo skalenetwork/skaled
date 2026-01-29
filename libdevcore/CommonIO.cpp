@@ -84,7 +84,7 @@ template < typename _T >
 inline _T contentsGeneric( boost::filesystem::path const& _file ) {
     _T ret;
     size_t const c_elementSize = sizeof( typename _T::value_type );
-    boost::filesystem::ifstream is( _file, std::ifstream::binary );
+    std::ifstream is( _file, std::ifstream::binary );
     if ( !is )
         return ret;
 
@@ -126,7 +126,7 @@ void writeFile(
     } else {
         createDirectoryIfNotExistent( _file.parent_path() );
 
-        boost::filesystem::ofstream s( _file, ios::trunc | ios::binary );
+        std::ofstream s( _file, ios::trunc | ios::binary );
         s.write( reinterpret_cast< char const* >( _data.data() ), _data.size() );
         if ( !s )
             BOOST_THROW_EXCEPTION(

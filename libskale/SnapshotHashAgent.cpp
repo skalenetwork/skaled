@@ -26,18 +26,17 @@
 #include "SkaleClient.h"
 
 #include <jsonrpccpp/client/connectors/httpclient.h>
-#include <libconsensus/libBLS/tools/utils.h>
 #include <libethcore/CommonJS.h>
 #include <libskale/AmsterdamFixPatch.h>
 #include <libweb3jsonrpc/Skale.h>
 #include <skutils/rest_call.h>
-#include <libff/common/profiling.hpp>
+#include <libconsensus/libBLS/backends/interface/functions.hpp>
 
 SnapshotHashAgent::SnapshotHashAgent( const dev::eth::ChainParams& chainParams,
     const std::array< std::string, 4 >& common_public_key,
     const std::string& urlToDownloadSnapshotFrom )
     : chainParams_( chainParams ),
-      n_( chainParams.sChain.nodes.size() ),
+      n_( chainParams.getNodesCount() ),
       urlToDownloadSnapshotFrom_( urlToDownloadSnapshotFrom ) {
     this->hashes_.resize( n_ );
     this->signatures_.resize( n_ );
@@ -48,48 +47,37 @@ SnapshotHashAgent::SnapshotHashAgent( const dev::eth::ChainParams& chainParams,
     }
 
     this->bls_.reset( new libBLS::Bls( ( 2 * this->n_ + 1 ) / 3, this->n_ ) );
-    commonPublicKey_.X.c0 = libff::alt_bn128_Fq( common_public_key[0].c_str() );
-    commonPublicKey_.X.c1 = libff::alt_bn128_Fq( common_public_key[1].c_str() );
-    commonPublicKey_.Y.c0 = libff::alt_bn128_Fq( common_public_key[2].c_str() );
-    commonPublicKey_.Y.c1 = libff::alt_bn128_Fq( common_public_key[3].c_str() );
-    commonPublicKey_.Z = libff::alt_bn128_Fq2::one();
-    if ( ( commonPublicKey_.X == libff::alt_bn128_Fq2::zero() &&
-             commonPublicKey_.Y == libff::alt_bn128_Fq2::one() ) ||
-         !commonPublicKey_.is_well_formed() ) {
+
+    commonPublicKey_ = libBLS::algebra::G2Point::fromString( common_public_key, libBLS::Base::DEC );
+    if ( !commonPublicKey_.isValid() || commonPublicKey_.isIdentity() ) {
         // zero or corrupted public key was provided in command line
         this->readPublicKeyFromConfig();
     }
 }
 
 void SnapshotHashAgent::readPublicKeyFromConfig() {
-    this->commonPublicKey_.X.c0 =
-        libff::alt_bn128_Fq( chainParams_.nodeInfo.commonBLSPublicKeys[0].c_str() );
-    this->commonPublicKey_.X.c1 =
-        libff::alt_bn128_Fq( chainParams_.nodeInfo.commonBLSPublicKeys[1].c_str() );
-    this->commonPublicKey_.Y.c0 =
-        libff::alt_bn128_Fq( chainParams_.nodeInfo.commonBLSPublicKeys[2].c_str() );
-    this->commonPublicKey_.Y.c1 =
-        libff::alt_bn128_Fq( chainParams_.nodeInfo.commonBLSPublicKeys[3].c_str() );
-    this->commonPublicKey_.Z = libff::alt_bn128_Fq2::one();
+    auto commonBlsPublicKeyArray = chainParams_.getCommonBlsPublicKey();
+    this->commonPublicKey_ =
+        libBLS::algebra::G2Point::fromString( commonBlsPublicKeyArray, libBLS::Base::DEC );
+    if ( !this->commonPublicKey_.isValid() ) {
+        throw SnapshotHashAgentException( "Invalid common public key" );
+    }
 }
 
 size_t SnapshotHashAgent::verifyAllData() const {
     size_t verified = 0;
     for ( size_t i = 0; i < this->n_; ++i ) {
-        if ( this->chainParams_.nodeInfo.id == this->chainParams_.sChain.nodes.at( i ).id ) {
+        if ( this->chainParams_.getSelfNodeId() == this->chainParams_.getNodeByIndex( i ).id ) {
             continue;
         }
 
         if ( this->isReceived_.at( i ) ) {
             bool is_verified = false;
-            libff::inhibit_profiling_info = true;
             try {
-                is_verified =
-                    this->bls_->Verification( std::make_shared< std::array< uint8_t, 32 > >(
-                                                  this->hashes_.at( i ).asArray() ),
-                        this->signatures_.at( i ), this->public_keys_.at( i ) );
+                is_verified = this->bls_->Verify( this->hashes_.at( i ).asArray(),
+                    this->signatures_.at( i ), this->public_keys_.at( i ) );
             } catch ( std::exception& ex ) {
-                LOG( m_loggerError ) << ex.what();
+                BOOST_LOG( m_loggerError ) << ex.what();
             }
 
             verified += is_verified;
@@ -115,7 +103,7 @@ bool SnapshotHashAgent::voteForHash() {
     const std::lock_guard< std::mutex > lock( this->hashesMutex );
 
     for ( size_t i = 0; i < this->n_; ++i ) {
-        if ( this->chainParams_.nodeInfo.id == this->chainParams_.sChain.nodes.at( i ).id ) {
+        if ( this->chainParams_.getSelfNodeId() == this->chainParams_.getNodeByIndex( i ).id ) {
             continue;
         }
 
@@ -125,16 +113,16 @@ bool SnapshotHashAgent::voteForHash() {
     std::map< dev::h256, size_t >::iterator it;
     it = std::find_if( map_hash.begin(), map_hash.end(),
         [this]( const std::pair< dev::h256, size_t > p ) { return 3 * p.second > 2 * this->n_; } );
-    LOG( m_loggerInfo ) << "Snapshot hash is: " << ( *it ).first << ". Verifying it...";
+    BOOST_LOG( m_loggerInfo ) << "Snapshot hash is: " << ( *it ).first << ". Verifying it...";
 
     if ( it == map_hash.end() ) {
         throw NotEnoughVotesException( "note enough votes to choose hash" );
         return false;
     } else {
         std::vector< size_t > idx;
-        std::vector< libff::alt_bn128_G1 > signatures;
+        std::vector< libBLS::algebra::G1Point > signatures;
         for ( size_t i = 0; i < this->n_; ++i ) {
-            if ( this->chainParams_.nodeInfo.id == this->chainParams_.sChain.nodes.at( i ).id ) {
+            if ( this->chainParams_.getSelfNodeId() == this->chainParams_.getNodeByIndex( i ).id ) {
                 continue;
             }
 
@@ -145,69 +133,64 @@ bool SnapshotHashAgent::voteForHash() {
             }
         }
 
-        std::vector< libff::alt_bn128_Fr > lagrange_coeffs;
-        libff::alt_bn128_G1 common_signature;
+        std::vector< libBLS::algebra::FrScalar > lagrange_coeffs;
+        libBLS::algebra::G1Point common_signature;
         try {
-            lagrange_coeffs =
-                libBLS::ThresholdUtils::LagrangeCoeffs( idx, ( 2 * this->n_ + 1 ) / 3 );
+            lagrange_coeffs = libBLS::algebra::lagrangeCoeffs( idx, ( 2 * this->n_ + 1 ) / 3 );
             common_signature = this->bls_->SignatureRecover( signatures, lagrange_coeffs );
         } catch ( libBLS::ThresholdUtils::IncorrectInput& ex ) {
-            LOG( m_loggerError )
+            BOOST_LOG( m_loggerError )
                 << "Exception while recovering common signature from other skaleds: " << ex.what();
         } catch ( libBLS::ThresholdUtils::IsNotWellFormed& ex ) {
-            LOG( m_loggerError )
+            BOOST_LOG( m_loggerError )
                 << "Exception while recovering common signature from other skaleds: " << ex.what();
         }
 
         bool is_verified = false;
 
         try {
-            libff::inhibit_profiling_info = true;
-            is_verified = this->bls_->Verification(
-                std::make_shared< std::array< uint8_t, 32 > >( ( *it ).first.asArray() ),
-                common_signature, this->commonPublicKey_ );
+            is_verified = this->bls_->Verify(
+                ( *it ).first.asArray(), common_signature, this->commonPublicKey_ );
         } catch ( libBLS::ThresholdUtils::IsNotWellFormed& ex ) {
-            LOG( m_loggerError )
+            BOOST_LOG( m_loggerError )
                 << "Exception while verifying common signature from other skaleds: " << ex.what();
         }
 
         if ( !is_verified ) {
-            LOG( m_loggerError )
+            BOOST_LOG( m_loggerError )
                 << "Common BLS signature wasn't verified, probably using incorrect "
                    "common public key specified in command line. Trying again with "
                    "common public key from config";
 
-            libff::alt_bn128_G2 commonPublicKey_from_config;
-            commonPublicKey_from_config.X.c0 =
-                libff::alt_bn128_Fq( this->chainParams_.nodeInfo.commonBLSPublicKeys[0].c_str() );
-            commonPublicKey_from_config.X.c1 =
-                libff::alt_bn128_Fq( this->chainParams_.nodeInfo.commonBLSPublicKeys[1].c_str() );
-            commonPublicKey_from_config.Y.c0 =
-                libff::alt_bn128_Fq( this->chainParams_.nodeInfo.commonBLSPublicKeys[2].c_str() );
-            commonPublicKey_from_config.Y.c1 =
-                libff::alt_bn128_Fq( this->chainParams_.nodeInfo.commonBLSPublicKeys[3].c_str() );
-            commonPublicKey_from_config.Z = libff::alt_bn128_Fq2::one();
-            LOG( m_loggerDebug ) << "NEW BLS COMMON PUBLIC KEY:";
-            commonPublicKey_from_config.print_coordinates();
+            auto commonBlsPublicKeyArray = chainParams_.getCommonBlsPublicKey();
+            libBLS::algebra::G2Point commonPublicKeyFromConfig =
+                libBLS::algebra::G2Point::fromString( commonBlsPublicKeyArray, libBLS::Base::DEC );
+
+            BOOST_LOG( m_loggerDebug ) << "NEW BLS COMMON PUBLIC KEY:";
+            auto coords = commonPublicKeyFromConfig.toStringArray( libBLS::Base::DEC );
+            BOOST_LOG( m_loggerDebug ) << "X.c0: " << coords[0];
+            BOOST_LOG( m_loggerDebug ) << "X.c1: " << coords[1];
+            BOOST_LOG( m_loggerDebug ) << "Y.c0: " << coords[2];
+            BOOST_LOG( m_loggerDebug ) << "Y.c1: " << coords[3];
             try {
-                is_verified = this->bls_->Verification(
-                    std::make_shared< std::array< uint8_t, 32 > >( ( *it ).first.asArray() ),
-                    common_signature, commonPublicKey_from_config );
+                is_verified = this->bls_->Verify(
+                    ( *it ).first.asArray(), common_signature, commonPublicKeyFromConfig );
             } catch ( libBLS::ThresholdUtils::IsNotWellFormed& ex ) {
-                LOG( m_loggerError )
+                BOOST_LOG( m_loggerError )
                     << "Exception while verifying common signature from other skaleds: "
                     << ex.what();
             }
 
             if ( !is_verified ) {
-                LOG( m_loggerError )
+                BOOST_LOG( m_loggerError )
                     << "Common BLS signature wasn't verified, snapshot will not be "
                        "downloaded. Try to backup node manually using skale-node-cli.";
                 return false;
             } else {
-                LOG( m_loggerInfo ) << "Common BLS signature was verified with common public key "
-                                       "from config.";
-                this->commonPublicKey_ = commonPublicKey_from_config;
+                BOOST_LOG( m_loggerInfo )
+                    << "Common BLS signature was verified with common public key "
+                       "from config.";
+                this->commonPublicKey_ = commonPublicKeyFromConfig;
             }
         }
 
@@ -220,8 +203,8 @@ bool SnapshotHashAgent::voteForHash() {
     return true;
 }
 
-std::tuple< dev::h256, libff::alt_bn128_G1, libff::alt_bn128_G2 > SnapshotHashAgent::askNodeForHash(
-    const std::string& url, unsigned blockNumber ) {
+std::tuple< dev::h256, libBLS::algebra::G1Point, libBLS::algebra::G2Point >
+SnapshotHashAgent::askNodeForHash( const std::string& url, unsigned blockNumber ) {
     jsonrpc::HttpClient* jsonRpcClient = new jsonrpc::HttpClient( url );
     SkaleClient skaleClient( *jsonRpcClient );
 
@@ -229,47 +212,50 @@ std::tuple< dev::h256, libff::alt_bn128_G1, libff::alt_bn128_G2 > SnapshotHashAg
     try {
         joSignatureResponse = skaleClient.skale_getSnapshotSignature( blockNumber );
     } catch ( jsonrpc::JsonRpcException& ex ) {
-        LOG( m_loggerError ) << "WARNING "
-                             << "Error while trying to get snapshot signature from " << url << " : "
-                             << ex.what();
+        BOOST_LOG( m_loggerError )
+            << "WARNING "
+            << "Error while trying to get snapshot signature from " << url << " : " << ex.what();
         delete jsonRpcClient;
         return {};
     }
 
     if ( !joSignatureResponse.get( "hash", 0 ) || !joSignatureResponse.get( "X", 0 ) ||
          !joSignatureResponse.get( "Y", 0 ) ) {
-        LOG( m_loggerError ) << "WARNING "
-                             << " Signature from " + url +
-                                    "-th node was not received during "
-                                    "getNodesToDownloadSnapshotFrom ";
+        BOOST_LOG( m_loggerError ) << "WARNING "
+                                   << " Signature from " + url +
+                                          "-th node was not received during "
+                                          "getNodesToDownloadSnapshotFrom ";
         delete jsonRpcClient;
 
         return {};
     } else {
         std::string strHash = joSignatureResponse["hash"].asString();
-        LOG( m_loggerInfo ) << "Received snapshot hash from " << url << " : " << strHash;
+        BOOST_LOG( m_loggerInfo ) << "Received snapshot hash from " << url << " : " << strHash;
 
-        libff::alt_bn128_G1 signature =
-            libff::alt_bn128_G1( libff::alt_bn128_Fq( joSignatureResponse["X"].asCString() ),
-                libff::alt_bn128_Fq( joSignatureResponse["Y"].asCString() ),
-                libff::alt_bn128_Fq::one() );
+        std::string xElement = joSignatureResponse["X"].asString();
+        std::string yElement = joSignatureResponse["Y"].asString();
+        libBLS::algebra::G1Point signature = libBLS::algebra::G1Point(
+            libBLS::algebra::FqElement::fromString( xElement, libBLS::Base::DEC ),
+            libBLS::algebra::FqElement::fromString( yElement, libBLS::Base::DEC ),
+            libBLS::algebra::FqElement::one() );
 
-        libff::alt_bn128_G2 publicKey;
+        libBLS::algebra::G2Point publicKey;
         if ( urlToDownloadSnapshotFrom_.empty() ) {
+#ifdef FAIR
+            Json::Value joPublicKeyResponse = skaleClient.skale_getBLSPublicKey();
+#else
             Json::Value joPublicKeyResponse = skaleClient.skale_imaInfo();
+#endif
+            std::array< std::string, libBLS::algebra::G2_NUM_COMPONENTS_AFFINE > arrPublicKey;
+            arrPublicKey[0] = joPublicKeyResponse["BLSPublicKey0"].asString();
+            arrPublicKey[1] = joPublicKeyResponse["BLSPublicKey1"].asString();
+            arrPublicKey[2] = joPublicKeyResponse["BLSPublicKey2"].asString();
+            arrPublicKey[3] = joPublicKeyResponse["BLSPublicKey3"].asString();
 
-            publicKey.X.c0 =
-                libff::alt_bn128_Fq( joPublicKeyResponse["BLSPublicKey0"].asCString() );
-            publicKey.X.c1 =
-                libff::alt_bn128_Fq( joPublicKeyResponse["BLSPublicKey1"].asCString() );
-            publicKey.Y.c0 =
-                libff::alt_bn128_Fq( joPublicKeyResponse["BLSPublicKey2"].asCString() );
-            publicKey.Y.c1 =
-                libff::alt_bn128_Fq( joPublicKeyResponse["BLSPublicKey3"].asCString() );
-            publicKey.Z = libff::alt_bn128_Fq2::one();
+            publicKey = libBLS::algebra::G2Point::fromString( arrPublicKey, libBLS::Base::DEC );
         } else {
-            publicKey = libff::alt_bn128_G2::one();
-            publicKey.to_affine_coordinates();
+            publicKey = libBLS::algebra::G2Point::generator();
+            publicKey.toAffineCoordinates();
         }
 
         delete jsonRpcClient;
@@ -280,32 +266,33 @@ std::tuple< dev::h256, libff::alt_bn128_G1, libff::alt_bn128_G2 > SnapshotHashAg
 
 std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
     unsigned blockNumber ) {
-    libff::init_alt_bn128_params();
     std::vector< std::thread > threads;
 
     if ( urlToDownloadSnapshotFrom_.empty() ) {
         for ( size_t i = 0; i < this->n_; ++i ) {
-            if ( this->chainParams_.nodeInfo.id == this->chainParams_.sChain.nodes.at( i ).id ) {
+            if ( this->chainParams_.getSelfNodeId() == this->chainParams_.getNodeByIndex( i ).id ) {
                 continue;
             }
 
             threads.push_back( std::thread( [this, i, blockNumber]() {
                 try {
-                    std::string nodeUrl = "http://" + this->chainParams_.sChain.nodes.at( i ).ip +
+                    std::string nodeUrl = "http://" + this->chainParams_.getNodeByIndex( i ).ip +
                                           ':' +
-                                          ( this->chainParams_.sChain.nodes.at( i ).port + 3 )
+                                          ( this->chainParams_.getNodeByIndex( i ).port + 3 )
                                               .convert_to< std::string >();
-                    auto snapshotData = askNodeForHash( nodeUrl, blockNumber );
-                    if ( std::get< 0 >( snapshotData ).size > 0 ) {
+
+                    auto [snapshotHash, snapshotSignature, nodeBlsPublicKey] =
+                        askNodeForHash( nodeUrl, blockNumber );
+                    if ( snapshotHash != dev::h256() ) {
                         const std::lock_guard< std::mutex > lock( this->hashesMutex );
 
                         this->isReceived_.at( i ) = true;
-                        this->hashes_.at( i ) = std::get< 0 >( snapshotData );
-                        this->signatures_.at( i ) = std::get< 1 >( snapshotData );
-                        this->public_keys_.at( i ) = std::get< 2 >( snapshotData );
+                        this->hashes_.at( i ) = snapshotHash;
+                        this->signatures_.at( i ) = snapshotSignature;
+                        this->public_keys_.at( i ) = nodeBlsPublicKey;
                     }
                 } catch ( std::exception& ex ) {
-                    LOG( m_loggerError )
+                    BOOST_LOG( m_loggerError )
                         << "Exception while collecting snapshot signatures from other skaleds: "
                         << ex.what();
                 }
@@ -316,8 +303,9 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
             thr.join();
         }
     } else {
-        auto snapshotData = askNodeForHash( urlToDownloadSnapshotFrom_, blockNumber );
-        this->votedHash_ = { std::get< 0 >( snapshotData ), std::get< 1 >( snapshotData ) };
+        auto [snapshotHash, snapshotSignature, nodeBlsPublicKey] =
+            askNodeForHash( urlToDownloadSnapshotFrom_, blockNumber );
+        this->votedHash_ = { snapshotHash, snapshotSignature };
         return { urlToDownloadSnapshotFrom_ };
     }
 
@@ -331,7 +319,7 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
             if ( !this->isReceived_.at( pos ) )
                 continue;
 
-            u256 id = this->chainParams_.sChain.nodes.at( pos ).id;
+            u256 id = this->chainParams_.getNodeByIndex( pos ).id;
             bool good = majorityNodesIds.end() !=
                         std::find( majorityNodesIds.begin(), majorityNodesIds.end(), id );
             if ( !good )
@@ -354,38 +342,38 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
         try {
             result = this->voteForHash();
         } catch ( SnapshotHashAgentException& ex ) {
-            LOG( m_loggerError ) << "Exception while voting for snapshot hash from other skaleds: "
-                                 << ex.what();
+            BOOST_LOG( m_loggerError )
+                << "Exception while voting for snapshot hash from other skaleds: " << ex.what();
         } catch ( std::exception& ex ) {
-            LOG( m_loggerError ) << "Exception while voting for snapshot hash from other skaleds: "
-                                 << ex.what();
+            BOOST_LOG( m_loggerError )
+                << "Exception while voting for snapshot hash from other skaleds: " << ex.what();
         }  // catch
 
     if ( !result ) {
-        LOG( m_loggerInfo ) << "Not enough nodes to choose snapshot hash for block " << blockNumber;
+        BOOST_LOG( m_loggerInfo ) << "Not enough nodes to choose snapshot hash for block "
+                                  << blockNumber;
         return {};
     }
 
     std::vector< std::string > ret;
     for ( const size_t idx : this->nodesToDownloadSnapshotFrom_ ) {
         std::string ret_value =
-            std::string( "http://" ) + std::string( this->chainParams_.sChain.nodes.at( idx ).ip ) +
+            std::string( "http://" ) + std::string( this->chainParams_.getNodeByIndex( idx ).ip ) +
             std::string( ":" ) +
-            ( this->chainParams_.sChain.nodes.at( idx ).port + 3 ).convert_to< std::string >();
+            ( this->chainParams_.getNodeByIndex( idx ).port + 3 ).convert_to< std::string >();
         ret.push_back( ret_value );
     }
 
     return ret;
 }
 
-std::pair< dev::h256, libff::alt_bn128_G1 > SnapshotHashAgent::getVotedHash() const {
+std::pair< dev::h256, libBLS::algebra::G1Point > SnapshotHashAgent::getVotedHash() const {
     if ( this->votedHash_.first == dev::h256() ) {
         throw std::invalid_argument( "Hash is empty" );
     }
 
     if ( AmsterdamFixPatch::snapshotHashCheckingEnabled( this->chainParams_ ) ) {
-        if ( this->votedHash_.second == libff::alt_bn128_G1::zero() ||
-             !this->votedHash_.second.is_well_formed() ) {
+        if ( !this->votedHash_.second.isValid() || this->votedHash_.second.isIdentity() ) {
             throw std::invalid_argument( "Signature is not well formed" );
         }
     }

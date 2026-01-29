@@ -34,7 +34,6 @@
 #pragma GCC diagnostic ignored "-Wsign-compare"
 
 #include <boost/filesystem.hpp>
-#include <boost/progress.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <libdevcore/Address.h>
@@ -67,7 +66,7 @@ void mine( Client& c, int numBlocks );
  * instead of mine( Client& c, int numBlocks )
  */
 void simulateMining( Client& client, size_t numBlocks, const dev::Address &address );
-void simulateMining( Client& client, size_t numBlocks );
+void simulateMining( Client& client, size_t numBlocks, [[ maybe_unused ]] const bool handleConsensusUpdate = false );
 void mineMoney( Client& c, int numBlocks );
 void mineTransaction( Client& c, int numBlocks );
 void connectClients( Client& c1, Client& c2 );
@@ -141,9 +140,9 @@ dev::eth::BlockHeader constructHeader( h256 const& _parentHash, h256 const& _sha
 void updateEthashSeal(
     dev::eth::BlockHeader& _header, h256 const& _mixHash, dev::eth::Nonce const& _nonce );
 RLPStream createRLPStreamFromTransactionFields( json_spirit::mObject const& _tObj );
-json_spirit::mObject fillJsonWithStateChange( State const& _stateOrig,
+json_spirit::mObject fillJsonWithStateChange( skale::State const& _stateOrig,
     skale::State const& _statePost, skale::ChangeLog const& _changeLog );
-json_spirit::mObject fillJsonWithState( State const& _state );
+json_spirit::mObject fillJsonWithState( skale::State const& _state );
 json_spirit::mObject fillJsonWithState(
     skale::State const& _state, eth::AccountMaskMap const& _map );
 json_spirit::mObject fillJsonWithTransaction( eth::Transaction const& _txn );

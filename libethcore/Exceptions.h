@@ -41,6 +41,10 @@ using errinfo_mixHash = boost::error_info< struct tag_mixHash, h256 >;
 using errinfo_ethashResult = boost::error_info< struct tag_ethashResult, std::tuple< h256, h256 > >;
 using errinfo_importResult = boost::error_info< struct tag_importResult, ImportResult >;
 using BadFieldError = boost::tuple< errinfo_field, errinfo_data >;
+// block number
+using errinfo_blockNumber = boost::error_info< struct tag_blockNumber, u256 >;
+// transaction hash
+using errinfo_txHash = boost::error_info< struct tag_txHash, h256 >;
 
 DEV_SIMPLE_EXCEPTION( OutOfGasBase );
 DEV_SIMPLE_EXCEPTION( OutOfGasIntrinsic );
@@ -80,6 +84,8 @@ DEV_SIMPLE_EXCEPTION( InvalidNumber );
 DEV_SIMPLE_EXCEPTION( InvalidZeroSignatureTransaction );
 DEV_SIMPLE_EXCEPTION( InvalidTransactionReceiptFormat );
 DEV_SIMPLE_EXCEPTION( TransactionReceiptVersionError );
+DEV_SIMPLE_EXCEPTION( PreEIP155LegacyTransactionNotAllowed );
+DEV_SIMPLE_EXCEPTION( PreEIP155ReplayProtectionViolation );
 DEV_SIMPLE_EXCEPTION( PendingTransactionAlreadyExists );
 DEV_SIMPLE_EXCEPTION( TransactionAlreadyInChain );
 DEV_SIMPLE_EXCEPTION( BlockNotFound );
@@ -109,6 +115,13 @@ DEV_SIMPLE_EXCEPTION( TransactionRefused );
 DEV_SIMPLE_EXCEPTION( UnknownAccount );
 
 DEV_SIMPLE_EXCEPTION( TooBigResponse );
+
+DEV_SIMPLE_EXCEPTION( LogCountLimitExceeded );
+
+#ifdef BITE
+DEV_SIMPLE_EXCEPTION( InvalidBITETransaction );
+DEV_SIMPLE_EXCEPTION( BITETransactionTooShort );
+#endif
 
 }  // namespace eth
 }  // namespace dev
