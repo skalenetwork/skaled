@@ -162,10 +162,11 @@ public:
         std::unordered_map< dev::Address, dev::eth::Account >& _map ) const;
 };
 
-namespace commit_counter_test {
+// namespace used only in tests to count commits
+namespace state_commit_counter {
 void enable( bool value );
 void reset();
 uint64_t count();
-}  // namespace commit_counter_test
+}  // namespace state_commit_counter
 
 }  // namespace skale

@@ -52,10 +52,11 @@ using dev::db::Slice;
 
 namespace skale {
 
-namespace commit_counter_test {
+// namespace used only in tests to count commits
+namespace state_commit_counter {
 std::atomic< bool > enabled{ false };
 std::atomic< uint64_t > counter{ 0 };
-}  // namespace commit_counter_test
+}  // namespace state_commit_counter
 
 namespace slicing {
 
@@ -274,8 +275,8 @@ void OverlayDB::commitStorageValues() {
 void OverlayDB::commit() {
     BOOST_LOG( m_loggerDebug ) << "Running OverlayDB::commit()";
 
-    if ( commit_counter_test::enabled.load( std::memory_order_relaxed ) )
-        commit_counter_test::counter.fetch_add( 1, std::memory_order_relaxed );
+    if ( state_commit_counter::enabled.load( std::memory_order_relaxed ) )
+        state_commit_counter::counter.fetch_add( 1, std::memory_order_relaxed );
 
     if ( m_db_face ) {
         for ( unsigned commitTry = 0; commitTry < 10; ++commitTry ) {
@@ -648,7 +649,7 @@ void OverlayDB::updateStorageUsage( dev::s256 const& _storageUsed ) {
     storageUsed_ = _storageUsed;
 }
 
-namespace commit_counter_test {
+namespace state_commit_counter {
 void enable( bool value ) {
     enabled.store( value, std::memory_order_relaxed );
 }
@@ -660,5 +661,5 @@ void reset() {
 uint64_t count() {
     return counter.load( std::memory_order_relaxed );
 }
-}  // namespace commit_counter_test
+}  // namespace state_commit_counter
 }  // namespace skale

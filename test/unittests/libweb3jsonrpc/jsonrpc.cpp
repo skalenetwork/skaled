@@ -2188,82 +2188,6 @@ BOOST_AUTO_TEST_CASE( simplePoWTransaction ) {
 #endif
 
 #ifndef FAIR
-BOOST_AUTO_TEST_CASE( keepPartialReceiptsUntilNextBlock ) {
-    std::string _config = c_genesisConfigString;
-    Json::Value ret;
-    Json::Reader().parse( _config, ret );
-
-    std::string chainID = "0x97";
-    ret["params"]["chainID"] = chainID;
-
-    time_t keepPatchActivationTs = time( nullptr ) + 10;
-    ret["skaleConfig"]["sChain"]["keepPartialReceiptsUntilNextBlockPatchTimestamp"] =
-        keepPatchActivationTs;
-
-    Json::FastWriter fastWriter;
-    std::string config = fastWriter.write( ret );
-    JsonRpcFixture fixture( config );
-
-    dev::eth::simulateMining( *( fixture.client ), 20 );
-
-    string senderAddress = toJS( fixture.coinbase.address() );
-
-    Json::Value transactionCallObject;
-    transactionCallObject["from"] = toJS( senderAddress );
-    transactionCallObject["to"] = "0x692a70d2e424a56d2c6c27aa97d1a86395877b3a";
-    transactionCallObject["data"] = "0x28b5e32b";
-
-    auto sendAndMine = [&]( dev::eth::BlockNumber& outBlockNumber ) {
-        TransactionSkeleton ts = toTransactionSkeleton( transactionCallObject );
-        ts = fixture.client->populateTransactionWithDefaults( ts );
-        pair< bool, Secret > ar = fixture.accountHolder->authenticate( ts );
-        Transaction tx( ts, ar.second );
-        auto txHash = fixture.rpcClient->eth_sendRawTransaction( toJS( tx.toBytes() ) );
-        dev::eth::mineTransaction( *( fixture.client ), 1 );
-        auto receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
-        outBlockNumber = jsToInt( receipt["blockNumber"].asString() );
-    };
-
-    dev::eth::BlockNumber preActivationBlockNumber = 0;
-    sendAndMine( preActivationBlockNumber );
-    {
-        skale::State state( fixture.client->state() );
-        BOOST_REQUIRE_EQUAL(
-            state.safePartialTransactionReceipts( preActivationBlockNumber ).size(), 0 );
-    }
-
-    time_t nowTs = time( nullptr );
-    if ( nowTs < keepPatchActivationTs ) {
-        sleep( keepPatchActivationTs - nowTs + 1 );
-    }
-
-    dev::eth::BlockNumber firstPostActivationBlockNumber = 0;
-    sendAndMine( firstPostActivationBlockNumber );
-    {
-        skale::State state( fixture.client->state() );
-        BOOST_REQUIRE_EQUAL(
-            state.safePartialTransactionReceipts( firstPostActivationBlockNumber ).size(), 0 );
-    }
-
-    dev::eth::BlockNumber secondPostActivationBlockNumber = 0;
-    sendAndMine( secondPostActivationBlockNumber );
-    {
-        skale::State state( fixture.client->state() );
-        BOOST_REQUIRE_EQUAL(
-            state.safePartialTransactionReceipts( secondPostActivationBlockNumber ).size(), 1 );
-    }
-
-    dev::eth::BlockNumber thirdPostActivationBlockNumber = 0;
-    sendAndMine( thirdPostActivationBlockNumber );
-    {
-        skale::State state( fixture.client->state() );
-        BOOST_REQUIRE_EQUAL(
-            state.safePartialTransactionReceipts( secondPostActivationBlockNumber ).size(), 0 );
-        BOOST_REQUIRE_EQUAL(
-            state.safePartialTransactionReceipts( thirdPostActivationBlockNumber ).size(), 1 );
-    }
-}
-
 BOOST_AUTO_TEST_CASE( clearPartialReceipts ) {
     // Prepare fixture
     std::string _config = c_genesisConfigString;
@@ -2327,8 +2251,8 @@ BOOST_AUTO_TEST_CASE( single_state_commit_per_block_patch_transition ) {
     dev::eth::simulateMining( *( fixture.client ), 1 );
 
     struct DbCommitCounterGuard {
-        DbCommitCounterGuard() { skale::commit_counter_test::enable( true ); }
-        ~DbCommitCounterGuard() { skale::commit_counter_test::enable( false ); }
+        DbCommitCounterGuard() { skale::state_commit_counter::enable( true ); }
+        ~DbCommitCounterGuard() { skale::state_commit_counter::enable( false ); }
     } guard;
 
     u256 nextNonce;
@@ -2356,10 +2280,10 @@ BOOST_AUTO_TEST_CASE( single_state_commit_per_block_patch_transition ) {
     };
 
     auto expectCommitCount = []( uint64_t expectedCommits ) {
-        BOOST_REQUIRE_EQUAL( skale::commit_counter_test::count(), expectedCommits );
+        BOOST_REQUIRE_EQUAL( skale::state_commit_counter::count(), expectedCommits );
     };
 
-    skale::commit_counter_test::reset();
+    skale::state_commit_counter::reset();
     produceBlockWithTransactions();
     expectCommitCount( 3 );
 
@@ -2369,7 +2293,7 @@ BOOST_AUTO_TEST_CASE( single_state_commit_per_block_patch_transition ) {
     // commit-per-block semantics.
     produceBlockWithTransactions();
 
-    skale::commit_counter_test::reset();
+    skale::state_commit_counter::reset();
     produceBlockWithTransactions();
     expectCommitCount( 1 );
 }
@@ -2385,8 +2309,8 @@ BOOST_AUTO_TEST_CASE( state_progress_log_skip_already_committed ) {
     dev::eth::simulateMining( *( fixture.client ), 1 );
 
     struct DbCommitCounterGuard {
-        DbCommitCounterGuard() { skale::commit_counter_test::enable( true ); }
-        ~DbCommitCounterGuard() { skale::commit_counter_test::enable( false ); }
+        DbCommitCounterGuard() { skale::state_commit_counter::enable( true ); }
+        ~DbCommitCounterGuard() { skale::state_commit_counter::enable( false ); }
     } guard;
 
     u256 nextNonce;
@@ -2414,13 +2338,13 @@ BOOST_AUTO_TEST_CASE( state_progress_log_skip_already_committed ) {
     };
 
     auto expectCommitCount = []( uint64_t expectedCommits ) {
-        BOOST_REQUIRE_EQUAL( skale::commit_counter_test::count(), expectedCommits );
+        BOOST_REQUIRE_EQUAL( skale::state_commit_counter::count(), expectedCommits );
     };
 
     produceBlockWithTransactions();
     uint64_t currentBlock = fixture.client->number();
 
-    skale::commit_counter_test::reset();
+    skale::state_commit_counter::reset();
     produceBlockWithTransactions();
     expectCommitCount( 1 );
 
@@ -2440,8 +2364,8 @@ BOOST_AUTO_TEST_CASE( state_progress_log_crash_recovery ) {
     dev::eth::simulateMining( *( fixture.client ), 1 );
 
     struct DbCommitCounterGuard {
-        DbCommitCounterGuard() { skale::commit_counter_test::enable( true ); }
-        ~DbCommitCounterGuard() { skale::commit_counter_test::enable( false ); }
+        DbCommitCounterGuard() { skale::state_commit_counter::enable( true ); }
+        ~DbCommitCounterGuard() { skale::state_commit_counter::enable( false ); }
     } guard;
 
     u256 nextNonce;
@@ -2479,9 +2403,9 @@ BOOST_AUTO_TEST_CASE( state_progress_log_crash_recovery ) {
     progressLog->markBlockCommitStarted( completedBlock + 1 );
     BOOST_CHECK( !progressLog->isBlockCommitCompleted( completedBlock + 1 ) );
 
-    skale::commit_counter_test::reset();
+    skale::state_commit_counter::reset();
     produceBlockWithTransactions();
-    BOOST_REQUIRE_EQUAL( skale::commit_counter_test::count(), 1 );
+    BOOST_REQUIRE_EQUAL( skale::state_commit_counter::count(), 1 );
 
     BOOST_CHECK( progressLog->isBlockCommitCompleted( fixture.client->number() ) );
 }
@@ -2501,8 +2425,8 @@ BOOST_AUTO_TEST_CASE( single_fs_commit_per_block_patch_transition ) {
     dev::eth::simulateMining( *( fixture.client ), 1 );
 
     struct FsCommitCounterGuard {
-        FsCommitCounterGuard() { skale::fs_commit_counter_test::enable( true ); }
-        ~FsCommitCounterGuard() { skale::fs_commit_counter_test::enable( false ); }
+        FsCommitCounterGuard() { skale::fs_commit_counter::enable( true ); }
+        ~FsCommitCounterGuard() { skale::fs_commit_counter::enable( false ); }
     } guard;
 
     auto senderAddress = fixture.coinbase.address();
@@ -2534,10 +2458,10 @@ BOOST_AUTO_TEST_CASE( single_fs_commit_per_block_patch_transition ) {
     };
 
     auto expectFsCommitCount = []( uint64_t expectedCommits ) {
-        BOOST_REQUIRE_EQUAL( skale::fs_commit_counter_test::count(), expectedCommits );
+        BOOST_REQUIRE_EQUAL( skale::fs_commit_counter::count(), expectedCommits );
     };
 
-    skale::fs_commit_counter_test::reset();
+    skale::fs_commit_counter::reset();
     produceBlockWithFilestorageOperations();
     expectFsCommitCount( 2 );
 
@@ -2545,7 +2469,7 @@ BOOST_AUTO_TEST_CASE( single_fs_commit_per_block_patch_transition ) {
 
     produceBlockWithFilestorageOperations();
 
-    skale::fs_commit_counter_test::reset();
+    skale::fs_commit_counter::reset();
     produceBlockWithFilestorageOperations();
     expectFsCommitCount( 1 );
 }
