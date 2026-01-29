@@ -39,6 +39,12 @@ public:
     /// No lock, returns reference to entire buffer. For internal logic.
     const std::vector< Transaction >& pendingBITE2Transactions() const;
 
+    // addTemp(), commitTemp(), clearTemp(), clear() and finalize() are always called from the same
+    // thread and pendingBITE2Transactions() always called AFTER methods above are executed
+    // therefore, there is no need in extra synchronization
+    // only debug_pendingBITE2Transactions requires synchronization
+    // because it is used by JSON RPC API
+
     void finalize();
 
     void addTemp( Transaction&& _t );

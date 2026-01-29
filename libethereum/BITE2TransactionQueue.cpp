@@ -26,11 +26,13 @@ using namespace dev;
 using namespace dev::eth;
 
 std::vector< Transaction > BITE2TransactionQueue::debug_pendingBITE2Transactions() const {
+    // requires lock because called from JSON RPC API
     ReadGuard l( m_lock );
     return m_current;
 }
 
 const std::vector< Transaction >& BITE2TransactionQueue::pendingBITE2Transactions() const {
+    // no lock - called strictly AFTER finalize(), no new txns can be added at this point
     return m_current;
 }
 

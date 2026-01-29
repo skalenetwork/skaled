@@ -136,11 +136,6 @@ public:
 
         auto nodesState = contents( m_tmpDir.path() / fs::path( "network.rlp" ) );
 
-        //        bool testingMode = true;
-        //        m_web3.reset( new dev::WebThreeDirect( WebThreeDirect::composeClientVersion( "eth"
-        //        ), dir,
-        //            dir, chainParams, WithExisting::Kill, {"eth"}, testingMode ) );
-
         auto monitor = make_shared< InstanceMonitor >( "test" );
 
         setenv("DATA_DIR", m_tmpDir.path().c_str(), 1);
@@ -149,17 +144,14 @@ public:
 
         m_ethereum->setAuthor( coinbase.address() );
 
-        //        m_ethereum.reset(
-        //            new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr<
-        //            GasPricer >(),
-        //                dir, dir, WithExisting::Kill, TransactionQueue::Limits{100000, 1024} ) );
-
-        // wait for 1st block - because it's always empty
         std::promise< void > block_promise;
         auto importHandler = m_ethereum->setOnBlockImport(
             [&block_promise]( BlockHeader const& ) { block_promise.set_value(); } );
 
         m_ethereum->injectSkaleHost();
+#ifdef BITE2
+        dev::eth::g_skaleHost = m_ethereum->skaleHost();
+#endif
         m_ethereum->startWorking();
 
         block_promise.get_future().wait();
@@ -227,8 +219,8 @@ public:
         return Transaction( ts, ar.second );
     }
 
-#ifdef FAIR
     ~TestClientFixture() {
+#ifdef FAIR
         const auto deadline = chrono::steady_clock::now() + chrono::seconds( 10 );
         while ( m_ethereum->skaleHost()->ignoreNewBlocksEnabled() && chrono::steady_clock::now() < deadline ) {
             usleep( 10 );
@@ -237,8 +229,12 @@ public:
             m_ethereum->skaleHost()->handleConsensusUpdate();
         accountHolder.reset();
         m_ethereum.reset();
-    }
 #endif
+#ifdef BITE2
+        if ( g_skaleHost )
+            g_skaleHost.reset();
+#endif
+    }
 
 private:
     TransientDirectory m_tmpDir;
