@@ -1145,7 +1145,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
     // TODO Not sure that 1st 0 as timestamp is acceptable here
     Executive e( *this, _envInfo, _chainParams, 0, 0, !isStateCommitting( _p )
 #ifdef BITE2
-        ,
+                                                          ,
         dev::u256( _transactionIndex )
 #endif
     );
@@ -1167,7 +1167,8 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
 #endif
     u256 const startGasUsed = _envInfo.gasUsed();
     bool statusCodeTmp = false;
-    if ( isStateCommitting( _p ) && ifShouldSkipExecution( _chainParams.getChainId(), _t.sha3() ) ) {
+    if ( isStateCommitting( _p ) &&
+         ifShouldSkipExecution( _chainParams.getChainId(), _t.sha3() ) ) {
         e.initialize( _t );
         e.execute();
         statusCodeTmp = false;
@@ -1270,7 +1271,8 @@ TransactionReceipt State::makeReceipt( bool _statusCode, dev::u256 const& _start
     eth::Executive const& _executive, eth::EnvInfo const& _envInfo,
     eth::ChainOperationParams const& _chainParams, Transaction const& _t, Permanence _p,
     std::string const& _revertReason ) const {
-    if ( isStateCommitting( _p ) && ifShouldSkipExecution( _chainParams.getChainId(), _t.sha3() ) ) {
+    if ( isStateCommitting( _p ) &&
+         ifShouldSkipExecution( _chainParams.getChainId(), _t.sha3() ) ) {
         return TransactionReceipt( _statusCode,
             _startGasUsed + getGasUsedForSkippedTransaction( _chainParams.getChainId(), _t.sha3() ),
             _executive.logs(), _revertReason );

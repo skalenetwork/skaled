@@ -28,8 +28,9 @@ void StateProgressLog::markBlockCommitStarted( uint64_t _blockNumber ) {
     if ( readStatus( storedBlockNumber, storedStatus ) ) {
         if ( storedStatus != Status::Completed && storedBlockNumber != _blockNumber ) {
             BOOST_THROW_EXCEPTION( std::runtime_error(
-                "State progress inconsistency: previous block " + std::to_string( storedBlockNumber ) +
-                " not completed, but trying to start block " + std::to_string( _blockNumber ) ) );
+                "State progress inconsistency: previous block " +
+                std::to_string( storedBlockNumber ) + " not completed, but trying to start block " +
+                std::to_string( _blockNumber ) ) );
         }
     }
     writeStatus( _blockNumber, Status::Started );
