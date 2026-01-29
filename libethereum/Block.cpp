@@ -493,9 +493,6 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
     prepareStateForSync( _timestamp, ctx );
     executeTransactions( _bc, _transactions, _gasPrice, ctx );
 
-    // We need to commit to state db every time before single commit mode was introduced,
-    // since double commit avoided using partial recipts and checkIfAlreadyCommitted has no effect
-    // there
     if ( !ctx.singleCommitEnabled || !checkIfAlreadyCommitted( _transactions ) ) {
         saveStateChanges( _bc, _transactions, ctx );
     }
@@ -515,6 +512,8 @@ void Block::prepareStateForSync( uint64_t _timestamp, SyncContext& _ctx ) {
 #endif
 
     if ( _ctx.singleCommitEnabled ) {
+        // In this case we will process all receipts again but will not commit if it has been
+        // already done.
         m_receipts.clear();
     } else {
         m_receipts = m_state.safePartialTransactionReceipts( info().number() );
@@ -544,11 +543,16 @@ void Block::executeTransactions(
         Transaction const& tr = _transactions[i];
         try {
             if ( !_ctx.singleCommitEnabled && i < savedReceipts.size() ) {
+                // this transaction has already been executed and we have a
+                // receipt for it. We do not need to execute it again. Only applicable for legacy
+                // multiple commits mode
                 m_transactions.push_back( tr );
                 m_transactionSet.insert( tr.sha3() );
                 continue;
             }
 
+            // Tell skaled to fail in a middle of blog processing
+            // this is used in partial catchup tests
             doPartialCatchupTestIfRequested( i );
 
             auto receipt = executeSingleTransaction( _bc, tr, i, _gasPrice, permanence, _ctx );
@@ -557,6 +561,7 @@ void Block::executeTransactions(
             }
         } catch ( Exception& ex ) {
             ex << errinfo_transactionIndex( i );
+            // just ignore invalid transactions
             BOOST_LOG( m_loggerError ) << "FAILED transaction after consensus! " << ex.what();
         }
     }
@@ -585,6 +590,7 @@ std::optional< TransactionReceipt > Block::executeSingleTransaction( BlockChain 
 
             m_receipts.push_back( nullReceipt );
             if ( !_ctx.singleCommitEnabled ) {
+                // we need to record the receipt in case we crash
                 m_state.safeSetAndCommitPartialTransactionReceipt(
                     nullReceipt.rlp(), info().number(), _txIndex );
             }
@@ -651,7 +657,10 @@ void Block::saveStateChanges(
     if ( !stateWritable )
         return;
 
-    commitStateToDatabase( _bc, _ctx );
+    runCommit( _bc, _ctx );
+
+    LDB_CHECK( _ctx.receipts.size() >= _ctx.badCount );
+
     createBlockSnapshot();
 
     if ( progressLog ) {
@@ -661,11 +670,9 @@ void Block::saveStateChanges(
     if ( !_ctx.singleCommitEnabled ) {
         handleLegacyPartialReceipts( _bc, _ctx );
     }
-
-    LDB_CHECK( _ctx.receipts.size() >= _ctx.badCount );
 }
 
-void Block::commitStateToDatabase( BlockChain const& _bc, const SyncContext& _ctx ) {
+void Block::runCommit( BlockChain const& _bc, const SyncContext& _ctx ) {
     bool removeEmptyAccounts = m_currentBlock.number() >= _bc.chainParams().getEIP158ForkBlock();
     m_state.commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
                                           dev::eth::CommitBehaviour::KeepEmptyAccounts );
@@ -696,11 +703,6 @@ void Block::handleLegacyPartialReceipts( BlockChain const& _bc, const SyncContex
     m_state.safeRemoveAllPartialTransactionReceipts();
     sanityCheckPartialTransactionReceipts();
 
-    // since we committed changes corresponding to a particular block
-    // we need to create a new readonly snap
-    LDB_CHECK( m_state.getOriginalDb() );
-    m_state.getOriginalDb()->createBlockSnap( info().number() );
-
     bool weAreAtTheTimeStampBoundary = false;
     auto latestCommittedBlockTimeStamp = m_previousBlock.timestamp();
 
@@ -712,6 +714,7 @@ void Block::handleLegacyPartialReceipts( BlockChain const& _bc, const SyncContex
             !ClearPartialReceiptsPatch::isEnabledWhen( beforeLatestCommittedBlockTimeStamp );
     }
 
+    // we need to specially handle the boundary case
     if ( weAreAtTheTimeStampBoundary ) {
         BOOST_LOG( m_loggerTrace ) << "Removing legacy partial receipts";
         m_state.safeRemoveLegacyPartialTransactionReceipts();
