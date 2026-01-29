@@ -2,6 +2,7 @@
 
 #include <fstream>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 
 namespace fs = boost::filesystem;
@@ -25,7 +26,11 @@ void StateProgressLog::markBlockCommitStarted( uint64_t _blockNumber ) {
     uint64_t storedBlockNumber = 0;
     Status storedStatus = Status::Started;
     if ( readStatus( storedBlockNumber, storedStatus ) ) {
-        assert( storedStatus == Status::Completed || storedBlockNumber == _blockNumber );
+        if ( storedStatus != Status::Completed && storedBlockNumber != _blockNumber ) {
+            BOOST_THROW_EXCEPTION( std::runtime_error(
+                "State progress inconsistency: previous block " + std::to_string( storedBlockNumber ) +
+                " not completed, but trying to start block " + std::to_string( _blockNumber ) ) );
+        }
     }
     writeStatus( _blockNumber, Status::Started );
 }
