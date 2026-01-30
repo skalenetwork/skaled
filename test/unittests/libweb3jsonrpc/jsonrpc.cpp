@@ -563,6 +563,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             [&blockPromise]( BlockHeader const& ) { blockPromise.set_value(); } );
 
         client->injectSkaleHost();
+        dev::eth::g_skaleHost = client->skaleHost();
         client->startWorking();
 
         if ( !_isSyncNode )
@@ -4619,7 +4620,6 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
 
     dev::eth::simulateMining( *( fixture.client ), 20 );
     string senderAddress = toJS( fixture.coinbase.address() );
-    dev::eth::g_skaleHost = fixture.client->skaleHost();
 
     // create block and save block random for it
     Json::Value txRefill;
@@ -5742,8 +5742,6 @@ dev::bytes buildAbiEncodedArrays( const std::vector<dev::bytes>& args1Elements, 
 BOOST_AUTO_TEST_CASE( submitCTX ) {
     JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true, false, -1, {{ "contractStorageLimit", "100000" }} );
 
-    dev::eth::g_skaleHost = fixture.client->skaleHost();
-
     string senderAddress = toJS( fixture.coinbase.address() );
 
     std::vector< dev::bytes > pregeneratedDecryptedValues{ dev::fromHex( "5b221ee6b5c5751ff5808beddbc0644dc4fdda6b5efb13dbb49d698cb0e3f172" ),
@@ -5999,8 +5997,6 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
 
 BOOST_AUTO_TEST_CASE( CTXTransactionAfterRevert ) {
     JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true, false, -1, {{ "contractStorageLimit", "100000" }} );
-
-    dev::eth::g_skaleHost = fixture.client->skaleHost();
 
     string senderAddress = toJS( fixture.coinbase.address() );
 
