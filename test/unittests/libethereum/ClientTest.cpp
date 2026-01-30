@@ -302,17 +302,15 @@ public:
         m_ethereum.reset( new eth::ClientTest( chainParams, ( int ) chainParams->getNetworkId(),
             shared_ptr< GasPricer >(), mgr, monitor, m_tmpDir.path(), WithExisting::Kill ) );
 
-        //        m_ethereum.reset(
-        //            new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr<
-        //            GasPricer >(),
-        //                dir, dir, WithExisting::Kill, TransactionQueue::Limits{100000, 1024} ) );
-
         // wait for 1st block - because it's always empty
         std::promise< void > block_promise;
         auto importHandler = m_ethereum->setOnBlockImport(
             [&block_promise]( BlockHeader const& ) { block_promise.set_value(); } );
 
         m_ethereum->injectSkaleHost();
+#ifdef BITE2
+        dev::eth::g_skaleHost = m_ethereum->skaleHost();
+#endif
         m_ethereum->startWorking();
 
         block_promise.get_future().wait();
