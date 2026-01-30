@@ -532,8 +532,8 @@ void Block::prepareStateForSync( uint64_t _timestamp, SyncContext& _context ) {
     _context.receipts = m_receipts;
 }
 
-void Block::executeTransactions(
-    BlockChain const& _bc, const Transactions& _transactions, u256 _gasPrice, SyncContext& _context ) {
+void Block::executeTransactions( BlockChain const& _bc, const Transactions& _transactions,
+    u256 _gasPrice, SyncContext& _context ) {
     const Permanence permanence =
         _context.singleCommitEnabled ? Permanence::BlockCommitted : Permanence::Committed;
 
@@ -722,8 +722,8 @@ void Block::handleLegacyPartialReceipts( BlockChain const& _bc, const SyncContex
 
     if ( !ClearPartialReceiptsPatch::isEnabledWhen( latestCommittedBlockTimeStamp ) ) {
         if ( !_context.receiptsOfCommitted.empty() ) {
-            BOOST_LOG( m_loggerTrace )
-                << "Saving partial transaction receipts. Size: " << _context.receiptsOfCommitted.size();
+            BOOST_LOG( m_loggerTrace ) << "Saving partial transaction receipts. Size: "
+                                       << _context.receiptsOfCommitted.size();
             m_state.safeCommitLegacyPartialTransactionReceipts( _context.receiptsOfCommitted );
         }
     }
