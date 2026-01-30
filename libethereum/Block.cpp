@@ -487,31 +487,31 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
     noteChain( _bc );
     assert( _bc.currentHash() == m_currentBlock.parentHash() );
 
-    SyncContext ctx;
-    ctx.singleCommitEnabled = SingleStateCommitPerBlockPatch::isEnabledInWorkingBlock();
+    SyncContext context;
+    context.singleCommitEnabled = SingleStateCommitPerBlockPatch::isEnabledInWorkingBlock();
 
-    prepareStateForSync( _timestamp, ctx );
-    executeTransactions( _bc, _transactions, _gasPrice, ctx );
+    prepareStateForSync( _timestamp, context );
+    executeTransactions( _bc, _transactions, _gasPrice, context );
 
-    if ( !ctx.singleCommitEnabled || !checkIfAlreadyCommitted( _transactions ) ) {
-        saveStateChanges( _bc, _transactions, ctx );
+    if ( !context.singleCommitEnabled || !checkIfAlreadyCommitted( _transactions ) ) {
+        saveStateChanges( _bc, _transactions, context );
     }
 
-    return make_tuple( ctx.receipts, ctx.receipts.size() - ctx.badCount );
+    return make_tuple( context.receipts, context.receipts.size() - context.badCount );
 }
 
-void Block::prepareStateForSync( uint64_t _timestamp, SyncContext& _ctx ) {
+void Block::prepareStateForSync( uint64_t _timestamp, SyncContext& _context ) {
     resetCurrent( _timestamp );
     m_state = m_state.createStateCopyAndClearCaches();
 
 #ifndef FAIR
-    if ( _ctx.singleCommitEnabled ) {
+    if ( _context.singleCommitEnabled ) {
         bool isCacheEnabled = RevertableFSPatch::isEnabledWhen( m_previousBlock.timestamp() );
         m_state.resetOverlayFS( isCacheEnabled );
     }
 #endif
 
-    if ( _ctx.singleCommitEnabled ) {
+    if ( _context.singleCommitEnabled ) {
         // In this case we will process all receipts again but will not commit if it has been
         // already done.
         m_receipts.clear();
@@ -523,26 +523,26 @@ void Block::prepareStateForSync( uint64_t _timestamp, SyncContext& _ctx ) {
             u256 cumulativeGas = 0;
             for ( auto const& receipt : m_receipts ) {
                 if ( receipt.cumulativeGasUsed() == cumulativeGas ) {
-                    _ctx.badCount++;
+                    _context.badCount++;
                 }
                 cumulativeGas = receipt.cumulativeGasUsed();
             }
         }
     }
-    _ctx.receipts = m_receipts;
+    _context.receipts = m_receipts;
 }
 
 void Block::executeTransactions(
-    BlockChain const& _bc, const Transactions& _transactions, u256 _gasPrice, SyncContext& _ctx ) {
+    BlockChain const& _bc, const Transactions& _transactions, u256 _gasPrice, SyncContext& _context ) {
     const Permanence permanence =
-        _ctx.singleCommitEnabled ? Permanence::BlockCommitted : Permanence::Committed;
+        _context.singleCommitEnabled ? Permanence::BlockCommitted : Permanence::Committed;
 
     TransactionReceipts savedReceipts = m_receipts;
 
     for ( unsigned i = 0; i < _transactions.size(); ++i ) {
         Transaction const& tr = _transactions[i];
         try {
-            if ( !_ctx.singleCommitEnabled && i < savedReceipts.size() ) {
+            if ( !_context.singleCommitEnabled && i < savedReceipts.size() ) {
                 // this transaction has already been executed and we have a
                 // receipt for it. We do not need to execute it again. Only applicable for legacy
                 // multiple commits mode
@@ -555,9 +555,9 @@ void Block::executeTransactions(
             // this is used in partial catchup tests
             doPartialCatchupTestIfRequested( i );
 
-            auto receipt = executeSingleTransaction( _bc, tr, i, _gasPrice, permanence, _ctx );
+            auto receipt = executeSingleTransaction( _bc, tr, i, _gasPrice, permanence, _context );
             if ( receipt ) {
-                _ctx.receipts.push_back( *receipt );
+                _context.receipts.push_back( *receipt );
             }
         } catch ( Exception& ex ) {
             ex << errinfo_transactionIndex( i );
@@ -569,7 +569,7 @@ void Block::executeTransactions(
 
 std::optional< TransactionReceipt > Block::executeSingleTransaction( BlockChain const& _bc,
     Transaction const& _tx, unsigned _txIndex, u256 _gasPrice, skale::Permanence _permanence,
-    SyncContext& _ctx ) {
+    SyncContext& _context ) {
     if ( !_tx.isInvalid() &&
 #ifndef FAIR
          !_tx.hasExternalGas() &&
@@ -589,12 +589,12 @@ std::optional< TransactionReceipt > Block::executeSingleTransaction( BlockChain 
                     TransactionReceipt( EmptyTrie, info().gasUsed(), LogEntries() );
 
             m_receipts.push_back( nullReceipt );
-            if ( !_ctx.singleCommitEnabled ) {
+            if ( !_context.singleCommitEnabled ) {
                 // we need to record the receipt in case we crash
                 m_state.safeSetAndCommitPartialTransactionReceipt(
                     nullReceipt.rlp(), info().number(), _txIndex );
             }
-            ++_ctx.badCount;
+            ++_context.badCount;
             return nullReceipt;
         }
         return std::nullopt;
@@ -602,15 +602,15 @@ std::optional< TransactionReceipt > Block::executeSingleTransaction( BlockChain 
 
     ExecutionResult res = execute( _bc.lastBlockHashes(), _tx, _permanence, OnOpFunc(), _txIndex );
 
-    if ( !_ctx.singleCommitEnabled && !m_receipts.empty() &&
+    if ( !_context.singleCommitEnabled && !m_receipts.empty() &&
          !ClearPartialReceiptsPatch::isEnabledWhen( m_previousBlock.timestamp() ) ) {
-        _ctx.receiptsOfCommitted.push_back( m_receipts.back() );
+        _context.receiptsOfCommitted.push_back( m_receipts.back() );
     }
 
     if ( !SkipInvalidTransactionsPatch::isEnabledInWorkingBlock() ||
          res.excepted != TransactionException::WouldNotBeInBlock ) {
         if ( res.excepted == TransactionException::WouldNotBeInBlock )
-            ++_ctx.badCount;
+            ++_context.badCount;
         return m_receipts.back();
     }
 
@@ -633,7 +633,7 @@ bool Block::checkIfAlreadyCommitted( const Transactions& ) {
 }
 
 void Block::saveStateChanges(
-    BlockChain const& _bc, const Transactions& _transactions, const SyncContext& _ctx ) {
+    BlockChain const& _bc, const Transactions& _transactions, const SyncContext& _context ) {
     auto progressLog = m_state.getProgressLog();
     if ( progressLog ) {
         progressLog->markBlockCommitStarted( m_currentBlock.number() );
@@ -657,9 +657,9 @@ void Block::saveStateChanges(
     if ( !stateWritable )
         return;
 
-    runCommit( _bc, _ctx );
+    runCommit( _bc, _context );
 
-    LDB_CHECK( _ctx.receipts.size() >= _ctx.badCount );
+    LDB_CHECK( _context.receipts.size() >= _context.badCount );
 
     createBlockSnapshot();
 
@@ -667,18 +667,18 @@ void Block::saveStateChanges(
         progressLog->markBlockCommitCompleted( m_currentBlock.number() );
     }
 
-    if ( !_ctx.singleCommitEnabled ) {
-        handleLegacyPartialReceipts( _bc, _ctx );
+    if ( !_context.singleCommitEnabled ) {
+        handleLegacyPartialReceipts( _bc, _context );
     }
 }
 
-void Block::runCommit( BlockChain const& _bc, const SyncContext& _ctx ) {
+void Block::runCommit( BlockChain const& _bc, const SyncContext& _context ) {
     bool removeEmptyAccounts = m_currentBlock.number() >= _bc.chainParams().getEIP158ForkBlock();
     m_state.commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
                                           dev::eth::CommitBehaviour::KeepEmptyAccounts );
 
 #ifndef FAIR
-    if ( _ctx.singleCommitEnabled ) {
+    if ( _context.singleCommitEnabled ) {
         m_state.fs()->commit();
     }
 #endif
@@ -694,7 +694,7 @@ void Block::createBlockSnapshot() {
 #endif
 }
 
-void Block::handleLegacyPartialReceipts( BlockChain const& _bc, const SyncContext& _ctx ) {
+void Block::handleLegacyPartialReceipts( BlockChain const& _bc, const SyncContext& _context ) {
     // we got to the end of the block so we do not need partial transaction receipts anymore
     m_state.safeRemoveAllPartialTransactionReceipts();
 
@@ -721,10 +721,10 @@ void Block::handleLegacyPartialReceipts( BlockChain const& _bc, const SyncContex
     }
 
     if ( !ClearPartialReceiptsPatch::isEnabledWhen( latestCommittedBlockTimeStamp ) ) {
-        if ( !_ctx.receiptsOfCommitted.empty() ) {
+        if ( !_context.receiptsOfCommitted.empty() ) {
             BOOST_LOG( m_loggerTrace )
-                << "Saving partial transaction receipts. Size: " << _ctx.receiptsOfCommitted.size();
-            m_state.safeCommitLegacyPartialTransactionReceipts( _ctx.receiptsOfCommitted );
+                << "Saving partial transaction receipts. Size: " << _context.receiptsOfCommitted.size();
+            m_state.safeCommitLegacyPartialTransactionReceipts( _context.receiptsOfCommitted );
         }
     }
 }

@@ -347,19 +347,19 @@ private:
     /// Undo the changes to the state for committing to mine.
     void uncommitToSeal();
 
-    void prepareStateForSync( uint64_t _timestamp, SyncContext& _ctx );
+    void prepareStateForSync( uint64_t _timestamp, SyncContext& _context );
     void executeTransactions( BlockChain const& _bc, const Transactions& _transactions,
-        u256 _gasPrice, SyncContext& _ctx );
+        u256 _gasPrice, SyncContext& _context );
     std::optional< TransactionReceipt > executeSingleTransaction( BlockChain const& _bc,
         Transaction const& _tx, unsigned _txIndex, u256 _gasPrice, skale::Permanence _permanence,
-        SyncContext& _ctx );
+        SyncContext& _context );
     bool checkIfAlreadyCommitted( const Transactions& _transactions );
     void saveStateChanges(
-        BlockChain const& _bc, const Transactions& _transactions, const SyncContext& _ctx );
-    void runCommit( BlockChain const& _bc, const SyncContext& _ctx );  // run commit for state and
-                                                                       // filestorage
+        BlockChain const& _bc, const Transactions& _transactions, const SyncContext& _context );
+    void runCommit( BlockChain const& _bc, const SyncContext& _context );  // run commit for state and
+                                                                           // filestorage
     void createBlockSnapshot();
-    void handleLegacyPartialReceipts( BlockChain const& _bc, const SyncContext& _ctx );
+    void handleLegacyPartialReceipts( BlockChain const& _bc, const SyncContext& _context );
 
     /// Execute the given block, assuming it corresponds to m_currentBlock.
     /// Throws on failure.
