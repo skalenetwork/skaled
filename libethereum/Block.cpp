@@ -695,13 +695,13 @@ void Block::createBlockSnapshot() {
 }
 
 void Block::handleLegacyPartialReceipts( BlockChain const& _bc, const SyncContext& _ctx ) {
-    static uint64_t sanityCheckCounter = 0;
-    if ( sanityCheckCounter++ % 10000 == 0 ) {
-        LDB_CHECK( m_state.safePartialTransactionReceipts( info().number() ).empty() );
-    }
     // we got to the end of the block so we do not need partial transaction receipts anymore
     m_state.safeRemoveAllPartialTransactionReceipts();
-    sanityCheckPartialTransactionReceipts();
+
+    static uint64_t sanityCheckCounter = 0;
+    if ( sanityCheckCounter++ % 10000 == 0 ) {
+        sanityCheckPartialTransactionReceipts( info().number() );
+    }
 
     bool weAreAtTheTimeStampBoundary = false;
     auto latestCommittedBlockTimeStamp = m_previousBlock.timestamp();
