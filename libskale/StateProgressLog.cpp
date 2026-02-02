@@ -35,30 +35,31 @@ void StateProgressLog::markBlockCommitCompleted( uint64_t _blockNumber ) {
     writeStatus( _blockNumber, Status::Completed );
 }
 
-void StateProgressLog::writeStatus(uint64_t _blockNumber, Status _status) {
+void StateProgressLog::writeStatus( uint64_t _blockNumber, Status _status ) {
     {
-        std::ofstream tmpFile(m_tmpPath, std::ios::out | std::ios::trunc);
-        if (!tmpFile) {
-            BOOST_LOG(m_logger) << "Failed to open tmp file: " << m_tmpPath;
+        std::ofstream tmpFile( m_tmpPath, std::ios::out | std::ios::trunc );
+        if ( !tmpFile ) {
+            BOOST_LOG( m_logger ) << "Failed to open tmp file: " << m_tmpPath;
             return;
         }
 
-        const std::string_view statusStr = (_status == Status::Completed) ? STATUS_COMPLETED : STATUS_STARTED;
+        const std::string_view statusStr =
+            ( _status == Status::Completed ) ? STATUS_COMPLETED : STATUS_STARTED;
 
         tmpFile << _blockNumber << ": " << statusStr << "\n";
 
         tmpFile.flush();
-        if (!tmpFile) {
-            BOOST_LOG(m_logger) << "Write failure (disk full?): " << m_tmpPath;
+        if ( !tmpFile ) {
+            BOOST_LOG( m_logger ) << "Write failure (disk full?): " << m_tmpPath;
             return;
         }
     }
 
-   boost::system::error_code ec;
-    fs::rename(m_tmpPath, m_progressLogPath, ec);
+    boost::system::error_code ec;
+    fs::rename( m_tmpPath, m_progressLogPath, ec );
 
-    if (ec) {
-        BOOST_LOG(m_logger) << "Rename error: " << ec.message();
+    if ( ec ) {
+        BOOST_LOG( m_logger ) << "Rename error: " << ec.message();
     }
 }
 
