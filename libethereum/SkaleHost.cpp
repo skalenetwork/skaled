@@ -474,8 +474,10 @@ ConsensusExtFace::Transactions SkaleHost::pendingTransactions( size_t _limit, u2
 
 #ifdef BITE2
     auto bite2Transactions = m_tq.pendingBITE2Transactions();
+    u256 gasAccByCTXs = 0;
     // CTXs are not the subject for block gas limit
     for ( const auto& ctx : bite2Transactions ) {
+        gasAccByCTXs += ctx.gas();
         out_vector.pushBackCAT( ctx.toBytes() );
         m_debugTracer.tracepoint( "sent_txn" );
         BOOST_LOG( m_loggerTrace ) << "Sent CTX";
@@ -514,6 +516,9 @@ ConsensusExtFace::Transactions SkaleHost::pendingTransactions( size_t _limit, u2
     // drop by block gas limit
     u256 blockGasLimit = this->m_client.chainParams().getGasLimit();
     u256 gasAcc = 0;
+#ifdef BITE2
+    gasAcc = gasAccByCTXs;
+#endif
     auto first_to_drop_it = txns.begin();
     for ( ; first_to_drop_it != txns.end(); ++first_to_drop_it ) {
         gasAcc += first_to_drop_it->gas();
