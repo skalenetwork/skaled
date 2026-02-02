@@ -359,6 +359,7 @@ private:
     void runCommit( BlockChain const& _bc, const SyncContext& _context );  // run commit for state
                                                                            // and filestorage
     void createBlockSnapshot();
+    void clearPartialReceipts();
     void handleLegacyPartialReceipts( BlockChain const& _bc, const SyncContext& _context );
 
     /// Execute the given block, assuming it corresponds to m_currentBlock.

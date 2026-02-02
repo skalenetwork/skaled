@@ -668,8 +668,10 @@ void Block::saveStateChanges(
     }
 
     if ( !_context.singleCommitEnabled ) {
-        handleLegacyPartialReceipts( _bc, _context );
+        clearPartialReceipts();
     }
+    // for backward compatibility still have to run this check for singleBlockCommit
+    handleLegacyPartialReceipts( _bc, _context );
 }
 
 void Block::runCommit( BlockChain const& _bc, const SyncContext& _context ) {
@@ -694,7 +696,7 @@ void Block::createBlockSnapshot() {
 #endif
 }
 
-void Block::handleLegacyPartialReceipts( BlockChain const& _bc, const SyncContext& _context ) {
+void Block::clearPartialReceipts() {
     // we got to the end of the block so we do not need partial transaction receipts anymore
     m_state.safeRemoveAllPartialTransactionReceipts();
 
@@ -702,7 +704,9 @@ void Block::handleLegacyPartialReceipts( BlockChain const& _bc, const SyncContex
     if ( sanityCheckCounter++ % 10000 == 0 ) {
         sanityCheckPartialTransactionReceipts( info().number() );
     }
+}
 
+void Block::handleLegacyPartialReceipts( BlockChain const& _bc, const SyncContext& _context ) {
     bool weAreAtTheTimeStampBoundary = false;
     auto latestCommittedBlockTimeStamp = m_previousBlock.timestamp();
 
