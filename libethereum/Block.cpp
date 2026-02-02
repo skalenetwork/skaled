@@ -493,7 +493,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
     prepareStateForSync( _timestamp, context );
     executeTransactions( _bc, _transactions, _gasPrice, context );
 
-    if ( !context.singleCommitEnabled || !checkIfAlreadyCommitted( _transactions ) ) {
+    if ( !context.singleCommitEnabled || !isCurrentBlockCommitted() ) {
         saveStateChanges( _bc, _transactions, context );
     }
 
@@ -617,7 +617,7 @@ std::optional< TransactionReceipt > Block::executeSingleTransaction( BlockChain 
     return std::nullopt;
 }
 
-bool Block::checkIfAlreadyCommitted( const Transactions& ) {
+bool Block::isCurrentBlockCommitted() {
     // This check only works for single commit mode
     auto progressLog = m_state.getProgressLog();
     if ( !progressLog ) {

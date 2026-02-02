@@ -353,7 +353,7 @@ private:
     std::optional< TransactionReceipt > executeSingleTransaction( BlockChain const& _bc,
         Transaction const& _tx, unsigned _txIndex, u256 _gasPrice, skale::Permanence _permanence,
         SyncContext& _context );
-    bool checkIfAlreadyCommitted( const Transactions& _transactions );
+    bool isCurrentBlockCommitted();
     void saveStateChanges(
         BlockChain const& _bc, const Transactions& _transactions, const SyncContext& _context );
     void runCommit( BlockChain const& _bc, const SyncContext& _context );  // run commit for state

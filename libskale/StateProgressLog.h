@@ -19,15 +19,15 @@ public:
 
     bool isBlockCommitCompleted( uint64_t _blockNumber ) const;
 
-    static const std::string PROGRESS_LOG_DIR;
-    static const std::string PROGRESS_LOG_FILE;
+    inline static const std::string PROGRESS_LOG_DIR = "progress_log";
+    inline static const std::string PROGRESS_LOG_FILE = "last_state_committed_block";
 
 private:
     void writeStatus( uint64_t _blockNumber, Status _status );
     bool readStatus( uint64_t& _blockNumber, Status& _status ) const;
 
-    static const std::string STATUS_STARTED;
-    static const std::string STATUS_COMPLETED;
+    inline static const std::string STATUS_STARTED = "started";
+    inline static const std::string STATUS_COMPLETED = "completed";
 
     boost::filesystem::path m_progressLogPath;
     boost::filesystem::path m_tmpPath;

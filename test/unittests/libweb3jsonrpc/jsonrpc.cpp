@@ -72,7 +72,9 @@
 #include <boost/process.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include <chrono>
 #include <cstdlib>
+#include <thread>
 
 #ifdef BITE
 #include <libconsensus/libBLS/threshold_encryption/ThresholdEncryption.h>
@@ -2410,6 +2412,17 @@ BOOST_AUTO_TEST_CASE( state_progress_log_crash_recovery ) {
     BOOST_CHECK( progressLog->isBlockCommitCompleted( fixture.client->number() ) );
 }
 
+namespace {
+template < typename PatchType >
+void waitForPatchActivation( int timeoutSeconds = 10 ) {
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds( timeoutSeconds );
+    while ( !PatchType::isEnabledWhen( time( nullptr ) ) ) {
+        BOOST_REQUIRE( std::chrono::steady_clock::now() < deadline );
+        std::this_thread::sleep_for( std::chrono::milliseconds( 50 ) );
+    }
+}
+}  // namespace
+
 #ifndef FAIR
 BOOST_AUTO_TEST_CASE( single_fs_commit_per_block_patch_transition ) {
     Json::Value configJson;
@@ -2465,7 +2478,7 @@ BOOST_AUTO_TEST_CASE( single_fs_commit_per_block_patch_transition ) {
     produceBlockWithFilestorageOperations();
     expectFsCommitCount( 2 );
 
-    sleep( 6 );
+    waitForPatchActivation< SingleStateCommitPerBlockPatch >();
 
     produceBlockWithFilestorageOperations();
 
