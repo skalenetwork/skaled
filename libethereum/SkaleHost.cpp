@@ -1154,6 +1154,37 @@ std::array< std::string, 4 > SkaleHost::getCurrentBLSPublicKey() const {
     return m_client.getCurrentBLSPublicKey();
 }
 
+#ifdef BITE2
+
+dev::h256 SkaleHost::getEncryptionCallRandom( unsigned _blockNumber, bool _isReadOnly ) {
+    
+    // cache current block random bytes - re-use while in the same block
+    static bytes blockRandomBytes = toBigEndian( dev::u256( 0 ) );
+    
+    // Reset counter if we've moved to a new block
+    // EVM execution is sequential, so no race conditions
+    if ( m_encryptionCounterBlockNumber != _blockNumber || blockRandomBytes.empty() ) {
+        m_encryptionCounterBlockNumber = _blockNumber;
+        m_encryptionCounter = 0;
+        blockRandomBytes = toBigEndian( getBlockRandom( _blockNumber, _isReadOnly ) );
+    }
+
+    // Get current counter value and increment for next call
+    uint64_t currentCounter = m_encryptionCounter++;
+
+    // Combine blockRandom || counter
+    bytes counterBytes = toBigEndian( dev::u256( currentCounter ) );
+
+    bytes combinedBytes;
+    combinedBytes.insert( combinedBytes.end(), blockRandomBytes.begin(), blockRandomBytes.end() );
+    combinedBytes.insert( combinedBytes.end(), counterBytes.begin(), counterBytes.end() );
+
+    // Hash to get final deterministic random value
+    return dev::sha3( combinedBytes );
+}
+
+#endif
+
 std::string SkaleHost::getHistoricNodeId( unsigned _id ) const {
     return m_client.getHistoricNodeId( _id );
 }

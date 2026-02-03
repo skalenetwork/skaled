@@ -131,6 +131,12 @@ public:
     void pushToBroadcastQueue( const dev::eth::Transaction& _transaction );
 #ifdef BITE2
     void pushToBITE2Queue( dev::eth::Transaction&& _transaction );
+
+    // Get deterministic random value for encryption call
+    // Combines Hash(blockRandom || counter) where counter auto-increments for each call
+    // Counter resets at each new block
+    // Returns 32-byte random value suitable for use as encryption seed
+    dev::h256 getEncryptionCallRandom( unsigned _blockNumber, bool _isReadOnly );
 #endif
 
     dev::u256 getGasPrice( unsigned _blockNumber = dev::eth::LatestBlock ) const;
@@ -285,6 +291,18 @@ private:
     std::atomic_int total_sent, total_arrived;
 
     boost::chrono::high_resolution_clock::time_point latestBlockTime;
+
+#ifdef BITE2
+
+    // Keeps track of block number for which m_encryptionCounter is valid
+    unsigned m_encryptionCounterBlockNumber = 0;
+
+    // Per-block encryption counter for deterministic but unique encryption
+    // Counter resets when block number changes, increments for each encryption call
+    // No mutex needed since EVM execution is sequential
+    uint64_t m_encryptionCounter = 0;
+
+#endif
 
     // reject old transactions that come through broadcast
     // if current ts is much bigger than currentBlock.ts
