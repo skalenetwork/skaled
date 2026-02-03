@@ -2424,12 +2424,13 @@ void waitForPatchActivation( int timeoutSeconds = 10 ) {
 }  // namespace
 
 #ifndef FAIR
-BOOST_AUTO_TEST_CASE( single_fs_commit_per_block_patch_transition ) {
+// Test fs commits before SingleStateCommitPerBlockPatch is active
+BOOST_AUTO_TEST_CASE( single_fs_commit_per_block_patch_before ) {
     Json::Value configJson;
     Json::Reader().parse( c_genesisConfigString, configJson );
-    time_t activationTimestamp = time( nullptr ) + 5;
+    // Patch disabled (far future timestamp)
     configJson["skaleConfig"]["sChain"]["singleStateCommitPerBlockPatchTimestamp"] =
-        static_cast< Json::Int64 >( activationTimestamp );
+        static_cast< Json::Int64 >( 0 );
     configJson["skaleConfig"]["sChain"]["revertableFSPatchTimestamp"] =
         static_cast< Json::Int64 >( 1 );
 
@@ -2463,28 +2464,70 @@ BOOST_AUTO_TEST_CASE( single_fs_commit_per_block_patch_transition ) {
 
     auto produceBlockWithFilestorageOperations = [&]() {
         nextNonce = jsToU256( fixture.rpcClient->eth_getTransactionCount(
-            toJS( senderAddress ), "pending" ) );
+            toJS( senderAddress ), "latest" ) );
         executeFilestorageOperation();
         executeFilestorageOperation();
         dev::eth::mineTransaction( *( fixture.client ), 1 );
         fixture.client->state().getOriginalDb()->createBlockSnap( fixture.client->number() );
     };
 
-    auto expectFsCommitCount = []( uint64_t expectedCommits ) {
-        BOOST_REQUIRE_EQUAL( skale::fs_commit_counter::count(), expectedCommits );
+    // Without patch: expect 2 commits (one per transaction)
+    skale::fs_commit_counter::reset();
+    produceBlockWithFilestorageOperations();
+    BOOST_REQUIRE_EQUAL( skale::fs_commit_counter::count(), 2 );
+}
+
+// Test fs commits after SingleStateCommitPerBlockPatch is active
+BOOST_AUTO_TEST_CASE( single_fs_commit_per_block_patch_after ) {
+    Json::Value configJson;
+    Json::Reader().parse( c_genesisConfigString, configJson );
+    // Patch enabled from genesis
+    configJson["skaleConfig"]["sChain"]["singleStateCommitPerBlockPatchTimestamp"] =
+        static_cast< Json::Int64 >( 1 );
+    configJson["skaleConfig"]["sChain"]["revertableFSPatchTimestamp"] =
+        static_cast< Json::Int64 >( 1 );
+
+    Json::FastWriter fastWriter;
+    RestrictedAddressFixture fixture( fastWriter.write( configJson ), true );
+    dev::eth::simulateMining( *( fixture.client ), 1 );
+
+    struct FsCommitCounterGuard {
+        FsCommitCounterGuard() { skale::fs_commit_counter::enable( true ); }
+        ~FsCommitCounterGuard() { skale::fs_commit_counter::enable( false ); }
+    } guard;
+
+    auto senderAddress = fixture.coinbase.address();
+    fixture.client->setAuthor( senderAddress );
+
+    u256 nextNonce;
+
+    auto executeFilestorageOperation = [&]() {
+        Json::Value tx;
+        tx["from"] = toJS( senderAddress );
+        tx["to"] = "0x692a70d2e424a56d2c6c27aa97d1a86395877b3a";
+        tx["data"] = "0xf38fb65b";
+        tx["nonce"] = toJS( nextNonce );
+        nextNonce++;
+        TransactionSkeleton ts = toTransactionSkeleton( tx );
+        ts = fixture.client->populateTransactionWithDefaults( ts );
+        pair< bool, Secret > ar = fixture.accountHolder->authenticate( ts );
+        Transaction transaction( ts, ar.second );
+        fixture.rpcClient->eth_sendRawTransaction( toJS( transaction.toBytes() ) );
     };
 
+    auto produceBlockWithFilestorageOperations = [&]() {
+        nextNonce = jsToU256( fixture.rpcClient->eth_getTransactionCount(
+            toJS( senderAddress ), "latest" ) );
+        executeFilestorageOperation();
+        executeFilestorageOperation();
+        dev::eth::mineTransaction( *( fixture.client ), 1 );
+        fixture.client->state().getOriginalDb()->createBlockSnap( fixture.client->number() );
+    };
+
+    // With patch: expect 1 commit (one per block)
     skale::fs_commit_counter::reset();
     produceBlockWithFilestorageOperations();
-    expectFsCommitCount( 2 );
-
-    waitForPatchActivation< SingleStateCommitPerBlockPatch >();
-
-    produceBlockWithFilestorageOperations();
-
-    skale::fs_commit_counter::reset();
-    produceBlockWithFilestorageOperations();
-    expectFsCommitCount( 1 );
+    BOOST_REQUIRE_EQUAL( skale::fs_commit_counter::count(), 1 );
 }
 #endif
 
