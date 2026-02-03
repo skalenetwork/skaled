@@ -449,6 +449,13 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
     }
 
     ~SnapshotHashingFixture() {
+        if ( testIpcClient )
+            delete testIpcClient;
+
+#ifdef BITE2
+        if ( g_skaleHost )
+            g_skaleHost.reset();
+#endif
         client.reset();
         const char* NC = getenv( "NC" );
         if ( NC )
@@ -460,9 +467,6 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         assert( rv == 0 );
         rv = system( ( "rm " + BTRFS_FILE_PATH ).c_str() );
         assert( rv == 0 );
-
-        if ( testIpcClient )
-            delete testIpcClient;
     }
 
     string sendingRawShouldFail( string const& _t ) {

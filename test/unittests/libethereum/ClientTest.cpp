@@ -228,12 +228,15 @@ public:
         if ( m_ethereum->skaleHost()->isConsesusUpdateHappened() )
             m_ethereum->skaleHost()->handleConsensusUpdate();
         accountHolder.reset();
+        if ( g_skaleHost )
+            g_skaleHost.reset();
         m_ethereum.reset();
-#endif
+#else
 #ifdef BITE2
         if ( g_skaleHost )
             g_skaleHost.reset();
-#endif
+#endif   // FAIR
+#endif   // BITE2
     }
 
 private:

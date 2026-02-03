@@ -1950,6 +1950,11 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
                                                          true } );
 
     BOOST_REQUIRE( !res.first );
+
+#ifdef BITE2
+    if ( g_skaleHost )
+        g_skaleHost.reset();
+#endif
 }
 
 struct FilestorageFixture : public TestOutputHelperFixture {
