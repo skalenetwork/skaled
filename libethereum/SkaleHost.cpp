@@ -1157,10 +1157,9 @@ std::array< std::string, 4 > SkaleHost::getCurrentBLSPublicKey() const {
 #ifdef BITE2
 
 dev::h256 SkaleHost::getEncryptionCallRandom( unsigned _blockNumber, bool _isReadOnly ) {
-    
     // cache current block random bytes - re-use while in the same block
     static bytes blockRandomBytes = toBigEndian( dev::u256( 0 ) );
-    
+
     // Reset counter if we've moved to a new block
     // EVM execution is sequential, so no race conditions
     if ( m_encryptionCounterBlockNumber != _blockNumber || blockRandomBytes.empty() ) {

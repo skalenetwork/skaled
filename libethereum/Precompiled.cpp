@@ -1280,8 +1280,8 @@ ETH_REGISTER_PRECOMPILED( encryptTE )
         // Get deterministic random value for this encryption call
         // SkaleHost handles: Hash(blockRandom || counter)
         unsigned blockNumberToCall = _ctx.blockNumber.convert_to< unsigned >();
-        dev::h256 encryptionRandom = g_skaleHost->getEncryptionCallRandom(
-            blockNumberToCall, _ctx.isReadOnly );
+        dev::h256 encryptionRandom =
+            g_skaleHost->getEncryptionCallRandom( blockNumberToCall, _ctx.isReadOnly );
         bytes encryptionRandomBytes = encryptionRandom.asBytes();
 
         // Create seed array from encryption random (32 bytes)
@@ -1419,12 +1419,11 @@ ETH_REGISTER_PRECOMPILED( encryptECIES )
         // Get deterministic random value for this encryption call
         // SkaleHost handles: Hash(blockRandom || counter)
         unsigned blockNumberToCall = _ctx.blockNumber.convert_to< unsigned >();
-        dev::h256 seed = g_skaleHost->getEncryptionCallRandom(
-            blockNumberToCall, _ctx.isReadOnly );
+        dev::h256 seed = g_skaleHost->getEncryptionCallRandom( blockNumberToCall, _ctx.isReadOnly );
 
         // Encrypt using ECIES-CBC with deterministic IV based on encryption random
-        bytes response = dev::encryptECIES_CBC(
-            userPubKey, bytesConstRef( &dataToEncrypt ), &seed );
+        bytes response =
+            dev::encryptECIES_CBC( userPubKey, bytesConstRef( &dataToEncrypt ), &seed );
         if ( response.empty() ) {
             return { false, toBigEndian( dev::u256( 8 ) ) };  // error 8: encryption failed
         }
