@@ -334,6 +334,10 @@ public:
     fs::path getTmpDataDir() { return m_tmpDir.path(); }
 
     ~TestClientSnapshotsFixture() {
+#ifdef BITE2
+        if ( dev::eth::g_skaleHost )
+            dev::eth::g_skaleHost.reset();
+#endif
         m_ethereum.reset( 0 );
         const char* NC = getenv( "NC" );
         if ( NC )
