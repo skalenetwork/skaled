@@ -18,6 +18,7 @@
 #include <secp256k1_sha256.h>
 #include <cryptopp/aes.h>
 #include <cryptopp/modes.h>
+#include <libdevcore/RLP.h>
 #endif
 
 #include <test/tools/libtesteth/TestHelper.h>
@@ -283,6 +284,15 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
 
     void setBlsPublicKey( const std::array< std::string, 4 >& _key ) {
         chainParams->sChain.nodeGroups[0].blsPublicKey = _key;
+    }
+
+    void setNodeGroups( const std::vector< dev::eth::NodeGroup >& _groups ) {
+        chainParams->sChain.nodeGroups = _groups;
+    }
+
+    void setGroupFinishTs( size_t _idx, uint64_t _ts ) {
+        BOOST_REQUIRE( _idx < chainParams->sChain.nodeGroups.size() );
+        chainParams->sChain.nodeGroups[_idx].finishTs = _ts;
     }
 
     TransactionQueue* tq;
@@ -1689,7 +1699,6 @@ BOOST_AUTO_TEST_CASE( encryptTE_success ) {
 
     // Create a test SC address (20 bytes)
     dev::Address testScAddress = dev::Address( "0x1234567890123456789012345678901234567890" );
-    bytes scAddressBytes = testScAddress.asBytes();
 
     // Build ABI-encoded input: abi.encode(bytes data)
     // Format: [offset_to_data(32)] [data_length(32)] [data(N)]
@@ -1710,7 +1719,7 @@ BOOST_AUTO_TEST_CASE( encryptTE_success ) {
     size_t paddingNeeded = 32 - ( dataToEncrypt.size() % 32 );
     input.insert( input.end(), paddingNeeded, 0 );
 
-    // Call the precompiled contract - pass testScAddress via context.from
+    // Call the precompiled contract
     auto res = exec( bytesConstRef( input.data(), input.size() ),
         PrecompiledCallContext( 1, 0, 0, testScAddress, true ) );
 
@@ -1718,13 +1727,27 @@ BOOST_AUTO_TEST_CASE( encryptTE_success ) {
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( !res.second.empty() );
 
-    // Parse output as Ciphertext and validate
-    libBLS::Ciphertext ciphertext = libBLS::Ciphertext::fromBytes( res.second, /* validate */ true );
+    // Parse output as RLP list [epochId, ciphertextBytes]
+    RLP rlp( res.second );
+    BOOST_REQUIRE( rlp.isList() );
+    BOOST_REQUIRE( rlp.itemCount() == 2 );
 
-    // Validate the TE ciphertext with SC address as TE AAD
-    std::vector< uint8_t > scAddressVec( scAddressBytes.begin(), scAddressBytes.end() );
+    uint64_t epochId = rlp[0].toInt<uint64_t>();
+    bytes ciphertextBytes = rlp[1].toBytes();
+
+    BOOST_REQUIRE_EQUAL( epochId, fixture.client->getCurrentEpochId() );
+
+    // Parse ciphertext component
+    libBLS::Ciphertext ciphertext = libBLS::Ciphertext::fromBytes( ciphertextBytes, /* validate */ true );
+
+    // Verify exactly 1 key is present
+    BOOST_REQUIRE_EQUAL( ciphertext.getKeys().size(), 1 );
+
+    // Validate the TE ciphertext with SC address as AAD
+    auto ScBytes = testScAddress.asBytes();
+    std::vector< uint8_t > aadBytes{ ScBytes.begin(), ScBytes.end() };
     BOOST_REQUIRE_NO_THROW(
-        libBLS::ThresholdEncryption::validateEncryption( ciphertext.getTargetKey(), &scAddressVec ) );
+        libBLS::ThresholdEncryption::validateEncryption( ciphertext.getTargetKey(), &aadBytes ) );
 
     // decrypt & check if decrypted = original
     
@@ -1737,11 +1760,123 @@ BOOST_AUTO_TEST_CASE( encryptTE_success ) {
     // 3. Combine shares → AES key
     libBLS::AES256Key aesKey = libBLS::ThresholdEncryption::combineShares( 
         ciphertext.getTargetKey(), decryptSet );
-    // 4. Decrypt using AES key (no AES AAD - we use TE AAD for validation instead)
+    // 4. Decrypt using AES key
     std::vector< uint8_t > decryptedMessage = 
         libBLS::ThresholdEncryption::decrypt( ciphertext, aesKey );
     // 5. Verify original message matches
     BOOST_REQUIRE( decryptedMessage == dataToEncrypt );    
+}
+
+BOOST_AUTO_TEST_CASE( encryptTE_rotation_soon ) {
+    SkaleHostFixture fixture;
+
+    // Generate keys for group 0 and group 1
+    auto keys0 = generateKeys(1, 1);
+    auto keys1 = generateKeys(1, 1);
+
+    // Set up two groups in chainParams to simulate rotation
+    // NodeGroup struct: { nodes, finishTs, blsPublicKey }
+    fixture.setNodeGroups({
+        // 1000 is a palceholder here - will be substituted in lines below
+        { {}, 1000, keys0.commonPublic.getPublicKeyRaw().toStringArray(libBLS::Base::DEC) },
+        { {}, uint64_t(-1), keys1.commonPublic.getPublicKeyRaw().toStringArray(libBLS::Base::DEC) }
+    });
+    
+    // We need to manipulate the block timestamp
+    // SkaleHostFixture sets genesis timestamp to current time - 5.
+    // Let's just adjust the first group's finish timestamp to be close to NOW.
+    uint64_t now = std::time(nullptr);
+    fixture.setGroupFinishTs(0, now + 10); // rotation in 10 seconds
+
+    // Get the executor for encryptTE
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptTE" );
+
+    // Create test input data
+    std::string testMessage = "Rotation test!";
+    bytes dataToEncrypt( testMessage.begin(), testMessage.end() );
+
+    // Offset to data = 32 (after offset field itself)
+    bytes input;
+    bytes offsetData( 32, 0 );
+    offsetData[31] = 32;
+    input.insert( input.end(), offsetData.begin(), offsetData.end() );
+
+    // data length
+    bytes dataLenBytes( 32, 0 );
+    dataLenBytes[31] = static_cast<uint8_t>( dataToEncrypt.size() );
+    input.insert( input.end(), dataLenBytes.begin(), dataLenBytes.end() );
+
+    // data (with ABI-compliant padding to 32-byte boundary)
+    input.insert( input.end(), dataToEncrypt.begin(), dataToEncrypt.end() );
+    size_t paddingNeeded = 32 - ( dataToEncrypt.size() % 32 );
+    input.insert( input.end(), paddingNeeded, 0 );
+
+    // Call the precompiled contract
+    auto res = exec( bytesConstRef( input.data(), input.size() ),
+        PrecompiledCallContext( 1, 0, 0, dev::Address(), true ) );
+
+    // Verify success
+    BOOST_REQUIRE( res.first );
+    
+    // Parse RLP
+    RLP rlp( res.second );
+    BOOST_REQUIRE( rlp.isList() );
+    BOOST_REQUIRE_EQUAL( rlp.itemCount(), 2 );
+
+    // check epoch id
+    uint64_t epochId = rlp[0].toInt< uint64_t >();
+    BOOST_REQUIRE_EQUAL( epochId, fixture.client->getCurrentEpochId() );
+
+    bytes ciphertextBytes = rlp[1].toBytes();
+    libBLS::Ciphertext ciphertext = libBLS::Ciphertext::fromBytes( ciphertextBytes );
+
+    // Verify exactly 2 keys are present because rotation is soon
+    BOOST_REQUIRE_EQUAL( ciphertext.getKeys().size(), 2 );
+
+    // SC address used as AAD
+    auto ScBytes = dev::Address().asBytes();
+    std::vector< uint8_t > aadBytes{ ScBytes.begin(), ScBytes.end() };
+
+    // Validate and decrypt with both keys
+    // Key 0 (current)
+    {
+        libBLS::Ciphertext ctCopy = ciphertext;
+        ctCopy.keepKey(0);
+        
+        // Validate the TE ciphertext with SC address as AAD
+        BOOST_REQUIRE_NO_THROW(
+            libBLS::ThresholdEncryption::validateEncryption( ctCopy.getTargetKey(), &aadBytes ) );
+        
+        libBLS::TEDecryptionShare share = libBLS::ThresholdEncryption::partialDecrypt(
+            ctCopy.getTargetKey(), keys0.secretKeys[0] );
+        libBLS::TEDecryptSet decryptSet( 1, 1 );
+        decryptSet.addDecryptShare( share );
+        libBLS::AES256Key aesKey = libBLS::ThresholdEncryption::combineShares( 
+            ctCopy.getTargetKey(), decryptSet );
+        std::vector< uint8_t > decryptedMessage = 
+            libBLS::ThresholdEncryption::decrypt( ctCopy, aesKey );
+        BOOST_REQUIRE( decryptedMessage == dataToEncrypt );
+    }
+
+    // Key 1 (next)
+    {
+        libBLS::Ciphertext ctCopy = ciphertext;
+        ctCopy.keepKey(1);
+        
+        // Validate the TE ciphertext with SC address as AAD
+        BOOST_REQUIRE_NO_THROW(
+            libBLS::ThresholdEncryption::validateEncryption( ctCopy.getTargetKey(), &aadBytes ) );
+        
+        libBLS::TEDecryptionShare share = libBLS::ThresholdEncryption::partialDecrypt(
+            ctCopy.getTargetKey(), keys1.secretKeys[0] );
+        libBLS::TEDecryptSet decryptSet( 1, 1 );
+        decryptSet.addDecryptShare( share );
+        libBLS::AES256Key aesKey = libBLS::ThresholdEncryption::combineShares( 
+            ctCopy.getTargetKey(), decryptSet );
+        std::vector< uint8_t > decryptedMessage = 
+            libBLS::ThresholdEncryption::decrypt( ctCopy, aesKey );
+        BOOST_REQUIRE( decryptedMessage == dataToEncrypt );
+    }
 }
 
 BOOST_AUTO_TEST_CASE( encryptTE_inputTooLarge ) {
@@ -1906,6 +2041,49 @@ BOOST_AUTO_TEST_CASE( encryptECIES_success ) {
 
     // 7. Verify decrypted matches original
     BOOST_REQUIRE( decryptedBytes == dataToEncrypt );
+}
+
+BOOST_AUTO_TEST_CASE( encryptECIES_deterministic ) {
+    SkaleHostFixture fixture;
+
+    // Generate a user keypair
+    dev::KeyPair userKeys = dev::KeyPair::create();
+    dev::Public userPublicKey = userKeys.pub();
+
+    // Extract x and y coordinates from public key
+    bytes pubKeyX( userPublicKey.data(), userPublicKey.data() + 32 );
+    bytes pubKeyY( userPublicKey.data() + 32, userPublicKey.data() + 64 );
+
+    // Create test data to encrypt
+    std::string testMessage = "Deterministic test";
+    bytes dataToEncrypt( testMessage.begin(), testMessage.end() );
+
+    // Build ABI-encoded input
+    bytes input;
+    input.insert( input.end(), 32, 0 );
+    input[31] = 96;  // offset
+    input.insert( input.end(), pubKeyX.begin(), pubKeyX.end() );
+    input.insert( input.end(), pubKeyY.begin(), pubKeyY.end() );
+    bytes lenBytes( 32, 0 );
+    lenBytes[31] = static_cast<uint8_t>( dataToEncrypt.size() );
+    input.insert( input.end(), lenBytes.begin(), lenBytes.end() );
+    input.insert( input.end(), dataToEncrypt.begin(), dataToEncrypt.end() );
+    size_t paddingNeeded = 32 - ( dataToEncrypt.size() % 32 );
+    input.insert( input.end(), paddingNeeded, 0 );
+
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptECIES" );
+
+    // Call the precompiled contract twice in the same context (same block random)
+    auto res1 = exec( bytesConstRef( input.data(), input.size() ),
+        PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+    auto res2 = exec( bytesConstRef( input.data(), input.size() ),
+        PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+
+    BOOST_REQUIRE( res1.first );
+    BOOST_REQUIRE( res2.first );
+    
+    // Verify results are identical
+    BOOST_REQUIRE( res1.second == res2.second );
 }
 
 BOOST_AUTO_TEST_CASE( encryptECIES_inputTooLarge ) {

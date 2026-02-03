@@ -168,8 +168,10 @@ bool isValidPublicKey( Public const& _pub );
 
 /// Encrypt using ECIES with AES-256-CBC and PKCS7 padding.
 /// Output format: [IV(16)] [CompressedEphPubKey(33)] [Ciphertext]
+/// If _seed is provided, derives ephemeral key and IV deterministically.
 /// Returns empty bytes on failure.
-bytes encryptECIES_CBC( Public const& _recipientPubKey, bytesConstRef _plain );
+bytes encryptECIES_CBC(
+    Public const& _recipientPubKey, bytesConstRef _plain, h256 const* _seed = nullptr );
 
 /// Decrypt ECIES ciphertext encrypted with AES-256-CBC and PKCS7 padding.
 /// Input format: [IV(16)] [CompressedEphPubKey(33)] [Ciphertext]
