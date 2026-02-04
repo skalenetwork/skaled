@@ -129,7 +129,7 @@ public:
     dev::h256 receiveTransaction( std::string );
 
     void pushToBroadcastQueue( const dev::eth::Transaction& _transaction );
-  
+
 #ifdef BITE2
     // Get deterministic random value for encryption call
     // Combines Hash(blockRandom || counter) where counter auto-increments for each call
