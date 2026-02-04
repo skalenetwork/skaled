@@ -1,6 +1,7 @@
 #include <libskale/StateProgressLog.h>
 
 #include <libdevcore/TransientDirectory.h>
+#include <libethereum/TransactionReceipt.h>
 
 #include <boost/filesystem.hpp>
 #include <boost/test/unit_test.hpp>
@@ -333,6 +334,228 @@ BOOST_AUTO_TEST_CASE( start_next_block_after_completion ) {
 
     log.markBlockCommitCompleted( 81 );
     BOOST_CHECK( log.isBlockCommitCompleted( 81 ) );
+}
+
+BOOST_AUTO_TEST_CASE( save_load_empty_receipts ) {
+    dev::TransientDirectory tempDir;
+
+    StateProgressLog log( tempDir.path() );
+
+    dev::eth::TransactionReceipts emptyReceipts;
+    uint64_t timestamp = 1700000000;
+    log.saveCommittedProgressData( emptyReceipts, timestamp );
+
+    auto loaded = log.loadCommittedProgressData();
+    BOOST_REQUIRE( loaded.has_value() );
+    BOOST_CHECK( loaded->receipts.empty() );
+    BOOST_CHECK_EQUAL( loaded->timestamp, timestamp );
+}
+
+BOOST_AUTO_TEST_CASE( save_load_single_receipt ) {
+    dev::TransientDirectory tempDir;
+
+    StateProgressLog log( tempDir.path() );
+
+    dev::eth::LogEntries logs;
+    dev::eth::TransactionReceipt receipt( uint8_t( 1 ), dev::u256( 21000 ), logs );
+
+    dev::eth::TransactionReceipts receipts;
+    receipts.push_back( receipt );
+
+    uint64_t timestamp = 1700000001;
+    log.saveCommittedProgressData( receipts, timestamp );
+
+    auto loaded = log.loadCommittedProgressData();
+    BOOST_REQUIRE( loaded.has_value() );
+    BOOST_REQUIRE_EQUAL( loaded->receipts.size(), 1 );
+    BOOST_CHECK_EQUAL( loaded->timestamp, timestamp );
+
+    BOOST_CHECK( loaded->receipts[0].hasStatusCode() );
+    BOOST_CHECK_EQUAL( loaded->receipts[0].statusCode(), 1 );
+    BOOST_CHECK_EQUAL( loaded->receipts[0].cumulativeGasUsed(), dev::u256( 21000 ) );
+    BOOST_CHECK( loaded->receipts[0].log().empty() );
+}
+
+BOOST_AUTO_TEST_CASE( save_load_multiple_receipts ) {
+    dev::TransientDirectory tempDir;
+
+    StateProgressLog log( tempDir.path() );
+
+    dev::eth::TransactionReceipts receipts;
+    dev::eth::LogEntries emptyLogs;
+
+    receipts.emplace_back( uint8_t( 1 ), dev::u256( 21000 ), emptyLogs );
+    receipts.emplace_back( uint8_t( 1 ), dev::u256( 42000 ), emptyLogs );
+    receipts.emplace_back( uint8_t( 0 ), dev::u256( 63000 ), emptyLogs );
+
+    uint64_t timestamp = 1700000002;
+    log.saveCommittedProgressData( receipts, timestamp );
+
+    auto loaded = log.loadCommittedProgressData();
+    BOOST_REQUIRE( loaded.has_value() );
+    BOOST_REQUIRE_EQUAL( loaded->receipts.size(), 3 );
+    BOOST_CHECK_EQUAL( loaded->timestamp, timestamp );
+
+    BOOST_CHECK_EQUAL( loaded->receipts[0].statusCode(), 1 );
+    BOOST_CHECK_EQUAL( loaded->receipts[0].cumulativeGasUsed(), dev::u256( 21000 ) );
+
+    BOOST_CHECK_EQUAL( loaded->receipts[1].statusCode(), 1 );
+    BOOST_CHECK_EQUAL( loaded->receipts[1].cumulativeGasUsed(), dev::u256( 42000 ) );
+
+    BOOST_CHECK_EQUAL( loaded->receipts[2].statusCode(), 0 );
+    BOOST_CHECK_EQUAL( loaded->receipts[2].cumulativeGasUsed(), dev::u256( 63000 ) );
+}
+
+BOOST_AUTO_TEST_CASE( save_load_receipt_with_logs ) {
+    dev::TransientDirectory tempDir;
+
+    StateProgressLog log( tempDir.path() );
+
+    dev::Address contractAddress( "0x1234567890123456789012345678901234567890" );
+    dev::h256 topic1( "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789" );
+    dev::bytes logData = { 0x01, 0x02, 0x03, 0x04 };
+
+    dev::eth::LogEntry logEntry( contractAddress, { topic1 }, logData );
+    dev::eth::LogEntries logs = { logEntry };
+
+    dev::eth::TransactionReceipt receipt( uint8_t( 1 ), dev::u256( 50000 ), logs );
+
+    dev::eth::TransactionReceipts receipts;
+    receipts.push_back( receipt );
+
+    uint64_t timestamp = 1700000003;
+    log.saveCommittedProgressData( receipts, timestamp );
+
+    auto loaded = log.loadCommittedProgressData();
+    BOOST_REQUIRE( loaded.has_value() );
+    BOOST_REQUIRE_EQUAL( loaded->receipts.size(), 1 );
+    BOOST_CHECK_EQUAL( loaded->timestamp, timestamp );
+
+    const auto& loadedReceipt = loaded->receipts[0];
+    BOOST_CHECK_EQUAL( loadedReceipt.statusCode(), 1 );
+    BOOST_CHECK_EQUAL( loadedReceipt.cumulativeGasUsed(), dev::u256( 50000 ) );
+
+    BOOST_REQUIRE_EQUAL( loadedReceipt.log().size(), 1 );
+    BOOST_CHECK_EQUAL( loadedReceipt.log()[0].address, contractAddress );
+    BOOST_REQUIRE_EQUAL( loadedReceipt.log()[0].topics.size(), 1 );
+    BOOST_CHECK_EQUAL( loadedReceipt.log()[0].topics[0], topic1 );
+    BOOST_CHECK( loadedReceipt.log()[0].data == logData );
+}
+
+BOOST_AUTO_TEST_CASE( save_load_receipt_with_revert_reason ) {
+    dev::TransientDirectory tempDir;
+
+    StateProgressLog log( tempDir.path() );
+
+    dev::eth::LogEntries emptyLogs;
+    std::string revertReason = "Insufficient balance";
+    dev::eth::TransactionReceipt receipt(
+        uint8_t( 0 ), dev::u256( 30000 ), emptyLogs, revertReason );
+
+    dev::eth::TransactionReceipts receipts;
+    receipts.push_back( receipt );
+
+    uint64_t timestamp = 1700000004;
+    log.saveCommittedProgressData( receipts, timestamp );
+
+    auto loaded = log.loadCommittedProgressData();
+    BOOST_REQUIRE( loaded.has_value() );
+    BOOST_REQUIRE_EQUAL( loaded->receipts.size(), 1 );
+    BOOST_CHECK_EQUAL( loaded->timestamp, timestamp );
+
+    BOOST_CHECK_EQUAL( loaded->receipts[0].statusCode(), 0 );
+    BOOST_CHECK_EQUAL( loaded->receipts[0].cumulativeGasUsed(), dev::u256( 30000 ) );
+    BOOST_CHECK_EQUAL( loaded->receipts[0].getRevertReason(), revertReason );
+}
+
+BOOST_AUTO_TEST_CASE( receipts_persistence_across_instances ) {
+    dev::TransientDirectory tempDir;
+
+    dev::eth::TransactionReceipts receipts;
+    dev::eth::LogEntries emptyLogs;
+    receipts.emplace_back( uint8_t( 1 ), dev::u256( 21000 ), emptyLogs );
+    receipts.emplace_back( uint8_t( 1 ), dev::u256( 42000 ), emptyLogs );
+
+    uint64_t timestamp = 1700000005;
+
+    {
+        StateProgressLog log( tempDir.path() );
+        log.saveCommittedProgressData( receipts, timestamp );
+    }
+
+    {
+        StateProgressLog log( tempDir.path() );
+        auto loaded = log.loadCommittedProgressData();
+        BOOST_REQUIRE( loaded.has_value() );
+        BOOST_REQUIRE_EQUAL( loaded->receipts.size(), 2 );
+        BOOST_CHECK_EQUAL( loaded->timestamp, timestamp );
+        BOOST_CHECK_EQUAL( loaded->receipts[0].cumulativeGasUsed(), dev::u256( 21000 ) );
+        BOOST_CHECK_EQUAL( loaded->receipts[1].cumulativeGasUsed(), dev::u256( 42000 ) );
+    }
+}
+
+BOOST_AUTO_TEST_CASE( load_receipts_no_file ) {
+    dev::TransientDirectory tempDir;
+
+    StateProgressLog log( tempDir.path() );
+
+    auto loaded = log.loadCommittedProgressData();
+    BOOST_CHECK( !loaded.has_value() );
+}
+
+BOOST_AUTO_TEST_CASE( receipts_overwrite ) {
+    dev::TransientDirectory tempDir;
+
+    StateProgressLog log( tempDir.path() );
+
+    dev::eth::LogEntries emptyLogs;
+
+    dev::eth::TransactionReceipts receipts1;
+    receipts1.emplace_back( uint8_t( 1 ), dev::u256( 10000 ), emptyLogs );
+
+    dev::eth::TransactionReceipts receipts2;
+    receipts2.emplace_back( uint8_t( 0 ), dev::u256( 20000 ), emptyLogs );
+    receipts2.emplace_back( uint8_t( 1 ), dev::u256( 40000 ), emptyLogs );
+
+    uint64_t timestamp1 = 1700000006;
+    uint64_t timestamp2 = 1700000007;
+    log.saveCommittedProgressData( receipts1, timestamp1 );
+    log.saveCommittedProgressData( receipts2, timestamp2 );
+
+    auto loaded = log.loadCommittedProgressData();
+    BOOST_REQUIRE( loaded.has_value() );
+    BOOST_REQUIRE_EQUAL( loaded->receipts.size(), 2 );
+    BOOST_CHECK_EQUAL( loaded->timestamp, timestamp2 );
+    BOOST_CHECK_EQUAL( loaded->receipts[0].statusCode(), 0 );
+    BOOST_CHECK_EQUAL( loaded->receipts[0].cumulativeGasUsed(), dev::u256( 20000 ) );
+    BOOST_CHECK_EQUAL( loaded->receipts[1].statusCode(), 1 );
+    BOOST_CHECK_EQUAL( loaded->receipts[1].cumulativeGasUsed(), dev::u256( 40000 ) );
+}
+
+BOOST_AUTO_TEST_CASE( save_load_receipt_bloom_preserved ) {
+    dev::TransientDirectory tempDir;
+
+    StateProgressLog log( tempDir.path() );
+
+    dev::Address contractAddress( "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" );
+    dev::h256 topic( "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" );
+    dev::eth::LogEntry logEntry( contractAddress, { topic }, {} );
+    dev::eth::LogEntries logs = { logEntry };
+
+    dev::eth::TransactionReceipt receipt( uint8_t( 1 ), dev::u256( 100000 ), logs );
+    dev::eth::LogBloom originalBloom = receipt.bloom();
+
+    dev::eth::TransactionReceipts receipts;
+    receipts.push_back( receipt );
+
+    uint64_t timestamp = 1700000008;
+    log.saveCommittedProgressData( receipts, timestamp );
+
+    auto loaded = log.loadCommittedProgressData();
+    BOOST_REQUIRE( loaded.has_value() );
+    BOOST_REQUIRE_EQUAL( loaded->receipts.size(), 1 );
+    BOOST_CHECK_EQUAL( loaded->timestamp, timestamp );
+    BOOST_CHECK( loaded->receipts[0].bloom() == originalBloom );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -505,7 +505,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
 }
 
 std::pair< TransactionReceipts, unsigned > Block::recoverFromReceipts(
-    const Transactions& _transactions, uint64_t _timestamp ) {
+    const Transactions& _transactions, uint64_t ) {
     if ( !SingleStateCommitPerBlockPatch::isEnabledInWorkingBlock() ) {
         BOOST_THROW_EXCEPTION(
             std::runtime_error( "recoverFromReceipts called outside single commit mode" ) );
@@ -517,23 +517,23 @@ std::pair< TransactionReceipts, unsigned > Block::recoverFromReceipts(
             std::runtime_error( "Progress log is not available during recovery" ) );
     }
 
-    auto savedReceipts = progressLog->loadCommittedReceipts();
-    if ( !savedReceipts || savedReceipts->size() != _transactions.size() ) {
+    auto savedData = progressLog->loadCommittedProgressData();
+    if ( !savedData || savedData->receipts.size() != _transactions.size() ) {
         BOOST_THROW_EXCEPTION( std::runtime_error(
             "Saved receipts missing or count mismatch during recovery for block " +
             std::to_string( m_currentBlock.number() ) ) );
     }
 
     BOOST_LOG( m_loggerWarning ) << "Recovering block " << m_currentBlock.number()
-                                 << " from saved receipts";
+                                 << " from saved receipts with timestamp " << savedData->timestamp;
 
-    resetCurrent( _timestamp );
+    resetCurrent( savedData->timestamp );
 
     for ( const auto& tx : _transactions ) {
         m_transactions.push_back( tx );
         m_transactionSet.insert( tx.sha3() );
     }
-    m_receipts = std::move( *savedReceipts );
+    m_receipts = std::move( savedData->receipts );
 
     unsigned badCount = 0;
     u256 cumulativeGas = 0;
@@ -710,7 +710,7 @@ void Block::saveStateChanges(
     createBlockSnapshot();
 
     if ( progressLog && _context.singleCommitEnabled ) {
-        progressLog->saveCommittedReceipts( _context.receipts );
+        progressLog->saveCommittedProgressData( _context.receipts, m_currentBlock.timestamp() );
         progressLog->markBlockCommitCompleted( m_currentBlock.number() );
     }
 

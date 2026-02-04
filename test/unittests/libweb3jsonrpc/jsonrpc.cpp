@@ -2287,7 +2287,7 @@ BOOST_AUTO_TEST_CASE( single_state_commit_per_block_patch_transition ) {
     // Receipts should not be saved before activation
     auto progressLog = fixture.client->state().getProgressLog();
     BOOST_REQUIRE( progressLog );
-    auto receiptsBefore = progressLog->loadCommittedReceipts();
+    auto receiptsBefore = progressLog->loadCommittedProgressData();
     BOOST_CHECK( !receiptsBefore );
 
     sleep( 6 );
@@ -2302,9 +2302,9 @@ BOOST_AUTO_TEST_CASE( single_state_commit_per_block_patch_transition ) {
     BOOST_REQUIRE_EQUAL( skale::state_commit_counter::count(), 1 );
 
     // Receipts should be saved after activation
-    auto receiptsAfter = progressLog->loadCommittedReceipts();
+    auto receiptsAfter = progressLog->loadCommittedProgressData();
     BOOST_REQUIRE( receiptsAfter );
-    BOOST_CHECK_EQUAL( receiptsAfter->size(), 1 );
+    BOOST_CHECK_EQUAL( receiptsAfter->receipts.size(), 1 );
 }
 
 BOOST_AUTO_TEST_CASE( state_progress_log_skip_already_committed ) {
