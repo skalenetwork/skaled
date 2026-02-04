@@ -1788,6 +1788,9 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     client->setAuthor( Address("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF") );
 
     client->injectSkaleHost();
+#ifdef BITE2
+    dev::eth::g_skaleHost = client->skaleHost();
+#endif
     client->startWorking();
 
     ClientTest* testClient = asClientTest( client.get() );
@@ -1947,6 +1950,11 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
                                                          true } );
 
     BOOST_REQUIRE( !res.first );
+
+#ifdef BITE2
+    if ( g_skaleHost )
+        g_skaleHost.reset();
+#endif
 }
 
 struct FilestorageFixture : public TestOutputHelperFixture {

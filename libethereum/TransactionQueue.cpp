@@ -471,11 +471,8 @@ void TransactionQueue::dropGood( Transaction const& _t ) {
     // BITE2 transactions are stored separately
     // they are also stored in the strict order
     // delete and return
-    if ( _t.isCTX() ) {
-        CHECK_EXPRESSION( _t == m_bite2Current.front() );
-        m_bite2Current.erase( m_bite2Current.begin() );
+    if ( m_bite2Queue.dropGood( _t ) )
         return;
-    }
 #endif
 
     if ( !_t.isInvalid() )
@@ -578,14 +575,31 @@ Transactions TransactionQueue::debugGetFutureTransactions() const {
 }
 
 #ifdef BITE2
-void TransactionQueue::importBITE2Transaction( Transaction&& _t ) {
-    WriteGuard l( m_lock );
-    BOOST_LOG( m_loggerTrace ) << "BITE2 txn arrived";
-    m_bite2Current.push_back( std::move( _t ) );
+const Transactions& TransactionQueue::pendingBITE2Transactions() const {
+    return m_bite2Queue.pendingBITE2Transactions();
 }
 
-const std::vector< Transaction >& TransactionQueue::pendingBITE2Transactions() const {
-    ReadGuard l( m_lock );
-    return m_bite2Current;
+Transactions TransactionQueue::debug_pendingBITE2Transactions() const {
+    return m_bite2Queue.debug_pendingBITE2Transactions();
+}
+
+void TransactionQueue::addTempBITE2Transaction( dev::eth::Transaction&& _transaction ) {
+    m_bite2Queue.addTemp( std::move( _transaction ) );
+}
+
+void TransactionQueue::commitTempBITE2Transactions() {
+    m_bite2Queue.commitTemp();
+}
+
+void TransactionQueue::clearTempBITE2Transactions() {
+    m_bite2Queue.clearTemp();
+}
+
+void TransactionQueue::clearAllBITE2Transactions() {
+    m_bite2Queue.clear();
+}
+
+void TransactionQueue::finalizeBITE2Queue() {
+    m_bite2Queue.finalize();
 }
 #endif
