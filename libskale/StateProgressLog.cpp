@@ -1,5 +1,7 @@
 #include "StateProgressLog.h"
 
+#include <libdevcore/RLP.h>
+
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
@@ -15,6 +17,8 @@ StateProgressLog::StateProgressLog( const fs::path& _dataDir ) {
 
     m_progressLogPath = progressLogDir / PROGRESS_LOG_FILE;
     m_tmpPath = progressLogDir / ( std::string( PROGRESS_LOG_FILE ) + ".tmp" );
+    m_receiptsPath = progressLogDir / RECEIPTS_FILE;
+    m_receiptsTmpPath = progressLogDir / ( std::string( RECEIPTS_FILE ) + ".tmp" );
 }
 
 void StateProgressLog::markBlockCommitStarted( uint64_t _blockNumber ) {
@@ -95,6 +99,64 @@ bool StateProgressLog::isBlockCommitCompleted( uint64_t _blockNumber ) const {
     }
 
     return storedBlockNumber == _blockNumber && storedStatus == Status::Completed;
+}
+
+void StateProgressLog::saveCommittedReceipts( const dev::eth::TransactionReceipts& _receipts ) {
+    dev::RLPStream rlpStream;
+    rlpStream.appendList( _receipts.size() );
+    for ( const auto& receipt : _receipts ) {
+        rlpStream.appendRaw( receipt.rlp() );
+    }
+    dev::bytes encoded = rlpStream.out();
+
+    {
+        std::ofstream tmpFile( m_receiptsTmpPath, std::ios::out | std::ios::binary | std::ios::trunc );
+        if ( !tmpFile ) {
+            BOOST_LOG( m_logger ) << "Failed to open receipts tmp file: " << m_receiptsTmpPath;
+            return;
+        }
+
+        tmpFile.write( reinterpret_cast< const char* >( encoded.data() ), encoded.size() );
+
+        tmpFile.flush();
+        if ( !tmpFile ) {
+            BOOST_LOG( m_logger ) << "Write failure for receipts (disk full?): " << m_receiptsTmpPath;
+            return;
+        }
+    }
+
+    boost::system::error_code ec;
+    fs::rename( m_receiptsTmpPath, m_receiptsPath, ec );
+
+    if ( ec ) {
+        BOOST_LOG( m_logger ) << "Receipts rename error: " << ec.message();
+    }
+}
+
+std::optional< dev::eth::TransactionReceipts > StateProgressLog::loadCommittedReceipts() const {
+    std::ifstream file( m_receiptsPath, std::ios::in | std::ios::binary );
+    if ( !file ) {
+        return std::nullopt;
+    }
+
+    dev::bytes encoded( ( std::istreambuf_iterator< char >( file ) ),
+        std::istreambuf_iterator< char >() );
+
+    if ( encoded.empty() ) {
+        return std::nullopt;
+    }
+
+    try {
+        dev::eth::TransactionReceipts receipts;
+        dev::RLP rlp( encoded );
+        for ( auto const& item : rlp ) {
+            receipts.emplace_back( item.data() );
+        }
+        return receipts;
+    } catch ( const std::exception& ex ) {
+        BOOST_LOG( m_logger ) << "Failed to decode receipts: " << ex.what();
+        return std::nullopt;
+    }
 }
 
 }  // namespace skale

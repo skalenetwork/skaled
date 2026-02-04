@@ -490,6 +490,10 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
     SyncContext context;
     context.singleCommitEnabled = SingleStateCommitPerBlockPatch::isEnabledInWorkingBlock();
 
+    if ( context.singleCommitEnabled && isCurrentBlockCommitted() ) {
+        return recoverFromReceipts( _transactions, _timestamp );
+    }
+
     prepareStateForSync( _timestamp, context );
     executeTransactions( _bc, _transactions, _gasPrice, context );
 
@@ -498,6 +502,49 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
     }
 
     return make_tuple( context.receipts, context.receipts.size() - context.badCount );
+}
+
+std::pair< TransactionReceipts, unsigned > Block::recoverFromReceipts(
+    const Transactions& _transactions, uint64_t _timestamp ) {
+    if ( !SingleStateCommitPerBlockPatch::isEnabledInWorkingBlock() ) {
+        BOOST_THROW_EXCEPTION(
+            std::runtime_error( "recoverFromReceipts called outside single commit mode" ) );
+    }
+
+    auto progressLog = m_state.getProgressLog();
+    if ( !progressLog ) {
+        BOOST_THROW_EXCEPTION(
+            std::runtime_error( "Progress log is not available during recovery" ) );
+    }
+
+    auto savedReceipts = progressLog->loadCommittedReceipts();
+    if ( !savedReceipts || savedReceipts->size() != _transactions.size() ) {
+        BOOST_THROW_EXCEPTION( std::runtime_error(
+            "Saved receipts missing or count mismatch during recovery for block " +
+            std::to_string( m_currentBlock.number() ) ) );
+    }
+
+    BOOST_LOG( m_loggerWarning ) << "Recovering block " << m_currentBlock.number()
+                                 << " from saved receipts";
+
+    resetCurrent( _timestamp );
+
+    for ( const auto& tx : _transactions ) {
+        m_transactions.push_back( tx );
+        m_transactionSet.insert( tx.sha3() );
+    }
+    m_receipts = std::move( *savedReceipts );
+
+    unsigned badCount = 0;
+    u256 cumulativeGas = 0;
+    for ( const auto& receipt : m_receipts ) {
+        if ( receipt.cumulativeGasUsed() == cumulativeGas ) {
+            badCount++;
+        }
+        cumulativeGas = receipt.cumulativeGasUsed();
+    }
+
+    return std::make_pair( m_receipts, m_receipts.size() - badCount );
 }
 
 void Block::prepareStateForSync( uint64_t _timestamp, SyncContext& _context ) {
@@ -512,8 +559,7 @@ void Block::prepareStateForSync( uint64_t _timestamp, SyncContext& _context ) {
 #endif
 
     if ( _context.singleCommitEnabled ) {
-        // In this case we will process all receipts again but will not commit if it has been
-        // already done.
+        // Recovery from saved receipts is handled in recoverFromReceipts() before reaching here.
         m_receipts.clear();
     } else {
         m_receipts = m_state.safePartialTransactionReceipts( info().number() );
@@ -635,7 +681,7 @@ bool Block::isCurrentBlockCommitted() {
 void Block::saveStateChanges(
     BlockChain const& _bc, const Transactions& _transactions, const SyncContext& _context ) {
     auto progressLog = m_state.getProgressLog();
-    if ( progressLog ) {
+    if ( progressLog && _context.singleCommitEnabled ) {
         progressLog->markBlockCommitStarted( m_currentBlock.number() );
     }
 
@@ -663,7 +709,8 @@ void Block::saveStateChanges(
 
     createBlockSnapshot();
 
-    if ( progressLog ) {
+    if ( progressLog && _context.singleCommitEnabled ) {
+        progressLog->saveCommittedReceipts( _context.receipts );
         progressLog->markBlockCommitCompleted( m_currentBlock.number() );
     }
 

@@ -354,6 +354,11 @@ private:
         Transaction const& _tx, unsigned _txIndex, u256 _gasPrice, skale::Permanence _permanence,
         SyncContext& _context );
     bool isCurrentBlockCommitted();
+    // Main recovery mechanism for single block commit mode.
+    // Loads saved receipts from progress log to skip re-execution after crash.
+    // Throws if called outside single commit mode or if receipts are unavailable.
+    std::pair< TransactionReceipts, unsigned > recoverFromReceipts(
+        const Transactions& _transactions, uint64_t _timestamp );
     void saveStateChanges(
         BlockChain const& _bc, const Transactions& _transactions, const SyncContext& _context );
     void runCommit( BlockChain const& _bc, const SyncContext& _context );  // run commit for state

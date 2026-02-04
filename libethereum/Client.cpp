@@ -270,10 +270,11 @@ void Client::initStateFromDiskOrGenesis() {
     if ( m_state.empty() ) {
         // Saving legacy transaction receipts empty value
         // to be compatible with < 4.0.0 zero block versions
-        // Only write if ClearPartialReceiptsPatch is not active from genesis
-        time_t clearPatchTimestamp =
+        // Skip if ClearPartialReceiptsPatch is enabled from genesis (activation timestamp == 1)
+        time_t patchActivation =
             chainParams().getPatchTimestamp( SchainPatchEnum::ClearPartialReceiptsPatch );
-        if ( clearPatchTimestamp == 0 || clearPatchTimestamp > 1 ) {
+        bool patchEnabledFromGenesis = ( patchActivation == 1 );
+        if ( !patchEnabledFromGenesis ) {
             BOOST_LOG( m_loggerInfo ) << "Saving legacy transaction receipts for empty state";
             m_state.safeCommitZeroBlockLegacyPartialTransactionReceipts();
         }

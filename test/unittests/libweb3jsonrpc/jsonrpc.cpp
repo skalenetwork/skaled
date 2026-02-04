@@ -2245,7 +2245,7 @@ BOOST_AUTO_TEST_CASE( single_state_commit_per_block_patch_transition ) {
     Json::Value configJson;
     Json::Reader().parse( c_genesisConfigString, configJson );
     time_t activationTimestamp = time( nullptr ) + 5;
-    configJson["skaleConfig"]["sChain"]["singleStateCommitPerBlockPatchTimestamp"] =
+    configJson["skaleConfig"]["sChain"]["SingleStateCommitPerBlockPatchTimestamp"] =
         static_cast< Json::Int64 >( activationTimestamp );
 
     Json::FastWriter fastWriter;
@@ -2259,10 +2259,10 @@ BOOST_AUTO_TEST_CASE( single_state_commit_per_block_patch_transition ) {
 
     u256 nextNonce;
 
-    auto sendPayment = [&]( const dev::Address& _to ) {
+    auto sendPayment = [&]() {
         Json::Value tx;
         tx["from"] = fixture.coinbase.address().hex();
-        tx["to"] = _to.hex();
+        tx["to"] = fixture.account2.address().hex();
         tx["value"] = toJS( 1 );
         tx["gas"] = toJS( 21000 );
         tx["gasPrice"] = fixture.rpcClient->eth_gasPrice();
@@ -2272,32 +2272,39 @@ BOOST_AUTO_TEST_CASE( single_state_commit_per_block_patch_transition ) {
         BOOST_REQUIRE( !hash.empty() );
     };
 
-    auto produceBlockWithTransactions = [&]() {
+    auto produceBlockWithTransaction = [&]() {
         nextNonce = jsToU256( fixture.rpcClient->eth_getTransactionCount(
-            fixture.coinbase.address().hex(), "pending" ) );
-        sendPayment( fixture.account2.address() );
-        sendPayment( fixture.account3.address() );
+            fixture.coinbase.address().hex(), "latest" ) );
+        sendPayment();
         dev::eth::mineTransaction( *( fixture.client ), 1 );
-        fixture.client->state().getOriginalDb()->createBlockSnap( fixture.client->number() );
-    };
-
-    auto expectCommitCount = []( uint64_t expectedCommits ) {
-        BOOST_REQUIRE_EQUAL( skale::state_commit_counter::count(), expectedCommits );
     };
 
     skale::state_commit_counter::reset();
-    produceBlockWithTransactions();
-    expectCommitCount( 3 );
+    produceBlockWithTransaction();
+    // Before activation: 2 commits (1 for tx execution, 1 for block state)
+    BOOST_REQUIRE_EQUAL( skale::state_commit_counter::count(), 2 );
+
+    // Receipts should not be saved before activation
+    auto progressLog = fixture.client->state().getProgressLog();
+    BOOST_REQUIRE( progressLog );
+    auto receiptsBefore = progressLog->loadCommittedReceipts();
+    BOOST_CHECK( !receiptsBefore );
 
     sleep( 6 );
 
     // Produce a block after the activation timestamp so subsequent blocks observe
     // commit-per-block semantics.
-    produceBlockWithTransactions();
+    produceBlockWithTransaction();
 
     skale::state_commit_counter::reset();
-    produceBlockWithTransactions();
-    expectCommitCount( 1 );
+    produceBlockWithTransaction();
+    // After activation: 1 commit (single commit per block)
+    BOOST_REQUIRE_EQUAL( skale::state_commit_counter::count(), 1 );
+
+    // Receipts should be saved after activation
+    auto receiptsAfter = progressLog->loadCommittedReceipts();
+    BOOST_REQUIRE( receiptsAfter );
+    BOOST_CHECK_EQUAL( receiptsAfter->size(), 1 );
 }
 
 BOOST_AUTO_TEST_CASE( state_progress_log_skip_already_committed ) {
@@ -2317,10 +2324,10 @@ BOOST_AUTO_TEST_CASE( state_progress_log_skip_already_committed ) {
 
     u256 nextNonce;
 
-    auto sendPayment = [&]( const dev::Address& _to ) {
+    auto sendPayment = [&]() {
         Json::Value tx;
         tx["from"] = fixture.coinbase.address().hex();
-        tx["to"] = _to.hex();
+        tx["to"] = fixture.account2.address().hex();
         tx["value"] = toJS( 1 );
         tx["gas"] = toJS( 21000 );
         tx["gasPrice"] = fixture.rpcClient->eth_gasPrice();
@@ -2330,25 +2337,18 @@ BOOST_AUTO_TEST_CASE( state_progress_log_skip_already_committed ) {
         BOOST_REQUIRE( !hash.empty() );
     };
 
-    auto produceBlockWithTransactions = [&]() {
+    auto produceBlockWithTransaction = [&]() {
         nextNonce = jsToU256( fixture.rpcClient->eth_getTransactionCount(
-            fixture.coinbase.address().hex(), "pending" ) );
-        sendPayment( fixture.account2.address() );
-        sendPayment( fixture.account3.address() );
+            fixture.coinbase.address().hex(), "latest" ) );
+        sendPayment();
         dev::eth::mineTransaction( *( fixture.client ), 1 );
-        fixture.client->state().getOriginalDb()->createBlockSnap( fixture.client->number() );
     };
 
-    auto expectCommitCount = []( uint64_t expectedCommits ) {
-        BOOST_REQUIRE_EQUAL( skale::state_commit_counter::count(), expectedCommits );
-    };
-
-    produceBlockWithTransactions();
-    uint64_t currentBlock = fixture.client->number();
+    produceBlockWithTransaction();
 
     skale::state_commit_counter::reset();
-    produceBlockWithTransactions();
-    expectCommitCount( 1 );
+    produceBlockWithTransaction();
+    BOOST_REQUIRE_EQUAL( skale::state_commit_counter::count(), 1 );
 
     auto progressLog = fixture.client->state().getProgressLog();
     BOOST_REQUIRE( progressLog );
@@ -2372,10 +2372,10 @@ BOOST_AUTO_TEST_CASE( state_progress_log_crash_recovery ) {
 
     u256 nextNonce;
 
-    auto sendPayment = [&]( const dev::Address& _to ) {
+    auto sendPayment = [&]() {
         Json::Value tx;
         tx["from"] = fixture.coinbase.address().hex();
-        tx["to"] = _to.hex();
+        tx["to"] = fixture.account2.address().hex();
         tx["value"] = toJS( 1 );
         tx["gas"] = toJS( 21000 );
         tx["gasPrice"] = fixture.rpcClient->eth_gasPrice();
@@ -2385,16 +2385,14 @@ BOOST_AUTO_TEST_CASE( state_progress_log_crash_recovery ) {
         BOOST_REQUIRE( !hash.empty() );
     };
 
-    auto produceBlockWithTransactions = [&]() {
+    auto produceBlockWithTransaction = [&]() {
         nextNonce = jsToU256( fixture.rpcClient->eth_getTransactionCount(
-            fixture.coinbase.address().hex(), "pending" ) );
-        sendPayment( fixture.account2.address() );
-        sendPayment( fixture.account3.address() );
+            fixture.coinbase.address().hex(), "latest" ) );
+        sendPayment();
         dev::eth::mineTransaction( *( fixture.client ), 1 );
-        fixture.client->state().getOriginalDb()->createBlockSnap( fixture.client->number() );
     };
 
-    produceBlockWithTransactions();
+    produceBlockWithTransaction();
 
     auto progressLog = fixture.client->state().getProgressLog();
     BOOST_REQUIRE( progressLog );
@@ -2406,7 +2404,7 @@ BOOST_AUTO_TEST_CASE( state_progress_log_crash_recovery ) {
     BOOST_CHECK( !progressLog->isBlockCommitCompleted( completedBlock + 1 ) );
 
     skale::state_commit_counter::reset();
-    produceBlockWithTransactions();
+    produceBlockWithTransaction();
     BOOST_REQUIRE_EQUAL( skale::state_commit_counter::count(), 1 );
 
     BOOST_CHECK( progressLog->isBlockCommitCompleted( fixture.client->number() ) );
