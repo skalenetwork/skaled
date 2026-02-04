@@ -667,6 +667,18 @@ Json::Value Skale::bite_getDecryptedTransactionData( const std::string& _transac
             jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
 }
+
+#ifdef BITE2
+Json::Value Skale::bite_getCraftedCtxs( const std::string& _transactionHash ) {
+    ( void ) _transactionHash;
+    return Json::Value();
+}
+
+Json::Value Skale::bite_getCtxOrigin( const std::string& _transactionHash ) {
+    ( void ) _transactionHash;
+    return Json::Value();
+}
+#endif  // BITE2
 #endif  // BITE
 
 namespace snapshot {
