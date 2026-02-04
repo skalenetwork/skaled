@@ -1207,6 +1207,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
                           TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
                           TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
         }
+
         receipt.setRevertReason( strRevertReason );
 
         // if we are committing we need to know transaction index in block since

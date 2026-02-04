@@ -376,8 +376,20 @@ void SkaleHost::pushToBroadcastQueue( const Transaction& _t ) {
 }
 
 #ifdef BITE2
-void SkaleHost::pushToBITE2Queue( dev::eth::Transaction&& _transaction ) {
-    m_tq.importBITE2Transaction( std::move( _transaction ) );
+void SkaleHost::addTempBITE2Transaction( dev::eth::Transaction&& _transaction ) {
+    m_tq.addTempBITE2Transaction( std::move( _transaction ) );
+}
+
+void SkaleHost::commitTempBITE2Transactions() {
+    m_tq.commitTempBITE2Transactions();
+}
+
+void SkaleHost::clearTempBITE2Transactions() {
+    m_tq.clearTempBITE2Transactions();
+}
+
+void SkaleHost::finalizeBITE2Queue() {
+    m_tq.finalizeBITE2Queue();
 }
 #endif
 
@@ -1090,6 +1102,7 @@ std::vector< Transaction > SkaleHost::processCTXTransactions(
         if ( ctxIterator != _decryptedTransactions.catTxsMap->end() )
             ++ctxIterator;
     }
+    m_tq.clearAllBITE2Transactions();
     return outTxns;
 }
 #endif

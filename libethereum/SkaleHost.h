@@ -129,14 +129,18 @@ public:
     dev::h256 receiveTransaction( std::string );
 
     void pushToBroadcastQueue( const dev::eth::Transaction& _transaction );
+  
 #ifdef BITE2
-    void pushToBITE2Queue( dev::eth::Transaction&& _transaction );
-
     // Get deterministic random value for encryption call
     // Combines Hash(blockRandom || counter) where counter auto-increments for each call
     // Counter resets at each new block
     // Returns 32-byte random value suitable for use as encryption seed
     dev::h256 getEncryptionCallRandom( unsigned _blockNumber, bool _isReadOnly );
+
+    void addTempBITE2Transaction( dev::eth::Transaction&& _transaction );
+    void commitTempBITE2Transactions();
+    void clearTempBITE2Transactions();
+    void finalizeBITE2Queue();
 #endif
 
     dev::u256 getGasPrice( unsigned _blockNumber = dev::eth::LatestBlock ) const;
