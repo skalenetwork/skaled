@@ -39,8 +39,9 @@ public:
     /// No lock, returns reference to entire buffer. For internal logic.
     const std::vector< Transaction >& pendingBITE2Transactions() const;
 
-    // addTemp(), commitTemp(), clearTemp(), clear() and finalize() are always called from the same
-    // thread and pendingBITE2Transactions() always called AFTER methods above are executed
+    // addTemp(), getTempHashes(), commitTemp(), clearTemp(), clear() and finalize()
+    // are always called from the same thread
+    // and pendingBITE2Transactions() always called AFTER methods above are executed
     // therefore, there is no need in extra synchronization
     // only debug_pendingBITE2Transactions requires synchronization
     // because it is used by JSON RPC API
@@ -48,6 +49,8 @@ public:
     void finalize();
 
     void addTemp( Transaction&& _t );
+    /// Get hashes of CTXs crafted by transaction that is being executed now
+    std::vector< h256 > getTempHashes() const;
     void commitTemp();
     void clearTemp();
     void clear();
@@ -58,7 +61,8 @@ public:
 
 private:
     std::vector< Transaction > m_current;
-    std::atomic_int m_currentHeadIndex = -1;
+    std::atomic_size_t m_currentHeadIndex = -1;
+    bool m_empty = true;
     mutable SharedMutex m_lock;
 
     Logger m_loggerWarning{ createLogger( VerbosityWarning, "BITE2Queue" ) };
