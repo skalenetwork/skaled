@@ -117,7 +117,7 @@ public:
         return block_gas_prices.at( _blockId );
     }
 
-    u256 getRandomForBlockId( uint64_t _blockId ) const override { return 0; }
+    u256 getRandomForBlockId( uint64_t _blockId ) const override { return _blockId; }
 
     u256 setPriceForBlockId( uint64_t _blockId, u256 _gasPrice ) {
         assert( _blockId <= block_gas_prices.size() );
@@ -2071,15 +2071,15 @@ BOOST_AUTO_TEST_CASE( encryptTE_counter_reset_on_new_block ) {
     size_t paddingNeeded = 32 - ( dataToEncrypt.size() % 32 );
     input.insert( input.end(), paddingNeeded, 0 );
 
-    // Call the precompiled contract in block 1
+    // Call the precompiled contract in block 1 context (simulating transaction execution)
     auto res1 = exec( bytesConstRef( input.data(), input.size() ),
-        PrecompiledCallContext( 1, 0, 0, dev::Address(), true ) );
+        PrecompiledCallContext( 1, 0, 0, dev::Address(), false ) );
 
     BOOST_REQUIRE( res1.first );
 
-    // Call the precompiled contract in block 2
+    // Call the precompiled contract in block 2 context (simulating transaction execution)
     auto res2 = exec( bytesConstRef( input.data(), input.size() ),
-        PrecompiledCallContext( 2, 0, 0, dev::Address(), true ) );
+        PrecompiledCallContext( 2, 0, 0, dev::Address(), false ) );
 
     BOOST_REQUIRE( res2.first );
 
@@ -2100,11 +2100,11 @@ BOOST_AUTO_TEST_CASE( encryptTE_counter_reset_on_new_block ) {
     // Counter resets to 0 on each new block
     // Block 1: counter=0, blockRandom for block 1
     bytes expectedCiphertext1 = test::buildDeterministicCiphertext( 
-        fixture.skaleHost->getBlockRandom( 1, true ), 0, publicKeys, dataToEncrypt );
+        fixture.skaleHost->getBlockRandom( 1, false ), 0, publicKeys, dataToEncrypt );
     
     // Block 2: counter=0 (reset!), blockRandom for block 2
     bytes expectedCiphertext2 = test::buildDeterministicCiphertext( 
-        fixture.skaleHost->getBlockRandom( 2, true ), 0, publicKeys, dataToEncrypt );
+        fixture.skaleHost->getBlockRandom( 2, false ), 0, publicKeys, dataToEncrypt );
 
     // Verify both match expected (proving counter was reset to 0 in block 2)
     BOOST_REQUIRE( ciphertextBytes1 == expectedCiphertext1 );
