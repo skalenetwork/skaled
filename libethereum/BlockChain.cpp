@@ -626,10 +626,13 @@ ImportRoute BlockChain::import( const Block& _block ) {
     verifiedBlock.decryptedTransactions = _block.decryptedTransactions();
 #ifdef BITE2
     CHECK_EXPRESSION( verifiedBlock.decryptedTransactions.catTxsMap );
-#endif
+#endif  // BITE2
     CHECK_EXPRESSION( verifiedBlock.decryptedTransactions.regularTxsMap );
-#endif
-    //    verifyBlock( ref( _block.blockData() ), m_onBad, ImportRequirements::OutOfOrderChecks );
+
+#ifdef BITE2
+    verifiedBlock.ctxHashesLists = _block.ctxHashesLists();
+#endif  // BITE2
+#endif  // BITE
 
     BlockReceipts blockReceipts;
     for ( unsigned i = 0; i < _block.pending().size(); ++i )

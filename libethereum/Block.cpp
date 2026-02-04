@@ -508,6 +508,8 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
     }
 
 
+    m_ctxHashesLists.reserve( _transactions.size() );
+
     for ( unsigned i = 0; i < _transactions.size(); ++i ) {
         Transaction const& tr = _transactions[i];
         try {
@@ -581,7 +583,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
                 g_skaleHost->clearTempBITE2Transactions();
             } else {
                 // get list of CTX hashes created by current txn
-                auto ctxHashes = g_skaleHost->getBITE2HashesForCurrentTxn();
+                m_ctxHashesLists[i] = g_skaleHost->getBITE2HashesForCurrentTxn();
                 // commit CTXs from temporary to permanent
                 g_skaleHost->commitTempBITE2Transactions();
             }
