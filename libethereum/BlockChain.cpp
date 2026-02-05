@@ -778,9 +778,15 @@ void BlockChain::insertTransactionsDetailsToDb(
         RLP txns_rlp = blockRLP[1];
 
 #ifdef BITE
+#ifdef BITE2
+        CHECK_EXPRESSION( _block.ctxHashesLists.size() == _block.transactions.size() );
+        CtxOrigin ctxOrigin( _block.ctxHashesLists );
+        _extrasWriteBatch.insert( toSlice( _block.info.hash(), ExtraCtxOrigin ),
+            ( db::Slice ) dev::ref( ctxOrigin.rlp() ) );
+#endif  // BITE2
         CHECK_EXPRESSION( _block.decryptedTransactions.regularTxsMap );
         auto regularTxnsIterator = _block.decryptedTransactions.regularTxsMap->begin();
-#endif
+#endif  // BITE
         for ( RLP::iterator it = txns_rlp.begin(); it != txns_rlp.end(); ++it ) {
             MICROPROFILE_SCOPEI( "insertBlockAndExtras", "for2", MP_HONEYDEW );
 
