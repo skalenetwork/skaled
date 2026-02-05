@@ -306,6 +306,9 @@ private:
     // No mutex needed since EVM execution is sequential
     uint64_t m_encryptionCounter = 0;
 
+    // Cached block random bytes for current block to avoid recomputation
+    dev::bytes m_cachedBlockRandomBytes;
+
 #endif
 
     // reject old transactions that come through broadcast
