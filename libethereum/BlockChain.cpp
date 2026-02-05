@@ -1362,7 +1362,13 @@ void BlockChain::updateStats() const {
         m_lastStats.memDecryptedTransactionsData =
             getApproximateHashSize( m_decryptedTransactionsData );
     }
-#endif
+#ifdef BITE2
+    {
+        DEV_READ_GUARDED( x_ctxOrigin )
+        m_lastStats.memCtxOrigin = getApproximateHashSize( m_ctxOrigin );
+    }
+#endif  // BITE2
+#endif  // BITE
 }
 
 uint64_t BlockChain::getTotalCacheMemory() {
@@ -1431,7 +1437,14 @@ void BlockChain::garbageCollect( bool _force ) {
                 m_decryptedTransactionsData.erase( id.first );
                 break;
             }
-#endif
+#ifdef BITE2
+            case ExtraCtxOrigin: {
+                WriteGuard l( x_ctxOrigin );
+                m_ctxOrigin.erase( id.first );
+                break;
+            }
+#endif  // BITE2
+#endif  // BITE
             }
         }
         m_cacheUsage.pop_back();
@@ -1495,7 +1508,13 @@ void BlockChain::clearCaches() {
         WriteGuard l( x_decryptedTransactionsData );
         m_decryptedTransactionsData.clear();
     }
-#endif
+#ifdef BITE2
+    {
+        WriteGuard l( x_ctxOrigin );
+        m_ctxOrigin.clear();
+    }
+#endif  // BITE2
+#endif  // BITE
 }
 
 void BlockChain::doLevelDbCompaction() const {
@@ -1542,9 +1561,13 @@ void BlockChain::clearCachesDuringChainReversion( unsigned _firstInvalid ) {
     m_transactionAddresses.clear();  // TODO: could perhaps delete them individually?
 
 #ifdef BITE
-    DEV_WRITE_GUARDED( x_decryptedTransactionsData )
+    DEV_WRITE_GUARDED( x_decryptedTransactionsData );
     m_decryptedTransactionsData.clear();
-#endif
+#ifdef BITE2
+    DEV_WRITE_GUARDED( x_ctxOrigin );
+    m_ctxOrigin.clear();
+#endif  // BITE2
+#endif  // BITE
 
     // If we are reverting previous blocks, we need to clear their blooms (in particular, to
     // rebuild any higher level blooms that they contributed to).

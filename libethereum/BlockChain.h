@@ -107,7 +107,11 @@ enum {
 #ifdef BITE
     ,
     ExtraTransactionDecryptedData
-#endif
+#ifdef BITE2
+    ,
+    ExtraCtxOrigin
+#endif  // BITE2
+#endif  // BITE
 };
 
 class VersionChecker {
@@ -410,13 +414,19 @@ public:
         unsigned memBlockHashes = 0;
 #ifdef BITE
         unsigned memDecryptedTransactionsData = 0;
-#endif
+#ifdef BITE2
+        unsigned memCtxOrigin = 0;
+#endif  // BITE2
+#endif  // BITE
         unsigned memTotal() const {
             return memBlocks + memDetails + memLogBlooms + memReceipts + memTransactionAddresses +
                    memBlockHashes
 #ifdef BITE
                    + memDecryptedTransactionsData
-#endif
+#ifdef BITE2
+                   + memCtxOrigin
+#endif  // BITE2
+#endif  // BITE
                 ;
         }
     };
@@ -617,7 +627,11 @@ private:
 #ifdef BITE
     mutable SharedMutex x_decryptedTransactionsData;
     mutable DecryptedTransactionDataHash m_decryptedTransactionsData;
-#endif
+#ifdef BITE2
+    mutable SharedMutex x_ctxOrigin;
+    mutable CtxOriginHash m_ctxOrigin;
+#endif  // BITE2
+#endif  // BITE
 
     using CacheID = std::pair< h256, unsigned >;
     mutable Mutex x_cacheUsage;
