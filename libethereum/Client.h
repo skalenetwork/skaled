@@ -155,8 +155,8 @@ public:
     Transactions debugGetFutureTransactions() const { return m_tq.debugGetFutureTransactions(); }
 
 #ifdef BITE2
-    const Transactions& debugGetPendingBITE2Transactions() const {
-        return m_tq.pendingBITE2Transactions();
+    Transactions debugGetPendingBITE2Transactions() const {
+        return m_tq.debug_pendingBITE2Transactions();
     }
 #endif
 

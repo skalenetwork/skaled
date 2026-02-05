@@ -104,8 +104,8 @@ namespace rpc {
 h256 h256fromHex( std::string const& _s );
 }
 
-template < class T >
-Json::Value toJson( std::vector< T > const& _es ) {
+template < class Container >
+auto toJson( Container const& _es ) -> decltype( _es.begin(), _es.end(), Json::Value() ) {
     Json::Value res( Json::arrayValue );
     for ( auto const& e : _es )
         res.append( toJson( e ) );
@@ -122,22 +122,6 @@ rapidjson::Document toRapidJson(
         res.PushBack( toRapidJson( e, allocator ), allocator );
     }
 
-    return res;
-}
-
-template < class T >
-Json::Value toJson( std::unordered_set< T > const& _es ) {
-    Json::Value res( Json::arrayValue );
-    for ( auto const& e : _es )
-        res.append( toJson( e ) );
-    return res;
-}
-
-template < class T >
-Json::Value toJson( std::set< T > const& _es ) {
-    Json::Value res( Json::arrayValue );
-    for ( auto const& e : _es )
-        res.append( toJson( e ) );
     return res;
 }
 

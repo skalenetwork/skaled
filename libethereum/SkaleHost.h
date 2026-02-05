@@ -130,7 +130,10 @@ public:
 
     void pushToBroadcastQueue( const dev::eth::Transaction& _transaction );
 #ifdef BITE2
-    void pushToBITE2Queue( dev::eth::Transaction&& _transaction );
+    void addTempBITE2Transaction( dev::eth::Transaction&& _transaction );
+    void commitTempBITE2Transactions();
+    void clearTempBITE2Transactions();
+    void finalizeBITE2Queue();
 #endif
 
     dev::u256 getGasPrice( unsigned _blockNumber = dev::eth::LatestBlock ) const;
