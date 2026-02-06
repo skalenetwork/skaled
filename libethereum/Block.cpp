@@ -43,6 +43,11 @@
 
 #include <skutils/console_colors.h>
 
+#ifdef BITE2
+#include <libethereum/Precompiled.h>
+#include <libethereum/SkaleHost.h>
+#endif
+
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -569,6 +574,17 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
                     ++countBad;
             }
 
+#ifdef BITE2
+            if ( res.excepted != TransactionException::None ) {
+                // clear all CTXs that were added by last tx
+                // because it was reverted
+                g_skaleHost->clearTempBITE2Transactions();
+            } else {
+                // commit CTXs from temporary to permanent
+                g_skaleHost->commitTempBITE2Transactions();
+            }
+#endif
+
         } catch ( Exception& ex ) {
             ex << errinfo_transactionIndex( i );
             // throw;
@@ -576,6 +592,11 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
             BOOST_LOG( m_loggerError ) << "FAILED transaction after consensus! " << ex.what();
         }
     }
+#ifdef BITE2
+    // finalize BITE2 queue after executing all txns from current block
+    g_skaleHost->finalizeBITE2Queue();
+#endif
+
 #ifdef FAIR
     auto lastRewardedBlockNumber = m_state.getLastRewardedBlockNumber();
     if ( lastRewardedBlockNumber < m_currentBlock.number() ) {

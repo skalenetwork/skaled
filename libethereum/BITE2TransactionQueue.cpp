@@ -1,0 +1,85 @@
+/*
+    Modifications Copyright (C) 2018-2026 SKALE Labs
+
+    This file is part of cpp-ethereum.
+
+    cpp-ethereum is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    cpp-ethereum is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+#ifdef BITE2
+
+#include "BITE2TransactionQueue.h"
+#include <libethcore/Exceptions.h>
+
+using namespace dev;
+using namespace dev::eth;
+
+std::vector< Transaction > BITE2TransactionQueue::debug_pendingBITE2Transactions() const {
+    // requires lock because called from JSON RPC API
+    ReadGuard l( m_lock );
+    return m_current;
+}
+
+const std::vector< Transaction >& BITE2TransactionQueue::pendingBITE2Transactions() const {
+    // no lock - called strictly AFTER finalize(), no new txns can be added at this point
+    return m_current;
+}
+
+void BITE2TransactionQueue::addTemp( Transaction&& _t ) {
+    WriteGuard l( m_lock );
+    BOOST_LOG( m_loggerTrace ) << "BITE2 txn arrived";
+    m_current.push_back( std::move( _t ) );
+}
+
+void BITE2TransactionQueue::commitTemp() {
+    // m_currentHeadIndex should always point to last element during block execution
+    // used as checkpoint for rollbacks
+    m_currentHeadIndex.store( m_current.size() - 1, std::memory_order_relaxed );
+}
+
+void BITE2TransactionQueue::clearTemp() {
+    WriteGuard l( m_lock );
+    // delete all temporary CTXs until last checkpoint
+    while ( int( m_current.size() ) > m_currentHeadIndex + 1 ) {
+        m_current.pop_back();
+    }
+}
+
+void BITE2TransactionQueue::clear() {
+    WriteGuard l( m_lock );
+    m_current.clear();
+    m_currentHeadIndex.store( -1, std::memory_order_relaxed );
+}
+
+void BITE2TransactionQueue::finalize() {
+    // prepare for the next block processing
+    // m_currentHeadIndex points to first not yet verified CTX
+    m_currentHeadIndex = 0;
+}
+
+bool BITE2TransactionQueue::dropGood( const Transaction& _t ) {
+    if ( _t.isCTX() ) {
+        // BITE2 transactions are stored separately
+        // they are also stored in the strict order
+        CHECK_EXPRESSION( m_currentHeadIndex < int( m_current.size() ) );
+        // Check that we indeed are dropping the front transaction
+        CHECK_EXPRESSION( _t == m_current[m_currentHeadIndex] );
+        m_currentHeadIndex.fetch_add( 1, std::memory_order_relaxed );
+        return true;
+    }
+    return false;
+}
+
+
+#endif  // BITE2
