@@ -101,6 +101,17 @@ bool StateProgressLog::isBlockCommitCompleted( uint64_t _blockNumber ) const {
     return storedBlockNumber == _blockNumber && storedStatus == Status::Completed;
 }
 
+bool StateProgressLog::isBlockCommitStartedButNotCompleted( uint64_t _blockNumber ) const {
+    uint64_t storedBlockNumber = 0;
+    Status storedStatus = Status::Started;
+
+    if ( !readStatus( storedBlockNumber, storedStatus ) ) {
+        return false;
+    }
+
+    return storedBlockNumber == _blockNumber && storedStatus == Status::Started;
+}
+
 void StateProgressLog::saveCommittedProgressData(
     const dev::eth::TransactionReceipts& _receipts, uint64_t _timestamp ) {
     dev::RLPStream rlpStream;

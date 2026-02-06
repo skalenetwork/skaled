@@ -29,6 +29,7 @@ public:
     std::optional< CommittedProgressData > loadCommittedProgressData() const;
 
     bool isBlockCommitCompleted( uint64_t _blockNumber ) const;
+    bool isBlockCommitStartedButNotCompleted( uint64_t _blockNumber ) const;
 
     inline static const std::string PROGRESS_LOG_DIR = "progress_log";
     inline static const std::string PROGRESS_LOG_FILE = "last_state_committed_block";
