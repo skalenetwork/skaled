@@ -13,12 +13,7 @@ namespace fs = boost::filesystem;
 
 BOOST_AUTO_TEST_SUITE( StateProgressLogSuite )
 
-std::string readFileContent( const fs::path& path ) {
-    std::ifstream file( path.string() );
-    std::stringstream buffer;
-    buffer << file.rdbuf();
-    return buffer.str();
-}
+static const dev::eth::TransactionReceipts emptyReceipts;
 
 BOOST_AUTO_TEST_CASE( directory_creation ) {
     dev::TransientDirectory tempDir;
@@ -36,33 +31,29 @@ BOOST_AUTO_TEST_CASE( mark_block_commit_started ) {
     StateProgressLog log( tempDir.path() );
     log.markBlockCommitStarted( 12345 );
 
-    fs::path logFile = fs::path( tempDir.path() ) / StateProgressLog::PROGRESS_LOG_DIR /
-                       StateProgressLog::PROGRESS_LOG_FILE;
-    BOOST_REQUIRE( fs::exists( logFile ) );
-
-    std::string content = readFileContent( logFile );
-    BOOST_CHECK_EQUAL( content, "12345: started\n" );
+    auto data = log.loadProgressData();
+    BOOST_REQUIRE( data.has_value() );
+    BOOST_CHECK_EQUAL( data->blockNumber, 12345 );
+    BOOST_CHECK_EQUAL( data->status, 0 );  // Started
 }
 
 BOOST_AUTO_TEST_CASE( mark_block_commit_completed ) {
     dev::TransientDirectory tempDir;
 
     StateProgressLog log( tempDir.path() );
-    log.markBlockCommitCompleted( 67890 );
+    log.markBlockCommitCompleted( 67890, emptyReceipts, 0 );
 
-    fs::path logFile = fs::path( tempDir.path() ) / StateProgressLog::PROGRESS_LOG_DIR /
-                       StateProgressLog::PROGRESS_LOG_FILE;
-    BOOST_REQUIRE( fs::exists( logFile ) );
-
-    std::string content = readFileContent( logFile );
-    BOOST_CHECK_EQUAL( content, "67890: completed\n" );
+    auto data = log.loadProgressData();
+    BOOST_REQUIRE( data.has_value() );
+    BOOST_CHECK_EQUAL( data->blockNumber, 67890 );
+    BOOST_CHECK_EQUAL( data->status, 1 );  // Completed
 }
 
 BOOST_AUTO_TEST_CASE( is_block_commit_completed_true ) {
     dev::TransientDirectory tempDir;
 
     StateProgressLog log( tempDir.path() );
-    log.markBlockCommitCompleted( 100 );
+    log.markBlockCommitCompleted( 100, emptyReceipts, 0 );
 
     BOOST_CHECK( log.isBlockCommitCompleted( 100 ) );
 }
@@ -80,7 +71,7 @@ BOOST_AUTO_TEST_CASE( is_block_commit_completed_false_wrong_block ) {
     dev::TransientDirectory tempDir;
 
     StateProgressLog log( tempDir.path() );
-    log.markBlockCommitCompleted( 100 );
+    log.markBlockCommitCompleted( 100, emptyReceipts, 0 );
 
     BOOST_CHECK( !log.isBlockCommitCompleted( 101 ) );
 }
@@ -99,13 +90,13 @@ BOOST_AUTO_TEST_CASE( file_overwrite ) {
     StateProgressLog log( tempDir.path() );
 
     log.markBlockCommitStarted( 1 );
-    log.markBlockCommitCompleted( 1 );
+    log.markBlockCommitCompleted( 1, emptyReceipts, 0 );
     log.markBlockCommitStarted( 2 );
 
-    fs::path logFile = fs::path( tempDir.path() ) / StateProgressLog::PROGRESS_LOG_DIR /
-                       StateProgressLog::PROGRESS_LOG_FILE;
-    std::string content = readFileContent( logFile );
-    BOOST_CHECK_EQUAL( content, "2: started\n" );
+    auto data = log.loadProgressData();
+    BOOST_REQUIRE( data.has_value() );
+    BOOST_CHECK_EQUAL( data->blockNumber, 2 );
+    BOOST_CHECK_EQUAL( data->status, 0 );  // Started
 }
 
 BOOST_AUTO_TEST_CASE( large_block_number ) {
@@ -114,14 +105,9 @@ BOOST_AUTO_TEST_CASE( large_block_number ) {
     StateProgressLog log( tempDir.path() );
 
     uint64_t largeBlockNumber = 18446744073709551615ULL;
-    log.markBlockCommitCompleted( largeBlockNumber );
+    log.markBlockCommitCompleted( largeBlockNumber, emptyReceipts, 0 );
 
     BOOST_CHECK( log.isBlockCommitCompleted( largeBlockNumber ) );
-
-    fs::path logFile = fs::path( tempDir.path() ) / StateProgressLog::PROGRESS_LOG_DIR /
-                       StateProgressLog::PROGRESS_LOG_FILE;
-    std::string content = readFileContent( logFile );
-    BOOST_CHECK_EQUAL( content, "18446744073709551615: completed\n" );
 }
 
 BOOST_AUTO_TEST_CASE( zero_block_number ) {
@@ -129,14 +115,9 @@ BOOST_AUTO_TEST_CASE( zero_block_number ) {
 
     StateProgressLog log( tempDir.path() );
 
-    log.markBlockCommitCompleted( 0 );
+    log.markBlockCommitCompleted( 0, emptyReceipts, 0 );
 
     BOOST_CHECK( log.isBlockCommitCompleted( 0 ) );
-
-    fs::path logFile = fs::path( tempDir.path() ) / StateProgressLog::PROGRESS_LOG_DIR /
-                       StateProgressLog::PROGRESS_LOG_FILE;
-    std::string content = readFileContent( logFile );
-    BOOST_CHECK_EQUAL( content, "0: completed\n" );
 }
 
 BOOST_AUTO_TEST_CASE( started_then_completed_sequence ) {
@@ -147,7 +128,7 @@ BOOST_AUTO_TEST_CASE( started_then_completed_sequence ) {
     log.markBlockCommitStarted( 42 );
     BOOST_CHECK( !log.isBlockCommitCompleted( 42 ) );
 
-    log.markBlockCommitCompleted( 42 );
+    log.markBlockCommitCompleted( 42, emptyReceipts, 0 );
     BOOST_CHECK( log.isBlockCommitCompleted( 42 ) );
 }
 
@@ -156,7 +137,7 @@ BOOST_AUTO_TEST_CASE( persistence_across_instances ) {
 
     {
         StateProgressLog log( tempDir.path() );
-        log.markBlockCommitCompleted( 500 );
+        log.markBlockCommitCompleted( 500, emptyReceipts, 0 );
     }
 
     {
@@ -222,7 +203,7 @@ BOOST_AUTO_TEST_CASE( consecutive_block_numbers ) {
         log.markBlockCommitStarted( block );
         BOOST_CHECK( !log.isBlockCommitCompleted( block ) );
 
-        log.markBlockCommitCompleted( block );
+        log.markBlockCommitCompleted( block, emptyReceipts, 0 );
         BOOST_CHECK( log.isBlockCommitCompleted( block ) );
     }
 
@@ -243,7 +224,7 @@ BOOST_AUTO_TEST_CASE( crash_after_mark_started ) {
         BOOST_CHECK( !log.isBlockCommitCompleted( 10 ) );
 
         log.markBlockCommitStarted( 10 );
-        log.markBlockCommitCompleted( 10 );
+        log.markBlockCommitCompleted( 10, emptyReceipts, 0 );
 
         BOOST_CHECK( log.isBlockCommitCompleted( 10 ) );
     }
@@ -255,7 +236,7 @@ BOOST_AUTO_TEST_CASE( skip_already_committed_block ) {
     {
         StateProgressLog log( tempDir.path() );
         log.markBlockCommitStarted( 40 );
-        log.markBlockCommitCompleted( 40 );
+        log.markBlockCommitCompleted( 40, emptyReceipts, 0 );
     }
 
     {
@@ -277,7 +258,7 @@ BOOST_AUTO_TEST_CASE( reprocess_incomplete_block ) {
         BOOST_CHECK( !log.isBlockCommitCompleted( 50 ) );
 
         log.markBlockCommitStarted( 50 );
-        log.markBlockCommitCompleted( 50 );
+        log.markBlockCommitCompleted( 50, emptyReceipts, 0 );
 
         BOOST_CHECK( log.isBlockCommitCompleted( 50 ) );
     }
@@ -290,7 +271,7 @@ BOOST_AUTO_TEST_CASE( multiple_blocks_with_crash_in_middle ) {
         StateProgressLog log( tempDir.path() );
         for ( uint64_t block = 1; block <= 5; ++block ) {
             log.markBlockCommitStarted( block );
-            log.markBlockCommitCompleted( block );
+            log.markBlockCommitCompleted( block, emptyReceipts, 0 );
         }
         log.markBlockCommitStarted( 6 );
     }
@@ -302,7 +283,7 @@ BOOST_AUTO_TEST_CASE( multiple_blocks_with_crash_in_middle ) {
         BOOST_CHECK( !log.isBlockCommitCompleted( 6 ) );
 
         log.markBlockCommitStarted( 6 );
-        log.markBlockCommitCompleted( 6 );
+        log.markBlockCommitCompleted( 6, emptyReceipts, 0 );
 
         BOOST_CHECK( log.isBlockCommitCompleted( 6 ) );
     }
@@ -316,7 +297,7 @@ BOOST_AUTO_TEST_CASE( restart_same_block_allowed ) {
     log.markBlockCommitStarted( 70 );
     log.markBlockCommitStarted( 70 );
 
-    log.markBlockCommitCompleted( 70 );
+    log.markBlockCommitCompleted( 70, emptyReceipts, 0 );
     BOOST_CHECK( log.isBlockCommitCompleted( 70 ) );
 }
 
@@ -326,14 +307,27 @@ BOOST_AUTO_TEST_CASE( start_next_block_after_completion ) {
     StateProgressLog log( tempDir.path() );
 
     log.markBlockCommitStarted( 80 );
-    log.markBlockCommitCompleted( 80 );
+    log.markBlockCommitCompleted( 80, emptyReceipts, 0 );
 
     log.markBlockCommitStarted( 81 );
     BOOST_CHECK( !log.isBlockCommitCompleted( 80 ) );
     BOOST_CHECK( !log.isBlockCommitCompleted( 81 ) );
 
-    log.markBlockCommitCompleted( 81 );
+    log.markBlockCommitCompleted( 81, emptyReceipts, 0 );
     BOOST_CHECK( log.isBlockCommitCompleted( 81 ) );
+}
+
+BOOST_AUTO_TEST_CASE( is_block_commit_started_but_not_completed ) {
+    dev::TransientDirectory tempDir;
+
+    StateProgressLog log( tempDir.path() );
+
+    log.markBlockCommitStarted( 99 );
+    BOOST_CHECK( log.isBlockCommitStartedButNotCompleted( 99 ) );
+    BOOST_CHECK( !log.isBlockCommitStartedButNotCompleted( 100 ) );
+
+    log.markBlockCommitCompleted( 99, emptyReceipts, 0 );
+    BOOST_CHECK( !log.isBlockCommitStartedButNotCompleted( 99 ) );
 }
 
 BOOST_AUTO_TEST_CASE( save_load_empty_receipts ) {
@@ -341,12 +335,13 @@ BOOST_AUTO_TEST_CASE( save_load_empty_receipts ) {
 
     StateProgressLog log( tempDir.path() );
 
-    dev::eth::TransactionReceipts emptyReceipts;
     uint64_t timestamp = 1700000000;
-    log.saveCommittedProgressData( emptyReceipts, timestamp );
+    log.markBlockCommitCompleted( 1, emptyReceipts, timestamp );
 
-    auto loaded = log.loadCommittedProgressData();
+    auto loaded = log.loadProgressData();
     BOOST_REQUIRE( loaded.has_value() );
+    BOOST_CHECK_EQUAL( loaded->blockNumber, 1 );
+    BOOST_CHECK_EQUAL( loaded->status, 1 );
     BOOST_CHECK( loaded->receipts.empty() );
     BOOST_CHECK_EQUAL( loaded->timestamp, timestamp );
 }
@@ -363,10 +358,11 @@ BOOST_AUTO_TEST_CASE( save_load_single_receipt ) {
     receipts.push_back( receipt );
 
     uint64_t timestamp = 1700000001;
-    log.saveCommittedProgressData( receipts, timestamp );
+    log.markBlockCommitCompleted( 2, receipts, timestamp );
 
-    auto loaded = log.loadCommittedProgressData();
+    auto loaded = log.loadProgressData();
     BOOST_REQUIRE( loaded.has_value() );
+    BOOST_CHECK_EQUAL( loaded->blockNumber, 2 );
     BOOST_REQUIRE_EQUAL( loaded->receipts.size(), 1 );
     BOOST_CHECK_EQUAL( loaded->timestamp, timestamp );
 
@@ -389,9 +385,9 @@ BOOST_AUTO_TEST_CASE( save_load_multiple_receipts ) {
     receipts.emplace_back( uint8_t( 0 ), dev::u256( 63000 ), emptyLogs );
 
     uint64_t timestamp = 1700000002;
-    log.saveCommittedProgressData( receipts, timestamp );
+    log.markBlockCommitCompleted( 3, receipts, timestamp );
 
-    auto loaded = log.loadCommittedProgressData();
+    auto loaded = log.loadProgressData();
     BOOST_REQUIRE( loaded.has_value() );
     BOOST_REQUIRE_EQUAL( loaded->receipts.size(), 3 );
     BOOST_CHECK_EQUAL( loaded->timestamp, timestamp );
@@ -424,9 +420,9 @@ BOOST_AUTO_TEST_CASE( save_load_receipt_with_logs ) {
     receipts.push_back( receipt );
 
     uint64_t timestamp = 1700000003;
-    log.saveCommittedProgressData( receipts, timestamp );
+    log.markBlockCommitCompleted( 4, receipts, timestamp );
 
-    auto loaded = log.loadCommittedProgressData();
+    auto loaded = log.loadProgressData();
     BOOST_REQUIRE( loaded.has_value() );
     BOOST_REQUIRE_EQUAL( loaded->receipts.size(), 1 );
     BOOST_CHECK_EQUAL( loaded->timestamp, timestamp );
@@ -456,9 +452,9 @@ BOOST_AUTO_TEST_CASE( save_load_receipt_with_revert_reason ) {
     receipts.push_back( receipt );
 
     uint64_t timestamp = 1700000004;
-    log.saveCommittedProgressData( receipts, timestamp );
+    log.markBlockCommitCompleted( 5, receipts, timestamp );
 
-    auto loaded = log.loadCommittedProgressData();
+    auto loaded = log.loadProgressData();
     BOOST_REQUIRE( loaded.has_value() );
     BOOST_REQUIRE_EQUAL( loaded->receipts.size(), 1 );
     BOOST_CHECK_EQUAL( loaded->timestamp, timestamp );
@@ -480,12 +476,12 @@ BOOST_AUTO_TEST_CASE( receipts_persistence_across_instances ) {
 
     {
         StateProgressLog log( tempDir.path() );
-        log.saveCommittedProgressData( receipts, timestamp );
+        log.markBlockCommitCompleted( 6, receipts, timestamp );
     }
 
     {
         StateProgressLog log( tempDir.path() );
-        auto loaded = log.loadCommittedProgressData();
+        auto loaded = log.loadProgressData();
         BOOST_REQUIRE( loaded.has_value() );
         BOOST_REQUIRE_EQUAL( loaded->receipts.size(), 2 );
         BOOST_CHECK_EQUAL( loaded->timestamp, timestamp );
@@ -499,7 +495,7 @@ BOOST_AUTO_TEST_CASE( load_receipts_no_file ) {
 
     StateProgressLog log( tempDir.path() );
 
-    auto loaded = log.loadCommittedProgressData();
+    auto loaded = log.loadProgressData();
     BOOST_CHECK( !loaded.has_value() );
 }
 
@@ -519,11 +515,12 @@ BOOST_AUTO_TEST_CASE( receipts_overwrite ) {
 
     uint64_t timestamp1 = 1700000006;
     uint64_t timestamp2 = 1700000007;
-    log.saveCommittedProgressData( receipts1, timestamp1 );
-    log.saveCommittedProgressData( receipts2, timestamp2 );
+    log.markBlockCommitCompleted( 7, receipts1, timestamp1 );
+    log.markBlockCommitCompleted( 8, receipts2, timestamp2 );
 
-    auto loaded = log.loadCommittedProgressData();
+    auto loaded = log.loadProgressData();
     BOOST_REQUIRE( loaded.has_value() );
+    BOOST_CHECK_EQUAL( loaded->blockNumber, 8 );
     BOOST_REQUIRE_EQUAL( loaded->receipts.size(), 2 );
     BOOST_CHECK_EQUAL( loaded->timestamp, timestamp2 );
     BOOST_CHECK_EQUAL( loaded->receipts[0].statusCode(), 0 );
@@ -549,9 +546,9 @@ BOOST_AUTO_TEST_CASE( save_load_receipt_bloom_preserved ) {
     receipts.push_back( receipt );
 
     uint64_t timestamp = 1700000008;
-    log.saveCommittedProgressData( receipts, timestamp );
+    log.markBlockCommitCompleted( 9, receipts, timestamp );
 
-    auto loaded = log.loadCommittedProgressData();
+    auto loaded = log.loadProgressData();
     BOOST_REQUIRE( loaded.has_value() );
     BOOST_REQUIRE_EQUAL( loaded->receipts.size(), 1 );
     BOOST_CHECK_EQUAL( loaded->timestamp, timestamp );

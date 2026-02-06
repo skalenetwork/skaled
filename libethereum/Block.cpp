@@ -517,7 +517,7 @@ std::pair< TransactionReceipts, unsigned > Block::recoverFromReceipts(
             std::runtime_error( "Progress log is not available during recovery" ) );
     }
 
-    auto savedData = progressLog->loadCommittedProgressData();
+    auto savedData = progressLog->loadProgressData();
     if ( !savedData || savedData->receipts.size() != _transactions.size() ) {
         BOOST_THROW_EXCEPTION( std::runtime_error(
             "Saved receipts missing or count mismatch during recovery for block " +
@@ -710,8 +710,8 @@ void Block::saveStateChanges(
     createBlockSnapshot();
 
     if ( progressLog && _context.singleCommitEnabled ) {
-        progressLog->saveCommittedProgressData( _context.receipts, m_currentBlock.timestamp() );
-        progressLog->markBlockCommitCompleted( m_currentBlock.number() );
+        progressLog->markBlockCommitCompleted(
+            m_currentBlock.number(), _context.receipts, m_currentBlock.timestamp() );
     }
 
     if ( !_context.singleCommitEnabled ) {

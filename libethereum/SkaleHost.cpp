@@ -638,6 +638,11 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
             auto checkLevel = skipTxVerification ? CheckTransaction::None
                                                  : CheckTransaction::Everything;
+            if ( skipTxVerification ) {
+                BOOST_LOG( m_loggerWarning )
+                    << "Txn " << sha
+                    << " verification will not be performed since it was already executed and committed";
+            }
             Transaction t( data, checkLevel, true,
                 EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
                 InvalidTransactionFormatPatch::isEnabledInWorkingBlock() );

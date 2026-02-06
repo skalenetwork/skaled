@@ -11,8 +11,10 @@
 namespace skale {
 
 struct CommittedProgressData {
-    dev::eth::TransactionReceipts receipts;
+    uint64_t blockNumber;
+    uint8_t status;  // 0 = started, 1 = completed
     uint64_t timestamp;
+    dev::eth::TransactionReceipts receipts;
 };
 
 class StateProgressLog {
@@ -22,30 +24,24 @@ public:
     explicit StateProgressLog( const boost::filesystem::path& _dataDir );
 
     void markBlockCommitStarted( uint64_t _blockNumber );
-    void markBlockCommitCompleted( uint64_t _blockNumber );
-
-    void saveCommittedProgressData(
-        const dev::eth::TransactionReceipts& _receipts, uint64_t _timestamp );
-    std::optional< CommittedProgressData > loadCommittedProgressData() const;
+    void markBlockCommitCompleted(
+        uint64_t _blockNumber, const dev::eth::TransactionReceipts& _receipts,
+        uint64_t _timestamp );
 
     bool isBlockCommitCompleted( uint64_t _blockNumber ) const;
     bool isBlockCommitStartedButNotCompleted( uint64_t _blockNumber ) const;
 
+    std::optional< CommittedProgressData > loadProgressData() const;
+
     inline static const std::string PROGRESS_LOG_DIR = "progress_log";
-    inline static const std::string PROGRESS_LOG_FILE = "last_state_committed_block";
-    inline static const std::string PROGRESS_DATA_FILE = "committed_receipts_and_timestamp";
+    inline static const std::string PROGRESS_LOG_FILE = "state_progress";
 
 private:
-    void writeStatus( uint64_t _blockNumber, Status _status );
-    bool readStatus( uint64_t& _blockNumber, Status& _status ) const;
-
-    inline static const std::string STATUS_STARTED = "started";
-    inline static const std::string STATUS_COMPLETED = "completed";
+    // RLP format: [blockNumber, status, timestamp, [receipt0_rlp, receipt1_rlp, ...]]
+    void writeProgressData( const CommittedProgressData& _data );
 
     boost::filesystem::path m_progressLogPath;
     boost::filesystem::path m_tmpPath;
-    boost::filesystem::path m_progressDataPath;
-    boost::filesystem::path m_progressDataTmpPath;
 
     mutable dev::Logger m_logger{ dev::createLogger( dev::VerbosityWarning, "StateProgressLog" ) };
 };
