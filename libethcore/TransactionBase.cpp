@@ -785,7 +785,7 @@ void TransactionBase::checkIfCTXAndSet( const dev::bytes& _data ) {
     if ( _data.size() < BITE2_FUNCTION_SELECTOR_SIZE_BYTES )
         return;
     m_isCTX = std::equal( _data.begin(), _data.begin() + BITE2_FUNCTION_SELECTOR_SIZE_BYTES,
-        BITE_FUNCTION_SELECTOR_AS_BYTE_ARRAY );
+        BITE2_FUNCTION_SELECTOR_AS_BYTE_ARRAY );
 }
 
 void TransactionBase::setDecryptedArgsCTX( const DecryptedCATArgs& _decryptedCTXArgs ) {
