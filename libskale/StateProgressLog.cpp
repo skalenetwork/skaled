@@ -25,8 +25,7 @@ void StateProgressLog::markBlockCommitStarted( uint64_t _blockNumber ) {
             BOOST_THROW_EXCEPTION( std::runtime_error(
                 "State progress inconsistency: previous block " +
                 std::to_string( existing->blockNumber ) +
-                " not completed, but trying to start block " +
-                std::to_string( _blockNumber ) ) );
+                " not completed, but trying to start block " + std::to_string( _blockNumber ) ) );
         }
     }
 
@@ -37,8 +36,8 @@ void StateProgressLog::markBlockCommitStarted( uint64_t _blockNumber ) {
     writeProgressData( data );
 }
 
-void StateProgressLog::markBlockCommitCompleted( uint64_t _blockNumber,
-    const dev::eth::TransactionReceipts& _receipts, uint64_t _timestamp ) {
+void StateProgressLog::markBlockCommitCompleted(
+    uint64_t _blockNumber, const dev::eth::TransactionReceipts& _receipts, uint64_t _timestamp ) {
     CommittedProgressData data;
     data.blockNumber = _blockNumber;
     data.status = static_cast< uint8_t >( Status::Completed );
@@ -64,8 +63,7 @@ void StateProgressLog::writeProgressData( const CommittedProgressData& _data ) {
     dev::bytes encoded = rlpStream.out();
 
     {
-        std::ofstream tmpFile(
-            m_tmpPath, std::ios::out | std::ios::binary | std::ios::trunc );
+        std::ofstream tmpFile( m_tmpPath, std::ios::out | std::ios::binary | std::ios::trunc );
         if ( !tmpFile ) {
             BOOST_LOG( m_logger ) << "Failed to open tmp file: " << m_tmpPath;
             return;

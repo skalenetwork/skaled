@@ -24,9 +24,8 @@ public:
     explicit StateProgressLog( const boost::filesystem::path& _dataDir );
 
     void markBlockCommitStarted( uint64_t _blockNumber );
-    void markBlockCommitCompleted(
-        uint64_t _blockNumber, const dev::eth::TransactionReceipts& _receipts,
-        uint64_t _timestamp );
+    void markBlockCommitCompleted( uint64_t _blockNumber,
+        const dev::eth::TransactionReceipts& _receipts, uint64_t _timestamp );
 
     bool isBlockCommitCompleted( uint64_t _blockNumber ) const;
     bool isBlockCommitStartedButNotCompleted( uint64_t _blockNumber ) const;

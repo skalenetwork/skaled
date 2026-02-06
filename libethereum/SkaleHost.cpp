@@ -616,8 +616,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     bool skipTxVerification = false;
     if ( SingleStateCommitPerBlockPatch::isEnabledInWorkingBlock() ) {
         auto progressLog = m_client.state().getProgressLog();
-        if ( progressLog &&
-             progressLog->isBlockCommitStartedButNotCompleted( _blockID ) ) {
+        if ( progressLog && progressLog->isBlockCommitStartedButNotCompleted( _blockID ) ) {
             skipTxVerification = true;
             BOOST_LOG( m_loggerWarning )
                 << "Block " << _blockID
@@ -636,12 +635,12 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             h256 sha = sha3( data );
             BOOST_LOG( m_loggerTrace ) << "Arrived txn: " << sha;
 
-            auto checkLevel = skipTxVerification ? CheckTransaction::None
-                                                 : CheckTransaction::Everything;
+            auto checkLevel =
+                skipTxVerification ? CheckTransaction::None : CheckTransaction::Everything;
             if ( skipTxVerification ) {
-                BOOST_LOG( m_loggerWarning )
-                    << "Txn " << sha
-                    << " verification will not be performed since it was already executed and committed";
+                BOOST_LOG( m_loggerWarning ) << "Txn " << sha
+                                             << " verification will not be performed since it was "
+                                                "already executed and committed";
             }
             Transaction t( data, checkLevel, true,
                 EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
