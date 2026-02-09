@@ -82,12 +82,14 @@ jobs:
 
       - name: Install packages
         run: |
-          sudo apt update
-          sudo apt install -y autoconf build-essential cmake libprocps-dev libtool texinfo wget yasm flex bison btrfs-progs python3 python3-pip gawk git vim doxygen
-          sudo apt install -y make pkg-config libgnutls28-dev libssl-dev unzip zlib1g-dev libgcrypt20-dev gcc-11 g++-11 gperf clang-format-11 gnutls-dev
-          sudo apt install -y nettle-dev libhiredis-dev redis-server google-perftools lcov libv8-dev 
-          sudo apt install -y gettext
-          sudo apt purge -y libbz2-dev liblz4-dev
+          sudo apt-get update
+          sudo apt-get install -y autoconf build-essential cmake libprocps-dev libtool texinfo wget yasm flex bison btrfs-progs python3 python3-pip gawk git vim doxygen
+          sudo apt-get install -y make pkg-config libgnutls28-dev libssl-dev unzip zlib1g-dev libgcrypt20-dev gcc-11 g++-11 gperf clang-format-11 gnutls-dev
+          sudo apt-get install -y nettle-dev libhiredis-dev redis-server google-perftools lcov libv8-dev 
+          sudo apt-get install -y gettext
+
+          # Remove deps installed in the next steps
+          sudo apt-get purge -y libbz2-dev liblz4-dev
 
       - name: Set gcc
         run: |
