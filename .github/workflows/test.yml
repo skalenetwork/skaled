@@ -10,269 +10,119 @@ defaults:
   run:
     shell: bash
 
+env:
+  ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+  DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+  DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+  NO_ULIMIT_CHECK: 1
+  NO_NTP_CHECK: 1
+  ccache_compress: 'true'
+  ccache_compresslevel: 9
+  TARGET: all
+  CMAKE_BUILD_TYPE: Debug
+
 jobs:
-  build:
-    runs-on: self-hosted
-    env:
-        ACTIONS_ALLOW_UNSECURE_COMMANDS: true
-        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-        NO_ULIMIT_CHECK: 1
-        NO_NTP_CHECK: 1
-        ccache_compress: 'true'
-        ccache_compresslevel: 9
-        TARGET: all
-        CMAKE_BUILD_TYPE: Debug
+  build-and-test:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-22.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Default
+            build_dir: build
+            cmake_args: ""
+            mode: full
+
+          - name: Default-historic
+            build_dir: build
+            cmake_args: "-DHISTORIC_STATE=1"
+            mode: historic
+
+          - name: FAIR
+            build_dir: build
+            cmake_args: "-DFAIR=1"
+            mode: full
+
+          - name: FAIR-historic
+            build_dir: build
+            cmake_args: "-DFAIR=1 -DHISTORIC_STATE=1"
+            mode: historic
+
+          - name: BITE
+            build_dir: build
+            cmake_args: "-DBITE=1"
+            mode: full
+
+          - name: BITE-historic
+            build_dir: build
+            cmake_args: "-DBITE=1 -DHISTORIC_STATE=1"
+            mode: historic
+            
+          - name: BITE2
+            build_dir: build
+            cmake_args: "-DBITE2=1"
+            mode: full
+
+          - name: BITE2-historic
+            build_dir: build
+            cmake_args: "-DBITE2=1 -DHISTORIC_STATE=1"
+            mode: historic
 
     steps:
       - name: Cancel Previous Runs
         uses: styfle/cancel-workflow-action@0.9.1
         with:
           access_token: ${{ github.token }}
-      - name: Extract repo name
-        run: echo ::set-env name=REPOSITORY_NAME::$(echo "$GITHUB_REPOSITORY" | awk -F / '{print $2}')
-        shell: bash
-        env:
-          ACTIONS_ALLOW_UNSECURE_COMMANDS: true
-      - name: checkout
-        uses: actions/checkout@v2
-
-      - name: Cache apt packages
-        uses: actions/cache@v4.2.0
+          
+      - uses: actions/checkout@v6
         with:
-          path: |
-            /var/cache/apt/archives
-          key: ${{ runner.os }}-apt-cache
-          ttl: 1000000 # purge cache every 1000000 seconds (10 days). This is to pull updated packages
-      - name: update apt
-        run: |
-          sudo add-apt-repository ppa:ubuntu-toolchain-r/test || true
-          sudo apt-get update || true
-      - name: install packages
-        run: |
-          sudo apt-get -y remove libzmq* || true
-          sudo apt-get -y install software-properties-common gcc-11 g++-11 || true
+          submodules: recursive
 
-      - name: Use g++-11 and gcov-11 by default
+      - name: Install packages
         run: |
-          echo "Updating all needed alternatives"
+          sudo apt update
+          sudo apt install -y autoconf build-essential cmake libprocps-dev libtool texinfo wget yasm flex bison btrfs-progs python3 python3-pip gawk git vim doxygen
+          sudo apt install -y make pkg-config libgnutls28-dev libssl-dev unzip zlib1g-dev libgcrypt20-dev gcc-11 g++-11 gperf clang-format-11 gnutls-dev
+          sudo apt install -y nettle-dev libhiredis-dev redis-server google-perftools lcov libv8-dev 
+          sudo apt install -y gettext
+          sudo apt purge -y libbz2-dev liblz4-dev
+
+      - name: Set gcc
+        run: |
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 11
           sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 11
           sudo update-alternatives --install /usr/bin/gcov gcov /usr/bin/gcov-11 11
           sudo update-alternatives --install /usr/bin/gcov-dump gcov-dump /usr/bin/gcov-dump-11 11
           sudo update-alternatives --install /usr/bin/gcov-tool gcov-tool /usr/bin/gcov-tool-11 11
-          echo "Checking alternative for gcc"
-          which gcc
           gcc --version
-          echo "Checking alternative for g++"
-          which g++
-          g++ --version
-          echo "Checking alternative for gcov"
-          which gcov
-          gcov --version
-          echo "Checking alternative for gcov-dump"
-          which gcov-dump
-          gcov-dump --version
-          echo "Checking alternative for gcov-tool"
-          which gcov-tool
-          gcov-tool --version
 
-      - name: Get newest lcov
-        run: |
-          # sudo apt-get install libcapture-tiny-perl
-          echo "Removing previous lcov version..."
-          sudo apt-get remove lcov || true
-          echo "Installing newest lcov version..."
-          rm -rf newer_lcov || true
-          mkdir newer_lcov
-          cd newer_lcov
-          git clone https://github.com/linux-test-project/lcov --recursive --recurse-submodules
-          cd lcov
-          git checkout 92e2121
-          sudo make install
-          cd ..
-          cd ..
-          echo "Checking installed lcov version..."
-          which lcov
-          lcov --version
-
-      - name: Submodule update
-        run: |
-          rm -rf ./libconsensus || true
-          ls -1
-          git submodule update --init --recursive
-
-      - name: Prepare ccache timestamp
-        id: ccache_cache_timestamp
-        shell: cmake -P {0}
-        run: |
-          string(TIMESTAMP current_date "%Y-%m-%d-%H;%M;%S" UTC)
-          message("::set-output name=timestamp::${current_date}")
-      - name: Ccache cache files
-        uses: actions/cache@v4.2.0
-        with:
-          path: .ccache
-          key: ${ { matrix.config.name } }-ccache-${ { steps.ccache_cache_timestamp.outputs.timestamp } }
-          restore-keys: |
-            ${ { matrix.config.name } }-ccache-
-      - name: Update gcc-11
-        run: |
-          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 11
-          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 11
-      - name: Configure ccache cache size, zero ccache counters and print ccache stats before start
-        run: |
-          ccache --max-size=15G
-          ccache -z
-          ccache --show-stats
       - name: Build dependencies
         run: |
-          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
           cd deps
-          #######################################./clean.sh
-          # prepare boost library
-          cp ~/skaled_deps_predownloaded/boost_1_87_0.tar.bz2 ../libconsensus/libBLS/deps/boost_1_87_0.tar.bz2
-          rm -f ./libwebsockets-from-git.tar.gz
           ./build.sh DEBUG=1 PARALLEL_COUNT=$(nproc)
           cd ..
 
-      - name: Build (default)
+      - name: Build (${{ matrix.name }})
         uses: ./.github/actions/cmake-build
         with:
-          build_dir: build
+          build_dir: ${{ matrix.build_dir }}
           cmake_build_type: ${{ env.CMAKE_BUILD_TYPE }}
           coverage: ${{ env.CODE_COVERAGE }}
-          cmake_args: ""
+          cmake_args: ${{ matrix.cmake_args }}
           make_target: testeth
 
-      - name: Testeth (full) verbosity 1
+      - name: Testeth verbosity 1
         uses: ./.github/actions/testeth-run
         with:
-          build_dir: build
-          mode: full
+          build_dir: ${{ matrix.build_dir }}
+          mode: ${{ matrix.mode }}
           verbosity: "1"
 
-      - name: Testeth (full) verbosity 4
+      - name: Testeth verbosity 4
         uses: ./.github/actions/testeth-run
         with:
-          build_dir: build
-          mode: full
-          verbosity: "4"
-
-      - name: Print ccache stats after full build
-        run: |
-          ccache --show-stats
-
-      - name: Build (historic)
-        uses: ./.github/actions/cmake-build
-        with:
-          build_dir: build_historic
-          cmake_build_type: ${{ env.CMAKE_BUILD_TYPE }}
-          coverage: ${{ env.CODE_COVERAGE }}
-          cmake_args: "-DHISTORIC_STATE=1"
-          make_target: testeth
-
-      - name: Testeth historic (JsonRpcSuite) verbosity 1
-        uses: ./.github/actions/testeth-run
-        with:
-          build_dir: build_historic
-          mode: historic
-          verbosity: "1"
-
-      - name: Testeth historic (JsonRpcSuite) verbosity 4
-        uses: ./.github/actions/testeth-run
-        with:
-          build_dir: build_historic
-          mode: historic
-          verbosity: "4"
-
-      - name: Build (FAIR)
-        uses: ./.github/actions/cmake-build
-        with:
-          build_dir: build_fair
-          cmake_build_type: ${{ env.CMAKE_BUILD_TYPE }}
-          coverage: ${{ env.CODE_COVERAGE }}
-          cmake_args: "-DFAIR=1"
-          make_target: testeth
-
-      - name: Testeth FAIR (full) verbosity 1
-        uses: ./.github/actions/testeth-run
-        with:
-          build_dir: build_fair
-          mode: full
-          verbosity: "1"
-
-      - name: Testeth FAIR (full) verbosity 4
-        uses: ./.github/actions/testeth-run
-        with:
-          build_dir: build_fair
-          mode: full
-          verbosity: "4"
-
-      - name: Build (FAIR-historic)
-        uses: ./.github/actions/cmake-build
-        with:
-          build_dir: build_fair_historic
-          cmake_build_type: ${{ env.CMAKE_BUILD_TYPE }}
-          coverage: ${{ env.CODE_COVERAGE }}
-          cmake_args: "-DFAIR=1 -DHISTORIC_STATE=1"
-          make_target: testeth
-
-      - name: Testeth FAIR-historic (JsonRpcSuite) verbosity 1
-        uses: ./.github/actions/testeth-run
-        with:
-          build_dir: build_fair_historic
-          mode: historic
-          verbosity: "1"
-
-      - name: Testeth FAIR-historic (JsonRpcSuite) verbosity 4
-        uses: ./.github/actions/testeth-run
-        with:
-          build_dir: build_fair_historic
-          mode: historic
-          verbosity: "4"
-
-      - name: Build (BITE2)
-        uses: ./.github/actions/cmake-build
-        with:
-          build_dir: build_bite2
-          cmake_build_type: ${{ env.CMAKE_BUILD_TYPE }}
-          coverage: ${{ env.CODE_COVERAGE }}
-          cmake_args: "-DBITE2=1"
-          make_target: testeth
-
-      - name: Testeth BITE2 (full) verbosity 1
-        uses: ./.github/actions/testeth-run
-        with:
-          build_dir: build_bite2
-          mode: full
-          verbosity: "1"
-
-      - name: Testeth BITE2 (full) verbosity 4
-        uses: ./.github/actions/testeth-run
-        with:
-          build_dir: build_bite2
-          mode: full
-          verbosity: "4"
-
-      - name: Build (BITE2-historic)
-        uses: ./.github/actions/cmake-build
-        with:
-          build_dir: build_bite2_historic
-          cmake_build_type: ${{ env.CMAKE_BUILD_TYPE }}
-          coverage: ${{ env.CODE_COVERAGE }}
-          cmake_args: "-DBITE2=1 -DHISTORIC_STATE=1"
-          make_target: testeth
-
-      - name: Testeth BITE2-historic (JsonRpcSuite) verbosity 1
-        uses: ./.github/actions/testeth-run
-        with:
-          build_dir: build_bite2_historic
-          mode: historic
-          verbosity: "1"
-
-      - name: Testeth BITE2-historic (JsonRpcSuite) verbosity 4
-        uses: ./.github/actions/testeth-run
-        with:
-          build_dir: build_bite2_historic
-          mode: historic
+          build_dir: ${{ matrix.build_dir }}
+          mode: ${{ matrix.mode }}
           verbosity: "4"
