@@ -140,7 +140,7 @@ class SkaleFace : public ServerInterface< SkaleFace > {
     virtual Json::Value bite_getDecryptedTransactionData( const std::string& request ) = 0;
 #ifdef BITE2
     virtual Json::Value bite_getCraftedCtxs( const std::string& request ) = 0;
-    virtual Json::Value bite_getCtxOrigin( const std::string& request ) = 0;
+    virtual std::string bite_getCtxOrigin( const std::string& request ) = 0;
 #endif  // BITE2
 #endif  // BITE
 

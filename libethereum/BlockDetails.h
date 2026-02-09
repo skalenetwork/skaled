@@ -202,6 +202,15 @@ struct CtxOrigin {
         return s.out();
     }
     explicit operator bool() const { return !m_ctxHashesLists.empty(); }
+    std::vector< dev::h256 > operator[]( size_t i ) const { return m_ctxHashesLists[i]; }
+    size_t find( const dev::h256& _ctxHash ) const {
+        for ( size_t i = 0; i < m_ctxHashesLists.size(); ++i ) {
+            auto it = std::find( m_ctxHashesLists[i].begin(), m_ctxHashesLists[i].end(), _ctxHash );
+            if ( it != m_ctxHashesLists[i].end() )
+                return i;
+        }
+        return -1;
+    }
 
     std::vector< std::vector< dev::h256 > > m_ctxHashesLists;
     size_t size = 0;
@@ -231,7 +240,10 @@ static const BlockHash NullBlockHash;
 static const BlocksBlooms NullBlocksBlooms;
 #ifdef BITE
 static const DecryptedTransactionData NullDecryptedTransactionData;
-#endif
+#ifdef BITE2
+static const CtxOrigin NullCtxOrigin;
+#endif  // BITE2
+#endif  // BITE
 
 }  // namespace eth
 }  // namespace dev

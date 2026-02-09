@@ -88,7 +88,7 @@ public:
     Json::Value bite_getDecryptedTransactionData( const std::string& request ) override;
 #ifdef BITE2
     Json::Value bite_getCraftedCtxs( const std::string& request ) override;
-    Json::Value bite_getCtxOrigin( const std::string& request ) override;
+    std::string bite_getCtxOrigin( const std::string& request ) override;
 #endif  // BITE2
 #endif  // BITE
 

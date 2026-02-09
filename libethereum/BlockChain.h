@@ -345,7 +345,14 @@ public:
             _transactionHash, m_decryptedTransactionsData, x_decryptedTransactionsData,
             NullDecryptedTransactionData );
     }
-#endif
+
+#ifdef BITE2
+    CtxOrigin ctxHashesForBlock( const dev::h256& _blockHash ) const {
+        return queryExtras< CtxOrigin, ExtraCtxOrigin >(
+            _blockHash, m_ctxOrigin, x_ctxOrigin, NullCtxOrigin );
+    }
+#endif  // BITE2
+#endif  // BITE
 
     /// Get a number for the given hash (or the most recent mined if none given). Thread-safe.
     unsigned number( h256 const& _hash ) const { return details( _hash ).number; }
