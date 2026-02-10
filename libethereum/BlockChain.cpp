@@ -779,7 +779,6 @@ void BlockChain::insertTransactionsDetailsToDb(
 
 #ifdef BITE
 #ifdef BITE2
-        CHECK_EXPRESSION( _block.ctxHashesLists.size() == _block.transactions.size() );
         CtxOrigin ctxOrigin( _block.ctxHashesLists );
         _extrasWriteBatch.insert( toSlice( _block.info.hash(), ExtraCtxOrigin ),
             ( db::Slice ) dev::ref( ctxOrigin.rlp() ) );
