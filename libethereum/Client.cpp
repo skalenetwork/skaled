@@ -1244,8 +1244,9 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
     ExecutionResult ret;
     try {
         auto buildTransaction = [&]( u256 gasLimit, u256 gasPrice, u256 nonce ) {
-            Transaction t = _isCreation ? Transaction( _value, gasPrice, gasLimit, _data, nonce ) :
-                                         Transaction( _value, gasPrice, gasLimit, _dest, _data, nonce );
+            Transaction t = _isCreation ?
+                                Transaction( _value, gasPrice, gasLimit, _data, nonce ) :
+                                Transaction( _value, gasPrice, gasLimit, _dest, _data, nonce );
             t.forceSender( _from );
             t.forceChainId( chainParams().getChainId() );
 #ifndef FAIR

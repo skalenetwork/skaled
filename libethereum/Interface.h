@@ -106,8 +106,7 @@ public:
 #ifdef HISTORIC_STATE
             _blockNumber,
 #endif
-            _isCreation,
-            _ff );
+            _isCreation, _ff );
     }
 
     /// Injects the RLP-encoded block given by the _rlp into the block queue directly.
