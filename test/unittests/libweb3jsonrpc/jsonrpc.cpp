@@ -2036,6 +2036,61 @@ BOOST_AUTO_TEST_CASE( call_with_error ) {
     }
 }
 
+BOOST_AUTO_TEST_CASE( eth_call_create ) {
+    JsonRpcFixture fixture;
+    dev::eth::simulateMining( *( fixture.client ), 1 );
+
+    auto senderAddress = fixture.coinbase.address();
+
+    // contract test {
+    //   function f(uint a) returns(uint d) { return a * 7; }
+    // }
+    string compiled =
+        "6080604052348015600f57600080fd5b5060b98061001d6000396000f300"
+        "608060405260043610603f576000357c01000000000000000000000000"
+        "00000000000000000000000000000000900463ffffffff168063b3de64"
+        "8b146044575b600080fd5b3415604e57600080fd5b606a600480360381"
+        "019080803590602001909291905050506080565b604051808281526020"
+        "0191505060405180910390f35b60006007820290509190505600a16562"
+        "7a7a72305820f294e834212334e2978c6dd090355312a3f0f9476b8eb9"
+        "8fb480406fc2728a960029";
+
+    // eth_call with no "to" field triggers creation transaction
+    Json::Value callObject;
+    callObject["from"] = toJS( senderAddress );
+    callObject["data"] = "0x" + compiled;
+    callObject["gas"] = "1000000";
+    callObject["gasPrice"] = "0";
+
+    string callResult = fixture.rpcClient->eth_call( callObject, "latest" );
+    // creation via eth_call should return the runtime bytecode
+    BOOST_REQUIRE( callResult.size() > 2 );
+    BOOST_REQUIRE( callResult != "0x" );
+
+    // verify state was not modified by eth_call (nonce unchanged)
+    u256 nonceAfterCall = jsToU256(
+        fixture.rpcClient->eth_getTransactionCount( toJS( senderAddress ), "latest" ) );
+    BOOST_REQUIRE_EQUAL( nonceAfterCall, 0 );
+
+    // now actually deploy via eth_sendTransaction and verify we get the same runtime bytecode
+    Json::Value deployTx;
+    deployTx["from"] = toJS( senderAddress );
+    deployTx["code"] = compiled;
+    deployTx["gas"] = "1000000";
+    string txHash = fixture.rpcClient->eth_sendTransaction( deployTx );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE_EQUAL( receipt["status"], string( "0x1" ) );
+    BOOST_REQUIRE( !receipt["contractAddress"].isNull() );
+
+    string contractAddress = receipt["contractAddress"].asString();
+    string deployedCode = fixture.rpcClient->eth_getCode( contractAddress, "latest" );
+
+    // the runtime bytecode from eth_call should match the actually deployed code
+    BOOST_REQUIRE_EQUAL( callResult, deployedCode );
+}
+
 BOOST_AUTO_TEST_CASE( estimate_gas_with_error ) {
     JsonRpcFixture fixture;
     dev::eth::simulateMining( *( fixture.client ), 1 );
