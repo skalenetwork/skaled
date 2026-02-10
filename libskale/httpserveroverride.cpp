@@ -2663,7 +2663,7 @@ void SkaleServerOverride::informational_eth_getBalance( const json& joRequest, j
 #ifdef HISTORIC_STATE
                 bNumber,
 #endif
-                dev::eth::FudgeFactor::Lenient );
+                false, dev::eth::FudgeFactor::Lenient );
 
         string strRevertReason;
         if ( er.excepted == dev::eth::TransactionException::RevertInstruction ) {

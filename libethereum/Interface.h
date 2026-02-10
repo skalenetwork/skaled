@@ -95,17 +95,18 @@ public:
 #ifdef HISTORIC_STATE
         BlockNumber _blockNumber,
 #endif
-        FudgeFactor _ff = FudgeFactor::Strict ) = 0;
+        bool _isCreation = false, FudgeFactor _ff = FudgeFactor::Strict ) = 0;
     ExecutionResult call( Secret const& _secret, u256 _value, Address _dest, bytes const& _data,
         u256 _gas, u256 _gasPrice,
 #ifdef HISTORIC_STATE
         BlockNumber _blockNumber,
 #endif
-        FudgeFactor _ff = FudgeFactor::Strict ) {
+        bool _isCreation = false, FudgeFactor _ff = FudgeFactor::Strict ) {
         return call( toAddress( _secret ), _value, _dest, _data, _gas, _gasPrice,
 #ifdef HISTORIC_STATE
             _blockNumber,
 #endif
+            _isCreation,
             _ff );
     }
 
