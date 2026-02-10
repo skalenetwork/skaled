@@ -6,18 +6,17 @@ on:
       - 'beta'
       - 'stable'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+  
 defaults:
   run:
     shell: bash
 
 env:
-  ACTIONS_ALLOW_UNSECURE_COMMANDS: true
-  DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-  DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
   NO_ULIMIT_CHECK: 1
   NO_NTP_CHECK: 1
-  ccache_compress: 'true'
-  ccache_compresslevel: 9
   TARGET: all
   CMAKE_BUILD_TYPE: Debug
 
@@ -71,11 +70,6 @@ jobs:
             mode: historic
 
     steps:
-      - name: Cancel Previous Runs
-        uses: styfle/cancel-workflow-action@0.9.1
-        with:
-          access_token: ${{ github.token }}
-          
       - uses: actions/checkout@v6
         with:
           submodules: recursive
@@ -83,9 +77,9 @@ jobs:
       - name: Install packages
         run: |
           sudo apt-get update
-          sudo apt-get install -y autoconf build-essential cmake libprocps-dev libtool texinfo wget yasm flex bison btrfs-progs python3 python3-pip gawk git vim doxygen
+          sudo apt-get install -y libunwind-dev autoconf build-essential cmake libprocps-dev libtool texinfo wget yasm flex bison btrfs-progs python3 python3-pip gawk git vim doxygen
           sudo apt-get install -y make pkg-config libgnutls28-dev libssl-dev unzip zlib1g-dev libgcrypt20-dev gcc-11 g++-11 gperf clang-format-11 gnutls-dev
-          sudo apt-get install -y nettle-dev libhiredis-dev redis-server google-perftools lcov libv8-dev 
+          sudo apt-get install -y nettle-dev libhiredis-dev redis-server google-perftools libgoogle-perftools-dev lcov libv8-dev 
           sudo apt-get install -y gettext
 
           # Remove deps installed in the next steps
