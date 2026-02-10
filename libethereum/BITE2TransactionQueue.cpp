@@ -49,7 +49,7 @@ std::vector< h256 > BITE2TransactionQueue::getTempHashes() const {
     std::vector< h256 > res;
     res.reserve( m_current.size() - m_currentHeadIndex );
     for ( size_t i = m_currentHeadIndex; i < m_current.size(); ++i ) {
-        res.at( i - m_currentHeadIndex ) = m_current.at( i ).sha3();
+        res.push_back( m_current.at( i ).sha3() );
     }
     return res;
 }

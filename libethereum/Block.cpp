@@ -508,7 +508,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
     }
 
 
-    m_ctxHashesLists.reserve( _transactions.size() );
+    m_ctxHashesLists.resize( _transactions.size() );
 
     for ( unsigned i = 0; i < _transactions.size(); ++i ) {
         Transaction const& tr = _transactions[i];
