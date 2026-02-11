@@ -149,9 +149,93 @@ dev::bytes constructDecryptedCTXData(
 
     return functionSelector + abiEncodedArrays;
 }
-#endif   // BITE2
+
+std::pair< RLPStream, size_t > parseAbiEncodedBytesArray( bytesConstRef dataRef,
+    bigint const& arrayOffset, const std::string& arrayName, std::optional< uint64_t > _epochId ) {
+    if ( dataRef.size() < arrayOffset.convert_to< size_t >() + dev::h256::size )
+        throw std::runtime_error(
+            "parseAbiEncodedBytesArray: input too short for " + arrayName + " array" );
+
+    bigint const arrayLength( parseBigEndianRightPadded( dataRef, arrayOffset, dev::h256::size ) );
+    if ( arrayLength < 0 )
+        throw std::runtime_error( "parseAbiEncodedBytesArray: invalid " + arrayName + " length" );
+
+    size_t arrayCount = arrayLength.convert_to< size_t >();
+    size_t arrayBase = arrayOffset.convert_to< size_t >() + dev::h256::size;
+
+    RLPStream arrayStream;
+    arrayStream.appendList( arrayCount );
+
+    for ( size_t i = 0; i < arrayCount; ++i ) {
+        if ( dataRef.size() < arrayBase + i * dev::h256::size + dev::h256::size )
+            throw std::runtime_error(
+                "parseAbiEncodedBytesArray: input too short for " + arrayName + " element offset" );
+
+        bigint elemOffset( parseBigEndianRightPadded(
+            dataRef, arrayBase + i * dev::h256::size, dev::h256::size ) );
+        size_t elemPos = arrayOffset.convert_to< size_t >() + dev::h256::size +
+                         elemOffset.convert_to< size_t >();
+
+        if ( dataRef.size() < elemPos + dev::h256::size )
+            throw std::runtime_error(
+                "parseAbiEncodedBytesArray: input too short for " + arrayName + " element length" );
+
+        bigint elemLength( parseBigEndianRightPadded( dataRef, elemPos, dev::h256::size ) );
+        if ( dataRef.size() < elemPos + dev::h256::size + elemLength.convert_to< size_t >() )
+            throw std::runtime_error(
+                "parseAbiEncodedBytesArray: input too short for " + arrayName + " element data" );
+
+        // Validate encrypted element length if required
+        if ( _epochId.has_value() && elemLength.convert_to< size_t >() < BITE_CIPHERTEXT_MIN_LEN )
+            throw std::runtime_error(
+                "parseAbiEncodedBytesArray: encrypted argument too short, must be at least " +
+                std::to_string( BITE_CIPHERTEXT_MIN_LEN ) + " bytes" );
+
+        dev::bytes elemData =
+            dataRef.cropped( elemPos + dev::h256::size, elemLength.convert_to< size_t >() )
+                .toBytes();
+        if ( _epochId.has_value() )
+            dev::bite::validateBITECiphertext( elemData, _epochId.value() );
+        arrayStream << elemData;
+    }
+
+    return { arrayStream, arrayCount };
+}
+
+std::pair< dev::bytes, size_t > abiEncodedArraysToRlp(
+    const dev::bytes& _abiEncodedArrays, uint64_t _epochId ) {
+    // Parse ABI-encoded data: abi.encode(bytes[] encryptedArgs, bytes[] plaintextArgs)
+    // ABI format: offset_to_encryptedArgs(32) + offset_to_plaintextArgs(32) + encryptedArgs_data +
+    // plaintextArgs_data where encryptedArgs_data = length(32) + offset_to_elem0(32) + ... +
+    // elem0_length(32) + elem0_data + ...
+
+    bytesConstRef dataRef( _abiEncodedArrays.data(), _abiEncodedArrays.size() );
+
+    if ( dataRef.size() < 2 * dev::h256::size )
+        throw std::runtime_error( "abiEncodedArraysToRlp: input too short for two array offsets" );
+
+    // Read offsets to the two arrays
+    bigint const encryptedArgsOffset( parseBigEndianRightPadded( dataRef, 0, dev::h256::size ) );
+    bigint const plaintextArgsOffset(
+        parseBigEndianRightPadded( dataRef, dev::h256::size, dev::h256::size ) );
+
+    // Parse both arrays
+    auto [encryptedArgsStream, encryptedArgsCount] =
+        parseAbiEncodedBytesArray( dataRef, encryptedArgsOffset, "encryptedArgs", _epochId );
+    auto [plaintextArgsStream, plaintextArgsCount] =
+        parseAbiEncodedBytesArray( dataRef, plaintextArgsOffset, "plaintextArgs", std::nullopt );
+
+    // Create final RLP: RLP(RLP(encryptedArgs[0], ...), RLP(plaintextArgs[0], ...))
+    RLPStream finalStream;
+    finalStream.appendList( 2 );
+    finalStream.appendRaw( encryptedArgsStream.out() );
+    finalStream.appendRaw( plaintextArgsStream.out() );
+
+    return { finalStream.out(), encryptedArgsCount };
+}
+#endif  // BITE2
 
 }  // namespace bite
 }  // namespace dev
 
-#endif   // BITE
+#endif  // BITE

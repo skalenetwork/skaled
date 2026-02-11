@@ -979,7 +979,7 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
         dev::bytes rlpEncodedData;
         size_t encryptedArgsCount = 0;
         try {
-            auto [rlpData, count] = abiEncodedArraysToRlp( txnData );
+            auto [rlpData, count] = abiEncodedArraysToRlp( txnData, 0 );
             rlpEncodedData = std::move( rlpData );
             encryptedArgsCount = count;
         } catch ( std::exception& ex ) {
@@ -1111,7 +1111,7 @@ ETH_REGISTER_PRECOMPILED( getRandomWalletAndSignatureForCTX )
         dev::bytes rlpEncodedData;
         size_t encryptedArgsCount = 0;
         try {
-            auto [rlpData, count] = abiEncodedArraysToRlp( data );
+            auto [rlpData, count] = abiEncodedArraysToRlp( data, 0 );
             rlpEncodedData = std::move( rlpData );
             encryptedArgsCount = count;
         } catch ( std::exception& ex ) {

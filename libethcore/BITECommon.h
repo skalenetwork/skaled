@@ -67,6 +67,14 @@ static inline const dev::bytes ON_DECRYPT_FUNCTION_SELECTOR = { 0x57, 0x98, 0x3a
 dev::bytes constructDecryptedCTXData(
     const dev::bytes& _txData, const DecryptedCATArgs& _decryptedCTXArgs );
 
+// Parse ABI-encoded bytes array and validates encrypted elements
+std::pair< RLPStream, size_t > parseAbiEncodedBytesArray( bytesConstRef dataRef,
+    bigint const& arrayOffset, const std::string& arrayName, std::optional< uint64_t > _epochId );
+
+// Convert ABI-encoded arrays to RLP format
+std::pair< dev::bytes, size_t > abiEncodedArraysToRlp(
+    const dev::bytes& _abiEncodedArrays, uint64_t _epochId );
+
 // Error codes for submitCTX precompiled contract
 namespace SubmitCTXStatus {
 constexpr uint64_t SUCCESS = 1;
