@@ -452,7 +452,14 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
     }
 
     ~SnapshotHashingFixture() {
+        rpcClient.reset();
+        if ( testIpcClient ) {
+            delete testIpcClient;
+            testIpcClient = nullptr;
+        }
+        rpcServer.reset();
         client.reset();
+
         const char* NC = getenv( "NC" );
         if ( NC )
             return;
@@ -463,9 +470,6 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         assert( rv == 0 );
         rv = system( ( "rm " + BTRFS_FILE_PATH ).c_str() );
         assert( rv == 0 );
-
-        if ( testIpcClient )
-            delete testIpcClient;
     }
 
     string sendingRawShouldFail( string const& _t ) {
