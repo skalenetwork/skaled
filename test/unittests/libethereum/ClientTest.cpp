@@ -1457,19 +1457,13 @@ BOOST_AUTO_TEST_CASE( ClientSnapshotsTest, *boost::unit_test::disabled() ) {
     BOOST_REQUIRE(
         fs::exists( fs::path( fixture.getTmpDataDir() ) / "snapshots" / snapshotBlockStr ) );
 
-    secp256k1_sha256_t ctx;
-    secp256k1_sha256_initialize( &ctx );
-
-    dev::h256 empty_str = dev::h256( "" );
-    secp256k1_sha256_write( &ctx, empty_str.data(), empty_str.size );
-
-    dev::h256 empty_state_root_hash;
-    secp256k1_sha256_finalize( &ctx, empty_state_root_hash.data() );
-
-    BOOST_REQUIRE( testClient->latestBlock().info().stateRoot() == empty_state_root_hash );
-
     BOOST_REQUIRE( fs::exists( fs::path( fixture.getTmpDataDir() ) / "snapshots" /
                                snapshotBlockStr / "snapshot_hash.txt" ) );
+
+    // Verify that the snapshot hash was propagated as the state root
+    dev::h256 snapshotHash = testClient->getSnapshotHash( snapshotBlockNumber );
+    BOOST_REQUIRE( snapshotHash != dev::h256() );
+    BOOST_REQUIRE( testClient->latestBlock().info().stateRoot() == snapshotHash );
 
     dev::h256 hash = testClient->hashFromNumber( snapshotBlockNumber );
     uint64_t timestampFromBlockchain = testClient->blockInfo( hash ).timestamp();
