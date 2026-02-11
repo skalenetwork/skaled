@@ -1442,9 +1442,20 @@ BOOST_AUTO_TEST_CASE( ClientSnapshotsTest, *boost::unit_test::disabled() ) {
 
     BOOST_REQUIRE( testClient->getSnapshotHash( 0 ) != dev::h256() );
 
-    std::this_thread::sleep_for( 5000ms );
+    // Wait until a snapshot with computed hash appears (block number depends on timing)
+    int64_t snapshotBlockNumber = -1;
+    for ( int i = 0; i < 30; ++i ) {
+        std::this_thread::sleep_for( 1000ms );
+        snapshotBlockNumber = testClient->getLatestSnapshotBlockNumer();
+        if ( snapshotBlockNumber > 0 )
+            break;
+    }
+    BOOST_REQUIRE( snapshotBlockNumber > 0 );
 
-    BOOST_REQUIRE( fs::exists( fs::path( fixture.getTmpDataDir() ) / "snapshots" / "2" ) );
+    std::string snapshotBlockStr = std::to_string( snapshotBlockNumber );
+
+    BOOST_REQUIRE(
+        fs::exists( fs::path( fixture.getTmpDataDir() ) / "snapshots" / snapshotBlockStr ) );
 
     secp256k1_sha256_t ctx;
     secp256k1_sha256_initialize( &ctx );
@@ -1457,15 +1468,14 @@ BOOST_AUTO_TEST_CASE( ClientSnapshotsTest, *boost::unit_test::disabled() ) {
 
     BOOST_REQUIRE( testClient->latestBlock().info().stateRoot() == empty_state_root_hash );
 
-    std::this_thread::sleep_for( 3000ms );
+    BOOST_REQUIRE( fs::exists( fs::path( fixture.getTmpDataDir() ) / "snapshots" /
+                               snapshotBlockStr / "snapshot_hash.txt" ) );
 
-    BOOST_REQUIRE( fs::exists(
-        fs::path( fixture.getTmpDataDir() ) / "snapshots" / "2" / "snapshot_hash.txt" ) );
-
-    dev::h256 hash = testClient->hashFromNumber( 2 );
+    dev::h256 hash = testClient->hashFromNumber( snapshotBlockNumber );
     uint64_t timestampFromBlockchain = testClient->blockInfo( hash ).timestamp();
 
-    BOOST_REQUIRE_EQUAL( timestampFromBlockchain, testClient->getBlockTimestampFromSnapshot( 2 ) );
+    BOOST_REQUIRE_EQUAL(
+        timestampFromBlockchain, testClient->getBlockTimestampFromSnapshot( snapshotBlockNumber ) );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
