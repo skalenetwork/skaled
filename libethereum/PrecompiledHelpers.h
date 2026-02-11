@@ -1,5 +1,5 @@
 /*
-    Modifications Copyright (C) 2018-2019 SKALE Labs
+    Modifications Copyright (C) 2018-2026 SKALE Labs
 
     This file is part of cpp-ethereum.
 

@@ -36,6 +36,7 @@
 #ifdef BITE
 #include <libconsensus/libBLS/threshold_encryption/ThresholdEncryption.h>
 #include <libconsensus/node/ConsensusInterface.h>
+#include <libethcore/BITECommon.h>
 #endif
 using namespace std;
 
@@ -705,87 +706,17 @@ void TransactionBase::checkAndValidateBITETransaction( uint64_t _currentEpochId 
     if ( !isBite() )
         return;
 
-    RLP rlpEncodedBITETxn;
-    try {
-        try {
-            rlpEncodedBITETxn = RLP( m_data );
-        } catch ( ... ) {
-            BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment( std::string(
-                                       "BITE transaction's data must be RLP encoded" ) ) );
-        }
-
-        // RLP structure: [epochId1, encryptedBITEData]
-        // encryptedBITEData may optionally have 1 or 2 encrypted AES keys assosiated with it
-
-        if ( !rlpEncodedBITETxn.isList() )
-            BOOST_THROW_EXCEPTION(
-                InvalidBITETransaction() << errinfo_comment(
-                    std::string( "BITE transaction's data is invalid: RLP must be a list" ) ) );
-
-        if ( rlpEncodedBITETxn.itemCount() != 2 )
-            BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment(
-                                       std::string( "BITE transaction's data is invalid: RLP list "
-                                                    "should have exactly 2 elements, got: " ) +
-                                       std::to_string( rlpEncodedBITETxn.itemCount() ) ) );
-
-        // read encrypted data
-        dev::bytes encryptedBITEData = rlpEncodedBITETxn[1].toBytes();
-        if ( encryptedBITEData.size() < BITE_CIPHERTEXT_MIN_LEN )
-            BOOST_THROW_EXCEPTION(
-                BITETransactionTooShort() << errinfo_comment(
-                    std::string( "BITE transaction's data size must be at least " ) +
-                    std::to_string( BITE_CIPHERTEXT_MIN_LEN ) + std::string( ", got " ) +
-                    std::to_string( encryptedBITEData.size() ) ) );
-
-        // read epochId
-        if ( !rlpEncodedBITETxn[0].isInt() )
-            BOOST_THROW_EXCEPTION(
-                InvalidBITETransaction() << errinfo_comment(
-                    std::string( "BITE transaction's data is invalid: epochId must be an int" ) ) );
-        uint64_t epochIdCandidate = rlpEncodedBITETxn[0].toInt< uint64_t >();
-        // if a txn was sent before rotation it may have previous epochId: currentEpochId - 1
-        if ( _currentEpochId != epochIdCandidate && _currentEpochId != epochIdCandidate + 1 )
-            BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment(
-                                       std::string( "BITE transaction's data is invalid: no "
-                                                    "payload found with matching epochId " ) +
-                                       std::to_string( _currentEpochId ) ) );
-
-        try {
-            // check that ciphertext is valid
-            libBLS::Ciphertext ciphertext = libBLS::Ciphertext::fromBytes( encryptedBITEData );
-            // if currentEpochId = epochIdCandidate + 1, then ciphertext must have
-            // 2 encrypted AES keys associated with it
-            if ( epochIdCandidate != _currentEpochId && ciphertext.getKeys().size() != 2 )
-                BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment(
-                                           std::string( "BITE transaction's data is invalid: no "
-                                                        "payload found with matching epochId " ) +
-                                           std::to_string( _currentEpochId ) ) );
-            // validate encrypted AES keys
-            for ( const auto& cipheredKey : ciphertext.getKeys() )
-                libBLS::ThresholdEncryption::validateEncryption( cipheredKey );
-        } catch ( libBLS::ThresholdUtils::IncorrectInput& ex ) {
-            BOOST_THROW_EXCEPTION(
-                InvalidBITETransaction() << errinfo_comment(
-                    std::string( "BITE transaction's data is invalid: " ) + ex.what() ) );
-        } catch ( libBLS::ThresholdUtils::IsNotWellFormed& ex ) {
-            BOOST_THROW_EXCEPTION(
-                InvalidBITETransaction() << errinfo_comment(
-                    std::string( "BITE transaction's data is invalid: " ) + ex.what() ) );
-        }
-    } catch ( const Exception& _e ) {
-        BOOST_LOG( m_loggerDebug )
-            << std::string( "invalid BITE data format: " ) << std::string( _e.what() );
-        throw;
-    }
+    dev::bite::validateBITECiphertext( m_data, _currentEpochId );
 }
 
 #ifdef BITE2
 
 void TransactionBase::checkIfCTXAndSet( const dev::bytes& _data ) {
-    if ( _data.size() < BITE2_FUNCTION_SELECTOR_SIZE_BYTES )
+    if ( _data.size() < dev::bite::ON_DECRYPT_FUNCTION_SELECTOR_SIZE_BYTES )
         return;
-    m_isCTX = std::equal( _data.begin(), _data.begin() + BITE2_FUNCTION_SELECTOR_SIZE_BYTES,
-        BITE_FUNCTION_SELECTOR_AS_BYTE_ARRAY );
+    m_isCTX = std::equal( _data.begin(),
+        _data.begin() + dev::bite::ON_DECRYPT_FUNCTION_SELECTOR_SIZE_BYTES,
+        dev::bite::ON_DECRYPT_FUNCTION_SELECTOR.begin() );
 }
 
 void TransactionBase::setDecryptedArgsCTX( const DecryptedCATArgs& _decryptedCTXArgs ) {
@@ -794,72 +725,10 @@ void TransactionBase::setDecryptedArgsCTX( const DecryptedCATArgs& _decryptedCTX
 
     m_ctxEncryptedArgsSize = _decryptedCTXArgs.args.size();
 
-    // Transform m_data from: selector(4 bytes) + RLP(RLP(encrypted_args), RLP(plaintext_args))
-    // to: selector(4 bytes) + abi.encode(bytes[] decrypted_args, bytes[] plaintext_args)
-    // Store result in m_decryptedData
+    auto decryptedCTXData = dev::bite::constructDecryptedCTXData( m_data, _decryptedCTXArgs );
 
-    if ( m_data.size() < 4 )
-        BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment(
-                                   "CTX transaction data too short - missing function selector" ) );
-
-    // Extract function selector (first 4 bytes)
-    dev::bytes functionSelector( m_data.begin(), m_data.begin() + 4 );
-
-    // Parse RLP structure from remaining data
-    dev::bytes rlpData( m_data.begin() + 4, m_data.end() );
-    RLP rlp( rlpData );
-
-    if ( !rlp.isList() || rlp.itemCount() != 2 )
-        BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment(
-                                   "CTX transaction data must contain RLP list with 2 elements" ) );
-
-    // Parse encrypted args array (first RLP list)
-    RLP encryptedArgsRlp = rlp[0];
-    if ( !encryptedArgsRlp.isList() )
-        BOOST_THROW_EXCEPTION( InvalidBITETransaction()
-                               << errinfo_comment( "CTX encrypted args must be an RLP list" ) );
-
-    if ( encryptedArgsRlp.itemCount() != _decryptedCTXArgs.args.size() )
-        BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment(
-                                   "CTX decrypted args count mismatch: expected " +
-                                   std::to_string( encryptedArgsRlp.itemCount() ) + ", got " +
-                                   std::to_string( _decryptedCTXArgs.args.size() ) ) );
-
-    // Parse plaintext args array (second RLP list)
-    RLP plaintextArgsRlp = rlp[1];
-    if ( !plaintextArgsRlp.isList() )
-        BOOST_THROW_EXCEPTION( InvalidBITETransaction()
-                               << errinfo_comment( "CTX plaintext args must be an RLP list" ) );
-
-    // Build new RLP structure with decrypted args
-    RLPStream decryptedArgsStream;
-    decryptedArgsStream.appendList( _decryptedCTXArgs.args.size() );
-    for ( const auto& decryptedArg : _decryptedCTXArgs.args ) {
-        decryptedArgsStream << decryptedArg;
-    }
-
-    // Reuse plaintext args as-is
-    RLPStream plaintextArgsStream;
-    plaintextArgsStream.appendList( plaintextArgsRlp.itemCount() );
-    for ( size_t i = 0; i < plaintextArgsRlp.itemCount(); ++i ) {
-        plaintextArgsStream << plaintextArgsRlp[i].toBytes();
-    }
-
-    // Create final RLP: RLP(RLP(decrypted_args), RLP(plaintext_args))
-    RLPStream finalRlp;
-    finalRlp.appendList( 2 );
-    finalRlp.appendRaw( decryptedArgsStream.out() );
-    finalRlp.appendRaw( plaintextArgsStream.out() );
-
-    // Convert RLP to ABI-encoded format using helper function
-    dev::bytes abiEncodedArrays = rlpToAbiEncodedArrays( finalRlp.out() );
-
-    // Reconstruct decrypted data: selector + abi_encoded_arrays
-    m_decryptedData = std::make_shared< dev::bytes >();
-    m_decryptedData->insert(
-        m_decryptedData->end(), functionSelector.begin(), functionSelector.end() );
-    m_decryptedData->insert(
-        m_decryptedData->end(), abiEncodedArrays.begin(), abiEncodedArrays.end() );
+    // Reconstruct decrypted data: selector + abi encoded arrays
+    m_decryptedData = std::make_shared< dev::bytes >( decryptedCTXData );
 }
 #endif  // BITE2
 

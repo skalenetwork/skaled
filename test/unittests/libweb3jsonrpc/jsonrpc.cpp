@@ -73,7 +73,7 @@
 #endif
 
 #ifdef BITE2
-#include <libethereum/BITEConstants.h>
+#include <libethcore/BITECommon.h>
 #include <libethereum/PrecompiledHelpers.h>
 #endif
 
@@ -5921,8 +5921,8 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
     dev::bytes rlpEncodedData = finalStream.out();
 
     rlpEncodedData.insert( rlpEncodedData.begin(),
-        ON_DECRYPT_FUNCTION_SELECTOR.begin(),
-        ON_DECRYPT_FUNCTION_SELECTOR.end() );
+        dev::bite::ON_DECRYPT_FUNCTION_SELECTOR.begin(),
+        dev::bite::ON_DECRYPT_FUNCTION_SELECTOR.end() );
 
     // Create expected transaction for signature verification using RLP-encoded data
     Transaction expectedTransaction( 0, gasPrice, randomGasLimit, dev::Address( contractAddress ), rlpEncodedData, 0 );

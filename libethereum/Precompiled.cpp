@@ -24,10 +24,10 @@
 #include "Precompiled.h"
 
 #ifdef BITE2
-#include "BITEConstants.h"
 #include <libconsensus/libBLS/threshold_encryption/TEPublicKey.h>
 #include <libconsensus/libBLS/threshold_encryption/ThresholdEncryption.h>
 #include <libdevcore/RLP.h>
+#include <libethcore/BITECommon.h>
 #endif
 
 #include "PrecompiledHelpers.h"
@@ -76,6 +76,7 @@ std::shared_ptr< SkaleHost > g_skaleHost;
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
+using namespace dev::bite;
 
 namespace fs = boost::filesystem;
 

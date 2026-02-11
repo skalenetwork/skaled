@@ -26,6 +26,7 @@
 #include "PrecompiledHelpers.h"
 #ifdef BITE2
 #include <libconsensus/node/ConsensusInterface.h>
+#include <libethcore/BITECommon.h>
 #endif
 
 #include <libdevcore/CommonJS.h>
@@ -261,6 +262,8 @@ std::pair< RLPStream, size_t > parseAbiEncodedBytesArray( bytesConstRef dataRef,
         dev::bytes elemData =
             dataRef.cropped( elemPos + dev::h256::size, elemLength.convert_to< size_t >() )
                 .toBytes();
+        if ( validateMinLength )
+            dev::bite::validateBITECiphertext( elemData, 0 );
         arrayStream << elemData;
     }
 
