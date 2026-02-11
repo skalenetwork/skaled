@@ -219,7 +219,7 @@ dev::u256 statS2A( const std::string& saIn ) {
 #ifdef BITE2
 
 std::pair< RLPStream, size_t > parseAbiEncodedBytesArray( bytesConstRef dataRef,
-    bigint const& arrayOffset, const std::string& arrayName, bool validateMinLength ) {
+    bigint const& arrayOffset, const std::string& arrayName, bool validateCiphertext ) {
     if ( dataRef.size() < arrayOffset.convert_to< size_t >() + dev::h256::size )
         throw std::runtime_error(
             "parseAbiEncodedBytesArray: input too short for " + arrayName + " array" );
@@ -254,7 +254,7 @@ std::pair< RLPStream, size_t > parseAbiEncodedBytesArray( bytesConstRef dataRef,
                 "parseAbiEncodedBytesArray: input too short for " + arrayName + " element data" );
 
         // Validate encrypted element length if required
-        if ( validateMinLength && elemLength.convert_to< size_t >() < BITE_CIPHERTEXT_MIN_LEN )
+        if ( validateCiphertext && elemLength.convert_to< size_t >() < BITE_CIPHERTEXT_MIN_LEN )
             throw std::runtime_error(
                 "parseAbiEncodedBytesArray: encrypted argument too short, must be at least " +
                 std::to_string( BITE_CIPHERTEXT_MIN_LEN ) + " bytes" );
@@ -262,7 +262,7 @@ std::pair< RLPStream, size_t > parseAbiEncodedBytesArray( bytesConstRef dataRef,
         dev::bytes elemData =
             dataRef.cropped( elemPos + dev::h256::size, elemLength.convert_to< size_t >() )
                 .toBytes();
-        if ( validateMinLength )
+        if ( validateCiphertext )
             dev::bite::validateBITECiphertext( elemData, 0 );
         arrayStream << elemData;
     }

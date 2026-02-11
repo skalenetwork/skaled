@@ -1,3 +1,5 @@
+#ifdef BITE
+
 #include <libdevcore/RLP.h>
 #include <libethcore/BITECommon.h>
 #include <libethcore/Exceptions.h>
@@ -82,6 +84,7 @@ void validateBITECiphertext( const dev::bytes& _ciphertext, uint64_t _currentEpo
     }
 }
 
+#ifdef BITE2
 dev::bytes constructDecryptedCTXData(
     const dev::bytes& _txData, const DecryptedCATArgs& _decryptedCTXArgs ) {
     // Transform _txData from: selector(4 bytes) + RLP(RLP(encrypted_args), RLP(plaintext_args))
@@ -146,6 +149,9 @@ dev::bytes constructDecryptedCTXData(
 
     return functionSelector + abiEncodedArrays;
 }
+#endif   // BITE2
 
 }  // namespace bite
 }  // namespace dev
+
+#endif   // BITE

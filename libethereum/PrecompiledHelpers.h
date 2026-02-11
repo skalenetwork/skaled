@@ -89,7 +89,7 @@ dev::u256 statS2A( const std::string& saIn );
 #ifdef BITE2
 // Parse ABI-encoded bytes array
 std::pair< RLPStream, size_t > parseAbiEncodedBytesArray( bytesConstRef dataRef,
-    bigint const& arrayOffset, const std::string& arrayName, bool validateMinLength );
+    bigint const& arrayOffset, const std::string& arrayName, bool validateCiphertext );
 
 // Convert ABI-encoded arrays to RLP format
 std::pair< dev::bytes, size_t > abiEncodedArraysToRlp( const dev::bytes& _abiEncodedArrays );
