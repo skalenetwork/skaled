@@ -1188,11 +1188,12 @@ dev::h256 SkaleHost::getEncryptionCallRandom( unsigned _blockNumber, bool _isRea
             m_encryptionCounterBlockNumber = _blockNumber;
             m_encryptionCounter = 0;
             m_cachedBlockRandomBytes = toBigEndian( getBlockRandom( _blockNumber, _isReadOnly ) );
-            blockRandomBytes = m_cachedBlockRandomBytes;
         }
 
         // Get current counter value and increment for next call
         counter = m_encryptionCounter++;
+        // Use cached block random bytes
+        blockRandomBytes = m_cachedBlockRandomBytes;
     }
 
     // Combine blockRandom || counter
