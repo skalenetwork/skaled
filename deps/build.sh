@@ -543,6 +543,8 @@ echo -e "${COLOR_YELLOW}SKALED building consensus...${COLOR_RESET}"
 echo -e "${COLOR_SEPARATOR}===================================================================${COLOR_RESET}"
 
 
+sed -i 's|https://mirrors.kernel.org/gnu/gmp/|https://ftp.gnu.org/gnu/gmp/|g' "$WORKING_DIR_NEW/../libconsensus/libBLS/deps/build.sh"
+
 cd "$WORKING_DIR_NEW/../libconsensus/deps"
 bash ./build.sh DEBUG=$DEBUG
 cd ../../deps
