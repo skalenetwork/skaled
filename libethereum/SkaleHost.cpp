@@ -1170,7 +1170,6 @@ std::array< std::string, 4 > SkaleHost::getCurrentBLSPublicKey() const {
 #ifdef BITE2
 
 dev::h256 SkaleHost::getEncryptionCallRandom( unsigned _blockNumber, bool _isReadOnly ) {
-
     uint64_t counter = 0;
     bytes blockRandomBytes;
 
