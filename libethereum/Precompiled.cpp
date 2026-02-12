@@ -76,7 +76,10 @@ std::shared_ptr< SkaleHost > g_skaleHost;
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
+
+#ifdef BITE2
 using namespace dev::bite;
+#endif
 
 namespace fs = boost::filesystem;
 
