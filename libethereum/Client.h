@@ -319,7 +319,7 @@ public:
     uint64_t getCurrentEpochId() const { return historicGroupIndex.load(); }
     bool isCommitteeRotationSoon() const;
     std::pair< std::array< std::string, 4 >, uint64_t > getNextCommitteeBITEInfo() const;
-#endif   // BITE
+#endif  // BITE
 
 #ifdef FAIR
     bool updateGroupIfNeeded();
