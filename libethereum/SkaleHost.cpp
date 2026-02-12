@@ -1170,20 +1170,33 @@ std::array< std::string, 4 > SkaleHost::getCurrentBLSPublicKey() const {
 #ifdef BITE2
 
 dev::h256 SkaleHost::getEncryptionCallRandom( unsigned _blockNumber, bool _isReadOnly ) {
-    // Reset counter if we've moved to a new block
-    // EVM execution is sequential, so no race conditions
-    if ( m_encryptionCounterBlockNumber != _blockNumber || m_cachedBlockRandomBytes.empty() ) {
-        m_encryptionCounterBlockNumber = _blockNumber;
-        m_encryptionCounter = 0;
-        m_cachedBlockRandomBytes = toBigEndian( getBlockRandom( _blockNumber, _isReadOnly ) );
+
+    uint64_t counter = 0;
+    bytes blockRandomBytes;
+
+    // read only - should not affect state - use default counter value 0 & don't update cache
+    // compute block random for each call - no guarantee that it will follow linear block
+    // increase
+    if ( _isReadOnly ) {
+        blockRandomBytes = toBigEndian( getBlockRandom( _blockNumber, _isReadOnly ) );
+    }
+    // block tx - should follow linear block increase
+    else {
+        // Reset counter if we've moved to a new block
+        // EVM execution is sequential, so no race conditions
+        if ( m_encryptionCounterBlockNumber != _blockNumber || m_cachedBlockRandomBytes.empty() ) {
+            m_encryptionCounterBlockNumber = _blockNumber;
+            m_encryptionCounter = 0;
+            m_cachedBlockRandomBytes = toBigEndian( getBlockRandom( _blockNumber, _isReadOnly ) );
+            blockRandomBytes = m_cachedBlockRandomBytes;
+        }
+
+        // Get current counter value and increment for next call
+        counter = m_encryptionCounter++;
     }
 
-    // Get current counter value and increment for next call
-    uint64_t currentCounter = m_encryptionCounter++;
-
     // Combine blockRandom || counter
-    bytes counterBytes = toBigEndian( dev::u256( currentCounter ) );
-
+    bytes counterBytes = toBigEndian( dev::u256( counter ) );
     bytes combinedBytes;
     combinedBytes.insert(
         combinedBytes.end(), m_cachedBlockRandomBytes.begin(), m_cachedBlockRandomBytes.end() );
