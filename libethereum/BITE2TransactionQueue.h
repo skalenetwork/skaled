@@ -61,7 +61,7 @@ public:
 
 private:
     std::vector< Transaction > m_current;
-    std::atomic_size_t m_currentHeadIndex = -1;
+    std::atomic_size_t m_currentHeadIndex = 0;
     bool m_empty = true;
     mutable SharedMutex m_lock;
 

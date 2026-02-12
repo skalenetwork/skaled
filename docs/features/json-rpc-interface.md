@@ -1164,9 +1164,7 @@ Transaction hash: "0x"-prefixed hex `String`, 32 bytes
 
 #### Example
 ```json
-[
   "0xb217cdf70dd4691e53040030b8931807b02633d92052d8c74f38b20944788922"
-]
 ```
 
 #### Exceptions

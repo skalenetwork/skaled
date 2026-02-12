@@ -205,7 +205,7 @@ public:
             &dev::rpc::SkaleFace::bite_getCraftedCtxsI );
         this->bindAndAddMethod(
             jsonrpc::Procedure( "bite_getCtxOrigin", jsonrpc::PARAMS_BY_POSITION,
-                jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_STRING, NULL ),
+                jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::SkaleFace::bite_getCtxOriginI );
 
 #endif  // BITE2

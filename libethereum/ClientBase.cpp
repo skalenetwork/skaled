@@ -509,7 +509,7 @@ DecryptedTransactionData ClientBase::decryptedTransactionData( h256 _transaction
 dev::h256 ClientBase::ctxOrigin( const dev::h256& _ctxHash ) const {
     auto tx = transaction( _ctxHash );
     if ( !tx.isCTX() )
-        std::logic_error( "Trying to get ctxOrigin for non-CTX" );
+        throw std::logic_error( "Trying to get ctxOrigin for non-CTX" );
     auto block = bc().transactionLocation( _ctxHash ).first;
     auto prevBlock = bc().info( block ).parentHash();
     CtxOrigin ctxHashesLists = bc().ctxHashesForBlock( prevBlock );
