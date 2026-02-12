@@ -203,13 +203,13 @@ struct CtxOrigin {
     }
     explicit operator bool() const { return !m_ctxHashesLists.empty(); }
     std::vector< dev::h256 > operator[]( size_t i ) const { return m_ctxHashesLists[i]; }
-    size_t find( const dev::h256& _ctxHash ) const {
+    std::optional< size_t > find( const dev::h256& _ctxHash ) const {
         for ( size_t i = 0; i < m_ctxHashesLists.size(); ++i ) {
             auto it = std::find( m_ctxHashesLists[i].begin(), m_ctxHashesLists[i].end(), _ctxHash );
             if ( it != m_ctxHashesLists[i].end() )
                 return i;
         }
-        return -1;
+        return std::nullopt;
     }
 
     std::vector< std::vector< dev::h256 > > m_ctxHashesLists;

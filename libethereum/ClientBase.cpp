@@ -513,9 +513,12 @@ dev::h256 ClientBase::ctxOrigin( const dev::h256& _ctxHash ) const {
     auto block = bc().transactionLocation( _ctxHash ).first;
     auto prevBlock = bc().info( block ).parentHash();
     CtxOrigin ctxHashesLists = bc().ctxHashesForBlock( prevBlock );
-    size_t originIndex = ctxHashesLists.find( _ctxHash );
-    if ( originIndex != size_t( -1 ) ) {
-        return bc().transactionHashes( prevBlock )[originIndex];
+    std::optional<size_t> originIndex = ctxHashesLists.find( _ctxHash );
+    if ( originIndex != std::nullopt ) {
+        auto prevBlockTxnHashes = bc().transactionHashes( prevBlock );
+        if ( *originIndex < prevBlockTxnHashes.size() ) {
+            return prevBlockTxnHashes[*originIndex];
+        }
     }
     return dev::h256();
 }
@@ -523,6 +526,9 @@ dev::h256 ClientBase::ctxOrigin( const dev::h256& _ctxHash ) const {
 std::vector< dev::h256 > ClientBase::craftedCTXs( const dev::h256& _transactionHash ) const {
     auto tl = bc().transactionLocation( _transactionHash );
     CtxOrigin ctxHashesLists = bc().ctxHashesForBlock( tl.first );
+    if ( ctxHashesLists.size() < tl.second + 1 )
+        return {};
+    }
     return ctxHashesLists[tl.second];
 }
 #endif  // BITE2

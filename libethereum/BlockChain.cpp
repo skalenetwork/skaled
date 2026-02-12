@@ -1566,10 +1566,10 @@ void BlockChain::clearCachesDuringChainReversion( unsigned _firstInvalid ) {
     m_transactionAddresses.clear();  // TODO: could perhaps delete them individually?
 
 #ifdef BITE
-    DEV_WRITE_GUARDED( x_decryptedTransactionsData );
+    DEV_WRITE_GUARDED( x_decryptedTransactionsData )
     m_decryptedTransactionsData.clear();
 #ifdef BITE2
-    DEV_WRITE_GUARDED( x_ctxOrigin );
+    DEV_WRITE_GUARDED( x_ctxOrigin )
     m_ctxOrigin.clear();
 #endif  // BITE2
 #endif  // BITE
