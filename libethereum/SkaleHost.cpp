@@ -1199,7 +1199,7 @@ dev::h256 SkaleHost::getEncryptionCallRandom( unsigned _blockNumber, bool _isRea
     bytes counterBytes = toBigEndian( dev::u256( counter ) );
     bytes combinedBytes;
     combinedBytes.insert(
-        combinedBytes.end(), m_cachedBlockRandomBytes.begin(), m_cachedBlockRandomBytes.end() );
+        combinedBytes.end(), blockRandomBytes.begin(), blockRandomBytes.end() );
     combinedBytes.insert( combinedBytes.end(), counterBytes.begin(), counterBytes.end() );
 
     // Hash to get final deterministic random value
