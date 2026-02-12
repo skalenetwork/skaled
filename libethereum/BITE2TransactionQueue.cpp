@@ -48,7 +48,9 @@ std::vector< h256 > BITE2TransactionQueue::getTempHashes() const {
 
     std::vector< h256 > res;
     res.reserve( m_current.size() - m_currentHeadIndex );
-    for ( size_t i = m_currentHeadIndex; i < m_current.size(); ++i ) {
+    // m_currentHeadIndex always points to the last committed CTX,
+    // so we return hashes of all CTXs starting after m_currentHeadIndex
+    for ( size_t i = m_currentHeadIndex + 1; i < m_current.size(); ++i ) {
         res.push_back( m_current.at( i ).sha3() );
     }
     return res;
