@@ -1432,7 +1432,8 @@ uint64_t Client::getGroupIndexForBlockNumber( uint64_t _blockNumber ) const {
     }
 
     if ( !GroupIndexInitPatch::isEnabledInWorkingBlock() ) {
-        uint64_t previousBlockTimestamp = blockInfo( hashFromNumber( _blockNumber - 1 ) ).timestamp();
+        uint64_t previousBlockTimestamp =
+            blockInfo( hashFromNumber( _blockNumber - 1 ) ).timestamp();
         if ( it != nodeGroups.begin() ) {
             auto prevIt = std::prev( it );
             if ( currentBlockTimestamp >= prevIt->finishTs &&
