@@ -1414,9 +1414,12 @@ Json::Value Client::traceBlock( BlockNumber _blockNumber, Json::Value const& _js
 #endif
 
 uint64_t Client::getGroupIndexForBlockNumber( uint64_t _blockNumber ) const {
+    if ( _blockNumber == 0 )
+        return 0;
+
     auto nodeGroups = chainParams().getNodeGroups();
 
-    uint64_t currentBlockTimestamp = blockInfo( hashFromNumber( number() ) ).timestamp();
+    uint64_t currentBlockTimestamp = blockInfo( hashFromNumber( _blockNumber ) ).timestamp();
 
     // always returns it != end() because current finish ts equals to uint64_t(-1)
     auto it = std::find_if( nodeGroups.begin(), nodeGroups.end(),
@@ -1429,7 +1432,7 @@ uint64_t Client::getGroupIndexForBlockNumber( uint64_t _blockNumber ) const {
     }
 
     if ( !GroupIndexInitPatch::isEnabledInWorkingBlock() ) {
-        uint64_t previousBlockTimestamp = blockInfo( hashFromNumber( number() - 1 ) ).timestamp();
+        uint64_t previousBlockTimestamp = blockInfo( hashFromNumber( _blockNumber - 1 ) ).timestamp();
         if ( it != nodeGroups.begin() ) {
             auto prevIt = std::prev( it );
             if ( currentBlockTimestamp >= prevIt->finishTs &&
@@ -1449,7 +1452,7 @@ void Client::initHistoricGroupIndex() {
         return;
     }
 
-    historicGroupIndex = getEpochIdxFromBlockNumber( number() );
+    historicGroupIndex = getGroupIndexForBlockNumber( number() );
 }
 
 bool Client::updateHistoricGroupIndex() {
