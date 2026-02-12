@@ -313,11 +313,13 @@ public:
         return m_snapshotAgent->createSnapshotFile( _blockNumber );
     }
 
+    uint64_t getGroupIndexForBlockNumber( uint64_t _blockNumber ) const;
+
 #ifdef BITE
     uint64_t getCurrentEpochId() const { return historicGroupIndex.load(); }
     bool isCommitteeRotationSoon() const;
     std::pair< std::array< std::string, 4 >, uint64_t > getNextCommitteeBITEInfo() const;
-#endif
+#endif   // BITE
 
 #ifdef FAIR
     bool updateGroupIfNeeded();

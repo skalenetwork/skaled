@@ -1413,13 +1413,7 @@ Json::Value Client::traceBlock( BlockNumber _blockNumber, Json::Value const& _js
 
 #endif
 
-
-void Client::initHistoricGroupIndex() {
-    if ( number() == 0 ) {
-        historicGroupIndex = 0;
-        return;
-    }
-
+uint64_t Client::getGroupIndexForBlockNumber( uint64_t _blockNumber ) const {
     auto nodeGroups = chainParams().getNodeGroups();
 
     uint64_t currentBlockTimestamp = blockInfo( hashFromNumber( number() ) ).timestamp();
@@ -1444,7 +1438,18 @@ void Client::initHistoricGroupIndex() {
         }
     }
 
-    historicGroupIndex = std::distance( nodeGroups.begin(), it );
+    uint64_t groupIndex = std::distance( nodeGroups.begin(), it );
+
+    return groupIndex;
+}
+
+void Client::initHistoricGroupIndex() {
+    if ( number() == 0 ) {
+        historicGroupIndex = 0;
+        return;
+    }
+
+    historicGroupIndex = getEpochIdxFromBlockNumber( number() );
 }
 
 bool Client::updateHistoricGroupIndex() {
