@@ -613,17 +613,6 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
     BlockHeader latestInfo = static_cast< const Interface& >( m_client ).blockInfo( LatestBlock );
 
-    bool skipTxVerification = false;
-    if ( SingleStateCommitPerBlockPatch::isEnabledInWorkingBlock() ) {
-        auto progressLog = m_client.state().getProgressLog();
-        if ( progressLog && progressLog->isBlockCommitStartedButNotCompleted( _blockID ) ) {
-            skipTxVerification = true;
-            BOOST_LOG( m_loggerWarning )
-                << "Block " << _blockID
-                << " commit was started but not completed. Skipping tx verification.";
-        }
-    }
-
     DEV_GUARDED( m_client.m_blockImportMutex ) {
         m_debugTracer.tracepoint( "drop_good_transactions" );
 
@@ -635,14 +624,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             h256 sha = sha3( data );
             BOOST_LOG( m_loggerTrace ) << "Arrived txn: " << sha;
 
-            auto checkLevel =
-                skipTxVerification ? CheckTransaction::None : CheckTransaction::Everything;
-            if ( skipTxVerification ) {
-                BOOST_LOG( m_loggerWarning ) << "Txn " << sha
-                                             << " verification will not be performed since it was "
-                                                "already executed and committed";
-            }
-            Transaction t( data, checkLevel, true,
+            Transaction t( data, CheckTransaction::Everything, true,
                 EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
                 InvalidTransactionFormatPatch::isEnabledInWorkingBlock() );
 #ifdef BITE
