@@ -8396,7 +8396,7 @@ BOOST_AUTO_TEST_CASE( test_transactions ) {
 #ifdef BITE
                                        DecryptedTransactions{
 #ifdef BITE2
-                                               std::make_shared< DecryptedCATxsMap >(),
+                                               std::make_shared< DecryptedCTXTxsMap >(),
 #endif  // BITE2
                                                std::make_shared< DecryptedRegularTxsMap >()
                                            },
@@ -8450,7 +8450,7 @@ BOOST_AUTO_TEST_CASE( test_exceptions ) {
 #ifdef BITE
                                        DecryptedTransactions{
 #ifdef BITE2
-                                               std::make_shared< DecryptedCATxsMap >(),
+                                               std::make_shared< DecryptedCTXTxsMap >(),
 #endif  // BITE2
                                                std::make_shared< DecryptedRegularTxsMap >()
                                            },
