@@ -27,9 +27,9 @@ using namespace dev;
 using namespace dev::eth;
 using namespace dev::test;
 
-#ifdef BITE2
-
 BOOST_FIXTURE_TEST_SUITE( BITE2TransactionQueueSuite, TestOutputHelperFixture )
+
+#ifdef BITE2
 
 BOOST_AUTO_TEST_CASE( addCommitClear ) {
     BITE2TransactionQueue queue;
@@ -150,6 +150,6 @@ BOOST_AUTO_TEST_CASE( finalizeReset ) {
     BOOST_REQUIRE( queue.dropGood( txCtx ) );
 }
 
-BOOST_AUTO_TEST_SUITE_END()
-
 #endif
+
+BOOST_AUTO_TEST_SUITE_END()
