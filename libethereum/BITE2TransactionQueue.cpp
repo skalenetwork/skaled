@@ -43,6 +43,16 @@ void BITE2TransactionQueue::addTemp( Transaction&& _t ) {
 }
 
 std::vector< h256 > BITE2TransactionQueue::getTempHashes() const {
+    // if there are no committed transactions
+    // we return hashes of all transactions in m_current
+    if ( m_empty ) {
+        std::vector< h256 > res;
+        res.reserve( m_current.size() );
+        for ( const auto& tx : m_current )
+            res.push_back( tx.sha3() );
+        return res;
+    }
+
     if ( m_currentHeadIndex == m_current.size() )
         return {};
 
