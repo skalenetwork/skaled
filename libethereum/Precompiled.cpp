@@ -981,9 +981,9 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
         // Convert ABI-encoded data to RLP
         dev::bytes rlpEncodedData;
         size_t encryptedArgsCount = 0;
-        uint64_t epochId = _ctx.isReadOnly ? g_skaleHost->getGroupIndexForBlockNumber(
+        uint64_t epochId = _ctx.isReadOnly ? g_skaleHost->client().getGroupIndexForBlockNumber(
                                                  _ctx.latestBlockTimestamp ) :
-                                             g_skaleHost->client()->getCurrentEpochId();
+                                             g_skaleHost->client().getCurrentEpochId();
         try {
             auto [rlpData, count] = abiEncodedArraysToRlp( txnData, epochId );
             rlpEncodedData = std::move( rlpData );

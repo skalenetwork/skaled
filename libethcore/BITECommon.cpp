@@ -186,7 +186,8 @@ std::pair< RLPStream, size_t > parseAbiEncodedBytesArray( bytesConstRef dataRef,
                 "parseAbiEncodedBytesArray: input too short for " + arrayName + " element data" );
 
         // Validate encrypted element length if required
-        if ( _epochId.has_value() && elemLength.convert_to< size_t >() < BITE_CIPHERTEXT_MIN_LEN )
+        if ( _epochId.has_value() && isCiphertextValidationEnabled &&
+             elemLength.convert_to< size_t >() < BITE_CIPHERTEXT_MIN_LEN )
             throw std::runtime_error(
                 "parseAbiEncodedBytesArray: encrypted argument too short, must be at least " +
                 std::to_string( BITE_CIPHERTEXT_MIN_LEN ) + " bytes" );
@@ -194,7 +195,7 @@ std::pair< RLPStream, size_t > parseAbiEncodedBytesArray( bytesConstRef dataRef,
         dev::bytes elemData =
             dataRef.cropped( elemPos + dev::h256::size, elemLength.convert_to< size_t >() )
                 .toBytes();
-        if ( _epochId.has_value() )
+        if ( _epochId.has_value() && isCiphertextValidationEnabled )
             dev::bite::validateBITECiphertext( elemData, _epochId.value() );
         arrayStream << elemData;
     }

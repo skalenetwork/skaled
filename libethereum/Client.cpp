@@ -46,6 +46,10 @@
 #include <libdevcore/LevelDB.h>
 #include <libdevcore/system_usage.h>
 
+#ifdef BITE
+#include <libethcore/BITECommon.h>
+#endif
+
 #ifdef HISTORIC_STATE
 #include <libhistoric/AlethStandardTrace.h>
 #include <libhistoric/HistoricState.h>
@@ -1198,7 +1202,7 @@ h256 Client::importTransaction( Transaction const& _t, TransactionBroadcast _txO
 #ifdef BITE
     // invalid BITE transactions should not be added to txn queue
     // only validate in production setup
-    if ( !chainParams().isTestSignaturesEnabled() )
+    if ( dev::bite::isCiphertextValidationEnabled )
         _t.checkAndValidateBITETransaction( historicGroupIndex );
 #endif
 
