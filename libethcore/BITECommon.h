@@ -28,7 +28,7 @@
 #include <libdevcore/Address.h>
 #include <libdevcore/CommonData.h>
 
-#ifdef BITE2
+#ifdef BITE
 #include <libconsensus/node/ConsensusInterface.h>
 #endif
 
