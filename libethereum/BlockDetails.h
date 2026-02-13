@@ -202,6 +202,7 @@ struct CtxOrigin {
         return s.out();
     }
     explicit operator bool() const { return !m_ctxHashesLists.empty(); }
+    size_t count() const { return m_ctxHashesLists.size(); }
     std::vector< dev::h256 > operator[]( size_t i ) const { return m_ctxHashesLists[i]; }
     std::optional< size_t > find( const dev::h256& _ctxHash ) const {
         for ( size_t i = 0; i < m_ctxHashesLists.size(); ++i ) {

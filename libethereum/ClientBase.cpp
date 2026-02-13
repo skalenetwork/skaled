@@ -526,7 +526,7 @@ dev::h256 ClientBase::ctxOrigin( const dev::h256& _ctxHash ) const {
 std::vector< dev::h256 > ClientBase::craftedCTXs( const dev::h256& _transactionHash ) const {
     auto tl = bc().transactionLocation( _transactionHash );
     CtxOrigin ctxHashesLists = bc().ctxHashesForBlock( tl.first );
-    if ( ctxHashesLists.size() < tl.second + 1 )
+    if ( ctxHashesLists.count() < tl.second + 1 )
         return {};
     return ctxHashesLists[tl.second];
 }
