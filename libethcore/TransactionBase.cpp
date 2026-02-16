@@ -99,6 +99,42 @@ dev::RLPs accessListToRLPs( const std::vector< bytes >& _accessList ) {
     return accessList;
 }
 
+int64_t TransactionBase::accessListGasRequired(
+    std::vector< bytes > const& _accessList, EVMSchedule const& _es ) {
+    int64_t gas = 0;
+    for ( auto const& accessListEntryRaw : _accessList ) {
+        RLP const accessListEntry( accessListEntryRaw );
+        if ( !accessListEntry.isList() || accessListEntry.itemCount() != 2 )
+            BOOST_THROW_EXCEPTION( InvalidTransactionFormat() << errinfo_comment(
+                                       "transaction accessList entry is invalid" ) );
+        if ( !accessListEntry[1].isList() )
+            BOOST_THROW_EXCEPTION( InvalidTransactionFormat() << errinfo_comment(
+                                       "transaction accessList storage keys must be a list" ) );
+
+        size_t const storageKeyCount = accessListEntry[1].itemCount();
+        if ( gas > std::numeric_limits< int64_t >::max() -
+                       static_cast< int64_t >( _es.txAccessListAddressGas ) )
+            BOOST_THROW_EXCEPTION(
+                InvalidTransactionFormat() << errinfo_comment( "Gas calculation overflow" ) );
+        gas += static_cast< int64_t >( _es.txAccessListAddressGas );
+
+        if ( storageKeyCount > 0 ) {
+            if ( _es.txAccessListStorageKeyGas >
+                 std::numeric_limits< int64_t >::max() / storageKeyCount )
+                BOOST_THROW_EXCEPTION(
+                    InvalidTransactionFormat() << errinfo_comment( "Gas calculation overflow" ) );
+            int64_t const storageKeysGas =
+                static_cast< int64_t >( _es.txAccessListStorageKeyGas ) * storageKeyCount;
+            if ( gas > std::numeric_limits< int64_t >::max() - storageKeysGas )
+                BOOST_THROW_EXCEPTION(
+                    InvalidTransactionFormat() << errinfo_comment( "Gas calculation overflow" ) );
+            gas += storageKeysGas;
+        }
+    }
+
+    return gas;
+}
+
 TransactionBase::TransactionBase( TransactionSkeleton const& _ts, Secret const& _s )
     : m_nonce( _ts.nonce ),
       m_value( _ts.value ),

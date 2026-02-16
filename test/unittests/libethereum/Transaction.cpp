@@ -25,6 +25,7 @@
 #include "test/tools/libtesteth/TestHelper.h"
 #include <libethcore/Common.h>
 #include <libethcore/Exceptions.h>
+#include <libethereum/SchainPatch.h>
 #include <libevm/VMFace.h>
 #include <test/tools/libtesteth/BlockChainHelper.h>
 
@@ -303,6 +304,76 @@ BOOST_AUTO_TEST_CASE( accessList ) {
         "17a5cd0e9f10ee50f165bf4b1b4c78ddae" );
     BOOST_REQUIRE_THROW(
         Transaction( txRlp, CheckTransaction::None, false, true ), InvalidTransactionFormat );
+}
+
+BOOST_AUTO_TEST_CASE( typedTransactionsRequireEIP2718Support ) {
+    // Readable tx representation (EIP-2930 / type-1 envelope):
+    // {
+    //   chainId: 151,
+    //   nonce: 1,
+    //   gasPrice: 0x04a817c800,
+    //   gasLimit: 0x7530,
+    //   to: 0x7d36af85a184e220a656525fcbb9a63b9ab3c12b,
+    //   value: 0x01,
+    //   data: 0x,
+    //   accessList: [
+    //     {
+    //       address: 0xde0b295669a9fd93d5f28d9ec85e40f4cb697bae,
+    //       storageKeys: [
+    //         0x0000000000000000000000000000000000000000000000000000000000000003,
+    //         0x0000000000000000000000000000000000000000000000000000000000000007
+    //       ]
+    //     }
+    //   ],
+    //   yParity/r/s: present
+    // }
+    auto txRlp = fromHex(
+        "0x01f8c38197018504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b0180f85bf85994de"
+        "0b295669a9fd93d5f28d9ec85e40f4cb697baef842a00000000000000000000000000000000000000000000000"
+        "000000000000000003a0000000000000000000000000000000000000000000000000000000000000000780a0b0"
+        "3eaf481958e22fc39bd1d526eb9255be1e6625614f02ca939e51c3d7e64bcaa05f675640c04bb050d27bd1f39c"
+        "07b6ff742311b04dab760bb3bc206054332879" );
+
+    BOOST_REQUIRE_THROW(
+        Transaction( txRlp, CheckTransaction::None, false, false ), std::exception );
+    BOOST_REQUIRE_NO_THROW( Transaction( txRlp, CheckTransaction::None, false, true ) );
+}
+
+BOOST_AUTO_TEST_CASE( accessListIntrinsicGasEIP2930 ) {
+    // Readable tx representation (EIP-2930 / type-1 envelope), same canonical sample as above:
+    // {
+    //   chainId: 151,
+    //   nonce: 1,
+    //   gasPrice: 0x04a817c800,
+    //   gasLimit: 0x7530,
+    //   to: 0x7d36af85a184e220a656525fcbb9a63b9ab3c12b,
+    //   value: 0x01,
+    //   data: 0x,
+    //   accessList: 1 address + 2 storage keys,
+    //   yParity/r/s: present
+    // }
+    auto txRlp = fromHex(
+        "0x01f8c38197018504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b0180f85bf85994de"
+        "0b295669a9fd93d5f28d9ec85e40f4cb697baef842a00000000000000000000000000000000000000000000000"
+        "000000000000000003a0000000000000000000000000000000000000000000000000000000000000000780a0b0"
+        "3eaf481958e22fc39bd1d526eb9255be1e6625614f02ca939e51c3d7e64bcaa05f675640c04bb050d27bd1f39c"
+        "07b6ff742311b04dab760bb3bc206054332879" );
+    Transaction tx( txRlp, CheckTransaction::None, false, true );
+
+    EVMSchedule patchedSchedule = EIP1559TransactionsPatch::makeSchedule( IstanbulSchedule );
+    int64_t gasWithoutEIP2930 = tx.baseGasRequired( IstanbulSchedule );
+    int64_t gasWithEIP2930 = tx.baseGasRequired( patchedSchedule );
+    BOOST_REQUIRE_EQUAL( gasWithEIP2930 - gasWithoutEIP2930, 6200 );
+}
+
+BOOST_AUTO_TEST_CASE( eip2929ScheduleValues ) {
+    EVMSchedule patchedSchedule = EIP1559TransactionsPatch::makeSchedule( IstanbulSchedule );
+    BOOST_REQUIRE( patchedSchedule.eip2929Mode );
+    BOOST_REQUIRE_EQUAL( patchedSchedule.sloadGas, patchedSchedule.coldSloadCost );
+    BOOST_REQUIRE_EQUAL( patchedSchedule.balanceGas, patchedSchedule.coldAccountAccessCost );
+    BOOST_REQUIRE_EQUAL( patchedSchedule.extcodesizeGas, patchedSchedule.coldAccountAccessCost );
+    BOOST_REQUIRE_EQUAL( patchedSchedule.extcodecopyGas, patchedSchedule.coldAccountAccessCost );
+    BOOST_REQUIRE_EQUAL( patchedSchedule.extcodehashGas, patchedSchedule.coldAccountAccessCost );
 }
 
 BOOST_AUTO_TEST_CASE( InvaidTransaction ) {

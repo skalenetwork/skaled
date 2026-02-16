@@ -25,14 +25,13 @@
 #include <libdevcrypto/Common.h>
 #include <libethcore/Common.h>
 #include <libethcore/Counter.h>
+#include <libethcore/EVMSchedule.h>
 
 #include <SkaleCommon.h>
 #include <boost/optional.hpp>
 
 namespace dev {
 namespace eth {
-
-struct EVMSchedule;
 
 /// Named-boolean type to encode whether a signature be included in the serialisation process.
 enum IncludeSignature {
@@ -361,7 +360,7 @@ public:
     /// @returns amount of gas required for the basic payment.
     int64_t baseGasRequired( EVMSchedule const& _es ) const {
         CHECK_STATE2( !isInvalid(), "Transaction is invalid. Cannot get base gas required." );
-        return baseGasRequired( isCreation(), &m_data, _es
+        int64_t gasRequired = baseGasRequired( isCreation(), &m_data, _es
 #ifdef BITE
             ,
             m_isBITETxn
@@ -371,6 +370,9 @@ public:
             m_bite2EncryptedArgsSize
 #endif
         );
+        if ( _es.eip2930Mode && m_txType != TransactionType::Legacy )
+            gasRequired += accessListGasRequired( m_accessList, _es );
+        return gasRequired;
     }
 
     bool isInvalid() const { return m_type == Type::Invalid; }
@@ -395,6 +397,9 @@ public:
         std::optional< size_t > _bite2EncryptedArgsSize = std::nullopt
 #endif
     );
+
+    static int64_t accessListGasRequired(
+        std::vector< bytes > const& _accessList, EVMSchedule const& _es );
 
 #ifdef BITE2
     void setBITE2EncryptedArgsSize( size_t _s ) { m_bite2EncryptedArgsSize = _s; }

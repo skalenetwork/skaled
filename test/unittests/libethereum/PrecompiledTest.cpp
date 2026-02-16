@@ -286,6 +286,39 @@ BOOST_AUTO_TEST_CASE( modexpCostFermatTheorem,
     BOOST_REQUIRE_EQUAL( static_cast< int >( res ), 13056 );
 }
 
+BOOST_AUTO_TEST_CASE( modexpCostEIP2565, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+    struct PatchableChainParams : public ChainOperationParams {
+        void setPatchTimestamp( SchainPatchEnum _patch, time_t _timestamp ) {
+            sChain._patchTimestamps[static_cast< size_t >( _patch )] = _timestamp;
+        }
+    };
+
+    PrecompiledPricer cost = PrecompiledRegistrar::pricer( "modexp" );
+    bytes in = fromHex(
+        "0000000000000000000000000000000000000000000000000000000000000001"
+        "0000000000000000000000000000000000000000000000000000000000000020"
+        "0000000000000000000000000000000000000000000000000000000000000020"
+        "03"
+        "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e"
+        "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f" );
+
+    PatchableChainParams disabledPatchParams;
+    SchainPatch::init( disabledPatchParams );
+    SchainPatch::useLatestBlockTimestamp( 100 );
+    bigint oldFormulaCost = cost( ref( in ), disabledPatchParams, 0 );
+    BOOST_REQUIRE_EQUAL( oldFormulaCost, bigint( 13056 ) );
+
+    PatchableChainParams enabledPatchParams;
+    enabledPatchParams.setPatchTimestamp( SchainPatchEnum::EIP1559TransactionsPatch, 1 );
+    SchainPatch::init( enabledPatchParams );
+    SchainPatch::useLatestBlockTimestamp( 100 );
+    bigint eip2565Cost = cost( ref( in ), enabledPatchParams, 0 );
+    BOOST_REQUIRE_EQUAL( eip2565Cost, bigint( 1360 ) );
+
+    SchainPatch::init( disabledPatchParams );
+}
+
 BOOST_AUTO_TEST_CASE( modexpCostTooLarge, 
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledPricer cost = PrecompiledRegistrar::pricer( "modexp" );

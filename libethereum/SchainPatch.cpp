@@ -172,3 +172,18 @@ EVMSchedule PushZeroPatch::makeSchedule( const EVMSchedule& _base ) {
     ret.havePush0 = true;
     return ret;
 }
+
+EVMSchedule EIP1559TransactionsPatch::makeSchedule( const EVMSchedule& _base ) {
+    EVMSchedule ret = _base;
+    ret.eip2929Mode = true;
+    ret.eip2930Mode = true;
+    ret.eip2565Mode = true;
+
+    // EIP-2929: apply cold-access pricing for opcodes represented in the static schedule.
+    ret.sloadGas = ret.coldSloadCost;
+    ret.balanceGas = ret.coldAccountAccessCost;
+    ret.extcodesizeGas = ret.coldAccountAccessCost;
+    ret.extcodecopyGas = ret.coldAccountAccessCost;
+    ret.extcodehashGas = ret.coldAccountAccessCost;
+    return ret;
+}

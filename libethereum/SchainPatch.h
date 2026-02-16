@@ -141,7 +141,7 @@ DEFINE_AMNESIC_PATCH( StorageDestructionPatch );
 /*
  * Enable restriction on contract storage size, when it's doing selfdestruct
  */
-DEFINE_SIMPLE_PATCH( EIP1559TransactionsPatch );
+DEFINE_EVM_PATCH( EIP1559TransactionsPatch );
 
 /*
  * Enable bls signatures verification for sync node

@@ -180,6 +180,11 @@ bigint multComplexity( bigint const& _x ) {
     else
         return ( _x * _x ) / 16 + 480 * _x - 199680;
 }
+
+bigint multComplexityEIP2565( bigint const& _x ) {
+    bigint const xInWords = ( _x + 7 ) / 8;
+    return xInWords * xInWords;
+}
 }  // namespace
 
 ETH_REGISTER_PRECOMPILED_PRICER( modexp )
@@ -190,8 +195,12 @@ ETH_REGISTER_PRECOMPILED_PRICER( modexp )
 
     bigint const maxLength( max( modLength, baseLength ) );
     bigint const adjustedExpLength( expLengthAdjust( baseLength + 96, expLength, _in ) );
-
-    return multComplexity( maxLength ) * max< bigint >( adjustedExpLength, 1 ) / 20;
+    bigint const iterationCount = max< bigint >( adjustedExpLength, 1 );
+    if ( EIP1559TransactionsPatch::isEnabledInWorkingBlock() ) {
+        bigint const gas = multComplexityEIP2565( maxLength ) * iterationCount / 3;
+        return max< bigint >( gas, 200 );
+    }
+    return multComplexity( maxLength ) * iterationCount / 20;
 }
 
 ETH_REGISTER_PRECOMPILED( alt_bn128_G1_add )( bytesConstRef _in, const PrecompiledCallContext& ) {
