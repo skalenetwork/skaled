@@ -2895,12 +2895,12 @@ void SkaleServerOverride::eth_getCode( const string& /*strOrigin*/,
     opts_.fn_eth_getCode_( joRequest, joResponse );
 }
 
-void SkaleServerOverride::eth_getLogs( const string& strOrigin,
+void SkaleServerOverride::eth_getLogs( const string& /*strOrigin*/,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
     opts_.fn_eth_getLogs_( joRequest, joResponse );
 }
 
-void SkaleServerOverride::eth_getFilterLogs( const string& strOrigin,
+void SkaleServerOverride::eth_getFilterLogs( const string& /*strOrigin*/,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
     opts_.fn_eth_getFilterLogs_( joRequest, joResponse );
 }

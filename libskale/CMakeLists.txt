@@ -2,6 +2,7 @@
 
 set(sources
     State.cpp
+    StateProgressLog.cpp
     OverlayDB.cpp
     httpserveroverride.cpp
     broadcaster.cpp
@@ -21,7 +22,8 @@ if (NOT DEFINED FAIR)
 endif()
 
 set(headers
-    State.h    
+    State.h
+    StateProgressLog.h
     OverlayDB.h
     httpserveroverride.h
     broadcaster.h

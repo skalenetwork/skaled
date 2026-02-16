@@ -42,6 +42,7 @@
 
 #include "BaseState.h"
 #include "OverlayDB.h"
+#include "StateProgressLog.h"
 #ifndef FAIR
 #include "OverlayFS.h"
 #endif
@@ -256,12 +257,12 @@ public:
     dev::eth::TransactionReceipts safeLegacyPartialTransactionReceipts();
 
     void safeRemoveAllPartialTransactionReceipts();
-    void safeRemovePartialTransactionReceiptsForBlock( dev::eth::BlockNumber _blockNumber );
     void safeCommitZeroBlockLegacyPartialTransactionReceipts();
 
 
     void safeSetAndCommitPartialTransactionReceipt( const dev::bytes& _receipt,
         dev::eth::BlockNumber _blockNumber, uint64_t _transactionIndex );
+    void safeSetLastExecutedTransactionHash( const dev::h256& _hash );
 
 #ifdef FAIR
     /// Save last block for which rewards has been applied
@@ -423,7 +424,7 @@ public:
 
     ChangeLog const& changeLog() const { return m_changeLog; }
 
-    /// Create State copy to modify data.
+    /// Create State copy with cleared cache to modify data.
     State createStateCopyAndClearCaches() const;
 
     /// Create State copy based on LevedlDB snaps that does not use any locking
@@ -437,7 +438,13 @@ public:
     /// Check if state is empty
     bool empty() const;
 
+    bool isReadOnlySnapBasedState() const { return m_isReadOnlySnapBasedState; }
+
     dev::db::DBImpl* getOriginalDb() const { return m_orig_db.get(); }
+
+    const boost::filesystem::path& getDataDir() const { return m_dataDir; }
+
+    std::shared_ptr< StateProgressLog > getProgressLog() const { return m_progressLog; }
 
 #ifndef FAIR
     void resetStorageChanges() {
@@ -517,15 +524,16 @@ private:
             m_fs_ptr->reset();
         }
     };
-
-    void resetOverlayFS( bool _enableCache ) {
-        m_fs_ptr = std::make_shared< OverlayFS >( _enableCache );
-    };
 #endif
 
     static bool ifShouldSkipExecution( uint64_t _chainId, const dev::h256& _hash );
 
     static uint64_t getGasUsedForSkippedTransaction( uint64_t _chainId, const dev::h256& _hash );
+
+    dev::eth::TransactionReceipt makeReceipt( bool _statusCode, dev::u256 const& _startGasUsed,
+        dev::eth::Executive const& _executive, dev::eth::EnvInfo const& _envInfo,
+        dev::eth::ChainOperationParams const& _chainParams, dev::eth::Transaction const& _t,
+        Permanence _p, std::string const& _revertReason ) const;
 
 public:
 #ifdef HISTORIC_STATE
@@ -572,6 +580,9 @@ private:
     std::shared_ptr< dev::db::LevelDBSnap > m_snap = nullptr;
     bool m_isReadOnlySnapBasedState = false;
 
+    boost::filesystem::path m_dataDir;
+    std::shared_ptr< StateProgressLog > m_progressLog;
+
     /// Loggers
     mutable dev::Logger m_loggerDebug{ dev::createLogger( dev::VerbosityDebug, "State" ) };
     mutable dev::Logger m_loggerInfo{ dev::createLogger( dev::VerbosityInfo, "State" ) };
@@ -601,6 +612,9 @@ public:
     }
 #ifndef FAIR
     std::shared_ptr< OverlayFS > fs() { return m_fs_ptr; }
+    void resetOverlayFS( bool _enableCache ) {
+        m_fs_ptr = std::make_shared< OverlayFS >( _enableCache );
+    }
 #endif
 
     void clearAllCaches();

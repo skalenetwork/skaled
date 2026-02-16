@@ -52,6 +52,12 @@ using dev::db::Slice;
 
 namespace skale {
 
+// namespace used only in tests to count commits
+namespace state_commit_counter {
+std::atomic< bool > enabled{ false };
+std::atomic< uint64_t > counter{ 0 };
+}  // namespace state_commit_counter
+
 namespace slicing {
 
 dev::db::Slice toSlice( dev::h256 const& _h ) {
@@ -218,19 +224,23 @@ std::uint64_t OverlayDB::hexToUint64( const std::string& hexValue ) {
 }
 
 void OverlayDB::setLastRewardedBlockNumber( const dev::eth::BlockNumber _blockNumber ) {
-    string key = "lastRewardedBlockNumber";
-    string blockNumberFixedLengthHex =
-        uint64ToFixedLengthHex( static_cast< uint64_t >( _blockNumber ) );
-    m_db_face->insert( skale::slicing::toSlice( key ), blockNumberFixedLengthHex );
+    this->lastRewardedBlockNumber_ = _blockNumber;
 }
 
 dev::eth::BlockNumber OverlayDB::getLastRewardedBlockNumber() {
-    string key = "lastRewardedBlockNumber";
-    auto lookupResult = m_db_face->lookup( skale::slicing::toSlice( key ) );
+    if ( lastRewardedBlockNumber_.has_value() )
+        return lastRewardedBlockNumber_.value();
+
     dev::eth::BlockNumber number = 0;
-    if ( !lookupResult.empty() ) {
-        number = static_cast< dev::eth::BlockNumber >( hexToUint64( lookupResult ) );
+    if ( m_db_face ) {
+        string key = "lastRewardedBlockNumber";
+        auto lookupResult = m_db_face->lookup( skale::slicing::toSlice( key ) );
+        if ( !lookupResult.empty() ) {
+            number = static_cast< dev::eth::BlockNumber >( hexToUint64( lookupResult ) );
+        }
     }
+
+    lastRewardedBlockNumber_ = number;
     return number;
 }
 #endif
@@ -263,6 +273,9 @@ void OverlayDB::commitStorageValues() {
 
 
 void OverlayDB::commit() {
+    if ( state_commit_counter::enabled.load( std::memory_order_relaxed ) )
+        state_commit_counter::counter.fetch_add( 1, std::memory_order_relaxed );
+
     if ( m_db_face ) {
         for ( unsigned commitTry = 0; commitTry < 10; ++commitTry ) {
 //      cnote << "Committing nodes to disk DB:";
@@ -295,6 +308,11 @@ void OverlayDB::commit() {
 
             m_db_face->insert( skale::slicing::toSlice( "safeLastExecutedTransactionHash" ),
                 skale::slicing::toSlice( getLastExecutedTransactionHash() ) );
+
+#ifdef FAIR
+            m_db_face->insert( skale::slicing::toSlice( "lastRewardedBlockNumber" ),
+                uint64ToFixedLengthHex( static_cast< uint64_t >( getLastRewardedBlockNumber() ) ) );
+#endif
 
             try {
                 m_db_face->commit( "OverlayDB_commit" );
@@ -629,4 +647,17 @@ void OverlayDB::updateStorageUsage( dev::s256 const& _storageUsed ) {
     storageUsed_ = _storageUsed;
 }
 
+namespace state_commit_counter {
+void enable( bool value ) {
+    enabled.store( value, std::memory_order_relaxed );
+}
+
+void reset() {
+    counter.store( 0, std::memory_order_relaxed );
+}
+
+uint64_t count() {
+    return counter.load( std::memory_order_relaxed );
+}
+}  // namespace state_commit_counter
 }  // namespace skale

@@ -637,6 +637,7 @@ std::pair< ExecutionResult, TransactionReceipt > HistoricState::execute(
         m_cache.clear();
         break;
     case skale::Permanence::Committed:
+    case skale::Permanence::BlockCommitted:
         // should never be called since historic state is read only
         assert( false );
     case skale::Permanence::Uncommitted:

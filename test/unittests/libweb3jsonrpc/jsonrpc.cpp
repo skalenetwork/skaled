@@ -19,6 +19,8 @@
 
 #pragma GCC diagnostic ignored "-Wdeprecated"
 
+#include <limits>
+
 #include "WebThreeStubClient.h"
 
 
@@ -29,6 +31,10 @@
 #include <jsonrpccpp/server/abstractserverconnector.h>
 #include <libconsensus/SkaleCommon.h>
 #include <libconsensus/oracle/OracleRequestSpec.h>
+#include <libskale/OverlayDB.h>
+#ifndef FAIR
+#include <libskale/OverlayFS.h>
+#endif
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/TransientDirectory.h>
 #include <libethcore/CommonJS.h>
@@ -66,7 +72,9 @@
 #include <boost/process.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include <chrono>
 #include <cstdlib>
+#include <thread>
 
 #ifdef BITE
 #include <libconsensus/libBLS/threshold_encryption/ThresholdEncryption.h>
@@ -685,8 +693,9 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
 
 #ifndef FAIR
 struct RestrictedAddressFixture : public JsonRpcFixture {
-    RestrictedAddressFixture( const std::string& _config = c_genesisConfigString )
-        : JsonRpcFixture( _config ) {
+    RestrictedAddressFixture(
+        const std::string& _config = c_genesisConfigString, bool _mtmEnabled = false )
+        : JsonRpcFixture( _config, true, true, false, _mtmEnabled ) {
         setenv( "HOME", tempDir.path().c_str(), 1 );  // getDataDir() now points to the different
                                                       // directories for different tests
         ownerAddress = Address( "00000000000000000000000000000000000000AA" );
@@ -2236,82 +2245,6 @@ BOOST_AUTO_TEST_CASE( simplePoWTransaction ) {
 #endif
 
 #ifndef FAIR
-BOOST_AUTO_TEST_CASE( keepPartialReceiptsUntilNextBlock ) {
-    std::string _config = c_genesisConfigString;
-    Json::Value ret;
-    Json::Reader().parse( _config, ret );
-
-    std::string chainID = "0x97";
-    ret["params"]["chainID"] = chainID;
-
-    time_t keepPatchActivationTs = time( nullptr ) + 10;
-    ret["skaleConfig"]["sChain"]["keepPartialReceiptsUntilNextBlockPatchTimestamp"] =
-        keepPatchActivationTs;
-
-    Json::FastWriter fastWriter;
-    std::string config = fastWriter.write( ret );
-    JsonRpcFixture fixture( config );
-
-    dev::eth::simulateMining( *( fixture.client ), 20 );
-
-    string senderAddress = toJS( fixture.coinbase.address() );
-
-    Json::Value transactionCallObject;
-    transactionCallObject["from"] = toJS( senderAddress );
-    transactionCallObject["to"] = "0x692a70d2e424a56d2c6c27aa97d1a86395877b3a";
-    transactionCallObject["data"] = "0x28b5e32b";
-
-    auto sendAndMine = [&]( dev::eth::BlockNumber& outBlockNumber ) {
-        TransactionSkeleton ts = toTransactionSkeleton( transactionCallObject );
-        ts = fixture.client->populateTransactionWithDefaults( ts );
-        pair< bool, Secret > ar = fixture.accountHolder->authenticate( ts );
-        Transaction tx( ts, ar.second );
-        auto txHash = fixture.rpcClient->eth_sendRawTransaction( toJS( tx.toBytes() ) );
-        dev::eth::mineTransaction( *( fixture.client ), 1 );
-        auto receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
-        outBlockNumber = jsToInt( receipt["blockNumber"].asString() );
-    };
-
-    dev::eth::BlockNumber preActivationBlockNumber = 0;
-    sendAndMine( preActivationBlockNumber );
-    {
-        skale::State state( fixture.client->state() );
-        BOOST_REQUIRE_EQUAL(
-            state.safePartialTransactionReceipts( preActivationBlockNumber ).size(), 0 );
-    }
-
-    time_t nowTs = time( nullptr );
-    if ( nowTs < keepPatchActivationTs ) {
-        sleep( keepPatchActivationTs - nowTs + 1 );
-    }
-
-    dev::eth::BlockNumber firstPostActivationBlockNumber = 0;
-    sendAndMine( firstPostActivationBlockNumber );
-    {
-        skale::State state( fixture.client->state() );
-        BOOST_REQUIRE_EQUAL(
-            state.safePartialTransactionReceipts( firstPostActivationBlockNumber ).size(), 0 );
-    }
-
-    dev::eth::BlockNumber secondPostActivationBlockNumber = 0;
-    sendAndMine( secondPostActivationBlockNumber );
-    {
-        skale::State state( fixture.client->state() );
-        BOOST_REQUIRE_EQUAL(
-            state.safePartialTransactionReceipts( secondPostActivationBlockNumber ).size(), 1 );
-    }
-
-    dev::eth::BlockNumber thirdPostActivationBlockNumber = 0;
-    sendAndMine( thirdPostActivationBlockNumber );
-    {
-        skale::State state( fixture.client->state() );
-        BOOST_REQUIRE_EQUAL(
-            state.safePartialTransactionReceipts( secondPostActivationBlockNumber ).size(), 0 );
-        BOOST_REQUIRE_EQUAL(
-            state.safePartialTransactionReceipts( thirdPostActivationBlockNumber ).size(), 1 );
-    }
-}
-
 BOOST_AUTO_TEST_CASE( clearPartialReceipts ) {
     // Prepare fixture
     std::string _config = c_genesisConfigString;
@@ -2323,6 +2256,8 @@ BOOST_AUTO_TEST_CASE( clearPartialReceipts ) {
     time_t clearPartialReceiptsActivationTs = time( nullptr ) + 10;
     ret["skaleConfig"]["sChain"]["clearPartialReceiptsPatchTimestamp"] =
         clearPartialReceiptsActivationTs;
+    ret["skaleConfig"]["sChain"]["singleStateCommitPerBlockPatchTimestamp"] =
+        std::numeric_limits< time_t >::max();
 
     Json::FastWriter fastWriter;
     std::string config = fastWriter.write( ret );
@@ -2360,6 +2295,294 @@ BOOST_AUTO_TEST_CASE( clearPartialReceipts ) {
         BOOST_REQUIRE_EQUAL( state.safeLegacyPartialTransactionReceipts().size(), expectedSize );
     }
 }
+
+BOOST_AUTO_TEST_CASE( single_state_commit_per_block_patch_transition ) {
+    Json::Value configJson;
+    Json::Reader().parse( c_genesisConfigString, configJson );
+    time_t activationTimestamp = time( nullptr ) + 5;
+    configJson["skaleConfig"]["sChain"]["SingleStateCommitPerBlockPatchTimestamp"] =
+        static_cast< Json::Int64 >( activationTimestamp );
+
+    Json::FastWriter fastWriter;
+    JsonRpcFixture fixture( fastWriter.write( configJson ), true, true, false, true );
+    dev::eth::simulateMining( *( fixture.client ), 1 );
+
+    struct DbCommitCounterGuard {
+        DbCommitCounterGuard() { skale::state_commit_counter::enable( true ); }
+        ~DbCommitCounterGuard() { skale::state_commit_counter::enable( false ); }
+    } guard;
+
+    u256 nextNonce;
+
+    auto sendPayment = [&]() {
+        Json::Value tx;
+        tx["from"] = fixture.coinbase.address().hex();
+        tx["to"] = fixture.account2.address().hex();
+        tx["value"] = toJS( 1 );
+        tx["gas"] = toJS( 21000 );
+        tx["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+        tx["nonce"] = toJS( nextNonce );
+        nextNonce++;
+        std::string hash = fixture.rpcClient->eth_sendTransaction( tx );
+        BOOST_REQUIRE( !hash.empty() );
+    };
+
+    auto produceBlockWithTransaction = [&]() {
+        nextNonce = jsToU256( fixture.rpcClient->eth_getTransactionCount(
+            fixture.coinbase.address().hex(), "latest" ) );
+        sendPayment();
+        dev::eth::mineTransaction( *( fixture.client ), 1 );
+    };
+
+    skale::state_commit_counter::reset();
+    produceBlockWithTransaction();
+    // Before activation: 2 commits (1 for tx execution, 1 for block state)
+    BOOST_REQUIRE_EQUAL( skale::state_commit_counter::count(), 2 );
+
+    // Receipts should not be saved before activation
+    auto progressLog = fixture.client->state().getProgressLog();
+    BOOST_REQUIRE( progressLog );
+    auto receiptsBefore = progressLog->loadProgressData();
+    BOOST_CHECK( !receiptsBefore );
+
+    sleep( 6 );
+
+    // Produce a block after the activation timestamp so subsequent blocks observe
+    // commit-per-block semantics.
+    produceBlockWithTransaction();
+
+    skale::state_commit_counter::reset();
+    produceBlockWithTransaction();
+    // After activation: 1 commit (single commit per block)
+    BOOST_REQUIRE_EQUAL( skale::state_commit_counter::count(), 1 );
+
+    // Receipts should be saved after activation
+    auto receiptsAfter = progressLog->loadProgressData();
+    BOOST_REQUIRE( receiptsAfter );
+    BOOST_CHECK_EQUAL( receiptsAfter->receipts.size(), 1 );
+}
+
+BOOST_AUTO_TEST_CASE( state_progress_log_skip_already_committed ) {
+    Json::Value configJson;
+    Json::Reader().parse( c_genesisConfigString, configJson );
+    configJson["skaleConfig"]["sChain"]["singleStateCommitPerBlockPatchTimestamp"] =
+        static_cast< Json::Int64 >( 1 );
+
+    Json::FastWriter fastWriter;
+    JsonRpcFixture fixture( fastWriter.write( configJson ), true, true, false, true );
+    dev::eth::simulateMining( *( fixture.client ), 1 );
+
+    struct DbCommitCounterGuard {
+        DbCommitCounterGuard() { skale::state_commit_counter::enable( true ); }
+        ~DbCommitCounterGuard() { skale::state_commit_counter::enable( false ); }
+    } guard;
+
+    u256 nextNonce;
+
+    auto sendPayment = [&]() {
+        Json::Value tx;
+        tx["from"] = fixture.coinbase.address().hex();
+        tx["to"] = fixture.account2.address().hex();
+        tx["value"] = toJS( 1 );
+        tx["gas"] = toJS( 21000 );
+        tx["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+        tx["nonce"] = toJS( nextNonce );
+        nextNonce++;
+        std::string hash = fixture.rpcClient->eth_sendTransaction( tx );
+        BOOST_REQUIRE( !hash.empty() );
+    };
+
+    auto produceBlockWithTransaction = [&]() {
+        nextNonce = jsToU256( fixture.rpcClient->eth_getTransactionCount(
+            fixture.coinbase.address().hex(), "latest" ) );
+        sendPayment();
+        dev::eth::mineTransaction( *( fixture.client ), 1 );
+    };
+
+    produceBlockWithTransaction();
+
+    skale::state_commit_counter::reset();
+    produceBlockWithTransaction();
+    BOOST_REQUIRE_EQUAL( skale::state_commit_counter::count(), 1 );
+
+    auto progressLog = fixture.client->state().getProgressLog();
+    BOOST_REQUIRE( progressLog );
+    BOOST_CHECK( progressLog->isBlockCommitCompleted( fixture.client->number() ) );
+}
+
+BOOST_AUTO_TEST_CASE( state_progress_log_crash_recovery ) {
+    Json::Value configJson;
+    Json::Reader().parse( c_genesisConfigString, configJson );
+    configJson["skaleConfig"]["sChain"]["singleStateCommitPerBlockPatchTimestamp"] =
+        static_cast< Json::Int64 >( 1 );
+
+    Json::FastWriter fastWriter;
+    JsonRpcFixture fixture( fastWriter.write( configJson ), true, true, false, true );
+    dev::eth::simulateMining( *( fixture.client ), 1 );
+
+    struct DbCommitCounterGuard {
+        DbCommitCounterGuard() { skale::state_commit_counter::enable( true ); }
+        ~DbCommitCounterGuard() { skale::state_commit_counter::enable( false ); }
+    } guard;
+
+    u256 nextNonce;
+
+    auto sendPayment = [&]() {
+        Json::Value tx;
+        tx["from"] = fixture.coinbase.address().hex();
+        tx["to"] = fixture.account2.address().hex();
+        tx["value"] = toJS( 1 );
+        tx["gas"] = toJS( 21000 );
+        tx["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+        tx["nonce"] = toJS( nextNonce );
+        nextNonce++;
+        std::string hash = fixture.rpcClient->eth_sendTransaction( tx );
+        BOOST_REQUIRE( !hash.empty() );
+    };
+
+    auto produceBlockWithTransaction = [&]() {
+        nextNonce = jsToU256( fixture.rpcClient->eth_getTransactionCount(
+            fixture.coinbase.address().hex(), "latest" ) );
+        sendPayment();
+        dev::eth::mineTransaction( *( fixture.client ), 1 );
+    };
+
+    produceBlockWithTransaction();
+
+    auto progressLog = fixture.client->state().getProgressLog();
+    BOOST_REQUIRE( progressLog );
+
+    uint64_t completedBlock = fixture.client->number();
+    BOOST_CHECK( progressLog->isBlockCommitCompleted( completedBlock ) );
+
+    progressLog->markBlockCommitStarted( completedBlock + 1 );
+    BOOST_CHECK( !progressLog->isBlockCommitCompleted( completedBlock + 1 ) );
+
+    skale::state_commit_counter::reset();
+    produceBlockWithTransaction();
+    BOOST_REQUIRE_EQUAL( skale::state_commit_counter::count(), 1 );
+
+    BOOST_CHECK( progressLog->isBlockCommitCompleted( fixture.client->number() ) );
+}
+
+namespace {
+template < typename PatchType >
+void waitForPatchActivation( int timeoutSeconds = 10 ) {
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds( timeoutSeconds );
+    while ( !PatchType::isEnabledWhen( time( nullptr ) ) ) {
+        BOOST_REQUIRE( std::chrono::steady_clock::now() < deadline );
+        std::this_thread::sleep_for( std::chrono::milliseconds( 50 ) );
+    }
+}
+}  // namespace
+
+#ifndef FAIR
+// Test fs commits before SingleStateCommitPerBlockPatch is active
+BOOST_AUTO_TEST_CASE( single_fs_commit_per_block_patch_before ) {
+    Json::Value configJson;
+    Json::Reader().parse( c_genesisConfigString, configJson );
+    // Patch disabled (far future timestamp)
+    configJson["skaleConfig"]["sChain"]["singleStateCommitPerBlockPatchTimestamp"] =
+        static_cast< Json::Int64 >( 0 );
+    configJson["skaleConfig"]["sChain"]["revertableFSPatchTimestamp"] =
+        static_cast< Json::Int64 >( 1 );
+
+    Json::FastWriter fastWriter;
+    RestrictedAddressFixture fixture( fastWriter.write( configJson ), true );
+    dev::eth::simulateMining( *( fixture.client ), 1 );
+
+    struct FsCommitCounterGuard {
+        FsCommitCounterGuard() { skale::fs_commit_counter::enable( true ); }
+        ~FsCommitCounterGuard() { skale::fs_commit_counter::enable( false ); }
+    } guard;
+
+    auto senderAddress = fixture.coinbase.address();
+    fixture.client->setAuthor( senderAddress );
+
+    u256 nextNonce;
+
+    auto executeFilestorageOperation = [&]() {
+        Json::Value tx;
+        tx["from"] = toJS( senderAddress );
+        tx["to"] = "0x692a70d2e424a56d2c6c27aa97d1a86395877b3a";
+        tx["data"] = "0xf38fb65b";
+        tx["nonce"] = toJS( nextNonce );
+        nextNonce++;
+        TransactionSkeleton ts = toTransactionSkeleton( tx );
+        ts = fixture.client->populateTransactionWithDefaults( ts );
+        pair< bool, Secret > ar = fixture.accountHolder->authenticate( ts );
+        Transaction transaction( ts, ar.second );
+        fixture.rpcClient->eth_sendRawTransaction( toJS( transaction.toBytes() ) );
+    };
+
+    auto produceBlockWithFilestorageOperations = [&]() {
+        nextNonce = jsToU256( fixture.rpcClient->eth_getTransactionCount(
+            toJS( senderAddress ), "latest" ) );
+        executeFilestorageOperation();
+        executeFilestorageOperation();
+        dev::eth::mineTransaction( *( fixture.client ), 1 );
+        fixture.client->state().getOriginalDb()->createBlockSnap( fixture.client->number() );
+    };
+
+    // Without patch: expect 2 commits (one per transaction)
+    skale::fs_commit_counter::reset();
+    produceBlockWithFilestorageOperations();
+    BOOST_REQUIRE_EQUAL( skale::fs_commit_counter::count(), 2 );
+}
+
+// Test fs commits after SingleStateCommitPerBlockPatch is active
+BOOST_AUTO_TEST_CASE( single_fs_commit_per_block_patch_after ) {
+    Json::Value configJson;
+    Json::Reader().parse( c_genesisConfigString, configJson );
+    // Patch enabled from genesis
+    configJson["skaleConfig"]["sChain"]["singleStateCommitPerBlockPatchTimestamp"] =
+        static_cast< Json::Int64 >( 1 );
+    configJson["skaleConfig"]["sChain"]["revertableFSPatchTimestamp"] =
+        static_cast< Json::Int64 >( 1 );
+
+    Json::FastWriter fastWriter;
+    RestrictedAddressFixture fixture( fastWriter.write( configJson ), true );
+    dev::eth::simulateMining( *( fixture.client ), 1 );
+
+    struct FsCommitCounterGuard {
+        FsCommitCounterGuard() { skale::fs_commit_counter::enable( true ); }
+        ~FsCommitCounterGuard() { skale::fs_commit_counter::enable( false ); }
+    } guard;
+
+    auto senderAddress = fixture.coinbase.address();
+    fixture.client->setAuthor( senderAddress );
+
+    u256 nextNonce;
+
+    auto executeFilestorageOperation = [&]() {
+        Json::Value tx;
+        tx["from"] = toJS( senderAddress );
+        tx["to"] = "0x692a70d2e424a56d2c6c27aa97d1a86395877b3a";
+        tx["data"] = "0xf38fb65b";
+        tx["nonce"] = toJS( nextNonce );
+        nextNonce++;
+        TransactionSkeleton ts = toTransactionSkeleton( tx );
+        ts = fixture.client->populateTransactionWithDefaults( ts );
+        pair< bool, Secret > ar = fixture.accountHolder->authenticate( ts );
+        Transaction transaction( ts, ar.second );
+        fixture.rpcClient->eth_sendRawTransaction( toJS( transaction.toBytes() ) );
+    };
+
+    auto produceBlockWithFilestorageOperations = [&]() {
+        nextNonce = jsToU256( fixture.rpcClient->eth_getTransactionCount(
+            toJS( senderAddress ), "latest" ) );
+        executeFilestorageOperation();
+        executeFilestorageOperation();
+        dev::eth::mineTransaction( *( fixture.client ), 1 );
+        fixture.client->state().getOriginalDb()->createBlockSnap( fixture.client->number() );
+    };
+
+    // With patch: expect 1 commit (one per block)
+    skale::fs_commit_counter::reset();
+    produceBlockWithFilestorageOperations();
+    BOOST_REQUIRE_EQUAL( skale::fs_commit_counter::count(), 1 );
+}
+#endif
 
 BOOST_AUTO_TEST_CASE( recalculateExternalGas ) {
     std::string _config = c_genesisConfigString;

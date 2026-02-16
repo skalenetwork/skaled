@@ -105,6 +105,10 @@ State::State( dev::u256 const& _accountStartNonce, boost::filesystem::path const
               _bs == BaseState::PreExisting ? dev::WithExisting::Trust : dev::WithExisting::Kill ) )
 #endif
 {
+    m_dataDir = _dbPath;
+    if ( !m_dataDir.empty() ) {
+        m_progressLog = std::make_shared< StateProgressLog >( m_dataDir );
+    }
     m_db_ptr = make_shared< OverlayDB >( openDB( _dbPath, _genesis,
         _bs == BaseState::PreExisting ? dev::WithExisting::Trust : dev::WithExisting::Kill ) );
 
@@ -303,6 +307,8 @@ State::State( const State& _s )
     m_initial_funds = _s.m_initial_funds;
     m_snap = _s.m_snap;
     m_isReadOnlySnapBasedState = _s.m_isReadOnlySnapBasedState;
+    m_dataDir = _s.m_dataDir;
+    m_progressLog = _s.m_progressLog;
 #ifndef FAIR
     contractStorageLimit_ = _s.contractStorageLimit_;
     totalStorageUsed_ = _s.storageUsedTotal();
@@ -319,6 +325,8 @@ State& State::operator=( const State& _s ) {
     m_accountStartNonce = _s.m_accountStartNonce;
     m_changeLog = _s.m_changeLog;
     m_initial_funds = _s.m_initial_funds;
+    m_dataDir = _s.m_dataDir;
+    m_progressLog = _s.m_progressLog;
 #ifndef FAIR
     contractStorageLimit_ = _s.contractStorageLimit_;
     totalStorageUsed_ = _s.storageUsedTotal();
@@ -365,13 +373,6 @@ void State::safeRemoveAllPartialTransactionReceipts() {
     }
 }
 
-void State::safeRemovePartialTransactionReceiptsForBlock( dev::eth::BlockNumber _blockNumber ) {
-    if ( m_db_ptr ) {
-        m_db_ptr->removePartialTransactionReceiptsForBlock( _blockNumber );
-    }
-}
-
-
 void State::safeRemoveLegacyPartialTransactionReceipts() {
     if ( m_db_ptr ) {
         m_db_ptr->cleanupLegacyTransactionReceipts();
@@ -414,6 +415,12 @@ void State::safeSetAndCommitPartialTransactionReceipt(
     if ( m_db_ptr ) {
         m_db_ptr->setPartialTransactionReceipt( _receipt, _blockNumber, _transactionIndex );
         m_db_ptr->commit();
+    }
+}
+
+void State::safeSetLastExecutedTransactionHash( const dev::h256& _hash ) {
+    if ( m_db_ptr ) {
+        m_db_ptr->setLastExecutedTransactionHash( _hash );
     }
 }
 
@@ -1060,7 +1067,7 @@ void State::clearAllCaches() {
 
 State State::createStateCopyAndClearCaches() const {
     LDB_CHECK( !m_isReadOnlySnapBasedState );
-    State stateCopy = State( *this );
+    State stateCopy( *this );
     stateCopy.clearCaches();
     return stateCopy;
 }
@@ -1120,18 +1127,21 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
     // transaction is bad in any way.
     // HACK 0 here is for gasPrice
     // TODO Not sure that 1st 0 as timestamp is acceptable here
-    Executive e( *this, _envInfo, _chainParams, 0, 0, _p != Permanence::Committed
+    Executive e( *this, _envInfo, _chainParams, 0, 0, !isStateCommitting( _p )
 #ifdef BITE2
-        ,
+                                                          ,
         dev::u256( _transactionIndex )
 #endif
     );
     ExecutionResult res;
     e.setResultRecipient( res );
 
-    bool isCacheEnabled = RevertableFSPatch::isEnabledWhen( _envInfo.committedBlockTimestamp() );
 #ifndef FAIR
-    resetOverlayFS( isCacheEnabled );
+    if ( _p == Permanence::Committed ) {
+        bool isCacheEnabled =
+            RevertableFSPatch::isEnabledWhen( _envInfo.committedBlockTimestamp() );
+        resetOverlayFS( isCacheEnabled );
+    }
 #endif
 
     auto onOp = _onOp;
@@ -1141,7 +1151,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
 #endif
     u256 const startGasUsed = _envInfo.gasUsed();
     bool statusCodeTmp = false;
-    if ( _p == Permanence::Committed &&
+    if ( isStateCommitting( _p ) &&
          ifShouldSkipExecution( _chainParams.getChainId(), _t.sha3() ) ) {
         e.initialize( _t );
         e.execute();
@@ -1177,6 +1187,9 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
     }
 #endif
 
+    TransactionReceipt receipt =
+        makeReceipt( statusCode, startGasUsed, e, _envInfo, _chainParams, _t, _p, strRevertReason );
+
     bool removeEmptyAccounts = false;
     switch ( _p ) {
     case Permanence::Reverted:
@@ -1186,68 +1199,45 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
 #endif
         m_cache.clear();
         break;
-    case Permanence::Committed: {
+    case Permanence::Committed:
+    case Permanence::BlockCommitted: {
 #ifndef FAIR
         if ( account( _t.from() ) != nullptr && account( _t.from() )->code() == bytes() ) {
             totalStorageUsed_ += currentStorageUsed_;
             updateStorageUsage();
         }
 #endif
-        // TODO: review logic|^
-
-        h256 shaLastTx = _t.sha3();  // _t.hasSignature() ? _t.sha3() : _t.sha3(
-                                     // dev::eth::WithoutSignature );
-        this->m_db_ptr->setLastExecutedTransactionHash( shaLastTx );
-
-
-        TransactionReceipt receipt =
-            TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() );
-        if ( _p == Permanence::Committed &&
-             ifShouldSkipExecution( _chainParams.getChainId(), _t.sha3() ) ) {
-            receipt = TransactionReceipt( statusCode,
-                startGasUsed +
-                    getGasUsedForSkippedTransaction( _chainParams.getChainId(), _t.sha3() ),
-                e.logs() );
-        } else {
-            receipt = _envInfo.number() >= _chainParams.getByzantiumForkBlock() ?
-                          TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
-                          TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
-        }
-        receipt.setRevertReason( strRevertReason );
-
-        // if we are committing we need to know transaction index in block since
-        // to save the receipt
-        LDB_CHECK( _transactionIndex >= 0 );
-        RLPStream stream;
-        receipt.streamRLP( stream );
-        m_db_ptr->setPartialTransactionReceipt( stream.out(),
-            ( dev::eth::BlockNumber ) _envInfo.number(), ( uint64_t ) _transactionIndex );
-
+        if ( _p == Permanence::Committed ) {
 #ifndef FAIR
-        m_fs_ptr->commit();
+            m_fs_ptr->commit();
 #endif
+            // if we are committing we need to know transaction index in block since
+            // to save the receipt
+            LDB_CHECK( _transactionIndex >= 0 );
+            RLPStream stream;
+            receipt.streamRLP( stream );
+            m_db_ptr->setPartialTransactionReceipt( stream.out(),
+                ( dev::eth::BlockNumber ) _envInfo.number(), ( uint64_t ) _transactionIndex );
 
-        removeEmptyAccounts = _envInfo.number() >= _chainParams.getEIP158ForkBlock();
-        commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
-                                      dev::eth::CommitBehaviour::KeepEmptyAccounts );
-
-
-        // do a simple sanity check each millions transactions that we correctly
-        // saved partial transaction receipt
-        // at 1000 tps and 1 sec  block time this means that we are doing this roughly each 1000
-        // blocks so we are not slowing down the system by doing a check
-        static uint64_t sanityCheckCounter = 0;
-        sanityCheckCounter++;
-        if ( sanityCheckCounter % 1000000 == 0 ) {
-            auto receipts = safePartialTransactionReceipts( _envInfo.number() );
-            if ( receipts.back().rlp() != receipt.rlp() ) {
-                cerr << "Found incorrect deserialization of partial receipts at sanity check:"
-                     << sanityCheckCounter << endl
-                     << receipts.back() << endl
-                     << receipt;
+            // do a simple sanity check each millions transactions that we correctly
+            // saved partial transaction receipt
+            // at 1000 tps and 1 sec  block time this means that we are doing this roughly each 1000
+            // blocks so we are not slowing down the system by doing a check
+            static uint64_t sanityCheckCounter = 0;
+            sanityCheckCounter++;
+            if ( sanityCheckCounter % 1000000 == 0 ) {
+                auto receipts = safePartialTransactionReceipts( _envInfo.number() );
+                if ( receipts.back().rlp() != receipt.rlp() ) {
+                    cerr << "Found incorrect deserialization of partial receipts at sanity check:"
+                         << sanityCheckCounter << endl
+                         << receipts.back() << endl
+                         << receipt;
+                }
             }
+            removeEmptyAccounts = _envInfo.number() >= _chainParams.getEIP158ForkBlock();
+            commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
+                                          dev::eth::CommitBehaviour::KeepEmptyAccounts );
         }
-
 
         break;
     }
@@ -1258,21 +1248,27 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         break;
     }
 
-    TransactionReceipt receipt =
-        TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() );
-    if ( _p == Permanence::Committed &&
-         ifShouldSkipExecution( _chainParams.getChainId(), _t.sha3() ) ) {
-        receipt = TransactionReceipt( statusCode,
-            startGasUsed + getGasUsedForSkippedTransaction( _chainParams.getChainId(), _t.sha3() ),
-            e.logs() );
-    } else {
-        receipt = _envInfo.number() >= _chainParams.getByzantiumForkBlock() ?
-                      TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
-                      TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
-    }
-    receipt.setRevertReason( strRevertReason );
-
     return make_pair( res, receipt );
+}
+
+TransactionReceipt State::makeReceipt( bool _statusCode, dev::u256 const& _startGasUsed,
+    eth::Executive const& _executive, eth::EnvInfo const& _envInfo,
+    eth::ChainOperationParams const& _chainParams, Transaction const& _t, Permanence _p,
+    std::string const& _revertReason ) const {
+    if ( isStateCommitting( _p ) &&
+         ifShouldSkipExecution( _chainParams.getChainId(), _t.sha3() ) ) {
+        return TransactionReceipt( _statusCode,
+            _startGasUsed + getGasUsedForSkippedTransaction( _chainParams.getChainId(), _t.sha3() ),
+            _executive.logs(), _revertReason );
+    }
+
+    if ( _envInfo.number() >= _chainParams.getByzantiumForkBlock() ) {
+        return TransactionReceipt(
+            _statusCode, _startGasUsed + _executive.gasUsed(), _executive.logs(), _revertReason );
+    }
+
+    return TransactionReceipt(
+        EmptyTrie, _startGasUsed + _executive.gasUsed(), _executive.logs(), _revertReason );
 }
 
 /// @returns true when normally halted; false when exceptionally halted; throws when internal VM

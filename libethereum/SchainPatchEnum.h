@@ -21,7 +21,7 @@ enum class SchainPatchEnum {
     FlexibleDeploymentPatch,
     ExternalGasPatch,
     ClearPartialReceiptsPatch,
-    KeepPartialReceiptsUntilNextBlockPatch,
+    SingleStateCommitPerBlockPatch,
     InvalidTransactionFormatPatch,
     CurrentBlockRandomPatch,
     GroupIndexInitPatch,
