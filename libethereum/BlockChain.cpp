@@ -626,10 +626,13 @@ ImportRoute BlockChain::import( const Block& _block ) {
     verifiedBlock.decryptedTransactions = _block.decryptedTransactions();
 #ifdef BITE2
     CHECK_EXPRESSION( verifiedBlock.decryptedTransactions.catTxsMap );
-#endif
+#endif  // BITE2
     CHECK_EXPRESSION( verifiedBlock.decryptedTransactions.regularTxsMap );
-#endif
-    //    verifyBlock( ref( _block.blockData() ), m_onBad, ImportRequirements::OutOfOrderChecks );
+
+#ifdef BITE2
+    verifiedBlock.ctxHashesLists = _block.ctxHashesLists();
+#endif  // BITE2
+#endif  // BITE
 
     BlockReceipts blockReceipts;
     for ( unsigned i = 0; i < _block.pending().size(); ++i )
@@ -775,9 +778,14 @@ void BlockChain::insertTransactionsDetailsToDb(
         RLP txns_rlp = blockRLP[1];
 
 #ifdef BITE
+#ifdef BITE2
+        CtxOrigin ctxOrigin( _block.ctxHashesLists );
+        _extrasWriteBatch.insert( toSlice( _block.info.hash(), ExtraCtxOrigin ),
+            ( db::Slice ) dev::ref( ctxOrigin.rlp() ) );
+#endif  // BITE2
         CHECK_EXPRESSION( _block.decryptedTransactions.regularTxsMap );
         auto regularTxnsIterator = _block.decryptedTransactions.regularTxsMap->begin();
-#endif
+#endif  // BITE
         for ( RLP::iterator it = txns_rlp.begin(); it != txns_rlp.end(); ++it ) {
             MICROPROFILE_SCOPEI( "insertBlockAndExtras", "for2", MP_HONEYDEW );
 
@@ -1359,7 +1367,13 @@ void BlockChain::updateStats() const {
         m_lastStats.memDecryptedTransactionsData =
             getApproximateHashSize( m_decryptedTransactionsData );
     }
-#endif
+#ifdef BITE2
+    {
+        DEV_READ_GUARDED( x_ctxOrigin )
+        m_lastStats.memCtxOrigin = getApproximateHashSize( m_ctxOrigin );
+    }
+#endif  // BITE2
+#endif  // BITE
 }
 
 uint64_t BlockChain::getTotalCacheMemory() {
@@ -1428,7 +1442,14 @@ void BlockChain::garbageCollect( bool _force ) {
                 m_decryptedTransactionsData.erase( id.first );
                 break;
             }
-#endif
+#ifdef BITE2
+            case ExtraCtxOrigin: {
+                WriteGuard l( x_ctxOrigin );
+                m_ctxOrigin.erase( id.first );
+                break;
+            }
+#endif  // BITE2
+#endif  // BITE
             }
         }
         m_cacheUsage.pop_back();
@@ -1492,7 +1513,13 @@ void BlockChain::clearCaches() {
         WriteGuard l( x_decryptedTransactionsData );
         m_decryptedTransactionsData.clear();
     }
-#endif
+#ifdef BITE2
+    {
+        WriteGuard l( x_ctxOrigin );
+        m_ctxOrigin.clear();
+    }
+#endif  // BITE2
+#endif  // BITE
 }
 
 void BlockChain::doLevelDbCompaction() const {
@@ -1541,7 +1568,11 @@ void BlockChain::clearCachesDuringChainReversion( unsigned _firstInvalid ) {
 #ifdef BITE
     DEV_WRITE_GUARDED( x_decryptedTransactionsData )
     m_decryptedTransactionsData.clear();
-#endif
+#ifdef BITE2
+    DEV_WRITE_GUARDED( x_ctxOrigin )
+    m_ctxOrigin.clear();
+#endif  // BITE2
+#endif  // BITE
 
     // If we are reverting previous blocks, we need to clear their blooms (in particular, to
     // rebuild any higher level blooms that they contributed to).

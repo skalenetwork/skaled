@@ -507,6 +507,9 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
         }
     }
 
+#ifdef BITE2
+    m_ctxHashesLists.resize( _transactions.size() );
+#endif
 
     for ( unsigned i = 0; i < _transactions.size(); ++i ) {
         Transaction const& tr = _transactions[i];
@@ -580,6 +583,8 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
                 // because it was reverted
                 g_skaleHost->clearTempBITE2Transactions();
             } else {
+                // get list of CTX hashes created by current txn
+                m_ctxHashesLists[i] = g_skaleHost->getBITE2HashesForCurrentTxn();
                 // commit CTXs from temporary to permanent
                 g_skaleHost->commitTempBITE2Transactions();
             }

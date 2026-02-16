@@ -131,6 +131,7 @@ public:
     void pushToBroadcastQueue( const dev::eth::Transaction& _transaction );
 #ifdef BITE2
     void addTempBITE2Transaction( dev::eth::Transaction&& _transaction );
+    std::vector< dev::h256 > getBITE2HashesForCurrentTxn() const;
     void commitTempBITE2Transactions();
     void clearTempBITE2Transactions();
     void finalizeBITE2Queue();

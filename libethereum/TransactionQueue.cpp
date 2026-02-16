@@ -587,6 +587,10 @@ void TransactionQueue::addTempBITE2Transaction( dev::eth::Transaction&& _transac
     m_bite2Queue.addTemp( std::move( _transaction ) );
 }
 
+std::vector< h256 > TransactionQueue::getTempBITE2Hashes() const {
+    return m_bite2Queue.getTempHashes();
+}
+
 void TransactionQueue::commitTempBITE2Transactions() {
     m_bite2Queue.commitTemp();
 }

@@ -168,6 +168,8 @@ public:
 
     /// Add BITE2 txn as temporary
     void addTempBITE2Transaction( dev::eth::Transaction&& _transaction );
+    /// Get hashes of temporary CTXs in queue
+    std::vector< dev::h256 > getTempBITE2Hashes() const;
     /// Move BITE2 txn from temporary to permanent
     void commitTempBITE2Transactions();
 

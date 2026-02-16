@@ -42,16 +42,48 @@ void BITE2TransactionQueue::addTemp( Transaction&& _t ) {
     m_current.push_back( std::move( _t ) );
 }
 
+std::vector< h256 > BITE2TransactionQueue::getTempHashes() const {
+    // if there are no committed transactions
+    // we return hashes of all transactions in m_current
+    if ( m_empty ) {
+        std::vector< h256 > res;
+        res.reserve( m_current.size() );
+        for ( const auto& tx : m_current )
+            res.push_back( tx.sha3() );
+        return res;
+    }
+
+    if ( m_currentHeadIndex == m_current.size() )
+        return {};
+
+    std::vector< h256 > res;
+    res.reserve( m_current.size() - m_currentHeadIndex );
+    // m_currentHeadIndex always points to the last committed CTX,
+    // so we return hashes of all CTXs starting after m_currentHeadIndex
+    for ( size_t i = m_currentHeadIndex + 1; i < m_current.size(); ++i ) {
+        res.push_back( m_current.at( i ).sha3() );
+    }
+    return res;
+}
+
 void BITE2TransactionQueue::commitTemp() {
+    if ( m_current.empty() )
+        return;
     // m_currentHeadIndex should always point to last element during block execution
     // used as checkpoint for rollbacks
     m_currentHeadIndex.store( m_current.size() - 1, std::memory_order_relaxed );
+    m_empty = false;
 }
 
 void BITE2TransactionQueue::clearTemp() {
-    WriteGuard l( m_lock );
     // delete all temporary CTXs until last checkpoint
-    while ( int( m_current.size() ) > m_currentHeadIndex + 1 ) {
+    WriteGuard l( m_lock );
+    if ( m_empty ) {
+        m_current.clear();
+        return;
+    }
+
+    while ( m_current.size() > m_currentHeadIndex + 1 ) {
         m_current.pop_back();
     }
 }
@@ -59,11 +91,12 @@ void BITE2TransactionQueue::clearTemp() {
 void BITE2TransactionQueue::clear() {
     WriteGuard l( m_lock );
     m_current.clear();
-    m_currentHeadIndex.store( -1, std::memory_order_relaxed );
+    m_currentHeadIndex.store( 0, std::memory_order_relaxed );
+    m_empty = true;
 }
 
 void BITE2TransactionQueue::finalize() {
-    // prepare for the next block processing
+    // prepare for the next block processing - skaled may delete CTXs added into blockchain
     // m_currentHeadIndex points to first not yet verified CTX
     m_currentHeadIndex = 0;
 }
@@ -72,7 +105,7 @@ bool BITE2TransactionQueue::dropGood( const Transaction& _t ) {
     if ( _t.isCTX() ) {
         // BITE2 transactions are stored separately
         // they are also stored in the strict order
-        CHECK_EXPRESSION( m_currentHeadIndex < int( m_current.size() ) );
+        CHECK_EXPRESSION( m_currentHeadIndex < m_current.size() );
         // Check that we indeed are dropping the front transaction
         CHECK_EXPRESSION( _t == m_current[m_currentHeadIndex] );
         m_currentHeadIndex.fetch_add( 1, std::memory_order_relaxed );
