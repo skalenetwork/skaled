@@ -40,7 +40,7 @@ class RLPStream;
 
 namespace bite {
 
-inline bool isCiphertextValidationEnabled = false;
+inline std::atomic_bool isCiphertextValidationEnabled{ false };
 
 // Validate BITE ciphertext against given epochId
 void validateBITECiphertext( const dev::bytes& _ciphertext, uint64_t _currentEpochId );

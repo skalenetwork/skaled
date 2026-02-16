@@ -1208,7 +1208,7 @@ string dev::rpc::exceptionToErrorMessage() {
 #ifdef BITE
     // BITE exceptions
     catch ( InvalidBITETransaction const& _e ) {
-        ret = "Invalid BITE transaction format.";
+        ret = std::string( "Invalid BITE transaction format." ) + " " + _e.what();
     } catch ( BITETransactionTooShort const& _e ) {
         ret = "BITE transaction too short.";
     }

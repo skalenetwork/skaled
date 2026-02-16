@@ -1989,7 +1989,7 @@ BOOST_AUTO_TEST_CASE( submitCTX_validateBITECiphertext_Success ) {
 
     client.get()->injectSkaleHost();
     dev::eth::g_skaleHost = client->skaleHost();
-    dev::bite::isCiphertextValidationEnabled = true;
+    dev::bite::isCiphertextValidationEnabled.store(true);
     client->startWorking();
 
     sleep( 2 );
@@ -2085,7 +2085,7 @@ BOOST_AUTO_TEST_CASE( submitCTX_validateBITECiphertext_Failure ) {
 
     client.get()->injectSkaleHost();
     dev::eth::g_skaleHost = client->skaleHost();
-    dev::bite::isCiphertextValidationEnabled = true;
+    dev::bite::isCiphertextValidationEnabled.store(true);
     client->startWorking();
 
     sleep( 2 );
