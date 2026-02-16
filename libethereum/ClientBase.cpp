@@ -504,7 +504,34 @@ TransactionHashes ClientBase::transactionHashes( h256 _blockHash ) const {
 DecryptedTransactionData ClientBase::decryptedTransactionData( h256 _transactionHash ) const {
     return bc().decryptedTransactionData( _transactionHash );
 }
-#endif
+
+#ifdef BITE2
+dev::h256 ClientBase::ctxOrigin( const dev::h256& _ctxHash ) const {
+    auto tx = transaction( _ctxHash );
+    if ( !tx.isCTX() )
+        throw std::logic_error( "Trying to get ctxOrigin for non-CTX" );
+    auto block = bc().transactionLocation( _ctxHash ).first;
+    auto prevBlock = bc().info( block ).parentHash();
+    CtxOrigin ctxHashesLists = bc().ctxHashesForBlock( prevBlock );
+    std::optional< size_t > originIndex = ctxHashesLists.find( _ctxHash );
+    if ( originIndex != std::nullopt ) {
+        auto prevBlockTxnHashes = bc().transactionHashes( prevBlock );
+        if ( *originIndex < prevBlockTxnHashes.size() ) {
+            return prevBlockTxnHashes[*originIndex];
+        }
+    }
+    return dev::h256();
+}
+
+std::vector< dev::h256 > ClientBase::craftedCTXs( const dev::h256& _transactionHash ) const {
+    auto tl = bc().transactionLocation( _transactionHash );
+    CtxOrigin ctxHashesLists = bc().ctxHashesForBlock( tl.first );
+    if ( ctxHashesLists.count() < tl.second + 1 )
+        return {};
+    return ctxHashesLists[tl.second];
+}
+#endif  // BITE2
+#endif  // BITE
 
 BlockHeader ClientBase::uncle( h256 _blockHash, unsigned _i ) const {
     auto bl = bc().block( _blockHash );

@@ -46,6 +46,10 @@ struct VerifiedBlockRef {
         std::make_shared< DecryptedRegularTxsMap >()
     };  ///< Decrypted transactions
         ///< to be stored in blockchain
+
+#ifdef BITE2
+    std::vector< std::vector< dev::h256 > > ctxHashesLists;
+#endif  // BITE2
 #endif  // BITE
 };
 
