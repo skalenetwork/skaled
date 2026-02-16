@@ -69,6 +69,7 @@
 #include <cstdlib>
 
 #ifdef BITE
+#include <libethcore/BITECommon.h>
 #include <libconsensus/libBLS/threshold_encryption/ThresholdEncryption.h>
 #endif
 
