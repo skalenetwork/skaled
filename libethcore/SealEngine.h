@@ -100,21 +100,20 @@ public:
         time_t _committedBlockTimestamp, u256 const& _workingBlockNumber ) const = 0;
 
     virtual bool isPrecompiled( Address const& _a, u256 const& _blockNumber ) const {
-        return m_params.precompiled.count( _a ) != 0 &&
-               _blockNumber >= m_params.precompiled.at( _a ).startingBlock();
+        return m_params.isPrecompiled( _a, _blockNumber );
     }
     virtual bigint costOfPrecompiled(
         Address const& _a, bytesConstRef _in, u256 const& _blockNumber ) const {
-        return m_params.precompiled.at( _a ).cost( _in, m_params, _blockNumber );
+        return m_params.getPrecompiledContract( _a ).cost( _in, m_params, _blockNumber );
     }
     virtual std::pair< bool, bytes > executePrecompiled(
-        Address const& _a, bytesConstRef _in, u256 const& ) const {
-        return m_params.precompiled.at( _a ).execute( _in );
+        Address const& _a, bytesConstRef _in, const PrecompiledCallContext& _ctx ) const {
+        return m_params.getPrecompiledContract( _a ).execute( _in, _ctx );
     }
 
     virtual bool precompiledExecutionAllowedFrom(
         Address const& _a, Address const& _from, bool _readOnly ) const {
-        return m_params.precompiled.at( _a ).executionAllowedFrom( _from, _readOnly );
+        return m_params.precompiledExecutionAllowedFrom( _a, _from, _readOnly );
     }
 
 protected:

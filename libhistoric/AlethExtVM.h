@@ -30,17 +30,27 @@ class SealEngineFace;
 class AlethExtVM : public ExtVMFace {
 public:
     /// Full constructor.
-    AlethExtVM( HistoricState& _s, EnvInfo const& _envInfo,
-        ChainOperationParams const& _chainParams, Address _myAddress, Address _caller,
-        Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data, bytesConstRef _code,
-        h256 const& _codeHash, u256 const& _version, unsigned _depth, bool _isCreate,
-        bool _staticCall )
+    AlethExtVM(
+        HistoricState& _s, EnvInfo const& _envInfo, ChainOperationParams const& _chainParams,
+        Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice,
+        bytesConstRef _data, bytesConstRef _code, h256 const& _codeHash, u256 const& _version,
+        unsigned _depth, bool _isCreate, bool _staticCall
+#ifdef BITE2
+        ,
+        const u256& _txnIndex = u256( -1 )
+#endif
+            )
         : ExtVMFace( _envInfo, _myAddress, _caller, _origin, _value, _gasPrice, _data,
               _code.toBytes(), _codeHash, _version, _depth, _isCreate, _staticCall ),
           m_s( _s ),
           m_chainParams( _chainParams ),
-          m_evmSchedule( initEvmSchedule(
-              _envInfo.committedBlockTimestamp(), envInfo().number(), _version ) ) {
+          m_evmSchedule(
+              initEvmSchedule( _envInfo.committedBlockTimestamp(), envInfo().number(), _version ) )
+#ifdef BITE2
+          ,
+          m_txnIndex( _txnIndex )
+#endif
+    {
         // Contract: processing account must exist. In case of CALL, the ExtVM
         // is created only if an account has code (so exist). In case of CREATE
         // the account must be created first.
@@ -116,6 +126,9 @@ private:
     time_t m_committedBlockTimestamp;
     ChainOperationParams const& m_chainParams;
     EVMSchedule const m_evmSchedule;
+#ifdef BITE2
+    u256 m_txnIndex;
+#endif
 };
 
 }  // namespace eth

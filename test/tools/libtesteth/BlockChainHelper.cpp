@@ -97,7 +97,11 @@ void TestBlock::initBlockFromJsonHeader( mObject const& _blockHeader, mObject co
     m_tempDirState = std::unique_ptr< TransientDirectory >( new TransientDirectory() );
 
     m_state = std::unique_ptr< State >(
-        new State( 0, m_tempDirState.get()->path(), h256{}, BaseState::Empty, 0, 1000000000 ) );
+        new State( 0, m_tempDirState.get()->path(), h256{}, BaseState::Empty, 0
+#ifndef FAIR
+                   , 1000000000
+#endif
+                   ) );
     ImportTest::importState( _stateObj, *m_state );
     m_state->createStateCopyAndClearCaches().commit(dev::eth::CommitBehaviour::KeepEmptyAccounts );
 
@@ -356,7 +360,7 @@ void TestBlock::verify( TestBlockChain const& _bc ) const {
         _bc.getInterface().sealEngine()->verify(
             CheckNothingNew, m_blockHeader, BlockHeader(), &m_bytes );
     } catch ( Exception const& _e ) {
-        u256 const& daoHardfork = _bc.getInterface().sealEngine()->chainParams().daoHardforkBlock;
+        u256 const& daoHardfork = _bc.getInterface().sealEngine()->chainParams().getDaoHardforkBlock();
         if ( ( m_blockHeader.number() >= daoHardfork &&
                  m_blockHeader.number() <= daoHardfork + 9 ) ||
              m_blockHeader.number() == 0 ) {
@@ -456,14 +460,14 @@ TestBlockChain::TestBlockChain( TestBlock const& _genesisBlock ) {
 
 void TestBlockChain::reset( TestBlock const& _genesisBlock ) {
     m_tempDirBlockchain.reset( new TransientDirectory );
-    ChainParams p = ChainParams( genesisInfo( TestBlockChain::s_sealEngineNetwork ),
-        _genesisBlock.bytes(), _genesisBlock.accountMap() );
+    m_chainParams.reset( new ChainParams( genesisInfo( TestBlockChain::s_sealEngineNetwork ),
+        _genesisBlock.bytes(), _genesisBlock.accountMap() ) );
 
     m_blockChain.reset(
-        new BlockChain( p, m_tempDirBlockchain.get()->path(), true, WithExisting::Kill ) );
+        new BlockChain( m_chainParams, m_tempDirBlockchain.get()->path(), true, WithExisting::Kill ) );
     if ( !m_blockChain->isKnown( BlockHeader::headerHashFromBlock( _genesisBlock.bytes() ) ) ) {
         cdebug << "Not known:" << BlockHeader::headerHashFromBlock( _genesisBlock.bytes() )
-               << BlockHeader( p.genesisBlock() ).hash();
+               << BlockHeader( m_chainParams->genesisBlock() ).hash();
         cdebug << "Genesis block not known!";
         cdebug << "This should never happen.";
         assert( false );

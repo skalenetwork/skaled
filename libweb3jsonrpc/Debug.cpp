@@ -87,7 +87,7 @@ string Debug::debug_getConfig() {
 }
 
 string Debug::debug_getSchainName() {
-    return m_eth.chainParams().sChain.name;
+    return m_eth.chainParams().getSchainName();
 }
 
 uint64_t Debug::debug_getSnapshotCalculationTime() {
@@ -123,7 +123,7 @@ Json::Value Debug::debug_getFutureTransactions() {
 
 Json::Value Debug::debug_getPatchTimestamps() {
     Json::Value jsonResponse;
-    ChainParams chainParams = m_eth.chainParams();
+    const ChainParams& chainParams = m_eth.chainParams();
 
     size_t numberOfPatches = static_cast< size_t >( SchainPatchEnum::PatchesCount );
     for ( size_t patch = 0; patch < numberOfPatches; patch++ ) {

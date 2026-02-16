@@ -37,7 +37,7 @@ DEV_SIMPLE_EXCEPTION( InvalidSealEngine );
 class EthashClient : public Client {
 public:
     /// Trivial forwarding constructor.
-    EthashClient( ChainParams const& _params, int _networkID,
+    EthashClient( std::shared_ptr< const ChainParams > _params, int _networkID,
         std::shared_ptr< GasPricer > _gpForAdoption,
         std::shared_ptr< SnapshotManager > _snapshotManager,
         std::shared_ptr< InstanceMonitor > _instanceMonitor,

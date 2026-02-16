@@ -60,7 +60,8 @@ If you have already cloned the repo and forgot to pass `--recurse-submodules`, e
 sudo apt update
 sudo apt install autoconf build-essential cmake libprocps-dev libtool texinfo wget yasm flex bison btrfs-progs python3 python3-pip gawk git vim doxygen 
 sudo apt install make build-essential cmake pkg-config libgnutls28-dev libssl-dev unzip zlib1g-dev libgcrypt20-dev docker.io gcc-11 g++-11 gperf clang-format-11 gnutls-dev
-sudo apt install nettle-dev libhiredis-dev redis-server google-perftools libgoogle-perftools-dev lcov sudo apt-get install libv8-dev
+sudo apt install nettle-dev libhiredis-dev redis-server google-perftools libgoogle-perftools-dev lcov
+sudo apt install libv8-dev
 ```
 
 ###  Set  gcc-11 as default compiler if you don (Ubuntu 22.04 has already has it as default)
@@ -108,6 +109,13 @@ cd build/test
 ./testeth -- --all
 ```
 
+## Next steps: Run `skaled` with SGX
+
+
+This page only covers **building and testing**.
+
+
+To **run `skaled` with Intel SGX** see: [Run `skaled` with SGX](./docs/getting-started/one-node.md)
 
 ## Documentation
 

@@ -104,6 +104,10 @@ enum {
     ExtraLogBlooms,
     ExtraReceipts,
     ExtraBlocksBlooms
+#ifdef BITE
+    ,
+    ExtraTransactionDecryptedData
+#endif
 };
 
 class VersionChecker {
@@ -130,18 +134,16 @@ public:
 
     static std::string getChainDirName( const ChainParams& _cp );
 
+#ifdef FAIR
+    static uint64_t getLatestBlockTimestamp(
+        const ChainParams& _params, const boost::filesystem::path& _dataDir );
+#endif
+
     /// Doesn't open the database - if you want it open it's up to you to subclass this and open it
     /// in the constructor there.
-    BlockChain( ChainParams const& _p, boost::filesystem::path const& _path,
+    BlockChain( std::shared_ptr< const ChainParams > _p, boost::filesystem::path const& _path,
         bool _applyPatches = false, WithExisting _we = WithExisting::Trust );
     ~BlockChain();
-
-    /// Reopen everything.
-    void reopen( bool _applyPatches = false, WithExisting _we = WithExisting::Trust ) {
-        reopen( m_params, _applyPatches, _we );
-    }
-    void reopen(
-        ChainParams const& _p, bool _applyPatches = false, WithExisting _we = WithExisting::Trust );
 
     /// (Potentially) renders invalid existing bytesConstRef returned by lastBlock.
     /// To be called from main loop every 100ms or so.
@@ -259,7 +261,10 @@ public:
 
     LastBlockHashesFace const& lastBlockHashes() const { return *m_lastBlockHashes; }
 
-    uint64_t chainID() const { return m_params.chainID; }
+    uint64_t chainID() const {
+        CHECK_EXPRESSION( m_params );
+        return m_params->getChainId();
+    }
 
     /** Get the block blooms for a number of blocks. Thread-safe.
      * @returns the object pertaining to the blocks:
@@ -330,6 +335,14 @@ public:
     }
     std::vector< bytes > transactions() const { return transactions( currentHash() ); }
 
+#ifdef BITE
+    DecryptedTransactionData decryptedTransactionData( h256 _transactionHash ) const {
+        return queryExtras< DecryptedTransactionData, ExtraTransactionDecryptedData >(
+            _transactionHash, m_decryptedTransactionsData, x_decryptedTransactionsData,
+            NullDecryptedTransactionData );
+    }
+#endif
+
     /// Get a number for the given hash (or the most recent mined if none given). Thread-safe.
     unsigned number( h256 const& _hash ) const { return details( _hash ).number; }
     unsigned number() const {
@@ -395,9 +408,16 @@ public:
         unsigned memReceipts = 0;
         unsigned memTransactionAddresses = 0;
         unsigned memBlockHashes = 0;
+#ifdef BITE
+        unsigned memDecryptedTransactionsData = 0;
+#endif
         unsigned memTotal() const {
             return memBlocks + memDetails + memLogBlooms + memReceipts + memTransactionAddresses +
-                   memBlockHashes;
+                   memBlockHashes
+#ifdef BITE
+                   + memDecryptedTransactionsData
+#endif
+                ;
         }
     };
 
@@ -433,7 +453,10 @@ public:
     /// Gives a dump of the blockchain database. For debug/test use only.
     std::string dumpDatabase() const;
 
-    ChainParams const& chainParams() const { return m_params; }
+    ChainParams const& chainParams() const {
+        CHECK_EXPRESSION( m_params );
+        return *m_params;
+    }
 
     SealEngineFace* sealEngine() const { return m_sealEngine.get(); }
 
@@ -450,6 +473,15 @@ public:
         return 0;
     }
 
+#ifdef FAIR
+    bool updateGroupIfNeeded() {
+        auto latestBlockTimestamp = info().timestamp();
+        CHECK_EXPRESSION( m_params );
+        return const_cast< ChainParams* >( m_params.get() )
+            ->updateCurrentGroupIfNeeded( latestBlockTimestamp );
+    }
+#endif
+
     // simple thing to compare _bn-1's timestamp with ts
     // maybe need cahing for faster operation
     bool isPatchTimestampActiveInBlockNumber( time_t _ts, BlockNumber _bn ) const;
@@ -460,7 +492,7 @@ private:
     }
 
     /// Initialise everything and ready for opening the database.
-    void init( ChainParams const& _p );
+    void init( std::shared_ptr< const ChainParams > _p );
     /// Open the database.
 public:
     void open( boost::filesystem::path const& _path, bool _applyPatches, WithExisting _we );
@@ -470,12 +502,31 @@ public:
     void doLevelDbCompaction() const;
 
 private:
+    struct DbWriteProxy {
+        DbWriteProxy( batched_io::db_operations_face& _backend ) : backend( _backend ) {}
+        // HACK +1 is needed for SplitDB; of course, this should be redesigned!
+        void insert( db::Slice _key, db::Slice _value ) {
+            consumedBytes += _key.size() + _value.size() + 1;
+            backend.insert( _key, _value );
+        }
+        batched_io::db_operations_face& backend;
+        size_t consumedBytes = 0;
+    };
+
     bool rotateDBIfNeeded( uint64_t pieceUsageBytes );
 
     // auxiliary method for insertBlockAndExtras
     size_t prepareDbDataAndReturnSize( VerifiedBlockRef const& _block, bytesConstRef _receipts,
         u256 const& _totalDifficulty, const LogBloom* pLogBloomFull,
         ImportPerformanceLogger& _performanceLogger );
+
+    void insertBlockDetailsToDb( DbWriteProxy& _blocksWriteBatch, DbWriteProxy& _extrasWriteBatch,
+        VerifiedBlockRef const& _block, bytesConstRef _receipts, u256 const& _totalDifficulty,
+        ImportPerformanceLogger& _performanceLogger );
+    void insertTransactionsDetailsToDb(
+        DbWriteProxy& _extrasWriteBatch, VerifiedBlockRef const& _block );
+    void insertBloomsDetailsToDb(
+        DbWriteProxy& _extrasWriteBatch, const BlockHeader& _tbi, const LogBloom* pLogBloomFull );
 
     // auxiliary method for recomputing blocks inserted earlier
     void recomputeExistingOccupiedSpaceForBlockRotation();
@@ -563,6 +614,10 @@ private:
     mutable BlockHashHash m_blockHashes;
     mutable SharedMutex x_blocksBlooms;
     mutable BlocksBloomsHash m_blocksBlooms;
+#ifdef BITE
+    mutable SharedMutex x_decryptedTransactionsData;
+    mutable DecryptedTransactionDataHash m_decryptedTransactionsData;
+#endif
 
     using CacheID = std::pair< h256, unsigned >;
     mutable Mutex x_cacheUsage;
@@ -600,7 +655,8 @@ private:
     unsigned m_lastBlockNumber = 0;
     boost::filesystem::path m_chainPath;
 
-    ChainParams m_params;
+    std::shared_ptr< const ChainParams > m_params;
+
     std::shared_ptr< SealEngineFace > m_sealEngine;  // consider shared_ptr.
     mutable SharedMutex x_genesis;
     mutable BlockHeader m_genesis;       // mutable because they're effectively memos.

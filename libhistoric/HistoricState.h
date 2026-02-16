@@ -161,7 +161,12 @@ public:
     /// This will change the state accordingly.
     std::pair< ExecutionResult, TransactionReceipt > execute( EnvInfo const& _envInfo,
         eth::ChainOperationParams const& _chainParams, Transaction const& _t,
-        skale::Permanence _p = skale::Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc() );
+        skale::Permanence _p = skale::Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc()
+#ifdef BITE2
+                                                                 ,
+        int64_t _transactionIndex = -1
+#endif
+    );
 
     /// Check if the address is in use.
     bool addressInUse( Address const& _address ) const;
@@ -322,6 +327,9 @@ private:
     /// @returns true when normally halted; false when exceptionally halted; throws when internal VM
     /// exception occurred.
     bool executeTransaction( AlethExecutive& _e, Transaction const& _t, OnOpFunc const& _onOp );
+
+    /// Clears all internal caches
+    void clearAllCaches();
 
     /// Our overlay for the state tree.
     dev::OverlayDB m_db;

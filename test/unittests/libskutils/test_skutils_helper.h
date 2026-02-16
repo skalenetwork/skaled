@@ -246,7 +246,7 @@ class test_client_ws_base : public test_client, public skutils::ws::client::clie
     std::string strLastMessage_;
 
 public:
-    volatile size_t cntClose_ = 0, cntFail_ = 0;
+    size_t cntClose_ = 0, cntFail_ = 0;
     int nLocalCloseCode_ = 0;
     std::string strLocalCloseCode_;
     std::string strCloseReason_;

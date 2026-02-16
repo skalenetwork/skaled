@@ -25,6 +25,7 @@
 
 #include "Eth.h"
 #include "AccountHolder.h"
+#include "libethcore/Exceptions.h"
 #include <jsonrpccpp/common/exception.h>
 #include <libconsensus/utils/Time.h>
 #include <libdevcore/CommonData.h>
@@ -33,6 +34,9 @@
 #include <libethereum/Client.h>
 #include <libskale/SkipInvalidTransactionsPatch.h>
 #include <libweb3jsonrpc/JsonHelper.h>
+
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/writer.h>
 
 #include <csignal>
 #include <exception>
@@ -476,7 +480,7 @@ string Eth::eth_call( TransactionSkeleton& t, string const&
 #ifdef HISTORIC_STATE
         bN,
 #endif
-        FudgeFactor::Lenient );
+        t.creation, FudgeFactor::Lenient );
 
     std::string strRevertReason;
     if ( er.excepted == dev::eth::TransactionException::RevertInstruction ) {
@@ -493,6 +497,21 @@ string Eth::eth_call( TransactionSkeleton& t, string const&
         throw std::logic_error( strRevertReason );
     }
 
+#ifdef FAIR
+    if ( er.excepted == dev::eth::TransactionException::UnsupportedDencunOpcode ) {
+        strRevertReason =
+            "Contract uses unsupported Dencun opcode. Please ensure it is compiled for EVM <= "
+            "Shanghai";
+
+        if ( !er.output.empty() ) {
+            Json::Value output = toJS( er.output );
+            BOOST_THROW_EXCEPTION(
+                JsonRpcException( REVERT_RPC_ERROR_CODE, strRevertReason, output ) );
+        }
+
+        BOOST_THROW_EXCEPTION( JsonRpcException( REVERT_RPC_ERROR_CODE, strRevertReason ) );
+    }
+#endif
 
     string callResult = toJS( er.output );
 
@@ -523,6 +542,23 @@ string Eth::eth_estimateGas( Json::Value const& _json ) {
 
             throw std::logic_error( strRevertReason );
         }
+
+#ifdef FAIR
+        if ( result.second.excepted == dev::eth::TransactionException::UnsupportedDencunOpcode ) {
+            strRevertReason =
+                "Contract uses unsupported Dencun opcode. Please ensure it is compiled for EVM <= "
+                "Shanghai";
+
+            if ( !result.second.output.empty() ) {
+                Json::Value output = toJS( result.second.output );
+                BOOST_THROW_EXCEPTION(
+                    JsonRpcException( REVERT_RPC_ERROR_CODE, strRevertReason, output ) );
+            }
+
+            BOOST_THROW_EXCEPTION( JsonRpcException( REVERT_RPC_ERROR_CODE, strRevertReason ) );
+        }
+#endif
+
         return toJS( result.first );
     } catch ( std::logic_error& error ) {
         throw error;
@@ -551,8 +587,8 @@ Json::Value Eth::eth_getBlockByHash( string const& _blockHash, bool _includeTran
             try {
                 baseFeePerGas = client()->gasBidPrice( bn - 1 );
             } catch ( std::invalid_argument& _e ) {
-                LOG( m_loggerDebug ) << "Cannot get gas price for block " << h;
-                LOG( m_loggerDebug ) << _e.what();
+                BOOST_LOG( m_loggerDebug ) << "Cannot get gas price for block " << h;
+                BOOST_LOG( m_loggerDebug ) << _e.what();
                 // set default gasPrice
                 // probably the price was rotated out as we are asking the price for the old block
                 baseFeePerGas = client()->gasBidPrice();
@@ -614,8 +650,8 @@ Json::Value Eth::eth_getBlockByNumber( string const& _blockNumber, bool _include
             try {
                 baseFeePerGas = client()->gasBidPrice( bn - 1 );
             } catch ( std::invalid_argument& _e ) {
-                LOG( m_loggerDebug ) << "Cannot get gas price for block " << bn;
-                LOG( m_loggerDebug ) << _e.what();
+                BOOST_LOG( m_loggerDebug ) << "Cannot get gas price for block " << bn;
+                BOOST_LOG( m_loggerDebug ) << _e.what();
                 // set default gasPrice
                 // probably the price was rotated out as we are asking the price for the old block
                 baseFeePerGas = client()->gasBidPrice();
@@ -852,26 +888,19 @@ Json::Value Eth::eth_getFilterChangesEx( string const& _filterId ) {
     }
 }
 
-Json::Value Eth::eth_getFilterLogs( string const& _filterId ) {
+rapidjson::Document Eth::eth_getLogs(
+    rapidjson::Value const& _json, rapidjson::Document::AllocatorType& _responseAllocator ) {
     try {
-        return toJson( client()->logs( static_cast< unsigned int >( jsToInt( _filterId ) ) ) );
-    } catch ( const TooBigResponse& ) {
-        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS,
-            "Log response size exceeded. Maximum allowed number of requested blocks is " +
-                to_string( this->client()->chainParams().getLogsBlocksLimit ) ) );
-    } catch ( ... ) {
-        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
-    }
-}
+        rapidjson::StringBuffer buffer;
+        rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
+        _json.Accept( writer );
 
-Json::Value Eth::eth_getLogs( Json::Value const& _json ) {
-    try {
-        LogFilter filter = toLogFilter( _json );
-        if ( !_json["blockHash"].isNull() ) {
-            if ( !_json["fromBlock"].isNull() || !_json["toBlock"].isNull() )
+        LogFilter filter = rapidJsonToLogFilter( _json );
+        if ( _json.HasMember( "blockHash" ) && !_json["blockHash"].IsNull() ) {
+            if ( _json.HasMember( "fromBlock" ) || _json.HasMember( "toBlock" ) )
                 BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS,
                     "fromBlock and toBlock are not allowed if blockHash is present" ) );
-            string strHash = _json["blockHash"].asString();
+            string strHash = _json["blockHash"].GetString();
             if ( strHash.empty() )
                 throw std::invalid_argument( "blockHash cannot be an empty string" );
             uint64_t number = m_eth.numberFromHash( jsToFixed< 32 >( strHash ) );
@@ -882,16 +911,65 @@ Json::Value Eth::eth_getLogs( Json::Value const& _json ) {
             filter.withEarliest( number );
             filter.withLatest( number );
         }
-        return toJson( client()->logs( filter ) );
+        auto logs = client()->logs( filter );
+        auto result = toRapidJson( logs, _responseAllocator );
+
+        return result;
+
     } catch ( const TooBigResponse& ) {
-        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS,
-            "Log response size exceeded. Maximum allowed number of requested blocks is " +
-                to_string( this->client()->chainParams().getLogsBlocksLimit ) ) );
-    } catch ( const JsonRpcException& ) {
-        throw;
+        BOOST_THROW_EXCEPTION( JsonRpcException( LIMIT_EXCEEDED_ERR_CODE,
+            "Block range limit exceeded. Maximum allowed number of requested blocks is " +
+                to_string( this->client()->chainParams().getLogsBlocksLimit() ) ) );
+    } catch ( const LogCountLimitExceeded& e ) {
+        BOOST_THROW_EXCEPTION( JsonRpcException( LIMIT_EXCEEDED_ERR_CODE,
+            "Response log count limit exceeded. Maximum allowed number of returned logs is " +
+                to_string( this->client()->chainParams().getResponseLogCountLimit() ) ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
+}
+
+rapidjson::Document Eth::eth_getFilterLogsAsRapid(
+    string const& _filterId, rapidjson::Document::AllocatorType& _responseAllocator ) {
+    try {
+        auto logs = client()->logs( static_cast< unsigned int >( jsToInt( _filterId ) ) );
+        auto result = toRapidJson( logs, _responseAllocator );
+        return result;
+    } catch ( const TooBigResponse& ) {
+        BOOST_THROW_EXCEPTION( JsonRpcException( LIMIT_EXCEEDED_ERR_CODE,
+            "Block range limit exceeded. Maximum allowed number of requested blocks is " +
+                to_string( this->client()->chainParams().getLogsBlocksLimit() ) ) );
+    } catch ( const LogCountLimitExceeded& e ) {
+        BOOST_THROW_EXCEPTION( JsonRpcException( LIMIT_EXCEEDED_ERR_CODE,
+            "Response log count limit exceeded. Maximum allowed number of returned logs is " +
+                to_string( this->client()->chainParams().getResponseLogCountLimit() ) ) );
+    } catch ( ... ) {
+        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
+    }
+}
+
+
+Json::Value Eth::eth_getLogs( Json::Value const& _json ) {
+    rapidjson::Document filterDoc;
+    {
+        Json::StreamWriterBuilder wbuilder;
+        std::string serialized = Json::writeString( wbuilder, _json );
+        filterDoc.Parse( serialized.c_str() );
+        if ( filterDoc.HasParseError() ) {
+            BOOST_THROW_EXCEPTION(
+                JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS, "Invalid filter JSON" ) );
+        }
+    }
+    rapidjson::Document rapidResult = eth_getLogs( filterDoc, filterDoc.GetAllocator() );
+    return dev::eth::rapidDocumentToJson( rapidResult, "logs" );
+}
+
+Json::Value Eth::eth_getFilterLogsAsJson( std::string const& _filterId ) {
+    rapidjson::Document allocHolder;
+    allocHolder.SetObject();
+    rapidjson::Document rapidResult =
+        eth_getFilterLogsAsRapid( _filterId, allocHolder.GetAllocator() );
+    return dev::eth::rapidDocumentToJson( rapidResult, "filter logs" );
 }
 
 Json::Value Eth::eth_getWork() {
@@ -1061,6 +1139,33 @@ Json::Value Eth::eth_fetchQueuedTransactions( string const& _accountId ) {
     }
 }
 
+/// Helper function to parse boost exception error info
+template < typename Tag, typename T >
+void appendErrorInfo(
+    std::ostringstream& oss, const boost::exception& e, const std::string& label ) {
+    if ( auto info = boost::get_error_info< Tag >( e ) ) {
+        oss << " " << label << ": " << *info << "\n";
+    }
+}
+
+template < typename ExceptionT >
+std::string formatBoostException(
+    const ExceptionT& e, std::string const& customErrorMessage = "" ) {
+    std::ostringstream oss;
+    if ( !customErrorMessage.empty() ) {
+        oss << customErrorMessage << "\n";
+    } else {
+        oss << boost::core::demangle( typeid( e ).name() ) << "\n";
+    }
+
+    appendErrorInfo< errinfo_blockNumber, uint64_t >( oss, e, "Block number" );
+    appendErrorInfo< errinfo_txHash, std::string >( oss, e, "Transaction hash" );
+    // Add other known fields as needed
+
+    return oss.str();
+}
+
+
 string dev::rpc::exceptionToErrorMessage() {
     string ret;
     try {
@@ -1099,6 +1204,20 @@ string dev::rpc::exceptionToErrorMessage() {
         ret = "Transaction rejected by user.";
     } catch ( InvalidTransactionFormat const& ) {
         ret = "Invalid transaction format.";
+    }
+#ifdef BITE
+    // BITE exceptions
+    catch ( InvalidBITETransaction const& _e ) {
+        ret = "Invalid BITE transaction format.";
+    } catch ( BITETransactionTooShort const& _e ) {
+        ret = "BITE transaction too short.";
+    }
+#endif
+    catch ( PreEIP155ReplayProtectionViolation const& e ) {
+        ret = formatBoostException(
+            e, "Replay-protected transaction not allowed before EIP-155 activation." );
+    } catch ( PreEIP155LegacyTransactionNotAllowed const& e ) {
+        ret = formatBoostException( e, "Pre-EIP155 Legacy transactions not allowed." );
     } catch ( ... ) {
         ret = "Invalid RPC parameters.";
     }

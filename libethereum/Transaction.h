@@ -55,6 +55,14 @@ enum class TransactionException {
     AddressAlreadyUsed,
     InvalidContractDeployer,
     WouldNotBeInBlock  ///< In original Ethereum this tx should not be included in block
+#ifdef BITE
+    ,
+    InvalidBITEAESData
+#endif
+#ifdef FAIR
+    ,
+    UnsupportedDencunOpcode
+#endif
 };
 
 enum class CodeDeposit { None = 0, Failed, Success };
@@ -90,17 +98,39 @@ public:
     /// Constructs from a transaction skeleton & optional secret.
     Transaction( TransactionSkeleton const& _ts, Secret const& _s = Secret() );
 
+
+#ifdef FAIR  // include chainId
+
+    /// Constructs a signed message-call transaction.
+    Transaction( u256 const& _value, u256 const& _gasPrice, u256 const& _gas, Address const& _dest,
+        bytes const& _data, u256 const& _nonce, const u256& _chainId, Secret const& _secret );
+
+    /// Constructs an unsigned message-call transaction.
+    Transaction( u256 const& _value, u256 const& _gasPrice, u256 const& _gas, Address const& _dest,
+        bytes const& _data, u256 const& _nonce, const u256& _chainId );
+
+    /// Constructs a signed contract-creation transaction.
+    Transaction( u256 const& _value, u256 const& _gasPrice, u256 const& _gas, bytes const& _data,
+        u256 const& _nonce, const u256& _chainId, Secret const& _secret );
+
+    /// Constructs a unsigned contract-creation transaction.
+    Transaction( u256 const& _value, u256 const& _gasPrice, u256 const& _gas, bytes const& _data,
+        u256 const& _nonce, const u256& _chainId );
+
+
+#endif  // does not include chainId
+
     /// Constructs a signed message-call transaction.
     Transaction( u256 const& _value, u256 const& _gasPrice, u256 const& _gas, Address const& _dest,
         bytes const& _data, u256 const& _nonce, Secret const& _secret );
 
-    /// Constructs a signed contract-creation transaction.
-    Transaction( u256 const& _value, u256 const& _gasPrice, u256 const& _gas, bytes const& _data,
-        u256 const& _nonce, Secret const& _secret );
-
     /// Constructs an unsigned message-call transaction.
     Transaction( u256 const& _value, u256 const& _gasPrice, u256 const& _gas, Address const& _dest,
         bytes const& _data, u256 const& _nonce = Invalid256 );
+
+    /// Constructs a signed contract-creation transaction.
+    Transaction( u256 const& _value, u256 const& _gasPrice, u256 const& _gas, bytes const& _data,
+        u256 const& _nonce, Secret const& _secret );
 
     /// Constructs an unsigned contract-creation transaction.
     Transaction( u256 const& _value, u256 const& _gasPrice, u256 const& _gas, bytes const& _data,
@@ -117,19 +147,23 @@ public:
 
     Transaction( Transaction const& ) = default;
 
+#ifndef FAIR
     bool hasExternalGas() const;
 
     u256 getExternalGas() const;
 
-    u256 gasPrice() const;
-
     void checkOutExternalGas(
         const ChainParams& _cp, time_t _committedBlockTimestamp, uint64_t _committedBlockNumber );
+#endif
 
+    u256 gasPrice() const;
+
+#ifndef FAIR
     void ignoreExternalGas() {
         m_externalGasIsChecked = true;
         m_externalGas.reset();
     }
+#endif
 
 private:
     bool m_externalGasIsChecked = false;

@@ -226,7 +226,14 @@ BOOST_AUTO_TEST_CASE( bConstantinopleBlockReward ) {
     testBlockchain.addBlock( testBlock );
 
     TestBlock const& topBlock = testBlockchain.topBlock();
-    BOOST_REQUIRE_EQUAL( topBlock.state().balance( topBlock.beneficiary() ), 2 * ether );
+
+    #ifdef FAIR
+        // default block reward for FAIR is 5 ether
+        BOOST_REQUIRE_EQUAL( topBlock.state().balance( topBlock.beneficiary() ), 5 * ether );
+    #else
+        // constantinople block reward is 2 ether
+        BOOST_REQUIRE_EQUAL( topBlock.state().balance( topBlock.beneficiary() ), 2 * ether );
+    #endif
 }
 
 BOOST_AUTO_TEST_SUITE_END()

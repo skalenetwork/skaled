@@ -53,21 +53,24 @@ HistoricState::HistoricState( HistoricState const& _s )
       m_unrevertablyTouched( _s.m_unrevertablyTouched ),
       m_accountStartNonce( _s.m_accountStartNonce ),
       m_totalTimeSpentInStateCommitsPerBlock( _s.m_totalTimeSpentInStateCommitsPerBlock ),
-      m_maxHistoricStateDbSize( _s.m_maxHistoricStateDbSize ) {}
+      m_maxHistoricStateDbSize( _s.m_maxHistoricStateDbSize ) {
+    m_state.setRoot( _s.m_state.root(), Verification::Skip, _s.m_state.rootBlockNumber() );
+}
 
 std::pair< dev::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > >
 HistoricState::openDB( fs::path const& _basePath, h256 const& _genesisHash, WithExisting _we ) {
     DatabasePaths const dbPaths{ _basePath, _genesisHash };
     if ( db::isDiskDatabase() ) {
         if ( _we == WithExisting::Kill ) {
-            LOG( m_loggerInfo ) << "Deleting state database: " << dbPaths.statePath();
+            BOOST_LOG( m_loggerInfo ) << "Deleting state database: " << dbPaths.statePath();
             fs::remove_all( dbPaths.statePath() );
         }
 
-        LOG( m_loggerDebug ) << "Verifying path exists (and creating if not present): "
-                             << dbPaths.chainPath();
+        BOOST_LOG( m_loggerDebug )
+            << "Verifying path exists (and creating if not present): " << dbPaths.chainPath();
         fs::create_directories( dbPaths.chainPath() );
-        LOG( m_loggerDebug ) << "Ensuring permissions are set for path: " << dbPaths.chainPath();
+        BOOST_LOG( m_loggerDebug )
+            << "Ensuring permissions are set for path: " << dbPaths.chainPath();
         DEV_IGNORE_EXCEPTIONS( fs::permissions( dbPaths.chainPath(), fs::owner_all ) );
 
         clog( VerbosityDebug, "statedb" )
@@ -79,7 +82,7 @@ HistoricState::openDB( fs::path const& _basePath, h256 const& _genesisHash, With
     }
 
     try {
-        LOG( m_loggerTrace ) << "Opening state database";
+        BOOST_LOG( m_loggerTrace ) << "Opening state database";
         auto rotator =
             std::make_shared< batched_io::BatchedRotatingHistoricDbIO >( dbPaths.statePath() );
         auto rotatingDB = std::make_shared< dev::db::RotatingHistoricState >( rotator );
@@ -88,27 +91,27 @@ HistoricState::openDB( fs::path const& _basePath, h256 const& _genesisHash, With
         return { dev::OverlayDB( std::move( bdb ) ), rotatingDB };
     } catch ( boost::exception const& ex ) {
         if ( db::isDiskDatabase() ) {
-            LOG( m_loggerError ) << "Error opening state database: " << dbPaths.statePath();
+            BOOST_LOG( m_loggerError ) << "Error opening state database: " << dbPaths.statePath();
             db::DatabaseStatus const dbStatus =
                 *boost::get_error_info< db::errinfo_dbStatusCode >( ex );
             if ( fs::space( dbPaths.statePath() ).available < 1024 ) {
-                LOG( m_loggerError )
+                BOOST_LOG( m_loggerError )
                     << "Not enough available space found on hard drive. Please free some up and "
                        "then re-run. Bailing.";
                 BOOST_THROW_EXCEPTION( NotEnoughAvailableSpace() );
             } else if ( dbStatus == db::DatabaseStatus::Corruption ) {
-                LOG( m_loggerError )
+                BOOST_LOG( m_loggerError )
                     << "Database corruption detected. Please see the exception for corruption "
                        "details. Exception: "
                     << boost::diagnostic_information( ex );
                 BOOST_THROW_EXCEPTION( DatabaseCorruption() );
             } else if ( dbStatus == db::DatabaseStatus::IOError ) {
-                LOG( m_loggerError ) << "Database already open. You appear to have "
-                                        "another instance of Aleth running.";
+                BOOST_LOG( m_loggerError ) << "Database already open. You appear to have "
+                                              "another instance of Aleth running.";
                 BOOST_THROW_EXCEPTION( DatabaseAlreadyOpen() );
             }
         }
-        LOG( m_loggerError )
+        BOOST_LOG( m_loggerError )
             << "Unknown error encountered when opening state database. Exception details: "
             << boost::diagnostic_information( ex );
         throw;
@@ -120,14 +123,6 @@ u256 const& HistoricState::requireAccountStartNonce() const {
         BOOST_THROW_EXCEPTION( InvalidAccountStartNonceInState() );
     return m_accountStartNonce;
 }
-
-/* void HistoricState::noteAccountStartNonce(u256 const &_actual) {
-    if (m_accountStartNonce == Invalid256)
-        m_accountStartNonce = _actual;
-    else if (m_accountStartNonce != _actual)
-        BOOST_THROW_EXCEPTION(IncorrectAccountStartNonceInState());
-}
- */
 
 void HistoricState::removeEmptyAccounts() {
     for ( auto& i : m_cache )
@@ -149,7 +144,7 @@ HistoricState& HistoricState::operator=( HistoricState const& _s ) {
     m_rotatingTreeDb = _s.m_rotatingTreeDb;
     m_blockToStateRootDB = _s.m_blockToStateRootDB;
     m_rotatingRootsDb = _s.m_rotatingRootsDb;
-    m_state.open( &m_db, _s.m_state.root(), Verification::Skip );
+    m_state.open( &m_db, _s.m_state.root(), Verification::Skip, _s.m_state.rootBlockNumber() );
     m_cache = _s.m_cache;
     m_unchangedCacheEntries = _s.m_unchangedCacheEntries;
     m_nonExistingAccountsCache = _s.m_nonExistingAccountsCache;
@@ -217,9 +212,7 @@ void HistoricState::commitExternalChanges( AccountMap const& _accountMap ) {
     auto historicStateStart = dev::db::LevelDB::getCurrentTimeMs();
     commitExternalChangesIntoTrieDB( _accountMap, m_state );
     m_state.db()->commit();
-    m_changeLog.clear();
-    m_cache.clear();
-    m_unchangedCacheEntries.clear();
+    clearAllCaches();
     auto historicStateFinish = dev::db::LevelDB::getCurrentTimeMs();
     m_totalTimeSpentInStateCommitsPerBlock += historicStateFinish - historicStateStart;
 }
@@ -610,12 +603,22 @@ void HistoricState::rollback( size_t _savepoint ) {
     }
 }
 
-std::pair< ExecutionResult, TransactionReceipt > HistoricState::execute( EnvInfo const& _envInfo,
-    eth::ChainOperationParams const& _chainParams, Transaction const& _t, skale::Permanence _p,
-    OnOpFunc const& _onOp ) {
+std::pair< ExecutionResult, TransactionReceipt > HistoricState::execute(
+    EnvInfo const& _envInfo, eth::ChainOperationParams const& _chainParams, Transaction const& _t,
+    skale::Permanence _p, OnOpFunc const& _onOp
+#ifdef BITE2
+    ,
+    int64_t _transactionIndex
+#endif
+) {
     // Create and initialize the executive. This will throw fairly cheaply and quickly if the
     // transaction is bad in any way.
-    AlethExecutive e( *this, _envInfo, _chainParams, 0 );
+    AlethExecutive e( *this, _envInfo, _chainParams, 0
+#ifdef BITE2
+        ,
+        dev::u256( _transactionIndex )
+#endif
+    );
     ExecutionResult res;
     e.setResultRecipient( res );
 
@@ -634,17 +637,18 @@ std::pair< ExecutionResult, TransactionReceipt > HistoricState::execute( EnvInfo
         m_cache.clear();
         break;
     case skale::Permanence::Committed:
-        // should never be called since historic state is  read only
+    case skale::Permanence::BlockCommitted:
+        // should never be called since historic state is read only
         assert( false );
     case skale::Permanence::Uncommitted:
         break;
     case skale::Permanence::CommittedWithoutState:
-        // should never be called historic state is  read only
+        // should never be called historic state is read only
         assert( false );
     }
 
     TransactionReceipt const receipt =
-        _envInfo.number() >= _chainParams.byzantiumForkBlock ?
+        _envInfo.number() >= _chainParams.getByzantiumForkBlock() ?
             TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
             TransactionReceipt( globalRoot(), startGasUsed + e.gasUsed(), e.logs() );
 
@@ -753,19 +757,12 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, HistoricState const& _s 
     return _out;
 }
 
-/*HistoricState &dev::eth::createIntermediateState(HistoricState &o_s, Block const &_block, unsigned
-_txIndex, BlockChain const &_bc) {
-    // o_s = _block.state().historicState();
-    u256 const rootHash = _block.stateRootBeforeTx(_txIndex);
-    if (rootHash)
-        o_s.setRoot(globalRoot);
-    else {
-        o_s.setRoot(_block.stateRootBeforeTx(0));
-        o_s.executeBlockTransactions(_block, _txIndex, _bc.lastBlockHashes(), *_bc.sealEngine());
-    }
-    return o_s;
+void HistoricState::clearAllCaches() {
+    m_changeLog.clear();
+    m_cache.clear();
+    m_unchangedCacheEntries.clear();
+    m_nonExistingAccountsCache.clear();
 }
- */
 
 AddressHash HistoricState::commitExternalChangesIntoTrieDB(
     const AccountMap& _cache, SecureTrieDB< Address, OverlayDB >& _state ) {
@@ -796,9 +793,9 @@ AddressHash HistoricState::commitExternalChangesIntoTrieDB(
                 for ( auto const& j : i.second.storageOverlay() ) {
                     if ( j.second ) {
                         storageDB.insert( j.first, rlp( j.second ) );
-
-                    } else
+                    } else {
                         storageDB.remove( j.first );
+                    }
                 }
                 assert( storageDB.root() );
                 s.append( storageDB.root() );

@@ -32,6 +32,12 @@
 namespace fs = boost::filesystem;
 namespace skale {
 
+// namespace used only in tests to count commits
+namespace fs_commit_counter {
+std::atomic< bool > enabled{ false };
+std::atomic< uint64_t > counter{ 0 };
+}  // namespace fs_commit_counter
+
 bool CreateFileOp::execute() {
     try {
         std::fstream file;
@@ -45,9 +51,9 @@ bool CreateFileOp::execute() {
         std::string strError = ex.what();
         if ( strError.empty() )
             strError = "exception without description";
-        LOG( m_loggerDebug ) << "Exception in CreateFileOp: " << strError << "\n";
+        BOOST_LOG( m_loggerDebug ) << "Exception in CreateFileOp: " << strError << "\n";
     } catch ( ... ) {
-        LOG( m_loggerDebug ) << "Unknown exception in CreateFileOp\n";
+        BOOST_LOG( m_loggerDebug ) << "Unknown exception in CreateFileOp\n";
     }
     return false;
 }
@@ -64,9 +70,9 @@ bool CreateDirectoryOp::execute() {
         std::string strError = ex.what();
         if ( strError.empty() )
             strError = "exception without description";
-        LOG( m_loggerDebug ) << "Exception in createDirectoryOp: " << strError << "\n";
+        BOOST_LOG( m_loggerDebug ) << "Exception in createDirectoryOp: " << strError << "\n";
     } catch ( ... ) {
-        LOG( m_loggerDebug ) << "Unknown exception in createDirectoryOp\n";
+        BOOST_LOG( m_loggerDebug ) << "Unknown exception in createDirectoryOp\n";
     }
     return false;
 }
@@ -82,9 +88,9 @@ bool DeleteFileOp::execute() {
         std::string strError = ex.what();
         if ( strError.empty() )
             strError = "exception without description";
-        LOG( m_loggerDebug ) << "Exception in DeleteFileOp: " << strError << "\n";
+        BOOST_LOG( m_loggerDebug ) << "Exception in DeleteFileOp: " << strError << "\n";
     } catch ( ... ) {
-        LOG( m_loggerDebug ) << "Unknown exception in DeleteFileOp\n";
+        BOOST_LOG( m_loggerDebug ) << "Unknown exception in DeleteFileOp\n";
     }
     return false;
 }
@@ -100,9 +106,9 @@ bool DeleteDirectoryOp::execute() {
         std::string strError = ex.what();
         if ( strError.empty() )
             strError = "exception without description";
-        LOG( m_loggerDebug ) << "Exception in DeleteDirectoryOp: " << strError << "\n";
+        BOOST_LOG( m_loggerDebug ) << "Exception in DeleteDirectoryOp: " << strError << "\n";
     } catch ( ... ) {
-        LOG( m_loggerDebug ) << "Unknown exception in DeleteDirectoryOp\n";
+        BOOST_LOG( m_loggerDebug ) << "Unknown exception in DeleteDirectoryOp\n";
     }
     return false;
 }
@@ -118,9 +124,9 @@ bool WriteChunkOp::execute() {
         std::string strError = ex.what();
         if ( strError.empty() )
             strError = "exception without description";
-        LOG( m_loggerDebug ) << "Exception in WriteChunkOp: " << strError << "\n";
+        BOOST_LOG( m_loggerDebug ) << "Exception in WriteChunkOp: " << strError << "\n";
     } catch ( ... ) {
-        LOG( m_loggerDebug ) << "Unknown exception in WriteChunkOp\n";
+        BOOST_LOG( m_loggerDebug ) << "Unknown exception in WriteChunkOp\n";
     }
     return false;
 }
@@ -160,9 +166,9 @@ bool CalculateFileHash::execute() {
         std::string strError = ex.what();
         if ( strError.empty() )
             strError = "exception without description";
-        LOG( m_loggerDebug ) << "Exception in WriteHashFileOp: " << strError << "\n";
+        BOOST_LOG( m_loggerDebug ) << "Exception in WriteHashFileOp: " << strError << "\n";
     } catch ( ... ) {
-        LOG( m_loggerDebug ) << "Unknown exception in WriteHashFileOp\n";
+        BOOST_LOG( m_loggerDebug ) << "Unknown exception in WriteHashFileOp\n";
     }
     return false;
 }
@@ -217,9 +223,27 @@ void OverlayFS::calculateFileHash( const std::string& filePath ) {
 }
 
 void OverlayFS::commit() {
+    if ( fs_commit_counter::enabled.load( std::memory_order_relaxed ) )
+        fs_commit_counter::counter.fetch_add( 1, std::memory_order_relaxed );
+
     for ( size_t i = 0; i < m_cache.size(); ++i ) {
         m_cache[i]->execute();
     }
     m_cache.clear();
 }
+
+namespace fs_commit_counter {
+void enable( bool value ) {
+    enabled.store( value, std::memory_order_relaxed );
+}
+
+void reset() {
+    counter.store( 0, std::memory_order_relaxed );
+}
+
+uint64_t count() {
+    return counter.load( std::memory_order_relaxed );
+}
+}  // namespace fs_commit_counter
+
 }  // namespace skale

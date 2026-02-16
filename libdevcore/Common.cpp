@@ -177,7 +177,9 @@ void InvariantChecker::checkInvariants(
     if ( !_this->invariants() ) {
         cwarn << ( _pre ? "Pre" : "Post" ) << "invariant failed in" << _fn << "at" << _file << ":"
               << _line;
-        ::boost::exception_detail::throw_exception_( FailedInvariant(), _fn, _file, _line );
+        boost::throw_exception( FailedInvariant()
+                                << boost::throw_function( _fn ) << boost::throw_file( _file )
+                                << boost::throw_line( _line ) );
     }
 }
 
@@ -230,5 +232,11 @@ string inUnits( bigint const& _b, strings const& _units ) {
 std::atomic< ExitHandler::exit_code_t > ExitHandler::s_ec = ExitHandler::ec_success;
 std::atomic_int ExitHandler::s_nStopSignal{ 0 };
 std::atomic_bool ExitHandler::s_bStop{ false };
+
+#ifdef FAIR
+u256 calculateShareWithPrecision( const u256& _base, size_t _sharePromile ) {
+    return _base * _sharePromile / 1000;
+}
+#endif
 
 }  // namespace dev

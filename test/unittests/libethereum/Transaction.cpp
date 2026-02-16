@@ -27,14 +27,19 @@
 #include <libethcore/Exceptions.h>
 #include <libevm/VMFace.h>
 #include <test/tools/libtesteth/BlockChainHelper.h>
+
+#ifdef BITE
+#include <libconsensus/libBLS/threshold_encryption/ThresholdEncryption.h>
+#endif
+
 using namespace dev;
 using namespace eth;
 using namespace dev::test;
 
 BOOST_FIXTURE_TEST_SUITE( libethereum, TestOutputHelperFixture )
 
-BOOST_AUTO_TEST_CASE( TransactionGasRequired, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    TransactionGasRequired, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     // Transaction data is 0358ac39584bc98a7c979f984b03, 14 bytes
     Transaction tr(
         fromHex( "0xf86d800182521c94095e7baea6a6c7c4c2dfeb977efac326af552d870a8e0358ac39584bc98a7c9"
@@ -44,25 +49,25 @@ BOOST_AUTO_TEST_CASE( TransactionGasRequired,
     BOOST_CHECK_EQUAL( tr.baseGasRequired( HomesteadSchedule ), 14 * 68 + 21000 );
     BOOST_CHECK_EQUAL( tr.baseGasRequired( IstanbulSchedule ), 14 * 16 + 21000 );
 
-    tr = Transaction (
-            fromHex( "0x01f8d18197808504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b018"
-                     "e0358ac39584bc98a7c979f984b03f85bf85994de0b295669a9fd93d5f28d9ec85e40f4cb697b"
-                     "aef842a00000000000000000000000000000000000000000000000000000000000000003a0000"
-                     "000000000000000000000000000000000000000000000000000000000000780a08ae3a721ee02"
-                     "cf52d85ecec934c6f46ea3e96d6355eb8ccde261e1e419885761a0234565f6d227d8eba0937b0"
-                     "f03cb25f83aeb24c13b7a39a9ef6e80c1ea272a3c" ),
-            CheckTransaction::None, false, true );
+    tr = Transaction(
+        fromHex( "0x01f8d18197808504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b018"
+                 "e0358ac39584bc98a7c979f984b03f85bf85994de0b295669a9fd93d5f28d9ec85e40f4cb697b"
+                 "aef842a00000000000000000000000000000000000000000000000000000000000000003a0000"
+                 "000000000000000000000000000000000000000000000000000000000000780a08ae3a721ee02"
+                 "cf52d85ecec934c6f46ea3e96d6355eb8ccde261e1e419885761a0234565f6d227d8eba0937b0"
+                 "f03cb25f83aeb24c13b7a39a9ef6e80c1ea272a3c" ),
+        CheckTransaction::None, false, true );
     BOOST_CHECK_EQUAL( tr.baseGasRequired( HomesteadSchedule ), 14 * 68 + 21000 );
     BOOST_CHECK_EQUAL( tr.baseGasRequired( IstanbulSchedule ), 14 * 16 + 21000 );
 
-    tr = Transaction (
-            fromHex( "0x02f8d78197808504a817c8008504a817c800827530947d36af85a184e220a656525fcbb9a63"
-                     "b9ab3c12b018e0358ac39584bc98a7c979f984b03f85bf85994de0b295669a9fd93d5f28d9ec8"
-                     "5e40f4cb697baef842a0000000000000000000000000000000000000000000000000000000000"
-                     "0000003a0000000000000000000000000000000000000000000000000000000000000000780a0"
-                     "23927f0e208494bd1fd8876597899d72025167fed902e9c1c417ddd8639bb7b4a02a63ea48f7e"
-                     "94df3a40c4a840ba98da02f13817acb5fe137d40f632e6c8ed367" ),
-            CheckTransaction::None, false, true );
+    tr = Transaction(
+        fromHex( "0x02f8d78197808504a817c8008504a817c800827530947d36af85a184e220a656525fcbb9a63"
+                 "b9ab3c12b018e0358ac39584bc98a7c979f984b03f85bf85994de0b295669a9fd93d5f28d9ec8"
+                 "5e40f4cb697baef842a0000000000000000000000000000000000000000000000000000000000"
+                 "0000003a0000000000000000000000000000000000000000000000000000000000000000780a0"
+                 "23927f0e208494bd1fd8876597899d72025167fed902e9c1c417ddd8639bb7b4a02a63ea48f7e"
+                 "94df3a40c4a840ba98da02f13817acb5fe137d40f632e6c8ed367" ),
+        CheckTransaction::None, false, true );
     BOOST_CHECK_EQUAL( tr.baseGasRequired( HomesteadSchedule ), 14 * 68 + 21000 );
     BOOST_CHECK_EQUAL( tr.baseGasRequired( IstanbulSchedule ), 14 * 16 + 21000 );
 }
@@ -95,7 +100,8 @@ BOOST_AUTO_TEST_CASE( TransactionWithEmptyRecepient ) {
         "000003a0000000000000000000000000000000000000000000000000000000000000000780a08d795591e0eb53"
         "fb374a804ba3f73cf291069549d62316219811c3f7fb8cfad0a07e9d0bd7fabc8f74475624c912b5334dc49224"
         "b1dede6c802d52a35254bfc457" );
-    BOOST_REQUIRE_THROW( Transaction( txRlp, CheckTransaction::None, false, true ), InvalidTransactionFormat );
+    BOOST_REQUIRE_THROW(
+        Transaction( txRlp, CheckTransaction::None, false, true ), InvalidTransactionFormat );
 
     txRlp = fromHex(
         "0x02f8c38197808504a817c8008504a817c80082753080018e0358ac39584bc98a7c979f984b03f85bf85994de"
@@ -112,55 +118,58 @@ BOOST_AUTO_TEST_CASE( TransactionWithEmptyRecepient ) {
         "000000000000000003a0000000000000000000000000000000000000000000000000000000000000000780a0c8"
         "029a8b702d54c79ef18b557e755a1bfd8a4afcfcf31813790df34a6f740a95a00ceb8fdf611b4c9ff8d007d2a5"
         "44bc4bfae0e97a03e32b1c8b8208c82cebcafb" );
-    BOOST_REQUIRE_THROW( Transaction( txRlp, CheckTransaction::None, false, true ), InvalidTransactionFormat );
+    BOOST_REQUIRE_THROW(
+        Transaction( txRlp, CheckTransaction::None, false, true ), InvalidTransactionFormat );
 }
 
-BOOST_AUTO_TEST_CASE( TransactionNotReplayProtected, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    TransactionNotReplayProtected, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     auto txRlp = fromHex(
         "0xf86d800182521c94095e7baea6a6c7c4c2dfeb977efac326af552d870a8e0358ac39584bc98a7c979f984b03"
         "1ba048b55bfa915ac795c431978d8a6a992b628d557da5ff759b307d495a36649353a0efffd310ac743f371de3"
         "b9f7f9cb56c0b28ad43601b4ab949f53faa07bd2c804" );
     Transaction tx( txRlp, CheckTransaction::None );
-    tx.checkChainId( 1234, true );  // any chain ID is accepted for not replay protected tx
+
+    // v field is 27 -> is a pre-EIP tx -> will not have the chainId field set
+    BOOST_REQUIRE_THROW( tx.checkChainId( 1234 ) , InvalidTransactionFormat);
 
     BOOST_REQUIRE( tx.toBytes() == txRlp );
 
     txRlp = fromHex(
-            "0x01f8ce8504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b018e0358ac3958"
-            "4bc98a7c979f984b03f85bf85994de0b295669a9fd93d5f28d9ec85e40f4cb697baef842a0000000000000"
-            "0000000000000000000000000000000000000000000000000003a000000000000000000000000000000000"
-            "0000000000000000000000000000000701a0a3b1de6f2958e1e34db86438bba310637f2e799fe9768a143a"
-            "d87e47c33d1e6ca00e04ef9fe6bb01176c5a4c5bf4a070662478a320eaaff2895d17451c8d61d472" );
+        "0x01f8ce8504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b018e0358ac3958"
+        "4bc98a7c979f984b03f85bf85994de0b295669a9fd93d5f28d9ec85e40f4cb697baef842a0000000000000"
+        "0000000000000000000000000000000000000000000000000003a000000000000000000000000000000000"
+        "0000000000000000000000000000000701a0a3b1de6f2958e1e34db86438bba310637f2e799fe9768a143a"
+        "d87e47c33d1e6ca00e04ef9fe6bb01176c5a4c5bf4a070662478a320eaaff2895d17451c8d61d472" );
     BOOST_REQUIRE_THROW( Transaction( txRlp, CheckTransaction::None, false, true ), dev::BadCast );
 
     txRlp = fromHex(
-            "0x02f8d5808504a817c8008504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b"
-            "018e0358ac39584bc98a7c979f984b03f85bf85994de0b295669a9fd93d5f28d9ec85e40f4cb697baef842"
-            "a00000000000000000000000000000000000000000000000000000000000000003a0000000000000000000"
-            "000000000000000000000000000000000000000000000780a023927f0e208494bd1fd8876597899d720251"
-            "67fed902e9c1c417ddd8639bb7b4a02a63ea48f7e94df3a40c4a840ba98da02f13817acb5fe137d40f632e"
-            "6c8ed367" );
+        "0x02f8d5808504a817c8008504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b"
+        "018e0358ac39584bc98a7c979f984b03f85bf85994de0b295669a9fd93d5f28d9ec85e40f4cb697baef842"
+        "a00000000000000000000000000000000000000000000000000000000000000003a0000000000000000000"
+        "000000000000000000000000000000000000000000000780a023927f0e208494bd1fd8876597899d720251"
+        "67fed902e9c1c417ddd8639bb7b4a02a63ea48f7e94df3a40c4a840ba98da02f13817acb5fe137d40f632e"
+        "6c8ed367" );
     BOOST_REQUIRE_THROW( Transaction( txRlp, CheckTransaction::None, false, true ), dev::BadCast );
 }
 
-BOOST_AUTO_TEST_CASE( TransactionChainIDMax64Bit, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    TransactionChainIDMax64Bit, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     // recoveryID = 0, v = 36893488147419103265
     auto txRlp1 = fromHex(
         "0xf86e808698852840a46f82d6d894095e7baea6a6c7c4c2dfeb977efac326af552d8780808902000000000000"
         "0021a098ff921201554726367d2be8c804a7ff89ccf285ebc57dff8ae4c44b9c19ac4aa01887321be575c8095f"
         "789dd4c743dfe42c1820f9231f98a962b210e3ac2452a3" );
-    Transaction tx1{txRlp1, CheckTransaction::None};
-    tx1.checkChainId( std::numeric_limits< uint64_t >::max(), false );
+    Transaction tx1{ txRlp1, CheckTransaction::None };
+    tx1.checkChainId( std::numeric_limits< uint64_t >::max() );
 
     // recoveryID = 1, v = 36893488147419103266
     auto txRlp2 = fromHex(
         "0xf86e808698852840a46f82d6d894095e7baea6a6c7c4c2dfeb977efac326af552d8780808902000000000000"
         "0022a098ff921201554726367d2be8c804a7ff89ccf285ebc57dff8ae4c44b9c19ac4aa01887321be575c8095f"
         "789dd4c743dfe42c1820f9231f98a962b210e3ac2452a3" );
-    Transaction tx2{txRlp2, CheckTransaction::None};
-    tx2.checkChainId( std::numeric_limits< uint64_t >::max(), false );
+    Transaction tx2{ txRlp2, CheckTransaction::None };
+    tx2.checkChainId( std::numeric_limits< uint64_t >::max() );
 
     txRlp1 = fromHex(
         "0x01f8d888ffffffffffffffff808504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b01"
@@ -168,8 +177,8 @@ BOOST_AUTO_TEST_CASE( TransactionChainIDMax64Bit,
         "000000000000000000000000000000000000000000000000000000000003a00000000000000000000000000000"
         "00000000000000000000000000000000000701a0e236de02b843139aebfce593d680c06ce79cfd2f2e7f9dcac9"
         "fe23b38060591aa0734952245446ad42e47ec996c9a7b02973cbc8dd944c9622714416b2bef122f4" );
-    tx1 = Transaction{txRlp1, CheckTransaction::None, false, true};
-    tx1.checkChainId( std::numeric_limits< uint64_t >::max(), false );
+    tx1 = Transaction{ txRlp1, CheckTransaction::None, false, true };
+    tx1.checkChainId( std::numeric_limits< uint64_t >::max() );
 
     txRlp1 = fromHex(
         "0x02f8de88ffffffffffffffff808504a817c8008504a817c800827530947d36af85a184e220a656525fcbb9a6"
@@ -178,8 +187,8 @@ BOOST_AUTO_TEST_CASE( TransactionChainIDMax64Bit,
         "00000000000000000000000000000000000000000000000780a0b62465e633b565f2f3632125b452d8df66d4f6"
         "b48b58f59da6201234e3f9ce75a0467f18ca2b64f3642cb37e7d5470bbac5fbc62c66b23a0ff955b994803fcf3"
         "74" );
-    tx1 = Transaction{txRlp1, CheckTransaction::None, false, true};
-    tx1.checkChainId( std::numeric_limits< uint64_t >::max(), false );
+    tx1 = Transaction{ txRlp1, CheckTransaction::None, false, true };
+    tx1.checkChainId( std::numeric_limits< uint64_t >::max() );
 }
 
 BOOST_AUTO_TEST_CASE( TransactionChainIDBiggerThan64Bit ) {
@@ -205,7 +214,7 @@ BOOST_AUTO_TEST_CASE( TransactionChainIDBiggerThan64Bit ) {
         "8827f497375ae5c8a0795eb0b4f36fe712af5e6a8447802c9eb0913a2add86174552bf2e4b0e183feb" );
     RLPStream rlpStream;
     auto tx = Transaction( txRlp1, CheckTransaction::None, false, true );
-    auto txBytes = tx.toBytes(IncludeSignature::WithSignature);
+    auto txBytes = tx.toBytes( IncludeSignature::WithSignature );
     BOOST_REQUIRE( txBytes != txRlp1 );
 
     txRlp1 = fromHex(
@@ -216,7 +225,7 @@ BOOST_AUTO_TEST_CASE( TransactionChainIDBiggerThan64Bit ) {
         "4eb34e2500c924a58ccfdc9dbeb4a04afcffcb5d1897df030d45a7eeb3ceb7c7e6fe368fc47865156b4899de32"
         "01c7" );
     tx = Transaction( txRlp1, CheckTransaction::None, false, true );
-    txBytes = tx.toBytes(IncludeSignature::WithSignature);
+    txBytes = tx.toBytes( IncludeSignature::WithSignature );
     BOOST_REQUIRE( txBytes != txRlp1 );
 }
 
@@ -226,10 +235,10 @@ BOOST_AUTO_TEST_CASE( TransactionReplayProtected ) {
         "a028ef61340bd939bc2195fe537567866003e1a15d3c71ff63e1590620aa636276a067cbe9d8997f761aecb703"
         "304b3800ccf555c9f3dc64214b297fb1966a3b6d83" );
     Transaction tx( txRlp, CheckTransaction::None );
-    tx.checkChainId( 1, false );
-    BOOST_REQUIRE_THROW( tx.checkChainId( 123, false ), InvalidSignature );
+    tx.checkChainId( 1 );
+    BOOST_REQUIRE_THROW( tx.checkChainId( 123 ), InvalidSignature );
 
-    auto txBytes = tx.toBytes(IncludeSignature::WithSignature);
+    auto txBytes = tx.toBytes( IncludeSignature::WithSignature );
     BOOST_REQUIRE( txBytes == txRlp );
 
     txRlp = fromHex(
@@ -239,9 +248,9 @@ BOOST_AUTO_TEST_CASE( TransactionReplayProtected ) {
         "3eaf481958e22fc39bd1d526eb9255be1e6625614f02ca939e51c3d7e64bcaa05f675640c04bb050d27bd1f39c"
         "07b6ff742311b04dab760bb3bc206054332879" );
     tx = Transaction( txRlp, CheckTransaction::None, false, true );
-    tx.checkChainId( 151, false );
-    BOOST_REQUIRE_THROW( tx.checkChainId( 123, false ), InvalidSignature );
-    
+    tx.checkChainId( 151 );
+    BOOST_REQUIRE_THROW( tx.checkChainId( 123 ), InvalidSignature );
+
     BOOST_REQUIRE( tx.toBytes() == txRlp );
 
     txRlp = fromHex(
@@ -251,15 +260,16 @@ BOOST_AUTO_TEST_CASE( TransactionReplayProtected ) {
         "00000780a0f1a407dfc1a9f782001d89f617e9b3a2f295378533784fb39960dea60beea2d0a05ac3da2946554b"
         "a3d5721850f4f89ee7a0c38e4acab7130908e7904d13174388" );
     tx = Transaction( txRlp, CheckTransaction::None, false, true );
-    tx.checkChainId( 151, false );
-    BOOST_REQUIRE_THROW( tx.checkChainId( 123, false ), InvalidSignature );
-    
+    tx.checkChainId( 151 );
+    BOOST_REQUIRE_THROW( tx.checkChainId( 123 ), InvalidSignature );
+
     BOOST_REQUIRE( tx.toBytes() == txRlp );
 }
 
 BOOST_AUTO_TEST_CASE( accessList ) {
     // [ { 'address': HexBytes( "0xde0b295669a9fd93d5f28d9ec85e40f4cb697bae" ),
-    // 'storageKeys': ( "0x0000000000000000000000000000000000000000000000000000000000000003", "0x0000000000000000000000000000000000000000000000000000000000000007" ) } ]
+    // 'storageKeys': ( "0x0000000000000000000000000000000000000000000000000000000000000003",
+    // "0x0000000000000000000000000000000000000000000000000000000000000007" ) } ]
     auto txRlp = fromHex(
         "0x01f8c38197018504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b0180f85bf85994de"
         "0b295669a9fd93d5f28d9ec85e40f4cb697baef842a00000000000000000000000000000000000000000000000"
@@ -291,7 +301,8 @@ BOOST_AUTO_TEST_CASE( accessList ) {
         "0x01f8678197808504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b01808001a01ebdc5"
         "46c8b85511b7ba831f47c4981069d7af972d10b7dce2c57225cb5df6a7a055ae1e84fea41d37589eb740a0a930"
         "17a5cd0e9f10ee50f165bf4b1b4c78ddae" );
-    BOOST_REQUIRE_THROW( Transaction( txRlp, CheckTransaction::None, false, true ), InvalidTransactionFormat );
+    BOOST_REQUIRE_THROW(
+        Transaction( txRlp, CheckTransaction::None, false, true ), InvalidTransactionFormat );
 }
 
 BOOST_AUTO_TEST_CASE( InvaidTransaction ) {
@@ -303,15 +314,15 @@ BOOST_AUTO_TEST_CASE( InvaidTransaction ) {
         "000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000"
         "033078300000000000000000000000000000000000000000000000000000000000c001a01becb115f963be32bd"
         "b8194823894ced1931be08eaddee6ce34a6cc2b40e0829a0447aa23d66fe44875b58994b4fe2aa14d40b1e9ecf"
-        "dfb58a31a49aa79f9de479"); // create invalid transaction
-    Transaction tx( txRlp, CheckTransaction::Everything, true, true, true ); // enable all patches
+        "dfb58a31a49aa79f9de479" );  // create invalid transaction
+    Transaction tx( txRlp, CheckTransaction::Everything, true, true, true );  // enable all patches
     dev::h256 hash;
     // invalid transactions dont have signature
     BOOST_REQUIRE_NO_THROW( hash = tx.sha3() );
 }
 
-BOOST_AUTO_TEST_CASE( ExecutionResultOutput, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    ExecutionResultOutput, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     std::stringstream buffer;
     ExecutionResult exRes;
 
@@ -405,6 +416,13 @@ BOOST_AUTO_TEST_CASE( transactionExceptionOutput ) {
         "Error output TransactionException::InvalidContractDeployer" );
     buffer.str( std::string() );
 
+#ifdef FAIR 
+    buffer << TransactionException::UnsupportedDencunOpcode;
+    BOOST_CHECK_MESSAGE( buffer.str() == "UnsupportedDencunOpcode",
+        "Error output TransactionException::UnsupportedDencunOpcode" );
+    buffer.str( std::string() );
+#endif
+
     buffer << TransactionException( -1 );
     BOOST_CHECK_MESSAGE(
         buffer.str() == "Unknown", "Error output TransactionException::StackUnderflow" );
@@ -478,8 +496,7 @@ BOOST_AUTO_TEST_CASE( GettingSignatureForUnsignedTransactionThrows,
 BOOST_AUTO_TEST_CASE( StreamRLPWithSignatureForUnsignedTransactionThrows ) {
     Transaction tx(
         0, 0, 10000, Address( "a94f5374fce5edbc8e2a8697c15331677e6ebf0b" ), bytes(), 0 );
-    BOOST_REQUIRE_THROW(
-        tx.toBytes( IncludeSignature::WithSignature ), TransactionIsUnsigned );
+    BOOST_REQUIRE_THROW( tx.toBytes( IncludeSignature::WithSignature ), TransactionIsUnsigned );
 }
 
 BOOST_AUTO_TEST_CASE( CheckLowSForUnsignedTransactionThrows,
@@ -488,5 +505,293 @@ BOOST_AUTO_TEST_CASE( CheckLowSForUnsignedTransactionThrows,
         0, 0, 10000, Address( "a94f5374fce5edbc8e2a8697c15331677e6ebf0b" ), bytes(), 0 );
     BOOST_REQUIRE_THROW( tx.checkLowS(), TransactionIsUnsigned );
 }
+
+#ifdef BITE
+
+dev::bytes createTestTransactionRlp( const dev::bytes& txnData, const dev::Address& toAddress ) {
+    // create a legacy transaction
+    RLPStream txnRlpStreamWithoutSignature( 6 );
+    txnRlpStreamWithoutSignature << 0;              // nonce
+    txnRlpStreamWithoutSignature << 100000;         // gasPrice
+    txnRlpStreamWithoutSignature << 100000;         // gasLimit
+    txnRlpStreamWithoutSignature << toAddress;   // to
+    txnRlpStreamWithoutSignature << 0;              // value
+    txnRlpStreamWithoutSignature << txnData;        // data
+
+    auto txnHashWithoutSignature = dev::sha3( txnRlpStreamWithoutSignature.out() );
+
+    dev::Secret privateKey( dev::Secret::random() );
+    auto txnSignature = dev::sign( privateKey, txnHashWithoutSignature );
+    SignatureStruct sigStruct = SignatureStruct( txnSignature );
+
+    RLPStream txnRlp( 9 );
+    txnRlp << 0;              // nonce
+    txnRlp << 100000;         // gasPrice
+    txnRlp << 100000;         // gasLimit
+    txnRlp << toAddress;      // to
+    txnRlp << 0;              // value
+    txnRlp << txnData;        // data
+
+    txnRlp << sigStruct.v + 27;        // v
+    txnRlp << u256(sigStruct.r);       // r
+    txnRlp << u256(sigStruct.s);       // s
+
+    auto rlpBytes = txnRlp.out();
+    return dev::bytes( rlpBytes.begin(), rlpBytes.end() );
+}
+
+dev::bytes prepareBITEDataRlp( const dev::Address& _to, const dev::bytes& _biteTxnData ) {
+    RLPStream biteDataRlp( 2 );
+
+    biteDataRlp << _biteTxnData << ( dev::Address::Arith ) _to;
+
+    auto rlpBytes = biteDataRlp.out();
+    return dev::bytes( rlpBytes.begin(), rlpBytes.end() );
+}
+
+dev::bytes prepareBITEPayloadRlp( uint64_t _epochId, const dev::bytes& _encryptedData ) {
+    RLPStream bitePayloadRlpList;
+
+    RLPStream bitePayloadRlp( 2 );
+
+    bitePayloadRlp << _epochId << _encryptedData;
+
+    auto rlpBytes = bitePayloadRlp.out();
+    return dev::bytes( rlpBytes.begin(), rlpBytes.end() );
+}
+
+BOOST_AUTO_TEST_CASE( constructBITETxnFromRlp ) {
+    uint64_t epochId = 0;
+
+    libBLS::init();
+    libBLS::TEPublicKey publicKey = libBLS::TEPublicKey::random();
+
+    // append to address to the end of the BITE data
+    dev::Address toAddress = dev::Address::random();
+    std::string data = dev::h256::random().hex();
+    dev::bytes messageBytes = prepareBITEDataRlp( toAddress, dev::fromHex( data ) );
+
+    // Building valid BITE transaction
+    auto encryptedMessage = libBLS::ThresholdEncryption::encrypt( messageBytes, publicKey );
+    auto encryptedAESKeyRaw = encryptedMessage.getKeys()[0].toBytes();
+    dev::bytes encryptedAESKeyBytes( encryptedAESKeyRaw.begin(), encryptedAESKeyRaw.end() );
+    auto encryptedDataBytes = encryptedMessage.getData();
+
+    // append random address to the end of the BITE transaction
+    dev::bytes validBITETxnData = prepareBITEPayloadRlp( epochId, encryptedMessage.toBytes() );
+    
+    dev::Address biteAddress = dev::Address(std::string(BITE_ADDRESS_AS_STRING)); // BITE ADDRESS
+    dev::bytes validBITETxnRlp = createTestTransactionRlp( validBITETxnData, biteAddress );
+    Transaction validBITETxn(
+        validBITETxnRlp, dev::eth::CheckTransaction::Everything, false, true, true );
+    BOOST_REQUIRE( validBITETxn.isBite() );
+    BOOST_REQUIRE_NO_THROW( validBITETxn.checkAndValidateBITETransaction( epochId ) );
+
+    auto baseGasRequiredForValidBITETxn = validBITETxn.baseGasRequired( IstanbulSchedule );
+
+    // change non-zero byte to non-zero byte in magicNumber and make the txn non-BITE
+    dev::bytes validNonBITETxnData = prepareBITEPayloadRlp( epochId, encryptedMessage.toBytes() );
+
+    dev::Address toAddressNonBITE = dev::Address::random(); // non-BITE ADDRESS
+    dev::bytes validNonBITETxnRlp = createTestTransactionRlp( validNonBITETxnData, toAddressNonBITE );
+    Transaction validNonBITETxn(
+        validNonBITETxnRlp, dev::eth::CheckTransaction::Everything, false, true, true );
+    BOOST_REQUIRE( !validNonBITETxn.isBite() );
+    BOOST_REQUIRE_NO_THROW( validNonBITETxn.checkAndValidateBITETransaction( epochId ) );
+
+    auto baseGasRequiredForValidNonBITETxn = validNonBITETxn.baseGasRequired( IstanbulSchedule );
+    BOOST_REQUIRE_GT( baseGasRequiredForValidBITETxn, baseGasRequiredForValidNonBITETxn );
+    BOOST_REQUIRE( baseGasRequiredForValidBITETxn - baseGasRequiredForValidNonBITETxn ==
+                   IstanbulSchedule.BITETxnCost );
+
+    // wrong epochId
+    BOOST_REQUIRE_THROW( validBITETxn.checkAndValidateBITETransaction( epochId + 1 ),
+                         dev::eth::InvalidBITETransaction );
+
+    // Invalid ciphered key
+    encryptedMessage.keys = { libBLS::CipheredKey( libBLS::algebra::G2Point::random(), encryptedMessage.keys[0].V, libBLS::algebra::G1Point::random() ) };
+    auto invalidEncryptedAESKeyRaw = encryptedMessage.getKeys()[0].toBytes();
+    dev::bytes invalidEncryptedAESKey( invalidEncryptedAESKeyRaw.begin(), invalidEncryptedAESKeyRaw.end() );
+    dev::bytes invalidBITETxnData = prepareBITEPayloadRlp( epochId, encryptedMessage.toBytes() );
+    dev::bytes invalidBITETxnRlp = createTestTransactionRlp( invalidBITETxnData, biteAddress );
+    Transaction invalidBITETxn(
+        invalidBITETxnRlp, dev::eth::CheckTransaction::Everything, false, true, true );
+    BOOST_REQUIRE_THROW(
+        invalidBITETxn.checkAndValidateBITETransaction( epochId ), dev::eth::InvalidBITETransaction );
+
+    RLPStream tooShortRlp;
+
+    // Missing ciphered key + data + to address
+    tooShortRlp.appendList( 1 );
+    tooShortRlp << epochId;
+    dev::bytes invalidTooShortBITETxnData = tooShortRlp.out();
+    dev::bytes invalidTooShortBITETxnRlp =
+        createTestTransactionRlp( invalidTooShortBITETxnData, biteAddress );
+    Transaction invalidTooShortBITETxn(
+        invalidTooShortBITETxnRlp, dev::eth::CheckTransaction::Everything, false, true, true );
+    BOOST_REQUIRE_THROW( invalidTooShortBITETxn.checkAndValidateBITETransaction( epochId ),
+        dev::eth::InvalidBITETransaction );
+    tooShortRlp.clear();
+
+    // Empty ciphered key and data + missing to address
+    tooShortRlp.appendList( 2 );
+    tooShortRlp << epochId << dev::bytes() ;
+    invalidTooShortBITETxnData = tooShortRlp.out();
+    invalidTooShortBITETxnRlp =
+        createTestTransactionRlp( invalidTooShortBITETxnData, biteAddress );
+    invalidTooShortBITETxn = Transaction(
+        invalidTooShortBITETxnRlp, dev::eth::CheckTransaction::Everything, false, true, true );
+    BOOST_REQUIRE_THROW( invalidTooShortBITETxn.checkAndValidateBITETransaction( epochId ),
+        dev::eth::BITETransactionTooShort );
+    tooShortRlp.clear();
+    
+    // Missing data & To address
+    encryptedMessage.data = std::make_shared< dev::bytes >();
+    tooShortRlp.appendList( 2 );
+    tooShortRlp << epochId << encryptedMessage.toBytes();
+    invalidTooShortBITETxnData = tooShortRlp.out();
+    invalidTooShortBITETxnRlp =
+            createTestTransactionRlp( invalidTooShortBITETxnData, biteAddress );
+    invalidTooShortBITETxn = Transaction(
+        invalidTooShortBITETxnRlp, dev::eth::CheckTransaction::Everything, false, true, true );
+    BOOST_REQUIRE_THROW( invalidTooShortBITETxn.checkAndValidateBITETransaction( epochId ),
+        dev::eth::BITETransactionTooShort );
+    tooShortRlp.clear();
+
+    dev::Address randomToAddress = dev::Address::random();
+    // Missing the Random Secret (data is too short)
+    encryptedMessage.data = std::make_shared< dev::bytes >( randomToAddress.asBytes() );
+    tooShortRlp.appendList( 2 );
+    tooShortRlp << epochId << encryptedMessage.toBytes();
+    invalidTooShortBITETxnData = tooShortRlp.out();
+    invalidTooShortBITETxnRlp = createTestTransactionRlp( invalidTooShortBITETxnData, biteAddress );
+    invalidTooShortBITETxn = Transaction(
+        invalidTooShortBITETxnRlp, dev::eth::CheckTransaction::Everything, false, true, true );
+    BOOST_REQUIRE_THROW( invalidTooShortBITETxn.checkAndValidateBITETransaction( epochId ),
+        dev::eth::BITETransactionTooShort );
+}
+
+BOOST_AUTO_TEST_CASE( constructBITETxnWithTwoPayloads ) {
+    uint64_t epochId1 = 5;
+    uint64_t epochId2 = epochId1 + 1;
+    uint64_t currentEpochId = epochId1; // We'll validate against epochId1
+
+    libBLS::init();
+    libBLS::TEPublicKey publicKey1 = libBLS::TEPublicKey::random();
+    libBLS::TEPublicKey publicKey2 = libBLS::TEPublicKey::random();
+
+    // Prepare BITE data for both payloads
+    dev::Address toAddress = dev::Address::random();
+    std::string data = dev::h256::random().hex();
+    dev::bytes messageBytes = prepareBITEDataRlp( toAddress, dev::fromHex( data ) );
+
+    auto encryptedMessage = libBLS::ThresholdEncryption::encrypt( messageBytes, { publicKey1, publicKey2 } );
+    auto encryptedBITEDataBytes = encryptedMessage.toBytes();
+
+    // Create payload with 2 epoch ids
+    RLPStream bitePayload;
+    bitePayload.appendList( 2 );
+    bitePayload << epochId1;
+    bitePayload << encryptedBITEDataBytes;
+
+    auto rlpBytes = bitePayload.out();
+    dev::bytes twoPayloadBITETxnData = dev::bytes( rlpBytes.begin(), rlpBytes.end() );
+    
+    dev::Address biteAddress = dev::Address(std::string(BITE_ADDRESS_AS_STRING)); // BITE ADDRESS
+    dev::bytes twoPayloadBITETxnRlp = createTestTransactionRlp( twoPayloadBITETxnData, biteAddress );
+    Transaction twoPayloadBITETxn(
+        twoPayloadBITETxnRlp, dev::eth::CheckTransaction::Everything, false, true, true );
+
+    BOOST_REQUIRE( twoPayloadBITETxn.isBite() );
+
+    BOOST_REQUIRE_NO_THROW( twoPayloadBITETxn.checkAndValidateBITETransaction( currentEpochId ) );
+
+    // should throw because currentEpochId doesn't match
+    BOOST_REQUIRE_THROW( twoPayloadBITETxn.checkAndValidateBITETransaction( epochId1 + epochId2 + 1 ),
+                         dev::eth::InvalidBITETransaction );
+
+    BOOST_REQUIRE_NO_THROW( twoPayloadBITETxn.checkAndValidateBITETransaction( epochId2 ) );
+
+    // wrong number of rlp elements submitted in transaction
+    RLPStream wrongNumberOfElementsPayload;
+    wrongNumberOfElementsPayload.appendList( 3 );
+    wrongNumberOfElementsPayload << epochId1;
+    wrongNumberOfElementsPayload << epochId2;
+    wrongNumberOfElementsPayload << encryptedBITEDataBytes;
+
+    auto wrongNumberOfElementsRlpBytes = wrongNumberOfElementsPayload.out();
+    dev::bytes threeEpochBITETxnData = dev::bytes( wrongNumberOfElementsRlpBytes.begin(),
+                                                   wrongNumberOfElementsRlpBytes.end() );
+
+    dev::bytes wrongNumberOfElementsBITETxnRlp = createTestTransactionRlp( threeEpochBITETxnData,
+                                                                           biteAddress );
+    Transaction wrongNumberOfElementsBITETxn( wrongNumberOfElementsBITETxnRlp,
+                                   dev::eth::CheckTransaction::Everything, false, true, true );
+
+    BOOST_REQUIRE( wrongNumberOfElementsBITETxn.isBite() );
+
+    // Should throw with any epochId - 3 elements is not allowed
+    BOOST_REQUIRE_THROW( wrongNumberOfElementsBITETxn.checkAndValidateBITETransaction( epochId1 ), dev::eth::InvalidBITETransaction );
+    BOOST_REQUIRE_THROW( wrongNumberOfElementsBITETxn.checkAndValidateBITETransaction( epochId2 ), dev::eth::InvalidBITETransaction );
+    BOOST_REQUIRE_THROW( wrongNumberOfElementsBITETxn.checkAndValidateBITETransaction( epochId1 + epochId2 + 1 ), dev::eth::InvalidBITETransaction );
+
+    // epochId doesn't match and only 1 encrypted AES keys
+    libBLS::TEPublicKey publicKey3 = libBLS::TEPublicKey::random();
+
+    auto encryptedMessage1Key = libBLS::ThresholdEncryption::encrypt( messageBytes, publicKey3 );
+    auto encryptedBITEDataBytes1Key = encryptedMessage1Key.toBytes();
+
+    RLPStream mismatchPayload;
+    mismatchPayload.appendList( 2 );
+    mismatchPayload << epochId2;
+    mismatchPayload << encryptedBITEDataBytes1Key;
+
+    auto mismatchRlpBytes = mismatchPayload.out();
+    dev::bytes mismatchBITETxnData = dev::bytes( mismatchRlpBytes.begin(), mismatchRlpBytes.end() );
+    
+    dev::bytes mismatchBITETxnRlp = createTestTransactionRlp( mismatchBITETxnData, biteAddress );
+    Transaction mismatchBITETxn(
+        mismatchBITETxnRlp, dev::eth::CheckTransaction::Everything, false, true, true );
+
+    BOOST_REQUIRE( mismatchBITETxn.isBite() );
+
+    BOOST_REQUIRE_THROW( mismatchBITETxn.checkAndValidateBITETransaction( currentEpochId ),
+                         dev::eth::InvalidBITETransaction );
+    // should not throw when validating against proper epochId
+    BOOST_REQUIRE_NO_THROW( mismatchBITETxn.checkAndValidateBITETransaction( epochId2 ) );
+
+    // 2 encrypted AES keys submitted, but one key is corrupt
+    auto corruptEncryptedMessage = libBLS::ThresholdEncryption::encrypt( messageBytes, { publicKey1, publicKey2 } );
+    
+    // Corrupt the first key by replacing it with a random one
+    corruptEncryptedMessage.keys[0] = libBLS::CipheredKey(
+        libBLS::algebra::G2Point::random(),
+        corruptEncryptedMessage.keys[0].V,
+        libBLS::algebra::G1Point::random()
+    );
+    
+    auto corruptEncryptedBITEDataBytes = corruptEncryptedMessage.toBytes();
+
+    RLPStream corruptPayload;
+    corruptPayload.appendList( 2 );
+    corruptPayload << epochId1;
+    corruptPayload << corruptEncryptedBITEDataBytes;
+
+    auto corruptRlpBytes = corruptPayload.out();
+    dev::bytes corruptBITETxnData = dev::bytes( corruptRlpBytes.begin(), corruptRlpBytes.end() );
+    
+    dev::bytes corruptBITETxnRlp = createTestTransactionRlp( corruptBITETxnData, biteAddress );
+    Transaction corruptBITETxn(
+        corruptBITETxnRlp, dev::eth::CheckTransaction::Everything, false, true, true );
+
+    BOOST_REQUIRE( corruptBITETxn.isBite() );
+    
+    // Should throw due to corrupt key in ciphertext
+    BOOST_REQUIRE_THROW( corruptBITETxn.checkAndValidateBITETransaction( currentEpochId ),
+                         dev::eth::InvalidBITETransaction );
+    BOOST_REQUIRE_THROW( corruptBITETxn.checkAndValidateBITETransaction( epochId2 ),
+                         dev::eth::InvalidBITETransaction );
+}
+#endif
 
 BOOST_AUTO_TEST_SUITE_END()

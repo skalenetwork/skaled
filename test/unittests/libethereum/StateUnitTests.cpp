@@ -224,7 +224,11 @@ class DbRotationFixture : public TestOutputHelperFixture {
 public:
     DbRotationFixture() { state.mutableHistoricState().saveRootForBlockNumber( 0 ); }
     TransientDirectory m_tempDirState;
-    State state = State( 0, m_tempDirState.path(), h256{}, BaseState::Empty, 0, 32, 1 );
+    State state = State( 0, m_tempDirState.path(), h256{}, BaseState::Empty, 0,
+#ifndef FAIR
+                         32,
+#endif
+                         1 );
     Address address1{ 1 }, address2{ 2 };
 
     size_t countStateDbPieces() {

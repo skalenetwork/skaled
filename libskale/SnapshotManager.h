@@ -152,7 +152,7 @@ public:
     /////////////// MORE INTERESTING STUFF ////////////////
 
 public:
-    SnapshotManager( const dev::eth::ChainParams& _chainParams,
+    SnapshotManager( std::shared_ptr< const dev::eth::ChainParams > _chainParams,
         const boost::filesystem::path& _dataDir, const std::string& diffs_dir = std::string() );
     void doSnapshot( unsigned _blockNumber );
     void restoreSnapshot( unsigned _blockNumber );
@@ -168,8 +168,13 @@ public:
 
     dev::h256 getSnapshotHash( unsigned _blockNumber ) const;
     std::pair< int, int > getLatestSnapshots() const;
-    bool isSnapshotHashPresent( unsigned _blockNumber ) const;
-    void computeSnapshotHash( unsigned _blockNumber, bool is_checking = false );
+    bool checkSnapshotFolderAndSnapshotHash( unsigned _blockNumber ) const;
+    void computeSnapshotHash( unsigned _blockNumber
+#ifndef FAIR
+        ,
+        bool isChecking = false
+#endif
+    );
 
     uint64_t getBlockTimestamp( unsigned _blockNumber ) const;
 
@@ -187,20 +192,26 @@ private:
     static const std::string snapshotHashFileName;
     mutable std::mutex hashFileMutex;
 
-    dev::eth::ChainParams chainParams;
+    std::shared_ptr< const dev::eth::ChainParams > chainParams;
 
     void cleanupDirectory(
         const boost::filesystem::path& p, const boost::filesystem::path& _keepDirectory = "" );
 
+#ifndef FAIR
     void computeFileStorageHash( const boost::filesystem::path& _fileSystemDir,
-        secp256k1_sha256_t* ctx, bool is_checking ) const;
+        secp256k1_sha256_t* ctx, bool isChecking ) const;
     void proceedFileStorageDirectory( const boost::filesystem::path& _fileSystemDir,
-        secp256k1_sha256_t* ctx, bool is_checking ) const;
+        secp256k1_sha256_t* ctx, bool isChecking ) const;
     void proceedRegularFile(
-        const boost::filesystem::path& path, secp256k1_sha256_t* ctx, bool is_checking ) const;
+        const boost::filesystem::path& path, secp256k1_sha256_t* ctx, bool isChecking ) const;
     void proceedDirectory( const boost::filesystem::path& path, secp256k1_sha256_t* ctx ) const;
-    void computeAllVolumesHash(
-        unsigned _blockNumber, secp256k1_sha256_t* ctx, bool is_checking ) const;
+#endif
+    void computeAllVolumesHash( unsigned _blockNumber, secp256k1_sha256_t* ctx
+#ifndef FAIR
+        ,
+        bool isChecking
+#endif
+    ) const;
     void computeDatabaseHash(
         const boost::filesystem::path& _dbDir, secp256k1_sha256_t* ctx ) const;
     void addLastPriceToHash( unsigned _blockNumber, secp256k1_sha256_t* ctx ) const;

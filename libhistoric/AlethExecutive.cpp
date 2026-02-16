@@ -92,13 +92,14 @@ void AlethExecutive::initialize( Transaction const& _transaction ) {
         try {
             nonceReq = m_s.getNonce( m_t.sender() );
         } catch ( InvalidSignature const& ) {
-            LOG( m_loggerDebug ) << "Invalid Signature";
+            BOOST_LOG( m_loggerDebug ) << "Invalid Signature";
             m_excepted = TransactionException::InvalidSignature;
             throw;
         }
         if ( m_t.nonce() != nonceReq ) {
-            LOG( m_loggerDebug ) << "Sender: " << m_t.sender().hex() << " Invalid Nonce: Required "
-                                 << nonceReq << ", received " << m_t.nonce();
+            BOOST_LOG( m_loggerDebug )
+                << "Sender: " << m_t.sender().hex() << " Invalid Nonce: Required " << nonceReq
+                << ", received " << m_t.nonce();
             m_excepted = TransactionException::InvalidNonce;
             BOOST_THROW_EXCEPTION(
                 InvalidNonce() << RequirementError( ( bigint ) nonceReq, ( bigint ) m_t.nonce() ) );
@@ -108,9 +109,10 @@ void AlethExecutive::initialize( Transaction const& _transaction ) {
         bigint gasCost = ( bigint ) m_t.gas() * m_t.gasPrice();
         bigint totalCost = m_t.value() + gasCost;
         if ( m_s.balance( m_t.sender() ) < totalCost ) {
-            LOG( m_loggerDebug ) << "Not enough cash: Require > " << totalCost << " = " << m_t.gas()
-                                 << " * " << m_t.gasPrice() << " + " << m_t.value() << " Got"
-                                 << m_s.balance( m_t.sender() ) << " for sender: " << m_t.sender();
+            BOOST_LOG( m_loggerDebug )
+                << "Not enough cash: Require > " << totalCost << " = " << m_t.gas() << " * "
+                << m_t.gasPrice() << " + " << m_t.value() << " Got" << m_s.balance( m_t.sender() )
+                << " for sender: " << m_t.sender();
             m_excepted = TransactionException::NotEnoughCash;
             BOOST_THROW_EXCEPTION( NotEnoughCash() << RequirementError( totalCost,
                                                           ( bigint ) m_s.balance( m_t.sender() ) )
@@ -124,17 +126,26 @@ bool AlethExecutive::execute() {
     // Entry point for a user-executed transaction.
 
     // Pay...
-    LOG( m_loggerTrace ) << "Paying " << formatBalance( m_gasCost ) << " from sender for gas ("
-                         << m_t.gas() << " gas at " << formatBalance( m_t.gasPrice() ) << ")";
+    BOOST_LOG( m_loggerTrace ) << "Paying " << formatBalance( m_gasCost )
+                               << " from sender for gas (" << m_t.gas() << " gas at "
+                               << formatBalance( m_t.gasPrice() ) << ")";
     m_s.subBalance( m_t.sender(), m_gasCost );
+
+#ifdef BITE
+    bytes const& dataToPassToEvm = m_t.decryptedData();
+    Address receiverAddressToPassToEvm = m_t.decryptedTo();
+#else
+    bytes const& dataToPassToEvm = m_t.data();
+    Address receiverAddressToPassToEvm = m_t.receiveAddress();
+#endif
 
     assert( m_t.gas() >= ( u256 ) m_baseGasRequired );
     if ( m_t.isCreation() )
         return create( m_t.sender(), m_t.value(), m_t.gasPrice(),
-            m_t.gas() - ( u256 ) m_baseGasRequired, &m_t.data(), m_t.sender() );
+            m_t.gas() - ( u256 ) m_baseGasRequired, &dataToPassToEvm, m_t.sender() );
     else
-        return call( m_t.receiveAddress(), m_t.sender(), m_t.value(), m_t.gasPrice(),
-            bytesConstRef( &m_t.data() ), m_t.gas() - ( u256 ) m_baseGasRequired );
+        return call( receiverAddressToPassToEvm, m_t.sender(), m_t.value(), m_t.gasPrice(),
+            bytesConstRef( &dataToPassToEvm ), m_t.gas() - ( u256 ) m_baseGasRequired );
 }
 
 bool AlethExecutive::call( Address const& _receiveAddress, Address const& _senderAddress,
@@ -152,7 +163,7 @@ bool AlethExecutive::call(
         //        for the transaction.
         // Increment associated nonce for sender.
         if ( _p.senderAddress != MaxAddress ||
-             m_envInfo.number() < m_chainParams.experimentalForkBlock )  // EIP86
+             m_envInfo.number() < m_chainParams.getExperimentalForkBlock() )  // EIP86
             m_s.incNonce( _p.senderAddress );
     }
 
@@ -180,8 +191,13 @@ bool AlethExecutive::call(
             m_gas = ( u256 )( _p.gas - g );
             bytes output;
             bool success;
+            PrecompiledCallContext ctx{ m_envInfo.number(),
+#ifdef BITE2
+                m_txnIndex, m_envInfo.committedBlockTimestamp(),
+#endif
+                true };
             tie( success, output ) =
-                m_chainParams.executePrecompiled( _p.codeAddress, _p.data, m_envInfo.number() );
+                m_chainParams.executePrecompiled( _p.codeAddress, _p.data, ctx );
             size_t outputSize = output.size();
             m_output = owning_bytes_ref{ std::move( output ), 0, outputSize };
             if ( !success ) {
@@ -200,7 +216,12 @@ bool AlethExecutive::call(
 
             m_ext = make_shared< AlethExtVM >( m_s, m_envInfo, m_chainParams, _p.receiveAddress,
                 _p.senderAddress, _origin, _p.apparentValue, _gasPrice, _p.data, &c, codeHash,
-                version, m_depth, false, _p.staticCall );
+                version, m_depth, false, _p.staticCall
+#ifdef BITE2
+                ,
+                m_txnIndex
+#endif
+            );
         }
     }
 
@@ -248,7 +269,7 @@ bool AlethExecutive::executeCreate( Address const& _sender, u256 const& _endowme
     u256 const& _gasPrice, u256 const& _gas, bytesConstRef _init, Address const& _origin,
     u256 const& _version ) {
     if ( _sender != MaxAddress ||
-         m_envInfo.number() < m_chainParams.experimentalForkBlock )  // EIP86
+         m_envInfo.number() < m_chainParams.getExperimentalForkBlock() )  // EIP86
         m_s.incNonce( _sender );
 
     m_savepoint = m_s.savepoint();
@@ -262,7 +283,7 @@ bool AlethExecutive::executeCreate( Address const& _sender, u256 const& _endowme
     bool accountAlreadyExist =
         ( m_s.addressHasCode( m_newAddress ) || m_s.getNonce( m_newAddress ) > 0 );
     if ( accountAlreadyExist ) {
-        LOG( m_loggerTrace ) << "Address already used: " << m_newAddress;
+        BOOST_LOG( m_loggerTrace ) << "Address already used: " << m_newAddress;
         m_gas = 0;
         m_excepted = TransactionException::AddressAlreadyUsed;
         revert();
@@ -275,7 +296,7 @@ bool AlethExecutive::executeCreate( Address const& _sender, u256 const& _endowme
     m_s.transferBalance( _sender, m_newAddress, _endowment );
 
     u256 newNonce = m_s.requireAccountStartNonce();
-    if ( m_envInfo.number() >= m_chainParams.EIP158ForkBlock )
+    if ( m_envInfo.number() >= m_chainParams.getEIP158ForkBlock() )
         newNonce += 1;
     m_s.setNonce( m_newAddress, newNonce );
 
@@ -283,9 +304,14 @@ bool AlethExecutive::executeCreate( Address const& _sender, u256 const& _endowme
 
     // Schedule _init execution if not empty.
     if ( !_init.empty() )
-        m_ext = make_shared< AlethExtVM >( m_s, m_envInfo, m_chainParams, m_newAddress, _sender,
-            _origin, _endowment, _gasPrice, bytesConstRef(), _init, sha3( _init ), _version,
-            m_depth, true, false );
+        m_ext = make_shared< AlethExtVM >(
+            m_s, m_envInfo, m_chainParams, m_newAddress, _sender, _origin, _endowment, _gasPrice,
+            bytesConstRef(), _init, sha3( _init ), _version, m_depth, true, false
+#ifdef BITE2
+            ,
+            m_txnIndex
+#endif
+        );
     else
         // code stays empty, but we set the version
         m_s.setCode( m_newAddress, {}, _version );
@@ -300,13 +326,13 @@ OnOpFunc AlethExecutive::simpleTrace() {
         auto vm = dynamic_cast< LegacyVM const* >( _vm );
 
         if ( vm )
-            LOG( m_loggerTrace ) << dumpStackAndMemory( *vm );
-        LOG( m_loggerTrace ) << dumpStorage( ext );
-        LOG( m_loggerTrace ) << " < " << dec << ext.depth << " : " << ext.myAddress << " : #"
-                             << steps << " : " << hex << setw( 4 ) << setfill( '0' ) << PC << " : "
-                             << instructionInfo( inst ).name << " : " << dec << gas << " : -" << dec
-                             << gasCost << " : " << newMemSize << "x32"
-                             << " >";
+            BOOST_LOG( m_loggerTrace ) << dumpStackAndMemory( *vm );
+        BOOST_LOG( m_loggerTrace ) << dumpStorage( ext );
+        BOOST_LOG( m_loggerTrace )
+            << " < " << dec << ext.depth << " : " << ext.myAddress << " : #" << steps << " : "
+            << hex << setw( 4 ) << setfill( '0' ) << PC << " : " << instructionInfo( inst ).name
+            << " : " << dec << gas << " : -" << dec << gasCost << " : " << newMemSize << "x32"
+            << " >";
     };
 }
 
@@ -349,13 +375,14 @@ bool AlethExecutive::go( OnOpFunc const& _onOp ) {
             m_output = _e.output();
             m_excepted = TransactionException::RevertInstruction;
         } catch ( VMException const& _e ) {
-            LOG( m_loggerTrace ) << "Safe VM Exception. " << diagnostic_information( _e );
+            BOOST_LOG( m_loggerTrace ) << "Safe VM Exception. " << diagnostic_information( _e );
             m_gas = 0;
             m_excepted = toTransactionException( _e );
             revert();
         } catch ( InternalVMError const& _e ) {
-            LOG( m_loggerError ) << "Internal VM Error (EVMC status code: "
-                                 << *boost::get_error_info< errinfo_evmcStatusCode >( _e ) << ")";
+            BOOST_LOG( m_loggerError )
+                << "Internal VM Error (EVMC status code: "
+                << *boost::get_error_info< errinfo_evmcStatusCode >( _e ) << ")";
             revert();
             throw;
 #ifdef HISTORIC_STATE
@@ -367,7 +394,7 @@ bool AlethExecutive::go( OnOpFunc const& _onOp ) {
         } catch ( Exception const& _e ) {
             // TODO: AUDIT: check that this can never reasonably happen. Consider what to do if it
             // does.
-            LOG( m_loggerError )
+            BOOST_LOG( m_loggerError )
                 << "Unexpected exception in VM. There may be a bug in this implementation. "
                 << diagnostic_information( _e );
             exit( 1 );
@@ -376,8 +403,8 @@ bool AlethExecutive::go( OnOpFunc const& _onOp ) {
         } catch ( std::exception const& _e ) {
             // TODO: AUDIT: check that this can never reasonably happen. Consider what to do if it
             // does.
-            LOG( m_loggerError ) << "Unexpected std::exception in VM. Not enough RAM? "
-                                 << _e.what();
+            BOOST_LOG( m_loggerError )
+                << "Unexpected std::exception in VM. Not enough RAM? " << _e.what();
             exit( 1 );
             // Another solution would be to reject this transaction, but that also
             // has drawbacks. Essentially, the amount of ram has to be increased here.
@@ -388,7 +415,8 @@ bool AlethExecutive::go( OnOpFunc const& _onOp ) {
             m_res->output = m_output.toVector();
 
 #if ETH_TIMED_EXECUTIONS
-        LOG( m_loggerInfo ) << "VM took:" << t.elapsed() << "; gas used: " << ( sgas - m_endGas );
+        BOOST_LOG( m_loggerInfo ) << "VM took:" << t.elapsed()
+                                  << "; gas used: " << ( sgas - m_endGas );
 #endif
     }
     return true;

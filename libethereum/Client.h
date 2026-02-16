@@ -91,7 +91,8 @@ class Client : public ClientBase, protected Worker {
     friend class ::SkaleHost;
 
 public:
-    Client( ChainParams const& _params, int _networkID, std::shared_ptr< GasPricer > _gpForAdoption,
+    Client( std::shared_ptr< const ChainParams > _params, int _networkID,
+        std::shared_ptr< GasPricer > _gpForAdoption,
         std::shared_ptr< SnapshotManager > _snapshotManager,
         std::shared_ptr< InstanceMonitor > _instanceMonitor,
         boost::filesystem::path const& _dbPath = boost::filesystem::path(),
@@ -123,14 +124,13 @@ public:
     h256 importTransaction( Transaction const& _t,
         TransactionBroadcast _txOrigin = TransactionBroadcast::DontBroadcast ) override;
 
-
     /// Makes the given call. Nothing is recorded into the state.
     ExecutionResult call( Address const& _secret, u256 _value, Address _dest, bytes const& _data,
         u256 _gas, u256 _gasPrice,
 #ifdef HISTORIC_STATE
         BlockNumber _blockNumber,
 #endif
-        FudgeFactor _ff = FudgeFactor::Strict ) override;
+        bool _isCreation = false, FudgeFactor _ff = FudgeFactor::Strict ) override;
 
 #ifdef HISTORIC_STATE
     Json::Value traceCall( Address const& _from, u256 _value, Address _to, bytes const& _data,
@@ -206,6 +206,11 @@ public:
         m_preSeal.setAuthor( _us );
         restartMining();
     }
+
+#ifdef FAIR
+    Address getWinningNodeBeneficiary( uint64_t ) const;
+
+#endif
 
     /// Type of sealers available for this seal engine.
     strings sealers() const { return sealEngine()->sealers(); }
@@ -288,12 +293,31 @@ public:
     std::shared_ptr< SkaleHost > skaleHost() const { return m_skaleHost; }
 
     // main entry point after consensus
-    size_t importTransactionsAsBlock( const Transactions& _transactions, u256 _gasPrice,
+    size_t importTransactionsAsBlock( const Transactions& _transactions,
+#ifdef BITE
+        const std::shared_ptr< DecryptedTransactionFieldsMap >& _decryptedTransactionDataFields,
+#endif
+        u256 _gasPrice,
+#ifdef FAIR
+        uint64_t _winningNodeIndex,
+#endif
         uint64_t _timestamp = ( uint64_t ) utcTime() );
 
     boost::filesystem::path createSnapshotFile( unsigned _blockNumber ) {
         return m_snapshotAgent->createSnapshotFile( _blockNumber );
     }
+
+#ifdef BITE
+    uint64_t getCurrentEpochId() const { return historicGroupIndex.load(); }
+#endif
+
+#ifdef FAIR
+    bool updateGroupIfNeeded();
+
+    std::pair< std::array< std::string, 4 >, uint64_t > getNextCommitteeBITEInfo() const;
+
+    bool isCommitteeRotationSoon() const;
+#endif
 
     // set exiting time for node rotation
     void setSchainExitTime( uint64_t _timestamp ) const;
@@ -318,27 +342,34 @@ public:
         return m_snapshotAgent->getSnapshotHashCalculationTime();
     }
 
-    std::array< std::string, 4 > getIMABLSPublicKey() const {
-        return chainParams().sChain.nodeGroups.at( historicGroupIndex ).blsPublicKey;
+    std::array< std::string, 4 > getCurrentBLSPublicKey() const {
+        return chainParams().getBlsPublicKeyForHistoricGroup( historicGroupIndex );
     }
 
     // get node id for historic node in chain
     std::string getHistoricNodeId( unsigned _id ) const {
-        return chainParams().sChain.nodeGroups.at( historicGroupIndex ).nodes.at( _id ).id.str();
+        return chainParams().getHistoricNodeId( historicGroupIndex, _id ).str();
     }
 
     // get schain index for historic node in chain
     std::string getHistoricNodeIndex( unsigned _idx ) const {
-        return chainParams()
-            .sChain.nodeGroups.at( historicGroupIndex )
-            .nodes.at( _idx )
-            .schainIndex.str();
+        return chainParams().getHistoricNodeIndex( historicGroupIndex, _idx ).str();
     }
 
     // get node owner for historic node in chain
     std::string getHistoricNodePublicKey( unsigned _idx ) const {
-        return chainParams().sChain.nodeGroups.at( historicGroupIndex ).nodes.at( _idx ).publicKey;
+        return chainParams().getHistoricNodePublicKey( historicGroupIndex, _idx );
     }
+
+    uint64_t getCommitteeStartTs( unsigned _idx ) const {
+        if ( _idx == 0 )
+            return 0;
+        return chainParams().getHistoricGroupFinishTs( _idx - 1 );
+    }
+
+#ifdef FAIR
+    bool updateHistoricGroupIndex();
+#endif
 
     void doStateDbCompaction() const { m_state.getOriginalDb()->doCompaction(); }
 
@@ -346,15 +377,21 @@ public:
 
     std::pair< uint64_t, uint64_t > getBlocksDbUsage() const;
 
+#ifndef FAIR
     std::pair< uint64_t, uint64_t > getStateDbUsage() const;
+#else
+    uint64_t getStateDbUsage() const;
+#endif
 
 #ifdef HISTORIC_STATE
     uint64_t getHistoricStateDbUsage() const;
     uint64_t getHistoricRootsDbUsage() const;
 #endif  // HISTORIC_STATE
 
+#ifndef FAIR
     uint64_t submitOracleRequest( const string& _spec, string& _receipt, string& _errorMessage );
     uint64_t checkOracleResult( const string& _receipt, string& _result );
+#endif
 
     SkaleDebugInterface::handler getDebugHandler() const { return m_debugHandler; }
 
@@ -553,6 +590,9 @@ protected:
     mutable Logger m_loggerInfo{ createLogger( VerbosityInfo, "client" ) };
     mutable Logger m_loggerTrace{ createLogger( VerbosityTrace, "client" ) };
     mutable Logger m_loggerWarning{ createLogger( VerbosityWarning, "client" ) };
+#ifdef FAIR
+    mutable Logger m_loggerDebug{ createLogger( VerbosityDebug, "client" ) };
+#endif
     mutable Logger m_loggerError{ createLogger( VerbosityError, "client" ) };
 
     SkaleDebugTracer m_debugTracer;
@@ -571,10 +611,17 @@ protected:
 
 private:
     void initHistoricGroupIndex();
-    void updateHistoricGroupIndex();
+#ifndef FAIR
+    bool updateHistoricGroupIndex();
+#endif
 
     // which group corresponds to the current block timestamp on this node
+#ifdef BITE
+    std::atomic_uint64_t historicGroupIndex = 0;
+    static constexpr uint64_t MIN_COMMITTEE_ROTATION_INTERVAL_SEC = 3 * 60;  // 180 sec
+#else
     unsigned historicGroupIndex = 0;
+#endif
 
 public:
     FILE* performance_fd;

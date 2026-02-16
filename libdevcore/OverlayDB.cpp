@@ -49,7 +49,6 @@ void OverlayDB::commit() {
             for ( auto const& i : m_main ) {
                 if ( i.second.second ) {
                     m_db->insert( toSlice( i.first ), toSlice( i.second.first ) );
-                    //              cnote << i.first << "#" << m_main[i.first].second;
                     storageUsed_ += toSlice( i.first ).size() + toSlice( i.second.first ).size();
                 }
             }
@@ -73,7 +72,7 @@ void OverlayDB::commit() {
                     cwarn << DETAILED_ERROR;
                     exit( -1 );
                 }
-                cerror << "Error(2) writing to state database (during DB commit): "
+                cerror << "Error(1) writing to state database (during DB commit): "
                        << boost::diagnostic_information( ex );
                 cwarn << "Error writing to state database: " << boost::diagnostic_information( ex );
                 cwarn << "Sleeping for" << ( commitTry + 1 ) << "seconds, then retrying.";
@@ -86,6 +85,15 @@ void OverlayDB::commit() {
                 }
                 cerror << "Error(2) writing to state database (during DB commit): " << ex.what();
                 cwarn << "Error(2) writing to state database: " << ex.what();
+                cwarn << "Sleeping for" << ( commitTry + 1 ) << "seconds, then retrying.";
+                std::this_thread::sleep_for( std::chrono::seconds( commitTry + 1 ) );
+            } catch ( ... ) {
+                if ( commitTry == 9 ) {
+                    cwarn << "Fail(3) writing to state database. Bombing out. ";
+                    cwarn << DETAILED_ERROR;
+                    exit( -1 );
+                }
+                cerror << "Unknown error(3) writing to state database (during DB commit)";
                 cwarn << "Sleeping for" << ( commitTry + 1 ) << "seconds, then retrying.";
                 std::this_thread::sleep_for( std::chrono::seconds( commitTry + 1 ) );
             }
