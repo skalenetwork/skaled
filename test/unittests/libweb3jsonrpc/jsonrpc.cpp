@@ -6389,6 +6389,8 @@ BOOST_AUTO_TEST_CASE( dencunOpcodesInTransaction ) {
 BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     JsonRpcFixture fixture( c_BITEConfigString, false, false, true, true );
 
+    dev::bite::isCiphertextValidationEnabled = true;
+
     string senderAddress = toJS( fixture.coinbase.address() );
     size_t nonce = 0;
     std::string biteAddress = "0x" + std::string( BITE_ADDRESS_AS_STRING );
