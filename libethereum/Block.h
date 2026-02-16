@@ -331,7 +331,13 @@ public:
     }
 
     const DecryptedTransactions& decryptedTransactions() const { return m_decryptedTransactions; }
-#endif
+
+#ifdef BITE2
+    const std::vector< std::vector< dev::h256 > > ctxHashesLists() const {
+        return m_ctxHashesLists;
+    }
+#endif  // BITE2
+#endif  // BITE
 
 private:
     SealEngineFace* sealEngine() const;
@@ -390,6 +396,12 @@ private:
 #endif  // BITE2
         std::make_shared< DecryptedRegularTxsMap >()
     };
+
+#ifdef BITE2
+    // list of ctx hashes crafted by every txn in block
+    // only filled for a working block
+    std::vector< std::vector< dev::h256 > > m_ctxHashesLists;
+#endif  // BITE2
 #endif  // BITE
 
     Logger m_loggerDebug{ createLogger( VerbosityDebug, "block" ) };

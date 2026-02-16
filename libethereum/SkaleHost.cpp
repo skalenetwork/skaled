@@ -389,6 +389,10 @@ void SkaleHost::addTempBITE2Transaction( dev::eth::Transaction&& _transaction ) 
     m_tq.addTempBITE2Transaction( std::move( _transaction ) );
 }
 
+std::vector< h256 > SkaleHost::getBITE2HashesForCurrentTxn() const {
+    return m_tq.getTempBITE2Hashes();
+}
+
 void SkaleHost::commitTempBITE2Transactions() {
     m_tq.commitTempBITE2Transactions();
 }

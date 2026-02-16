@@ -235,8 +235,8 @@ public:
 #ifdef BITE2
         if ( g_skaleHost )
             g_skaleHost.reset();
-#endif   // FAIR
 #endif   // BITE2
+#endif   // FAIR
     }
 
 private:

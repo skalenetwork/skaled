@@ -5844,6 +5844,10 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
     auto to = bite2Txn.to();
     BOOST_REQUIRE_EQUAL( to, dev::Address( contractAddress ) );
 
+    Json::Value craftedCTXs = fixture.rpcClient->bite_getCraftedCtxs( txHash );
+    BOOST_REQUIRE_EQUAL( craftedCTXs.size(), 1 );
+    BOOST_REQUIRE_EQUAL( craftedCTXs[0].asString(), bite2Txn.sha3().hex() );
+
     dev::u256 randomGasLimit = dev::h256::Arith( dev::h256::random() ) % 2500000 + 1000000;
     dev::bytes randomGasLimitBytes = dev::toBigEndian( randomGasLimit );
 
@@ -5882,7 +5886,7 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
     txGenerate["data"] = "0x6040c1fb" + dev::toHex( dev::u256( 32 ) ) + dev::toHex( dev::u256( resultData.size() ) ) + dev::toHex( resultData );
     txGenerate["from"] = toJS( senderAddress );
     txGenerate["nonce"] = 2;
-    txHash = fixture.rpcClient->eth_sendTransaction( txGenerate );
+    std::string txGenerateHash = fixture.rpcClient->eth_sendTransaction( txGenerate );
     BOOST_REQUIRE_EQUAL( fixture.client->debugGetTransactionQueue()->pendingBITE2Transactions().size(), 1 );
     BOOST_REQUIRE_EQUAL( fixture.client->pending().size(), 1 );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
@@ -5974,6 +5978,10 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
     BOOST_REQUIRE( ctxFromBlockchain.data() == rlpEncodedData );
     BOOST_REQUIRE( ctxFromBlockchain.signature() == vrs );
     BOOST_REQUIRE_EQUAL( ctxFromBlockchain.sender(), expectedWalletAddress );
+
+    auto ctxOrigin = fixture.rpcClient->bite_getCtxOrigin( "0x" + ctxFromBlockchain.sha3().hex() );
+    BOOST_REQUIRE_EQUAL( "0x" + ctxOrigin, txGenerateHash );
+
 
     // call getDecrypted()
     result = dev::fromHex( fixture.rpcClient->eth_call( callDecrypted, "latest" ) );

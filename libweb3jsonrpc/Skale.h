@@ -86,7 +86,11 @@ public:
 #ifdef BITE
     Json::Value bite_getCommitteesInfo() override;
     Json::Value bite_getDecryptedTransactionData( const std::string& request ) override;
-#endif
+#ifdef BITE2
+    Json::Value bite_getCraftedCtxs( const std::string& request ) override;
+    std::string bite_getCtxOrigin( const std::string& request ) override;
+#endif  // BITE2
+#endif  // BITE
 
     static bool isWeb3ShutdownEnabled();
     static void enableWeb3Shutdown( bool bEnable = true );
