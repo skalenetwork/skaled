@@ -404,7 +404,7 @@ BOOST_DATA_TEST_CASE(
 #ifdef BITE
                            DecryptedTransactions{
 #ifdef BITE2
-                                   std::make_shared< DecryptedCATxsMap >(),
+                                   std::make_shared< DecryptedCTXTxsMap >(),
 #endif  // BITE2
                                    std::make_shared< DecryptedRegularTxsMap >()
                                },
@@ -461,7 +461,7 @@ BOOST_DATA_TEST_CASE(
 #ifdef BITE
                                 DecryptedTransactions{
 #ifdef BITE2
-                                        std::make_shared< DecryptedCATxsMap >(),
+                                        std::make_shared< DecryptedCTXTxsMap >(),
 #endif  // BITE2
                                         std::make_shared< DecryptedRegularTxsMap >()
                                     },
@@ -565,7 +565,7 @@ BOOST_DATA_TEST_CASE(
 #ifdef BITE
                                DecryptedTransactions{
 #ifdef BITE2
-                                       std::make_shared< DecryptedCATxsMap >(),
+                                       std::make_shared< DecryptedCTXTxsMap >(),
 #endif  // BITE2
                                        std::make_shared< DecryptedRegularTxsMap >()
                                    },
@@ -640,7 +640,7 @@ BOOST_DATA_TEST_CASE(
 #ifdef BITE
                                                DecryptedTransactions{
 #ifdef BITE2
-                                                       std::make_shared< DecryptedCATxsMap >(),
+                                                       std::make_shared< DecryptedCTXTxsMap >(),
 #endif  // BITE2
                                                        std::make_shared< DecryptedRegularTxsMap >()
                                                    },
@@ -705,7 +705,7 @@ BOOST_DATA_TEST_CASE(
 #ifdef BITE
                            DecryptedTransactions{
 #ifdef BITE2
-                                   std::make_shared< DecryptedCATxsMap >(),
+                                   std::make_shared< DecryptedCTXTxsMap >(),
 #endif  // BITE2
                                    std::make_shared< DecryptedRegularTxsMap >()
                                },
@@ -785,7 +785,7 @@ BOOST_DATA_TEST_CASE(
 #ifdef BITE
                            DecryptedTransactions{
 #ifdef BITE2
-                                   std::make_shared< DecryptedCATxsMap >(),
+                                   std::make_shared< DecryptedCTXTxsMap >(),
 #endif  // BITE2
                                    std::make_shared< DecryptedRegularTxsMap >()
                                },
@@ -842,7 +842,7 @@ BOOST_DATA_TEST_CASE(
 #ifdef BITE
                            DecryptedTransactions{
 #ifdef BITE2
-                                   std::make_shared< DecryptedCATxsMap >(),
+                                   std::make_shared< DecryptedCTXTxsMap >(),
 #endif  // BITE2
                                    std::make_shared< DecryptedRegularTxsMap >()
                                },
@@ -900,7 +900,7 @@ BOOST_DATA_TEST_CASE(
 #ifdef BITE
                            DecryptedTransactions{
 #ifdef BITE2
-                                   std::make_shared< DecryptedCATxsMap >(),
+                                   std::make_shared< DecryptedCTXTxsMap >(),
 #endif  // BITE2
                                    std::make_shared< DecryptedRegularTxsMap >()
                                },
@@ -928,7 +928,7 @@ BOOST_DATA_TEST_CASE(
 #ifdef BITE
                            DecryptedTransactions{
 #ifdef BITE2
-                                   std::make_shared< DecryptedCATxsMap >(),
+                                   std::make_shared< DecryptedCTXTxsMap >(),
 #endif  // BITE2
                                    std::make_shared< DecryptedRegularTxsMap >()
                                },
@@ -997,7 +997,7 @@ BOOST_DATA_TEST_CASE(
 #ifdef BITE
                            DecryptedTransactions{
 #ifdef BITE2
-                                   std::make_shared< DecryptedCATxsMap >(),
+                                   std::make_shared< DecryptedCTXTxsMap >(),
 #endif  // BITE2
                                    std::make_shared< DecryptedRegularTxsMap >()
                                },
@@ -1037,7 +1037,7 @@ BOOST_DATA_TEST_CASE(
 #ifdef BITE
                        DecryptedTransactions{
 #ifdef BITE2
-                               std::make_shared< DecryptedCATxsMap >(),
+                               std::make_shared< DecryptedCTXTxsMap >(),
 #endif  // BITE2
                                std::make_shared< DecryptedRegularTxsMap >()
                            },
@@ -1107,7 +1107,7 @@ BOOST_DATA_TEST_CASE(
 #ifdef BITE
                            DecryptedTransactions{
 #ifdef BITE2
-                                   std::make_shared< DecryptedCATxsMap >(),
+                                   std::make_shared< DecryptedCTXTxsMap >(),
 #endif  // BITE2
                                    std::make_shared< DecryptedRegularTxsMap >()
                                },
@@ -1239,7 +1239,7 @@ BOOST_AUTO_TEST_CASE( transactionDropReceive
 #ifdef BITE
                                                DecryptedTransactions{
         #ifdef BITE2
-                                                       std::make_shared< DecryptedCATxsMap >(),
+                                                       std::make_shared< DecryptedCTXTxsMap >(),
         #endif  // BITE2
                                                        std::make_shared< DecryptedRegularTxsMap >()
                                                    },
@@ -1312,7 +1312,7 @@ BOOST_AUTO_TEST_CASE(
 #ifdef BITE
                            DecryptedTransactions{
 #ifdef BITE2
-                                   std::make_shared< DecryptedCATxsMap >(),
+                                   std::make_shared< DecryptedCTXTxsMap >(),
 #endif  // BITE2
                                    std::make_shared< DecryptedRegularTxsMap >()
                                },
@@ -1388,7 +1388,7 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPrice
 #ifdef BITE
                            DecryptedTransactions{
 #ifdef BITE2
-                                   std::make_shared< DecryptedCATxsMap >(),
+                                   std::make_shared< DecryptedCTXTxsMap >(),
 #endif  // BITE2
                                    std::make_shared< DecryptedRegularTxsMap >()
                                },
@@ -1473,7 +1473,7 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive
 #ifdef BITE
                            DecryptedTransactions{
 #ifdef BITE2
-                                   std::make_shared< DecryptedCATxsMap >(),
+                                   std::make_shared< DecryptedCTXTxsMap >(),
 #endif  // BITE2
                                    std::make_shared< DecryptedRegularTxsMap >()
                                },
@@ -1532,7 +1532,7 @@ BOOST_AUTO_TEST_CASE( transactionRace
 #ifdef BITE
                            DecryptedTransactions{
 #ifdef BITE2
-                                   std::make_shared< DecryptedCATxsMap >(),
+                                   std::make_shared< DecryptedCTXTxsMap >(),
 #endif  // BITE2
                                    std::make_shared< DecryptedRegularTxsMap >()
                                },
@@ -1591,7 +1591,7 @@ BOOST_AUTO_TEST_CASE( partialCatchUp
 #ifdef BITE
                            DecryptedTransactions{
 #ifdef BITE2
-                                   std::make_shared< DecryptedCATxsMap >(),
+                                   std::make_shared< DecryptedCTXTxsMap >(),
 #endif  // BITE2
                                    std::make_shared< DecryptedRegularTxsMap >()
                                },
@@ -1622,7 +1622,7 @@ BOOST_AUTO_TEST_CASE( partialCatchUp
 #ifdef BITE
                            DecryptedTransactions{
 #ifdef BITE2
-                                   std::make_shared< DecryptedCATxsMap >(),
+                                   std::make_shared< DecryptedCTXTxsMap >(),
 #endif  // BITE2
                                    std::make_shared< DecryptedRegularTxsMap >()
                                },
@@ -2311,7 +2311,7 @@ BOOST_AUTO_TEST_CASE( biteTransactions ) {
 
     DecryptedTransactions decryptedTxnDataMap(
 #ifdef BITE2
-                std::make_shared< DecryptedCATxsMap >(),
+                std::make_shared< DecryptedCTXTxsMap >(),
 #endif
                 regularTxsMap
                 );
@@ -2384,7 +2384,7 @@ BOOST_AUTO_TEST_CASE(syncNodeGroupsUpdatesEpochIdWithoutRotation) {
 #ifdef BITE
                                 DecryptedTransactions{
 #ifdef BITE2
-                                        std::make_shared< DecryptedCATxsMap >(),
+                                        std::make_shared< DecryptedCTXTxsMap >(),
 #endif  // BITE2
                                         std::make_shared< DecryptedRegularTxsMap >()
                                     },
@@ -2447,7 +2447,7 @@ BOOST_FIXTURE_TEST_CASE(
 #ifdef BITE
                            DecryptedTransactions{
 #ifdef BITE2
-                                   std::make_shared< DecryptedCATxsMap >(),
+                                   std::make_shared< DecryptedCTXTxsMap >(),
 #endif  // BITE2
                                    std::make_shared< DecryptedRegularTxsMap >()
                                },
@@ -2485,7 +2485,7 @@ BOOST_FIXTURE_TEST_CASE(
 #ifdef BITE
                                                DecryptedTransactions{
 #ifdef BITE2
-                                                       std::make_shared< DecryptedCATxsMap >(),
+                                                       std::make_shared< DecryptedCTXTxsMap >(),
 #endif  // BITE2
                                                        std::make_shared< DecryptedRegularTxsMap >()
                                                    },
@@ -2514,7 +2514,7 @@ BOOST_FIXTURE_TEST_CASE(
 #ifdef BITE
                                                DecryptedTransactions{
 #ifdef BITE2
-                                                       std::make_shared< DecryptedCATxsMap >(),
+                                                       std::make_shared< DecryptedCTXTxsMap >(),
 #endif  // BITE2
                                                        std::make_shared< DecryptedRegularTxsMap >()
                                                    },

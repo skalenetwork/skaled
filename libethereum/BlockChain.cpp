@@ -625,8 +625,8 @@ ImportRoute BlockChain::import( const Block& _block ) {
 #ifdef BITE
     verifiedBlock.decryptedTransactions = _block.decryptedTransactions();
 #ifdef BITE2
-    CHECK_EXPRESSION( verifiedBlock.decryptedTransactions.catTxsMap );
-#endif  // BITE2
+    CHECK_EXPRESSION( verifiedBlock.decryptedTransactions.ctxTxsMap );
+#endif
     CHECK_EXPRESSION( verifiedBlock.decryptedTransactions.regularTxsMap );
 
 #ifdef BITE2

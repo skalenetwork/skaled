@@ -719,7 +719,7 @@ void TransactionBase::checkIfCTXAndSet( const dev::bytes& _data ) {
         dev::bite::ON_DECRYPT_FUNCTION_SELECTOR.begin() );
 }
 
-void TransactionBase::setDecryptedArgsCTX( const DecryptedCATArgs& _decryptedCTXArgs ) {
+void TransactionBase::setDecryptedArgsCTX( const DecryptedCTXArgs& _decryptedCTXArgs ) {
     if ( !isCTX() )
         throw std::runtime_error( "Trying to set CTX arguments for not CTX-type transaction" );
 

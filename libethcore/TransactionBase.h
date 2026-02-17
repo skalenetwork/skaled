@@ -239,7 +239,7 @@ public:
 
     void checkIfCTXAndSet( const dev::bytes& _data );
 
-    void setDecryptedArgsCTX( const DecryptedCATArgs& _decryptedCTXArgs );
+    void setDecryptedArgsCTX( const DecryptedCTXArgs& _decryptedCTXArgs );
 #endif  // BITE2
 
 #endif  // BITE
