@@ -80,12 +80,28 @@ public:
         return s.out();
     }
 
+    /// EIP-2718/EIP-2930: set the transaction type for typed receipt encoding.
+    void setTxType( int _txType ) { m_txType = _txType; }
+    int txType() const { return m_txType; }
+
+    /// EIP-2718: return receipt bytes for trie encoding.
+    /// For Legacy (type 0): returns bare rlp([status, gasUsed, bloom, logs]).
+    /// For typed (type 1, 2, ...): returns type_byte || rlp([status, gasUsed, bloom, logs]).
+    bytes typedRlp() const {
+        bytes receiptBytes = rlp();
+        if ( m_txType > 0 ) {
+            receiptBytes.insert( receiptBytes.begin(), static_cast< uint8_t >( m_txType ) );
+        }
+        return receiptBytes;
+    }
+
 private:
     boost::variant< uint8_t, h256 > m_statusCodeOrStateRoot;
     u256 m_gasUsed;
     LogBloom m_bloom;
     LogEntries m_log;
     std::string m_strRevertReason;
+    int m_txType = 0;  ///< EIP-2718 transaction type (0 = Legacy).
 
     Counter< TransactionReceipt > c;
 

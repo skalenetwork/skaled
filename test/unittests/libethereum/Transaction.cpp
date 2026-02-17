@@ -26,6 +26,7 @@
 #include <libethcore/Common.h>
 #include <libethcore/Exceptions.h>
 #include <libethereum/SchainPatch.h>
+#include <libethereum/TransactionReceipt.h>
 #include <libevm/VMFace.h>
 #include <test/tools/libtesteth/BlockChainHelper.h>
 
@@ -623,6 +624,143 @@ BOOST_AUTO_TEST_CASE( eip2929ExtVMFaceAccessTracking ) {
     // Different address same key is still cold
     auto r5 = sub.accessedStorageKeys.insert( { addr2, key1 } );
     BOOST_REQUIRE( r5.second );  // cold
+}
+
+// EIP-2930: typed receipt encoding (TransactionReceipt with tx type)
+BOOST_AUTO_TEST_CASE( eip2930TypedReceiptEncoding ) {
+    // Create a receipt for a Type1 transaction
+    TransactionReceipt receipt( uint8_t( 1 ), u256( 21000 ), LogEntries{} );
+    receipt.setTxType( 1 );
+
+    BOOST_REQUIRE_EQUAL( receipt.txType(), 1 );
+
+    // typedRlp() should prepend 0x01 to the RLP
+    bytes typed = receipt.typedRlp();
+    BOOST_REQUIRE( !typed.empty() );
+    BOOST_REQUIRE_EQUAL( typed[0], 0x01 );
+
+    // The remaining bytes should be valid RLP
+    bytes bareRlp = receipt.rlp();
+    BOOST_REQUIRE( typed.size() == bareRlp.size() + 1 );
+    BOOST_REQUIRE( std::equal( bareRlp.begin(), bareRlp.end(), typed.begin() + 1 ) );
+
+    // Legacy receipt should NOT have type prefix
+    TransactionReceipt legacyReceipt( uint8_t( 1 ), u256( 21000 ), LogEntries{} );
+    legacyReceipt.setTxType( 0 );
+    bytes legacyBytes = legacyReceipt.typedRlp();
+    bytes legacyBareRlp = legacyReceipt.rlp();
+    BOOST_REQUIRE( legacyBytes == legacyBareRlp );
+}
+
+// EIP-2930: typed receipt roundtrip (decode typed receipt)
+BOOST_AUTO_TEST_CASE( eip2930TypedReceiptRoundtrip ) {
+    // Create a receipt, set type, get typedRlp, decode back
+    LogEntries logs;
+    logs.emplace_back(
+        Address( "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" ), h256s{}, bytes{ 0x01, 0x02 } );
+    TransactionReceipt original( uint8_t( 1 ), u256( 50000 ), logs );
+    original.setTxType( 1 );
+
+    // Encode as typed receipt
+    bytes encoded = original.typedRlp();
+    BOOST_REQUIRE_EQUAL( encoded[0], 0x01 );
+
+    // Decode the typed receipt
+    bytesConstRef encodedRef( &encoded );
+    TransactionReceipt decoded( encodedRef );
+    BOOST_REQUIRE_EQUAL( decoded.txType(), 1 );
+    BOOST_REQUIRE_EQUAL( decoded.statusCode(), 1 );
+    BOOST_REQUIRE( decoded.cumulativeGasUsed() == u256( 50000 ) );
+    BOOST_REQUIRE_EQUAL( decoded.log().size(), 1u );
+    BOOST_REQUIRE(
+        decoded.log()[0].address == Address( "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" ) );
+
+    // Type2 receipt
+    TransactionReceipt type2Receipt( uint8_t( 1 ), u256( 30000 ), LogEntries{} );
+    type2Receipt.setTxType( 2 );
+    bytes type2Encoded = type2Receipt.typedRlp();
+    BOOST_REQUIRE_EQUAL( type2Encoded[0], 0x02 );
+
+    bytesConstRef type2EncodedRef( &type2Encoded );
+    TransactionReceipt type2Decoded( type2EncodedRef );
+    BOOST_REQUIRE_EQUAL( type2Decoded.txType(), 2 );
+    BOOST_REQUIRE( type2Decoded.cumulativeGasUsed() == u256( 30000 ) );
+}
+
+// EIP-2930: access list address size validation
+BOOST_AUTO_TEST_CASE( eip2930AccessListAddressValidation ) {
+    // Construct a Type1 tx with an access list entry that has a 19-byte address (invalid).
+    // The access list RLP entry: [19-byte-address, []]
+    RLPStream innerEntry;
+    innerEntry.appendList( 2 );
+    // 19-byte address (one byte short)
+    innerEntry << bytes( 19, 0xaa );
+    innerEntry.appendList( 0 );
+
+    RLPStream accessList;
+    accessList.appendList( 1 );
+    accessList.appendRaw( innerEntry.out() );
+
+    // Wrap in a full Type1 tx RLP: [chainId, nonce, gasPrice, gasLimit, to, value, data,
+    // accessList, v, r, s]
+    RLPStream txRlp;
+    txRlp.appendList( 11 );
+    txRlp << u256( 1 );                                                // chainId
+    txRlp << u256( 0 );                                                // nonce
+    txRlp << u256( 1000 );                                             // gasPrice
+    txRlp << u256( 21000 );                                            // gasLimit
+    txRlp << Address( "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" );  // to
+    txRlp << u256( 0 );                                                // value
+    txRlp << bytes{};                                                  // data
+    txRlp.appendRaw( accessList.out() );                               // accessList
+    txRlp << u256( 0 );                                                // v
+    txRlp << u256( 0 );                                                // r
+    txRlp << u256( 0 );                                                // s
+
+    // Prepend type byte 0x01
+    bytes txBytes = txRlp.out();
+    txBytes.insert( txBytes.begin(), 0x01 );
+
+    // Should throw due to invalid address size
+    BOOST_REQUIRE_THROW(
+        Transaction( txBytes, CheckTransaction::None, false, true ), InvalidTransactionFormat );
+}
+
+// EIP-2930: access list storage key size validation
+BOOST_AUTO_TEST_CASE( eip2930AccessListStorageKeyValidation ) {
+    // Construct a Type1 tx with an access list entry that has a 31-byte storage key (invalid).
+    RLPStream keyList;
+    keyList.appendList( 1 );
+    keyList << bytes( 31, 0xbb );  // 31-byte key (should be 32)
+
+    RLPStream innerEntry;
+    innerEntry.appendList( 2 );
+    innerEntry << Address( "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" ).asBytes();
+    innerEntry.appendRaw( keyList.out() );
+
+    RLPStream accessList;
+    accessList.appendList( 1 );
+    accessList.appendRaw( innerEntry.out() );
+
+    RLPStream txRlp;
+    txRlp.appendList( 11 );
+    txRlp << u256( 1 );                                                // chainId
+    txRlp << u256( 0 );                                                // nonce
+    txRlp << u256( 1000 );                                             // gasPrice
+    txRlp << u256( 21000 );                                            // gasLimit
+    txRlp << Address( "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" );  // to
+    txRlp << u256( 0 );                                                // value
+    txRlp << bytes{};                                                  // data
+    txRlp.appendRaw( accessList.out() );                               // accessList
+    txRlp << u256( 0 );                                                // v
+    txRlp << u256( 0 );                                                // r
+    txRlp << u256( 0 );                                                // s
+
+    bytes txBytes = txRlp.out();
+    txBytes.insert( txBytes.begin(), 0x01 );
+
+    BOOST_REQUIRE_THROW(
+        Transaction( txBytes, CheckTransaction::None, false, true ), InvalidTransactionFormat );
 }
 
 BOOST_AUTO_TEST_CASE( InvaidTransaction ) {

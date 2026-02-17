@@ -72,11 +72,22 @@ std::vector< bytes > validateAccessListRLP( const RLP& _data ) {
             BOOST_THROW_EXCEPTION(
                 InvalidTransactionFormat() << errinfo_comment(
                     "transaction accessList RLP must be a list of byte array and a list" ) );
-        for ( const auto& k : accessList[1].toList() )
+        // EIP-2930: address must be exactly 20 bytes.
+        if ( accessList[0].size() != 20 )
+            BOOST_THROW_EXCEPTION(
+                InvalidTransactionFormat()
+                << errinfo_comment( "transaction accessList address must be exactly 20 bytes" ) );
+        for ( const auto& k : accessList[1].toList() ) {
             if ( !k.isData() )
                 BOOST_THROW_EXCEPTION(
                     InvalidTransactionFormat() << errinfo_comment(
                         "transaction storageKeys RLP must be a list of byte array" ) );
+            // EIP-2930: storage key must be exactly 32 bytes.
+            if ( k.size() != 32 )
+                BOOST_THROW_EXCEPTION(
+                    InvalidTransactionFormat() << errinfo_comment(
+                        "transaction accessList storage key must be exactly 32 bytes" ) );
+        }
     }
 
     if ( rlpList.size() > MAX_ACCESS_LIST_COUNT )

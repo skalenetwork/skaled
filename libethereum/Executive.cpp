@@ -329,12 +329,12 @@ bool Executive::execute() {
             bytesConstRef( &dataToPassToEvm ), m_t.gas() - ( u256 ) m_baseGasRequired );
 
     // EIP-2929 / EIP-2930: initialize warm access sets before VM execution begins.
-    initEIP2929AccessSets();
+    initAccessSets();
 
     return result;
 }
 
-void Executive::initEIP2929AccessSets() {
+void Executive::initAccessSets() {
     if ( !m_ext )
         return;
 
