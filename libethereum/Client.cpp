@@ -1202,7 +1202,7 @@ h256 Client::importTransaction( Transaction const& _t, TransactionBroadcast _txO
 #ifdef BITE
     // invalid BITE transactions should not be added to txn queue
     // only validate in production setup
-    if ( dev::bite::isCiphertextValidationEnabled.load() )
+    if ( dev::bite::isCiphertextValidationEnabled )
         _t.checkAndValidateBITETransaction( historicGroupIndex );
 #endif
 
