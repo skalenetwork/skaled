@@ -84,10 +84,17 @@ struct SubState {
     LogEntries logs;               ///< Any logs.
     int64_t refunds = 0;           ///< Refund counter for storage changes.
 
+    /// EIP-2929: per-transaction warm sets for state access gas metering.
+    std::set< Address > accessedAddresses;
+    std::set< std::pair< Address, u256 > > accessedStorageKeys;
+
     SubState& operator+=( SubState const& _s ) {
         suicides += _s.suicides;
         refunds += _s.refunds;
         logs += _s.logs;
+        // EIP-2929: merge access sets from sub-context into parent.
+        accessedAddresses.insert( _s.accessedAddresses.begin(), _s.accessedAddresses.end() );
+        accessedStorageKeys.insert( _s.accessedStorageKeys.begin(), _s.accessedStorageKeys.end() );
         return *this;
     }
 
@@ -95,6 +102,8 @@ struct SubState {
         suicides.clear();
         logs.clear();
         refunds = 0;
+        accessedAddresses.clear();
+        accessedStorageKeys.clear();
     }
 };
 
@@ -228,6 +237,21 @@ public:
 
     /// Does the account exist?
     virtual bool exists( Address ) { return false; }
+
+    /// EIP-2929: Mark an account address as accessed (warm).
+    /// @returns true if the address was already in the accessed set (warm), false if cold.
+    virtual bool accessAccount( Address const& _addr ) {
+        auto result = sub.accessedAddresses.insert( _addr );
+        return !result.second;  // true = was already present = warm
+    }
+
+    /// EIP-2929: Mark a storage slot as accessed (warm).
+    /// @returns true if the (address, key) pair was already in the accessed set (warm), false if
+    /// cold.
+    virtual bool accessStorageKey( Address const& _addr, u256 const& _key ) {
+        auto result = sub.accessedStorageKeys.insert( { _addr, _key } );
+        return !result.second;  // true = was already present = warm
+    }
 
     /// Suicide the associated contract and give proceeds to the given address.
     virtual void suicide( Address ) { sub.suicides.insert( myAddress ); }

@@ -192,6 +192,10 @@ public:
     /// Finalise an operation through accruing the substate into the parent context.
     void accrueSubState( SubState& _parentContext );
 
+    /// EIP-2929: copy parent's warm access sets into this executive's child ExtVM sub-state,
+    /// so that already-accessed addresses and storage keys are visible in sub-calls.
+    void propagateAccessSets( SubState const& _parentContext );
+
     /// Executes (or continues execution of) the VM.
     /// @returns false iff go() must be called again to finish the transaction.
     bool go( OnOpFunc const& _onOp = OnOpFunc() );
@@ -221,6 +225,10 @@ public:
         const bool _allowFuture = false );
 
 private:
+    /// EIP-2929 / EIP-2930: initialize per-transaction warm access sets.
+    /// Pre-warms tx.sender, tx.to, precompile addresses, and access list entries.
+    void initEIP2929AccessSets();
+
     /// @returns false iff go() must be called (and thus a VM execution in required).
     bool executeCreate( Address const& _txSender, u256 const& _endowment, u256 const& _gasPrice,
         u256 const& _gas, bytesConstRef _code, Address const& _originAddress,

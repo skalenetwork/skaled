@@ -139,9 +139,14 @@ DEFINE_AMNESIC_PATCH( ContractStoragePatch )
 DEFINE_AMNESIC_PATCH( StorageDestructionPatch );
 
 /*
+ * Enable Berlin fork related changes (EIP-2718, EIP-2930, EIP-2929, EIP-2565)
+ */
+DEFINE_EVM_PATCH( BerlinForkPatch );
+
+/*
  * Enable restriction on contract storage size, when it's doing selfdestruct
  */
-DEFINE_EVM_PATCH( EIP1559TransactionsPatch );
+DEFINE_SIMPLE_PATCH( EIP1559TransactionsPatch );
 
 /*
  * Enable bls signatures verification for sync node

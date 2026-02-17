@@ -100,6 +100,14 @@ void LegacyVM::updateSSGas() {
         updateSSGasEIP1283( currentValue, newValue );
     else
         updateSSGasPreEIP1283( currentValue, newValue );
+
+    // EIP-2929: if the storage slot is cold, charge an additional COLD_SLOAD_COST
+    // and mark it as warm.
+    if ( m_schedule->eip2929Mode ) {
+        bool warm = m_ext->accessStorageKey( m_ext->myAddress, m_SP[0] );
+        if ( !warm )
+            m_runGas += toInt63( m_schedule->coldSloadCost );
+    }
 }
 
 void LegacyVM::updateSSGasPreEIP1283( u256 const& _currentValue, u256 const& _newValue ) {
@@ -323,6 +331,14 @@ void LegacyVM::interpretCases() {
                  ( !m_schedule->eip158Mode || m_ext->balance( m_ext->myAddress ) > 0 ) ) {
                 if ( !m_ext->exists( dest ) )
                     m_runGas += m_schedule->callNewAccountGas;
+            }
+            // EIP-2929: if the ETH recipient is not in accessed_addresses, charge additional
+            // COLD_ACCOUNT_ACCESS_COST and add it to the set.
+            // Note: SELFDESTRUCT does NOT charge WARM_STORAGE_READ_COST when already warm.
+            if ( m_schedule->eip2929Mode ) {
+                bool warm = m_ext->accessAccount( dest );
+                if ( !warm )
+                    m_runGas += toInt63( m_schedule->coldAccountAccessCost );
             }
             ON_OP();
             updateIOGas();
@@ -1139,7 +1155,14 @@ void LegacyVM::interpretCases() {
         NEXT
 
         CASE( BALANCE ) {
-            m_runGas = toInt63( m_schedule->balanceGas );
+            // EIP-2929: charge warm (100) or cold (2600) depending on access status.
+            if ( m_schedule->eip2929Mode ) {
+                bool warm = m_ext->accessAccount( asAddress( m_SP[0] ) );
+                m_runGas = warm ? toInt63( m_schedule->warmStorageReadCost ) :
+                                  toInt63( m_schedule->coldAccountAccessCost );
+            } else {
+                m_runGas = toInt63( m_schedule->balanceGas );
+            }
             ON_OP();
             updateIOGas();
             m_SPP[0] = m_ext->balance( asAddress( m_SP[0] ) );
@@ -1207,7 +1230,14 @@ void LegacyVM::interpretCases() {
         NEXT
 
         CASE( EXTCODESIZE ) {
-            m_runGas = toInt63( m_schedule->extcodesizeGas );
+            // EIP-2929: charge warm (100) or cold (2600) depending on access status.
+            if ( m_schedule->eip2929Mode ) {
+                bool warm = m_ext->accessAccount( asAddress( m_SP[0] ) );
+                m_runGas = warm ? toInt63( m_schedule->warmStorageReadCost ) :
+                                  toInt63( m_schedule->coldAccountAccessCost );
+            } else {
+                m_runGas = toInt63( m_schedule->extcodesizeGas );
+            }
             ON_OP();
             updateIOGas();
             m_SPP[0] = m_ext->codeSizeAt( asAddress( m_SP[0] ) );
@@ -1246,7 +1276,14 @@ void LegacyVM::interpretCases() {
                 ON_OP();
                 throwBadInstruction();
             }
-            m_runGas = toInt63( m_schedule->extcodehashGas );
+            // EIP-2929: charge warm (100) or cold (2600) depending on access status.
+            if ( m_schedule->eip2929Mode ) {
+                bool warm = m_ext->accessAccount( asAddress( m_SP[0] ) );
+                m_runGas = warm ? toInt63( m_schedule->warmStorageReadCost ) :
+                                  toInt63( m_schedule->coldAccountAccessCost );
+            } else {
+                m_runGas = toInt63( m_schedule->extcodehashGas );
+            }
             ON_OP();
             updateIOGas();
             m_SPP[0] = u256{ m_ext->codeHashAt( asAddress( m_SP[0] ) ) };
@@ -1263,7 +1300,14 @@ void LegacyVM::interpretCases() {
         NEXT
 
         CASE( EXTCODECOPY ) {
-            m_runGas = toInt63( m_schedule->extcodecopyGas );
+            // EIP-2929: charge warm (100) or cold (2600) depending on access status.
+            if ( m_schedule->eip2929Mode ) {
+                bool warm = m_ext->accessAccount( asAddress( m_SP[0] ) );
+                m_runGas = warm ? toInt63( m_schedule->warmStorageReadCost ) :
+                                  toInt63( m_schedule->coldAccountAccessCost );
+            } else {
+                m_runGas = toInt63( m_schedule->extcodecopyGas );
+            }
             m_copyMemSize = toInt63( m_SP[3] );
             updateMem( memNeed( m_SP[1], m_SP[3] ) );
             ON_OP();
@@ -1538,7 +1582,14 @@ void LegacyVM::interpretCases() {
 
 
         CASE( SLOAD ) {
-            m_runGas = toInt63( m_schedule->sloadGas );
+            // EIP-2929: charge warm (100) or cold (2100) depending on access status.
+            if ( m_schedule->eip2929Mode ) {
+                bool warm = m_ext->accessStorageKey( m_ext->myAddress, m_SP[0] );
+                m_runGas = warm ? toInt63( m_schedule->warmStorageReadCost ) :
+                                  toInt63( m_schedule->coldSloadCost );
+            } else {
+                m_runGas = toInt63( m_schedule->sloadGas );
+            }
 
             ON_OP();
             updateIOGas();

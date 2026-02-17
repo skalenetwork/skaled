@@ -341,6 +341,15 @@ public:
         return precompiled.at( _a );
     }
 
+    /// EIP-2929: return all precompiled contract addresses for warm-set initialization.
+    std::vector< Address > precompiledAddresses() const {
+        std::vector< Address > addrs;
+        addrs.reserve( precompiled.size() );
+        for ( auto const& p : precompiled )
+            addrs.push_back( p.first );
+        return addrs;
+    }
+
 #ifdef FAIR
     std::pair< bool, bytes > executePrecompiled(
         Address const& _a, bytesConstRef _in, const PrecompiledCallContext& _ctx ) const {

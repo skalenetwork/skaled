@@ -159,6 +159,10 @@ void LegacyVM::caseCreate() {
         CreateResult result = m_ext->create( endowment, gas, initCode, m_OP, salt, m_onOp );
         m_SPP[0] = ( u160 ) result.address;  // Convert address to integer.
 
+        // EIP-2929: add the created address to accessed_addresses immediately.
+        if ( m_schedule->eip2929Mode && result.address != Address{} )
+            m_ext->accessAccount( result.address );
+
         m_returnData = result.output.toBytes();
 
         *m_io_gas_p -= ( createGas - gas );
@@ -207,13 +211,21 @@ bool LegacyVM::caseCallSetup( CallParameters* callParams, bytesRef& o_output ) {
     assert( callParams->valueTransfer == 0 );
     assert( callParams->apparentValue == 0 );
 
-    m_runGas = toInt63( m_schedule->callGas );
-
     callParams->staticCall = ( m_OP == Instruction::STATICCALL || m_ext->staticCall );
 
     bool const haveValueArg = m_OP == Instruction::CALL || m_OP == Instruction::CALLCODE;
 
     Address destinationAddr = asAddress( m_SP[1] );
+
+    // EIP-2929: charge warm (100) or cold (2600) instead of flat callGas (700).
+    if ( m_schedule->eip2929Mode ) {
+        bool warm = m_ext->accessAccount( destinationAddr );
+        m_runGas = warm ? toInt63( m_schedule->warmStorageReadCost ) :
+                          toInt63( m_schedule->coldAccountAccessCost );
+    } else {
+        m_runGas = toInt63( m_schedule->callGas );
+    }
+
     if ( m_OP == Instruction::CALL &&
          ( m_SP[2] > 0 || m_schedule->zeroValueTransferChargesNewAccountGas() ) &&
          !m_ext->exists( destinationAddr ) )

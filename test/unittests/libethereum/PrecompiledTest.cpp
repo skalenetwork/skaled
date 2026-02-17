@@ -310,7 +310,7 @@ BOOST_AUTO_TEST_CASE( modexpCostEIP2565,
     BOOST_REQUIRE_EQUAL( oldFormulaCost, bigint( 13056 ) );
 
     PatchableChainParams enabledPatchParams;
-    enabledPatchParams.setPatchTimestamp( SchainPatchEnum::EIP1559TransactionsPatch, 1 );
+    enabledPatchParams.setPatchTimestamp( SchainPatchEnum::BerlinForkPatch, 1 );
     SchainPatch::init( enabledPatchParams );
     SchainPatch::useLatestBlockTimestamp( 100 );
     bigint eip2565Cost = cost( ref( in ), enabledPatchParams, 0 );

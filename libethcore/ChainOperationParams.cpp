@@ -98,8 +98,8 @@ EVMSchedule const ChainOperationParams::makeEvmSchedule(
     // 2 based on previous - decide by timestamp
     if ( PushZeroPatch::isEnabledWhen( _committedBlockTimestamp ) )
         result = PushZeroPatch::makeSchedule( result );
-    if ( EIP1559TransactionsPatch::isEnabledWhen( _committedBlockTimestamp ) )
-        result = EIP1559TransactionsPatch::makeSchedule( result );
+    if ( BerlinForkPatch::isEnabledWhen( _committedBlockTimestamp ) )
+        result = BerlinForkPatch::makeSchedule( result );
 
 #ifdef FAIR
     if ( BlockRewardsActivationPatch::isEnabled( chainID ) )

@@ -196,7 +196,7 @@ ETH_REGISTER_PRECOMPILED_PRICER( modexp )
     bigint const maxLength( max( modLength, baseLength ) );
     bigint const adjustedExpLength( expLengthAdjust( baseLength + 96, expLength, _in ) );
     bigint const iterationCount = max< bigint >( adjustedExpLength, 1 );
-    if ( EIP1559TransactionsPatch::isEnabledInWorkingBlock() ) {
+    if ( BerlinForkPatch::isEnabledInWorkingBlock() ) {
         bigint const gas = multComplexityEIP2565( maxLength ) * iterationCount / 3;
         return max< bigint >( gas, 200 );
     }

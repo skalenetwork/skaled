@@ -16,6 +16,7 @@ enum class SchainPatchEnum {
     SkipInvalidTransactionsPatch,
     VerifyDaSigsPatch,
     FastConsensusPatch,
+    BerlinForkPatch,
     EIP1559TransactionsPatch,
     VerifyBlsSyncPatch,
     FlexibleDeploymentPatch,

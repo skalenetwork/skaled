@@ -137,6 +137,9 @@ CallResult ExtVM::call( CallParameters& _p ) {
 #endif
     };
     if ( !e.call( _p, gasPrice, origin ) ) {
+        // EIP-2929: propagate parent's warm access sets to child context so that
+        // addresses/storage slots already accessed are visible in the sub-call.
+        e.propagateAccessSets( sub );
         go( depth, e, _p.onOp );
         e.accrueSubState( sub );
     }
@@ -174,6 +177,8 @@ CreateResult ExtVM::create( u256 _endowment, u256& io_gas, bytesConstRef _code, 
     }
 
     if ( !result ) {
+        // EIP-2929: propagate parent's warm access sets to child context.
+        e.propagateAccessSets( sub );
         go( depth, e, _onOp );
         e.accrueSubState( sub );
     }

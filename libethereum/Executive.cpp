@@ -190,6 +190,15 @@ void Executive::accrueSubState( SubState& _parentContext ) {
         _parentContext += m_ext->sub;
 }
 
+void Executive::propagateAccessSets( SubState const& _parentContext ) {
+    if ( m_ext ) {
+        m_ext->sub.accessedAddresses.insert(
+            _parentContext.accessedAddresses.begin(), _parentContext.accessedAddresses.end() );
+        m_ext->sub.accessedStorageKeys.insert(
+            _parentContext.accessedStorageKeys.begin(), _parentContext.accessedStorageKeys.end() );
+    }
+}
+
 void Executive::verifyTransaction( Transaction const& _transaction, time_t _committedBlockTimestamp,
     BlockHeader const& _blockHeader, const State& _state,
     const eth::ChainOperationParams& _chainParams, u256 const& _gasUsed, const u256& _gasPrice,
@@ -311,12 +320,65 @@ bool Executive::execute() {
     Address receiverAddressToPassToEvm = m_t.receiveAddress();
 #endif
 
+    bool result;
     if ( m_t.isCreation() )
-        return create( m_t.sender(), m_t.value(), m_t.gasPrice(),
+        result = create( m_t.sender(), m_t.value(), m_t.gasPrice(),
             m_t.gas() - ( u256 ) m_baseGasRequired, &dataToPassToEvm, m_t.sender() );
     else
-        return call( receiverAddressToPassToEvm, m_t.sender(), m_t.value(), m_t.gasPrice(),
+        result = call( receiverAddressToPassToEvm, m_t.sender(), m_t.value(), m_t.gasPrice(),
             bytesConstRef( &dataToPassToEvm ), m_t.gas() - ( u256 ) m_baseGasRequired );
+
+    // EIP-2929 / EIP-2930: initialize warm access sets before VM execution begins.
+    initEIP2929AccessSets();
+
+    return result;
+}
+
+void Executive::initEIP2929AccessSets() {
+    if ( !m_ext )
+        return;
+
+    EVMSchedule const& schedule = m_ext->evmSchedule();
+    if ( !schedule.eip2929Mode )
+        return;
+
+    SubState& sub = m_ext->sub;
+
+    // EIP-2929: pre-warm tx.sender and tx.to (or created address).
+    sub.accessedAddresses.insert( m_t.sender() );
+    if ( !m_t.isCreation() ) {
+#ifdef BITE
+        sub.accessedAddresses.insert( m_t.decryptedTo() );
+#else
+        sub.accessedAddresses.insert( m_t.receiveAddress() );
+#endif
+    } else {
+        sub.accessedAddresses.insert( m_newAddress );
+    }
+
+    // EIP-2929: pre-warm all precompile addresses.
+    for ( auto const& addr : m_chainParams.precompiledAddresses() ) {
+        sub.accessedAddresses.insert( addr );
+    }
+
+    // EIP-2930: pre-warm addresses and storage keys from the access list.
+    if ( schedule.eip2930Mode && m_t.txType() != TransactionType::Legacy ) {
+        for ( auto const& entryRaw : m_t.accessList() ) {
+            RLP const entry( entryRaw );
+            if ( !entry.isList() || entry.itemCount() != 2 )
+                continue;
+
+            Address addr = entry[0].toHash< Address >();
+            sub.accessedAddresses.insert( addr );
+
+            if ( entry[1].isList() ) {
+                for ( size_t i = 0; i < entry[1].itemCount(); ++i ) {
+                    u256 key = entry[1][i].toInt< u256 >();
+                    sub.accessedStorageKeys.insert( { addr, key } );
+                }
+            }
+        }
+    }
 }
 
 bool Executive::call( Address const& _receiveAddress, Address const& _senderAddress,

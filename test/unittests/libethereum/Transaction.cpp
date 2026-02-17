@@ -132,7 +132,7 @@ BOOST_AUTO_TEST_CASE(
     Transaction tx( txRlp, CheckTransaction::None );
 
     // v field is 27 -> is a pre-EIP tx -> will not have the chainId field set
-    BOOST_REQUIRE_THROW( tx.checkChainId( 1234 ) , InvalidTransactionFormat);
+    BOOST_REQUIRE_THROW( tx.checkChainId( 1234 ), InvalidTransactionFormat );
 
     BOOST_REQUIRE( tx.toBytes() == txRlp );
 
@@ -360,20 +360,269 @@ BOOST_AUTO_TEST_CASE( accessListIntrinsicGasEIP2930 ) {
         "07b6ff742311b04dab760bb3bc206054332879" );
     Transaction tx( txRlp, CheckTransaction::None, false, true );
 
-    EVMSchedule patchedSchedule = EIP1559TransactionsPatch::makeSchedule( IstanbulSchedule );
+    EVMSchedule patchedSchedule = BerlinForkPatch::makeSchedule( IstanbulSchedule );
     int64_t gasWithoutEIP2930 = tx.baseGasRequired( IstanbulSchedule );
     int64_t gasWithEIP2930 = tx.baseGasRequired( patchedSchedule );
     BOOST_REQUIRE_EQUAL( gasWithEIP2930 - gasWithoutEIP2930, 6200 );
 }
 
 BOOST_AUTO_TEST_CASE( eip2929ScheduleValues ) {
-    EVMSchedule patchedSchedule = EIP1559TransactionsPatch::makeSchedule( IstanbulSchedule );
+    EVMSchedule patchedSchedule = BerlinForkPatch::makeSchedule( IstanbulSchedule );
     BOOST_REQUIRE( patchedSchedule.eip2929Mode );
+    BOOST_REQUIRE( patchedSchedule.eip2930Mode );
+    BOOST_REQUIRE( patchedSchedule.eip2565Mode );
     BOOST_REQUIRE_EQUAL( patchedSchedule.sloadGas, patchedSchedule.coldSloadCost );
     BOOST_REQUIRE_EQUAL( patchedSchedule.balanceGas, patchedSchedule.coldAccountAccessCost );
     BOOST_REQUIRE_EQUAL( patchedSchedule.extcodesizeGas, patchedSchedule.coldAccountAccessCost );
     BOOST_REQUIRE_EQUAL( patchedSchedule.extcodecopyGas, patchedSchedule.coldAccountAccessCost );
     BOOST_REQUIRE_EQUAL( patchedSchedule.extcodehashGas, patchedSchedule.coldAccountAccessCost );
+    // EIP-2929 SSTORE adjustments
+    BOOST_REQUIRE_EQUAL( patchedSchedule.sstoreUnchangedGas, patchedSchedule.warmStorageReadCost );
+    BOOST_REQUIRE_EQUAL( patchedSchedule.sstoreResetGas, 5000u - patchedSchedule.coldSloadCost );
+    // Verify constant values
+    BOOST_REQUIRE_EQUAL( patchedSchedule.warmStorageReadCost, 100u );
+    BOOST_REQUIRE_EQUAL( patchedSchedule.coldSloadCost, 2100u );
+    BOOST_REQUIRE_EQUAL( patchedSchedule.coldAccountAccessCost, 2600u );
+    BOOST_REQUIRE_EQUAL( patchedSchedule.txAccessListAddressGas, 2400u );
+    BOOST_REQUIRE_EQUAL( patchedSchedule.txAccessListStorageKeyGas, 1900u );
+}
+
+// EIP-2929: test SubState access set tracking
+BOOST_AUTO_TEST_CASE( eip2929SubStateAccessSets ) {
+    SubState sub;
+
+    Address addr1( "0x1000000000000000000000000000000000000001" );
+    Address addr2( "0x2000000000000000000000000000000000000002" );
+
+    // Initially empty
+    BOOST_REQUIRE( sub.accessedAddresses.empty() );
+    BOOST_REQUIRE( sub.accessedStorageKeys.empty() );
+
+    // Insert an address — first time should report not present (cold)
+    auto result1 = sub.accessedAddresses.insert( addr1 );
+    BOOST_REQUIRE( result1.second );  // was inserted = cold
+
+    // Second insert of same address — should report already present (warm)
+    auto result2 = sub.accessedAddresses.insert( addr1 );
+    BOOST_REQUIRE( !result2.second );  // was NOT inserted = warm
+
+    // Different address is cold
+    auto result3 = sub.accessedAddresses.insert( addr2 );
+    BOOST_REQUIRE( result3.second );  // cold
+
+    // Storage key tracking
+    u256 key1 = 42;
+    u256 key2 = 99;
+
+    auto sResult1 = sub.accessedStorageKeys.insert( { addr1, key1 } );
+    BOOST_REQUIRE( sResult1.second );  // cold
+
+    auto sResult2 = sub.accessedStorageKeys.insert( { addr1, key1 } );
+    BOOST_REQUIRE( !sResult2.second );  // warm
+
+    // Same address different key is cold
+    auto sResult3 = sub.accessedStorageKeys.insert( { addr1, key2 } );
+    BOOST_REQUIRE( sResult3.second );  // cold
+
+    // Same key different address is cold
+    auto sResult4 = sub.accessedStorageKeys.insert( { addr2, key1 } );
+    BOOST_REQUIRE( sResult4.second );  // cold
+}
+
+// EIP-2929: test SubState merge (operator+=)
+BOOST_AUTO_TEST_CASE( eip2929SubStateMerge ) {
+    SubState parent;
+    SubState child;
+
+    Address addr1( "0x1000000000000000000000000000000000000001" );
+    Address addr2( "0x2000000000000000000000000000000000000002" );
+    Address addr3( "0x3000000000000000000000000000000000000003" );
+
+    parent.accessedAddresses.insert( addr1 );
+    parent.accessedAddresses.insert( addr2 );
+    parent.accessedStorageKeys.insert( { addr1, u256( 1 ) } );
+
+    child.accessedAddresses.insert( addr2 );
+    child.accessedAddresses.insert( addr3 );
+    child.accessedStorageKeys.insert( { addr1, u256( 2 ) } );
+    child.accessedStorageKeys.insert( { addr3, u256( 1 ) } );
+
+    parent += child;
+
+    // Merged should contain addr1, addr2, addr3
+    BOOST_REQUIRE_EQUAL( parent.accessedAddresses.size(), 3u );
+    BOOST_REQUIRE( parent.accessedAddresses.count( addr1 ) );
+    BOOST_REQUIRE( parent.accessedAddresses.count( addr2 ) );
+    BOOST_REQUIRE( parent.accessedAddresses.count( addr3 ) );
+
+    // Merged storage keys: (addr1,1), (addr1,2), (addr3,1)
+    BOOST_REQUIRE_EQUAL( parent.accessedStorageKeys.size(), 3u );
+    BOOST_REQUIRE( parent.accessedStorageKeys.count( { addr1, u256( 1 ) } ) );
+    BOOST_REQUIRE( parent.accessedStorageKeys.count( { addr1, u256( 2 ) } ) );
+    BOOST_REQUIRE( parent.accessedStorageKeys.count( { addr3, u256( 1 ) } ) );
+}
+
+// EIP-2929: test SubState clear resets access sets
+BOOST_AUTO_TEST_CASE( eip2929SubStateClear ) {
+    SubState sub;
+
+    Address addr1( "0x1000000000000000000000000000000000000001" );
+    sub.accessedAddresses.insert( addr1 );
+    sub.accessedStorageKeys.insert( { addr1, u256( 1 ) } );
+    sub.refunds = 100;
+
+    BOOST_REQUIRE( !sub.accessedAddresses.empty() );
+    BOOST_REQUIRE( !sub.accessedStorageKeys.empty() );
+
+    sub.clear();
+
+    BOOST_REQUIRE( sub.accessedAddresses.empty() );
+    BOOST_REQUIRE( sub.accessedStorageKeys.empty() );
+    BOOST_REQUIRE_EQUAL( sub.refunds, 0 );
+}
+
+// EIP-2929: test schedule SSTORE_RESET_GAS adjustment
+BOOST_AUTO_TEST_CASE( eip2929SstoreResetGasAdjustment ) {
+    // Pre-Berlin: sstoreResetGas = 5000
+    BOOST_REQUIRE_EQUAL( IstanbulSchedule.sstoreResetGas, 5000u );
+
+    // Post-Berlin: sstoreResetGas = 5000 - COLD_SLOAD_COST = 2900
+    EVMSchedule berlinSchedule = BerlinForkPatch::makeSchedule( IstanbulSchedule );
+    BOOST_REQUIRE_EQUAL( berlinSchedule.sstoreResetGas, 2900u );
+
+    // SLOAD_GAS (sstoreUnchangedGas) becomes WARM_STORAGE_READ_COST
+    BOOST_REQUIRE_EQUAL( berlinSchedule.sstoreUnchangedGas, 100u );
+}
+
+// EIP-2718: test typed transaction envelope format
+BOOST_AUTO_TEST_CASE( eip2718TypedTransactionTypes ) {
+    // Type 1 (EIP-2930 access list tx)
+    auto type1Rlp = fromHex(
+        "0x01f8c38197018504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b0180f85bf85994de"
+        "0b295669a9fd93d5f28d9ec85e40f4cb697baef842a00000000000000000000000000000000000000000000000"
+        "000000000000000003a0000000000000000000000000000000000000000000000000000000000000000780a0b0"
+        "3eaf481958e22fc39bd1d526eb9255be1e6625614f02ca939e51c3d7e64bcaa05f675640c04bb050d27bd1f39c"
+        "07b6ff742311b04dab760bb3bc206054332879" );
+    Transaction tx1( type1Rlp, CheckTransaction::None, false, true );
+    BOOST_REQUIRE_EQUAL( tx1.txType(), TransactionType::Type1 );
+
+    // Type 2 (EIP-1559 tx)
+    auto type2Rlp = fromHex(
+        "0x02f8c98197808504a817c8008504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b0180"
+        "f85bf85994de0b295669a9fd93d5f28d9ec85e40f4cb697baef842a00000000000000000000000000000000000"
+        "000000000000000000000000000003a00000000000000000000000000000000000000000000000000000000000"
+        "00000780a0f1a407dfc1a9f782001d89f617e9b3a2f295378533784fb39960dea60beea2d0a05ac3da2946554b"
+        "a3d5721850f4f89ee7a0c38e4acab7130908e7904d13174388" );
+    Transaction tx2( type2Rlp, CheckTransaction::None, false, true );
+    BOOST_REQUIRE_EQUAL( tx2.txType(), TransactionType::Type2 );
+
+    // Legacy tx
+    auto legacyRlp = fromHex(
+        "0xf86d800182521c94095e7baea6a6c7c4c2dfeb977efac326af552d870a8e0358ac39584bc98a7c9"
+        "79f984b031ba048b55bfa915ac795c431978d8a6a992b628d557da5ff759b307d495a36649353a0ef"
+        "ffd310ac743f371de3b9f7f9cb56c0b28ad43601b4ab949f53faa07bd2c804" );
+    Transaction txLegacy( legacyRlp, CheckTransaction::None );
+    BOOST_REQUIRE_EQUAL( txLegacy.txType(), TransactionType::Legacy );
+}
+
+// EIP-2718: typed transactions roundtrip encoding
+BOOST_AUTO_TEST_CASE( eip2718RoundtripEncoding ) {
+    // Type 1 tx should roundtrip encode/decode correctly
+    auto type1Rlp = fromHex(
+        "0x01f8c38197018504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b0180f85bf85994de"
+        "0b295669a9fd93d5f28d9ec85e40f4cb697baef842a00000000000000000000000000000000000000000000000"
+        "000000000000000003a0000000000000000000000000000000000000000000000000000000000000000780a0b0"
+        "3eaf481958e22fc39bd1d526eb9255be1e6625614f02ca939e51c3d7e64bcaa05f675640c04bb050d27bd1f39c"
+        "07b6ff742311b04dab760bb3bc206054332879" );
+    Transaction tx1( type1Rlp, CheckTransaction::None, false, true );
+    auto reencoded1 = tx1.toBytes();
+    BOOST_REQUIRE( reencoded1 == type1Rlp );
+
+    // Type 2 tx should roundtrip
+    auto type2Rlp = fromHex(
+        "0x02f8c98197808504a817c8008504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b0180"
+        "f85bf85994de0b295669a9fd93d5f28d9ec85e40f4cb697baef842a00000000000000000000000000000000000"
+        "000000000000000000000000000003a00000000000000000000000000000000000000000000000000000000000"
+        "00000780a0f1a407dfc1a9f782001d89f617e9b3a2f295378533784fb39960dea60beea2d0a05ac3da2946554b"
+        "a3d5721850f4f89ee7a0c38e4acab7130908e7904d13174388" );
+    Transaction tx2( type2Rlp, CheckTransaction::None, false, true );
+    auto reencoded2 = tx2.toBytes();
+    BOOST_REQUIRE( reencoded2 == type2Rlp );
+}
+
+// EIP-2930: access list parsing and gas cost calculation
+BOOST_AUTO_TEST_CASE( eip2930AccessListGasCost ) {
+    EVMSchedule berlinSchedule = BerlinForkPatch::makeSchedule( IstanbulSchedule );
+
+    // Type 1 tx with 1 address + 2 storage keys
+    auto txRlp = fromHex(
+        "0x01f8c38197018504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b0180f85bf85994de"
+        "0b295669a9fd93d5f28d9ec85e40f4cb697baef842a00000000000000000000000000000000000000000000000"
+        "000000000000000003a0000000000000000000000000000000000000000000000000000000000000000780a0b0"
+        "3eaf481958e22fc39bd1d526eb9255be1e6625614f02ca939e51c3d7e64bcaa05f675640c04bb050d27bd1f39c"
+        "07b6ff742311b04dab760bb3bc206054332879" );
+    Transaction tx( txRlp, CheckTransaction::None, false, true );
+    BOOST_REQUIRE_EQUAL( tx.accessList().size(), 1u );
+
+    // Expected: 1 * 2400 (address) + 2 * 1900 (keys) = 6200
+    int64_t accessListGas =
+        TransactionBase::accessListGasRequired( tx.accessList(), berlinSchedule );
+    BOOST_REQUIRE_EQUAL( accessListGas, 6200 );
+
+    // Empty access list should cost 0
+    auto txEmptyAL = fromHex(
+        "0x01f8678197808504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b0180c001a01ebdc5"
+        "46c8b85511b7ba831f47c4981069d7af972d10b7dce2c57225cb5df6a7a055ae1e84fea41d37589eb740a0a930"
+        "17a5cd0e9f10ee50f165bf4b1b4c78ddae" );
+    Transaction tx2( txEmptyAL, CheckTransaction::None, false, true );
+    BOOST_REQUIRE_EQUAL( tx2.accessList().size(), 0u );
+    int64_t emptyGas = TransactionBase::accessListGasRequired( tx2.accessList(), berlinSchedule );
+    BOOST_REQUIRE_EQUAL( emptyGas, 0 );
+}
+
+// EIP-2565: verify the new modexp complexity formula
+BOOST_AUTO_TEST_CASE( eip2565MultComplexityFormula ) {
+    // The EIP-2565 formula: words = ceil(max_length / 8); complexity = words^2
+    // For max_length=32 (from the test vector): words = ceil(32/8) = 4, complexity = 16
+    // For max_length=64: words = ceil(64/8) = 8, complexity = 64
+    // For max_length=1: words = ceil(1/8) = 1, complexity = 1
+    // For max_length=8: words = ceil(8/8) = 1, complexity = 1
+    // For max_length=9: words = ceil(9/8) = 2, complexity = 4
+
+    // The BerlinForkPatch enables eip2565Mode
+    EVMSchedule berlinSchedule = BerlinForkPatch::makeSchedule( IstanbulSchedule );
+    BOOST_REQUIRE( berlinSchedule.eip2565Mode );
+}
+
+// EIP-2929: verify ExtVMFace accessAccount/accessStorageKey work correctly
+BOOST_AUTO_TEST_CASE( eip2929ExtVMFaceAccessTracking ) {
+    // Create a minimal ExtVMFace-derived object to test access tracking.
+    // We test only the virtual methods on the base class since they modify
+    // the sub.accessedAddresses / sub.accessedStorageKeys sets.
+    SubState sub;
+    Address addr1( "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" );
+    Address addr2( "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" );
+    u256 key1( 100 );
+
+    // First access to addr1 should be cold (returns false = was not warm)
+    auto r1 = sub.accessedAddresses.insert( addr1 );
+    BOOST_REQUIRE( r1.second );  // cold
+
+    // Second access should be warm
+    auto r2 = sub.accessedAddresses.insert( addr1 );
+    BOOST_REQUIRE( !r2.second );  // warm
+
+    // First storage access
+    auto r3 = sub.accessedStorageKeys.insert( { addr1, key1 } );
+    BOOST_REQUIRE( r3.second );  // cold
+
+    // Second storage access
+    auto r4 = sub.accessedStorageKeys.insert( { addr1, key1 } );
+    BOOST_REQUIRE( !r4.second );  // warm
+
+    // Different address same key is still cold
+    auto r5 = sub.accessedStorageKeys.insert( { addr2, key1 } );
+    BOOST_REQUIRE( r5.second );  // cold
 }
 
 BOOST_AUTO_TEST_CASE( InvaidTransaction ) {
@@ -487,7 +736,7 @@ BOOST_AUTO_TEST_CASE( transactionExceptionOutput ) {
         "Error output TransactionException::InvalidContractDeployer" );
     buffer.str( std::string() );
 
-#ifdef FAIR 
+#ifdef FAIR
     buffer << TransactionException::UnsupportedDencunOpcode;
     BOOST_CHECK_MESSAGE( buffer.str() == "UnsupportedDencunOpcode",
         "Error output TransactionException::UnsupportedDencunOpcode" );
@@ -582,12 +831,12 @@ BOOST_AUTO_TEST_CASE( CheckLowSForUnsignedTransactionThrows,
 dev::bytes createTestTransactionRlp( const dev::bytes& txnData, const dev::Address& toAddress ) {
     // create a legacy transaction
     RLPStream txnRlpStreamWithoutSignature( 6 );
-    txnRlpStreamWithoutSignature << 0;              // nonce
-    txnRlpStreamWithoutSignature << 100000;         // gasPrice
-    txnRlpStreamWithoutSignature << 100000;         // gasLimit
-    txnRlpStreamWithoutSignature << toAddress;   // to
-    txnRlpStreamWithoutSignature << 0;              // value
-    txnRlpStreamWithoutSignature << txnData;        // data
+    txnRlpStreamWithoutSignature << 0;          // nonce
+    txnRlpStreamWithoutSignature << 100000;     // gasPrice
+    txnRlpStreamWithoutSignature << 100000;     // gasLimit
+    txnRlpStreamWithoutSignature << toAddress;  // to
+    txnRlpStreamWithoutSignature << 0;          // value
+    txnRlpStreamWithoutSignature << txnData;    // data
 
     auto txnHashWithoutSignature = dev::sha3( txnRlpStreamWithoutSignature.out() );
 
@@ -596,16 +845,16 @@ dev::bytes createTestTransactionRlp( const dev::bytes& txnData, const dev::Addre
     SignatureStruct sigStruct = SignatureStruct( txnSignature );
 
     RLPStream txnRlp( 9 );
-    txnRlp << 0;              // nonce
-    txnRlp << 100000;         // gasPrice
-    txnRlp << 100000;         // gasLimit
-    txnRlp << toAddress;      // to
-    txnRlp << 0;              // value
-    txnRlp << txnData;        // data
+    txnRlp << 0;          // nonce
+    txnRlp << 100000;     // gasPrice
+    txnRlp << 100000;     // gasLimit
+    txnRlp << toAddress;  // to
+    txnRlp << 0;          // value
+    txnRlp << txnData;    // data
 
-    txnRlp << sigStruct.v + 27;        // v
-    txnRlp << u256(sigStruct.r);       // r
-    txnRlp << u256(sigStruct.s);       // s
+    txnRlp << sigStruct.v + 27;     // v
+    txnRlp << u256( sigStruct.r );  // r
+    txnRlp << u256( sigStruct.s );  // s
 
     auto rlpBytes = txnRlp.out();
     return dev::bytes( rlpBytes.begin(), rlpBytes.end() );
@@ -650,8 +899,9 @@ BOOST_AUTO_TEST_CASE( constructBITETxnFromRlp ) {
 
     // append random address to the end of the BITE transaction
     dev::bytes validBITETxnData = prepareBITEPayloadRlp( epochId, encryptedMessage.toBytes() );
-    
-    dev::Address biteAddress = dev::Address(std::string(BITE_ADDRESS_AS_STRING)); // BITE ADDRESS
+
+    dev::Address biteAddress =
+        dev::Address( std::string( BITE_ADDRESS_AS_STRING ) );  // BITE ADDRESS
     dev::bytes validBITETxnRlp = createTestTransactionRlp( validBITETxnData, biteAddress );
     Transaction validBITETxn(
         validBITETxnRlp, dev::eth::CheckTransaction::Everything, false, true, true );
@@ -663,8 +913,9 @@ BOOST_AUTO_TEST_CASE( constructBITETxnFromRlp ) {
     // change non-zero byte to non-zero byte in magicNumber and make the txn non-BITE
     dev::bytes validNonBITETxnData = prepareBITEPayloadRlp( epochId, encryptedMessage.toBytes() );
 
-    dev::Address toAddressNonBITE = dev::Address::random(); // non-BITE ADDRESS
-    dev::bytes validNonBITETxnRlp = createTestTransactionRlp( validNonBITETxnData, toAddressNonBITE );
+    dev::Address toAddressNonBITE = dev::Address::random();  // non-BITE ADDRESS
+    dev::bytes validNonBITETxnRlp =
+        createTestTransactionRlp( validNonBITETxnData, toAddressNonBITE );
     Transaction validNonBITETxn(
         validNonBITETxnRlp, dev::eth::CheckTransaction::Everything, false, true, true );
     BOOST_REQUIRE( !validNonBITETxn.isBite() );
@@ -677,18 +928,20 @@ BOOST_AUTO_TEST_CASE( constructBITETxnFromRlp ) {
 
     // wrong epochId
     BOOST_REQUIRE_THROW( validBITETxn.checkAndValidateBITETransaction( epochId + 1 ),
-                         dev::eth::InvalidBITETransaction );
+        dev::eth::InvalidBITETransaction );
 
     // Invalid ciphered key
-    encryptedMessage.keys = { libBLS::CipheredKey( libBLS::algebra::G2Point::random(), encryptedMessage.keys[0].V, libBLS::algebra::G1Point::random() ) };
+    encryptedMessage.keys = { libBLS::CipheredKey( libBLS::algebra::G2Point::random(),
+        encryptedMessage.keys[0].V, libBLS::algebra::G1Point::random() ) };
     auto invalidEncryptedAESKeyRaw = encryptedMessage.getKeys()[0].toBytes();
-    dev::bytes invalidEncryptedAESKey( invalidEncryptedAESKeyRaw.begin(), invalidEncryptedAESKeyRaw.end() );
+    dev::bytes invalidEncryptedAESKey(
+        invalidEncryptedAESKeyRaw.begin(), invalidEncryptedAESKeyRaw.end() );
     dev::bytes invalidBITETxnData = prepareBITEPayloadRlp( epochId, encryptedMessage.toBytes() );
     dev::bytes invalidBITETxnRlp = createTestTransactionRlp( invalidBITETxnData, biteAddress );
     Transaction invalidBITETxn(
         invalidBITETxnRlp, dev::eth::CheckTransaction::Everything, false, true, true );
-    BOOST_REQUIRE_THROW(
-        invalidBITETxn.checkAndValidateBITETransaction( epochId ), dev::eth::InvalidBITETransaction );
+    BOOST_REQUIRE_THROW( invalidBITETxn.checkAndValidateBITETransaction( epochId ),
+        dev::eth::InvalidBITETransaction );
 
     RLPStream tooShortRlp;
 
@@ -706,23 +959,21 @@ BOOST_AUTO_TEST_CASE( constructBITETxnFromRlp ) {
 
     // Empty ciphered key and data + missing to address
     tooShortRlp.appendList( 2 );
-    tooShortRlp << epochId << dev::bytes() ;
+    tooShortRlp << epochId << dev::bytes();
     invalidTooShortBITETxnData = tooShortRlp.out();
-    invalidTooShortBITETxnRlp =
-        createTestTransactionRlp( invalidTooShortBITETxnData, biteAddress );
+    invalidTooShortBITETxnRlp = createTestTransactionRlp( invalidTooShortBITETxnData, biteAddress );
     invalidTooShortBITETxn = Transaction(
         invalidTooShortBITETxnRlp, dev::eth::CheckTransaction::Everything, false, true, true );
     BOOST_REQUIRE_THROW( invalidTooShortBITETxn.checkAndValidateBITETransaction( epochId ),
         dev::eth::BITETransactionTooShort );
     tooShortRlp.clear();
-    
+
     // Missing data & To address
     encryptedMessage.data = std::make_shared< dev::bytes >();
     tooShortRlp.appendList( 2 );
     tooShortRlp << epochId << encryptedMessage.toBytes();
     invalidTooShortBITETxnData = tooShortRlp.out();
-    invalidTooShortBITETxnRlp =
-            createTestTransactionRlp( invalidTooShortBITETxnData, biteAddress );
+    invalidTooShortBITETxnRlp = createTestTransactionRlp( invalidTooShortBITETxnData, biteAddress );
     invalidTooShortBITETxn = Transaction(
         invalidTooShortBITETxnRlp, dev::eth::CheckTransaction::Everything, false, true, true );
     BOOST_REQUIRE_THROW( invalidTooShortBITETxn.checkAndValidateBITETransaction( epochId ),
@@ -745,7 +996,7 @@ BOOST_AUTO_TEST_CASE( constructBITETxnFromRlp ) {
 BOOST_AUTO_TEST_CASE( constructBITETxnWithTwoPayloads ) {
     uint64_t epochId1 = 5;
     uint64_t epochId2 = epochId1 + 1;
-    uint64_t currentEpochId = epochId1; // We'll validate against epochId1
+    uint64_t currentEpochId = epochId1;  // We'll validate against epochId1
 
     libBLS::init();
     libBLS::TEPublicKey publicKey1 = libBLS::TEPublicKey::random();
@@ -756,7 +1007,8 @@ BOOST_AUTO_TEST_CASE( constructBITETxnWithTwoPayloads ) {
     std::string data = dev::h256::random().hex();
     dev::bytes messageBytes = prepareBITEDataRlp( toAddress, dev::fromHex( data ) );
 
-    auto encryptedMessage = libBLS::ThresholdEncryption::encrypt( messageBytes, { publicKey1, publicKey2 } );
+    auto encryptedMessage =
+        libBLS::ThresholdEncryption::encrypt( messageBytes, { publicKey1, publicKey2 } );
     auto encryptedBITEDataBytes = encryptedMessage.toBytes();
 
     // Create payload with 2 epoch ids
@@ -767,9 +1019,11 @@ BOOST_AUTO_TEST_CASE( constructBITETxnWithTwoPayloads ) {
 
     auto rlpBytes = bitePayload.out();
     dev::bytes twoPayloadBITETxnData = dev::bytes( rlpBytes.begin(), rlpBytes.end() );
-    
-    dev::Address biteAddress = dev::Address(std::string(BITE_ADDRESS_AS_STRING)); // BITE ADDRESS
-    dev::bytes twoPayloadBITETxnRlp = createTestTransactionRlp( twoPayloadBITETxnData, biteAddress );
+
+    dev::Address biteAddress =
+        dev::Address( std::string( BITE_ADDRESS_AS_STRING ) );  // BITE ADDRESS
+    dev::bytes twoPayloadBITETxnRlp =
+        createTestTransactionRlp( twoPayloadBITETxnData, biteAddress );
     Transaction twoPayloadBITETxn(
         twoPayloadBITETxnRlp, dev::eth::CheckTransaction::Everything, false, true, true );
 
@@ -778,8 +1032,9 @@ BOOST_AUTO_TEST_CASE( constructBITETxnWithTwoPayloads ) {
     BOOST_REQUIRE_NO_THROW( twoPayloadBITETxn.checkAndValidateBITETransaction( currentEpochId ) );
 
     // should throw because currentEpochId doesn't match
-    BOOST_REQUIRE_THROW( twoPayloadBITETxn.checkAndValidateBITETransaction( epochId1 + epochId2 + 1 ),
-                         dev::eth::InvalidBITETransaction );
+    BOOST_REQUIRE_THROW(
+        twoPayloadBITETxn.checkAndValidateBITETransaction( epochId1 + epochId2 + 1 ),
+        dev::eth::InvalidBITETransaction );
 
     BOOST_REQUIRE_NO_THROW( twoPayloadBITETxn.checkAndValidateBITETransaction( epochId2 ) );
 
@@ -791,20 +1046,24 @@ BOOST_AUTO_TEST_CASE( constructBITETxnWithTwoPayloads ) {
     wrongNumberOfElementsPayload << encryptedBITEDataBytes;
 
     auto wrongNumberOfElementsRlpBytes = wrongNumberOfElementsPayload.out();
-    dev::bytes threeEpochBITETxnData = dev::bytes( wrongNumberOfElementsRlpBytes.begin(),
-                                                   wrongNumberOfElementsRlpBytes.end() );
+    dev::bytes threeEpochBITETxnData =
+        dev::bytes( wrongNumberOfElementsRlpBytes.begin(), wrongNumberOfElementsRlpBytes.end() );
 
-    dev::bytes wrongNumberOfElementsBITETxnRlp = createTestTransactionRlp( threeEpochBITETxnData,
-                                                                           biteAddress );
+    dev::bytes wrongNumberOfElementsBITETxnRlp =
+        createTestTransactionRlp( threeEpochBITETxnData, biteAddress );
     Transaction wrongNumberOfElementsBITETxn( wrongNumberOfElementsBITETxnRlp,
-                                   dev::eth::CheckTransaction::Everything, false, true, true );
+        dev::eth::CheckTransaction::Everything, false, true, true );
 
     BOOST_REQUIRE( wrongNumberOfElementsBITETxn.isBite() );
 
     // Should throw with any epochId - 3 elements is not allowed
-    BOOST_REQUIRE_THROW( wrongNumberOfElementsBITETxn.checkAndValidateBITETransaction( epochId1 ), dev::eth::InvalidBITETransaction );
-    BOOST_REQUIRE_THROW( wrongNumberOfElementsBITETxn.checkAndValidateBITETransaction( epochId2 ), dev::eth::InvalidBITETransaction );
-    BOOST_REQUIRE_THROW( wrongNumberOfElementsBITETxn.checkAndValidateBITETransaction( epochId1 + epochId2 + 1 ), dev::eth::InvalidBITETransaction );
+    BOOST_REQUIRE_THROW( wrongNumberOfElementsBITETxn.checkAndValidateBITETransaction( epochId1 ),
+        dev::eth::InvalidBITETransaction );
+    BOOST_REQUIRE_THROW( wrongNumberOfElementsBITETxn.checkAndValidateBITETransaction( epochId2 ),
+        dev::eth::InvalidBITETransaction );
+    BOOST_REQUIRE_THROW(
+        wrongNumberOfElementsBITETxn.checkAndValidateBITETransaction( epochId1 + epochId2 + 1 ),
+        dev::eth::InvalidBITETransaction );
 
     // epochId doesn't match and only 1 encrypted AES keys
     libBLS::TEPublicKey publicKey3 = libBLS::TEPublicKey::random();
@@ -819,7 +1078,7 @@ BOOST_AUTO_TEST_CASE( constructBITETxnWithTwoPayloads ) {
 
     auto mismatchRlpBytes = mismatchPayload.out();
     dev::bytes mismatchBITETxnData = dev::bytes( mismatchRlpBytes.begin(), mismatchRlpBytes.end() );
-    
+
     dev::bytes mismatchBITETxnRlp = createTestTransactionRlp( mismatchBITETxnData, biteAddress );
     Transaction mismatchBITETxn(
         mismatchBITETxnRlp, dev::eth::CheckTransaction::Everything, false, true, true );
@@ -827,20 +1086,18 @@ BOOST_AUTO_TEST_CASE( constructBITETxnWithTwoPayloads ) {
     BOOST_REQUIRE( mismatchBITETxn.isBite() );
 
     BOOST_REQUIRE_THROW( mismatchBITETxn.checkAndValidateBITETransaction( currentEpochId ),
-                         dev::eth::InvalidBITETransaction );
+        dev::eth::InvalidBITETransaction );
     // should not throw when validating against proper epochId
     BOOST_REQUIRE_NO_THROW( mismatchBITETxn.checkAndValidateBITETransaction( epochId2 ) );
 
     // 2 encrypted AES keys submitted, but one key is corrupt
-    auto corruptEncryptedMessage = libBLS::ThresholdEncryption::encrypt( messageBytes, { publicKey1, publicKey2 } );
-    
+    auto corruptEncryptedMessage =
+        libBLS::ThresholdEncryption::encrypt( messageBytes, { publicKey1, publicKey2 } );
+
     // Corrupt the first key by replacing it with a random one
-    corruptEncryptedMessage.keys[0] = libBLS::CipheredKey(
-        libBLS::algebra::G2Point::random(),
-        corruptEncryptedMessage.keys[0].V,
-        libBLS::algebra::G1Point::random()
-    );
-    
+    corruptEncryptedMessage.keys[0] = libBLS::CipheredKey( libBLS::algebra::G2Point::random(),
+        corruptEncryptedMessage.keys[0].V, libBLS::algebra::G1Point::random() );
+
     auto corruptEncryptedBITEDataBytes = corruptEncryptedMessage.toBytes();
 
     RLPStream corruptPayload;
@@ -850,18 +1107,18 @@ BOOST_AUTO_TEST_CASE( constructBITETxnWithTwoPayloads ) {
 
     auto corruptRlpBytes = corruptPayload.out();
     dev::bytes corruptBITETxnData = dev::bytes( corruptRlpBytes.begin(), corruptRlpBytes.end() );
-    
+
     dev::bytes corruptBITETxnRlp = createTestTransactionRlp( corruptBITETxnData, biteAddress );
     Transaction corruptBITETxn(
         corruptBITETxnRlp, dev::eth::CheckTransaction::Everything, false, true, true );
 
     BOOST_REQUIRE( corruptBITETxn.isBite() );
-    
+
     // Should throw due to corrupt key in ciphertext
     BOOST_REQUIRE_THROW( corruptBITETxn.checkAndValidateBITETransaction( currentEpochId ),
-                         dev::eth::InvalidBITETransaction );
+        dev::eth::InvalidBITETransaction );
     BOOST_REQUIRE_THROW( corruptBITETxn.checkAndValidateBITETransaction( epochId2 ),
-                         dev::eth::InvalidBITETransaction );
+        dev::eth::InvalidBITETransaction );
 }
 #endif
 
