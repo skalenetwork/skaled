@@ -124,8 +124,10 @@ bigint dev::parseBigEndianRightPadded(
     bytesConstRef _in, bigint const& _begin, bigint const& _count ) {
     if ( _begin > _in.count() )
         return 0;
-    assert( _count <= numeric_limits< size_t >::max() / 8 );  // Otherwise, the return value would
-                                                              // not fit in the memory.
+
+    if ( _count > numeric_limits< size_t >::max() / 8 )
+        // Otherwise, the return value would not fit in the memory.
+        BOOST_THROW_EXCEPTION( ValueTooLarge() );
 
     size_t const begin{ _begin };
     size_t const count{ _count };
@@ -136,6 +138,8 @@ bigint dev::parseBigEndianRightPadded(
     bigint ret = fromBigEndian< bigint >( cropped );
     // shift as if we had right-padding zeroes
     assert( count - cropped.count() <= numeric_limits< size_t >::max() / 8 );
+    if ( count - cropped.count() > numeric_limits< size_t >::max() / 8 )
+        BOOST_THROW_EXCEPTION( ValueTooLarge() );
     ret <<= 8 * ( count - cropped.count() );
 
     return ret;
