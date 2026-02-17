@@ -41,7 +41,7 @@ struct VerifiedBlockRef {
 #ifdef BITE
     DecryptedTransactions decryptedTransactions = DecryptedTransactions{
 #ifdef BITE2
-        std::make_shared< DecryptedCATxsMap >(),
+        std::make_shared< DecryptedCTXTxsMap >(),
 #endif  // BITE2
         std::make_shared< DecryptedRegularTxsMap >()
     };  ///< Decrypted transactions

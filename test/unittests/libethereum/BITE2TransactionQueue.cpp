@@ -19,7 +19,7 @@
 
 #include <libethereum/BITE2TransactionQueue.h>
 #include <libethereum/Transaction.h>
-#include <libconsensus/node/BiteConstants.h>
+#include <libconsensus/bite/Constants.h>
 #include <test/tools/libtesteth/TestHelper.h>
 
 using namespace std;
@@ -97,7 +97,7 @@ BOOST_AUTO_TEST_CASE( dropGood ) {
     Secret sec = Secret( "0x45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8" );
 
     bytes ctxData;
-    ctxData.insert( ctxData.end(), std::begin(BITE_FUNCTION_SELECTOR_AS_BYTE_ARRAY), std::end(BITE_FUNCTION_SELECTOR_AS_BYTE_ARRAY ) );
+    ctxData.insert( ctxData.end(), std::begin(BITE2_FUNCTION_SELECTOR_AS_BYTE_ARRAY), std::end(BITE2_FUNCTION_SELECTOR_AS_BYTE_ARRAY ) );
 
     Transaction txCtx( 0, 100, 21000, Address(), ctxData, 0, sec );
     txCtx.checkIfCTXAndSet( ctxData );
@@ -136,7 +136,7 @@ BOOST_AUTO_TEST_CASE( finalizeReset ) {
     Secret sec = Secret( "0x45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8" );
 
     bytes ctxData;
-    ctxData.insert( ctxData.end(), std::begin(BITE_FUNCTION_SELECTOR_AS_BYTE_ARRAY), std::end(BITE_FUNCTION_SELECTOR_AS_BYTE_ARRAY ) );
+    ctxData.insert( ctxData.end(), std::begin(BITE2_FUNCTION_SELECTOR_AS_BYTE_ARRAY), std::end(BITE2_FUNCTION_SELECTOR_AS_BYTE_ARRAY ) );
     Transaction txCtx( 0, 100, 21000, Address(), ctxData, 0, sec );
     txCtx.checkIfCTXAndSet( ctxData );
 
