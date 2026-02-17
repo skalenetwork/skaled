@@ -1802,7 +1802,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
 #ifdef BITE
         DecryptedTransactions{
 #ifdef BITE2
-                std::make_shared< DecryptedCATxsMap >(),
+                std::make_shared< DecryptedCTXTxsMap >(),
 #endif  // BITE2
                 std::make_shared< DecryptedRegularTxsMap >()
             },

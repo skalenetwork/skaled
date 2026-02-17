@@ -482,7 +482,7 @@ ConsensusExtFace::Transactions SkaleHost::pendingTransactions( size_t _limit, u2
     // CTXs are not the subject for block gas limit
     for ( const auto& ctx : bite2Transactions ) {
         gasAccByCTXs += ctx.gas();
-        out_vector.pushBackCAT( ctx.toBytes() );
+        out_vector.pushBackCTX( ctx.toBytes() );
         m_debugTracer.tracepoint( "sent_txn" );
         BOOST_LOG( m_loggerTrace ) << "Sent CTX";
     }
@@ -624,7 +624,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::Transactions& _approvedTran
     BOOST_LOG( m_loggerDebug ) << "createBlock ID = #" << _blockID;
 
 #ifdef BITE2
-    BOOST_LOG( m_loggerDebug ) << "Got block with " << _approvedTransactions.sizeCAT() << " CTXs";
+    BOOST_LOG( m_loggerDebug ) << "Got block with " << _approvedTransactions.sizeCTX() << " CTXs";
 #endif
 
     m_debugTracer.tracepoint( "create_block" );
@@ -1002,7 +1002,7 @@ std::vector< Transaction > SkaleHost::processRegularTransactions(
 #endif
     size_t regularTxnsStartIndex = 0;
 #ifdef BITE2
-    regularTxnsStartIndex = _approvedTransactions.sizeCAT();
+    regularTxnsStartIndex = _approvedTransactions.sizeCTX();
 #endif
     for ( size_t i = regularTxnsStartIndex; i < _approvedTransactions.size(); ++i ) {
         const bytes& data = _approvedTransactions.at( i );
@@ -1055,14 +1055,14 @@ std::vector< Transaction > SkaleHost::processCTXTransactions(
     [[maybe_unused]] const dev::eth::BlockHeader& latestInfo,
     DecryptedTransactions _decryptedTransactions ) {
     std::vector< Transaction > outTxns;
-    if ( _approvedTransactions.sizeCAT() != m_tq.pendingBITE2Transactions().size() ) {
+    if ( _approvedTransactions.sizeCTX() != m_tq.pendingBITE2Transactions().size() ) {
         BOOST_LOG( m_loggerInfo ) << "Expected " << m_tq.pendingBITE2Transactions().size()
-                                  << " CTX, but received " << _approvedTransactions.sizeCAT()
+                                  << " CTX, but received " << _approvedTransactions.sizeCTX()
                                   << ".\n Exiting with code 200, repair will be needed.";
         ExitHandler::exitHandler( -1, ExitHandler::ec_state_root_mismatch );
     }
-    auto ctxIterator = _decryptedTransactions.catTxsMap->begin();
-    for ( size_t i = 0; i < _approvedTransactions.sizeCAT(); ++i ) {
+    auto ctxIterator = _decryptedTransactions.ctxTxsMap->begin();
+    for ( size_t i = 0; i < _approvedTransactions.sizeCTX(); ++i ) {
         const bytes& data = _approvedTransactions.at( i );
         h256 sha = sha3( data );
         BOOST_LOG( m_loggerTrace ) << "Arrived CTX: " << sha;
@@ -1071,8 +1071,8 @@ std::vector< Transaction > SkaleHost::processCTXTransactions(
             EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
             InvalidTransactionFormatPatch::isEnabledInWorkingBlock() );
 
-        if ( ctxIterator != _decryptedTransactions.catTxsMap->end() && ctxIterator->first == i ) {
-            std::optional< DecryptedCATArgs > decryptedArgs = ctxIterator->second;
+        if ( ctxIterator != _decryptedTransactions.ctxTxsMap->end() && ctxIterator->first == i ) {
+            std::optional< DecryptedCTXArgs > decryptedArgs = ctxIterator->second;
             if ( decryptedArgs.has_value() ) {
                 t.setDecryptedArgsCTX( decryptedArgs.value() );
             } else {
@@ -1103,7 +1103,7 @@ std::vector< Transaction > SkaleHost::processCTXTransactions(
         outTxns.push_back( t );
         m_debugTracer.tracepoint( "drop_good" );
         m_tq.dropGood( t );
-        if ( ctxIterator != _decryptedTransactions.catTxsMap->end() )
+        if ( ctxIterator != _decryptedTransactions.ctxTxsMap->end() )
             ++ctxIterator;
     }
     m_tq.clearAllBITE2Transactions();

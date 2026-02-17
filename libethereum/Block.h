@@ -324,7 +324,7 @@ public:
 #ifdef BITE
     void setDecryptedTransactionDataFields( DecryptedTransactions _decryptedTransactions ) {
 #ifdef BITE2
-        CHECK_EXPRESSION( _decryptedTransactions.catTxsMap );
+        CHECK_EXPRESSION( _decryptedTransactions.ctxTxsMap );
 #endif
         CHECK_EXPRESSION( _decryptedTransactions.regularTxsMap );
         m_decryptedTransactions = _decryptedTransactions;
@@ -392,7 +392,7 @@ private:
     // only filled for a working block
     DecryptedTransactions m_decryptedTransactions = DecryptedTransactions{
 #ifdef BITE2
-        std::make_shared< DecryptedCATxsMap >(),
+        std::make_shared< DecryptedCTXTxsMap >(),
 #endif  // BITE2
         std::make_shared< DecryptedRegularTxsMap >()
     };
