@@ -67,7 +67,7 @@ static inline const dev::bytes ON_DECRYPT_FUNCTION_SELECTOR = { 0x57, 0x98, 0x3a
 
 // Construct CTX with all arguments decrypted from original CTX data and list of decrypted arguments
 dev::bytes constructDecryptedCTXData(
-    const dev::bytes& _txData, const DecryptedCATArgs& _decryptedCTXArgs );
+    const dev::bytes& _txData, const DecryptedCTXArgs& _decryptedCTXArgs );
 
 // Parse ABI-encoded bytes array and validates encrypted elements
 std::pair< RLPStream, size_t > parseAbiEncodedBytesArray( bytesConstRef dataRef,

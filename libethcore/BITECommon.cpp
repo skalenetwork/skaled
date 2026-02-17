@@ -86,7 +86,7 @@ void validateBITECiphertext( const dev::bytes& _ciphertext, uint64_t _currentEpo
 
 #ifdef BITE2
 dev::bytes constructDecryptedCTXData(
-    const dev::bytes& _txData, const DecryptedCATArgs& _decryptedCTXArgs ) {
+    const dev::bytes& _txData, const DecryptedCTXArgs& _decryptedCTXArgs ) {
     // Transform _txData from: selector(4 bytes) + RLP(RLP(encrypted_args), RLP(plaintext_args))
     // to: selector(4 bytes) + abi.encode(bytes[] decrypted_args, bytes[] plaintext_args)
     // Store result in m_decryptedData
