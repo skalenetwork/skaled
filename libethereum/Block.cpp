@@ -589,7 +589,7 @@ void Block::executeTransactions( BlockChain const& _bc, const Transactions& _tra
         _context.singleCommitEnabled ? Permanence::BlockCommitted : Permanence::Committed;
 
     TransactionReceipts savedReceipts = m_receipts;
-    
+
 #ifdef BITE2
     m_ctxHashesLists.resize( _transactions.size() );
 #endif
