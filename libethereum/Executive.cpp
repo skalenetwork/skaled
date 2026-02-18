@@ -373,7 +373,9 @@ void Executive::initAccessSets() {
 
             if ( entry[1].isList() ) {
                 for ( size_t i = 0; i < entry[1].itemCount(); ++i ) {
-                    u256 key = entry[1][i].toInt< u256 >();
+                    // Storage keys are 32-byte hashes (not canonical integers),
+                    // so decode as h256 to avoid BadCast on leading zeros.
+                    u256 key = u256( entry[1][i].toHash< h256 >() );
                     sub.accessedStorageKeys.insert( { addr, key } );
                 }
             }
