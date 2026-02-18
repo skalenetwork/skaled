@@ -255,7 +255,7 @@ void ClientBase::appendLogsFromBlock( LogFilter const& _f, h256 const& _blockHas
 
         if ( _f.isRangeFilter() ) {
             for ( const auto& e : receipt.log() ) {
-                if ( limitEnabled && io_logs.size() + 1 > logCountLimit )
+                if ( limitEnabled && io_logs.size() + 1 > static_cast< size_t >( logCountLimit ) )
                     BOOST_THROW_EXCEPTION( LogCountLimitExceeded() );
 
                 io_logs.emplace_back(
@@ -287,7 +287,7 @@ void ClientBase::appendLogsFromBlock( LogFilter const& _f, h256 const& _blockHas
                 }
 
                 if ( isGood ) {
-                    if ( limitEnabled && io_logs.size() >= logCountLimit )
+                    if ( limitEnabled && io_logs.size() >= static_cast< size_t >( logCountLimit ) )
                         BOOST_THROW_EXCEPTION( LogCountLimitExceeded() );
 
                     io_logs.emplace_back( LocalisedLogEntry(

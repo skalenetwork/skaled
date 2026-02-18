@@ -32,6 +32,12 @@
 namespace fs = boost::filesystem;
 namespace skale {
 
+// namespace used only in tests to count commits
+namespace fs_commit_counter {
+std::atomic< bool > enabled{ false };
+std::atomic< uint64_t > counter{ 0 };
+}  // namespace fs_commit_counter
+
 bool CreateFileOp::execute() {
     try {
         std::fstream file;
@@ -217,9 +223,27 @@ void OverlayFS::calculateFileHash( const std::string& filePath ) {
 }
 
 void OverlayFS::commit() {
+    if ( fs_commit_counter::enabled.load( std::memory_order_relaxed ) )
+        fs_commit_counter::counter.fetch_add( 1, std::memory_order_relaxed );
+
     for ( size_t i = 0; i < m_cache.size(); ++i ) {
         m_cache[i]->execute();
     }
     m_cache.clear();
 }
+
+namespace fs_commit_counter {
+void enable( bool value ) {
+    enabled.store( value, std::memory_order_relaxed );
+}
+
+void reset() {
+    counter.store( 0, std::memory_order_relaxed );
+}
+
+uint64_t count() {
+    return counter.load( std::memory_order_relaxed );
+}
+}  // namespace fs_commit_counter
+
 }  // namespace skale

@@ -671,7 +671,9 @@ void SkaleHost::createBlock( const ConsensusExtFace::Transactions& _approvedTran
             BOOST_LOG( m_loggerError )
                 << "Mismatch in block number:SKALED_NUMBER:" << m_client.number()
                 << ":CONSENSUS_NUMBER:" << _blockID;
-            assert( false );
+            m_ignoreNewBlocks = true;
+            m_consensus->exitGracefully();
+            ExitHandler::exitHandler( -1, ExitHandler::ec_block_mismatch_with_consensus );
         }
 
         m_debugTracer.tracepoint( "import_block" );

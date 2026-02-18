@@ -449,14 +449,18 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
     }
 
     ~SnapshotHashingFixture() {
-        if ( testIpcClient )
+        rpcClient.reset();
+        if ( testIpcClient ) {
             delete testIpcClient;
-
+            testIpcClient = nullptr;
+        }
+        rpcServer.reset();
 #ifdef BITE2
         if ( g_skaleHost )
             g_skaleHost.reset();
 #endif
         client.reset();
+
         const char* NC = getenv( "NC" );
         if ( NC )
             return;

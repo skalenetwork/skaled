@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <functional>
 #include <memory>
 
@@ -70,6 +71,7 @@ public:
         dev::eth::BlockNumber _blockNumber ) const;
 
     void removeAllPartialTransactionReceipts();
+    void removePartialTransactionReceiptsForBlock( dev::eth::BlockNumber _blockNumber );
 
     void setLastExecutedTransactionHash( const dev::h256& );
 
@@ -125,6 +127,8 @@ public:
     static std::string uint64ToFixedLengthHex( uint64_t value );
 
 private:
+    void removePartialTransactionReceiptsByPrefix(
+        std::string& prefix, const std::string& commitLabel );
     std::unordered_map< dev::h160, dev::bytes > m_cache;
     std::unordered_map< dev::h160, std::unordered_map< _byte_, dev::bytes > > m_auxiliaryCache;
     std::unordered_map< dev::h160, std::unordered_map< dev::h256, dev::h256 > > m_storageCache;
@@ -141,6 +145,9 @@ private:
 
     mutable std::optional< dev::h256 > lastExecutedTransactionHash;
 
+#ifdef FAIR
+    mutable std::optional< dev::eth::BlockNumber > lastRewardedBlockNumber_;
+#endif
 
     /// Loggers
     mutable dev::Logger m_loggerDebug{ dev::createLogger( dev::VerbosityDebug, "OverlayDB" ) };
@@ -154,5 +161,12 @@ public:
     void copyStorageIntoAccountMap(
         std::unordered_map< dev::Address, dev::eth::Account >& _map ) const;
 };
+
+// namespace used only in tests to count commits
+namespace state_commit_counter {
+void enable( bool value );
+void reset();
+uint64_t count();
+}  // namespace state_commit_counter
 
 }  // namespace skale

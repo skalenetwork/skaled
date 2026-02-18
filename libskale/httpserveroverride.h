@@ -601,7 +601,6 @@ protected:
     void eth_getFilterLogs( const string& strOrigin, const rapidjson::Document& joRequest,
         rapidjson::Document& joResponse );
 
-    unsigned iwBlockStats_ = unsigned( -1 ), iwPendingTransactionStats_ = unsigned( -1 );
     mutex_type mtxStats_;
     nlohmann::json generateBlocksStats();
 

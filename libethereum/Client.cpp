@@ -274,8 +274,14 @@ void Client::initStateFromDiskOrGenesis() {
     if ( m_state.empty() ) {
         // Saving legacy transaction receipts empty value
         // to be compatible with < 4.0.0 zero block versions
-        BOOST_LOG( m_loggerInfo ) << "Saving legacy transaction receipts for empty state";
-        m_state.safeCommitZeroBlockLegacyPartialTransactionReceipts();
+        // Skip if ClearPartialReceiptsPatch is enabled from genesis (activation timestamp == 1)
+        time_t patchActivation =
+            chainParams().getPatchTimestamp( SchainPatchEnum::ClearPartialReceiptsPatch );
+        bool patchEnabledFromGenesis = ( patchActivation == 1 );
+        if ( !patchEnabledFromGenesis ) {
+            BOOST_LOG( m_loggerInfo ) << "Saving legacy transaction receipts for empty state";
+            m_state.safeCommitZeroBlockLegacyPartialTransactionReceipts();
+        }
         populateNewChainStateFromGenesis();
     } else {
 #ifdef HISTORIC_STATE
@@ -949,7 +955,6 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
     }
     BOOST_LOG( m_loggerInfo ) << ssBlockStats.str();
 
-
     if ( submitToBlockChain ) {
         if ( this->submitSealed( header ) )
             m_onBlockSealed( header );
@@ -1248,9 +1253,20 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
 #ifdef HISTORIC_STATE
     BlockNumber _blockNumber,
 #endif
-    FudgeFactor _ff ) {
+    bool _isCreation, FudgeFactor _ff ) {
     ExecutionResult ret;
     try {
+        auto buildTransaction = [&]( u256 gasLimit, u256 gasPrice, u256 nonce ) {
+            Transaction t = _isCreation ?
+                                Transaction( _value, gasPrice, gasLimit, _data, nonce ) :
+                                Transaction( _value, gasPrice, gasLimit, _dest, _data, nonce );
+            t.forceSender( _from );
+            t.forceChainId( chainParams().getChainId() );
+#ifndef FAIR
+            t.ignoreExternalGas();
+#endif
+            return t;
+        };
 #ifdef HISTORIC_STATE
 
         if ( _blockNumber < bc().number() ) {
@@ -1262,13 +1278,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
                 // limit of gas
                 u256 gasLimit = _gasLimit == Invalid256 ? historicBlock.gasLimit() : _gasLimit;
                 u256 gasPrice = _gasPrice == Invalid256 ? gasBidPrice() : _gasPrice;
-                Transaction t( _value, gasPrice, gasLimit, _dest, _data, nonce );
-                t.forceSender( _from );
-
-                t.forceChainId( chainParams().getChainId() );
-#ifndef FAIR
-                t.ignoreExternalGas();
-#endif
+                Transaction t = buildTransaction( gasLimit, gasPrice, nonce );
                 // if we are in a call, we add to the balance of the account
                 // value needed for the call to guaranteed pass
                 // geth does a similar thing, we need to check whether it is fully compatible with
@@ -1291,12 +1301,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
         // limit of gas
         u256 gasLimit = _gasLimit == Invalid256 ? temp.gasLimit() : _gasLimit;
         u256 gasPrice = _gasPrice == Invalid256 ? gasBidPrice() : _gasPrice;
-        Transaction t( _value, gasPrice, gasLimit, _dest, _data, nonce );
-        t.forceSender( _from );
-        t.forceChainId( chainParams().getChainId() );
-#ifndef FAIR
-        t.ignoreExternalGas();
-#endif
+        Transaction t = buildTransaction( gasLimit, gasPrice, nonce );
         if ( _ff == FudgeFactor::Lenient )
             temp.mutableState().addBalance( _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
         ret = temp.execute( bc().lastBlockHashes(), t, skale::Permanence::Reverted );
