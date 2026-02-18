@@ -46,6 +46,10 @@
 #include <libdevcore/LevelDB.h>
 #include <libdevcore/system_usage.h>
 
+#ifdef BITE
+#include <libethcore/BITECommon.h>
+#endif
+
 #ifdef HISTORIC_STATE
 #include <libhistoric/AlethStandardTrace.h>
 #include <libhistoric/HistoricState.h>
@@ -1198,7 +1202,7 @@ h256 Client::importTransaction( Transaction const& _t, TransactionBroadcast _txO
 #ifdef BITE
     // invalid BITE transactions should not be added to txn queue
     // only validate in production setup
-    if ( !chainParams().isTestSignaturesEnabled() )
+    if ( dev::bite::isCiphertextValidationEnabled )
         _t.checkAndValidateBITETransaction( historicGroupIndex );
 #endif
 
@@ -1413,16 +1417,13 @@ Json::Value Client::traceBlock( BlockNumber _blockNumber, Json::Value const& _js
 
 #endif
 
-
-void Client::initHistoricGroupIndex() {
-    if ( number() == 0 ) {
-        historicGroupIndex = 0;
-        return;
-    }
+uint64_t Client::getGroupIndexForBlockNumber( uint64_t _blockNumber ) const {
+    if ( _blockNumber == 0 )
+        return 0;
 
     auto nodeGroups = chainParams().getNodeGroups();
 
-    uint64_t currentBlockTimestamp = blockInfo( hashFromNumber( number() ) ).timestamp();
+    uint64_t currentBlockTimestamp = blockInfo( hashFromNumber( _blockNumber ) ).timestamp();
 
     // always returns it != end() because current finish ts equals to uint64_t(-1)
     auto it = std::find_if( nodeGroups.begin(), nodeGroups.end(),
@@ -1435,7 +1436,8 @@ void Client::initHistoricGroupIndex() {
     }
 
     if ( !GroupIndexInitPatch::isEnabledInWorkingBlock() ) {
-        uint64_t previousBlockTimestamp = blockInfo( hashFromNumber( number() - 1 ) ).timestamp();
+        uint64_t previousBlockTimestamp =
+            blockInfo( hashFromNumber( _blockNumber - 1 ) ).timestamp();
         if ( it != nodeGroups.begin() ) {
             auto prevIt = std::prev( it );
             if ( currentBlockTimestamp >= prevIt->finishTs &&
@@ -1444,7 +1446,18 @@ void Client::initHistoricGroupIndex() {
         }
     }
 
-    historicGroupIndex = std::distance( nodeGroups.begin(), it );
+    uint64_t groupIndex = std::distance( nodeGroups.begin(), it );
+
+    return groupIndex;
+}
+
+void Client::initHistoricGroupIndex() {
+    if ( number() == 0 ) {
+        historicGroupIndex = 0;
+        return;
+    }
+
+    historicGroupIndex = getGroupIndexForBlockNumber( number() );
 }
 
 bool Client::updateHistoricGroupIndex() {

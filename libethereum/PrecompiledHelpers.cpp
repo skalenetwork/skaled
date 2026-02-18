@@ -26,6 +26,7 @@
 #include "PrecompiledHelpers.h"
 #ifdef BITE2
 #include <libconsensus/node/ConsensusInterface.h>
+#include <libethcore/BITECommon.h>
 #endif
 
 #include <libdevcore/CommonJS.h>
@@ -46,28 +47,6 @@ using namespace std;
 
 namespace dev {
 namespace eth {
-
-// Parse _count bytes of _in starting with _begin offset as big endian int.
-// If there's not enough bytes in _in, consider it infinitely right-padded with zeroes.
-bigint parseBigEndianRightPadded( bytesConstRef _in, bigint const& _begin, bigint const& _count ) {
-    if ( _begin > _in.count() )
-        return 0;
-    assert( _count <= numeric_limits< size_t >::max() / 8 );  // Otherwise, the return value would
-                                                              // not fit in the memory.
-
-    size_t const begin{ _begin };
-    size_t const count{ _count };
-
-    // crop _in, not going beyond its size
-    bytesConstRef cropped = _in.cropped( begin, min( count, _in.count() - begin ) );
-
-    bigint ret = fromBigEndian< bigint >( cropped );
-    // shift as if we had right-padding zeroes
-    assert( count - cropped.count() <= numeric_limits< size_t >::max() / 8 );
-    ret <<= 8 * ( count - cropped.count() );
-
-    return ret;
-}
 
 Logger& getLogger( int a_severity ) {
     static std::mutex g_mtx;
@@ -214,91 +193,6 @@ dev::u256 statS2A( const std::string& saIn ) {
 }
 
 #endif  // FAIR
-
-#ifdef BITE2
-
-std::pair< RLPStream, size_t > parseAbiEncodedBytesArray( bytesConstRef dataRef,
-    bigint const& arrayOffset, const std::string& arrayName, bool validateMinLength ) {
-    if ( dataRef.size() < arrayOffset.convert_to< size_t >() + dev::h256::size )
-        throw std::runtime_error(
-            "parseAbiEncodedBytesArray: input too short for " + arrayName + " array" );
-
-    bigint const arrayLength( parseBigEndianRightPadded( dataRef, arrayOffset, dev::h256::size ) );
-    if ( arrayLength < 0 )
-        throw std::runtime_error( "parseAbiEncodedBytesArray: invalid " + arrayName + " length" );
-
-    size_t arrayCount = arrayLength.convert_to< size_t >();
-    size_t arrayBase = arrayOffset.convert_to< size_t >() + dev::h256::size;
-
-    RLPStream arrayStream;
-    arrayStream.appendList( arrayCount );
-
-    for ( size_t i = 0; i < arrayCount; ++i ) {
-        if ( dataRef.size() < arrayBase + i * dev::h256::size + dev::h256::size )
-            throw std::runtime_error(
-                "parseAbiEncodedBytesArray: input too short for " + arrayName + " element offset" );
-
-        bigint elemOffset( parseBigEndianRightPadded(
-            dataRef, arrayBase + i * dev::h256::size, dev::h256::size ) );
-        size_t elemPos = arrayOffset.convert_to< size_t >() + dev::h256::size +
-                         elemOffset.convert_to< size_t >();
-
-        if ( dataRef.size() < elemPos + dev::h256::size )
-            throw std::runtime_error(
-                "parseAbiEncodedBytesArray: input too short for " + arrayName + " element length" );
-
-        bigint elemLength( parseBigEndianRightPadded( dataRef, elemPos, dev::h256::size ) );
-        if ( dataRef.size() < elemPos + dev::h256::size + elemLength.convert_to< size_t >() )
-            throw std::runtime_error(
-                "parseAbiEncodedBytesArray: input too short for " + arrayName + " element data" );
-
-        // Validate encrypted element length if required
-        if ( validateMinLength && elemLength.convert_to< size_t >() < BITE_CIPHERTEXT_MIN_LEN )
-            throw std::runtime_error(
-                "parseAbiEncodedBytesArray: encrypted argument too short, must be at least " +
-                std::to_string( BITE_CIPHERTEXT_MIN_LEN ) + " bytes" );
-
-        dev::bytes elemData =
-            dataRef.cropped( elemPos + dev::h256::size, elemLength.convert_to< size_t >() )
-                .toBytes();
-        arrayStream << elemData;
-    }
-
-    return { arrayStream, arrayCount };
-}
-
-std::pair< dev::bytes, size_t > abiEncodedArraysToRlp( const dev::bytes& _abiEncodedArrays ) {
-    // Parse ABI-encoded data: abi.encode(bytes[] encryptedArgs, bytes[] plaintextArgs)
-    // ABI format: offset_to_encryptedArgs(32) + offset_to_plaintextArgs(32) + encryptedArgs_data +
-    // plaintextArgs_data where encryptedArgs_data = length(32) + offset_to_elem0(32) + ... +
-    // elem0_length(32) + elem0_data + ...
-
-    bytesConstRef dataRef( _abiEncodedArrays.data(), _abiEncodedArrays.size() );
-
-    if ( dataRef.size() < 2 * dev::h256::size )
-        throw std::runtime_error( "abiEncodedArraysToRlp: input too short for two array offsets" );
-
-    // Read offsets to the two arrays
-    bigint const encryptedArgsOffset( parseBigEndianRightPadded( dataRef, 0, dev::h256::size ) );
-    bigint const plaintextArgsOffset(
-        parseBigEndianRightPadded( dataRef, dev::h256::size, dev::h256::size ) );
-
-    // Parse both arrays
-    auto [encryptedArgsStream, encryptedArgsCount] =
-        parseAbiEncodedBytesArray( dataRef, encryptedArgsOffset, "encryptedArgs", true );
-    auto [plaintextArgsStream, plaintextArgsCount] =
-        parseAbiEncodedBytesArray( dataRef, plaintextArgsOffset, "plaintextArgs", false );
-
-    // Create final RLP: RLP(RLP(encryptedArgs[0], ...), RLP(plaintextArgs[0], ...))
-    RLPStream finalStream;
-    finalStream.appendList( 2 );
-    finalStream.appendRaw( encryptedArgsStream.out() );
-    finalStream.appendRaw( plaintextArgsStream.out() );
-
-    return { finalStream.out(), encryptedArgsCount };
-}
-
-#endif  // BITE2
 
 }  // namespace eth
 }  // namespace dev

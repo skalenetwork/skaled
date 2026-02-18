@@ -69,11 +69,12 @@
 #include <cstdlib>
 
 #ifdef BITE
+#include <libethcore/BITECommon.h>
 #include <libconsensus/libBLS/threshold_encryption/ThresholdEncryption.h>
 #endif
 
 #ifdef BITE2
-#include <libethereum/BITEConstants.h>
+#include <libethcore/BITECommon.h>
 #include <libethereum/PrecompiledHelpers.h>
 #endif
 
@@ -5925,8 +5926,8 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
     dev::bytes rlpEncodedData = finalStream.out();
 
     rlpEncodedData.insert( rlpEncodedData.begin(),
-        ON_DECRYPT_FUNCTION_SELECTOR.begin(),
-        ON_DECRYPT_FUNCTION_SELECTOR.end() );
+        dev::bite::ON_DECRYPT_FUNCTION_SELECTOR.begin(),
+        dev::bite::ON_DECRYPT_FUNCTION_SELECTOR.end() );
 
     // Create expected transaction for signature verification using RLP-encoded data
     Transaction expectedTransaction( 0, gasPrice, randomGasLimit, dev::Address( contractAddress ), rlpEncodedData, 0 );
@@ -5943,7 +5944,7 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
     callDecrypted["to"] = contractAddress;
     callDecrypted["data"] = "0x38d5a312";
     dev::bytes result = dev::fromHex( fixture.rpcClient->eth_call( callDecrypted, "latest" ) );
-    auto [rlpStreamDecrypted, decryptedLength] = dev::eth::parseAbiEncodedBytesArray( dev::bytesConstRef( result.data(), result.size() ), 32, "", false );
+    auto [rlpStreamDecrypted, decryptedLength] = dev::bite::parseAbiEncodedBytesArray( dev::bytesConstRef( result.data(), result.size() ), 32, "", false );
     BOOST_REQUIRE_EQUAL( decryptedLength, pregeneratedDecryptedValues.size() );
     dev::RLP rlpDecrypted( rlpStreamDecrypted.out() );
     for (size_t i = 0; i < decryptedLength; ++i) {
@@ -5957,7 +5958,7 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
     callPlaintext["to"] = contractAddress;
     callPlaintext["data"] = "0xcc159120";
     result = dev::fromHex( fixture.rpcClient->eth_call( callPlaintext, "latest" ) );
-    auto [rlpStreamPlaintext, plaintextLength] = dev::eth::parseAbiEncodedBytesArray( dev::bytesConstRef( result.data(), result.size() ), 32, "", false );
+    auto [rlpStreamPlaintext, plaintextLength] = dev::bite::parseAbiEncodedBytesArray( dev::bytesConstRef( result.data(), result.size() ), 32, "", false );
     BOOST_REQUIRE_EQUAL( plaintextLength, pregeneratedPlaintextValues.size() );
     dev::RLP rlpPlaintext( rlpStreamPlaintext.out() );
     for (size_t i = 0; i < plaintextLength; ++i) {
@@ -5984,7 +5985,7 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
 
     // call getDecrypted()
     result = dev::fromHex( fixture.rpcClient->eth_call( callDecrypted, "latest" ) );
-    auto [rlpStreamDecrypted1, decryptedLength1] = dev::eth::parseAbiEncodedBytesArray( dev::bytesConstRef( result.data(), result.size() ), 32, "", false );
+    auto [rlpStreamDecrypted1, decryptedLength1] = dev::bite::parseAbiEncodedBytesArray( dev::bytesConstRef( result.data(), result.size() ), 32, "", false );
     BOOST_REQUIRE_EQUAL( decryptedLength1, pregeneratedDecryptedValues.size() );
     dev::RLP rlpDecrypted1( rlpStreamDecrypted1.out() );
     for (size_t i = 0; i < decryptedLength1; ++i) {
@@ -5995,7 +5996,7 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
 
     // call getPlaintext()
     result = dev::fromHex( fixture.rpcClient->eth_call( callPlaintext, "latest" ) );
-    auto [rlpStreamPlaintext1, plaintextLength1] = dev::eth::parseAbiEncodedBytesArray( dev::bytesConstRef( result.data(), result.size() ), 32, "", false );
+    auto [rlpStreamPlaintext1, plaintextLength1] = dev::bite::parseAbiEncodedBytesArray( dev::bytesConstRef( result.data(), result.size() ), 32, "", false );
     BOOST_REQUIRE_EQUAL( plaintextLength1, pregeneratedPlaintextValues.size() );
     dev::RLP rlpPlaintext1( rlpStreamPlaintext1.out() );
     for (size_t i = 0; i < plaintextLength1; ++i) {
@@ -6396,6 +6397,8 @@ BOOST_AUTO_TEST_CASE( dencunOpcodesInTransaction ) {
 
 BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     JsonRpcFixture fixture( c_BITEConfigString, false, false, true, true );
+
+    dev::bite::isCiphertextValidationEnabled = true;
 
     string senderAddress = toJS( fixture.coinbase.address() );
     size_t nonce = 0;

@@ -40,6 +40,11 @@ using namespace std;
 #include <libdevcore/FileSystem.h>
 #include <libdevcore/HashingThreadSafeQueue.h>
 #include <libdevcore/RLP.h>
+
+#ifdef BITE
+#include <libethcore/BITECommon.h>
+#endif
+
 #include <libethcore/CommonJS.h>
 
 #include <libethereum/ChainParams.h>
@@ -315,6 +320,10 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
         m_broadcaster.reset( new ZmqBroadcaster( _client, *this ) );
 
         m_extFace.reset( new ConsensusExtImpl( *this ) );
+
+#ifdef BITE
+        dev::bite::isCiphertextValidationEnabled = !_client.chainParams().getSgxServerUrl().empty();
+#endif
 
     } catch ( const std::exception& e ) {
         BOOST_LOG( m_loggerError ) << "Could not init SkaleHost" << e.what();
