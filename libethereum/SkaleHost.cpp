@@ -653,17 +653,20 @@ void SkaleHost::createBlock( const ConsensusExtFace::Transactions& _approvedTran
     DEV_GUARDED( m_client.m_blockImportMutex ) {
         m_debugTracer.tracepoint( "drop_good_transactions" );
 
-        outTxns = processRegularTransactions( _approvedTransactions, latestInfo
+        if ( _winningNodeIndex != 0 ) {
+            // only process transactions for non-default blocks
+            outTxns = processRegularTransactions( _approvedTransactions, latestInfo
 #ifdef BITE
-            ,
-            _decryptedTransactions
+                ,
+                _decryptedTransactions
 #endif
-        );
+            );
 #ifdef BITE2
-        auto ctxTxns =
-            processCTXTransactions( _approvedTransactions, latestInfo, _decryptedTransactions );
-        outTxns.insert( outTxns.begin(), ctxTxns.begin(), ctxTxns.end() );
+            auto ctxTxns =
+                processCTXTransactions( _approvedTransactions, latestInfo, _decryptedTransactions );
+            outTxns.insert( outTxns.begin(), ctxTxns.begin(), ctxTxns.end() );
 #endif
+        }
 
         total_arrived += outTxns.size();
 
