@@ -624,13 +624,12 @@ ImportRoute BlockChain::import( const Block& _block ) {
     verifiedBlock.transactions = _block.pending();
 #ifdef BITE
     verifiedBlock.decryptedTransactions = _block.decryptedTransactions();
-#ifdef BITE2
-    CHECK_EXPRESSION( verifiedBlock.decryptedTransactions.ctxTxsMap );
-#endif
     CHECK_EXPRESSION( verifiedBlock.decryptedTransactions.regularTxsMap );
 
 #ifdef BITE2
+    CHECK_EXPRESSION( verifiedBlock.decryptedTransactions.ctxTxsMap );
     verifiedBlock.ctxHashesLists = _block.ctxHashesLists();
+    verifiedBlock.createdCtxs = _block.createdCtxs();
 #endif  // BITE2
 #endif  // BITE
 
@@ -782,6 +781,14 @@ void BlockChain::insertTransactionsDetailsToDb(
         CtxOrigin ctxOrigin( _block.ctxHashesLists );
         _extrasWriteBatch.insert( toSlice( _block.info.hash(), ExtraCtxOrigin ),
             ( db::Slice ) dev::ref( ctxOrigin.rlp() ) );
+
+        RLPStream s;
+        s.appendList( _block.createdCtxs.size() );
+        for ( const auto& ctx : _block.createdCtxs )
+            s.append( ctx.toBytes() );
+        dev::bytes ctxListRlp = s.out();
+        _extrasWriteBatch.insert(
+            db::Slice( "lastBlockCTXs" ), ( db::Slice ) dev::ref( ctxListRlp ) );
 #endif  // BITE2
         CHECK_EXPRESSION( _block.decryptedTransactions.regularTxsMap );
         auto regularTxnsIterator = _block.decryptedTransactions.regularTxsMap->begin();
@@ -992,11 +999,6 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     bytesConstRef _receipts, LogBloom* pLogBloomFull, u256 const& _totalDifficulty,
     ImportPerformanceLogger& _performanceLogger ) {
     MICROPROFILE_SCOPEI( "BlockChain", "insertBlockAndExtras", MP_YELLOWGREEN );
-
-    // get "safeLastExecutedTransactionHash" value from state, for debug reasons only
-    // dev::h256 shaLastTx = skale::OverlayDB::stat_safeLastExecutedTransactionHash( m_stateDB.get()
-    // ); std::cout << "--- got \"safeLastExecutedTransactionHash\" = " << shaLastTx.hex() << "\n";
-    // std::cout.flush();
 
     h256 newLastBlockHash = currentHash();
     unsigned newLastBlockNumber = number();

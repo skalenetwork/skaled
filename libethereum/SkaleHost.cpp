@@ -401,8 +401,8 @@ void SkaleHost::clearTempBITE2Transactions() {
     m_tq.clearTempBITE2Transactions();
 }
 
-void SkaleHost::finalizeBITE2Queue() {
-    m_tq.finalizeBITE2Queue();
+const std::vector< dev::eth::Transaction >& SkaleHost::finalizeBITE2QueueAndGetCtxs() {
+    return m_tq.finalizeBITE2QueueAndGetCtxs();
 }
 #endif
 

@@ -25,6 +25,7 @@
 
 #include <array>
 #include <optional>
+#include <span>
 #include <unordered_map>
 
 #include <libdevcore/Common.h>
@@ -337,6 +338,8 @@ public:
     const std::vector< std::vector< dev::h256 > > ctxHashesLists() const {
         return m_ctxHashesLists;
     }
+
+    const std::span< const Transaction > createdCtxs() const { return m_createdCtxs; }
 #endif  // BITE2
 #endif  // BITE
 
@@ -433,6 +436,11 @@ private:
     // list of ctx hashes crafted by every txn in block
     // only filled for a working block
     std::vector< std::vector< dev::h256 > > m_ctxHashesLists;
+    // list of ctxs created by every txn in block
+    // only filled for a working block
+    // safe, because it is filled with transactions from BITE2 queue
+    // which stay there until the block is committed
+    std::span< const Transaction > m_createdCtxs;
 #endif  // BITE2
 #endif  // BITE
 

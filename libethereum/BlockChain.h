@@ -351,6 +351,10 @@ public:
         return queryExtras< CtxOrigin, ExtraCtxOrigin >(
             _blockHash, m_ctxOrigin, x_ctxOrigin, NullCtxOrigin );
     }
+
+    Transactions ctxListForPreviousBlock() const {
+        return RLP( this->m_db->lookup( ( db::Slice ) "lastBlockCTXs" ) ).toVector< Transaction >();
+    }
 #endif  // BITE2
 #endif  // BITE
 

@@ -95,10 +95,11 @@ void BITE2TransactionQueue::clear() {
     m_empty = true;
 }
 
-void BITE2TransactionQueue::finalize() {
+const std::vector< Transaction >& BITE2TransactionQueue::finalizeAndGetCtxs() {
     // prepare for the next block processing - skaled may delete CTXs added into blockchain
     // m_currentHeadIndex points to first not yet verified CTX
     m_currentHeadIndex = 0;
+    return m_current;
 }
 
 bool BITE2TransactionQueue::dropGood( const Transaction& _t ) {
@@ -112,6 +113,14 @@ bool BITE2TransactionQueue::dropGood( const Transaction& _t ) {
         return true;
     }
     return false;
+}
+
+void BITE2TransactionQueue::setQueueOnInit( const Transactions& _ctxQueue ) {
+    WriteGuard l( m_lock );
+    m_current = _ctxQueue;
+    m_currentHeadIndex.store( 0, std::memory_order_relaxed );
+    m_empty = m_current.empty();
+    BOOST_LOG( m_loggerInfo ) << "BITE2 queue initialized with " << m_current.size() << " CTXs";
 }
 
 

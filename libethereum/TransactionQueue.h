@@ -177,7 +177,10 @@ public:
     void clearAllBITE2Transactions();
 
     /// finalizes BITE2 queue to be ready to start processing next block
-    void finalizeBITE2Queue();
+    const Transactions& finalizeBITE2QueueAndGetCtxs();
+
+    /// Set the queue on startup with CTXs that were created in the previous block
+    void setBITE2QueueOnInit( const Transactions& _ctxQueue );
 #endif
 
     struct Status {

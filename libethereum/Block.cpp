@@ -622,7 +622,7 @@ void Block::executeTransactions( BlockChain const& _bc, const Transactions& _tra
     }
 #ifdef BITE2
     // finalize BITE2 queue after executing all txns from current block
-    g_skaleHost->finalizeBITE2Queue();
+    m_createdCtxs = g_skaleHost->finalizeBITE2QueueAndGetCtxs();
 #endif
 }
 

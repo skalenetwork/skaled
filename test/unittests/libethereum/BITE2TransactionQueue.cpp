@@ -1,5 +1,5 @@
 /*
-    Modifications Copyright (C) 2019 SKALE Labs
+    Modifications Copyright (C) 2018-2026 SKALE Labs
 
     This file is part of cpp-ethereum.
 
@@ -17,9 +17,9 @@
     along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <libconsensus/bite/Constants.h>
 #include <libethereum/BITE2TransactionQueue.h>
 #include <libethereum/Transaction.h>
-#include <libconsensus/bite/Constants.h>
 #include <test/tools/libtesteth/TestHelper.h>
 
 using namespace std;
@@ -33,16 +33,16 @@ BOOST_FIXTURE_TEST_SUITE( BITE2TransactionQueueSuite, TestOutputHelperFixture )
 
 BOOST_AUTO_TEST_CASE( addCommitClear ) {
     BITE2TransactionQueue queue;
-    
+
     Secret sec = Secret( "0x45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8" );
     Transaction tx1( 0, 100, 21000, Address(), bytes(), 10, sec );
     Transaction tx2( 1, 100, 21000, Address(), bytes(), 10, sec );
-    
+
     queue.addTemp( std::move( tx1 ) );
     queue.addTemp( std::move( tx2 ) );
 
     BOOST_REQUIRE_EQUAL( queue.debug_pendingBITE2Transactions().size(), 2 );
-    
+
     queue.commitTemp();
     BOOST_REQUIRE_EQUAL( queue.pendingBITE2Transactions().size(), 2 );
 
@@ -52,7 +52,7 @@ BOOST_AUTO_TEST_CASE( addCommitClear ) {
 
     queue.clearTemp();
     BOOST_REQUIRE_EQUAL( queue.pendingBITE2Transactions().size(), 2 );
-    
+
     queue.clear();
     BOOST_REQUIRE_EQUAL( queue.pendingBITE2Transactions().size(), 0 );
 }
@@ -66,7 +66,7 @@ BOOST_AUTO_TEST_CASE( tempHashes ) {
 
     queue.addTemp( Transaction( tx1 ) );
 
-    std::vector<h256> hashes = queue.getTempHashes();
+    std::vector< h256 > hashes = queue.getTempHashes();
     BOOST_REQUIRE_EQUAL( hashes.size(), 1 );
     BOOST_REQUIRE_EQUAL( hashes[0], tx1.sha3() );
 
@@ -84,11 +84,11 @@ BOOST_AUTO_TEST_CASE( tempHashes ) {
     hashes = queue.getTempHashes();
     BOOST_REQUIRE_EQUAL( hashes.size(), 1 );
     BOOST_REQUIRE_EQUAL( hashes[0], tx3.sha3() );
-    
+
     queue.clearTemp();
     hashes = queue.getTempHashes();
     BOOST_REQUIRE_EQUAL( hashes.size(), 0 );
-    
+
     BOOST_REQUIRE_EQUAL( queue.pendingBITE2Transactions().size(), 2 );
 }
 
@@ -97,7 +97,8 @@ BOOST_AUTO_TEST_CASE( dropGood ) {
     Secret sec = Secret( "0x45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8" );
 
     bytes ctxData;
-    ctxData.insert( ctxData.end(), std::begin(BITE2_FUNCTION_SELECTOR_AS_BYTE_ARRAY), std::end(BITE2_FUNCTION_SELECTOR_AS_BYTE_ARRAY ) );
+    ctxData.insert( ctxData.end(), std::begin( BITE2_FUNCTION_SELECTOR_AS_BYTE_ARRAY ),
+        std::end( BITE2_FUNCTION_SELECTOR_AS_BYTE_ARRAY ) );
 
     Transaction txCtx( 0, 100, 21000, Address(), ctxData, 0, sec );
     txCtx.checkIfCTXAndSet( ctxData );
@@ -109,24 +110,27 @@ BOOST_AUTO_TEST_CASE( dropGood ) {
 
     queue.addTemp( Transaction( txCtx ) );
     queue.commitTemp();
-    
-    queue.finalize();
+
+    queue.finalizeAndGetCtxs();
 
     BOOST_REQUIRE( queue.dropGood( txCtx ) );
-    
+
     queue.clear();
+    Transaction txCtx2( 1, 100, 21000, Address(), ctxData, 0, sec );
+    txCtx2.checkIfCTXAndSet( ctxData );
+
     queue.addTemp( Transaction( txCtx ) );
-    queue.addTemp( Transaction( txCtx ) );
+    queue.addTemp( Transaction( txCtx2 ) );
     queue.commitTemp();
-    queue.finalize();
+    queue.finalizeAndGetCtxs();
 
     BOOST_REQUIRE( queue.dropGood( txCtx ) );
-    BOOST_REQUIRE( queue.dropGood( txCtx ) );
+    BOOST_REQUIRE( queue.dropGood( txCtx2 ) );
 
     queue.clear();
     queue.addTemp( Transaction( txNormal ) );
     queue.commitTemp();
-    queue.finalize();
+    queue.finalizeAndGetCtxs();
 
     BOOST_REQUIRE( !queue.dropGood( txNormal ) );
 }
@@ -136,17 +140,18 @@ BOOST_AUTO_TEST_CASE( finalizeReset ) {
     Secret sec = Secret( "0x45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8" );
 
     bytes ctxData;
-    ctxData.insert( ctxData.end(), std::begin(BITE2_FUNCTION_SELECTOR_AS_BYTE_ARRAY), std::end(BITE2_FUNCTION_SELECTOR_AS_BYTE_ARRAY ) );
+    ctxData.insert( ctxData.end(), std::begin( BITE2_FUNCTION_SELECTOR_AS_BYTE_ARRAY ),
+        std::end( BITE2_FUNCTION_SELECTOR_AS_BYTE_ARRAY ) );
     Transaction txCtx( 0, 100, 21000, Address(), ctxData, 0, sec );
     txCtx.checkIfCTXAndSet( ctxData );
 
     queue.addTemp( Transaction( txCtx ) );
     queue.commitTemp();
 
-    queue.finalize(); 
+    queue.finalizeAndGetCtxs();
     BOOST_REQUIRE( queue.dropGood( txCtx ) );
 
-    queue.finalize(); 
+    queue.finalizeAndGetCtxs();
     BOOST_REQUIRE( queue.dropGood( txCtx ) );
 }
 

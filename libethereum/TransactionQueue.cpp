@@ -603,7 +603,11 @@ void TransactionQueue::clearAllBITE2Transactions() {
     m_bite2Queue.clear();
 }
 
-void TransactionQueue::finalizeBITE2Queue() {
-    m_bite2Queue.finalize();
+const Transactions& TransactionQueue::finalizeBITE2QueueAndGetCtxs() {
+    return m_bite2Queue.finalizeAndGetCtxs();
+}
+
+void TransactionQueue::setBITE2QueueOnInit( const Transactions& _ctxQueue ) {
+    m_bite2Queue.setQueueOnInit( _ctxQueue );
 }
 #endif
