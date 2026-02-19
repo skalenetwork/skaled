@@ -661,6 +661,7 @@ std::optional< TransactionReceipt > Block::executeSingleTransaction( BlockChain 
 
     ExecutionResult res = execute( _bc.lastBlockHashes(), _tx, _permanence, OnOpFunc(), _txIndex );
 
+#ifdef BITE2
     if ( res.excepted != TransactionException::None ) {
         // clear all CTXs that were added by last tx
         // because it was reverted
@@ -671,6 +672,7 @@ std::optional< TransactionReceipt > Block::executeSingleTransaction( BlockChain 
         // commit CTXs from temporary to permanent
         g_skaleHost->commitTempBITE2Transactions();
     }
+#endif
 
     if ( !_context.singleCommitEnabled && !m_receipts.empty() &&
          !ClearPartialReceiptsPatch::isEnabledWhen( m_previousBlock.timestamp() ) ) {
