@@ -159,10 +159,6 @@ void LegacyVM::caseCreate() {
         CreateResult result = m_ext->create( endowment, gas, initCode, m_OP, salt, m_onOp );
         m_SPP[0] = ( u160 ) result.address;  // Convert address to integer.
 
-        // EIP-2929: add the created address to accessed_addresses immediately.
-        if ( m_schedule->eip2929Mode && result.address != Address{} )
-            m_ext->accessAccount( result.address );
-
         m_returnData = result.output.toBytes();
 
         *m_io_gas_p -= ( createGas - gas );

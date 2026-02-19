@@ -162,6 +162,20 @@ void ExtVM::setStore( u256 _n, u256 _v ) {
 
 CreateResult ExtVM::create( u256 _endowment, u256& io_gas, bytesConstRef _code, Instruction _op,
     u256 _salt, OnOpFunc const& _onOp ) {
+    if ( evmSchedule().eip2929Mode ) {
+        Address createdAddress;
+        if ( _op == Instruction::CREATE ) {
+            u256 nonce = m_s.getNonce( myAddress );
+            createdAddress = right160( sha3( rlpList( myAddress, nonce ) ) );
+        } else {
+            assert( _op == Instruction::CREATE2 );
+            createdAddress =
+                right160( sha3( bytes{ 0xff } + myAddress.asBytes() + toBigEndian( _salt ) +
+                               sha3( _code ) ) );
+        }
+        accessAccount( createdAddress );
+    }
+
     Executive e{ m_s, envInfo(), m_chainParams, 0, depth + 1
 #ifdef BITE2
         ,
