@@ -130,7 +130,7 @@ public:
 #ifdef HISTORIC_STATE
         BlockNumber _blockNumber,
 #endif
-        FudgeFactor _ff = FudgeFactor::Strict ) override;
+        bool _isCreation = false, FudgeFactor _ff = FudgeFactor::Strict ) override;
 
 #ifdef HISTORIC_STATE
     Json::Value traceCall( Address const& _from, u256 _value, Address _to, bytes const& _data,

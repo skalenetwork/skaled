@@ -8,8 +8,14 @@ namespace skale {
 enum class Permanence {
     Reverted,
     Committed,
-    Uncommitted,  ///< Uncommitted state for change log readings in tests.
+    BlockCommitted,  ///< Committed at the end of the block
+    Uncommitted,     ///< Uncommitted state for change log readings in tests.
     CommittedWithoutState
 };
+
+inline bool isStateCommitting( Permanence _p ) {
+    return _p == Permanence::Committed || _p == Permanence::BlockCommitted;
 }
+
+}  // namespace skale
 #endif  // SKALED_PERMANENCE_H

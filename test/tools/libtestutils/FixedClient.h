@@ -75,7 +75,7 @@ public:
 #ifdef HISTORIC_STATE
                                   BlockNumber,
 #endif
-eth::FudgeFactor ) override {
+        bool, eth::FudgeFactor ) override {
         return {};
     };
     eth::TransactionSkeleton populateTransactionWithDefaults(

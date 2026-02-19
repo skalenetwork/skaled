@@ -543,6 +543,8 @@ echo -e "${COLOR_YELLOW}SKALED building consensus...${COLOR_RESET}"
 echo -e "${COLOR_SEPARATOR}===================================================================${COLOR_RESET}"
 
 
+sed -i 's|https://mirrors.kernel.org/gnu/gmp/|https://ftp.gnu.org/gnu/gmp/|g' "$WORKING_DIR_NEW/../libconsensus/libBLS/deps/build.sh"
+
 cd "$WORKING_DIR_NEW/../libconsensus/deps"
 bash ./build.sh DEBUG=$DEBUG
 cd ../../deps
@@ -1929,6 +1931,7 @@ then
 			fi
 			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
 			cd double-conversion
+			git checkout 6e6631767c37431dd62586b5835721e334f65339
 			eval mkdir -p build
 			cd build
 			eval "$CMAKE" "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" ..

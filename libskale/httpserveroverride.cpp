@@ -1563,23 +1563,6 @@ SkaleServerOverride::SkaleServerOverride(
         dev::Logger logger{ createLogger( dev::VerbosityError, "SkaleServerOverride" ) };
         BOOST_LOG( logger ) << "CRITICAL ERROR: Proxygen abort handler called.";
     } );
-
-    {  // block
-        std::function< void( const unsigned& iw, const dev::eth::Block& block ) >
-            fnOnSunscriptionEvent =
-                [this]( const unsigned& /*iw*/, const dev::eth::Block& block ) -> void {
-            dev::h256 h = block.info().hash();
-            dev::eth::TransactionHashes arrTxHashes = ethereum()->transactionHashes( h );
-        };
-        iwBlockStats_ = ethereum()->installNewBlockWatch( fnOnSunscriptionEvent );
-    }
-    {
-        std::function< void( const unsigned& iw, const dev::eth::Transaction& tx ) >
-            fnOnSunscriptionEvent =
-                [this]( const unsigned& /*iw*/, const dev::eth::Transaction& /*tx*/ ) -> void {};
-        iwPendingTransactionStats_ =
-            ethereum()->installNewPendingTransactionWatch( fnOnSunscriptionEvent );
-    }
 }
 
 SkaleServerOverride::~SkaleServerOverride() {}
@@ -2680,7 +2663,7 @@ void SkaleServerOverride::informational_eth_getBalance( const json& joRequest, j
 #ifdef HISTORIC_STATE
                 bNumber,
 #endif
-                dev::eth::FudgeFactor::Lenient );
+                false, dev::eth::FudgeFactor::Lenient );
 
         string strRevertReason;
         if ( er.excepted == dev::eth::TransactionException::RevertInstruction ) {
@@ -2912,12 +2895,12 @@ void SkaleServerOverride::eth_getCode( const string& /*strOrigin*/,
     opts_.fn_eth_getCode_( joRequest, joResponse );
 }
 
-void SkaleServerOverride::eth_getLogs( const string& strOrigin,
+void SkaleServerOverride::eth_getLogs( const string& /*strOrigin*/,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
     opts_.fn_eth_getLogs_( joRequest, joResponse );
 }
 
-void SkaleServerOverride::eth_getFilterLogs( const string& strOrigin,
+void SkaleServerOverride::eth_getFilterLogs( const string& /*strOrigin*/,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
     opts_.fn_eth_getFilterLogs_( joRequest, joResponse );
 }

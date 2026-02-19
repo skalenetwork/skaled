@@ -480,7 +480,7 @@ string Eth::eth_call( TransactionSkeleton& t, string const&
 #ifdef HISTORIC_STATE
         bN,
 #endif
-        FudgeFactor::Lenient );
+        t.creation, FudgeFactor::Lenient );
 
     std::string strRevertReason;
     if ( er.excepted == dev::eth::TransactionException::RevertInstruction ) {

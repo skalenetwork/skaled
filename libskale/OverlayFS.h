@@ -134,4 +134,11 @@ private:
     bool m_isCacheEnabled;
 };
 
+// namespace used only in tests to count commits
+namespace fs_commit_counter {
+void enable( bool value );
+void reset();
+uint64_t count();
+}  // namespace fs_commit_counter
+
 }  // namespace skale
