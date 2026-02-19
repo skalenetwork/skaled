@@ -169,9 +169,8 @@ CreateResult ExtVM::create( u256 _endowment, u256& io_gas, bytesConstRef _code, 
             createdAddress = right160( sha3( rlpList( myAddress, nonce ) ) );
         } else {
             assert( _op == Instruction::CREATE2 );
-            createdAddress =
-                right160( sha3( bytes{ 0xff } + myAddress.asBytes() + toBigEndian( _salt ) +
-                               sha3( _code ) ) );
+            createdAddress = right160( sha3(
+                bytes{ 0xff } + myAddress.asBytes() + toBigEndian( _salt ) + sha3( _code ) ) );
         }
         accessAccount( createdAddress );
     }

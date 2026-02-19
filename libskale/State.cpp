@@ -356,8 +356,8 @@ dev::eth::TransactionReceipts State::safePartialTransactionReceipts(
     if ( m_db_ptr ) {
         auto rawTransactionReceipts = m_db_ptr->getPartialTransactionReceipts( _blockNumber );
         for ( auto&& rawTransactionReceipt : rawTransactionReceipts ) {
-            dev::RLP rlp( rawTransactionReceipt );
-            dev::eth::TransactionReceipt receipt( rlp.data() );
+            dev::eth::TransactionReceipt receipt(
+                bytesConstRef( rawTransactionReceipt.data(), rawTransactionReceipt.size() ) );
             partialTransactionReceipts.push_back( receipt );
         }
     }
@@ -1214,9 +1214,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
             // if we are committing we need to know transaction index in block since
             // to save the receipt
             LDB_CHECK( _transactionIndex >= 0 );
-            RLPStream stream;
-            receipt.streamRLP( stream );
-            m_db_ptr->setPartialTransactionReceipt( stream.out(),
+            m_db_ptr->setPartialTransactionReceipt( receipt.typedRlp(),
                 ( dev::eth::BlockNumber ) _envInfo.number(), ( uint64_t ) _transactionIndex );
 
             // do a simple sanity check each millions transactions that we correctly
@@ -1227,7 +1225,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
             sanityCheckCounter++;
             if ( sanityCheckCounter % 1000000 == 0 ) {
                 auto receipts = safePartialTransactionReceipts( _envInfo.number() );
-                if ( receipts.back().rlp() != receipt.rlp() ) {
+                if ( receipts.back().typedRlp() != receipt.typedRlp() ) {
                     cerr << "Found incorrect deserialization of partial receipts at sanity check:"
                          << sanityCheckCounter << endl
                          << receipts.back() << endl
