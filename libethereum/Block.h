@@ -24,6 +24,7 @@
 #pragma once
 
 #include <array>
+#include <optional>
 #include <unordered_map>
 
 #include <libdevcore/Common.h>
@@ -324,20 +325,53 @@ public:
 #ifdef BITE
     void setDecryptedTransactionDataFields( DecryptedTransactions _decryptedTransactions ) {
 #ifdef BITE2
-        CHECK_EXPRESSION( _decryptedTransactions.catTxsMap );
+        CHECK_EXPRESSION( _decryptedTransactions.ctxTxsMap );
 #endif
         CHECK_EXPRESSION( _decryptedTransactions.regularTxsMap );
         m_decryptedTransactions = _decryptedTransactions;
     }
 
     const DecryptedTransactions& decryptedTransactions() const { return m_decryptedTransactions; }
-#endif
+
+#ifdef BITE2
+    const std::vector< std::vector< dev::h256 > > ctxHashesLists() const {
+        return m_ctxHashesLists;
+    }
+#endif  // BITE2
+#endif  // BITE
 
 private:
+    struct SyncContext {
+        bool singleCommitEnabled = false;
+        TransactionReceipts receipts;
+        TransactionReceipts receiptsOfCommitted;
+        unsigned badCount = 0;
+    };
+
     SealEngineFace* sealEngine() const;
 
     /// Undo the changes to the state for committing to mine.
     void uncommitToSeal();
+
+    void prepareStateForSync( uint64_t _timestamp, SyncContext& _context );
+    void executeTransactions( BlockChain const& _bc, const Transactions& _transactions,
+        u256 _gasPrice, SyncContext& _context );
+    std::optional< TransactionReceipt > executeSingleTransaction( BlockChain const& _bc,
+        Transaction const& _tx, unsigned _txIndex, u256 _gasPrice, skale::Permanence _permanence,
+        SyncContext& _context );
+    bool isCurrentBlockCommitted();
+    // Main recovery mechanism for single block commit mode.
+    // Loads saved receipts from progress log to skip re-execution after crash.
+    // Throws if called outside single commit mode or if receipts are unavailable.
+    std::pair< TransactionReceipts, unsigned > recoverFromReceipts(
+        const Transactions& _transactions, uint64_t _timestamp );
+    void saveStateChanges(
+        BlockChain const& _bc, const Transactions& _transactions, const SyncContext& _context );
+    void runCommit( BlockChain const& _bc, const SyncContext& _context );  // run commit for state
+                                                                           // and filestorage
+    void createBlockSnapshot();
+    void clearPartialReceipts();
+    void handleLegacyPartialReceipts( BlockChain const& _bc, const SyncContext& _context );
 
     /// Execute the given block, assuming it corresponds to m_currentBlock.
     /// Throws on failure.
@@ -360,6 +394,10 @@ private:
 
     /// Creates and updates the special contract for storing block hashes according to EIP96
     void updateBlockhashContract();
+
+    // Sanity check for partial transaction receipts
+    void sanityCheckPartialTransactionReceipts(
+        std::optional< BlockNumber > blockNumber = std::nullopt );
 
     skale::State m_state;         ///< Our state.
     Transactions m_transactions;  ///< The current list of transactions that we've included in the
@@ -386,10 +424,16 @@ private:
     // only filled for a working block
     DecryptedTransactions m_decryptedTransactions = DecryptedTransactions{
 #ifdef BITE2
-        std::make_shared< DecryptedCATxsMap >(),
+        std::make_shared< DecryptedCTXTxsMap >(),
 #endif  // BITE2
         std::make_shared< DecryptedRegularTxsMap >()
     };
+
+#ifdef BITE2
+    // list of ctx hashes crafted by every txn in block
+    // only filled for a working block
+    std::vector< std::vector< dev::h256 > > m_ctxHashesLists;
+#endif  // BITE2
 #endif  // BITE
 
     Logger m_loggerDebug{ createLogger( VerbosityDebug, "block" ) };

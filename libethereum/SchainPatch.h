@@ -185,6 +185,11 @@ DEFINE_SIMPLE_PATCH( CurrentBlockRandomPatch );
  */
 DEFINE_AMNESIC_PATCH( GroupIndexInitPatch );
 
+/*
+ * Purpose: enable state mode so the database commit is executed only once per block.
+ */
+DEFINE_SIMPLE_PATCH( SingleStateCommitPerBlockPatch );
+
 #ifdef FAIR
 DEFINE_SIMPLE_PATCH( DisableSelfDestructPatch );
 #endif

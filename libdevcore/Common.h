@@ -353,6 +353,9 @@ public:
     enum exit_code_t {
         ec_success = 0,
         ec_failure = 1,  // same as EXIT_FAILURE in stdlib.h, generic failure in main()
+        ec_block_mismatch_with_consensus = 195,  // before block execution, consensus is two or more
+                                                 // blocks ahead (normally, it is exactly one block
+                                                 // ahead)
         ec_termninated_by_signal = 196,
         ec_compute_snapshot_error = 197,  // snapshot computation error
         ec_rotation_complete = 0,         // must be zero, exit requested after rotation complete

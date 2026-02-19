@@ -480,7 +480,7 @@ string Eth::eth_call( TransactionSkeleton& t, string const&
 #ifdef HISTORIC_STATE
         bN,
 #endif
-        FudgeFactor::Lenient );
+        t.creation, FudgeFactor::Lenient );
 
     std::string strRevertReason;
     if ( er.excepted == dev::eth::TransactionException::RevertInstruction ) {
@@ -1208,7 +1208,7 @@ string dev::rpc::exceptionToErrorMessage() {
 #ifdef BITE
     // BITE exceptions
     catch ( InvalidBITETransaction const& _e ) {
-        ret = "Invalid BITE transaction format.";
+        ret = std::string( "Invalid BITE transaction format." ) + " " + _e.what();
     } catch ( BITETransactionTooShort const& _e ) {
         ret = "BITE transaction too short.";
     }

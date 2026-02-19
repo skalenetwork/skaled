@@ -41,11 +41,15 @@ struct VerifiedBlockRef {
 #ifdef BITE
     DecryptedTransactions decryptedTransactions = DecryptedTransactions{
 #ifdef BITE2
-        std::make_shared< DecryptedCATxsMap >(),
+        std::make_shared< DecryptedCTXTxsMap >(),
 #endif  // BITE2
         std::make_shared< DecryptedRegularTxsMap >()
     };  ///< Decrypted transactions
         ///< to be stored in blockchain
+
+#ifdef BITE2
+    std::vector< std::vector< dev::h256 > > ctxHashesLists;
+#endif  // BITE2
 #endif  // BITE
 };
 

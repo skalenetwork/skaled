@@ -24,10 +24,10 @@
 #include "Precompiled.h"
 
 #ifdef BITE2
-#include "BITEConstants.h"
 #include <libconsensus/libBLS/threshold_encryption/TEPublicKey.h>
 #include <libconsensus/libBLS/threshold_encryption/ThresholdEncryption.h>
 #include <libdevcore/RLP.h>
+#include <libethcore/BITECommon.h>
 #endif
 
 #include "PrecompiledHelpers.h"
@@ -76,6 +76,10 @@ std::shared_ptr< SkaleHost > g_skaleHost;
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
+
+#ifdef BITE2
+using namespace dev::bite;
+#endif
 
 namespace fs = boost::filesystem;
 
@@ -977,8 +981,11 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
         // Convert ABI-encoded data to RLP
         dev::bytes rlpEncodedData;
         size_t encryptedArgsCount = 0;
+        uint64_t epochId = _ctx.isReadOnly ? g_skaleHost->client().getGroupIndexForBlockNumber(
+                                                 _ctx.latestBlockTimestamp ) :
+                                             g_skaleHost->client().getCurrentEpochId();
         try {
-            auto [rlpData, count] = abiEncodedArraysToRlp( txnData );
+            auto [rlpData, count] = abiEncodedArraysToRlp( txnData, epochId );
             rlpEncodedData = std::move( rlpData );
             encryptedArgsCount = count;
         } catch ( std::exception& ex ) {
@@ -1110,7 +1117,7 @@ ETH_REGISTER_PRECOMPILED( getRandomWalletAndSignatureForCTX )
         dev::bytes rlpEncodedData;
         size_t encryptedArgsCount = 0;
         try {
-            auto [rlpData, count] = abiEncodedArraysToRlp( data );
+            auto [rlpData, count] = abiEncodedArraysToRlp( data, 0 );
             rlpEncodedData = std::move( rlpData );
             encryptedArgsCount = count;
         } catch ( std::exception& ex ) {

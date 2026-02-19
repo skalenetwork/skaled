@@ -130,7 +130,7 @@ public:
 #ifdef HISTORIC_STATE
         BlockNumber _blockNumber,
 #endif
-        FudgeFactor _ff = FudgeFactor::Strict ) override;
+        bool _isCreation = false, FudgeFactor _ff = FudgeFactor::Strict ) override;
 
 #ifdef HISTORIC_STATE
     Json::Value traceCall( Address const& _from, u256 _value, Address _to, bytes const& _data,
@@ -313,11 +313,13 @@ public:
         return m_snapshotAgent->createSnapshotFile( _blockNumber );
     }
 
+    uint64_t getGroupIndexForBlockNumber( uint64_t _blockNumber ) const;
+
 #ifdef BITE
     uint64_t getCurrentEpochId() const { return historicGroupIndex.load(); }
     bool isCommitteeRotationSoon() const;
     std::pair< std::array< std::string, 4 >, uint64_t > getNextCommitteeBITEInfo() const;
-#endif
+#endif  // BITE
 
 #ifdef FAIR
     bool updateGroupIfNeeded();
