@@ -411,9 +411,34 @@ void TransactionBase::fillFromBytesByType( bytesConstRef _rlpData, CheckTransact
 TransactionType TransactionBase::getTransactionType( bytesConstRef _rlp ) {
     if ( _rlp.empty() )
         return TransactionType::Legacy;
-    if ( _rlp[0] > 2 )
+
+    uint8_t firstByte = _rlp[0];
+
+    // EIP-2718: first byte in [0xc0, 0xfe] is a legacy RLP-encoded transaction (list prefix).
+    // First byte in [0, 0x7f] is a typed transaction where the byte is the type.
+    if ( firstByte >= 0xc0 )
         return TransactionType::Legacy;
-    return TransactionType( _rlp[0] );
+
+    if ( firstByte <= 0x7f ) {
+        switch ( firstByte ) {
+        case 0:
+            // Type 0 is effectively Legacy (no prefix stripping needed).
+            return TransactionType::Legacy;
+        case 1:
+            return TransactionType::Type1;
+        case 2:
+            return TransactionType::Type2;
+        default:
+            BOOST_THROW_EXCEPTION(
+                InvalidTransactionFormat() << errinfo_comment(
+                    "unsupported typed transaction type: " + std::to_string( firstByte ) ) );
+        }
+    }
+
+    // Bytes [0x80, 0xbf] are RLP string prefixes — not a valid transaction envelope.
+    BOOST_THROW_EXCEPTION( InvalidTransactionFormat() << errinfo_comment(
+                               "invalid transaction envelope: unexpected first byte 0x" +
+                               toHex( bytes{ firstByte } ) ) );
 }
 
 TransactionBase::TransactionBase( bytesConstRef _rlpData, CheckTransaction _checkSig,

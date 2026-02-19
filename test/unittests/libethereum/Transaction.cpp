@@ -763,6 +763,36 @@ BOOST_AUTO_TEST_CASE( eip2930AccessListStorageKeyValidation ) {
         Transaction( txBytes, CheckTransaction::None, false, true ), InvalidTransactionFormat );
 }
 
+// EIP-2718: getTransactionType() rejects unsupported typed transaction types [3, 0x7f]
+BOOST_AUTO_TEST_CASE( eip2718RejectUnsupportedTransactionType ) {
+    // A byte in [3, 0x7f] followed by arbitrary RLP should be rejected as unsupported type.
+    // Type 3 (unsupported)
+    bytes type3Tx = { 0x03 };
+    // Append a minimal RLP list so there's some data.
+    RLPStream s;
+    s.appendList( 0 );
+    bytes rlpBytes = s.out();
+    type3Tx.insert( type3Tx.end(), rlpBytes.begin(), rlpBytes.end() );
+    BOOST_REQUIRE_THROW(
+        Transaction( type3Tx, CheckTransaction::None, false, true ), InvalidTransactionFormat );
+
+    // Type 0x7f (max single-byte typed tx)
+    bytes type7fTx = { 0x7f };
+    type7fTx.insert( type7fTx.end(), rlpBytes.begin(), rlpBytes.end() );
+    BOOST_REQUIRE_THROW(
+        Transaction( type7fTx, CheckTransaction::None, false, true ), InvalidTransactionFormat );
+
+    // Byte 0x80 (RLP string prefix, invalid envelope)
+    bytes type80Tx = { 0x80 };
+    type80Tx.insert( type80Tx.end(), rlpBytes.begin(), rlpBytes.end() );
+    BOOST_REQUIRE_THROW(
+        Transaction( type80Tx, CheckTransaction::None, false, true ), InvalidTransactionFormat );
+
+    // Types 1 and 2 should NOT throw at type detection (they'll fail later on malformed RLP,
+    // but getTransactionType itself should accept them).
+    // Type 0 (legacy) should also be accepted — it falls through to legacy parsing.
+}
+
 BOOST_AUTO_TEST_CASE( InvaidTransaction ) {
     // transaction has maxFeePerGas < maxPriorityFeePerGas, that is the transaction is invalid
     auto txRlp = fromHex(
