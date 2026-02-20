@@ -1288,7 +1288,7 @@ ETH_REGISTER_PRECOMPILED( encryptTE )
         // This ensures all nodes encrypt identically for consensus
         unsigned blockNumberToCall = _ctx.blockNumber.convert_to< unsigned >();
         dev::u256 blockRandomValue =
-            g_skaleHost->getBlockRandom( blockNumberToCall, !_ctx.isReadOnly );
+            g_skaleHost->getReencryptionBlockRandom( blockNumberToCall, !_ctx.isReadOnly );
         bytes blockRandomBytes = toBigEndian( blockRandomValue );
 
         // Create seed array from blockRandom (32 bytes)
@@ -1427,7 +1427,7 @@ ETH_REGISTER_PRECOMPILED( encryptECIES )
         // This ensures all nodes encrypt identically for consensus
         unsigned blockNumberToCall = _ctx.blockNumber.convert_to< unsigned >();
         dev::u256 blockRandomValue =
-            g_skaleHost->getBlockRandom( blockNumberToCall, !_ctx.isReadOnly );
+            g_skaleHost->getReencryptionBlockRandom( blockNumberToCall, !_ctx.isReadOnly );
         bytes blockRandomBytes = toBigEndian( blockRandomValue );
 
         // Create seed from blockRandom (32 bytes)
