@@ -1916,8 +1916,8 @@ Transactions BlockChain::ctxListForPreviousBlock() const {
     uint64_t prevBlockTimestamp = info().timestamp();
     for ( auto const& txRlp : rlp ) {
         ctxs.push_back( Transaction( txRlp.data(), CheckTransaction::None, true,
-                        EIP1559TransactionsPatch::isEnabledWhen( prevBlockTimestamp ),
-                        InvalidTransactionFormatPatch::isEnabledWhen( prevBlockTimestamp ) ) );
+            EIP1559TransactionsPatch::isEnabledWhen( prevBlockTimestamp ),
+            InvalidTransactionFormatPatch::isEnabledWhen( prevBlockTimestamp ) ) );
     }
     return ctxs;
 }
