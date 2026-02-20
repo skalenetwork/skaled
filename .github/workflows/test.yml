@@ -122,3 +122,11 @@ jobs:
           build_dir: ${{ matrix.build_dir }}
           mode: ${{ matrix.mode }}
           verbosity: "4"
+
+      - name: Func-tests (hardfork-support)
+        if: matrix.name == 'Default' || matrix.name == 'BITE2'
+        uses: ./.github/actions/func-tests-run
+        with:
+          suite: hardfork-support
+        env:
+          FUNC_TEST_PRIVATE_KEY: ${{ secrets.FUNC_TEST_PRIVATE_KEY }}

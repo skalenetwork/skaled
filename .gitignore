@@ -19,6 +19,7 @@ docs-dictionary-*
 deps/*
 !deps/build.sh
 !deps/clean.sh
+build*
 
 # Compiled Object files
 *.slo
@@ -122,3 +123,20 @@ saved_environment_on_startup.txt
 qtbuild/
 
 scripts/skale_build/executable/skaled
+
+# func-tests runtime artifacts
+test/func-tests/.venv/
+test/func-tests/run.toml
+test/func-tests/**/__pycache__/
+test/func-tests/logs/
+test/func-tests/datadir-loop-*/
+test/func-tests/configs/*
+!test/func-tests/configs/*.j2
+test/func-tests/**/sol/artifacts/
+test/func-tests/**/sol/cache/
+test/func-tests/**/sol/deployments/
+test/func-tests/**/sol/typechain/
+test/func-tests/**/sol/typechain-types/
+test/func-tests/**/sol/coverage/
+test/func-tests/**/sol/coverage.json
+test/func-tests/**/sol/ignition/deployments/
