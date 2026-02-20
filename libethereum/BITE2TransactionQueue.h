@@ -46,7 +46,7 @@ public:
     // only debug_pendingBITE2Transactions requires synchronization
     // because it is used by JSON RPC API
 
-    const std::vector< Transaction >& finalizeAndGetCtxs();
+    std::shared_ptr< std::vector< Transaction > > finalizeAndGetCtxs();
 
     void addTemp( Transaction&& _t );
     /// Get hashes of CTXs crafted by transaction that is being executed now
@@ -63,7 +63,7 @@ public:
     void setQueueOnInit( const Transactions& _ctxQueue );
 
 private:
-    std::vector< Transaction > m_current;
+    std::shared_ptr< std::vector< Transaction > > m_current;
     std::atomic_size_t m_currentHeadIndex = 0;
     bool m_empty = true;
     mutable SharedMutex m_lock;

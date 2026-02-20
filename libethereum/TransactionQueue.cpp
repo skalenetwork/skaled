@@ -603,7 +603,8 @@ void TransactionQueue::clearAllBITE2Transactions() {
     m_bite2Queue.clear();
 }
 
-const Transactions& TransactionQueue::finalizeBITE2QueueAndGetCtxs() {
+std::shared_ptr< std::vector< dev::eth::Transaction > >
+TransactionQueue::finalizeBITE2QueueAndGetCtxs() {
     return m_bite2Queue.finalizeAndGetCtxs();
 }
 

@@ -25,7 +25,6 @@
 
 #include <array>
 #include <optional>
-#include <span>
 #include <unordered_map>
 
 #include <libdevcore/Common.h>
@@ -339,7 +338,9 @@ public:
         return m_ctxHashesLists;
     }
 
-    const std::span< const Transaction > createdCtxs() const { return m_createdCtxs; }
+    const std::shared_ptr< std::vector< dev::eth::Transaction > >& createdCtxs() const {
+        return m_createdCtxs;
+    }
 #endif  // BITE2
 #endif  // BITE
 
@@ -440,7 +441,7 @@ private:
     // only filled for a working block
     // safe, because it is filled with transactions from BITE2 queue
     // which stay there until the block is committed
-    std::span< const Transaction > m_createdCtxs;
+    std::shared_ptr< Transactions > m_createdCtxs;
 #endif  // BITE2
 #endif  // BITE
 

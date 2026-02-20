@@ -782,9 +782,10 @@ void BlockChain::insertTransactionsDetailsToDb(
         _extrasWriteBatch.insert( toSlice( _block.info.hash(), ExtraCtxOrigin ),
             ( db::Slice ) dev::ref( ctxOrigin.rlp() ) );
 
+        CHECK_EXPRESSION( _block.createdCtxs );
         RLPStream s;
-        s.appendList( _block.createdCtxs.size() );
-        for ( const auto& ctx : _block.createdCtxs )
+        s.appendList( _block.createdCtxs->size() );
+        for ( const auto& ctx : *_block.createdCtxs )
             s.appendRaw( ctx.toBytes() );
         dev::bytes ctxListRlp = s.out();
         _extrasWriteBatch.insert(

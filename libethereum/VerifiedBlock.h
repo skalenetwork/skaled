@@ -21,8 +21,6 @@
  * @date 2014
  */
 
-#include <span>
-
 #include "libconsensus/node/ConsensusInterface.h"
 #include <libdevcore/Common.h>
 #include <libethcore/BlockHeader.h>
@@ -50,7 +48,7 @@ struct VerifiedBlockRef {
 
 #ifdef BITE2
     std::vector< std::vector< dev::h256 > > ctxHashesLists;
-    std::span< const Transaction > createdCtxs;
+    std::shared_ptr< std::vector< Transaction > > createdCtxs;
 #endif  // BITE2
 #endif  // BITE
 };
