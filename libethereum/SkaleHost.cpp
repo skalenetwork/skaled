@@ -1128,7 +1128,7 @@ u256 SkaleHost::getGasPrice( unsigned _blockNumber ) const {
     return m_consensus->getPriceForBlockId( _blockNumber );
 }
 
-unsigned SkaleHost::resolveRandomBlockNumber(unsigned _blockNumber, bool _isCalledFromTxn) const {
+unsigned SkaleHost::resolveRandomBlockNumber( unsigned _blockNumber, bool _isCalledFromTxn ) const {
     // for FAIR patch is always enabled
     // check that patch enabled after block _blockNumber - 1
     // if so - return correct value
@@ -1137,31 +1137,32 @@ unsigned SkaleHost::resolveRandomBlockNumber(unsigned _blockNumber, bool _isCall
     // and regular transactions
     // handle corner case of genesis block
     // is never a case unless called from debug_traceBlock / eth_call on genesis
-    if (_blockNumber == 0) return 0;
+    if ( _blockNumber == 0 )
+        return 0;
 
     auto previousBlockTimestamp =
-        m_client.blockInfo(m_client.hashFromNumber(_blockNumber - 1)).timestamp();
+        m_client.blockInfo( m_client.hashFromNumber( _blockNumber - 1 ) ).timestamp();
 
-    if (!CurrentBlockRandomPatch::isEnabledWhen(previousBlockTimestamp))
+    if ( !CurrentBlockRandomPatch::isEnabledWhen( previousBlockTimestamp ) )
         return _blockNumber - 1;
 
     // means a call outside of block is being executed
     // if blockNumberToCall > currentBlockNumber, need to decrease it by 1
     // otherwise the exception is thrown
-    if (!_isCalledFromTxn && _blockNumber > m_client.number())
+    if ( !_isCalledFromTxn && _blockNumber > m_client.number() )
         return _blockNumber - 1;
 
     return _blockNumber;
 }
 
 u256 SkaleHost::getBlockRandom( unsigned _blockNumber, bool _isCalledFromTxn ) const {
-    auto blockNumber = resolveRandomBlockNumber(_blockNumber, _isCalledFromTxn);
+    auto blockNumber = resolveRandomBlockNumber( _blockNumber, _isCalledFromTxn );
     return m_consensus->getRandomForBlockId( blockNumber );
 }
 
 #ifdef BITE2
 u256 SkaleHost::getReencryptionBlockRandom( unsigned _blockNumber, bool _isCalledFromTxn ) const {
-    auto blockNumber = resolveRandomBlockNumber(_blockNumber, _isCalledFromTxn);
+    auto blockNumber = resolveRandomBlockNumber( _blockNumber, _isCalledFromTxn );
     return m_consensus->getReencryptionRandomForBlockId( blockNumber );
 }
 #endif

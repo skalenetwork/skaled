@@ -214,7 +214,7 @@ private:
 
     void checkStateRoot( uint64_t _blockId, uint64_t _winningNodeIndex, u256 _stateRoot );
 
-    unsigned resolveRandomBlockNumber(unsigned _blockNumber, bool _isCalledFromTxn) const;
+    unsigned resolveRandomBlockNumber( unsigned _blockNumber, bool _isCalledFromTxn ) const;
 
     std::thread m_broadcastThread;
     void broadcastFunc();
