@@ -353,7 +353,10 @@ public:
     }
 
     Transactions ctxListForPreviousBlock() const {
-        return RLP( this->m_db->lookup( ( db::Slice ) "lastBlockCTXs" ) ).toVector< Transaction >();
+        std::string lastBlockCTXs = this->m_db->lookup( ( db::Slice ) "lastBlockCTXs" );
+        if ( lastBlockCTXs.empty() )
+            return {};
+        return RLP( lastBlockCTXs ).toVector< Transaction >();
     }
 #endif  // BITE2
 #endif  // BITE
