@@ -341,7 +341,13 @@ public:
 
         vm->exec( gas, extVm, onOp );
 
-        BOOST_REQUIRE_EQUAL( gasBefore - gasAfter, 400 );
+        BOOST_REQUIRE_EQUAL( gasBefore - gasAfter, 
+#ifdef FAIR
+        2600  // EIP-2929: cold account access cost
+#else
+        400
+#endif
+         );
     }
 
     void testExtCodeHashisInvalidBeforeConstantinople() {
@@ -477,42 +483,140 @@ public:
 
     virtual ~SstoreTestFixture() {  }
 
-    void testEip1283Case1() { testGasConsumed( "0x60006000556000600055", 0, 412, 0 ); }
+    void testEip1283Case1() {
+#ifdef FAIR
+        testGasConsumed( "0x60006000556000600055", 0, 2312, 0 );
+#else
+        testGasConsumed( "0x60006000556000600055", 0, 412, 0 );
+#endif
+    }
 
-    void testEip1283Case2() { testGasConsumed( "0x60006000556001600055", 0, 20212, 0 ); }
+    void testEip1283Case2() {
+#ifdef FAIR
+        testGasConsumed( "0x60006000556001600055", 0, 22212, 0 );
+#else
+        testGasConsumed( "0x60006000556001600055", 0, 20212, 0 );
+#endif
+    }
 
-    void testEip1283Case3() { testGasConsumed( "0x60016000556000600055", 0, 20212, 19800 ); }
+    void testEip1283Case3() {
+#ifdef FAIR
+        testGasConsumed( "0x60016000556000600055", 0, 22212, 19800 );
+#else
+        testGasConsumed( "0x60016000556000600055", 0, 20212, 19800 );
+#endif
+    }
 
-    void testEip1283Case4() { testGasConsumed( "0x60016000556002600055", 0, 20212, 0 ); }
+    void testEip1283Case4() {
+#ifdef FAIR
+        testGasConsumed( "0x60016000556002600055", 0, 22212, 0 );
+#else
+        testGasConsumed( "0x60016000556002600055", 0, 20212, 0 );
+#endif
+    }
 
-    void testEip1283Case5() { testGasConsumed( "0x60016000556001600055", 0, 20212, 0 ); }
+    void testEip1283Case5() {
+#ifdef FAIR
+        testGasConsumed( "0x60016000556001600055", 0, 22212, 0 );
+#else
+        testGasConsumed( "0x60016000556001600055", 0, 20212, 0 );
+#endif
+    }
 
-    void testEip1283Case6() { testGasConsumed( "0x60006000556000600055", 1, 5212, 15000 ); }
+    void testEip1283Case6() {
+#ifdef FAIR
+        testGasConsumed( "0x60006000556000600055", 1, 5112, 15000 );
+#else
+        testGasConsumed( "0x60006000556000600055", 1, 5212, 15000 );
+#endif
+    }
 
-    void testEip1283Case7() { testGasConsumed( "0x60006000556001600055", 1, 5212, 4800 ); }
+    void testEip1283Case7() {
+#ifdef FAIR
+        testGasConsumed( "0x60006000556001600055", 1, 5112, 4800 );
+#else
+        testGasConsumed( "0x60006000556001600055", 1, 5212, 4800 );
+#endif
+    }
 
-    void testEip1283Case8() { testGasConsumed( "0x60006000556002600055", 1, 5212, 0 ); }
+    void testEip1283Case8() {
+#ifdef FAIR
+        testGasConsumed( "0x60006000556002600055", 1, 5112, 0 );
+#else
+        testGasConsumed( "0x60006000556002600055", 1, 5212, 0 );
+#endif
+    }
 
-    void testEip1283Case9() { testGasConsumed( "0x60026000556000600055", 1, 5212, 15000 ); }
+    void testEip1283Case9() {
+#ifdef FAIR
+        testGasConsumed( "0x60026000556000600055", 1, 5112, 15000 );
+#else
+        testGasConsumed( "0x60026000556000600055", 1, 5212, 15000 );
+#endif
+    }
 
-    void testEip1283Case10() { testGasConsumed( "0x60026000556003600055", 1, 5212, 0 ); }
+    void testEip1283Case10() {
+#ifdef FAIR
+        testGasConsumed( "0x60026000556003600055", 1, 5112, 0 );
+#else
+        testGasConsumed( "0x60026000556003600055", 1, 5212, 0 );
+#endif
+    }
 
-    void testEip1283Case11() { testGasConsumed( "0x60026000556001600055", 1, 5212, 4800 ); }
+    void testEip1283Case11() {
+#ifdef FAIR
+        testGasConsumed( "0x60026000556001600055", 1, 5112, 4800 );
+#else
+        testGasConsumed( "0x60026000556001600055", 1, 5212, 4800 );
+#endif
+    }
 
-    void testEip1283Case12() { testGasConsumed( "0x60026000556002600055", 1, 5212, 0 ); }
+    void testEip1283Case12() {
+#ifdef FAIR
+        testGasConsumed( "0x60026000556002600055", 1, 5112, 0 );
+#else
+        testGasConsumed( "0x60026000556002600055", 1, 5212, 0 );
+#endif
+    }
 
-    void testEip1283Case13() { testGasConsumed( "0x60016000556000600055", 1, 5212, 15000 ); }
+    void testEip1283Case13() {
+#ifdef FAIR
+        testGasConsumed( "0x60016000556000600055", 1, 5112, 15000 );
+#else
+        testGasConsumed( "0x60016000556000600055", 1, 5212, 15000 );
+#endif
+    }
 
-    void testEip1283Case14() { testGasConsumed( "0x60016000556002600055", 1, 5212, 0 ); }
+    void testEip1283Case14() {
+#ifdef FAIR
+        testGasConsumed( "0x60016000556002600055", 1, 5112, 0 );
+#else
+        testGasConsumed( "0x60016000556002600055", 1, 5212, 0 );
+#endif
+    }
 
-    void testEip1283Case15() { testGasConsumed( "0x60016000556001600055", 1, 412, 0 ); }
+    void testEip1283Case15() {
+#ifdef FAIR
+        testGasConsumed( "0x60016000556001600055", 1, 2312, 0 );
+#else
+        testGasConsumed( "0x60016000556001600055", 1, 412, 0 );
+#endif
+    }
 
     void testEip1283Case16() {
+#ifdef FAIR
+        testGasConsumed( "0x600160005560006000556001600055", 0, 42218, 19800 );
+#else
         testGasConsumed( "0x600160005560006000556001600055", 0, 40218, 19800 );
+#endif
     }
 
     void testEip1283Case17() {
+#ifdef FAIR
+        testGasConsumed( "0x600060005560016000556000600055", 1, 8018, 19800 );
+#else
         testGasConsumed( "0x600060005560016000556000600055", 1, 10218, 19800 );
+#endif
     }
 
     void testGasConsumed( std::string const& _codeStr, u256 const& _originalValue,
@@ -700,7 +804,13 @@ public:
 
         vm->exec( gas, extVm, onOp );
 
-        BOOST_REQUIRE_EQUAL( gasBefore - gasAfter, 700 );
+        BOOST_REQUIRE_EQUAL( gasBefore - gasAfter, 
+#ifdef FAIR
+        2600  // EIP-2929: cold account access cost
+#else
+        700
+#endif
+         );
     }
 
     void testSelfBalanceisInvalidBeforeIstanbul() {
