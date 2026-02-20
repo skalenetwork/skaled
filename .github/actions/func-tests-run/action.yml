@@ -1,0 +1,22 @@
+name: func-tests-run
+description: Install and run skaled functional test suite
+inputs:
+  suite:
+    required: true
+    description: Functional test suite name (for example: hardfork-support)
+
+runs:
+  using: composite
+  steps:
+    - uses: astral-sh/setup-uv@v6
+
+    - shell: bash
+      run: |
+        set -euo pipefail
+
+        uv sync --locked --project test/func-tests
+
+        cd test/func-tests
+        cp run-example.toml run.toml
+        sed -i "s#^private_key[[:space:]]*=.*#private_key = \"${FUNC_TEST_PRIVATE_KEY}\"#" run.toml
+        uv run --project . run.py --config run.toml --suite "${{ inputs.suite }}"
