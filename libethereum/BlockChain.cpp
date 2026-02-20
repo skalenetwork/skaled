@@ -785,7 +785,7 @@ void BlockChain::insertTransactionsDetailsToDb(
         RLPStream s;
         s.appendList( _block.createdCtxs.size() );
         for ( const auto& ctx : _block.createdCtxs )
-            s.append( ctx.toBytes() );
+            s.appendRaw( ctx.toBytes() );
         dev::bytes ctxListRlp = s.out();
         _extrasWriteBatch.insert(
             db::Slice( "lastBlockCTXs" ), ( db::Slice ) dev::ref( ctxListRlp ) );
@@ -1903,3 +1903,22 @@ bool BlockChain::isPatchTimestampActiveInBlockNumber( time_t _ts, BlockNumber _b
 
     return prev_ts >= _ts;
 }
+
+#ifdef BITE2
+
+Transactions BlockChain::ctxListForPreviousBlock() const {
+    std::string lastBlockCTXs = this->m_extrasDB->lookup( ( db::Slice ) "lastBlockCTXs" );
+    if ( lastBlockCTXs.empty() )
+        return {};
+    RLP rlp( lastBlockCTXs );
+    Transactions ctxs;
+    ctxs.reserve( rlp.itemCount() );
+    uint64_t prevBlockTimestamp = info().timestamp();
+    for ( auto const& txRlp : rlp ) {
+        ctxs.push_back( Transaction( txRlp.data(), CheckTransaction::None, true,
+                        EIP1559TransactionsPatch::isEnabledWhen( prevBlockTimestamp ),
+                        InvalidTransactionFormatPatch::isEnabledWhen( prevBlockTimestamp ) ) );
+    }
+    return ctxs;
+}
+#endif  // BITE2
