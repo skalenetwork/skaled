@@ -156,7 +156,7 @@ jobs:
           build_dir: build
           cmake_build_type: ${{ env.BUILD_TYPE }}
           cmake_args: ${{ env.CMAKE_OPTS }}
-          make_target: all
+          make_target: skaled
           
       - name: Binary post-processing
         run: |
