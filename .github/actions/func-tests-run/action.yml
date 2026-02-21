@@ -3,7 +3,7 @@ description: Install and run skaled functional test suite
 inputs:
   suite:
     required: true
-    description: Functional test suite name (for example: hardfork-support)
+    description: "Functional test suite name (for example: hardfork-support)"
 
 runs:
   using: composite
