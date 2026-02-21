@@ -88,11 +88,13 @@ public:
     /// For Legacy (type 0): returns bare rlp([status, gasUsed, bloom, logs]).
     /// For typed (type 1, 2, ...): returns type_byte || rlp([status, gasUsed, bloom, logs]).
     bytes typedRlp() const {
-        bytes receiptBytes = rlp();
         if ( m_txType > 0 ) {
-            receiptBytes.insert( receiptBytes.begin(), static_cast< uint8_t >( m_txType ) );
+            bytes result( 1, static_cast< uint8_t >( m_txType ) );
+            bytes receiptBytes = rlp();
+            result.insert( result.end(), receiptBytes.begin(), receiptBytes.end() );
+            return result;
         }
-        return receiptBytes;
+        return rlp();
     }
 
 private:
