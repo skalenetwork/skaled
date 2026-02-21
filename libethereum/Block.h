@@ -441,7 +441,7 @@ private:
     // only filled for a working block
     // safe, because it is filled with transactions from BITE2 queue
     // which stay there until the block is committed
-    std::shared_ptr< Transactions > m_createdCtxs;
+    std::shared_ptr< Transactions > m_createdCtxs = std::make_shared< Transactions >();
 #endif  // BITE2
 #endif  // BITE
 
