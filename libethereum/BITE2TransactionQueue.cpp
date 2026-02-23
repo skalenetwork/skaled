@@ -124,10 +124,10 @@ bool BITE2TransactionQueue::dropGood( const Transaction& _t ) {
     return false;
 }
 
-void BITE2TransactionQueue::setQueueOnInit( const Transactions& _ctxQueue ) {
+void BITE2TransactionQueue::setQueueOnInit( Transactions&& _ctxQueue ) {
     WriteGuard l( m_lock );
     CHECK_EXPRESSION( m_current );
-    m_current = std::make_shared< std::vector< Transaction > >( _ctxQueue );
+    m_current = std::make_shared< std::vector< Transaction > >( std::move( _ctxQueue ) );
     m_currentHeadIndex.store( 0, std::memory_order_relaxed );
     m_empty = m_current->empty();
     BOOST_LOG( m_loggerInfo ) << "BITE2 queue initialized with " << m_current->size() << " CTXs";

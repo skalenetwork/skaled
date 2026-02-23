@@ -44,7 +44,8 @@ public:
     inline static const std::string PROGRESS_LOG_FILE = "state_progress";
 
 private:
-    // RLP format: [blockNumber, status, timestamp, [receipt0_rlp, receipt1_rlp, ...]]
+    // RLP format: [blockNumber, status, timestamp, [receipt0_rlp, receipt1_rlp, ...], [ctx0_rlp,
+    // ctx1_rlp, ...]]
     void writeProgressData( const CommittedProgressData& _data );
 
     boost::filesystem::path m_progressLogPath;

@@ -180,7 +180,7 @@ public:
     std::shared_ptr< std::vector< dev::eth::Transaction > > finalizeBITE2QueueAndGetCtxs();
 
     /// Set the queue on startup with CTXs that were created in the previous block
-    void setBITE2QueueOnInit( const Transactions& _ctxQueue );
+    void setBITE2QueueOnInit( Transactions&& _ctxQueue );
 #endif
 
     struct Status {

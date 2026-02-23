@@ -608,7 +608,7 @@ TransactionQueue::finalizeBITE2QueueAndGetCtxs() {
     return m_bite2Queue.finalizeAndGetCtxs();
 }
 
-void TransactionQueue::setBITE2QueueOnInit( const Transactions& _ctxQueue ) {
-    m_bite2Queue.setQueueOnInit( _ctxQueue );
+void TransactionQueue::setBITE2QueueOnInit( Transactions&& _ctxQueue ) {
+    m_bite2Queue.setQueueOnInit( std::move( _ctxQueue ) );
 }
 #endif

@@ -404,6 +404,10 @@ void SkaleHost::clearTempBITE2Transactions() {
 std::shared_ptr< std::vector< dev::eth::Transaction > > SkaleHost::finalizeBITE2QueueAndGetCtxs() {
     return m_tq.finalizeBITE2QueueAndGetCtxs();
 }
+
+void SkaleHost::setBITE2QueueOnInit( std::vector< dev::eth::Transaction >&& _ctxs ) {
+    return m_tq.setBITE2QueueOnInit( std::move( _ctxs ) );
+}
 #endif
 
 h256 SkaleHost::receiveTransaction( std::string _rlp ) {

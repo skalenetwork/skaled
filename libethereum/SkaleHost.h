@@ -135,6 +135,7 @@ public:
     void commitTempBITE2Transactions();
     void clearTempBITE2Transactions();
     std::shared_ptr< std::vector< dev::eth::Transaction > > finalizeBITE2QueueAndGetCtxs();
+    void setBITE2QueueOnInit( std::vector< dev::eth::Transaction >&& _ctxs );
 #endif
 
     dev::u256 getGasPrice( unsigned _blockNumber = dev::eth::LatestBlock ) const;

@@ -540,7 +540,9 @@ std::pair< TransactionReceipts, unsigned > Block::recoverFromReceipts(
     }
     m_receipts = std::move( savedData->receipts );
 #ifdef BITE2
-    m_createdCtxs = std::make_shared< Transactions >( std::move( savedData->ctxsCreatedInBlock ) );
+    // set CTXs from previous block to BITE2 queue
+    g_skaleHost->setBITE2QueueOnInit( std::move( savedData->ctxsCreatedInBlock ) );
+    m_createdCtxs = g_skaleHost->finalizeBITE2QueueAndGetCtxs();
 #endif
 
     unsigned badCount = 0;

@@ -60,10 +60,11 @@ public:
     bool dropGood( const Transaction& _t );
 
     /// Set the queue on startup with CTXs that were created in the previous block
-    void setQueueOnInit( const Transactions& _ctxQueue );
+    void setQueueOnInit( Transactions&& _ctxQueue );
 
 private:
-    std::shared_ptr< std::vector< Transaction > > m_current;
+    std::shared_ptr< std::vector< Transaction > > m_current =
+        std::make_shared< std::vector< Transaction > >();
     std::atomic_size_t m_currentHeadIndex = 0;
     bool m_empty = true;
     mutable SharedMutex m_lock;
