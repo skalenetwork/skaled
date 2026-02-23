@@ -1135,24 +1135,24 @@ unsigned SkaleHost::resolveRandomBlockNumber( unsigned _blockNumber, bool _isCal
     // if not - return value for previous block
     // works for historic calls, eth_call, eth_estimateGas
     // and regular transactions
-    // handle corner case of genesis block
-    // is never a case unless called from debug_traceBlock / eth_call on genesis
-    if ( _blockNumber == 0 )
-        return 0;
-
+    if ( _blockNumber == 0 ) {
+        // handle corner case of genesis block
+        // is never a case unless called from debug_traceBlock / eth_call on genesis
+        return _blockNumber;
+    }
     auto previousBlockTimestamp =
         m_client.blockInfo( m_client.hashFromNumber( _blockNumber - 1 ) ).timestamp();
-
-    if ( !CurrentBlockRandomPatch::isEnabledWhen( previousBlockTimestamp ) )
-        return _blockNumber - 1;
-
-    // means a call outside of block is being executed
-    // if blockNumberToCall > currentBlockNumber, need to decrease it by 1
-    // otherwise the exception is thrown
-    if ( !_isCalledFromTxn && _blockNumber > m_client.number() )
-        return _blockNumber - 1;
-
-    return _blockNumber;
+    if ( CurrentBlockRandomPatch::isEnabledWhen( previousBlockTimestamp ) ) {
+        if ( !_isCalledFromTxn ) {
+            // means a call outside of block is being executed
+            // if blockNumberToCall > currentBlockNumber, need to decrease it by 1
+            // otherwise the exception is thrown
+            if ( _blockNumber > m_client.number() )
+                --_blockNumber;
+        }
+        return _blockNumber;
+    }
+    return _blockNumber - 1;
 }
 
 u256 SkaleHost::getBlockRandom( unsigned _blockNumber, bool _isCalledFromTxn ) const {
