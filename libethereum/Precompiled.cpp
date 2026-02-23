@@ -1023,7 +1023,7 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
         rlpStream.appendList( 9 );  // nonce, gasPrice, gas, to, value, data, v, r, s
         rlpStream << 0 << g_skaleHost->getGasPrice() << gas.convert_to< dev::u256 >();
         rlpStream << destination << 0 << rlpEncodedData;
-        rlpStream << signature.v + 27 << signature.r << signature.s;
+        rlpStream << signature.v + 27 << dev::u256( signature.r ) << dev::u256( signature.s );
 
         dev::bytes signedTxnRlp = rlpStream.out();
 
