@@ -339,6 +339,7 @@ public:
     }
 
     const std::shared_ptr< std::vector< dev::eth::Transaction > >& createdCtxs() const {
+        CHECK_EXPRESSION( m_createdCtxs );
         return m_createdCtxs;
     }
 #endif  // BITE2

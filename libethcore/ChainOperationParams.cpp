@@ -134,8 +134,9 @@ time_t ChainOperationParams::getPatchTimestamp( SchainPatchEnum _patchEnum ) con
     return sChain.getPatchTimestamp( _patchEnum );
 }
 
-void ChainOperationParams::setPatchTimestamps( const std::map< SchainPatchEnum, time_t >& _patchTimestampsToSet ) {
-    for ( const auto& patch: _patchTimestampsToSet ) {
+void ChainOperationParams::setPatchTimestamps(
+    const std::map< SchainPatchEnum, time_t >& _patchTimestampsToSet ) {
+    for ( const auto& patch : _patchTimestampsToSet ) {
         auto name = patch.first;
         auto activationTimestamp = patch.second;
         sChain._patchTimestamps[static_cast< int >( name )] = activationTimestamp;

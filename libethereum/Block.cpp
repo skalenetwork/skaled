@@ -539,7 +539,9 @@ std::pair< TransactionReceipts, unsigned > Block::recoverFromReceipts(
         m_transactionSet.insert( tx.sha3() );
     }
     m_receipts = std::move( savedData->receipts );
+#ifdef BITE2
     m_createdCtxs = std::make_shared< Transactions >( std::move( savedData->ctxsCreatedInBlock ) );
+#endif
 
     unsigned badCount = 0;
     u256 cumulativeGas = 0;
@@ -737,6 +739,9 @@ void Block::saveStateChanges(
     createBlockSnapshot();
 
     if ( progressLog && _context.singleCommitEnabled ) {
+#ifdef BITE2
+        CHECK_EXPRESSION( m_createdCtxs );
+#endif
         progressLog->markBlockCommitCompleted(
             m_currentBlock.number(), _context.receipts, m_currentBlock.timestamp()
 #ifdef BITE2
