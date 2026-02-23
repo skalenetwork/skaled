@@ -1796,11 +1796,29 @@ BOOST_AUTO_TEST_CASE( encryptTE_same_data ) {
     size_t paddingNeeded = 32 - ( dataToEncrypt.size() % 32 );
     input.insert( input.end(), paddingNeeded, 0 );
 
-    // Call the precompiled contract twice
+    // READ ONLY -----
+
+    bool isReadOnly = true;
+    // Call the precompiled contract twice - read only
+    auto res1_ro = exec( bytesConstRef( input.data(), input.size() ),
+        PrecompiledCallContext( 1, 0, 0, dev::Address(), isReadOnly ) );
+    auto res2_ro = exec( bytesConstRef( input.data(), input.size() ),
+        PrecompiledCallContext( 1, 0, 0, dev::Address(), isReadOnly ) );
+
+    // Verify success
+    BOOST_REQUIRE( res1_ro.first );
+    BOOST_REQUIRE( res2_ro.first );
+    // Results should be the same -> counter should not increase in read-only calls
+    BOOST_REQUIRE( res1_ro.second == res2_ro.second );
+
+    // NOT READ ONLY -----
+
+    isReadOnly = false;
+    // Call the precompiled contract twice - not read only
     auto res1 = exec( bytesConstRef( input.data(), input.size() ),
-        PrecompiledCallContext( 1, 0, 0, dev::Address(), true ) );
+        PrecompiledCallContext( 1, 0, 0, dev::Address(), isReadOnly ) );
     auto res2 = exec( bytesConstRef( input.data(), input.size() ),
-        PrecompiledCallContext( 1, 0, 0, dev::Address(), true ) );
+        PrecompiledCallContext( 1, 0, 0, dev::Address(), isReadOnly ) );
 
     // Verify success
     BOOST_REQUIRE( res1.first );
@@ -1820,8 +1838,9 @@ BOOST_AUTO_TEST_CASE( encryptTE_same_data ) {
     publicKeys.emplace_back( publicKeyG2 );
 
     // Counter starts at 0 and increments per call in a block
-    bytes expectedCiphertext1 = buildDeterministicCiphertext( fixture.skaleHost->getBlockRandom( 1, true ), 0, publicKeys, dataToEncrypt );
-    bytes expectedCiphertext2 = buildDeterministicCiphertext( fixture.skaleHost->getBlockRandom( 1, true ), 1, publicKeys, dataToEncrypt );
+    isReadOnly = false;// we want to check the non-read-only case where counter increments
+    bytes expectedCiphertext1 = buildDeterministicCiphertext( fixture.skaleHost->getBlockRandom( 1, isReadOnly ), 0, publicKeys, dataToEncrypt );
+    bytes expectedCiphertext2 = buildDeterministicCiphertext( fixture.skaleHost->getBlockRandom( 1, isReadOnly ), 1, publicKeys, dataToEncrypt );
 
     BOOST_REQUIRE( ciphertextBytes1 == expectedCiphertext1 );
     BOOST_REQUIRE( ciphertextBytes2 == expectedCiphertext2 );
@@ -2202,11 +2221,12 @@ BOOST_AUTO_TEST_CASE( encryptECIES_deterministic ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptECIES" );
 
     // Call the precompiled contract twice in the same context (same block random)
+    // not read only -> will increase counter
+    bool isReadOnly = false;
     auto res1 = exec( bytesConstRef( input.data(), input.size() ),
-        PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+        PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, isReadOnly ) );
     auto res2 = exec( bytesConstRef( input.data(), input.size() ),
-        PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
-
+        PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, isReadOnly ) );
     BOOST_REQUIRE( res1.first );
     BOOST_REQUIRE( res2.first );
 
@@ -2215,7 +2235,7 @@ BOOST_AUTO_TEST_CASE( encryptECIES_deterministic ) {
 
     // Compute deterministic seed: Hash(blockRandom || counter)
     auto buildSeed = [&]( uint64_t counter ) {
-        bytes blockRandomBytes = toBigEndian( fixture.skaleHost->getBlockRandom( 1, true ) );
+        bytes blockRandomBytes = toBigEndian( fixture.skaleHost->getBlockRandom( 1, isReadOnly ) );
         bytes counterBytes = toBigEndian( dev::u256( counter ) );
         bytes combined;
         combined.insert( combined.end(), blockRandomBytes.begin(), blockRandomBytes.end() );
