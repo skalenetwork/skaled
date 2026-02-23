@@ -782,14 +782,16 @@ void BlockChain::insertTransactionsDetailsToDb(
         _extrasWriteBatch.insert( toSlice( _block.info.hash(), ExtraCtxOrigin ),
             ( db::Slice ) dev::ref( ctxOrigin.rlp() ) );
 
-        CHECK_EXPRESSION( _block.createdCtxs );
-        RLPStream s;
-        s.appendList( _block.createdCtxs->size() );
-        for ( const auto& ctx : *_block.createdCtxs )
-            s.appendRaw( ctx.toBytes() );
-        dev::bytes ctxListRlp = s.out();
-        _extrasWriteBatch.insert(
-            db::Slice( "lastBlockCTXs" ), ( db::Slice ) dev::ref( ctxListRlp ) );
+        if ( SingleStateCommitPerBlockPatch::isEnabledInWorkingBlock() ) {
+            CHECK_EXPRESSION( _block.createdCtxs );
+            RLPStream s;
+            s.appendList( _block.createdCtxs->size() );
+            for ( const auto& ctx : *_block.createdCtxs )
+                s.appendRaw( ctx.toBytes() );
+            dev::bytes ctxListRlp = s.out();
+            _extrasWriteBatch.insert(
+                db::Slice( "lastBlockCTXs" ), ( db::Slice ) dev::ref( ctxListRlp ) );
+        }
 #endif  // BITE2
         CHECK_EXPRESSION( _block.decryptedTransactions.regularTxsMap );
         auto regularTxnsIterator = _block.decryptedTransactions.regularTxsMap->begin();
