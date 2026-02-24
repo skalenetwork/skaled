@@ -5153,6 +5153,7 @@ static std::string const c_BITEConfigString =
             "schainID": 1,
             "contractStorageLimit": 128,
             "emptyBlockIntervalMs": -1,
+            "SingleStateCommitPerBlockPatchTimestamp": 1,
             "nodeGroups": {
                 "0": {
                     "nodes": {
@@ -5327,6 +5328,7 @@ static std::string const c_BITEConfigString =
             "schainName": "TestChain",
             "schainID": 1,
             "emptyBlockIntervalMs": -1,
+            "SingleStateCommitPerBlockPatchTimestamp": 1,
             "nodeGroups": {
                 "0": {
                     "nodes": {
@@ -6321,6 +6323,13 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
 
     BOOST_REQUIRE_EQUAL( fixture.client->debugGetTransactionQueue()->pendingBITE2Transactions().size(), 1 );
 
+    auto lastBlockCTXs = fixture.client->blockChain().ctxListForPreviousBlock();
+    BOOST_REQUIRE_EQUAL( lastBlockCTXs.size(), 1 );
+    auto ctxFromLastBlock = lastBlockCTXs[0];
+    BOOST_REQUIRE( ctxFromLastBlock.isCTX() );
+    BOOST_REQUIRE_EQUAL( ctxFromLastBlock.to(), dev::Address( contractAddress ) );
+    BOOST_REQUIRE_EQUAL( ctxFromLastBlock.gas(), randomGasLimit );
+
     dev::eth::mineTransaction( *( fixture.client ), 1 );
     bn = fixture.client->number();
     BOOST_REQUIRE_EQUAL( fixture.client->transactions( bn ).size(), 1 );
@@ -6335,7 +6344,6 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
 
     auto ctxOrigin = fixture.rpcClient->bite_getCtxOrigin( "0x" + ctxFromBlockchain.sha3().hex() );
     BOOST_REQUIRE_EQUAL( "0x" + ctxOrigin, txGenerateHash );
-
 
     // call getDecrypted()
     result = dev::fromHex( fixture.rpcClient->eth_call( callDecrypted, "latest" ) );

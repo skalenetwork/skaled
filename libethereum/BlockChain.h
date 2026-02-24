@@ -351,6 +351,8 @@ public:
         return queryExtras< CtxOrigin, ExtraCtxOrigin >(
             _blockHash, m_ctxOrigin, x_ctxOrigin, NullCtxOrigin );
     }
+
+    Transactions ctxListForPreviousBlock() const;
 #endif  // BITE2
 #endif  // BITE
 
