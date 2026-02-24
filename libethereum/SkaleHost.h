@@ -137,6 +137,9 @@ public:
     // Returns 32-byte random value suitable for use as encryption seed
     dev::h256 getEncryptionCallRandom( unsigned _blockNumber, bool _isReadOnly );
 
+    // Resets encryption counter & updates cached block random bytes for new block
+    void resetEncryptionStateForBlock( uint64_t _blockNumber );
+
     void addTempBITE2Transaction( dev::eth::Transaction&& _transaction );
     std::vector< dev::h256 > getBITE2HashesForCurrentTxn() const;
     void commitTempBITE2Transactions();
@@ -299,15 +302,13 @@ private:
 
 #ifdef BITE2
 
-    // Keeps track of block number for which m_encryptionCounter is valid
-    unsigned m_encryptionCounterBlockNumber = 0;
-
     // Per-block encryption counter for deterministic but unique encryption
     // Counter resets when block number changes, increments for each encryption call
     // No mutex needed since EVM execution is sequential
     uint64_t m_encryptionCounter = 0;
 
     // Cached block random bytes for current block to avoid recomputation
+    // updated at each new block
     dev::bytes m_cachedBlockRandomBytes;
 
 #endif

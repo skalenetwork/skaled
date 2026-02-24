@@ -350,6 +350,12 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
         m_consensus->parseFullConfigAndCreateNode(
             m_client.chainParams().getOriginalJson(), _gethURL );
 #endif
+
+#ifdef BITE2
+        // needs to be after consensus creation since it uses random from consensus.
+        resetEncryptionStateForBlock( 0 );
+#endif // BITE2
+
     } catch ( const std::exception& e ) {
         BOOST_LOG( m_loggerError )
             << "Could not create parse consensus config in SkaleHost" << e.what();
@@ -652,7 +658,11 @@ void SkaleHost::createBlock( const ConsensusExtFace::Transactions& _approvedTran
 
     DEV_GUARDED( m_client.m_blockImportMutex ) {
         m_debugTracer.tracepoint( "drop_good_transactions" );
-
+#ifdef BITE2 
+        // need to reset encryption state with new block id before processing txs to make
+        // sure a random for current block id is set.
+        resetEncryptionStateForBlock( _blockID );
+#endif
         outTxns = processRegularTransactions( _approvedTransactions, latestInfo
 #ifdef BITE
             ,
@@ -1184,6 +1194,12 @@ std::array< std::string, 4 > SkaleHost::getCurrentBLSPublicKey() const {
 
 #ifdef BITE2
 
+void SkaleHost::resetEncryptionStateForBlock( uint64_t _blockID ) {
+    constexpr bool isReadOnly = false;
+    m_encryptionCounter = 0;
+    m_cachedBlockRandomBytes = toBigEndian( getBlockRandom( _blockID, isReadOnly ) );
+}
+
 dev::h256 SkaleHost::getEncryptionCallRandom( unsigned _blockNumber, bool _isReadOnly ) {
     uint64_t counter = 0;
     bytes blockRandomBytes;
@@ -1196,17 +1212,7 @@ dev::h256 SkaleHost::getEncryptionCallRandom( unsigned _blockNumber, bool _isRea
     }
     // block tx - should follow linear block increase
     else {
-        // Reset counter if we've moved to a new block
-        // EVM execution is sequential, so no race conditions
-        if ( m_encryptionCounterBlockNumber != _blockNumber || m_cachedBlockRandomBytes.empty() ) {
-            m_encryptionCounterBlockNumber = _blockNumber;
-            m_encryptionCounter = 0;
-            m_cachedBlockRandomBytes = toBigEndian( getBlockRandom( _blockNumber, _isReadOnly ) );
-        }
-
-        // Get current counter value and increment for next call
         counter = m_encryptionCounter++;
-        // Use cached block random bytes
         blockRandomBytes = m_cachedBlockRandomBytes;
     }
 

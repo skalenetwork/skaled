@@ -1681,6 +1681,60 @@ BOOST_AUTO_TEST_CASE( getCurrentBLSPublicKey ) {
 #endif
 
 #ifdef BITE2
+
+BOOST_AUTO_TEST_CASE( encryptionRandom_read_only_does_not_advance_counter ) {
+    SkaleHostFixture fixture;
+    fixture.skaleHost->resetEncryptionStateForBlock( 1 );
+
+    // Read-only calls always use counter = 0.
+    h256 readOnlyRandom1 = fixture.skaleHost->getEncryptionCallRandom( 1, true );
+    h256 readOnlyRandom2 = fixture.skaleHost->getEncryptionCallRandom( 1, true );
+    BOOST_REQUIRE( readOnlyRandom1 == readOnlyRandom2 );
+
+    // Read-only calls must not advance non-read counter.
+    h256 firstNonReadAfterReadOnly = fixture.skaleHost->getEncryptionCallRandom( 1, false );
+    fixture.skaleHost->resetEncryptionStateForBlock( 1 );
+    h256 firstNonReadFresh = fixture.skaleHost->getEncryptionCallRandom( 1, false );
+    BOOST_REQUIRE( firstNonReadAfterReadOnly == firstNonReadFresh );
+}
+
+BOOST_AUTO_TEST_CASE( encryptionRandom_non_read_only_advances_counter ) {
+    SkaleHostFixture fixture;
+    fixture.skaleHost->resetEncryptionStateForBlock( 1 );
+
+    h256 random1 = fixture.skaleHost->getEncryptionCallRandom( 1, false );
+    h256 random2 = fixture.skaleHost->getEncryptionCallRandom( 1, false );
+    h256 random3 = fixture.skaleHost->getEncryptionCallRandom( 1, false );
+
+    BOOST_REQUIRE( random1 != random2 );
+    BOOST_REQUIRE( random2 != random3 );
+
+    // Reset must return counter back to zero for the block.
+    fixture.skaleHost->resetEncryptionStateForBlock( 1 );
+    h256 randomAfterReset = fixture.skaleHost->getEncryptionCallRandom( 1, false );
+    BOOST_REQUIRE( randomAfterReset == random1 );
+}
+
+BOOST_AUTO_TEST_CASE( encryptionRandom_resets_on_commit ) {
+    SkaleHostFixture fixture;
+    fixture.skaleHost->resetEncryptionStateForBlock( 1 );
+
+    h256 block1Counter0 = fixture.skaleHost->getEncryptionCallRandom( 1, false );
+    h256 block1Counter1 = fixture.skaleHost->getEncryptionCallRandom( 1, false );
+    BOOST_REQUIRE( block1Counter0 != block1Counter1 );
+
+    // Simulate commit/new-block transition.
+    fixture.skaleHost->resetEncryptionStateForBlock( 2 );
+    h256 block2Counter0 = fixture.skaleHost->getEncryptionCallRandom( 2, false );
+
+    // Repeating the same reset should reproduce the first value in the block.
+    fixture.skaleHost->resetEncryptionStateForBlock( 2 );
+    h256 block2Counter0Again = fixture.skaleHost->getEncryptionCallRandom( 2, false );
+
+    BOOST_REQUIRE( block2Counter0 == block2Counter0Again );
+    BOOST_REQUIRE( block2Counter0 != block1Counter1 );
+}
+
 BOOST_AUTO_TEST_CASE( encryptTE_success ) {
     SkaleHostFixture fixture;
 
@@ -1815,6 +1869,8 @@ BOOST_AUTO_TEST_CASE( encryptTE_same_data ) {
 
     isReadOnly = false;
     // Call the precompiled contract twice - not read only
+    // simulate block commit -> resets counter before any tx in block is executed
+    fixture.skaleHost->resetEncryptionStateForBlock( 1 );
     auto res1 = exec( bytesConstRef( input.data(), input.size() ),
         PrecompiledCallContext( 1, 0, 0, dev::Address(), isReadOnly ) );
     auto res2 = exec( bytesConstRef( input.data(), input.size() ),
@@ -2091,12 +2147,15 @@ BOOST_AUTO_TEST_CASE( encryptTE_counter_reset_on_new_block ) {
     input.insert( input.end(), paddingNeeded, 0 );
 
     // Call the precompiled contract in block 1 context (simulating transaction execution)
+    // simulate block 1 has been comitted
+    fixture.skaleHost->resetEncryptionStateForBlock( 1 );
     auto res1 = exec( bytesConstRef( input.data(), input.size() ),
         PrecompiledCallContext( 1, 0, 0, dev::Address(), false ) );
 
     BOOST_REQUIRE( res1.first );
 
     // Call the precompiled contract in block 2 context (simulating transaction execution)
+    fixture.skaleHost->resetEncryptionStateForBlock( 2 );
     auto res2 = exec( bytesConstRef( input.data(), input.size() ),
         PrecompiledCallContext( 2, 0, 0, dev::Address(), false ) );
 
@@ -2120,7 +2179,7 @@ BOOST_AUTO_TEST_CASE( encryptTE_counter_reset_on_new_block ) {
     // Block 1: counter=0, blockRandom for block 1
     bytes expectedCiphertext1 = test::buildDeterministicCiphertext( 
         fixture.skaleHost->getBlockRandom( 1, false ), 0, publicKeys, dataToEncrypt );
-    
+
     // Block 2: counter=0 (reset!), blockRandom for block 2
     bytes expectedCiphertext2 = test::buildDeterministicCiphertext( 
         fixture.skaleHost->getBlockRandom( 2, false ), 0, publicKeys, dataToEncrypt );
@@ -2235,7 +2294,8 @@ BOOST_AUTO_TEST_CASE( encryptECIES_deterministic ) {
 
     // Compute deterministic seed: Hash(blockRandom || counter)
     auto buildSeed = [&]( uint64_t counter ) {
-        bytes blockRandomBytes = toBigEndian( fixture.skaleHost->getBlockRandom( 1, isReadOnly ) );
+        // use block 0, since no commits have been made yet
+        bytes blockRandomBytes = toBigEndian( fixture.skaleHost->getBlockRandom( 0, isReadOnly ) );
         bytes counterBytes = toBigEndian( dev::u256( counter ) );
         bytes combined;
         combined.insert( combined.end(), blockRandomBytes.begin(), blockRandomBytes.end() );
