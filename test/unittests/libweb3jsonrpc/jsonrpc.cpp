@@ -5153,6 +5153,7 @@ static std::string const c_BITEConfigString =
             "schainID": 1,
             "contractStorageLimit": 128,
             "emptyBlockIntervalMs": -1,
+            "SingleStateCommitPerBlockPatchTimestamp": 1,
             "nodeGroups": {
                 "0": {
                     "nodes": {
@@ -5327,6 +5328,7 @@ static std::string const c_BITEConfigString =
             "schainName": "TestChain",
             "schainID": 1,
             "emptyBlockIntervalMs": -1,
+            "SingleStateCommitPerBlockPatchTimestamp": 1,
             "nodeGroups": {
                 "0": {
                     "nodes": {
