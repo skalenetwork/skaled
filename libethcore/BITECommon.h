@@ -43,7 +43,8 @@ namespace bite {
 inline bool isCiphertextValidationEnabled = false;
 
 // Validate BITE ciphertext against given epochId
-void validateBITECiphertext( const dev::bytes& _ciphertext, uint64_t _currentEpochId );
+void validateBITECiphertext( const dev::bytes& _ciphertext, uint64_t _currentEpochId,
+                             const std::optional< const dev::bytes* >& _aadTE = std::nullopt );
 
 #ifdef BITE2
 // Solidity adds 12 left-padded zero bytes when encoding an address parameter in the ABI format.
@@ -71,11 +72,11 @@ dev::bytes constructDecryptedCTXData(
 
 // Parse ABI-encoded bytes array and validates encrypted elements
 std::pair< RLPStream, size_t > parseAbiEncodedBytesArray( bytesConstRef dataRef,
-    bigint const& arrayOffset, const std::string& arrayName, std::optional< uint64_t > _epochId );
+    bigint const& arrayOffset, const std::string& arrayName, std::optional< uint64_t > _epochId = std::nullopt, std::optional< const dev::bytes* > _aadTE = std::nullopt );
 
 // Convert ABI-encoded arrays to RLP format
 std::pair< dev::bytes, size_t > abiEncodedArraysToRlp(
-    const dev::bytes& _abiEncodedArrays, uint64_t _epochId );
+    const dev::bytes& _abiEncodedArrays, uint64_t _epochId, const dev::bytes& _aadTE );
 
 // Error codes for submitCTX precompiled contract
 namespace SubmitCTXStatus {

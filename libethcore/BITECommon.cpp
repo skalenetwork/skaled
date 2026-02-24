@@ -11,7 +11,8 @@ namespace dev {
 
 namespace bite {
 
-void validateBITECiphertext( const dev::bytes& _ciphertext, uint64_t _currentEpochId ) {
+void validateBITECiphertext( const dev::bytes& _ciphertext, uint64_t _currentEpochId,
+                             const std::optional< const dev::bytes* >& _aadTE ) {
     RLP rlpEncodedBITETxn;
     try {
         try {
@@ -69,7 +70,7 @@ void validateBITECiphertext( const dev::bytes& _ciphertext, uint64_t _currentEpo
                                            std::to_string( _currentEpochId ) ) );
             // validate encrypted AES keys
             for ( const auto& cipheredKey : ciphertext.getKeys() )
-                libBLS::ThresholdEncryption::validateEncryption( cipheredKey );
+                libBLS::ThresholdEncryption::validateEncryption( cipheredKey, _aadTE.value_or( nullptr ) );
         } catch ( libBLS::ThresholdUtils::IncorrectInput& ex ) {
             BOOST_THROW_EXCEPTION(
                 InvalidBITETransaction() << errinfo_comment(
@@ -151,7 +152,7 @@ dev::bytes constructDecryptedCTXData(
 }
 
 std::pair< RLPStream, size_t > parseAbiEncodedBytesArray( bytesConstRef dataRef,
-    bigint const& arrayOffset, const std::string& arrayName, std::optional< uint64_t > _epochId ) {
+    bigint const& arrayOffset, const std::string& arrayName, std::optional< uint64_t > _epochId, std::optional< const dev::bytes* > _aadTE ) {
     if ( dataRef.size() < arrayOffset.convert_to< size_t >() + dev::h256::size )
         throw std::runtime_error(
             "parseAbiEncodedBytesArray: input too short for " + arrayName + " array" );
@@ -196,7 +197,7 @@ std::pair< RLPStream, size_t > parseAbiEncodedBytesArray( bytesConstRef dataRef,
             dataRef.cropped( elemPos + dev::h256::size, elemLength.convert_to< size_t >() )
                 .toBytes();
         if ( _epochId.has_value() && isCiphertextValidationEnabled )
-            dev::bite::validateBITECiphertext( elemData, _epochId.value() );
+            dev::bite::validateBITECiphertext( elemData, _epochId.value(), _aadTE );
         arrayStream << elemData;
     }
 
@@ -204,7 +205,7 @@ std::pair< RLPStream, size_t > parseAbiEncodedBytesArray( bytesConstRef dataRef,
 }
 
 std::pair< dev::bytes, size_t > abiEncodedArraysToRlp(
-    const dev::bytes& _abiEncodedArrays, uint64_t _epochId ) {
+    const dev::bytes& _abiEncodedArrays, uint64_t _epochId, const dev::bytes& _aadTE ) {
     // Parse ABI-encoded data: abi.encode(bytes[] encryptedArgs, bytes[] plaintextArgs)
     // ABI format: offset_to_encryptedArgs(32) + offset_to_plaintextArgs(32) + encryptedArgs_data +
     // plaintextArgs_data where encryptedArgs_data = length(32) + offset_to_elem0(32) + ... +
@@ -222,9 +223,9 @@ std::pair< dev::bytes, size_t > abiEncodedArraysToRlp(
 
     // Parse both arrays
     auto [encryptedArgsStream, encryptedArgsCount] =
-        parseAbiEncodedBytesArray( dataRef, encryptedArgsOffset, "encryptedArgs", _epochId );
+        parseAbiEncodedBytesArray( dataRef, encryptedArgsOffset, "encryptedArgs", _epochId, &_aadTE );
     auto [plaintextArgsStream, plaintextArgsCount] =
-        parseAbiEncodedBytesArray( dataRef, plaintextArgsOffset, "plaintextArgs", std::nullopt );
+        parseAbiEncodedBytesArray( dataRef, plaintextArgsOffset, "plaintextArgs" );
 
     // Create final RLP: RLP(RLP(encryptedArgs[0], ...), RLP(plaintextArgs[0], ...))
     RLPStream finalStream;
