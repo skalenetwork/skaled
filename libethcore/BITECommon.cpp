@@ -11,8 +11,8 @@ namespace dev {
 
 namespace bite {
 
-void validateBITECiphertext( const dev::bytes& _ciphertext, uint64_t _currentEpochId,
-    const std::optional< const dev::bytes* >& _aadTE ) {
+void validateBITECiphertext(
+    const dev::bytes& _ciphertext, const BITEVerificationData& _verificationData ) {
     RLP rlpEncodedBITETxn;
     try {
         try {
@@ -52,26 +52,27 @@ void validateBITECiphertext( const dev::bytes& _ciphertext, uint64_t _currentEpo
                     std::string( "BITE transaction's data is invalid: epochId must be an int" ) ) );
         uint64_t epochIdCandidate = rlpEncodedBITETxn[0].toInt< uint64_t >();
         // if a txn was sent before rotation it may have previous epochId: currentEpochId - 1
-        if ( _currentEpochId != epochIdCandidate && _currentEpochId != epochIdCandidate + 1 )
+        if ( _verificationData.epochId != epochIdCandidate &&
+             _verificationData.epochId != epochIdCandidate + 1 )
             BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment(
                                        std::string( "BITE transaction's data is invalid: no "
                                                     "payload found with matching epochId " ) +
-                                       std::to_string( _currentEpochId ) ) );
+                                       std::to_string( _verificationData.epochId ) ) );
 
         try {
             // check that ciphertext is valid
             libBLS::Ciphertext ciphertext = libBLS::Ciphertext::fromBytes( encryptedBITEData );
             // if currentEpochId = epochIdCandidate + 1, then ciphertext must have
             // 2 encrypted AES keys associated with it
-            if ( epochIdCandidate != _currentEpochId && ciphertext.getKeys().size() != 2 )
+            if ( epochIdCandidate != _verificationData.epochId && ciphertext.getKeys().size() != 2 )
                 BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment(
                                            std::string( "BITE transaction's data is invalid: no "
                                                         "payload found with matching epochId " ) +
-                                           std::to_string( _currentEpochId ) ) );
+                                           std::to_string( _verificationData.epochId ) ) );
             // validate encrypted AES keys
             for ( const auto& cipheredKey : ciphertext.getKeys() )
                 libBLS::ThresholdEncryption::validateEncryption(
-                    cipheredKey, _aadTE.value_or( nullptr ) );
+                    cipheredKey, &_verificationData.aadTE );
         } catch ( libBLS::ThresholdUtils::IncorrectInput& ex ) {
             BOOST_THROW_EXCEPTION(
                 InvalidBITETransaction() << errinfo_comment(
@@ -153,8 +154,8 @@ dev::bytes constructDecryptedCTXData(
 }
 
 std::pair< RLPStream, size_t > parseAbiEncodedBytesArray( bytesConstRef dataRef,
-    bigint const& arrayOffset, const std::string& arrayName, std::optional< uint64_t > _epochId,
-    std::optional< const dev::bytes* > _aadTE ) {
+    bigint const& arrayOffset, const std::string& arrayName,
+    std::optional< const BITEVerificationData* > _verificationData ) {
     if ( dataRef.size() < arrayOffset.convert_to< size_t >() + dev::h256::size )
         throw std::runtime_error(
             "parseAbiEncodedBytesArray: input too short for " + arrayName + " array" );
@@ -189,7 +190,7 @@ std::pair< RLPStream, size_t > parseAbiEncodedBytesArray( bytesConstRef dataRef,
                 "parseAbiEncodedBytesArray: input too short for " + arrayName + " element data" );
 
         // Validate encrypted element length if required
-        if ( _epochId.has_value() && isCiphertextValidationEnabled &&
+        if ( _verificationData.has_value() && isCiphertextValidationEnabled &&
              elemLength.convert_to< size_t >() < BITE_CIPHERTEXT_MIN_LEN )
             throw std::runtime_error(
                 "parseAbiEncodedBytesArray: encrypted argument too short, must be at least " +
@@ -198,8 +199,8 @@ std::pair< RLPStream, size_t > parseAbiEncodedBytesArray( bytesConstRef dataRef,
         dev::bytes elemData =
             dataRef.cropped( elemPos + dev::h256::size, elemLength.convert_to< size_t >() )
                 .toBytes();
-        if ( _epochId.has_value() && isCiphertextValidationEnabled )
-            dev::bite::validateBITECiphertext( elemData, _epochId.value(), _aadTE );
+        if ( _verificationData.has_value() && isCiphertextValidationEnabled )
+            dev::bite::validateBITECiphertext( elemData, *_verificationData.value() );
         arrayStream << elemData;
     }
 
@@ -207,7 +208,7 @@ std::pair< RLPStream, size_t > parseAbiEncodedBytesArray( bytesConstRef dataRef,
 }
 
 std::pair< dev::bytes, size_t > abiEncodedArraysToRlp(
-    const dev::bytes& _abiEncodedArrays, uint64_t _epochId, const dev::bytes& _aadTE ) {
+    const dev::bytes& _abiEncodedArrays, const BITEVerificationData& _verificationData ) {
     // Parse ABI-encoded data: abi.encode(bytes[] encryptedArgs, bytes[] plaintextArgs)
     // ABI format: offset_to_encryptedArgs(32) + offset_to_plaintextArgs(32) + encryptedArgs_data +
     // plaintextArgs_data where encryptedArgs_data = length(32) + offset_to_elem0(32) + ... +
@@ -225,7 +226,7 @@ std::pair< dev::bytes, size_t > abiEncodedArraysToRlp(
 
     // Parse both arrays
     auto [encryptedArgsStream, encryptedArgsCount] = parseAbiEncodedBytesArray(
-        dataRef, encryptedArgsOffset, "encryptedArgs", _epochId, &_aadTE );
+        dataRef, encryptedArgsOffset, "encryptedArgs", &_verificationData );
     auto [plaintextArgsStream, plaintextArgsCount] =
         parseAbiEncodedBytesArray( dataRef, plaintextArgsOffset, "plaintextArgs" );
 

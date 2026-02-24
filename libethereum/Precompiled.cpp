@@ -985,8 +985,8 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
                                                  _ctx.latestBlockTimestamp ) :
                                              g_skaleHost->client().getCurrentEpochId();
         try {
-            auto [rlpData, count] =
-                abiEncodedArraysToRlp( txnData, epochId, destination.asBytes() );
+            dev::bite::BITEVerificationData verificationData{ epochId, destination.asBytes() };
+            auto [rlpData, count] = abiEncodedArraysToRlp( txnData, verificationData );
             rlpEncodedData = std::move( rlpData );
             encryptedArgsCount = count;
         } catch ( std::exception& ex ) {
@@ -1118,7 +1118,8 @@ ETH_REGISTER_PRECOMPILED( getRandomWalletAndSignatureForCTX )
         dev::bytes rlpEncodedData;
         size_t encryptedArgsCount = 0;
         try {
-            auto [rlpData, count] = abiEncodedArraysToRlp( data, 0, destination.asBytes() );
+            dev::bite::BITEVerificationData verificationData{ 0, destination.asBytes() };
+            auto [rlpData, count] = abiEncodedArraysToRlp( data, verificationData );
             rlpEncodedData = std::move( rlpData );
             encryptedArgsCount = count;
         } catch ( std::exception& ex ) {
