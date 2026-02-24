@@ -12,7 +12,7 @@ namespace dev {
 namespace bite {
 
 void validateBITECiphertext( const dev::bytes& _ciphertext, uint64_t _currentEpochId,
-                             const std::optional< const dev::bytes* >& _aadTE ) {
+    const std::optional< const dev::bytes* >& _aadTE ) {
     RLP rlpEncodedBITETxn;
     try {
         try {
@@ -70,7 +70,8 @@ void validateBITECiphertext( const dev::bytes& _ciphertext, uint64_t _currentEpo
                                            std::to_string( _currentEpochId ) ) );
             // validate encrypted AES keys
             for ( const auto& cipheredKey : ciphertext.getKeys() )
-                libBLS::ThresholdEncryption::validateEncryption( cipheredKey, _aadTE.value_or( nullptr ) );
+                libBLS::ThresholdEncryption::validateEncryption(
+                    cipheredKey, _aadTE.value_or( nullptr ) );
         } catch ( libBLS::ThresholdUtils::IncorrectInput& ex ) {
             BOOST_THROW_EXCEPTION(
                 InvalidBITETransaction() << errinfo_comment(
@@ -152,7 +153,8 @@ dev::bytes constructDecryptedCTXData(
 }
 
 std::pair< RLPStream, size_t > parseAbiEncodedBytesArray( bytesConstRef dataRef,
-    bigint const& arrayOffset, const std::string& arrayName, std::optional< uint64_t > _epochId, std::optional< const dev::bytes* > _aadTE ) {
+    bigint const& arrayOffset, const std::string& arrayName, std::optional< uint64_t > _epochId,
+    std::optional< const dev::bytes* > _aadTE ) {
     if ( dataRef.size() < arrayOffset.convert_to< size_t >() + dev::h256::size )
         throw std::runtime_error(
             "parseAbiEncodedBytesArray: input too short for " + arrayName + " array" );
@@ -222,8 +224,8 @@ std::pair< dev::bytes, size_t > abiEncodedArraysToRlp(
         parseBigEndianRightPadded( dataRef, dev::h256::size, dev::h256::size ) );
 
     // Parse both arrays
-    auto [encryptedArgsStream, encryptedArgsCount] =
-        parseAbiEncodedBytesArray( dataRef, encryptedArgsOffset, "encryptedArgs", _epochId, &_aadTE );
+    auto [encryptedArgsStream, encryptedArgsCount] = parseAbiEncodedBytesArray(
+        dataRef, encryptedArgsOffset, "encryptedArgs", _epochId, &_aadTE );
     auto [plaintextArgsStream, plaintextArgsCount] =
         parseAbiEncodedBytesArray( dataRef, plaintextArgsOffset, "plaintextArgs" );
 

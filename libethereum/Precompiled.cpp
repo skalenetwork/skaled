@@ -985,7 +985,8 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
                                                  _ctx.latestBlockTimestamp ) :
                                              g_skaleHost->client().getCurrentEpochId();
         try {
-            auto [rlpData, count] = abiEncodedArraysToRlp( txnData, epochId, destination.asBytes() );
+            auto [rlpData, count] =
+                abiEncodedArraysToRlp( txnData, epochId, destination.asBytes() );
             rlpEncodedData = std::move( rlpData );
             encryptedArgsCount = count;
         } catch ( std::exception& ex ) {
