@@ -354,7 +354,7 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
 #ifdef BITE2
         // needs to be after consensus creation since it uses random from consensus.
         resetEncryptionStateForBlock( 0 );
-#endif // BITE2
+#endif  // BITE2
 
     } catch ( const std::exception& e ) {
         BOOST_LOG( m_loggerError )
@@ -658,7 +658,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::Transactions& _approvedTran
 
     DEV_GUARDED( m_client.m_blockImportMutex ) {
         m_debugTracer.tracepoint( "drop_good_transactions" );
-#ifdef BITE2 
+#ifdef BITE2
         // need to reset encryption state with new block id before processing txs to make
         // sure a random for current block id is set.
         resetEncryptionStateForBlock( _blockID );
