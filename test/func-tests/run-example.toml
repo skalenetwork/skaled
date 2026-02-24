@@ -43,6 +43,8 @@ use_btrfs = false
 [skaled]
 # Path to pre-built skaled binary.  Empty = build from source via cmake.
 binary = ""
+# Whether to build skaled if binary is missing.
+build = true
 
 # Branch to checkout before building (empty = skip checkout).
 branch = ""
@@ -57,7 +59,8 @@ datadir   = "datadir-loop-0"
 http_port = 2234
 
 [skaled.nodes.1]
-config    = "configs/config-loop-1.json"
+config_template = "configs/config-template.json.j2"
+config    = "configs/config-loop-1.generated.json"
 datadir   = "datadir-loop-1"
 http_port = 3234
 

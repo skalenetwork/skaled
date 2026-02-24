@@ -1,4 +1,4 @@
-name: Build and test skaled
+name: Functional tests
 on:
   push:
     branches-ignore:
@@ -21,53 +21,9 @@ env:
   CMAKE_BUILD_TYPE: Debug
 
 jobs:
-  build-and-test:
-    name: ${{ matrix.name }}
+  func-tests:
+    name: Func-tests
     runs-on: ubuntu-22.04
-
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: Default
-            build_dir: build
-            cmake_args: ""
-            mode: full
-
-          - name: Default-historic
-            build_dir: build
-            cmake_args: "-DHISTORIC_STATE=1"
-            mode: historic
-
-          - name: FAIR
-            build_dir: build
-            cmake_args: "-DFAIR=1"
-            mode: full
-
-          - name: FAIR-historic
-            build_dir: build
-            cmake_args: "-DFAIR=1 -DHISTORIC_STATE=1"
-            mode: historic
-
-          - name: BITE
-            build_dir: build
-            cmake_args: "-DBITE=1"
-            mode: full
-
-          - name: BITE-historic
-            build_dir: build
-            cmake_args: "-DBITE=1 -DHISTORIC_STATE=1"
-            mode: historic
-
-          - name: BITE2
-            build_dir: build
-            cmake_args: "-DBITE2=1"
-            mode: full
-
-          - name: BITE2-historic
-            build_dir: build
-            cmake_args: "-DBITE2=1 -DHISTORIC_STATE=1"
-            mode: historic
 
     steps:
       - uses: actions/checkout@v6
@@ -100,25 +56,25 @@ jobs:
           ./build.sh DEBUG=1 PARALLEL_COUNT=$(nproc)
           cd ..
 
-      - name: Build (${{ matrix.name }})
+      - name: Build skaled
         uses: ./.github/actions/cmake-build
         with:
-          build_dir: ${{ matrix.build_dir }}
+          build_dir: build
           cmake_build_type: ${{ env.CMAKE_BUILD_TYPE }}
           coverage: ${{ env.CODE_COVERAGE }}
-          cmake_args: ${{ matrix.cmake_args }}
-          make_target: testeth
+          cmake_args: ""
+          make_target: skaled
 
-      - name: Testeth verbosity 1
-        uses: ./.github/actions/testeth-run
-        with:
-          build_dir: ${{ matrix.build_dir }}
-          mode: ${{ matrix.mode }}
-          verbosity: "1"
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
 
-      - name: Testeth verbosity 4
-        uses: ./.github/actions/testeth-run
+      - name: Install hardfork-support dependencies
+        run: bun install --frozen-lockfile
+        working-directory: test/func-tests/hardfork-support/sol
+
+      - name: Func-tests (hardfork-support)
+        uses: ./.github/actions/func-tests-run
         with:
-          build_dir: ${{ matrix.build_dir }}
-          mode: ${{ matrix.mode }}
-          verbosity: "4"
+          suite: hardfork-support
+        env:
+          FUNC_TEST_PRIVATE_KEY: ${{ secrets.FUNC_TEST_PRIVATE_KEY }}

@@ -346,7 +346,7 @@ class Environment:
                 managed.log_fd.close()
 
 
-def build_skaled(binary_cfg: str) -> str:
+def build_skaled(binary_cfg: str, build_enabled: bool = True) -> str:
     if binary_cfg and os.path.isfile(binary_cfg):
         logger.info("Using pre-built skaled: %s", binary_cfg)
         return binary_cfg
@@ -357,6 +357,12 @@ def build_skaled(binary_cfg: str) -> str:
     if skaled_bin.is_file():
         logger.info("Found existing build: %s", skaled_bin)
         return str(skaled_bin)
+
+    if not build_enabled:
+        raise RunnerError(
+            "skaled build is disabled, and no pre-built binary was found. "
+            "Set [skaled].binary to an existing binary path or enable build."
+        )
 
     logger.info("Building skaled from source ...")
     subprocess.run(
@@ -549,7 +555,10 @@ def setup_environment(cfg: dict) -> Environment:
 
     # --- Launch skaled node(s) ---
     if need_skaled:
-        binary = build_skaled(skaled_cfg.get("binary", ""))
+        binary = build_skaled(
+            skaled_cfg.get("binary", ""),
+            skaled_cfg.get("build", True),
+        )
         set_ulimit()
 
         for idx in indices:
