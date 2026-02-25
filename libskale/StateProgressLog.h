@@ -15,6 +15,9 @@ struct CommittedProgressData {
     uint8_t status;  // 0 = started, 1 = completed
     uint64_t timestamp;
     dev::eth::TransactionReceipts receipts;
+#ifdef BITE2
+    std::vector< dev::eth::Transaction > ctxsCreatedInBlock;
+#endif
 };
 
 class StateProgressLog {
@@ -24,8 +27,13 @@ public:
     explicit StateProgressLog( const boost::filesystem::path& _dataDir );
 
     void markBlockCommitStarted( uint64_t _blockNumber );
-    void markBlockCommitCompleted( uint64_t _blockNumber,
-        const dev::eth::TransactionReceipts& _receipts, uint64_t _timestamp );
+    void markBlockCommitCompleted(
+        uint64_t _blockNumber, const dev::eth::TransactionReceipts& _receipts, uint64_t _timestamp
+#ifdef BITE2
+        ,
+        const std::vector< dev::eth::Transaction >& _ctxsCreatedInBlock
+#endif
+    );
 
     bool isBlockCommitCompleted( uint64_t _blockNumber ) const;
     bool isBlockCommitStartedButNotCompleted( uint64_t _blockNumber ) const;
@@ -36,13 +44,19 @@ public:
     inline static const std::string PROGRESS_LOG_FILE = "state_progress";
 
 private:
-    // RLP format: [blockNumber, status, timestamp, [receipt0_rlp, receipt1_rlp, ...]]
+    // RLP format: [blockNumber, status, timestamp, [receipt0_rlp, receipt1_rlp, ...], [ctx0_rlp,
+    // ctx1_rlp, ...]]
     void writeProgressData( const CommittedProgressData& _data );
 
     boost::filesystem::path m_progressLogPath;
     boost::filesystem::path m_tmpPath;
 
     mutable dev::Logger m_logger{ dev::createLogger( dev::VerbosityWarning, "StateProgressLog" ) };
+#ifdef BITE2
+    static constexpr size_t rlpItemsCount = 5;
+#else
+    static constexpr size_t rlpItemsCount = 4;
+#endif
 };
 
 }  // namespace skale

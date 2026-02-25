@@ -539,6 +539,11 @@ std::pair< TransactionReceipts, unsigned > Block::recoverFromReceipts(
         m_transactionSet.insert( tx.sha3() );
     }
     m_receipts = std::move( savedData->receipts );
+#ifdef BITE2
+    // set CTXs from previous block to BITE2 queue
+    g_skaleHost->setBITE2QueueOnInit( std::move( savedData->ctxsCreatedInBlock ) );
+    m_createdCtxs = g_skaleHost->finalizeBITE2QueueAndGetCtxs();
+#endif
 
     unsigned badCount = 0;
     u256 cumulativeGas = 0;
@@ -622,7 +627,7 @@ void Block::executeTransactions( BlockChain const& _bc, const Transactions& _tra
     }
 #ifdef BITE2
     // finalize BITE2 queue after executing all txns from current block
-    g_skaleHost->finalizeBITE2Queue();
+    m_createdCtxs = g_skaleHost->finalizeBITE2QueueAndGetCtxs();
 #endif
 }
 
@@ -736,8 +741,16 @@ void Block::saveStateChanges(
     createBlockSnapshot();
 
     if ( progressLog && _context.singleCommitEnabled ) {
+#ifdef BITE2
+        CHECK_EXPRESSION( m_createdCtxs );
+#endif
         progressLog->markBlockCommitCompleted(
-            m_currentBlock.number(), _context.receipts, m_currentBlock.timestamp() );
+            m_currentBlock.number(), _context.receipts, m_currentBlock.timestamp()
+#ifdef BITE2
+                                                            ,
+            *m_createdCtxs
+#endif
+        );
     }
 
     if ( !_context.singleCommitEnabled ) {
