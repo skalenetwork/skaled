@@ -532,7 +532,7 @@ static std::string const c_genesisInfoSkaleTest = std::string() +
                         "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea105a3d21845e5660bc3d4e7c82e7af1daa3baad393b1521467"
                     ]
                 },
-                "finish_ts": 1,
+                "finish_ts": null,
                 "bls_public_key": {
                     "blsPublicKey0": "15959969554621958245201075983340071881770733084910870228938077786643587385029",
                     "blsPublicKey1": "7970122607051572307517094692346020360016825923464107614135327251488152616550",
