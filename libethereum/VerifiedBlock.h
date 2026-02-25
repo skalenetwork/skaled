@@ -21,7 +21,6 @@
  * @date 2014
  */
 
-
 #include "libconsensus/node/ConsensusInterface.h"
 #include <libdevcore/Common.h>
 #include <libethcore/BlockHeader.h>
@@ -49,8 +48,11 @@ struct VerifiedBlockRef {
 
 #ifdef BITE2
     std::vector< std::vector< dev::h256 > > ctxHashesLists;
-#endif  // BITE2
-#endif  // BITE
+    std::shared_ptr< std::vector< Transaction > > createdCtxs =
+        std::make_shared< std::vector< Transaction > >();  ///< List of ctxs created by transactions
+                                                           ///< in block
+#endif                                                     // BITE2
+#endif                                                     // BITE
 };
 
 /// @brief Verified block info, combines block data and verified info/transactions

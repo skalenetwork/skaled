@@ -407,8 +407,12 @@ void SkaleHost::clearTempBITE2Transactions() {
     m_tq.clearTempBITE2Transactions();
 }
 
-void SkaleHost::finalizeBITE2Queue() {
-    m_tq.finalizeBITE2Queue();
+std::shared_ptr< std::vector< dev::eth::Transaction > > SkaleHost::finalizeBITE2QueueAndGetCtxs() {
+    return m_tq.finalizeBITE2QueueAndGetCtxs();
+}
+
+void SkaleHost::setBITE2QueueOnInit( std::vector< dev::eth::Transaction >&& _ctxs ) {
+    return m_tq.setBITE2QueueOnInit( std::move( _ctxs ) );
 }
 #endif
 
@@ -658,22 +662,27 @@ void SkaleHost::createBlock( const ConsensusExtFace::Transactions& _approvedTran
 
     DEV_GUARDED( m_client.m_blockImportMutex ) {
         m_debugTracer.tracepoint( "drop_good_transactions" );
+
 #ifdef BITE2
         // need to reset encryption state with new block id before processing txs to make
         // sure a random for current block id is set.
         resetEncryptionStateForBlock( _blockID );
 #endif
-        outTxns = processRegularTransactions( _approvedTransactions, latestInfo
+
+        if ( _winningNodeIndex != 0 ) {
+            // only process transactions for non-default blocks
+            outTxns = processRegularTransactions( _approvedTransactions, latestInfo
 #ifdef BITE
-            ,
-            _decryptedTransactions
+                ,
+                _decryptedTransactions
 #endif
-        );
+            );
 #ifdef BITE2
-        auto ctxTxns =
-            processCTXTransactions( _approvedTransactions, latestInfo, _decryptedTransactions );
-        outTxns.insert( outTxns.begin(), ctxTxns.begin(), ctxTxns.end() );
+            auto ctxTxns =
+                processCTXTransactions( _approvedTransactions, latestInfo, _decryptedTransactions );
+            outTxns.insert( outTxns.begin(), ctxTxns.begin(), ctxTxns.end() );
 #endif
+        }
 
         total_arrived += outTxns.size();
 
