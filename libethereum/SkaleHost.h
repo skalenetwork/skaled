@@ -136,7 +136,6 @@ public:
     void clearTempBITE2Transactions();
 
     dev::u256 getReencryptionBlockRandom( unsigned _blockNumber, bool _isCalledFromTxn ) const;
-  
     std::shared_ptr< std::vector< dev::eth::Transaction > > finalizeBITE2QueueAndGetCtxs();
     void setBITE2QueueOnInit( std::vector< dev::eth::Transaction >&& _ctxs );
 #endif
