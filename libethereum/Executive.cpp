@@ -328,18 +328,19 @@ bool Executive::execute() {
         result = call( receiverAddressToPassToEvm, m_t.sender(), m_t.value(), m_t.gasPrice(),
             bytesConstRef( &dataToPassToEvm ), m_t.gas() - ( u256 ) m_baseGasRequired );
 
-    // EIP-2929 / EIP-2930: initialize warm access sets before VM execution begins.
-    initAccessSets();
+    if ( m_ext ) {
+        EVMSchedule const& schedule = m_ext->evmSchedule();
+        if ( schedule.eip2929Mode ) {
+            // EIP-2929 / EIP-2930: initialize warm access sets.
+            initAccessSets( schedule.eip2930Mode );
+        }
+    }
 
     return result;
 }
 
-void Executive::initAccessSets() {
+void Executive::initAccessSets( bool _eip2930Mode ) {
     if ( !m_ext )
-        return;
-
-    EVMSchedule const& schedule = m_ext->evmSchedule();
-    if ( !schedule.eip2929Mode )
         return;
 
     SubState& sub = m_ext->sub;
@@ -362,7 +363,7 @@ void Executive::initAccessSets() {
     }
 
     // EIP-2930: pre-warm addresses and storage keys from the access list.
-    if ( schedule.eip2930Mode && m_t.txType() != TransactionType::Legacy ) {
+    if ( _eip2930Mode && m_t.txType() != TransactionType::Legacy ) {
         for ( auto const& entryRaw : m_t.accessList() ) {
             RLP const entry( entryRaw );
             if ( !entry.isList() || entry.itemCount() != 2 )

@@ -227,7 +227,7 @@ public:
 private:
     /// EIP-2929 / EIP-2930: initialize per-transaction warm access sets.
     /// Pre-warms tx.sender, tx.to, precompile addresses, and access list entries.
-    void initAccessSets();
+    void initAccessSets( bool _eip2930Mode );
 
     /// @returns false iff go() must be called (and thus a VM execution in required).
     bool executeCreate( Address const& _txSender, u256 const& _endowment, u256 const& _gasPrice,
