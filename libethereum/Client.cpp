@@ -329,6 +329,11 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
 
     m_gp->update( bc() );
 
+#ifdef BITE2
+    if ( SingleStateCommitPerBlockPatch::isEnabledInWorkingBlock() )
+        m_tq.setBITE2QueueOnInit( bc().ctxListForPreviousBlock() );
+#endif
+
     if ( m_dbPath.size() )
         Defaults::setDBPath( m_dbPath );
 

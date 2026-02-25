@@ -46,7 +46,7 @@ public:
     // only debug_pendingBITE2Transactions requires synchronization
     // because it is used by JSON RPC API
 
-    void finalize();
+    std::shared_ptr< std::vector< Transaction > > finalizeAndGetCtxs();
 
     void addTemp( Transaction&& _t );
     /// Get hashes of CTXs crafted by transaction that is being executed now
@@ -59,12 +59,17 @@ public:
     // Returns false if it's not a BITE2 transaction.
     bool dropGood( const Transaction& _t );
 
+    /// Set the queue on startup with CTXs that were created in the previous block
+    void setQueueOnInit( Transactions&& _ctxQueue );
+
 private:
-    std::vector< Transaction > m_current;
+    std::shared_ptr< std::vector< Transaction > > m_current =
+        std::make_shared< std::vector< Transaction > >();
     std::atomic_size_t m_currentHeadIndex = 0;
     bool m_empty = true;
     mutable SharedMutex m_lock;
 
+    Logger m_loggerInfo{ createLogger( VerbosityInfo, "BITE2Queue" ) };
     Logger m_loggerWarning{ createLogger( VerbosityWarning, "BITE2Queue" ) };
     Logger m_loggerTrace{ createLogger( VerbosityTrace, "BITE2Queue" ) };
 };

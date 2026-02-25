@@ -337,6 +337,11 @@ public:
     const std::vector< std::vector< dev::h256 > > ctxHashesLists() const {
         return m_ctxHashesLists;
     }
+
+    const std::shared_ptr< std::vector< dev::eth::Transaction > >& createdCtxs() const {
+        CHECK_EXPRESSION( m_createdCtxs );
+        return m_createdCtxs;
+    }
 #endif  // BITE2
 #endif  // BITE
 
@@ -433,6 +438,11 @@ private:
     // list of ctx hashes crafted by every txn in block
     // only filled for a working block
     std::vector< std::vector< dev::h256 > > m_ctxHashesLists;
+    // list of ctxs created by every txn in block
+    // only filled for a working block
+    // safe, because it is filled with transactions from BITE2 queue
+    // which stay there until the block is committed
+    std::shared_ptr< Transactions > m_createdCtxs = std::make_shared< Transactions >();
 #endif  // BITE2
 #endif  // BITE
 

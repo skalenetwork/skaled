@@ -134,7 +134,8 @@ public:
     std::vector< dev::h256 > getBITE2HashesForCurrentTxn() const;
     void commitTempBITE2Transactions();
     void clearTempBITE2Transactions();
-    void finalizeBITE2Queue();
+    std::shared_ptr< std::vector< dev::eth::Transaction > > finalizeBITE2QueueAndGetCtxs();
+    void setBITE2QueueOnInit( std::vector< dev::eth::Transaction >&& _ctxs );
 #endif
 
     dev::u256 getGasPrice( unsigned _blockNumber = dev::eth::LatestBlock ) const;
