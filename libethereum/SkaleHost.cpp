@@ -1147,7 +1147,7 @@ u256 SkaleHost::getGasPrice( unsigned _blockNumber ) const {
     return m_consensus->getPriceForBlockId( _blockNumber );
 }
 
-u256 SkaleHost::getBlockRandom( unsigned _blockNumber, bool _isCalledFromTxn ) const {
+unsigned SkaleHost::resolveRandomBlockNumber( unsigned _blockNumber, bool _isCalledFromTxn ) const {
     // for FAIR patch is always enabled
     // check that patch enabled after block _blockNumber - 1
     // if so - return correct value
@@ -1157,7 +1157,7 @@ u256 SkaleHost::getBlockRandom( unsigned _blockNumber, bool _isCalledFromTxn ) c
     if ( _blockNumber == 0 ) {
         // handle corner case of genesis block
         // is never a case unless called from debug_traceBlock / eth_call on genesis
-        return m_consensus->getRandomForBlockId( _blockNumber );
+        return _blockNumber;
     }
     auto previousBlockTimestamp =
         m_client.blockInfo( m_client.hashFromNumber( _blockNumber - 1 ) ).timestamp();
@@ -1169,10 +1169,22 @@ u256 SkaleHost::getBlockRandom( unsigned _blockNumber, bool _isCalledFromTxn ) c
             if ( _blockNumber > m_client.number() )
                 --_blockNumber;
         }
-        return m_consensus->getRandomForBlockId( _blockNumber );
+        return _blockNumber;
     }
-    return m_consensus->getRandomForBlockId( _blockNumber - 1 );
+    return _blockNumber - 1;
 }
+
+u256 SkaleHost::getBlockRandom( unsigned _blockNumber, bool _isCalledFromTxn ) const {
+    auto blockNumber = resolveRandomBlockNumber( _blockNumber, _isCalledFromTxn );
+    return m_consensus->getRandomForBlockId( blockNumber );
+}
+
+#ifdef BITE2
+u256 SkaleHost::getReencryptionBlockRandom( unsigned _blockNumber, bool _isCalledFromTxn ) const {
+    auto blockNumber = resolveRandomBlockNumber( _blockNumber, _isCalledFromTxn );
+    return m_consensus->getReencryptionRandomForBlockId( blockNumber );
+}
+#endif
 
 dev::eth::SyncStatus SkaleHost::syncStatus() const {
     if ( !m_consensus )
