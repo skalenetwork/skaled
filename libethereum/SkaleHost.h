@@ -134,6 +134,8 @@ public:
     std::vector< dev::h256 > getBITE2HashesForCurrentTxn() const;
     void commitTempBITE2Transactions();
     void clearTempBITE2Transactions();
+
+    dev::u256 getReencryptionBlockRandom( unsigned _blockNumber, bool _isCalledFromTxn ) const;
     std::shared_ptr< std::vector< dev::eth::Transaction > > finalizeBITE2QueueAndGetCtxs();
     void setBITE2QueueOnInit( std::vector< dev::eth::Transaction >&& _ctxs );
 #endif
@@ -213,6 +215,8 @@ private:
 #endif
 
     void checkStateRoot( uint64_t _blockId, uint64_t _winningNodeIndex, u256 _stateRoot );
+
+    unsigned resolveRandomBlockNumber( unsigned _blockNumber, bool _isCalledFromTxn ) const;
 
     std::thread m_broadcastThread;
     void broadcastFunc();
