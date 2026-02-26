@@ -352,8 +352,11 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
 #endif
 
 #ifdef BITE2
-        // needs to be after consensus creation since it uses random from consensus.
-        resetEncryptionStateForBlock( 0 );
+        // empty initialize for safety - this initial value should never be used:
+        // 1. On genesis block: calls to getEncryptionCallRandom will return fixed hash & never read this 
+        // 2. On any blockId > 0: 'createBlock' updates this member before any calls to 
+        //                        getEncryptionCallRandom can happen.
+        m_cachedBlockRandomBytes = dev::bytes(32, 0);
 #endif  // BITE2
 
     } catch ( const std::exception& e ) {
@@ -1216,24 +1219,31 @@ std::array< std::string, 4 > SkaleHost::getCurrentBLSPublicKey() const {
 #ifdef BITE2
 
 void SkaleHost::resetEncryptionStateForBlock( uint64_t _blockID ) {
-    constexpr bool isReadOnly = false;
+    constexpr bool _isCalledFromTxn = true;
     m_encryptionCounter = 0;
-    m_cachedBlockRandomBytes = toBigEndian( getBlockRandom( _blockID, isReadOnly ) );
+    m_cachedBlockRandomBytes = toBigEndian( getBlockRandom( _blockID, _isCalledFromTxn ) );
 }
 
-dev::h256 SkaleHost::getEncryptionCallRandom( unsigned _blockNumber, bool _isReadOnly ) {
+dev::h256 SkaleHost::getEncryptionCallRandom( unsigned _blockNumber, bool _isCalledFromTxn ) {
     uint64_t counter = 0;
     bytes blockRandomBytes;
+
+    // Can only happen if there is some encryption in genesis block
+    // Should not happen in reality, since fixed hash is non-random, and
+    // encryption with fixed hash is not secure.
+    if ( _blockNumber == 0 )
+        return dev:h256();
 
     // read only - should not affect state - use default counter value 0 & don't update cache
     // compute block random for each call - no guarantee that it will follow linear block
     // increase
-    if ( _isReadOnly ) {
-        blockRandomBytes = toBigEndian( getBlockRandom( _blockNumber, _isReadOnly ) );
+    if ( !_isCalledFromTxn ) {
+        blockRandomBytes = toBigEndian( getBlockRandom( _blockNumber, _isCalledFromTxn ) );
     }
     // block tx - should follow linear block increase
     else {
         counter = m_encryptionCounter++;
+        // should hold the the block random for current block ID
         blockRandomBytes = m_cachedBlockRandomBytes;
     }
 

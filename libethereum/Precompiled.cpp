@@ -1287,12 +1287,12 @@ ETH_REGISTER_PRECOMPILED( encryptTE )
         // Get deterministic random value for this encryption call
         // SkaleHost handles: Hash(blockRandom || counter)
         unsigned blockNumberToCall = _ctx.blockNumber.convert_to< unsigned >();
-        dev::u256 blockRandomValue =
-            g_skaleHost->getReencryptionBlockRandom( blockNumberToCall, !_ctx.isReadOnly );
-        bytes blockRandomBytes = toBigEndian( blockRandomValue );
+        dev::u256 encryptionRandom =
+            g_skaleHost->getEncryptionCallRandom( blockNumberToCall, !_ctx.isReadOnly );
+        bytes encryptionRandomBytes = toBigEndian( encryptionRandom );
         
-        // Create seed from blockRandom (32 bytes)
-        h256 seed( blockRandomBytes.data(), h256::ConstructFromPointer );
+        // Create seed from encryption random (32 bytes)
+        h256 seed( encryptionRandomBytes.data(), h256::ConstructFromPointer );
 
         // Create seed array from encryption random (32 bytes)
         std::array< uint8_t, libBLS::AES_256_KEY_SIZE_BYTES > seedArray;
@@ -1428,12 +1428,12 @@ ETH_REGISTER_PRECOMPILED( encryptECIES )
         // Get deterministic random value for this encryption call
         // SkaleHost handles: Hash(blockRandom || counter)
         unsigned blockNumberToCall = _ctx.blockNumber.convert_to< unsigned >();
-        dev::u256 blockRandomValue =
-            g_skaleHost->getReencryptionBlockRandom( blockNumberToCall, !_ctx.isReadOnly );
-        bytes blockRandomBytes = toBigEndian( blockRandomValue );
+        dev::u256 encryptionRandom =
+            g_skaleHost->getEncryptionCallRandom( blockNumberToCall, !_ctx.isReadOnly );
+        bytes encryptionRandomBytes = toBigEndian( encryptionRandom );
 
-        // Create seed from blockRandom (32 bytes)
-        h256 seed( blockRandomBytes.data(), h256::ConstructFromPointer );
+        // Create seed from encryption random (32 bytes)
+        h256 seed( encryptionRandomBytes.data(), h256::ConstructFromPointer );
 
         // Encrypt using ECIES-CBC with deterministic IV based on encryption random
         bytes response =
