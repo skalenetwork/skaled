@@ -1900,9 +1900,9 @@ BOOST_AUTO_TEST_CASE( encryptTE_same_data ) {
     publicKeys.emplace_back( publicKeyG2 );
 
     // Counter starts at 0 and increments per call in a block
-    isReadOnly = false;// we want to check the non-read-only case where counter increments
-    bytes expectedCiphertext1 = buildDeterministicCiphertext( fixture.skaleHost->getReencryptionBlockRandom( 1, isReadOnly ), 0, publicKeys, dataToEncrypt );
-    bytes expectedCiphertext2 = buildDeterministicCiphertext( fixture.skaleHost->getReencryptionBlockRandom( 1, isReadOnly ), 1, publicKeys, dataToEncrypt );
+    bool isFromTx = true;// we want to check the non-read-only case where counter increments
+    bytes expectedCiphertext1 = buildDeterministicCiphertext( fixture.skaleHost->getReencryptionBlockRandom( 1, isFromTx ), 0, publicKeys, dataToEncrypt );
+    bytes expectedCiphertext2 = buildDeterministicCiphertext( fixture.skaleHost->getReencryptionBlockRandom( 1, isFromTx ), 1, publicKeys, dataToEncrypt );
 
     BOOST_REQUIRE( ciphertextBytes1 == expectedCiphertext1 );
     BOOST_REQUIRE( ciphertextBytes2 == expectedCiphertext2 );
@@ -2184,12 +2184,11 @@ BOOST_AUTO_TEST_CASE( encryptTE_counter_reset_on_new_block ) {
     // Counter resets to 0 on each new block
     // Block 1: counter=0, blockRandom for block 1
     bytes expectedCiphertext1 = test::buildDeterministicCiphertext( 
-        fixture.skaleHost->getBlockRandom( 1, false ), 0, publicKeys, dataToEncrypt );
+        fixture.skaleHost->getReencryptionBlockRandom( 1, true ), 0, publicKeys, dataToEncrypt );
 
     // Block 2: counter=0 (reset!), blockRandom for block 2
     bytes expectedCiphertext2 = test::buildDeterministicCiphertext( 
-        fixture.skaleHost->getBlockRandom( 2, false ), 0, publicKeys, dataToEncrypt );
-
+        fixture.skaleHost->getReencryptionBlockRandom( 2, true ), 0, publicKeys, dataToEncrypt );
     // Verify both match expected (proving counter was reset to 0 in block 2)
     BOOST_REQUIRE( ciphertextBytes1 == expectedCiphertext1 );
     BOOST_REQUIRE( ciphertextBytes2 == expectedCiphertext2 );
