@@ -1292,7 +1292,7 @@ ETH_REGISTER_PRECOMPILED( encryptTE )
         dev::u256 encryptionRandom =
             g_skaleHost->getEncryptionCallRandom( blockNumberToCall, !_ctx.isReadOnly );
         bytes encryptionRandomBytes = toBigEndian( encryptionRandom );
-        
+
         // Create seed from encryption random (32 bytes)
         h256 seed( encryptionRandomBytes.data(), h256::ConstructFromPointer );
 

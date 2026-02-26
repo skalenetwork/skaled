@@ -134,7 +134,7 @@ public:
     // Get deterministic random value for encryption call
     // Combines Hash(blockRandom || counter) where counter auto-increments for each call
     // Counter resets at each new block - skaled calls resetEncryptionStateForBlock on
-    // every new commited block. For read-only calls, counter is not used and block 
+    // every new commited block. For read-only calls, counter is not used and block
     // random is computed for each call.
     // Returns 32-byte random value suitable for use as encryption seed
     dev::h256 getEncryptionCallRandom( unsigned _blockNumber, bool _isCalledFromTxn );

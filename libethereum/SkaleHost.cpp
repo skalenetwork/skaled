@@ -353,10 +353,11 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
 
 #ifdef BITE2
         // empty initialize for safety - this initial value should never be used:
-        // 1. On genesis block: calls to getEncryptionCallRandom will return fixed hash & never read this 
-        // 2. On any blockId > 0: 'createBlock' updates this member before any calls to 
+        // 1. On genesis block: calls to getEncryptionCallRandom will return fixed hash & never read
+        // this
+        // 2. On any blockId > 0: 'createBlock' updates this member before any calls to
         //                        getEncryptionCallRandom can happen.
-        m_cachedBlockRandomBytes = dev::bytes(32, 0);
+        m_cachedBlockRandomBytes = dev::bytes( 32, 0 );
 #endif  // BITE2
 
     } catch ( const std::exception& e ) {
@@ -1221,7 +1222,8 @@ std::array< std::string, 4 > SkaleHost::getCurrentBLSPublicKey() const {
 void SkaleHost::resetEncryptionStateForBlock( uint64_t _blockID ) {
     constexpr bool _isCalledFromTxn = true;
     m_encryptionCounter = 0;
-    m_cachedBlockRandomBytes = toBigEndian( getReencryptionBlockRandom( _blockID, _isCalledFromTxn ) );
+    m_cachedBlockRandomBytes =
+        toBigEndian( getReencryptionBlockRandom( _blockID, _isCalledFromTxn ) );
 }
 
 dev::h256 SkaleHost::getEncryptionCallRandom( unsigned _blockNumber, bool _isCalledFromTxn ) {
@@ -1238,7 +1240,8 @@ dev::h256 SkaleHost::getEncryptionCallRandom( unsigned _blockNumber, bool _isCal
     // compute block random for each call - no guarantee that it will follow linear block
     // increase
     if ( !_isCalledFromTxn ) {
-        blockRandomBytes = toBigEndian( getReencryptionBlockRandom( _blockNumber, _isCalledFromTxn ) );
+        blockRandomBytes =
+            toBigEndian( getReencryptionBlockRandom( _blockNumber, _isCalledFromTxn ) );
     }
     // block tx - should follow linear block increase
     else {
