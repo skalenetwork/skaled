@@ -120,7 +120,7 @@ public:
     u256 getRandomForBlockId( uint64_t _blockId ) const override { return _blockId; }
 
 #ifdef BITE2
-    u256 getReencryptionRandomForBlockId( uint64_t _blockId ) const override { return 0; }
+    u256 getReencryptionRandomForBlockId( uint64_t _blockId ) const override { return _blockId; }
 #endif
 
     u256 setPriceForBlockId( uint64_t _blockId, u256 _gasPrice ) {
@@ -1688,53 +1688,55 @@ BOOST_AUTO_TEST_CASE( getCurrentBLSPublicKey ) {
 
 BOOST_AUTO_TEST_CASE( encryptionRandom_read_only_does_not_advance_counter ) {
     SkaleHostFixture fixture;
+    bool isCalledFromTxn = true;
     fixture.skaleHost->resetEncryptionStateForBlock( 1 );
 
     // Read-only calls always use counter = 0.
-    h256 readOnlyRandom1 = fixture.skaleHost->getEncryptionCallRandom( 1, true );
-    h256 readOnlyRandom2 = fixture.skaleHost->getEncryptionCallRandom( 1, true );
+    h256 readOnlyRandom1 = fixture.skaleHost->getEncryptionCallRandom( 1, !isCalledFromTxn );
+    h256 readOnlyRandom2 = fixture.skaleHost->getEncryptionCallRandom( 1, !isCalledFromTxn );
     BOOST_REQUIRE( readOnlyRandom1 == readOnlyRandom2 );
 
     // Read-only calls must not advance non-read counter.
-    h256 firstNonReadAfterReadOnly = fixture.skaleHost->getEncryptionCallRandom( 1, false );
+    h256 firstNonReadAfterReadOnly = fixture.skaleHost->getEncryptionCallRandom( 1, isCalledFromTxn );
     fixture.skaleHost->resetEncryptionStateForBlock( 1 );
-    h256 firstNonReadFresh = fixture.skaleHost->getEncryptionCallRandom( 1, false );
+    h256 firstNonReadFresh = fixture.skaleHost->getEncryptionCallRandom( 1, isCalledFromTxn );
     BOOST_REQUIRE( firstNonReadAfterReadOnly == firstNonReadFresh );
 }
 
 BOOST_AUTO_TEST_CASE( encryptionRandom_non_read_only_advances_counter ) {
     SkaleHostFixture fixture;
+    bool isCalledFromTxn = true;
     fixture.skaleHost->resetEncryptionStateForBlock( 1 );
 
-    h256 random1 = fixture.skaleHost->getEncryptionCallRandom( 1, false );
-    h256 random2 = fixture.skaleHost->getEncryptionCallRandom( 1, false );
-    h256 random3 = fixture.skaleHost->getEncryptionCallRandom( 1, false );
+    h256 random1 = fixture.skaleHost->getEncryptionCallRandom( 1, isCalledFromTxn );
+    h256 random2 = fixture.skaleHost->getEncryptionCallRandom( 1, isCalledFromTxn );
+    h256 random3 = fixture.skaleHost->getEncryptionCallRandom( 1, isCalledFromTxn );
 
     BOOST_REQUIRE( random1 != random2 );
     BOOST_REQUIRE( random2 != random3 );
 
     // Reset must return counter back to zero for the block.
     fixture.skaleHost->resetEncryptionStateForBlock( 1 );
-    h256 randomAfterReset = fixture.skaleHost->getEncryptionCallRandom( 1, false );
+    h256 randomAfterReset = fixture.skaleHost->getEncryptionCallRandom( 1, isCalledFromTxn );
     BOOST_REQUIRE( randomAfterReset == random1 );
 }
 
 BOOST_AUTO_TEST_CASE( encryptionRandom_resets_on_commit ) {
     SkaleHostFixture fixture;
+    bool isCalledFromTxn = true;
     fixture.skaleHost->resetEncryptionStateForBlock( 1 );
 
-    h256 block1Counter0 = fixture.skaleHost->getEncryptionCallRandom( 1, false );
-    h256 block1Counter1 = fixture.skaleHost->getEncryptionCallRandom( 1, false );
+    h256 block1Counter0 = fixture.skaleHost->getEncryptionCallRandom( 1, isCalledFromTxn );
+    h256 block1Counter1 = fixture.skaleHost->getEncryptionCallRandom( 1, isCalledFromTxn );
     BOOST_REQUIRE( block1Counter0 != block1Counter1 );
 
     // Simulate commit/new-block transition.
     fixture.skaleHost->resetEncryptionStateForBlock( 2 );
-    h256 block2Counter0 = fixture.skaleHost->getEncryptionCallRandom( 2, false );
+    h256 block2Counter0 = fixture.skaleHost->getEncryptionCallRandom( 2, isCalledFromTxn );
 
     // Repeating the same reset should reproduce the first value in the block.
     fixture.skaleHost->resetEncryptionStateForBlock( 2 );
-    h256 block2Counter0Again = fixture.skaleHost->getEncryptionCallRandom( 2, false );
-
+    h256 block2Counter0Again = fixture.skaleHost->getEncryptionCallRandom( 2, isCalledFromTxn );
     BOOST_REQUIRE( block2Counter0 == block2Counter0Again );
     BOOST_REQUIRE( block2Counter0 != block1Counter1 );
 }
@@ -1899,8 +1901,8 @@ BOOST_AUTO_TEST_CASE( encryptTE_same_data ) {
 
     // Counter starts at 0 and increments per call in a block
     isReadOnly = false;// we want to check the non-read-only case where counter increments
-    bytes expectedCiphertext1 = buildDeterministicCiphertext( fixture.skaleHost->getBlockRandom( 1, isReadOnly ), 0, publicKeys, dataToEncrypt );
-    bytes expectedCiphertext2 = buildDeterministicCiphertext( fixture.skaleHost->getBlockRandom( 1, isReadOnly ), 1, publicKeys, dataToEncrypt );
+    bytes expectedCiphertext1 = buildDeterministicCiphertext( fixture.skaleHost->getReencryptionBlockRandom( 1, isReadOnly ), 0, publicKeys, dataToEncrypt );
+    bytes expectedCiphertext2 = buildDeterministicCiphertext( fixture.skaleHost->getReencryptionBlockRandom( 1, isReadOnly ), 1, publicKeys, dataToEncrypt );
 
     BOOST_REQUIRE( ciphertextBytes1 == expectedCiphertext1 );
     BOOST_REQUIRE( ciphertextBytes2 == expectedCiphertext2 );

@@ -1221,7 +1221,7 @@ std::array< std::string, 4 > SkaleHost::getCurrentBLSPublicKey() const {
 void SkaleHost::resetEncryptionStateForBlock( uint64_t _blockID ) {
     constexpr bool _isCalledFromTxn = true;
     m_encryptionCounter = 0;
-    m_cachedBlockRandomBytes = toBigEndian( getBlockRandom( _blockID, _isCalledFromTxn ) );
+    m_cachedBlockRandomBytes = toBigEndian( getReencryptionBlockRandom( _blockID, _isCalledFromTxn ) );
 }
 
 dev::h256 SkaleHost::getEncryptionCallRandom( unsigned _blockNumber, bool _isCalledFromTxn ) {
@@ -1232,13 +1232,13 @@ dev::h256 SkaleHost::getEncryptionCallRandom( unsigned _blockNumber, bool _isCal
     // Should not happen in reality, since fixed hash is non-random, and
     // encryption with fixed hash is not secure.
     if ( _blockNumber == 0 )
-        return dev:h256();
+        return dev::h256();
 
     // read only - should not affect state - use default counter value 0 & don't update cache
     // compute block random for each call - no guarantee that it will follow linear block
     // increase
     if ( !_isCalledFromTxn ) {
-        blockRandomBytes = toBigEndian( getBlockRandom( _blockNumber, _isCalledFromTxn ) );
+        blockRandomBytes = toBigEndian( getReencryptionBlockRandom( _blockNumber, _isCalledFromTxn ) );
     }
     // block tx - should follow linear block increase
     else {
