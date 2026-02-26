@@ -706,7 +706,8 @@ void TransactionBase::checkAndValidateBITETransaction( uint64_t _currentEpochId 
     if ( !isBite() )
         return;
 
-    dev::bite::validateBITECiphertext( m_data, _currentEpochId );
+    dev::bite::BITEVerificationData verificationData{ _currentEpochId, {} };
+    dev::bite::validateBITECiphertext( m_data, verificationData );
 }
 
 #ifdef BITE2

@@ -6300,7 +6300,7 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
     callDecrypted["to"] = contractAddress;
     callDecrypted["data"] = "0x38d5a312";
     dev::bytes result = dev::fromHex( fixture.rpcClient->eth_call( callDecrypted, "latest" ) );
-    auto [rlpStreamDecrypted, decryptedLength] = dev::bite::parseAbiEncodedBytesArray( dev::bytesConstRef( result.data(), result.size() ), 32, "", false );
+    auto [rlpStreamDecrypted, decryptedLength] = dev::bite::parseAbiEncodedBytesArray( dev::bytesConstRef( result.data(), result.size() ), 32, "" );
     BOOST_REQUIRE_EQUAL( decryptedLength, pregeneratedDecryptedValues.size() );
     dev::RLP rlpDecrypted( rlpStreamDecrypted.out() );
     for (size_t i = 0; i < decryptedLength; ++i) {
@@ -6314,7 +6314,7 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
     callPlaintext["to"] = contractAddress;
     callPlaintext["data"] = "0xcc159120";
     result = dev::fromHex( fixture.rpcClient->eth_call( callPlaintext, "latest" ) );
-    auto [rlpStreamPlaintext, plaintextLength] = dev::bite::parseAbiEncodedBytesArray( dev::bytesConstRef( result.data(), result.size() ), 32, "", false );
+    auto [rlpStreamPlaintext, plaintextLength] = dev::bite::parseAbiEncodedBytesArray( dev::bytesConstRef( result.data(), result.size() ), 32, "" );
     BOOST_REQUIRE_EQUAL( plaintextLength, pregeneratedPlaintextValues.size() );
     dev::RLP rlpPlaintext( rlpStreamPlaintext.out() );
     for (size_t i = 0; i < plaintextLength; ++i) {
@@ -6347,7 +6347,7 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
 
     // call getDecrypted()
     result = dev::fromHex( fixture.rpcClient->eth_call( callDecrypted, "latest" ) );
-    auto [rlpStreamDecrypted1, decryptedLength1] = dev::bite::parseAbiEncodedBytesArray( dev::bytesConstRef( result.data(), result.size() ), 32, "", false );
+    auto [rlpStreamDecrypted1, decryptedLength1] = dev::bite::parseAbiEncodedBytesArray( dev::bytesConstRef( result.data(), result.size() ), 32, "" );
     BOOST_REQUIRE_EQUAL( decryptedLength1, pregeneratedDecryptedValues.size() );
     dev::RLP rlpDecrypted1( rlpStreamDecrypted1.out() );
     for (size_t i = 0; i < decryptedLength1; ++i) {
@@ -6358,7 +6358,7 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
 
     // call getPlaintext()
     result = dev::fromHex( fixture.rpcClient->eth_call( callPlaintext, "latest" ) );
-    auto [rlpStreamPlaintext1, plaintextLength1] = dev::bite::parseAbiEncodedBytesArray( dev::bytesConstRef( result.data(), result.size() ), 32, "", false );
+    auto [rlpStreamPlaintext1, plaintextLength1] = dev::bite::parseAbiEncodedBytesArray( dev::bytesConstRef( result.data(), result.size() ), 32, "" );
     BOOST_REQUIRE_EQUAL( plaintextLength1, pregeneratedPlaintextValues.size() );
     dev::RLP rlpPlaintext1( rlpStreamPlaintext1.out() );
     for (size_t i = 0; i < plaintextLength1; ++i) {
