@@ -1188,7 +1188,7 @@ u256 SkaleHost::getBlockRandom( unsigned _blockNumber, bool _isCalledFromTxn ) c
 #ifdef BITE2
 u256 SkaleHost::getReencryptionBlockRandom( unsigned _blockNumber, bool _isCalledFromTxn ) const {
     auto blockNumber = resolveRandomBlockNumber( _blockNumber, _isCalledFromTxn );
-    if (blockNumber == 0) {
+    if ( blockNumber == 0 ) {
         // handle corner case of genesis block
         // could happen if blockRandom patch is not enabled.
         // we need to return a default value to avoid reading from db since
