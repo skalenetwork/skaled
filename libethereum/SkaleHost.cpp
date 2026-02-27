@@ -664,14 +664,16 @@ void SkaleHost::createBlock( const ConsensusExtFace::Transactions& _approvedTran
 
     BlockHeader latestInfo = static_cast< const Interface& >( m_client ).blockInfo( LatestBlock );
 
+    // Keep this outside m_blockImportMutex to avoid lock-order cycles with
+    // chain reads performed by random resolution.
+#ifdef BITE2
+    // Need to reset encryption state with new block id before processing txs to make
+    // sure a random for current block id is set.
+    resetEncryptionStateForBlock( _blockID );
+#endif
+
     DEV_GUARDED( m_client.m_blockImportMutex ) {
         m_debugTracer.tracepoint( "drop_good_transactions" );
-
-#ifdef BITE2
-        // need to reset encryption state with new block id before processing txs to make
-        // sure a random for current block id is set.
-        resetEncryptionStateForBlock( _blockID );
-#endif
 
         if ( _winningNodeIndex != 0 ) {
             // only process transactions for non-default blocks
