@@ -1,4 +1,4 @@
-name: Functional tests
+name: API tests
 on:
   push:
     branches-ignore:
@@ -21,8 +21,8 @@ env:
   CMAKE_BUILD_TYPE: Debug
 
 jobs:
-  func-tests:
-    name: Func-tests
+  api-tests:
+    name: API tests
     runs-on: ubuntu-22.04
 
     steps:
@@ -56,7 +56,7 @@ jobs:
           ./build.sh DEBUG=1 PARALLEL_COUNT=$(nproc)
           cd ..
 
-      - name: Build skaled
+      - name: Build BITE
         uses: ./.github/actions/cmake-build
         with:
           build_dir: build_bite
@@ -65,7 +65,7 @@ jobs:
           cmake_args: "-DBITE=1"
           make_target: skaled
 
-      - name: Build skaled
+      - name: Build BITE2
         uses: ./.github/actions/cmake-build
         with:
           build_dir: build_bite2
@@ -77,11 +77,11 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
-      - name: Install hardfork-support dependencies
+      - name: Install ts dependencies
         run: bun install --frozen-lockfile
         working-directory: test/api-tests/bite-compat/
 
-      - name: Func-tests (bite-compat)
+      - name: API tests (bite-compat)
         uses: ./.github/actions/api-tests-run
         with:
           suite: bite-compat

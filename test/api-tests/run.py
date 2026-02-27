@@ -107,6 +107,33 @@ def _wait_for_sgx_port(url: str, timeout_s: int = 360) -> bool:
     return False
 
 
+def _log_sgx_wallet_tail(log_path: Path, max_lines: int = 200):
+    """Print the last SGX wallet log lines to help diagnose startup timeouts."""
+    if not log_path.is_file():
+        logger.error("SGX wallet log file not found: %s", log_path)
+        return
+
+    try:
+        with open(log_path, "r", errors="replace") as f:
+            lines = f.readlines()
+    except Exception as exc:
+        logger.error("Failed reading SGX wallet log file %s: %s", log_path, exc)
+        return
+
+    tail = lines[-max_lines:]
+    if not tail:
+        logger.error("SGX wallet log file is empty: %s", log_path)
+        return
+
+    logger.error(
+        "SGX wallet log tail (%s, last %d lines):",
+        log_path,
+        len(tail),
+    )
+    for line in tail:
+        logger.error("[sgxwallet] %s", line.rstrip("\n"))
+
+
 def generate_sgx_keys(sgx_url: str, keys_file: Path) -> dict:
     """Generate ECDSA and BLS keys in the SGX wallet.
 
@@ -238,6 +265,8 @@ def setup_sgx(cfg: dict, _log_dir: Path) -> "Optional[Environment.ManagedProcess
     )
 
     if not _wait_for_sgx_port(url, startup_timeout_sec):
+        log_fd.flush()
+        _log_sgx_wallet_tail(log_file)
         raise RunnerError(f"SGX wallet at {url} did not come up in {startup_timeout_sec}s")
 
     context = generate_sgx_keys(url, keys_file)
@@ -341,12 +370,49 @@ def inject_patches(config_path: str, patches: dict):
 
     schain = cfg.get("skaleConfig", {}).get("sChain", {})
     for key, val in patches.items():
-        schain[key] = val
-        logger.info("  Patched %s = %s in %s", key, val, config_path)
+        resolved = _resolve_patch_value(val)
+        schain[key] = resolved
+        logger.info("  Patched %s = %s (from %s) in %s", key, resolved, val, config_path)
 
     cfg.setdefault("skaleConfig", {})["sChain"] = schain
     with open(config_path, "w") as f:
         json.dump(cfg, f, indent=2)
+
+
+def _resolve_patch_value(raw):
+    """Resolve timestamp shorthand expressions in patch values.
+
+    Supported forms:
+      - integer (kept as-is)
+      - numeric string, e.g. "-1", "1712314800"
+      - "now"
+      - "now+<n>" / "now-<n>" (seconds)
+      - "now+<n><unit>" / "now-<n><unit>", unit in {s,m,h,d}
+    """
+    if isinstance(raw, int):
+        return raw
+    if isinstance(raw, float) and raw.is_integer():
+        return int(raw)
+    if not isinstance(raw, str):
+        return raw
+
+    value = raw.strip().lower()
+    if re.fullmatch(r"[+-]?\d+", value):
+        return int(value)
+
+    m = re.fullmatch(r"now(?:\s*([+-])\s*(\d+)\s*([smhd]?))?", value)
+    if not m:
+        return raw
+
+    sign, amount_raw, unit = m.groups()
+    now_ts = int(time.time())
+    if amount_raw is None:
+        return now_ts
+
+    amount = int(amount_raw)
+    unit_mul = {"": 1, "s": 1, "m": 60, "h": 3600, "d": 86400}[unit]
+    delta = amount * unit_mul
+    return now_ts + delta if sign == "+" else now_ts - delta
 
 
 def _load_skaled_config(config_path: str) -> dict:
@@ -668,9 +734,12 @@ def setup_environment(cfg: dict, env_type: str) -> Environment:
     """Step 1: launch processes according to env_type."""
     env = Environment()
 
-    # "none" — suite manages its own node lifecycle; nothing to launch here.
-    if env_type == "none":
-        logger.info("env_type='none': skipping framework node launch.")
+    # "delegated" — suite manages its own node lifecycle; nothing to launch here.
+    # Keep "none" as a backward-compatible alias.
+    if env_type in ("delegated", "none"):
+        if env_type == "none":
+            logger.warning("env_type='none' is deprecated; use env_type='delegated'")
+        logger.info("env_type='%s': skipping framework node launch.", env_type)
         return env
 
     log_dir = FUNC_TESTS_DIR / "logs"
@@ -966,7 +1035,7 @@ def main():
         if (
             launch_sgx
             and suite_name == "bite-compat"
-            and env_type == "none"
+            and env_type in ("delegated", "none")
             and "use_sgx" in cfg.get("bite_compat", {})
         ):
             launch_sgx = bool(cfg.get("bite_compat", {}).get("use_sgx"))

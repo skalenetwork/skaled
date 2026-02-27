@@ -29,6 +29,7 @@ Phase 2 — BITE2 binary, same datadir:
 import json
 import logging
 import os
+import re
 import shlex
 import shutil
 import signal
@@ -149,8 +150,46 @@ def _inject_patches(config_path: Path, patches: dict):
     for k, v in patches.items():
         if k == "delete":
             continue
-        schain[k] = v
+        resolved = _resolve_patch_value(v)
+        schain[k] = resolved
+        logger.info("  Patched %s = %s (from %s) in %s", k, resolved, v, config_path.name)
     config_path.write_text(json.dumps(cfg, indent=2))
+
+
+def _resolve_patch_value(raw):
+    """Resolve timestamp shorthand expressions in patch values.
+
+    Supported forms:
+      - integer (kept as-is)
+      - numeric string, e.g. "-1", "1712314800"
+      - "now"
+      - "now+<n>" / "now-<n>" (seconds)
+      - "now+<n><unit>" / "now-<n><unit>", unit in {s,m,h,d}
+    """
+    if isinstance(raw, int):
+        return raw
+    if isinstance(raw, float) and raw.is_integer():
+        return int(raw)
+    if not isinstance(raw, str):
+        return raw
+
+    value = raw.strip().lower()
+    if re.fullmatch(r"[+-]?\d+", value):
+        return int(value)
+
+    m = re.fullmatch(r"now(?:\s*([+-])\s*(\d+)\s*([smhd]?))?", value)
+    if not m:
+        return raw
+
+    sign, amount_raw, unit = m.groups()
+    now_ts = int(time.time())
+    if amount_raw is None:
+        return now_ts
+
+    amount = int(amount_raw)
+    unit_mul = {"": 1, "s": 1, "m": 60, "h": 3600, "d": 86400}[unit]
+    delta = amount * unit_mul
+    return now_ts + delta if sign == "+" else now_ts - delta
 
 
 def _ensure_genesis_balance(config_path: Path, private_key: str):

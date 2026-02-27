@@ -30,7 +30,7 @@ name = "hardfork-support"
 # "single" — one skaled node
 # "two"    — two skaled nodes (connected, block-hash comparison in background)
 # "anvil"  — skaled + anvil side-by-side, same tests run on both, outputs compared
-# "none"   — suite manages its own node lifecycle (e.g. bite-compat)
+# "delegated" — suite manages its own node lifecycle (e.g. bite-compat)
 env_type = "anvil"
 
 # Base account — must have balance on all nodes (genesis-funded).
@@ -77,6 +77,8 @@ deployer_permission_storage_value = "0x01"
 apply_to = []
 
 [skaled.patches.timestamps]
+# Supports absolute integers and relative expressions:
+#   "now", "now+300", "now+5m", "now-60"
 berlinForkPatchTimestamp                = 1
 pushZeroPatchTimestamp                  = 1
 EIP1559TransactionsPatchTimestamp       = 1
@@ -162,8 +164,8 @@ deployer_permission_storage_value = "0x01"
 
 [bite_compat.patches]
 # Keys listed here are deleted from the sChain config after template rendering.
-# The template already contains berlinForkPatchTimestamp=1, so we remove it.
-delete = ["berlinForkPatchTimestamp"]
+# Supports absolute integers and relative expressions:
+#   "now", "now+300", "now+5m", "now-60"
 pushZeroPatchTimestamp                  = 1
 EIP1559TransactionsPatchTimestamp       = 1
 singleStateCommitPerBlockPatchTimestamp = 1
