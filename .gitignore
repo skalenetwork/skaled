@@ -139,3 +139,7 @@ scripts/skale_build/executable/skaled
 /test/func-tests/**/skaled.status
 /test/func-tests/**/.*.swp
 /test/func-tests/**/sgx-keys.json
+
+# local test runner configs
+/test/api-tests/run.toml
+/test/func-tests/run.toml
