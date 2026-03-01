@@ -1,29 +1,32 @@
 """
 BITE / BITE2 compatibility test suite.
 
-Tests that a node can start with the BITE build, produce blocks and accept
-transactions, then be restarted with the BITE2 build against the same
-datadir — verifying state continuity and the new BITE2 RPC/CTX surfaces.
+Runs a single BITE2 binary with bite2PatchTimestamp set ~5 minutes into the
+future, verifying the patch gating and eventual activation.
 
 Entry points required by run.py:
   deploy(cfg, env)      — no-op; this suite manages its own node lifecycle.
-  run_tests(cfg, env)   — runs both phases and returns results.
+  run_tests(cfg, env)   — runs all phases and returns results.
 
-Phase 1 — BITE binary:
+Phase 1 — BITE tests (BITE2 is a BITE superset):
   * Node health and block production
   * Regular (non-encrypted) ETH transfer
   * bite_getCommitteesInfo RPC returns epoch data
   * BITE-format transaction with valid ciphertext shape is mined
   * BITE-format transaction with invalid ciphertext is properly rejected
 
-Phase 2 — BITE2 binary, same datadir:
-  * Node comes back up and resumes block production (state continuity)
+Phase 2a — pre-patch BITE2 (bite2PatchTimestamp not yet reached):
+  * SimpleSecret.revealSecret() triggers submitCTX precompile,
+    which must REVERT with "bite2Patch not enabled" (status=0 expected).
+
+Wait — block timestamps reach bite2PatchTimestamp (2 consecutive blocks).
+
+Phase 2b — post-patch BITE2 (patch active):
+  * Block production continues
   * Regular ETH transfer still works
-  * bite_getCommitteesInfo still works (BITE2 is a BITE superset)
-  * debug_getPendingBITE2Transactions returns an empty list before any CTX
-  * TS-encrypted call to SimpleBITE.decrypt executes submitCTX
-  * bite_getCraftedCtxs maps the origin tx to its crafted CTX hash
-  * bite_getCtxOrigin maps the CTX hash back to the origin tx
+  * bite_getCommitteesInfo still works
+  * debug_getPendingBITE2Transactions returns a list
+  * TS-encrypted call to SimpleBITE.decrypt executes submitCTX successfully
 """
 
 import json
@@ -976,6 +979,154 @@ def _test_ctx_origin(w3: Web3, label: str,
         return _make_result(name, False, f"Exception: {e}")
 
 
+def _test_submit_ctx_pre_patch(
+    w3: Web3,
+    label: str,
+    private_key: str,
+    bite_cfg: dict,
+    timeout_tx: int,
+) -> TestResult:
+    """
+    Run TS helper that calls SimpleSecret.revealSecret() BEFORE bite2Patch
+    is active.  The submitCTX precompile must revert with
+    "bite2Patch not enabled" (status=0 expected).
+    """
+    name = f"{label}/submitCTX-pre-patch-revert"
+
+    try:
+        script_path = TS_SIMPLE_SECRET_SCRIPT
+        if not script_path.is_file():
+            return _make_result(name, False, f"TS script not found: {script_path}")
+
+        cmd_str = bite_cfg.get("bite_ts_command", "bun run")
+        cmd = shlex.split(cmd_str) + [str(script_path)]
+        env = os.environ.copy()
+        env["BITE_OUTPUT_JSON"] = "1"
+        env["BITE_COMPAT_TOML"] = str(SUITE_DIR / "bite-compat.toml")
+        env["BITE_PRIVATE_KEY"] = private_key
+
+        try:
+            cp = subprocess.run(
+                cmd,
+                cwd=REPO_ROOT,
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=max(30, min(timeout_tx, 120)),
+            )
+        except FileNotFoundError:
+            return _make_result(
+                name,
+                False,
+                f"TS runtime command not found: {cmd[0]}. "
+                "Set [bite_compat].bite_ts_command to installed runner (e.g. bun run).",
+            )
+        except subprocess.TimeoutExpired:
+            return _make_result(name, False, "TS subprocess timed out")
+
+        if cp.returncode != 0:
+            stderr = (cp.stderr or "").strip()
+            stdout = (cp.stdout or "").strip()
+            return _make_result(
+                name,
+                False,
+                f"TS revealSecret subprocess failed (rc={cp.returncode}). "
+                f"stdout={stdout[-500:]!r} stderr={stderr[-500:]!r}",
+            )
+
+        payload = None
+        for line in reversed((cp.stdout or "").splitlines()):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                payload = json.loads(line)
+                break
+            except Exception:
+                continue
+        if not isinstance(payload, dict):
+            return _make_result(
+                name, False,
+                f"TS output did not contain JSON payload: {cp.stdout[-500:]!r}"
+            )
+
+        tx_hash = payload.get("txHash")
+        if not isinstance(tx_hash, str) or not tx_hash:
+            return _make_result(
+                name, False, f"TS JSON missing txHash string: {payload!r}"
+            )
+
+        receipt = _wait_for_tx(w3, tx_hash, timeout_tx)
+        if receipt is None:
+            return _make_result(
+                name, False,
+                f"submitCTX pre-patch tx {tx_hash} not mined within {timeout_tx}s"
+            )
+
+        if receipt["status"] == 0:
+            return _make_result(
+                name,
+                True,
+                f"submitCTX tx {tx_hash} correctly reverted before patch activation "
+                f"(mined in block {receipt['blockNumber']}) — 'bite2Patch not enabled'",
+                tx_hash=tx_hash,
+                block=receipt["blockNumber"],
+            )
+        return _make_result(
+            name,
+            False,
+            f"submitCTX tx {tx_hash} succeeded (status=1) before bite2Patch activation — "
+            f"expected revert (mined in block {receipt['blockNumber']})",
+            tx_hash=tx_hash,
+            block=receipt["blockNumber"],
+        )
+    except Exception as e:
+        return _make_result(name, False, f"Exception: {e}")
+
+
+def _wait_for_bite2_patch_active(w3: Web3, patch_ts: int, timeout_s: int) -> bool:
+    """
+    Wait until 2 consecutive newly-seen blocks have timestamp >= patch_ts.
+    Returns True if the condition is met within timeout_s seconds.
+    """
+    deadline = time.time() + timeout_s
+    blocks_above = 0
+    last_seen_bn = -1
+    logger.info(
+        "Waiting for bite2Patch activation: need 2 blocks with timestamp >= %d "
+        "(%.0f seconds from now)",
+        patch_ts,
+        max(0.0, patch_ts - time.time()),
+    )
+    while time.time() < deadline:
+        try:
+            bn = w3.eth.block_number
+            if bn != last_seen_bn:
+                block = w3.eth.get_block(bn)
+                block_ts = block["timestamp"]
+                last_seen_bn = bn
+                if block_ts >= patch_ts:
+                    blocks_above += 1
+                    logger.info(
+                        "Block %d timestamp %d >= patch_ts %d (count=%d/2)",
+                        bn, block_ts, patch_ts, blocks_above,
+                    )
+                    if blocks_above >= 2:
+                        logger.info("bite2Patch is now active.")
+                        return True
+                else:
+                    blocks_above = 0
+                    logger.info(
+                        "Block %d timestamp %d < patch_ts %d (wait ~%.0fs)",
+                        bn, block_ts, patch_ts, patch_ts - block_ts,
+                    )
+        except Exception:
+            pass
+        time.sleep(2)
+    logger.error("Timed out waiting for bite2Patch activation after %ds", timeout_s)
+    return False
+
+
 # ---------------------------------------------------------------------------
 # Phase runners
 # ---------------------------------------------------------------------------
@@ -1006,13 +1157,28 @@ def _run_phase1_bite(
     return results
 
 
+def _run_pre_patch_bite2(
+    w3: Web3, private_key: str, bite_cfg: dict, timeouts: dict
+) -> list[TestResult]:
+    """Run pre-patch BITE2 tests: submitCTX must revert before patch activates."""
+    results = []
+    label = "bite2-pre-patch"
+    logger.info("=== Phase 2a: BITE2 pre-patch tests ===")
+    results.append(
+        _test_submit_ctx_pre_patch(
+            w3, label, private_key, bite_cfg, timeouts.get("tx_mine", 180)
+        )
+    )
+    return results
+
+
 def _run_phase2_bite2(w3: Web3, private_key: str, bite_cfg: dict,
                       timeouts: dict) -> list[TestResult]:
     """Run all BITE2-phase tests against an already-running node."""
     results = []
     label = "bite2-phase"
 
-    logger.info("=== Phase 2: BITE2 tests ===")
+    logger.info("=== Phase 2b: BITE2 post-patch tests ===")
 
     results.append(_test_block_production(
         w3, label, timeouts.get("block_produce", 60)))
@@ -1048,11 +1214,16 @@ def deploy(cfg: dict, env) -> None:
 
 def run_tests(cfg: dict, env) -> dict[str, list[TestResult]]:
     """
-    Manage the full BITE → BITE2 lifecycle and return test results.
+    Manage the BITE2 lifecycle with patch gating and return test results.
 
-    The function intentionally ignores *env* (which may contain nodes
-    launched by the framework for a different suite) and uses only the
-    [bite_compat] section of *cfg*.
+    Launches a single BITE2 binary with bite2PatchTimestamp set ~101 seconds
+    into the future, then:
+      Phase 1   — BITE tests (block production, transfers, committees, BITE txs)
+      Phase 2a  — pre-patch: SimpleSecret CTX must revert (bite2Patch not enabled)
+      Wait      — until 2 blocks with timestamp >= bite2PatchTimestamp
+      Phase 2b  — post-patch: full BITE2 tests (CTX success, RPC tracking)
+
+    The function intentionally ignores *env* and uses only [bite_compat] in *cfg*.
     """
     bc = cfg.get("bite_compat", {})
     if not bc:
@@ -1060,28 +1231,19 @@ def run_tests(cfg: dict, env) -> dict[str, list[TestResult]]:
         logger.error(msg)
         return {"bite-compat": [TestResult(name="config", passed=False, message=msg)]}
 
-    private_key = cfg.get("type", {}).get("private_key", "")
+    private_key  = cfg.get("type", {}).get("private_key", "")
     timeouts     = bc.get("timeouts", {})
     patches      = bc.get("patches", {})
     tmpl_ctx     = bc.get("template_context", {})
-    # If bite_compat.use_sgx is not set, inherit global [sgx].enabled.
-    # With SGX disabled, skaled keeps isCiphertextValidationEnabled=false, so
-    # submitCTX encrypted args can be byte stubs rather than real BLS ciphertexts.
-    # The templates use testSignatures=true and empty ecdsaKeyName by default.
     use_sgx = bool(bc["use_sgx"]) if "use_sgx" in bc else bool(cfg.get("sgx", {}).get("enabled"))
     sgx_context  = cfg.get("sgx", {}).get("template_context") if use_sgx else None
     sgx_url      = (cfg.get("sgx", {}).get("url")
                     if (use_sgx and cfg.get("sgx", {}).get("enabled")) else None)
     http_port    = int(bc.get("http_port", 4234))
-    bite_binary  = _resolve(bc.get("bite_binary",  "build_bite/skaled/skaled"))
-    bite2_binary = _resolve(bc.get("bite2_binary", "build_bite2/skaled/skaled"))
+    bite2_binary = _resolve(bc.get("bite2_binary", "build-bite2/skaled/skaled"))
     datadir      = _resolve(bc.get("datadir", "test/api-tests/bite-compat/datadir"))
-    bite_cfg     = _resolve(bc.get("bite_config",
-                                   "test/api-tests/bite-compat/configs/config-bite.generated.json"))
     bite2_cfg    = _resolve(bc.get("bite2_config",
                                    "test/api-tests/bite-compat/configs/config-bite2.generated.json"))
-    bite_tmpl    = _resolve_ft(bc.get("bite_config_template",
-                                      "bite-compat/config-templates/config-bite-template.json.j2"))
     bite2_tmpl   = _resolve_ft(bc.get("bite2_config_template",
                                       "bite-compat/config-templates/config-bite2-template.json.j2"))
 
@@ -1095,17 +1257,31 @@ def run_tests(cfg: dict, env) -> dict[str, list[TestResult]]:
         all_results.append(TestResult(name="setup", passed=False, message=msg))
         return {"bite-compat": all_results}
 
+    def _append_log_tail(log_path: Path, summary_path: Path, mode: str = "a"):
+        if not log_path.exists():
+            return
+        try:
+            log_lines = log_path.read_text().splitlines()
+            tail = log_lines[-100:] if len(log_lines) > 100 else log_lines
+            with summary_path.open(mode) as f:
+                f.write("=" * 80 + "\n")
+                f.write(f"{log_path.name} (last {len(tail)} lines):\n")
+                f.write("=" * 80 + "\n")
+                f.write("\n".join(tail) + "\n")
+                f.write("=" * 80 + "\n\n")
+        except Exception as exc:
+            logger.error("Failed to read %s: %s", log_path.name, exc)
+
     # ------------------------------------------------------------------
-    # Validate binaries
+    # Validate binary and required files
     # ------------------------------------------------------------------
-    for label, binary in [("BITE", bite_binary), ("BITE2", bite2_binary)]:
-        if not binary.is_file():
-            return abort(
-                f"{label} binary not found: {binary}\n"
-                f"Build it with: cmake -H. -B{binary.parent.parent.name} "
-                f"-DCMAKE_BUILD_TYPE=Release -D{label}=1 && "
-                f"cmake --build {binary.parent.parent.name} -j4"
-            )
+    if not bite2_binary.is_file():
+        return abort(
+            f"BITE2 binary not found: {bite2_binary}\n"
+            f"Build it with: cmake -H. -Bbuild-bite2 "
+            f"-DCMAKE_BUILD_TYPE=Release -DBITE2=1 && "
+            f"cmake --build build-bite2 -j4"
+        )
     if use_sgx and not sgx_context:
         return abort(
             "bite_compat.use_sgx resolved to true, but SGX key context is missing. "
@@ -1113,98 +1289,121 @@ def run_tests(cfg: dict, env) -> dict[str, list[TestResult]]:
             "or set [bite_compat].use_sgx = false."
         )
     required_files = [
-        ("BITE config template", bite_tmpl),
         ("BITE2 config template", bite2_tmpl),
         ("BITE tx TS script", TS_ENCRYPT_TRANSFER_SCRIPT),
         ("BITE2 tx TS script", TS_SIMPLE_SECRET_SCRIPT),
         ("Suite config", SUITE_DIR / "bite-compat.toml"),
     ]
-    missing_required = [f"{label}: {path}" for label, path in required_files if not path.is_file()]
+    missing_required = [
+        f"{lbl}: {path}" for lbl, path in required_files if not path.is_file()
+    ]
     if missing_required:
         return abort("Missing required suite files:\n" + "\n".join(missing_required))
 
     # ------------------------------------------------------------------
-    # Render BITE config
+    # Compute bite2PatchTimestamp = now + 101 seconds
     # ------------------------------------------------------------------
-    try:
-        _render_template(bite_tmpl, bite_cfg, tmpl_ctx)
-        if sgx_context:
-            _apply_sgx_config(bite_cfg, sgx_context)
-        _inject_patches(bite_cfg, patches)
-        _ensure_genesis_balance(bite_cfg, private_key)
-        _configure_single_node(bite_cfg)
-    except Exception as e:
-        return abort(f"Failed to prepare BITE config: {e}")
+    bite2_patch_ts = int(time.time()) + 101
+    logger.info(
+        "bite2PatchTimestamp set to %d (now + 101s, activates at %s)",
+        bite2_patch_ts,
+        time.strftime("%H:%M:%S", time.localtime(bite2_patch_ts)),
+    )
 
     # ------------------------------------------------------------------
-    # Render BITE2 config
+    # Render BITE2 config, injecting bite2PatchTimestamp
     # ------------------------------------------------------------------
     try:
         _render_template(bite2_tmpl, bite2_cfg, tmpl_ctx)
         if sgx_context:
             _apply_sgx_config(bite2_cfg, sgx_context)
-        _inject_patches(bite2_cfg, patches)
+        patches_with_ts = dict(patches)
+        patches_with_ts["bite2PatchTimestamp"] = bite2_patch_ts
+        _inject_patches(bite2_cfg, patches_with_ts)
         _ensure_genesis_balance(bite2_cfg, private_key)
         _configure_single_node(bite2_cfg)
     except Exception as e:
         return abort(f"Failed to prepare BITE2 config: {e}")
 
     # ------------------------------------------------------------------
-    # Phase 1 — BITE binary
+    # Launch BITE2 binary (fresh datadir)
     # ------------------------------------------------------------------
     _set_ulimit()
 
-    # Fresh datadir for clean genesis
     if datadir.exists():
         shutil.rmtree(datadir)
     datadir.mkdir(parents=True)
 
     w3 = Web3(Web3.HTTPProvider(f"http://127.0.0.1:{http_port}",
-                                 request_kwargs={"timeout": 10}))
-    try:
-        proc = _launch_skaled(
-            bite_binary, bite_cfg, http_port, datadir,
-            log_dir / "skaled-bite.log",
-            sgx_url=sgx_url,
-        )
-        rpc_timeout = timeouts.get("rpc_up", 360)
-        if not _wait_for_rpc(w3, "BITE", rpc_timeout):
-            all_results.append(TestResult(
-                name="bite-phase/rpc-up", passed=False,
-                message=f"BITE node RPC did not come up within {rpc_timeout}s"))
-        else:
-            all_results.append(TestResult(
-                name="bite-phase/rpc-up", passed=True,
-                message="BITE node RPC is up"))
-            all_results.extend(_run_phase1_bite(w3, private_key, timeouts, bc))
-    finally:
-        if proc:
-            _stop_skaled(proc, "BITE")
-            proc = None
+                                request_kwargs={"timeout": 10}))
 
-    # ------------------------------------------------------------------
-    # Phase 2 — BITE2 binary (same datadir, preserved state)
-    # ------------------------------------------------------------------
-    # Allow a short pause so OS releases file locks before restarting.
-    time.sleep(2)
+    skaled_log  = log_dir / "skaled-bite2.log"
+    summary_log = log_dir / "summary.log"
 
     try:
         proc = _launch_skaled(
             bite2_binary, bite2_cfg, http_port, datadir,
-            log_dir / "skaled-bite2.log",
+            skaled_log,
             sgx_url=sgx_url,
         )
         rpc_timeout = timeouts.get("rpc_up", 360)
+
         if not _wait_for_rpc(w3, "BITE2", rpc_timeout):
             all_results.append(TestResult(
-                name="bite2-phase/rpc-up", passed=False,
+                name="bite2/rpc-up", passed=False,
                 message=f"BITE2 node RPC did not come up within {rpc_timeout}s"))
-        else:
+            return {"bite-compat": all_results}
+
+        all_results.append(TestResult(
+            name="bite2/rpc-up", passed=True,
+            message="BITE2 node RPC is up"))
+
+        # ------------------------------------------------------------------
+        # Phase 1 — BITE tests (BITE2 is a full superset of BITE)
+        # ------------------------------------------------------------------
+        phase1_results = _run_phase1_bite(w3, private_key, timeouts, bc)
+        all_results.extend(phase1_results)
+        if any(not r.passed for r in phase1_results):
+            logger.error("=== BITE tests failed. Writing log tail to %s ===", summary_log)
+            _append_log_tail(skaled_log, summary_log, mode="w")
+
+        # ------------------------------------------------------------------
+        # Phase 2a — pre-patch BITE2: submitCTX must revert
+        # ------------------------------------------------------------------
+        pre_patch_results = _run_pre_patch_bite2(w3, private_key, bc, timeouts)
+        all_results.extend(pre_patch_results)
+        if any(not r.passed for r in pre_patch_results):
+            logger.error("=== Pre-patch BITE2 tests failed. Writing log tail ===")
+            _append_log_tail(skaled_log, summary_log)
+
+        # ------------------------------------------------------------------
+        # Wait for bite2PatchTimestamp to be reached (2 consecutive blocks)
+        # ------------------------------------------------------------------
+        patch_wait_timeout = 101 + timeouts.get("block_produce", 60) + 60
+        patch_active = _wait_for_bite2_patch_active(w3, bite2_patch_ts, patch_wait_timeout)
+        if not patch_active:
             all_results.append(TestResult(
-                name="bite2-phase/rpc-up", passed=True,
-                message="BITE2 node RPC is up"))
-            all_results.extend(
-                _run_phase2_bite2(w3, private_key, bc, timeouts))
+                name="bite2/patch-activation", passed=False,
+                message=(
+                    f"bite2PatchTimestamp {bite2_patch_ts} not reached in "
+                    f"{patch_wait_timeout}s — post-patch tests skipped"
+                ),
+            ))
+            return {"bite-compat": all_results}
+
+        all_results.append(TestResult(
+            name="bite2/patch-activation", passed=True,
+            message=f"bite2Patch activated (bite2PatchTimestamp={bite2_patch_ts})"))
+
+        # ------------------------------------------------------------------
+        # Phase 2b — post-patch BITE2 tests
+        # ------------------------------------------------------------------
+        phase2_results = _run_phase2_bite2(w3, private_key, bc, timeouts)
+        all_results.extend(phase2_results)
+        if any(not r.passed for r in phase2_results):
+            logger.error("=== Post-patch BITE2 tests failed. Writing log tail ===")
+            _append_log_tail(skaled_log, summary_log)
+
     finally:
         if proc:
             _stop_skaled(proc, "BITE2")

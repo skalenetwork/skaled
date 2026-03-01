@@ -171,3 +171,4 @@ EIP1559TransactionsPatchTimestamp       = 1
 singleStateCommitPerBlockPatchTimestamp = 1
 flexibleDeploymentPatchTimestamp        = 1
 snapshotIntervalSec                     = 0
+bite2PatchTimestamp 			= "now+101"

@@ -67,4 +67,16 @@ runs:
         if [ -n "${{ inputs.skaled_binary }}" ]; then
           sed -i "s#^binary[[:space:]]*=.*#binary = \"${{ inputs.skaled_binary }}\"#" run.toml
         fi
-        uv run --project . run.py --config run.toml --suite "${{ inputs.suite }}"
+
+        # Run tests and capture exit code
+        if ! uv run --project . run.py --config run.toml --suite "${{ inputs.suite }}"; then
+          echo "::error::Test execution failed"
+          if [ -f "logs/summary.log" ]; then
+            echo "::group::Summary Log"
+            cat logs/summary.log
+            echo "::endgroup::"
+          else
+            echo "::warning::summary.log not found in logs folder"
+          fi
+          exit 1
+        fi
