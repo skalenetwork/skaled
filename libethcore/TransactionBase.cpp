@@ -366,7 +366,8 @@ TransactionType TransactionBase::getTransactionType( bytesConstRef _rlp ) {
 }
 
 TransactionBase::TransactionBase( bytesConstRef _rlpData, CheckTransaction _checkSig,
-    bool _allowInvalid, bool _eip1559Enabled, bool _invalidTransactionFormatPatchEnabled ) {
+    bool _allowInvalid, bool _eip1559Enabled, bool _invalidTransactionFormatPatchEnabled,
+    bool _bite2PatchEnabled ) {
     MICROPROFILE_SCOPEI( "TransactionBase", "ctor", MP_GOLD2 );
     try {
         if ( _eip1559Enabled ) {
@@ -383,12 +384,17 @@ TransactionBase::TransactionBase( bytesConstRef _rlpData, CheckTransaction _chec
         checkIfBITETxnAndSet( m_receiveAddress );
 
 #ifdef BITE2
-        // check if a txn is a CTX here
+        // check if a txn is a CTX here only when bite2Patch is enabled;
         // bad formatted txns cannot make it to the block
         // therefore no need to check it anywhere else
-        checkIfCTXAndSet( m_data );
+        if ( _bite2PatchEnabled )
+            checkIfCTXAndSet( m_data );
+#else
+        ( void )_bite2PatchEnabled;
 #endif  // BITE2
 
+#else
+        ( void )_bite2PatchEnabled;
 #endif  // BITE
     } catch ( std::exception& e ) {
         m_type = Type::Invalid;
