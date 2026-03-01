@@ -1864,7 +1864,8 @@ VerifiedBlockRef BlockChain::verifyBlock( bytesConstRef _block,
                         CheckTransaction::Everything :
                         CheckTransaction::None,
                     false, EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
-                    InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp ) );
+                    InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp ),
+                    Bite2Patch::isEnabledWhen( blockTimestamp ) );
                 Ethash::verifyTransaction( chainParams(), _ir, t,
                     this->info( numberHash( h.number() - 1 ) ).timestamp(), h,
                     0 );  // the gasUsed vs
@@ -1920,7 +1921,8 @@ Transactions BlockChain::ctxListForPreviousBlock() const {
     for ( auto const& txRlp : rlp ) {
         ctxs.push_back( Transaction( txRlp.data(), CheckTransaction::None, true,
             EIP1559TransactionsPatch::isEnabledWhen( prevBlockTimestamp ),
-            InvalidTransactionFormatPatch::isEnabledWhen( prevBlockTimestamp ) ) );
+            InvalidTransactionFormatPatch::isEnabledWhen( prevBlockTimestamp ),
+            Bite2Patch::isEnabledWhen( prevBlockTimestamp ) ) );
     }
     return ctxs;
 }

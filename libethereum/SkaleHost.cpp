@@ -420,7 +420,8 @@ h256 SkaleHost::receiveTransaction( std::string _rlp ) {
 
     Transaction transaction( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::None, false,
         EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
-        InvalidTransactionFormatPatch::isEnabledInWorkingBlock() );
+        InvalidTransactionFormatPatch::isEnabledInWorkingBlock(),
+        Bite2Patch::isEnabledInWorkingBlock() );
     h256 sha = transaction.sha3();
 
     //
@@ -1029,7 +1030,8 @@ std::vector< Transaction > SkaleHost::processRegularTransactions(
 
         Transaction t( data, CheckTransaction::Everything, true,
             EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
-            InvalidTransactionFormatPatch::isEnabledInWorkingBlock() );
+            InvalidTransactionFormatPatch::isEnabledInWorkingBlock(),
+            Bite2Patch::isEnabledInWorkingBlock() );
 #ifdef BITE
         if ( regularTxnsIterator != _decryptedTransactions.regularTxsMap->end() &&
              regularTxnsIterator->first == i ) {
@@ -1087,7 +1089,8 @@ std::vector< Transaction > SkaleHost::processCTXTransactions(
 
         Transaction t( data, CheckTransaction::Everything, true,
             EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
-            InvalidTransactionFormatPatch::isEnabledInWorkingBlock() );
+            InvalidTransactionFormatPatch::isEnabledInWorkingBlock(),
+            Bite2Patch::isEnabledInWorkingBlock() );
 
         if ( ctxIterator != _decryptedTransactions.ctxTxsMap->end() && ctxIterator->first == i ) {
             std::optional< DecryptedCTXArgs > decryptedArgs = ctxIterator->second;

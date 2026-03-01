@@ -25,6 +25,7 @@ enum class SchainPatchEnum {
     InvalidTransactionFormatPatch,
     CurrentBlockRandomPatch,
     GroupIndexInitPatch,
+    Bite2Patch,
 #ifdef FAIR
     DisableSelfDestructPatch,
 #endif
