@@ -90,6 +90,10 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
     patchTimeStamps["verifyBlsSyncPatchTimestamp"] =
         m_client.chainParams().getPatchTimestamp( SchainPatchEnum::VerifyBlsSyncPatch );
 #endif  // FAIR
+#ifdef BITE2
+    patchTimeStamps["bite2PatchTimestamp"] =
+        m_client.chainParams().getPatchTimestamp( SchainPatchEnum::Bite2Patch );
+#endif  // BITE2
 
     auto consensusEnginePtr = make_unique< ConsensusEngine >( _extFace, m_client.number(), ts, 0,
         patchTimeStamps, m_client.chainParams().getConsensusStorageLimit() );
