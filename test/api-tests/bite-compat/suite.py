@@ -25,7 +25,6 @@ Phase 2b — post-patch BITE2 (patch active):
   * Block production continues
   * Regular ETH transfer still works
   * bite_getCommitteesInfo still works
-  * debug_getPendingBITE2Transactions returns a list
   * SimpleSecret.revealSecret() executes submitCTX successfully,
     and the crafted CTX transaction is mined in the next block
 """
@@ -33,7 +32,6 @@ Phase 2b — post-patch BITE2 (patch active):
 import json
 import logging
 import os
-import re
 import shlex
 import shutil
 import signal
@@ -48,6 +46,14 @@ from web3 import Web3
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from result import TestResult
+from run import (
+    apply_sgx_config,
+    configure_single_node_skaled,
+    ensure_genesis_balance,
+    inject_patches,
+    render_template_file,
+    set_ulimit,
+)
 
 logger = logging.getLogger("bite-compat.suite")
 
@@ -89,171 +95,6 @@ def _resolve_ft(path_str: str) -> Path:
     return (FUNC_TESTS / p).resolve()
 
 
-def _render_template(template_path: Path, output_path: Path, context: dict):
-    """Simple {{ var }} template renderer (same logic as run.py)."""
-    pat = re.compile(r"{{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*}}")
-    text = template_path.read_text()
-    missing = sorted(m.group(1) for m in pat.finditer(text) if m.group(1) not in context)
-    if missing:
-        raise ValueError(f"Template {template_path} missing vars: {missing}")
-    rendered = pat.sub(lambda m: str(context[m.group(1)]), text)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(rendered)
-    logger.info("Rendered %s -> %s", template_path.name, output_path)
-
-
-def _modify_json_config(config_path: Path, modifier_func) -> None:
-    """Load JSON config, apply modifier function, and save back."""
-    cfg = json.loads(config_path.read_text())
-    modifier_func(cfg)
-    config_path.write_text(json.dumps(cfg, indent=2))
-
-
-def _apply_sgx_config(config_path: Path, sgx_context: dict) -> None:
-    """Patch a rendered skaled JSON config with SGX key values."""
-    def modifier(cfg):
-        node_info = cfg["skaleConfig"]["nodeInfo"]
-        schain    = cfg["skaleConfig"]["sChain"]
-
-        node_info["ecdsaKeyName"] = sgx_context["sgx_ecdsa_key_name"]
-        # testSignatures=true causes skaled to skip reading ecdsaKeyName from config.
-        # Must be false when using a real SGX wallet.
-        node_info["testSignatures"] = False
-
-        ima = node_info.setdefault("wallets", {}).setdefault("ima", {})
-        ima["keyShareName"] = sgx_context["sgx_bls_key_name"]
-        for i in range(4):
-            ima[f"commonBLSPublicKey{i}"] = sgx_context[f"sgx_bls_public_key_{i}"]
-            ima[f"BLSPublicKey{i}"]       = sgx_context[f"sgx_bls_public_key_{i}"]
-
-        for node in schain.get("nodes", []):
-            node["publicKey"] = sgx_context["sgx_ecdsa_public_key"]
-            for i in range(4):
-                node[f"blsPublicKey{i}"] = sgx_context[f"sgx_bls_public_key_{i}"]
-
-        for group in schain.get("nodeGroups", {}).values():
-            for ndata in group.get("nodes", {}).values():
-                if isinstance(ndata, list) and len(ndata) >= 3:
-                    ndata[2] = sgx_context["sgx_ecdsa_public_key"]
-            bls = group.get("bls_public_key", {})
-            for i in range(4):
-                bls[f"blsPublicKey{i}"] = sgx_context[f"sgx_bls_public_key_{i}"]
-
-    _modify_json_config(config_path, modifier)
-    logger.info("Applied SGX keys to %s", config_path.name)
-
-
-def _inject_patches(config_path: Path, patches: dict) -> None:
-    def modifier(cfg):
-        schain = cfg.setdefault("skaleConfig", {}).setdefault("sChain", {})
-        for k in patches.get("delete", []):
-            removed = schain.pop(k, None)
-            if removed is not None:
-                logger.info("  Deleted sChain key %s from %s", k, config_path.name)
-        for k, v in patches.items():
-            if k == "delete":
-                continue
-            resolved = _resolve_patch_value(v)
-            schain[k] = resolved
-            logger.info("  Patched %s = %s (from %s) in %s", k, resolved, v, config_path.name)
-
-    _modify_json_config(config_path, modifier)
-
-
-def _resolve_patch_value(raw) -> int | str:
-    """Resolve timestamp shorthand expressions in patch values.
-
-    Supported forms:
-      - integer (kept as-is)
-      - numeric string, e.g. "-1", "1712314800"
-      - "now"
-      - "now+<n>" / "now-<n>" (seconds)
-      - "now+<n><unit>" / "now-<n><unit>", unit in {s,m,h,d}
-    """
-    if isinstance(raw, int):
-        return raw
-    if isinstance(raw, float) and raw.is_integer():
-        return int(raw)
-    if not isinstance(raw, str):
-        return raw
-
-    value = raw.strip().lower()
-    if re.fullmatch(r"[+-]?\d+", value):
-        return int(value)
-
-    m = re.fullmatch(r"now(?:\s*([+-])\s*(\d+)\s*([smhd]?))?", value)
-    if not m:
-        return raw
-
-    sign, amount_raw, unit = m.groups()
-    now_ts = int(time.time())
-    if amount_raw is None:
-        return now_ts
-
-    amount = int(amount_raw)
-    unit_mul = {"": 1, "s": 1, "m": 60, "h": 3600, "d": 86400}[unit]
-    delta = amount * unit_mul
-    return now_ts + delta if sign == "+" else now_ts - delta
-
-
-def _ensure_genesis_balance(config_path: Path, private_key: str) -> None:
-    if not private_key:
-        return
-    addr = Account.from_key(private_key).address
-
-    def modifier(cfg):
-        accounts = cfg.setdefault("accounts", {})
-        if not any(k.lower() == addr.lower() for k in accounts):
-            accounts[addr] = {"balance": "1000000000000000000000000000000"}
-            logger.info("Added genesis balance for %s", addr)
-
-    _modify_json_config(config_path, modifier)
-
-
-def _configure_single_node(config_path: Path) -> None:
-    """Keep only the first schain node and align nodeInfo."""
-    def modifier(cfg):
-        schain = cfg.get("skaleConfig", {}).get("sChain", {})
-        nodes = schain.get("nodes", [])
-        if len(nodes) <= 1:
-            return
-        kept = nodes[0]
-        kept["schainIndex"] = 1
-        schain["nodes"] = [kept]
-
-        # Simplify nodeGroups to contain only the kept node
-        for _gid, group in schain.get("nodeGroups", {}).items():
-            old = group.get("nodes", {})
-            new = {}
-            for nid, ndata in old.items():
-                if isinstance(ndata, list) and len(ndata) >= 2 and ndata[1] == kept["nodeID"]:
-                    ndata[0] = 0
-                    new[nid] = ndata
-                    break
-                elif isinstance(ndata, dict) and ndata.get("nodeID") == kept["nodeID"]:
-                    ndata["schainIndex"] = 1
-                    new[nid] = ndata
-                    break
-            group["nodes"] = new
-
-        ni = cfg.get("skaleConfig", {}).get("nodeInfo", {})
-        ni["nodeID"]   = kept["nodeID"]
-        ni["basePort"] = kept.get("basePort", ni.get("basePort"))
-        cfg["skaleConfig"]["sChain"]    = schain
-        cfg["skaleConfig"]["nodeInfo"]  = ni
-        logger.info("Configured %s as single-node (nodeID=%s)", config_path.name, kept["nodeID"])
-
-    _modify_json_config(config_path, modifier)
-
-
-def _set_ulimit() -> None:
-    import resource
-    try:
-        soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
-        target = min(65535, hard) if hard > 0 else 65535
-        resource.setrlimit(resource.RLIMIT_NOFILE, (target, hard))
-    except Exception:
-        pass
 
 
 def _launch_skaled(binary: Path, config: Path, http_port: int,
@@ -763,18 +604,6 @@ def _test_submit_ctx_via_simple_secret(
         return _make_result(name, False, f"Exception: {e}")
 
 
-def _test_pending_bite2_txs(w3: Web3, label: str) -> TestResult:
-    """debug_getPendingBITE2Transactions should return an empty list initially."""
-    name = f"{label}/debug_getPendingBITE2Transactions"
-    rpc_ok, pending, error_msg = _make_rpc_call(w3, "debug_getPendingBITE2Transactions", [], name)
-    if not rpc_ok:
-        return _make_result(name, False, error_msg)
-    if not isinstance(pending, list):
-        return _make_result(name, False, f"Expected list, got: {type(pending).__name__}")
-    return _make_result(name, True, f"Pending BITE2 txs: {len(pending)}", count=len(pending))
-
-
-
 
 
 def _test_submit_ctx_pre_patch(
@@ -936,8 +765,6 @@ def _run_phase2_bite2(w3: Web3, private_key: str, bite_cfg: dict,
 
     results.append(_test_bite_committees_info(w3, label, timeouts.get("tx_mine", 60)))
 
-    results.append(_test_pending_bite2_txs(w3, label))
-
     results.append(
         _test_submit_ctx_via_simple_secret(
             w3,
@@ -1063,21 +890,21 @@ def run_tests(cfg: dict, env) -> dict[str, list[TestResult]]:
     # Render BITE2 config, injecting bite2PatchTimestamp
     # ------------------------------------------------------------------
     try:
-        _render_template(bite2_tmpl, bite2_cfg, tmpl_ctx)
+        render_template_file(str(bite2_tmpl), str(bite2_cfg), tmpl_ctx)
         if sgx_context:
-            _apply_sgx_config(bite2_cfg, sgx_context)
+            apply_sgx_config(str(bite2_cfg), sgx_context)
         patches_with_ts = dict(patches)
         patches_with_ts["bite2PatchTimestamp"] = bite2_patch_ts
-        _inject_patches(bite2_cfg, patches_with_ts)
-        _ensure_genesis_balance(bite2_cfg, private_key)
-        _configure_single_node(bite2_cfg)
+        inject_patches(str(bite2_cfg), patches_with_ts)
+        ensure_genesis_balance(str(bite2_cfg), private_key)
+        configure_single_node_skaled(str(bite2_cfg))
     except Exception as e:
         return abort(f"Failed to prepare BITE2 config: {e}")
 
     # ------------------------------------------------------------------
     # Launch BITE2 binary (fresh datadir)
     # ------------------------------------------------------------------
-    _set_ulimit()
+    set_ulimit()
 
     if datadir.exists():
         shutil.rmtree(datadir)

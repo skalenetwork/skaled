@@ -21,8 +21,6 @@ use_sgx = true
 # If omitted, bite-compat inherits global [sgx].enabled from run.toml.
 # Set use_sgx=false to force stubbed submitCTX args (no real SGX keys),
 # or use_sgx=true to require SGX key injection into generated configs.
-to_address = "0x6f5b9ec63f4a52c8d87e1a30b2d49cf7180e34ab"
-value_wei  = "0x1"
 
 # --------------------------------------------------------------------------
 # Timeouts

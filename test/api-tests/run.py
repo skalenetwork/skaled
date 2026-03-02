@@ -238,7 +238,7 @@ def setup_sgx(cfg: dict, _log_dir: Path) -> "Optional[Environment.ManagedProcess
     container_name = sgx_cfg.get("container_name", "skaled-func-tests-sgx")
     startup_timeout_sec = int(sgx_cfg.get("startup_timeout_sec", 360))
     artifacts_dir  = Path(resolve_repo_path(
-        sgx_cfg.get("artifacts_dir", "test/func-tests/sgx-artifacts")
+        sgx_cfg.get("artifacts_dir", "test/api-tests/sgx-artifacts")
     ))
     keys_file_cfg = sgx_cfg.get("keys_file", "")
     keys_file = (
@@ -322,13 +322,13 @@ def render_template_file(template_path: str, output_path: str, context: dict[str
 
 def set_ulimit():
     import resource
-    soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
-    target = min(65535, hard) if hard > 0 else 65535
     try:
+        soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+        target = min(65535, hard) if hard > 0 else 65535
         resource.setrlimit(resource.RLIMIT_NOFILE, (target, hard))
         logger.info("ulimit -n set to %d", target)
-    except ValueError:
-        logger.warning("Could not raise ulimit (soft=%d, hard=%d)", soft, hard)
+    except Exception:
+        logger.warning("Could not set ulimit")
 
 
 def ensure_genesis_balance(config_path: str, private_key: str):
@@ -364,17 +364,26 @@ def ensure_genesis_balance(config_path: str, private_key: str):
 
 
 def inject_patches(config_path: str, patches: dict):
-    """Inject patch timestamps into a skaled JSON config's sChain block."""
+    """Inject patch timestamps into a skaled JSON config's sChain block.
+
+    Special key "delete" (list of strings) removes those keys from sChain.
+    All other keys are set, with values resolved via _resolve_patch_value.
+    """
     with open(config_path, "r") as f:
         cfg = json.load(f)
 
-    schain = cfg.get("skaleConfig", {}).get("sChain", {})
+    schain = cfg.setdefault("skaleConfig", {}).setdefault("sChain", {})
+    for key in patches.get("delete", []):
+        removed = schain.pop(key, None)
+        if removed is not None:
+            logger.info("  Deleted sChain key %s from %s", key, config_path)
     for key, val in patches.items():
+        if key == "delete":
+            continue
         resolved = _resolve_patch_value(val)
         schain[key] = resolved
         logger.info("  Patched %s = %s (from %s) in %s", key, resolved, val, config_path)
 
-    cfg.setdefault("skaleConfig", {})["sChain"] = schain
     with open(config_path, "w") as f:
         json.dump(cfg, f, indent=2)
 
@@ -501,8 +510,10 @@ def configure_two_node_skaled(config_paths: list[str], nodes_cfg: dict[int, dict
     schain_nodes = schain.get("nodes", [])
 
     if len(schain_nodes) < 2:
-        logger.warning("Template config has < 2 schain nodes; two-node setup may be incomplete.")
-        return
+        raise RunnerError(
+            f"Template config {config_paths[0]} has only {len(schain_nodes)} schain node(s); "
+            "two-node mode requires at least 2."
+        )
 
     # Update schain node IPs/ports from run.toml node configs
     for i, snode in enumerate(schain_nodes[:2]):
@@ -615,7 +626,7 @@ class Environment:
                 managed.log_fd.close()
 
 
-def build_skaled(binary_cfg: str, build_enabled: bool = True) -> str:
+def build_skaled(binary_cfg: str, build_enabled: bool = True, branch: str = "") -> str:
     if binary_cfg and os.path.isfile(binary_cfg):
         logger.info("Using pre-built skaled: %s", binary_cfg)
         return binary_cfg
@@ -623,7 +634,11 @@ def build_skaled(binary_cfg: str, build_enabled: bool = True) -> str:
     build_dir = REPO_ROOT / "build"
     skaled_bin = build_dir / "skaled" / "skaled"
 
-    if skaled_bin.is_file():
+    if branch:
+        logger.info("Checking out branch: %s", branch)
+        subprocess.run(["git", "checkout", branch], cwd=REPO_ROOT, check=True)
+
+    if skaled_bin.is_file() and not branch:
         logger.info("Found existing build: %s", skaled_bin)
         return str(skaled_bin)
 
@@ -658,6 +673,7 @@ def launch_skaled_node(binary: str, ncfg: dict, log_dir: Path,
         "-v", "9",
         "--web3-trace",
         "--enable-debug-behavior-apis",
+        "--ipcpath", ncfg["datadir"],
         "-d", ncfg["datadir"],
     ]
     if sgx_url:
@@ -842,6 +858,7 @@ def setup_environment(cfg: dict, env_type: str) -> Environment:
         binary = build_skaled(
             skaled_cfg.get("binary", ""),
             skaled_cfg.get("build", True),
+            skaled_cfg.get("branch", ""),
         )
         set_ulimit()
 
@@ -1032,13 +1049,11 @@ def main():
     try:
         # ---- Step 0: Launch SGX wallet (optional) ----
         launch_sgx = bool(cfg.get("sgx", {}).get("enabled"))
-        if (
-            launch_sgx
-            and suite_name == "bite-compat"
-            and env_type in ("delegated", "none")
-            and "use_sgx" in cfg.get("bite_compat", {})
-        ):
-            launch_sgx = bool(cfg.get("bite_compat", {}).get("use_sgx"))
+        # Allow the suite's own config section to override the global SGX flag.
+        # Convention: a suite named "foo-bar" may set use_sgx under [foo_bar].
+        suite_section = cfg.get(suite_name.replace("-", "_"), {})
+        if "use_sgx" in suite_section:
+            launch_sgx = bool(suite_section["use_sgx"])
 
         if launch_sgx:
             logger.info("=" * 60)
