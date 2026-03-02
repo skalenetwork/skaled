@@ -123,26 +123,8 @@ qtbuild/
 
 scripts/skale_build/executable/skaled
 
-# func-tests artifacts
-/test/func-tests/**/.venv/
-/test/func-tests/**/__pycache__/
-/test/func-tests/**/node_modules/
-/test/func-tests/**/.ropeproject/
-/test/func-tests/sgx-artifacts/
-/test/func-tests/**/logs/
-/test/func-tests/**/datadir/
-/test/func-tests/**/progress_log/
-/test/func-tests/**/artifacts/
-/test/func-tests/**/cache/
-/test/func-tests/**/deployments/
-/test/func-tests/**/config-*.generated.json
-/test/func-tests/**/skaled.status
-/test/func-tests/**/.*.swp
-/test/func-tests/**/sgx-keys.json
-
 # local test runner configs
 /test/api-tests/run.toml
-/test/func-tests/run.toml
 
 # api-tests artifacts
 /test/api-tests/**/.venv/

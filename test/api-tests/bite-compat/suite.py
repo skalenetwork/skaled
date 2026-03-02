@@ -1,7 +1,7 @@
 """
 BITE / BITE2 compatibility test suite.
 
-Runs a single BITE2 binary with bite2PatchTimestamp set ~5 minutes into the
+Runs a single BITE2 binary with bite2PatchTimestamp set ~101 seconds into the
 future, verifying the patch gating and eventual activation.
 
 Entry points required by run.py:
@@ -26,7 +26,8 @@ Phase 2b — post-patch BITE2 (patch active):
   * Regular ETH transfer still works
   * bite_getCommitteesInfo still works
   * debug_getPendingBITE2Transactions returns a list
-  * TS-encrypted call to SimpleBITE.decrypt executes submitCTX successfully
+  * SimpleSecret.revealSecret() executes submitCTX successfully,
+    and the crafted CTX transaction is mined in the next block
 """
 
 import json
@@ -66,7 +67,6 @@ TS_SIMPLE_SECRET_SCRIPT = SUITE_DIR / "scripts" / "make_transaction_bite2.ts"
 # Constants
 BITE_CIPHERTEXT_MIN_LEN = 276  # BITE_ENCRYPTED_AES_KEY_LEN + BITE_TE_RANDOM_LEN + ADDRESS_SIZE
 BITE2_PATCH_DELAY_SECONDS = 101  # Delay before bite2Patch activation in tests
-DEFAULT_CTX_WAIT_TIMEOUT = 30  # Timeout for waiting for CTX to appear
 
 
 # ---------------------------------------------------------------------------
@@ -91,7 +91,6 @@ def _resolve_ft(path_str: str) -> Path:
 
 def _render_template(template_path: Path, output_path: Path, context: dict):
     """Simple {{ var }} template renderer (same logic as run.py)."""
-    import re
     pat = re.compile(r"{{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*}}")
     text = template_path.read_text()
     missing = sorted(m.group(1) for m in pat.finditer(text) if m.group(1) not in context)
@@ -322,7 +321,7 @@ def _wait_for_new_block(w3: Web3, from_block: int, timeout_s: int) -> Optional[i
     return None
 
 
-def _wait_for_tx(w3: Web3, tx_hash, timeout_s: int) -> Optional[dict]:
+def _wait_for_tx(w3: Web3, tx_hash: str | bytes, timeout_s: int) -> Optional[dict]:
     deadline = time.time() + timeout_s
     while time.time() < deadline:
         try:
@@ -342,6 +341,16 @@ def _make_result(name: str, passed: bool, message: str, **details) -> TestResult
 # ---------------------------------------------------------------------------
 # Individual test helpers
 # ---------------------------------------------------------------------------
+
+def _parse_int(v, default: int) -> int:
+    """Parse an int from int, hex-string, or decimal-string; return default on failure."""
+    if v is None:
+        return default
+    if isinstance(v, int):
+        return v
+    if isinstance(v, str):
+        return int(v, 0)
+    return default
 
 def _test_block_production(w3: Web3, label: str, timeout_s: int) -> TestResult:
     name = f"{label}/block-production"
@@ -521,7 +530,7 @@ def _test_bite_tx_rejection(w3: Web3, label: str,
 def _run_ts_script(
     script_path: Path,
     bite_cfg: dict,
-    timeout_tx: int,
+    timeout_s: int,
     private_key: Optional[str] = None,
 ) -> tuple[bool, Optional[dict], str]:
     """
@@ -549,7 +558,7 @@ def _run_ts_script(
             env=env,
             capture_output=True,
             text=True,
-            timeout=max(30, min(timeout_tx, 120)),
+            timeout=max(30, min(timeout_s, 120)),
         )
     except FileNotFoundError:
         return False, None, (
@@ -605,7 +614,7 @@ def _make_rpc_call(
 
 
 def _test_bite_tx_via_ts_subprocess(
-    w3: Web3, label: str, private_key: str, timeout_s: int, bite_cfg: dict
+    w3: Web3, label: str, private_key: str, bite_cfg: dict, timeout_s: int
 ) -> TestResult:
     """
     Encrypt a transfer-like tx with bite TypeScript package via subprocess,
@@ -632,15 +641,6 @@ def _test_bite_tx_via_ts_subprocess(
                 name, False, f"encryptedTx.data is invalid: {data_hex!r}"
             )
         data_raw = bytes.fromhex(data_hex[2:] if data_hex.startswith("0x") else data_hex)
-
-        def _parse_int(v, default: int) -> int:
-            if v is None:
-                return default
-            if isinstance(v, int):
-                return v
-            if isinstance(v, str):
-                return int(v, 0)
-            return default
 
         account = Account.from_key(private_key)
         chain_id = w3.eth.chain_id
@@ -680,17 +680,19 @@ def _test_submit_ctx_via_simple_secret(
     label: str,
     private_key: str,
     bite_cfg: dict,
-    timeout_tx: int,
+    timeout_s: int,
 ) -> TestResult:
     """
-    Run TS helper that submits SimpleSecret.revealSecret(bytes) on-chain
-    and returns tx hash; then verify mined success in Python.
+    Deploy SimpleSecret and call revealSecret(bytes) via the TS helper, then verify:
+      1. The submit tx is mined successfully (status=1).
+      2. A crafted CTX transaction appears via bite_getCraftedCtxs.
+      3. The CTX transaction is mined in the immediately following block.
     """
     name = f"{label}/submitCTX-simple-secret"
 
     try:
         success, payload, error_msg = _run_ts_script(
-            TS_SIMPLE_SECRET_SCRIPT, bite_cfg, timeout_tx, private_key
+            TS_SIMPLE_SECRET_SCRIPT, bite_cfg, timeout_s, private_key
         )
         if not success:
             return _make_result(name, False, error_msg)
@@ -701,70 +703,60 @@ def _test_submit_ctx_via_simple_secret(
                 name, False, f"TS JSON missing txHash string: {payload!r}"
             )
 
-        receipt = _wait_for_tx(w3, tx_hash, timeout_tx)
-        if receipt is None:
+        submit_receipt = _wait_for_tx(w3, tx_hash, timeout_s)
+        if submit_receipt is None:
             return _make_result(
-                name, False, f"submitCTX tx {tx_hash} not mined within {timeout_tx}s"
+                name, False, f"submitCTX tx {tx_hash} not mined within {timeout_s}s"
             )
-        if receipt["status"] != 1:
+        if submit_receipt["status"] != 1:
             return _make_result(
-                name, False, f"submitCTX tx {tx_hash} mined but reverted (status=0)"
+                name, False, f"submitCTX tx {tx_hash} reverted (status=0)"
             )
 
-        submit_block_number = receipt["blockNumber"]
+        submit_block = submit_receipt["blockNumber"]
 
-        # Additional check: verify that the crafted CTX is mined in the next block
-        # Use bite_getCraftedCtxs to get the CTX hash, retrying briefly
+        # Poll bite_getCraftedCtxs until the CTX hash appears
         ctx_hash = None
-        deadline = time.time() + min(timeout_tx, DEFAULT_CTX_WAIT_TIMEOUT)
+        deadline = time.time() + timeout_s
         while time.time() < deadline:
-            success, result, _ = _make_rpc_call(w3, "bite_getCraftedCtxs", [tx_hash], name)
-            if success and isinstance(result, list) and len(result) > 0:
+            rpc_ok, result, _ = _make_rpc_call(w3, "bite_getCraftedCtxs", [tx_hash], name)
+            if rpc_ok and isinstance(result, list) and len(result) > 0:
                 ctx_hash = result[0]
                 break
             time.sleep(1)
 
-        if ctx_hash:
-            # Wait for the CTX to be mined
-            ctx_receipt = _wait_for_tx(w3, ctx_hash, timeout_tx)
-            if ctx_receipt is None:
-                return _make_result(
-                    name, False,
-                    f"submitCTX tx {tx_hash} mined in block {submit_block_number}, "
-                    f"but CTX {ctx_hash[:12]}… not mined within {timeout_tx}s"
-                )
+        if ctx_hash is None:
+            return _make_result(
+                name, False,
+                f"No crafted CTX found for submit tx {tx_hash} within {timeout_s}s"
+            )
 
-            ctx_block_number = ctx_receipt["blockNumber"]
-            expected_ctx_block = submit_block_number + 1
+        ctx_receipt = _wait_for_tx(w3, ctx_hash, timeout_s)
+        if ctx_receipt is None:
+            return _make_result(
+                name, False,
+                f"CTX tx {ctx_hash[:12]}… not mined within {timeout_s}s"
+            )
 
-            if ctx_block_number == expected_ctx_block:
-                return _make_result(
-                    name,
-                    True,
-                    f"submitCTX tx {tx_hash} (via SimpleSecret.revealSecret) mined in block "
-                    f"{submit_block_number}, CTX {ctx_hash[:12]}… mined in next block "
-                    f"{ctx_block_number}",
-                    tx_hash=tx_hash,
-                    block=submit_block_number,
-                    ctx_hash=ctx_hash,
-                    ctx_block=ctx_block_number,
-                    simple_secret=payload.get("simpleSecretAddress"),
-                )
-            else:
-                return _make_result(
-                    name, False,
-                    f"submitCTX tx {tx_hash} mined in block {submit_block_number}, "
-                    f"but CTX {ctx_hash[:12]}… mined in block {ctx_block_number} "
-                    f"(expected block {expected_ctx_block})"
-                )
+        ctx_block = ctx_receipt["blockNumber"]
+        expected_ctx_block = submit_block + 1
+
+        if ctx_block != expected_ctx_block:
+            return _make_result(
+                name, False,
+                f"submitCTX mined in block {submit_block}, "
+                f"but CTX {ctx_hash[:12]}… mined in block {ctx_block} "
+                f"(expected block {expected_ctx_block})"
+            )
 
         return _make_result(
-            name,
-            True,
-            f"submitCTX tx {tx_hash} (via SimpleSecret.revealSecret) mined in block "
-            f"{receipt['blockNumber']}",
+            name, True,
+            f"submitCTX mined in block {submit_block}, "
+            f"CTX {ctx_hash[:12]}… correctly mined in next block {ctx_block}",
             tx_hash=tx_hash,
-            block=receipt["blockNumber"],
+            block=submit_block,
+            ctx_hash=ctx_hash,
+            ctx_block=ctx_block,
             simple_secret=payload.get("simpleSecretAddress"),
         )
     except Exception as e:
@@ -774,15 +766,12 @@ def _test_submit_ctx_via_simple_secret(
 def _test_pending_bite2_txs(w3: Web3, label: str) -> TestResult:
     """debug_getPendingBITE2Transactions should return an empty list initially."""
     name = f"{label}/debug_getPendingBITE2Transactions"
-    success, pending, error_msg = _make_rpc_call(w3, "debug_getPendingBITE2Transactions", [], name)
-    if not success:
+    rpc_ok, pending, error_msg = _make_rpc_call(w3, "debug_getPendingBITE2Transactions", [], name)
+    if not rpc_ok:
         return _make_result(name, False, error_msg)
     if not isinstance(pending, list):
         return _make_result(name, False, f"Expected list, got: {type(pending).__name__}")
     return _make_result(name, True, f"Pending BITE2 txs: {len(pending)}", count=len(pending))
-
-
-
 
 
 
@@ -793,7 +782,7 @@ def _test_submit_ctx_pre_patch(
     label: str,
     private_key: str,
     bite_cfg: dict,
-    timeout_tx: int,
+    timeout_s: int,
 ) -> TestResult:
     """
     Run TS helper that calls SimpleSecret.revealSecret() BEFORE bite2Patch
@@ -804,7 +793,7 @@ def _test_submit_ctx_pre_patch(
 
     try:
         success, payload, error_msg = _run_ts_script(
-            TS_SIMPLE_SECRET_SCRIPT, bite_cfg, timeout_tx, private_key
+            TS_SIMPLE_SECRET_SCRIPT, bite_cfg, timeout_s, private_key
         )
         if not success:
             return _make_result(name, False, error_msg)
@@ -815,11 +804,11 @@ def _test_submit_ctx_pre_patch(
                 name, False, f"TS JSON missing txHash string: {payload!r}"
             )
 
-        receipt = _wait_for_tx(w3, tx_hash, timeout_tx)
+        receipt = _wait_for_tx(w3, tx_hash, timeout_s)
         if receipt is None:
             return _make_result(
                 name, False,
-                f"submitCTX pre-patch tx {tx_hash} not mined within {timeout_tx}s"
+                f"submitCTX pre-patch tx {tx_hash} not mined within {timeout_s}s"
             )
 
         if receipt["status"] == 0:
@@ -908,7 +897,7 @@ def _run_phase1_bite(
     results.append(_test_bite_committees_info(w3, label, timeouts.get("tx_mine", 60)))
 
     results.append(_test_bite_tx_via_ts_subprocess(
-        w3, label, private_key, timeouts.get("tx_mine", 60), bite_cfg))
+        w3, label, private_key, bite_cfg, timeouts.get("tx_mine", 60)))
 
     results.append(_test_bite_tx_rejection(
         w3, label, private_key, timeouts.get("tx_mine", 60)))

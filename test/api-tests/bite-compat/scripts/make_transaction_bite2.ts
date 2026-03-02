@@ -115,19 +115,12 @@ async function main() {
     signer
   );
   const CTX_GAS_PAYMENT = BigInt(60000000000000000);
-  let biteModulePath = "(unresolved)";
-  const maybeRequire = (globalThis as { require?: NodeRequire }).require;
-  if (maybeRequire && typeof maybeRequire.resolve === "function") {
-    biteModulePath = maybeRequire.resolve("@skalenetwork/bite");
-  }
   const committeesInfo = await bite.getCommitteesInfo();
 
   console.log(`Contract: ${simpleSecretAddress}`);
-  console.log(`@skalenetwork/bite path: ${biteModulePath}`);
   console.log(`Committees: ${JSON.stringify(committeesInfo)}`);
   const secret = "0x" + Buffer.from("Hello BITE!").toString("hex");
   console.log(`Encrypting: "${secret}"`);
-  // const aadTE = simpleSecretAddress.slice(2);
   const aadTE = simpleSecretAddress;
   console.log(`aadTE: ${aadTE}`);
   const encrypted = await bite.encryptMessageForCTX(secret, aadTE);
