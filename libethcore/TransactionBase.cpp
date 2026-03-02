@@ -390,11 +390,11 @@ TransactionBase::TransactionBase( bytesConstRef _rlpData, CheckTransaction _chec
         if ( _bite2PatchEnabled )
             checkIfCTXAndSet( m_data );
 #else
-        ( void )_bite2PatchEnabled;
+        ( void ) _bite2PatchEnabled;
 #endif  // BITE2
 
 #else
-        ( void )_bite2PatchEnabled;
+        ( void ) _bite2PatchEnabled;
 #endif  // BITE
     } catch ( std::exception& e ) {
         m_type = Type::Invalid;

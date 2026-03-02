@@ -71,7 +71,7 @@ runs:
         # Run tests and capture exit code
         if ! uv run --project . run.py --config run.toml --suite "${{ inputs.suite }}"; then
           echo "::error::Test execution failed"
-          if [ -f "logs/summary.log" ]; then
+          if [ -f "bite-compat/logs/summary.log" ]; then
             echo "::group::Summary Log"
             cat logs/summary.log
             echo "::endgroup::"
