@@ -39,22 +39,11 @@ import signal
 import subprocess
 import sys
 import time
-import ctypes
 from pathlib import Path
 from typing import Optional
 
 from eth_account import Account
 from web3 import Web3
-
-# ---------------------------------------------------------------------------
-# Optional eth_abi import — used to ABI-encode the submitCTX input.
-# web3.py ships eth-abi as a dependency so it is almost always present.
-# ---------------------------------------------------------------------------
-try:
-    from eth_abi import encode as abi_encode
-    _HAS_ETH_ABI = True
-except ImportError:
-    _HAS_ETH_ABI = False
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from result import TestResult
@@ -73,6 +62,11 @@ BITE_MAGIC_ADDRESS = Web3.to_checksum_address(
 # TS helper scripts are fixed by suite layout.
 TS_ENCRYPT_TRANSFER_SCRIPT = SUITE_DIR / "scripts" / "make_transaction_bite.ts"
 TS_SIMPLE_SECRET_SCRIPT = SUITE_DIR / "scripts" / "make_transaction_bite2.ts"
+
+# Constants
+BITE_CIPHERTEXT_MIN_LEN = 276  # BITE_ENCRYPTED_AES_KEY_LEN + BITE_TE_RANDOM_LEN + ADDRESS_SIZE
+BITE2_PATCH_DELAY_SECONDS = 101  # Delay before bite2Patch activation in tests
+DEFAULT_CTX_WAIT_TIMEOUT = 30  # Timeout for waiting for CTX to appear
 
 
 # ---------------------------------------------------------------------------
@@ -109,57 +103,65 @@ def _render_template(template_path: Path, output_path: Path, context: dict):
     logger.info("Rendered %s -> %s", template_path.name, output_path)
 
 
-def _apply_sgx_config(config_path: Path, sgx_context: dict):
-    """Patch a rendered skaled JSON config with SGX key values."""
+def _modify_json_config(config_path: Path, modifier_func) -> None:
+    """Load JSON config, apply modifier function, and save back."""
     cfg = json.loads(config_path.read_text())
-    node_info = cfg["skaleConfig"]["nodeInfo"]
-    schain    = cfg["skaleConfig"]["sChain"]
-
-    node_info["ecdsaKeyName"] = sgx_context["sgx_ecdsa_key_name"]
-    # testSignatures=true causes skaled to skip reading ecdsaKeyName from config.
-    # Must be false when using a real SGX wallet.
-    node_info["testSignatures"] = False
-
-    ima = node_info.setdefault("wallets", {}).setdefault("ima", {})
-    ima["keyShareName"] = sgx_context["sgx_bls_key_name"]
-    for i in range(4):
-        ima[f"commonBLSPublicKey{i}"] = sgx_context[f"sgx_bls_public_key_{i}"]
-        ima[f"BLSPublicKey{i}"]       = sgx_context[f"sgx_bls_public_key_{i}"]
-
-    for node in schain.get("nodes", []):
-        node["publicKey"] = sgx_context["sgx_ecdsa_public_key"]
-        for i in range(4):
-            node[f"blsPublicKey{i}"] = sgx_context[f"sgx_bls_public_key_{i}"]
-
-    for group in schain.get("nodeGroups", {}).values():
-        for ndata in group.get("nodes", {}).values():
-            if isinstance(ndata, list) and len(ndata) >= 3:
-                ndata[2] = sgx_context["sgx_ecdsa_public_key"]
-        bls = group.get("bls_public_key", {})
-        for i in range(4):
-            bls[f"blsPublicKey{i}"] = sgx_context[f"sgx_bls_public_key_{i}"]
-
+    modifier_func(cfg)
     config_path.write_text(json.dumps(cfg, indent=2))
+
+
+def _apply_sgx_config(config_path: Path, sgx_context: dict) -> None:
+    """Patch a rendered skaled JSON config with SGX key values."""
+    def modifier(cfg):
+        node_info = cfg["skaleConfig"]["nodeInfo"]
+        schain    = cfg["skaleConfig"]["sChain"]
+
+        node_info["ecdsaKeyName"] = sgx_context["sgx_ecdsa_key_name"]
+        # testSignatures=true causes skaled to skip reading ecdsaKeyName from config.
+        # Must be false when using a real SGX wallet.
+        node_info["testSignatures"] = False
+
+        ima = node_info.setdefault("wallets", {}).setdefault("ima", {})
+        ima["keyShareName"] = sgx_context["sgx_bls_key_name"]
+        for i in range(4):
+            ima[f"commonBLSPublicKey{i}"] = sgx_context[f"sgx_bls_public_key_{i}"]
+            ima[f"BLSPublicKey{i}"]       = sgx_context[f"sgx_bls_public_key_{i}"]
+
+        for node in schain.get("nodes", []):
+            node["publicKey"] = sgx_context["sgx_ecdsa_public_key"]
+            for i in range(4):
+                node[f"blsPublicKey{i}"] = sgx_context[f"sgx_bls_public_key_{i}"]
+
+        for group in schain.get("nodeGroups", {}).values():
+            for ndata in group.get("nodes", {}).values():
+                if isinstance(ndata, list) and len(ndata) >= 3:
+                    ndata[2] = sgx_context["sgx_ecdsa_public_key"]
+            bls = group.get("bls_public_key", {})
+            for i in range(4):
+                bls[f"blsPublicKey{i}"] = sgx_context[f"sgx_bls_public_key_{i}"]
+
+    _modify_json_config(config_path, modifier)
     logger.info("Applied SGX keys to %s", config_path.name)
 
 
-def _inject_patches(config_path: Path, patches: dict):
-    cfg = json.loads(config_path.read_text())
-    schain = cfg.setdefault("skaleConfig", {}).setdefault("sChain", {})
-    for k in patches.get("delete", []):
-        removed = schain.pop(k, None)
-        if removed is not None:
-            logger.info("  Deleted sChain key %s from %s", k, config_path.name)
-    for k, v in patches.items():
-        if k == "delete":
-            continue
-        resolved = _resolve_patch_value(v)
-        schain[k] = resolved
-        logger.info("  Patched %s = %s (from %s) in %s", k, resolved, v, config_path.name)
-    config_path.write_text(json.dumps(cfg, indent=2))
+def _inject_patches(config_path: Path, patches: dict) -> None:
+    def modifier(cfg):
+        schain = cfg.setdefault("skaleConfig", {}).setdefault("sChain", {})
+        for k in patches.get("delete", []):
+            removed = schain.pop(k, None)
+            if removed is not None:
+                logger.info("  Deleted sChain key %s from %s", k, config_path.name)
+        for k, v in patches.items():
+            if k == "delete":
+                continue
+            resolved = _resolve_patch_value(v)
+            schain[k] = resolved
+            logger.info("  Patched %s = %s (from %s) in %s", k, resolved, v, config_path.name)
+
+    _modify_json_config(config_path, modifier)
 
 
-def _resolve_patch_value(raw):
+def _resolve_patch_value(raw) -> int | str:
     """Resolve timestamp shorthand expressions in patch values.
 
     Supported forms:
@@ -195,54 +197,57 @@ def _resolve_patch_value(raw):
     return now_ts + delta if sign == "+" else now_ts - delta
 
 
-def _ensure_genesis_balance(config_path: Path, private_key: str):
+def _ensure_genesis_balance(config_path: Path, private_key: str) -> None:
     if not private_key:
         return
     addr = Account.from_key(private_key).address
-    cfg = json.loads(config_path.read_text())
-    accounts = cfg.setdefault("accounts", {})
-    if not any(k.lower() == addr.lower() for k in accounts):
-        accounts[addr] = {"balance": "1000000000000000000000000000000"}
-        config_path.write_text(json.dumps(cfg, indent=2))
-        logger.info("Added genesis balance for %s", addr)
+
+    def modifier(cfg):
+        accounts = cfg.setdefault("accounts", {})
+        if not any(k.lower() == addr.lower() for k in accounts):
+            accounts[addr] = {"balance": "1000000000000000000000000000000"}
+            logger.info("Added genesis balance for %s", addr)
+
+    _modify_json_config(config_path, modifier)
 
 
-def _configure_single_node(config_path: Path):
+def _configure_single_node(config_path: Path) -> None:
     """Keep only the first schain node and align nodeInfo."""
-    cfg = json.loads(config_path.read_text())
-    schain = cfg.get("skaleConfig", {}).get("sChain", {})
-    nodes = schain.get("nodes", [])
-    if len(nodes) <= 1:
-        return
-    kept = nodes[0]
-    kept["schainIndex"] = 1
-    schain["nodes"] = [kept]
+    def modifier(cfg):
+        schain = cfg.get("skaleConfig", {}).get("sChain", {})
+        nodes = schain.get("nodes", [])
+        if len(nodes) <= 1:
+            return
+        kept = nodes[0]
+        kept["schainIndex"] = 1
+        schain["nodes"] = [kept]
 
-    # Simplify nodeGroups to contain only the kept node
-    for _gid, group in schain.get("nodeGroups", {}).items():
-        old = group.get("nodes", {})
-        new = {}
-        for nid, ndata in old.items():
-            if isinstance(ndata, list) and len(ndata) >= 2 and ndata[1] == kept["nodeID"]:
-                ndata[0] = 0
-                new[nid] = ndata
-                break
-            elif isinstance(ndata, dict) and ndata.get("nodeID") == kept["nodeID"]:
-                ndata["schainIndex"] = 1
-                new[nid] = ndata
-                break
-        group["nodes"] = new
+        # Simplify nodeGroups to contain only the kept node
+        for _gid, group in schain.get("nodeGroups", {}).items():
+            old = group.get("nodes", {})
+            new = {}
+            for nid, ndata in old.items():
+                if isinstance(ndata, list) and len(ndata) >= 2 and ndata[1] == kept["nodeID"]:
+                    ndata[0] = 0
+                    new[nid] = ndata
+                    break
+                elif isinstance(ndata, dict) and ndata.get("nodeID") == kept["nodeID"]:
+                    ndata["schainIndex"] = 1
+                    new[nid] = ndata
+                    break
+            group["nodes"] = new
 
-    ni = cfg.get("skaleConfig", {}).get("nodeInfo", {})
-    ni["nodeID"]   = kept["nodeID"]
-    ni["basePort"] = kept.get("basePort", ni.get("basePort"))
-    cfg["skaleConfig"]["sChain"]    = schain
-    cfg["skaleConfig"]["nodeInfo"]  = ni
-    config_path.write_text(json.dumps(cfg, indent=2))
-    logger.info("Configured %s as single-node (nodeID=%s)", config_path.name, kept["nodeID"])
+        ni = cfg.get("skaleConfig", {}).get("nodeInfo", {})
+        ni["nodeID"]   = kept["nodeID"]
+        ni["basePort"] = kept.get("basePort", ni.get("basePort"))
+        cfg["skaleConfig"]["sChain"]    = schain
+        cfg["skaleConfig"]["nodeInfo"]  = ni
+        logger.info("Configured %s as single-node (nodeID=%s)", config_path.name, kept["nodeID"])
+
+    _modify_json_config(config_path, modifier)
 
 
-def _set_ulimit():
+def _set_ulimit() -> None:
     import resource
     try:
         soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
@@ -274,7 +279,7 @@ def _launch_skaled(binary: Path, config: Path, http_port: int,
     return subprocess.Popen(cmd, stdout=log_fd, stderr=subprocess.STDOUT, cwd=REPO_ROOT)
 
 
-def _stop_skaled(proc: subprocess.Popen, label: str):
+def _stop_skaled(proc: subprocess.Popen, label: str) -> None:
     if proc.poll() is not None:
         logger.info("%s already exited (rc=%d)", label, proc.returncode)
         return
@@ -378,12 +383,9 @@ def _test_regular_transfer(w3: Web3, label: str, private_key: str, timeout_s: in
         except Exception as e:
             return _make_result(name, False, f"estimate_gas dry-run failed: {e}")
 
-        # tx.pop("from", None)
-        print('Transaction', tx)
         signed = Account.sign_transaction(tx, private_key)
         tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
         receipt = _wait_for_tx(w3, tx_hash, timeout_s)
-        print(receipt)
         if receipt is None:
             return _make_result(name, False, f"Tx {tx_hash.hex()} not mined within {timeout_s}s")
         if receipt["status"] != 1:
@@ -516,85 +518,90 @@ def _test_bite_tx_rejection(w3: Web3, label: str,
         return _make_result(name, False, f"Exception: {e}")
 
 
-def _test_bite_tx_positive(w3: Web3, label: str,
-                           private_key: str, timeout_s: int) -> TestResult:
+def _run_ts_script(
+    script_path: Path,
+    bite_cfg: dict,
+    timeout_tx: int,
+    private_key: Optional[str] = None,
+) -> tuple[bool, Optional[dict], str]:
     """
-    Send a BITE-format transaction with a valid TE-encrypted ciphertext
-    payload and verify it is mined successfully.
+    Run a TypeScript helper script and return (success, payload, error_msg).
 
-    BITE transaction format: to=BITE_MAGIC_ADDRESS, data=RLP([epochId, ciphertext])
-    Ciphertext is generated via skale-te using current committee BLS public key.
+    Returns:
+        (True, payload_dict, "") on success
+        (False, None, error_message) on failure
     """
-    name = f"{label}/bite-tx-positive"
+    if not script_path.is_file():
+        return False, None, f"TS script not found: {script_path}"
+
+    cmd_str = bite_cfg.get("bite_ts_command", "bun run")
+    cmd = shlex.split(cmd_str) + [str(script_path)]
+    env = os.environ.copy()
+    env["BITE_OUTPUT_JSON"] = "1"
+    env["BITE_COMPAT_TOML"] = str(SUITE_DIR / "bite-compat.toml")
+    if private_key:
+        env["BITE_PRIVATE_KEY"] = private_key
+
     try:
-        committees = _wait_for_committees(w3, timeout_s)
-        if committees is None:
-            return _make_result(name, False,
-                "Could not get epoch info: bite_getCommitteesInfo not ready")
-        epoch_id = int(committees[0]["epochId"])
+        cp = subprocess.run(
+            cmd,
+            cwd=REPO_ROOT,
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=max(30, min(timeout_tx, 120)),
+        )
+    except FileNotFoundError:
+        return False, None, (
+            f"TS runtime command not found: {cmd[0]}. "
+            "Set [bite_compat].bite_ts_command to installed runner (e.g. bun run)."
+        )
+    except subprocess.TimeoutExpired:
+        return False, None, "TS subprocess timed out"
 
-        account = Account.from_key(private_key)
-        chain_id = w3.eth.chain_id
-        nonce = w3.eth.get_transaction_count(account.address)
+    if cp.returncode != 0:
+        stderr = (cp.stderr or "").strip()
+        stdout = (cp.stdout or "").strip()
+        return False, None, (
+            f"TS subprocess failed (rc={cp.returncode}). "
+            f"stdout={stdout[-500:]!r} stderr={stderr[-500:]!r}"
+        )
 
-        bls_public_key = committees[0].get("commonBLSPublicKey") or committees[0].get(
-            "common_bls_public_key")
-        if not bls_public_key:
-            return _make_result(
-                name, False, "Could not read common BLS public key from bite_getCommitteesInfo")
-
+    # Parse JSON payload from stdout
+    payload = None
+    for line in reversed((cp.stdout or "").splitlines()):
+        line = line.strip()
+        if not line:
+            continue
         try:
-            # skale-te binary wheel depends on OpenSSL 1.1; preload when available.
-            lib_dir = REPO_ROOT / "libconsensus" / "libBLS" / "deps" / "deps_inst" / "x86_or_x64" / "lib"
-            libcrypto = lib_dir / "libcrypto.so.1.1"
-            if libcrypto.is_file():
-                ctypes.CDLL(str(libcrypto), mode=ctypes.RTLD_GLOBAL)
+            payload = json.loads(line)
+            break
+        except Exception:
+            continue
 
-            from skale_te import encrypt_message  # type: ignore[import]
-        except Exception as e:
-            return _make_result(
-                name, False,
-                f"skale-te is unavailable for encryption: {e}. "
-                "Ensure test/api-tests venv dependencies are installed and libcrypto.so.1.1 is reachable.")
+    if not isinstance(payload, dict):
+        return False, None, f"TS output did not contain JSON payload: {cp.stdout[-500:]!r}"
 
-        try:
-            # Arbitrary plaintext (hex) to encrypt for BITE payload.
-            plaintext_hex = "01020304"
-            key_hex = bls_public_key[2:] if bls_public_key.startswith("0x") else bls_public_key
-            encrypted_hex = encrypt_message(plaintext_hex, key_hex)
-            valid_ciphertext = bytes.fromhex(encrypted_hex)
-        except Exception as e:
-            return _make_result(name, False, f"skale-te encryption failed: {e}")
+    return True, payload, ""
 
-        try:
-            import rlp  # type: ignore[import]
-        except ImportError:
-            return _make_result(name, False,
-                "rlp package not available; install it with: pip install rlp")
-        bite_data = rlp.encode([epoch_id, valid_ciphertext])
 
-        tx = {
-            "chainId":  chain_id,
-            "nonce":    nonce,
-            "to":       BITE_MAGIC_ADDRESS,
-            "value":    0,
-            "gas":      800_000,
-            "gasPrice": w3.eth.gas_price,
-            "data":     bite_data,
-        }
-        signed = Account.sign_transaction(tx, private_key)
-        tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
-        receipt = _wait_for_tx(w3, tx_hash, timeout_s)
-        if receipt is None:
-            return _make_result(name, False,
-                f"BITE tx {tx_hash.hex()} not mined within {timeout_s}s")
-        if receipt["status"] != 1:
-            return _make_result(name, False,
-                f"BITE tx {tx_hash.hex()} mined but reverted (status=0)")
-        return _make_result(name, True,
-            f"BITE tx {tx_hash.hex()} mined in block {receipt['blockNumber']}")
+def _make_rpc_call(
+    w3: Web3, method: str, params: list, test_name: str
+) -> tuple[bool, Optional[dict], str]:
+    """
+    Make an RPC call and return (success, result, error_msg).
+
+    Returns:
+        (True, result_dict, "") on success
+        (False, None, error_message) on failure
+    """
+    try:
+        resp = w3.provider.make_request(method, params)
+        if "error" in resp:
+            return False, None, f"RPC returned error: {resp['error']}"
+        return True, resp.get("result"), ""
     except Exception as e:
-        return _make_result(name, False, f"Exception: {e}")
+        return False, None, f"Exception calling {method}: {e}"
 
 
 def _test_bite_tx_via_ts_subprocess(
@@ -606,59 +613,11 @@ def _test_bite_tx_via_ts_subprocess(
     """
     name = f"{label}/bite-tx-positive"
     try:
-        script_path = TS_ENCRYPT_TRANSFER_SCRIPT
-        if not script_path.is_file():
-            return _make_result(name, False, f"TS script not found: {script_path}")
-
-        cmd_str = bite_cfg.get("bite_ts_command", "bun run")
-        cmd = shlex.split(cmd_str) + [str(script_path)]
-        env = os.environ.copy()
-        env["BITE_OUTPUT_JSON"] = "1"
-        env["BITE_COMPAT_TOML"] = str(SUITE_DIR / "bite-compat.toml")
-
-        try:
-            cp = subprocess.run(
-                cmd,
-                cwd=REPO_ROOT,
-                env=env,
-                capture_output=True,
-                text=True,
-                timeout=max(30, min(timeout_s, 120)),
-            )
-        except FileNotFoundError:
-            return _make_result(
-                name,
-                False,
-                f"TS runtime command not found: {cmd[0]}. "
-                "Set [bite_compat].bite_ts_command to installed runner (e.g. bun run).",
-            )
-        except subprocess.TimeoutExpired:
-            return _make_result(name, False, "TS encryption subprocess timed out")
-
-        if cp.returncode != 0:
-            stderr = (cp.stderr or "").strip()
-            stdout = (cp.stdout or "").strip()
-            return _make_result(
-                name,
-                False,
-                f"TS encryption subprocess failed (rc={cp.returncode}). "
-                f"stdout={stdout[-500:]!r} stderr={stderr[-500:]!r}",
-            )
-
-        payload = None
-        for line in reversed((cp.stdout or "").splitlines()):
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                payload = json.loads(line)
-                break
-            except Exception:
-                continue
-        if not isinstance(payload, dict):
-            return _make_result(
-                name, False, f"TS output did not contain JSON payload: {cp.stdout[-500:]!r}"
-            )
+        success, payload, error_msg = _run_ts_script(
+            TS_ENCRYPT_TRANSFER_SCRIPT, bite_cfg, timeout_s
+        )
+        if not success:
+            return _make_result(name, False, error_msg)
 
         encrypted_tx = payload.get("encryptedTx")
         if not isinstance(encrypted_tx, dict):
@@ -730,60 +689,11 @@ def _test_submit_ctx_via_simple_secret(
     name = f"{label}/submitCTX-simple-secret"
 
     try:
-        script_path = TS_SIMPLE_SECRET_SCRIPT
-        if not script_path.is_file():
-            return _make_result(name, False, f"TS script not found: {script_path}")
-
-        cmd_str = bite_cfg.get("bite_ts_command", "bun run")
-        cmd = shlex.split(cmd_str) + [str(script_path)]
-        env = os.environ.copy()
-        env["BITE_OUTPUT_JSON"] = "1"
-        env["BITE_COMPAT_TOML"] = str(SUITE_DIR / "bite-compat.toml")
-        env["BITE_PRIVATE_KEY"] = private_key
-
-        try:
-            cp = subprocess.run(
-                cmd,
-                cwd=REPO_ROOT,
-                env=env,
-                capture_output=True,
-                text=True,
-                timeout=max(30, min(timeout_tx, 120)),
-            )
-        except FileNotFoundError:
-            return _make_result(
-                name,
-                False,
-                f"TS runtime command not found: {cmd[0]}. "
-                "Set [bite_compat].bite_ts_command to installed runner (e.g. bun run).",
-            )
-        except subprocess.TimeoutExpired:
-            return _make_result(name, False, "TS encryption subprocess timed out")
-
-        if cp.returncode != 0:
-            stderr = (cp.stderr or "").strip()
-            stdout = (cp.stdout or "").strip()
-            return _make_result(
-                name,
-                False,
-                f"TS revealSecret subprocess failed (rc={cp.returncode}). "
-                f"stdout={stdout[-500:]!r} stderr={stderr[-500:]!r}",
-            )
-
-        payload = None
-        for line in reversed((cp.stdout or "").splitlines()):
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                payload = json.loads(line)
-                break
-            except Exception:
-                continue
-        if not isinstance(payload, dict):
-            return _make_result(
-                name, False, f"TS output did not contain JSON payload: {cp.stdout[-500:]!r}"
-            )
+        success, payload, error_msg = _run_ts_script(
+            TS_SIMPLE_SECRET_SCRIPT, bite_cfg, timeout_tx, private_key
+        )
+        if not success:
+            return _make_result(name, False, error_msg)
 
         tx_hash = payload.get("txHash")
         if not isinstance(tx_hash, str) or not tx_hash:
@@ -806,17 +716,12 @@ def _test_submit_ctx_via_simple_secret(
         # Additional check: verify that the crafted CTX is mined in the next block
         # Use bite_getCraftedCtxs to get the CTX hash, retrying briefly
         ctx_hash = None
-        deadline = time.time() + min(timeout_tx, 30)
+        deadline = time.time() + min(timeout_tx, DEFAULT_CTX_WAIT_TIMEOUT)
         while time.time() < deadline:
-            try:
-                resp = w3.provider.make_request("bite_getCraftedCtxs", [tx_hash])
-                if "error" not in resp:
-                    ctxs = resp.get("result", [])
-                    if isinstance(ctxs, list) and len(ctxs) > 0:
-                        ctx_hash = ctxs[0]
-                        break
-            except Exception:
-                pass
+            success, result, _ = _make_rpc_call(w3, "bite_getCraftedCtxs", [tx_hash], name)
+            if success and isinstance(result, list) and len(result) > 0:
+                ctx_hash = result[0]
+                break
             time.sleep(1)
 
         if ctx_hash:
@@ -869,166 +774,18 @@ def _test_submit_ctx_via_simple_secret(
 def _test_pending_bite2_txs(w3: Web3, label: str) -> TestResult:
     """debug_getPendingBITE2Transactions should return an empty list initially."""
     name = f"{label}/debug_getPendingBITE2Transactions"
-    try:
-        result = w3.provider.make_request("debug_getPendingBITE2Transactions", [])
-        if "error" in result:
-            return _make_result(name, False,
-                f"RPC returned error: {result['error']}")
-        pending = result.get("result", [])
-        if not isinstance(pending, list):
-            return _make_result(name, False,
-                f"Expected list, got: {type(pending).__name__}")
-        return _make_result(name, True,
-            f"Pending BITE2 txs: {len(pending)}", count=len(pending))
-    except Exception as e:
-        return _make_result(name, False, f"Exception: {e}")
+    success, pending, error_msg = _make_rpc_call(w3, "debug_getPendingBITE2Transactions", [], name)
+    if not success:
+        return _make_result(name, False, error_msg)
+    if not isinstance(pending, list):
+        return _make_result(name, False, f"Expected list, got: {type(pending).__name__}")
+    return _make_result(name, True, f"Pending BITE2 txs: {len(pending)}", count=len(pending))
 
 
-def _build_submit_ctx_input(gas_limit: int = 500_000) -> bytes:
-    """
-    Build ABI-encoded input for the submitCTX precompile.
-
-    Signature: abi.encode(uint256 gasLimit, bytes data)
-    where data = abi.encode(bytes[] encryptedArgs, bytes[] plaintextArgs).
-
-    When --sgx-url is passed, skaled sets isCiphertextValidationEnabled=true
-    (SkaleHost.cpp: isCiphertextValidationEnabled = !sgxServerUrl.empty()).
-    In that mode each encrypted argument must be at least BITE_CIPHERTEXT_MIN_LEN
-    bytes (= BITE_ENCRYPTED_AES_KEY_LEN + BITE_TE_RANDOM_LEN + ADDRESS_SIZE ≈ 276).
-    We use 276 zero bytes as a minimal stub — content does not matter because
-    the precompile itself does not decrypt here, only validates the length.
-    """
-    if not _HAS_ETH_ABI:
-        raise ImportError("eth_abi is required for submitCTX test; it ships with web3.py")
-
-    # 276 bytes — meets BITE_CIPHERTEXT_MIN_LEN regardless of SGX being enabled.
-    BITE_CIPHERTEXT_MIN_LEN = 276
-    encrypted_arg = b"\xde\xad\xbe\xef" * (BITE_CIPHERTEXT_MIN_LEN // 4 + 1)
-    encrypted_arg = encrypted_arg[:BITE_CIPHERTEXT_MIN_LEN]
-    plaintext_arg = b"\x00" * 32
-
-    encoded_arrays = abi_encode(
-        ["bytes[]", "bytes[]"],
-        [[encrypted_arg], [plaintext_arg]],
-    )
-    return abi_encode(["uint256", "bytes"], [gas_limit, encoded_arrays])
 
 
-def _test_submit_ctx(w3: Web3, label: str,
-                     private_key: str, submit_ctx_addr: str,
-                     timeout_tx: int, timeout_block: int) -> tuple[TestResult, Optional[str]]:
-    """
-    Call the submitCTX precompile and return (result, origin_tx_hash).
-
-    The precompile is at the address registered in config-bite2-template.json.j2
-    (0x1B by default).  Calling it from an EOA means _ctx.from == EOA address,
-    so the crafted CTX is addressed back to the EOA.  The CTX delivery to the
-    EOA will silently fail (no code there), but the CTX mechanics are exercised
-    and the tracking RPCs can be verified.
-    """
-    name = f"{label}/submitCTX"
-    try:
-        input_data = _build_submit_ctx_input()
-    except ImportError as e:
-        return _make_result(name, False, str(e)), None
-
-    try:
-        account = Account.from_key(private_key)
-        chain_id = w3.eth.chain_id
-        nonce = w3.eth.get_transaction_count(account.address)
-        precompile = Web3.to_checksum_address(submit_ctx_addr)
-        tx = {
-            "chainId":  chain_id,
-            "nonce":    nonce,
-            "to":       precompile,
-            "value":    0,
-            "gas":      1_000_000,
-            "gasPrice": w3.eth.gas_price,
-            "data":     input_data,
-        }
-        signed = Account.sign_transaction(tx, private_key)
-        tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
-        origin_hex = tx_hash.hex()
-        logger.info("submitCTX origin tx: %s", origin_hex)
-
-        receipt = _wait_for_tx(w3, tx_hash, timeout_tx)
-        if receipt is None:
-            return _make_result(name, False,
-                f"submitCTX tx {origin_hex} not mined within {timeout_tx}s"), None
-
-        # Precompile calls may succeed (status=1) or fail (status=0) depending
-        # on the node state.  Either way we record the hash for RPC verification.
-        status_ok = receipt["status"] == 1
-        status_str = "success" if status_ok else "reverted"
-        result = _make_result(
-            name, status_ok,
-            f"submitCTX tx {origin_hex} mined in block "
-            f"{receipt['blockNumber']} ({status_str})",
-            tx_hash=origin_hex,
-            block=receipt["blockNumber"],
-        )
-        return result, origin_hex if status_ok else None
-
-    except Exception as e:
-        return _make_result(name, False, f"Exception: {e}"), None
 
 
-def _test_crafted_ctxs(w3: Web3, label: str,
-                       origin_hash: str, timeout_s: int) -> tuple[TestResult, Optional[str]]:
-    """
-    Call bite_getCraftedCtxs(originHash) and return (result, first_ctx_hash).
-
-    The CTX may appear in the next block after the origin tx, so retry briefly.
-    """
-    name = f"{label}/bite_getCraftedCtxs"
-    deadline = time.time() + timeout_s
-    last_result = None
-
-    while time.time() < deadline:
-        try:
-            resp = w3.provider.make_request("bite_getCraftedCtxs", [origin_hash])
-            if "error" in resp:
-                last_result = resp["error"]
-                time.sleep(3)
-                continue
-            ctxs = resp.get("result", [])
-            if isinstance(ctxs, list) and len(ctxs) > 0:
-                ctx_hash = ctxs[0]
-                return _make_result(name, True,
-                    f"Found {len(ctxs)} crafted CTX(s) for origin {origin_hash[:12]}…",
-                    origin=origin_hash, ctx_hashes=ctxs), ctx_hash
-            last_result = ctxs
-        except Exception as e:
-            last_result = str(e)
-        time.sleep(3)
-
-    return _make_result(name, False,
-        f"No crafted CTXs found for origin {origin_hash[:12]}… after {timeout_s}s "
-        f"(last: {last_result!r})"), None
-
-
-def _test_ctx_origin(w3: Web3, label: str,
-                     ctx_hash: str, expected_origin: str) -> TestResult:
-    """Call bite_getCtxOrigin(ctxHash) and verify it returns expected_origin."""
-    name = f"{label}/bite_getCtxOrigin"
-    try:
-        resp = w3.provider.make_request("bite_getCtxOrigin", [ctx_hash])
-        if "error" in resp:
-            return _make_result(name, False,
-                f"RPC returned error: {resp['error']}")
-        origin = resp.get("result", "")
-        if not origin:
-            return _make_result(name, False,
-                f"Empty origin returned for CTX {ctx_hash[:12]}…")
-        match = origin.lower() == expected_origin.lower()
-        if match:
-            return _make_result(name, True,
-                f"CTX {ctx_hash[:12]}… → origin {origin[:12]}… (correct)")
-        return _make_result(name, False,
-            f"CTX {ctx_hash[:12]}… → origin {origin[:12]}…, "
-            f"expected {expected_origin[:12]}… (mismatch)")
-    except Exception as e:
-        return _make_result(name, False, f"Exception: {e}")
 
 
 def _test_submit_ctx_pre_patch(
@@ -1046,61 +803,11 @@ def _test_submit_ctx_pre_patch(
     name = f"{label}/submitCTX-pre-patch-revert"
 
     try:
-        script_path = TS_SIMPLE_SECRET_SCRIPT
-        if not script_path.is_file():
-            return _make_result(name, False, f"TS script not found: {script_path}")
-
-        cmd_str = bite_cfg.get("bite_ts_command", "bun run")
-        cmd = shlex.split(cmd_str) + [str(script_path)]
-        env = os.environ.copy()
-        env["BITE_OUTPUT_JSON"] = "1"
-        env["BITE_COMPAT_TOML"] = str(SUITE_DIR / "bite-compat.toml")
-        env["BITE_PRIVATE_KEY"] = private_key
-
-        try:
-            cp = subprocess.run(
-                cmd,
-                cwd=REPO_ROOT,
-                env=env,
-                capture_output=True,
-                text=True,
-                timeout=max(30, min(timeout_tx, 120)),
-            )
-        except FileNotFoundError:
-            return _make_result(
-                name,
-                False,
-                f"TS runtime command not found: {cmd[0]}. "
-                "Set [bite_compat].bite_ts_command to installed runner (e.g. bun run).",
-            )
-        except subprocess.TimeoutExpired:
-            return _make_result(name, False, "TS subprocess timed out")
-
-        if cp.returncode != 0:
-            stderr = (cp.stderr or "").strip()
-            stdout = (cp.stdout or "").strip()
-            return _make_result(
-                name,
-                False,
-                f"TS revealSecret subprocess failed (rc={cp.returncode}). "
-                f"stdout={stdout[-500:]!r} stderr={stderr[-500:]!r}",
-            )
-
-        payload = None
-        for line in reversed((cp.stdout or "").splitlines()):
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                payload = json.loads(line)
-                break
-            except Exception:
-                continue
-        if not isinstance(payload, dict):
-            return _make_result(
-                name, False,
-                f"TS output did not contain JSON payload: {cp.stdout[-500:]!r}"
-            )
+        success, payload, error_msg = _run_ts_script(
+            TS_SIMPLE_SECRET_SCRIPT, bite_cfg, timeout_tx, private_key
+        )
+        if not success:
+            return _make_result(name, False, error_msg)
 
         tx_hash = payload.get("txHash")
         if not isinstance(tx_hash, str) or not tx_hash:
@@ -1353,12 +1060,13 @@ def run_tests(cfg: dict, env) -> dict[str, list[TestResult]]:
         return abort("Missing required suite files:\n" + "\n".join(missing_required))
 
     # ------------------------------------------------------------------
-    # Compute bite2PatchTimestamp = now + 101 seconds
+    # Compute bite2PatchTimestamp = now + BITE2_PATCH_DELAY_SECONDS
     # ------------------------------------------------------------------
-    bite2_patch_ts = int(time.time()) + 101
+    bite2_patch_ts = int(time.time()) + BITE2_PATCH_DELAY_SECONDS
     logger.info(
-        "bite2PatchTimestamp set to %d (now + 101s, activates at %s)",
+        "bite2PatchTimestamp set to %d (now + %ds, activates at %s)",
         bite2_patch_ts,
+        BITE2_PATCH_DELAY_SECONDS,
         time.strftime("%H:%M:%S", time.localtime(bite2_patch_ts)),
     )
 
@@ -1431,7 +1139,7 @@ def run_tests(cfg: dict, env) -> dict[str, list[TestResult]]:
         # ------------------------------------------------------------------
         # Wait for bite2PatchTimestamp to be reached (2 consecutive blocks)
         # ------------------------------------------------------------------
-        patch_wait_timeout = 101 + timeouts.get("block_produce", 60) + 60
+        patch_wait_timeout = BITE2_PATCH_DELAY_SECONDS + timeouts.get("block_produce", 60) + 60
         patch_active = _wait_for_bite2_patch_active(w3, bite2_patch_ts, patch_wait_timeout)
         if not patch_active:
             all_results.append(TestResult(

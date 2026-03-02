@@ -2,6 +2,7 @@ import { BITE } from "@skalenetwork/bite";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { randomBytes } from "node:crypto";
+import { spawnSync } from "node:child_process";
 
 type BiteCompatConfig = {
   httpPort: number;
@@ -52,6 +53,28 @@ function parseBiteCompatConfig(configPath: string): BiteCompatConfig {
   return { httpPort, toAddress, valueWei };
 }
 
+function compileSolidityContracts(): void {
+  const solDir = resolve(__dirname, "..", "sol");
+  const compileCmd =
+    process.env.BITE_SOL_COMPILE_COMMAND || "bun run hardhat compile";
+
+  console.log(`Compiling Solidity contracts: ${compileCmd}`);
+  const cp = spawnSync(compileCmd, {
+    cwd: solDir,
+    shell: true,
+    encoding: "utf8",
+  });
+
+  if (cp.status !== 0) {
+    const stdout = (cp.stdout || "").trim();
+    const stderr = (cp.stderr || "").trim();
+    throw new Error(
+      `Solidity compilation failed (rc=${cp.status}) for ${compileCmd}. ` +
+        `stdout=${stdout.slice(-500)} stderr=${stderr.slice(-500)}`
+    );
+  }
+}
+
 const tomlPath =
   process.env.BITE_COMPAT_TOML || resolve(__dirname, "..", "bite-compat.toml");
 const cfg = parseBiteCompatConfig(tomlPath);
@@ -69,6 +92,7 @@ const transaction = {
 
 (async () => {
   try {
+    compileSolidityContracts();
     const bite = new BITE(providerUrl);
     const encryptedTx = await bite.encryptTransaction(transaction);
     const committeesInfo = await bite.getCommitteesInfo();

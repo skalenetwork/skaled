@@ -1,6 +1,7 @@
 import { BITE } from "@skalenetwork/bite";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { spawnSync } from "node:child_process";
 import { ethers } from "ethers";
 
 type BiteCompatConfig = {
@@ -46,6 +47,34 @@ function parseBiteCompatConfig(configPath: string): BiteCompatConfig {
   return { httpPort };
 }
 
+function ensureSimpleSecretArtifact(artifactPath: string): void {
+  const solDir = resolve(__dirname, "..", "sol");
+  const compileCmd =
+    process.env.BITE_SOL_COMPILE_COMMAND || "bun run hardhat compile";
+
+  console.log(`Compiling Solidity contracts: ${compileCmd}`);
+  const cp = spawnSync(compileCmd, {
+    cwd: solDir,
+    shell: true,
+    encoding: "utf8",
+  });
+
+  if (cp.status !== 0) {
+    const stdout = (cp.stdout || "").trim();
+    const stderr = (cp.stderr || "").trim();
+    throw new Error(
+      `Solidity compilation failed (rc=${cp.status}) for ${compileCmd}. ` +
+        `stdout=${stdout.slice(-500)} stderr=${stderr.slice(-500)}`
+    );
+  }
+
+  if (!existsSync(artifactPath)) {
+    throw new Error(
+      `SimpleSecret artifact not found after compile: ${artifactPath}`
+    );
+  }
+}
+
 async function main() {
   const tomlPath =
     process.env.BITE_COMPAT_TOML || resolve(__dirname, "..", "bite-compat.toml");
@@ -70,6 +99,7 @@ async function main() {
       "..",
       "sol/artifacts/contracts/SimpleSecret.sol/SimpleSecret.json"
     );
+  ensureSimpleSecretArtifact(artifactPath);
   const artifact = JSON.parse(readFileSync(artifactPath, "utf8"));
   const factory = new ethers.ContractFactory(
     artifact.abi,
