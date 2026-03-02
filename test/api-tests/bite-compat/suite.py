@@ -801,6 +801,58 @@ def _test_submit_ctx_via_simple_secret(
                 name, False, f"submitCTX tx {tx_hash} mined but reverted (status=0)"
             )
 
+        submit_block_number = receipt["blockNumber"]
+
+        # Additional check: verify that the crafted CTX is mined in the next block
+        # Use bite_getCraftedCtxs to get the CTX hash, retrying briefly
+        ctx_hash = None
+        deadline = time.time() + min(timeout_tx, 30)
+        while time.time() < deadline:
+            try:
+                resp = w3.provider.make_request("bite_getCraftedCtxs", [tx_hash])
+                if "error" not in resp:
+                    ctxs = resp.get("result", [])
+                    if isinstance(ctxs, list) and len(ctxs) > 0:
+                        ctx_hash = ctxs[0]
+                        break
+            except Exception:
+                pass
+            time.sleep(1)
+
+        if ctx_hash:
+            # Wait for the CTX to be mined
+            ctx_receipt = _wait_for_tx(w3, ctx_hash, timeout_tx)
+            if ctx_receipt is None:
+                return _make_result(
+                    name, False,
+                    f"submitCTX tx {tx_hash} mined in block {submit_block_number}, "
+                    f"but CTX {ctx_hash[:12]}… not mined within {timeout_tx}s"
+                )
+
+            ctx_block_number = ctx_receipt["blockNumber"]
+            expected_ctx_block = submit_block_number + 1
+
+            if ctx_block_number == expected_ctx_block:
+                return _make_result(
+                    name,
+                    True,
+                    f"submitCTX tx {tx_hash} (via SimpleSecret.revealSecret) mined in block "
+                    f"{submit_block_number}, CTX {ctx_hash[:12]}… mined in next block "
+                    f"{ctx_block_number}",
+                    tx_hash=tx_hash,
+                    block=submit_block_number,
+                    ctx_hash=ctx_hash,
+                    ctx_block=ctx_block_number,
+                    simple_secret=payload.get("simpleSecretAddress"),
+                )
+            else:
+                return _make_result(
+                    name, False,
+                    f"submitCTX tx {tx_hash} mined in block {submit_block_number}, "
+                    f"but CTX {ctx_hash[:12]}… mined in block {ctx_block_number} "
+                    f"(expected block {expected_ctx_block})"
+                )
+
         return _make_result(
             name,
             True,
