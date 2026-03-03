@@ -579,7 +579,6 @@ bool downloadSnapshotFromUrl( std::shared_ptr< SnapshotManager >& snapshotManage
     if ( isRegularSnapshot )
         blockNumber = getBlockToDownladSnapshot( urlToDownloadSnapshotFrom );
 
-    libBLS::init();
     std::unique_ptr< SnapshotHashAgent > snapshotHashAgent;
     if ( forceDownload )
         snapshotHashAgent.reset(
@@ -790,6 +789,9 @@ int main( int argc, char** argv ) {
         Defaults::get();
         Ethash::init();
         NoProof::init();
+
+        // init cryptographic parameters
+        libBLS::init();
 
         /// General params for Node operation
         NodeMode nodeMode = NodeMode::Full;
