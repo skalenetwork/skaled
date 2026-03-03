@@ -34,7 +34,7 @@ from typing import Any, Optional, TextIO
 from web3 import Web3
 from result import TestResult
 
-logger = logging.getLogger("func-tests.run")
+logger = logging.getLogger("api-tests.run")
 
 FUNC_TESTS_DIR = Path(__file__).resolve().parent
 REPO_ROOT = FUNC_TESTS_DIR.parent.parent
@@ -235,7 +235,7 @@ def setup_sgx(cfg: dict, _log_dir: Path) -> "Optional[Environment.ManagedProcess
     sgx_cfg = cfg.get("sgx", {})
     url            = sgx_cfg.get("url", "http://127.0.0.1:1029")
     image          = sgx_cfg.get("image", "skalenetwork/sgxwallet_sim:e548b375cae741af8fd11db54d6925c27a947af9")
-    container_name = sgx_cfg.get("container_name", "skaled-func-tests-sgx")
+    container_name = sgx_cfg.get("container_name", "skaled-api-tests-sgx")
     startup_timeout_sec = int(sgx_cfg.get("startup_timeout_sec", 360))
     artifacts_dir  = Path(resolve_repo_path(
         sgx_cfg.get("artifacts_dir", "test/api-tests/sgx-artifacts")
@@ -278,7 +278,7 @@ def setup_sgx(cfg: dict, _log_dir: Path) -> "Optional[Environment.ManagedProcess
 # =========================================================================
 
 def resolve_path(p: str) -> str:
-    """Resolve a path relative to the func-tests directory."""
+    """Resolve a path relative to the api-tests directory."""
     pp = Path(p)
     if pp.is_absolute():
         return str(pp)
@@ -688,7 +688,7 @@ def launch_skaled_node(binary: str, ncfg: dict, log_dir: Path,
 def launch_anvil(anvil_cfg: dict, log_dir: Path) -> Environment.ManagedProcess:
     image = anvil_cfg.get("image", "ghcr.io/foundry-rs/foundry:rc-3")
     extra = anvil_cfg.get("extra_args", [])
-    container_name = anvil_cfg.get("container_name") or f"skaled-func-tests-anvil-{os.getpid()}"
+    container_name = anvil_cfg.get("container_name") or f"skaled-api-tests-anvil-{os.getpid()}"
     log_file = log_dir / f"{container_name}.log"
     cmd = [
         "docker", "run", "--rm",
@@ -1012,7 +1012,7 @@ def print_summary(all_results: dict[str, list[TestResult]]) -> bool:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Functional test runner for skaled")
+    parser = argparse.ArgumentParser(description="API test runner for skaled")
     parser.add_argument("--config", default=str(FUNC_TESTS_DIR / "run.toml"),
                         help="Path to run.toml")
     parser.add_argument("--suite", default=None,

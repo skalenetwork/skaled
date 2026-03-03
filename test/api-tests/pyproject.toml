@@ -7,6 +7,7 @@ license = "AGPL-3.0"
 
 dependencies = [
     "web3>=6.0,<8",
+    "pytest>7",
     "sgx.py>=0.11",
     "eth-account>=0.10",
     "tomli>=2.0; python_version < '3.11'",
