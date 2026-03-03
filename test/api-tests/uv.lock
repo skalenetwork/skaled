@@ -1717,7 +1717,7 @@ wheels = [
 ]
 
 [[package]]
-name = "skaled-func-tests"
+name = "skaled-api-tests"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

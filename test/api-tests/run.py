@@ -6,12 +6,12 @@ Reads run.toml, sets up the environment, then delegates to the selected
 test suite (a subdirectory with a suite.py).
 
 Usage:
-  python3 run.py [--config run.toml] [--suite hardfork-support]
+  python3 run.py [--config run.toml] [--suite bite-compat]
 
 Steps:
-  1. Setup environment  (launch skaled / anvil per config)
+  1. Setup environment  (launch skaled per config)
   2. Deploy contracts   (suite.deploy)
-  3. Run tests          (suite.run_tests; anvil mode compares outputs)
+  3. Run tests          (suite.run_tests)
   4. Background hash comparison (two-node skaled mode)
 """
 
@@ -267,6 +267,19 @@ def setup_sgx(cfg: dict, _log_dir: Path) -> "Optional[Environment.ManagedProcess
     if not _wait_for_sgx_port(url, startup_timeout_sec):
         log_fd.flush()
         _log_sgx_wallet_tail(log_file)
+        # Clean up the container before raising so main() doesn't receive a
+        # partially-started process it cannot know about.
+        proc.send_signal(signal.SIGTERM)
+        try:
+            proc.wait(timeout=15)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
+        subprocess.run(
+            ["docker", "rm", "-f", container_name],
+            check=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        )
+        log_fd.close()
         raise RunnerError(f"SGX wallet at {url} did not come up in {startup_timeout_sec}s")
 
     context = generate_sgx_keys(url, keys_file)
@@ -450,7 +463,7 @@ def _update_node_groups(schain: dict, kept_nodes: list[dict]):
             if isinstance(ndata, list) and len(ndata) >= 2:
                 node_id = ndata[1]
                 if node_id in kept_ids:
-                    ndata[0] = new_idx  # update schainIndex
+                    ndata[0] = new_idx + 1  # update schainIndex (1-based)
                     new_nodes[str(node_id)] = ndata
                     new_idx += 1
             elif isinstance(ndata, dict):
@@ -685,27 +698,6 @@ def launch_skaled_node(binary: str, ncfg: dict, log_dir: Path,
     return Environment.ManagedProcess(proc=proc, log_fd=log_fd)
 
 
-def launch_anvil(anvil_cfg: dict, log_dir: Path) -> Environment.ManagedProcess:
-    image = anvil_cfg.get("image", "ghcr.io/foundry-rs/foundry:rc-3")
-    extra = anvil_cfg.get("extra_args", [])
-    container_name = anvil_cfg.get("container_name") or f"skaled-api-tests-anvil-{os.getpid()}"
-    log_file = log_dir / f"{container_name}.log"
-    cmd = [
-        "docker", "run", "--rm",
-        "--name", container_name,
-        "--network", "host",
-        image, "anvil",
-        "--host", "0.0.0.0",
-    ] + extra
-    logger.info("Launching anvil container '%s' -> %s", container_name, log_file)
-    log_fd = open(log_file, "w")
-    proc = subprocess.Popen(cmd, stdout=log_fd, stderr=subprocess.STDOUT)
-    return Environment.ManagedProcess(
-        proc=proc,
-        log_fd=log_fd,
-        docker_container_name=container_name,
-    )
-
 
 def _prepare_btrfs_datadir(datadir: str, node_idx: int):
     """Create a btrfs loopback volume for one node's datadir."""
@@ -807,7 +799,7 @@ def setup_environment(cfg: dict, env_type: str) -> Environment:
                 inject_patches(ncfg["config"], patch_ts)
 
     # Configure schain node topology based on env_type
-    if env_type in ("single", "anvil"):
+    if env_type == "single":
         # Only node 0 is used; rewrite its config to single-node mode
         if 0 in nodes:
             configure_single_node_skaled(nodes[0]["config"], node_index=0)
@@ -826,12 +818,11 @@ def setup_environment(cfg: dict, env_type: str) -> Environment:
         for idx, ncfg in nodes.items():
             inject_patches(ncfg["config"], snapshot_override)
 
-    need_skaled = env_type in ("single", "two", "anvil")
+    need_skaled = env_type in ("single", "two")
     if need_skaled:
         indices = {
             "single": [0],
             "two": [0, 1],
-            "anvil": [0],
         }[env_type]
 
         for idx in indices:
@@ -871,14 +862,6 @@ def setup_environment(cfg: dict, env_type: str) -> Environment:
             w3 = make_web3("127.0.0.1", ncfg["http_port"])
             url = f"http://127.0.0.1:{ncfg['http_port']}"
             env.add(f"skaled-{idx}", managed, w3, url)
-
-    # --- Launch anvil ---
-    if env_type == "anvil":
-        acfg = cfg.get("anvil", {})
-        aport = 8545
-        managed = launch_anvil(acfg, log_dir)
-        w3 = make_web3("127.0.0.1", aport)
-        env.add("anvil", managed, w3, f"http://127.0.0.1:{aport}")
 
     # Wait for all RPCs
     all_up = all(wait_for_rpc(w3, lbl) for lbl, w3 in env.web3s.items())
@@ -958,34 +941,6 @@ def load_suite(suite_name: str):
 
 
 # =========================================================================
-# Anvil output comparison
-# =========================================================================
-
-def compare_anvil_results(all_results: dict[str, list[TestResult]]):
-    skaled = {r.name: r for r in all_results.get("skaled-0", [])}
-    anvil = {r.name: r for r in all_results.get("anvil", [])}
-
-    logger.info("=" * 60)
-    logger.info("Anvil comparison:")
-    logger.info("=" * 60)
-
-    for name in sorted(set(skaled) | set(anvil)):
-        s, a = skaled.get(name), anvil.get(name)
-        if s and a:
-            match = s.passed == a.passed
-            logger.info("  %s: skaled=%s anvil=%s %s",
-                        name,
-                        "PASS" if s.passed else "FAIL",
-                        "PASS" if a.passed else "FAIL",
-                        "MATCH" if match else "MISMATCH")
-            if not match:
-                logger.warning("    skaled: %s", s.message)
-                logger.warning("    anvil:  %s", a.message)
-        else:
-            logger.warning("  %s: missing from %s", name, "anvil" if not a else "skaled")
-
-
-# =========================================================================
 # Main
 # =========================================================================
 
@@ -1027,7 +982,7 @@ def main():
     logging.getLogger("urllib3").setLevel(logging.WARNING)
 
     cfg = load_config(args.config)
-    suite_name = args.suite or cfg.get("suite", {}).get("name", "hardfork-support")
+    suite_name = args.suite or cfg.get("suite", {}).get("name", "bite-compat")
 
     # Load and deep-merge per-suite config (overrides base config).
     suite_cfg = load_suite_config(suite_name)
@@ -1091,10 +1046,6 @@ def main():
         logger.info("STEP 3: Running tests (%s)", suite_name)
         logger.info("=" * 60)
         all_results: dict[str, list[TestResult]] = suite.run_tests(cfg, env)
-
-        # Anvil comparison
-        if env_type == "anvil":
-            compare_anvil_results(all_results)
 
         # Summary
         success = print_summary(all_results)

@@ -5,12 +5,12 @@
 # Usage:  cd test/api-tests && python3 run.py [--config run.toml] [--suite bite-compat]
 #
 # Steps executed:
-#   1. Setup environment  (launch skaled(s) and/or anvil)
+#   1. Setup environment  (launch skaled(s) per config)
 #   2. Deploy contracts   (per-suite, e.g. hardhat deploy)
-#   3. Run tests          (per-suite, web3.py; anvil mode compares outputs)
+#   3. Run tests          (per-suite, web3.py)
 #   4. Background block-hash comparison (two-node skaled mode)
 #
-# Infrastructure settings (skaled nodes, patches, anvil, etc.) live here.
+# Infrastructure settings (skaled nodes, patches, etc.) live here.
 # Test-level parameters live in <suite-dir>/<suite-name>.toml and are
 # automatically merged on top of this file at runtime.
 
@@ -20,18 +20,17 @@
 [suite]
 # Which test suite to run.  Must match a subdirectory name under api-tests/
 # that contains a suite.py with deploy() and run_tests() entry points.
-# Available: "hardfork-support", "bite-compat"
-name = "hardfork-support"
+# Available: "bite-compat"
+name = "bite-compat"
 
 # --------------------------------------------------------------------------
 # Environment type (may be overridden by per-suite config)
 # --------------------------------------------------------------------------
 [type]
-# "single" — one skaled node
-# "two"    — two skaled nodes (connected, block-hash comparison in background)
-# "anvil"  — skaled + anvil side-by-side, same tests run on both, outputs compared
+# "single"    — one skaled node
+# "two"       — two skaled nodes (connected, block-hash comparison in background)
 # "delegated" — suite manages its own node lifecycle (e.g. bite-compat)
-env_type = "anvil"
+env_type = "delegated"
 
 # Base account — must have balance on all nodes (genesis-funded).
 # Required for deploying contracts and sending test transactions.
@@ -53,17 +52,17 @@ binary = ""
 branch = ""
 
 # Per-node configs.  Keys are node indices (0, 1, …).
-# For "single" / "anvil" mode only node 0 is used.
+# For "single" mode only node 0 is used.
 # For "two" mode both 0 and 1 are needed.
 [skaled.nodes.0]
-config_template = "hardfork-support/config-templates/config-template.json.j2"
-config    = "hardfork-support/configs/config-loop-0.generated.json"
+config_template = ""
+config    = ""
 datadir   = "datadir-loop-0"
 http_port = 2234
 
 [skaled.nodes.1]
-config_template = "hardfork-support/config-templates/config-template.json.j2"
-config    = "hardfork-support/configs/config-loop-1.generated.json"
+config_template = ""
+config    = ""
 datadir   = "datadir-loop-1"
 http_port = 3234
 
@@ -92,12 +91,7 @@ interval_sec = 600
 # path   = "/root/17619-bin"
 # number = 17619
 
-# --------------------------------------------------------------------------
-# Anvil (for "anvil" env_type only)
-# --------------------------------------------------------------------------
-[anvil]
-image      = "ghcr.io/foundry-rs/foundry:rc-3"
-port       = 8545
+
 extra_args = []
 
 # --------------------------------------------------------------------------
@@ -123,7 +117,7 @@ url = "http://127.0.0.1:1029"
 
 # Docker image for the simulated SGX wallet.
 image = "skalenetwork/sgxwallet_sim:develop-latest"
-container_name = "skaled-func-tests-sgx"
+container_name = "skaled-api-tests-sgx"
 
 # SGX runtime artifacts directory (relative to repo root).
 artifacts_dir = "test/api-tests/sgx-artifacts"
@@ -140,7 +134,7 @@ keys_file = "test/api-tests/sgx-artifacts/sgx-keys.json"
 use_sgx = false
 
 # Path to the pre-built BITE2 binary (relative to repo root).
-bite2_binary = "build-bite2/skaled/skaled"
+bite2_binary = "build_bite2/skaled/skaled"
 
 # HTTP RPC port used for both phases (choose a port not used by other suites).
 http_port = 4234

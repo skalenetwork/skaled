@@ -1,7 +1,7 @@
 [project]
-name = "skaled-func-tests"
+name = "skaled-api-tests"
 version = "0.1.0"
-description = "Functional test framework for skaled"
+description = "API test framework for skaled"
 requires-python = ">=3.11"
 license = "AGPL-3.0"
 
@@ -20,11 +20,11 @@ dev = [
 ]
 
 [project.scripts]
-func-test = "run:main"
+api-test = "run:main"
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I"]

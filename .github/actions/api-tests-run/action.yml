@@ -85,13 +85,12 @@ runs:
         cd test/api-tests
         if ! uv run --project . run.py --config run.toml --suite "${{ inputs.suite }}"; then
           echo "::error::Test execution failed"
-          summary_log="${{ inputs.suite }}/logs/summary.log"
-          if [ -f "${summary_log}" ]; then
-            echo "::group::Summary Log"
-            cat "${summary_log}"
-            echo "::endgroup::"
-          else
-            echo "::warning::summary.log not found in logs folder"
-          fi
+          for log in logs/*.log; do
+            if [ -f "${log}" ]; then
+              echo "::group::${log}"
+              cat "${log}"
+              echo "::endgroup::"
+            fi
+          done
           exit 1
         fi

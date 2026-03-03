@@ -8,7 +8,6 @@ contract SimpleSecret is IBiteSupplicant {
     using Address for address payable;
 
     bytes public decryptedMessage;
-    address public ctxSender;
 
     uint256 public constant CTX_GAS_LIMIT = 2500000;
     uint256 public constant CTX_GAS_PAYMENT = 0.06 ether;
