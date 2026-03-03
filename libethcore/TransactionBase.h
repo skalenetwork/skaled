@@ -163,14 +163,29 @@ public:
     /// Constructs a transaction from the given RLP.
     explicit TransactionBase( bytesConstRef _rlp, CheckTransaction _checkSig,
         bool _allowInvalid = false, bool _eip1559Enabled = false,
-        bool _invalidTransactionFormatPatchEnabled = false, bool _bite2PatchEnabled = false );
+        bool _invalidTransactionFormatPatchEnabled = false
+#ifdef BITE2
+        ,
+        bool _bite2PatchEnabled = false
+#endif
+    );
 
     /// Constructs a transaction from the given RLP.
     explicit TransactionBase( bytes const& _rlp, CheckTransaction _checkSig,
         bool _allowInvalid = false, bool _eip1559Enabled = false,
-        bool _invalidTransactionFormatPatchEnabled = false, bool _bite2PatchEnabled = false )
+        bool _invalidTransactionFormatPatchEnabled = false
+#ifdef BITE2
+        ,
+        bool _bite2PatchEnabled = false
+#endif
+        )
         : TransactionBase( &_rlp, _checkSig, _allowInvalid, _eip1559Enabled,
-              _invalidTransactionFormatPatchEnabled, _bite2PatchEnabled ) {}
+              _invalidTransactionFormatPatchEnabled
+#ifdef BITE2
+              ,
+              _bite2PatchEnabled
+#endif
+          ) {}
 
     TransactionBase( TransactionBase const& ) = default;
 

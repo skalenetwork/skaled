@@ -366,8 +366,12 @@ TransactionType TransactionBase::getTransactionType( bytesConstRef _rlp ) {
 }
 
 TransactionBase::TransactionBase( bytesConstRef _rlpData, CheckTransaction _checkSig,
-    bool _allowInvalid, bool _eip1559Enabled, bool _invalidTransactionFormatPatchEnabled,
-    bool _bite2PatchEnabled ) {
+    bool _allowInvalid, bool _eip1559Enabled, bool _invalidTransactionFormatPatchEnabled
+#ifdef BITE2
+    ,
+    bool _bite2PatchEnabled
+#endif
+) {
     MICROPROFILE_SCOPEI( "TransactionBase", "ctor", MP_GOLD2 );
     try {
         if ( _eip1559Enabled ) {
@@ -389,12 +393,8 @@ TransactionBase::TransactionBase( bytesConstRef _rlpData, CheckTransaction _chec
         // therefore no need to check it anywhere else
         if ( _bite2PatchEnabled )
             checkIfCTXAndSet( m_data );
-#else
-        ( void ) _bite2PatchEnabled;
 #endif  // BITE2
 
-#else
-        ( void ) _bite2PatchEnabled;
 #endif  // BITE
     } catch ( std::exception& e ) {
         m_type = Type::Invalid;
