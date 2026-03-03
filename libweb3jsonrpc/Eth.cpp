@@ -426,8 +426,11 @@ string Eth::eth_sendRawTransaction( std::string const& _rlp ) {
     // will be checked as a part of transaction import
     Transaction t( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::None, false,
         EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
-        InvalidTransactionFormatPatch::isEnabledInWorkingBlock(),
-        Bite2Patch::isEnabledInWorkingBlock() );
+        InvalidTransactionFormatPatch::isEnabledInWorkingBlock()
+#ifdef BITE2
+        , Bite2Patch::isEnabledInWorkingBlock()
+#endif  // BITE2
+    );
     return toJS( client()->importTransaction( t, TransactionBroadcast::BroadcastToAll ) );
 }
 
