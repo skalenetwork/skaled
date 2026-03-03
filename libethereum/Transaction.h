@@ -137,9 +137,9 @@ public:
         u256 const& _nonce = Invalid256 );
 
     /// Constructs a transaction from the given RLP.
-    explicit Transaction( bytesConstRef _rlp, CheckTransaction _checkSig,
-        bool _allowInvalid = false, bool _eip1559Enabled = false,
-        bool _invalidTransactionFormatPatchEnabled = false
+    explicit Transaction(
+        bytesConstRef _rlp, CheckTransaction _checkSig, bool _allowInvalid = false,
+        bool _eip1559Enabled = false, bool _invalidTransactionFormatPatchEnabled = false
 #ifdef BITE2
         ,
         bool _bite2PatchEnabled = false

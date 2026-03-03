@@ -201,13 +201,14 @@ Transaction::Transaction( bytesConstRef _rlpData, CheckTransaction _checkSig, bo
     bool _bite2PatchEnabled
 #endif
     )
-    : TransactionBase( _rlpData, _checkSig, _allowInvalid, _eip1559Enabled,
-          _invalidTransactionFormatPatchEnabled
+    : TransactionBase(
+          _rlpData, _checkSig, _allowInvalid, _eip1559Enabled, _invalidTransactionFormatPatchEnabled
 #ifdef BITE2
           ,
           _bite2PatchEnabled
 #endif
-      ) {}
+      ) {
+}
 
 Transaction::Transaction( const bytes& _rlp, CheckTransaction _checkSig, bool _allowInvalid,
     bool _eip1559Enabled, bool _invalidTransactionFormatPatchEnabled
@@ -216,13 +217,14 @@ Transaction::Transaction( const bytes& _rlp, CheckTransaction _checkSig, bool _a
     bool _bite2PatchEnabled
 #endif
     )
-    : Transaction( &_rlp, _checkSig, _allowInvalid, _eip1559Enabled,
-          _invalidTransactionFormatPatchEnabled
+    : Transaction(
+          &_rlp, _checkSig, _allowInvalid, _eip1559Enabled, _invalidTransactionFormatPatchEnabled
 #ifdef BITE2
           ,
           _bite2PatchEnabled
 #endif
-      ) {}
+      ) {
+}
 
 #ifndef FAIR
 bool Transaction::hasExternalGas() const {
