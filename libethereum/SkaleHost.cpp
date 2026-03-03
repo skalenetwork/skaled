@@ -350,6 +350,16 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
         m_consensus->parseFullConfigAndCreateNode(
             m_client.chainParams().getOriginalJson(), _gethURL );
 #endif
+
+#ifdef BITE2
+        // empty initialize for safety - this initial value should never be used:
+        // 1. On genesis block: calls to getEncryptionCallRandom will return fixed hash & never read
+        // this
+        // 2. On any blockId > 0: 'createBlock' updates this member before any calls to
+        //                        getEncryptionCallRandom can happen.
+        m_cachedBlockRandomBytes = dev::bytes( 32, 0 );
+#endif  // BITE2
+
     } catch ( const std::exception& e ) {
         BOOST_LOG( m_loggerError )
             << "Could not create parse consensus config in SkaleHost" << e.what();
@@ -653,6 +663,14 @@ void SkaleHost::createBlock( const ConsensusExtFace::Transactions& _approvedTran
     size_t n_succeeded;
 
     BlockHeader latestInfo = static_cast< const Interface& >( m_client ).blockInfo( LatestBlock );
+
+    // Keep this outside m_blockImportMutex to avoid lock-order cycles with
+    // chain reads performed by random resolution.
+#ifdef BITE2
+    // Need to reset encryption state with new block id before processing txs to make
+    // sure a random for current block id is set.
+    resetEncryptionStateForBlock( _blockID );
+#endif
 
     DEV_GUARDED( m_client.m_blockImportMutex ) {
         m_debugTracer.tracepoint( "drop_good_transactions" );
@@ -1170,6 +1188,13 @@ u256 SkaleHost::getBlockRandom( unsigned _blockNumber, bool _isCalledFromTxn ) c
 #ifdef BITE2
 u256 SkaleHost::getReencryptionBlockRandom( unsigned _blockNumber, bool _isCalledFromTxn ) const {
     auto blockNumber = resolveRandomBlockNumber( _blockNumber, _isCalledFromTxn );
+    if ( blockNumber == 0 ) {
+        // handle corner case of genesis block
+        // could happen if blockRandom patch is not enabled.
+        // we need to return a default value to avoid reading from db since
+        // genesis block is never stored - would lead to exception.
+        return u256();
+    }
     return m_consensus->getReencryptionRandomForBlockId( blockNumber );
 }
 #endif
@@ -1200,6 +1225,51 @@ bool SkaleHost::ignoreNewBlocksEnabled() const {
 std::array< std::string, 4 > SkaleHost::getCurrentBLSPublicKey() const {
     return m_client.getCurrentBLSPublicKey();
 }
+
+#ifdef BITE2
+
+void SkaleHost::resetEncryptionStateForBlock( uint64_t _blockID ) {
+    constexpr bool _isCalledFromTxn = true;
+    m_encryptionCounter = 0;
+    m_cachedBlockRandomBytes =
+        toBigEndian( getReencryptionBlockRandom( _blockID, _isCalledFromTxn ) );
+}
+
+dev::h256 SkaleHost::getEncryptionCallRandom( unsigned _blockNumber, bool _isCalledFromTxn ) {
+    uint64_t counter = 0;
+    bytes blockRandomBytes;
+
+    // Can only happen if there is some encryption in genesis block
+    // Should not happen in reality, since fixed hash is non-random, and
+    // encryption with fixed hash is not secure.
+    if ( _blockNumber == 0 )
+        return dev::h256();
+
+    // read only - should not affect state - use default counter value 0 & don't update cache
+    // compute block random for each call - no guarantee that it will follow linear block
+    // increase
+    if ( !_isCalledFromTxn ) {
+        blockRandomBytes =
+            toBigEndian( getReencryptionBlockRandom( _blockNumber, _isCalledFromTxn ) );
+    }
+    // block tx - should follow linear block increase
+    else {
+        counter = m_encryptionCounter++;
+        // should hold the the block random for current block ID
+        blockRandomBytes = m_cachedBlockRandomBytes;
+    }
+
+    // Combine blockRandom || counter
+    bytes counterBytes = toBigEndian( dev::u256( counter ) );
+    bytes combinedBytes;
+    combinedBytes.insert( combinedBytes.end(), blockRandomBytes.begin(), blockRandomBytes.end() );
+    combinedBytes.insert( combinedBytes.end(), counterBytes.begin(), counterBytes.end() );
+
+    // Hash to get final deterministic random value
+    return dev::sha3( combinedBytes );
+}
+
+#endif
 
 std::string SkaleHost::getHistoricNodeId( unsigned _id ) const {
     return m_client.getHistoricNodeId( _id );
