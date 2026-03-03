@@ -29,30 +29,12 @@ runs:
         uv sync --locked --project test/api-tests
 
     - name: Render run.toml from template
-      shell: python3 {0}
+      shell: bash
       env:
         FUNC_TEST_PRIVATE_KEY: ${{ env.FUNC_TEST_PRIVATE_KEY }}
         SKALED_BINARY: ${{ inputs.skaled_binary }}
         BUILD_SKALED: ${{ inputs.build_skaled }}
-      run: |
-        import os, sys
-        from jinja2 import Environment, FileSystemLoader, StrictUndefined
-        private_key = os.environ.get("FUNC_TEST_PRIVATE_KEY", "")
-        if not private_key:
-            print("::error::Missing required FUNC_TEST_PRIVATE_KEY secret", flush=True)
-            sys.exit(1)
-        context = {
-            "private_key":   private_key,
-            "skaled_binary": os.environ.get("SKALED_BINARY", ""),
-            "build_skaled":  os.environ.get("BUILD_SKALED", "true"),
-        }
-        env = Environment(
-            loader=FileSystemLoader("test/api-tests"),
-            undefined=StrictUndefined,
-            keep_trailing_newline=True,
-        )
-        rendered = env.get_template("run.toml.j2").render(context)
-        open("test/api-tests/run.toml", "w").write(rendered)
+      run: uv run --project test/api-tests python3 test/api-tests/render_config.py
 
     - name: Run API test suite
       shell: bash

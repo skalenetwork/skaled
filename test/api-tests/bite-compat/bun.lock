@@ -12,7 +12,6 @@
         "dotenv": "^16.3.1",
         "ethers": "^6.14.3",
         "hardhat": "^2.24.1",
-        "openzeppelin": "^1.0.0",
         "ts-node": "^10.9.1",
         "typescript": "^5.2.2",
       },
@@ -697,8 +696,6 @@
     "obliterator": ["obliterator@2.0.5", "", {}, "sha512-42CPE9AhahZRsMNslczq0ctAEtqk8Eka26QofnqC346BZdHDySk3LWka23LI7ULIw11NmltpiLagIq8gBozxTw=="],
 
     "once": ["once@1.4.0", "", { "dependencies": { "wrappy": "1" } }, "sha512-lNaJgI+2Q5URQBkccEKHTQOPaXdUxnZZElQTZY0MFUAuaEqe1E+Nyvgdz/aIyNi6Z9MzO5dv1H8n58/GELp3+w=="],
-
-    "openzeppelin": ["openzeppelin@1.0.0", "", { "bin": { "openzeppelin-contracts-migrate-imports": "scripts/migrate-imports.js" } }, "sha512-qemLpGK5krO6Wp9mdoaKvzzqAwKsyghJUEyrbue7gdn3PtPJf2gJ910qPFIUgs7ZgRnClseLX/R6bWTsq/TwJQ=="],
 
     "optionator": ["optionator@0.8.3", "", { "dependencies": { "deep-is": "~0.1.3", "fast-levenshtein": "~2.0.6", "levn": "~0.3.0", "prelude-ls": "~1.1.2", "type-check": "~0.3.2", "word-wrap": "~1.2.3" } }, "sha512-+IW9pACdk3XWmmTXG8m3upGUJst5XRGzxMRjXzAuJ1XnIFNvfhjjIuYkDvysnPQ7qzqVzLt78BCruntqRhWQbA=="],
 
