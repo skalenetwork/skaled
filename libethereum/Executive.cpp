@@ -383,12 +383,7 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
             m_output = owning_bytes_ref{ std::move( output ), 0, outputSize };
             if ( !success ) {
                 m_gas = 0;
-#ifdef BITE2
-                m_excepted = outputSize > 0 ? TransactionException::RevertInstruction :
-                                              TransactionException::OutOfGas;
-#else
                 m_excepted = TransactionException::OutOfGas;
-#endif                        // BITE2
                 return true;  // true means no need to run go().
             }
         }
