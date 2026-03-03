@@ -1214,7 +1214,16 @@ h256 Client::importTransaction( Transaction const& _t, TransactionBroadcast _txO
     // only validate in production setup
     if ( dev::bite::isCiphertextValidationEnabled )
         _t.checkAndValidateBITETransaction( historicGroupIndex );
-#endif
+
+#ifdef BITE2
+    if ( Bite2Patch::isEnabledInWorkingBlock() && _t.isCTX() ) {
+        // someone tried to submit CTX via standard RPC
+        // such transaction must be rejected
+        BOOST_THROW_EXCEPTION( IllegalCTXSubmission() << errinfo_comment(
+                                   "Illegal attempt to submit CTX through JSON-RPC API" ) );
+    }
+#endif  // BITE2
+#endif  // BITE
 
     ImportResult res;
     if ( chainParams().isMultiTransactionModeEnabled() &&

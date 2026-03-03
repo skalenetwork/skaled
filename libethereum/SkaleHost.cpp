@@ -420,7 +420,7 @@ void SkaleHost::setBITE2QueueOnInit( std::vector< dev::eth::Transaction >&& _ctx
 }
 #endif
 
-h256 SkaleHost::receiveTransaction( std::string _rlp ) {
+h256 SkaleHost::receiveTransaction( const std::string& _rlp ) {
     // drop incoming transactions if skaled has an outdated state
     if ( m_client.bc().info().timestamp() + REJECT_OLD_TRANSACTION_THROUGH_BROADCAST_INTERVAL_SEC <
          std::time( NULL ) ) {
