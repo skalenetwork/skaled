@@ -579,6 +579,7 @@ bool downloadSnapshotFromUrl( std::shared_ptr< SnapshotManager >& snapshotManage
     if ( isRegularSnapshot )
         blockNumber = getBlockToDownladSnapshot( urlToDownloadSnapshotFrom );
 
+    libBLS::init();
     std::unique_ptr< SnapshotHashAgent > snapshotHashAgent;
     if ( forceDownload )
         snapshotHashAgent.reset(
@@ -586,7 +587,6 @@ bool downloadSnapshotFromUrl( std::shared_ptr< SnapshotManager >& snapshotManage
     else
         snapshotHashAgent.reset( new SnapshotHashAgent( chainParams, arrayCommonPublicKey ) );
 
-    libBLS::init();
     std::pair< dev::h256, libBLS::algebra::G1Point > votedHash;
     std::vector< std::string > listUrlsToDownload;
     std::tie( listUrlsToDownload, votedHash ) =
