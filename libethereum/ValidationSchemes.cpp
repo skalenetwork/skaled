@@ -236,6 +236,16 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "dynamicPricingStartPrice", { { js::int_type }, JsonFieldPresence::Optional } },
             { "dynamicPricingMaxPrice", { { js::int_type }, JsonFieldPresence::Optional } } } );
 
+    {
+        int dynamicPricingFieldCount = nodeInfo.count( "dynamicPricingMinPrice" ) +
+                                       nodeInfo.count( "dynamicPricingStartPrice" ) +
+                                       nodeInfo.count( "dynamicPricingMaxPrice" );
+        if ( dynamicPricingFieldCount != 0 && dynamicPricingFieldCount != 3 )
+            throw std::invalid_argument(
+                "dynamicPricingMinPrice, dynamicPricingStartPrice, and dynamicPricingMaxPrice "
+                "must be either all present or all missing in nodeInfo" );
+    }
+
 #ifndef FAIR
     std::string keyShareName = "";
     try {
