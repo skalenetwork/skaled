@@ -1308,23 +1308,25 @@ ETH_REGISTER_PRECOMPILED( encryptTE )
             publicKeys.emplace_back( nextPublicKeyG2 );
         }
 
-        // Get blockRandom to use as seed for deterministic encryption
-        // This ensures all nodes encrypt identically for consensus
+        // Get deterministic random value for this encryption call
+        // SkaleHost handles: Hash(blockRandom || counter)
         unsigned blockNumberToCall = _ctx.blockNumber.convert_to< unsigned >();
-        dev::u256 blockRandomValue =
-            g_skaleHost->getReencryptionBlockRandom( blockNumberToCall, !_ctx.isReadOnly );
-        bytes blockRandomBytes = toBigEndian( blockRandomValue );
+        dev::u256 encryptionRandom =
+            g_skaleHost->getEncryptionCallRandom( blockNumberToCall, !_ctx.isReadOnly );
+        bytes encryptionRandomBytes = toBigEndian( encryptionRandom );
 
-        // Create seed array from blockRandom (32 bytes)
-        std::array< uint8_t, libBLS::AES_256_KEY_SIZE_BYTES > seed;
-        std::copy_n( blockRandomBytes.begin(), libBLS::AES_256_KEY_SIZE_BYTES, seed.begin() );
+        // Create seed from encryption random (32 bytes)
+        h256 seed( encryptionRandomBytes.data(), h256::ConstructFromPointer );
 
+        // Create seed array from encryption random (32 bytes)
+        std::array< uint8_t, libBLS::AES_256_KEY_SIZE_BYTES > seedArray;
+        std::copy_n( seed.begin(), libBLS::AES_256_KEY_SIZE_BYTES, seedArray.begin() );
         // Use caller's address as the associated data for TE
         auto scAddressBytes = _ctx.from.asBytes();
 
         // Build EncryptMetaData with seed and SC address as TE AAD
         libBLS::EncryptMetaData metaData;
-        metaData.seed = libBLS::Seed256{ seed };
+        metaData.seed = libBLS::Seed256{ seedArray };
         metaData.associatedDataTE =
             std::vector< uint8_t >( scAddressBytes.begin(), scAddressBytes.end() );
 
@@ -1341,7 +1343,6 @@ ETH_REGISTER_PRECOMPILED( encryptTE )
         rlpStream.append( ciphertext.toBytes() );
 
         bytes response = rlpStream.out();
-
         return { true, response };
 
     } catch ( std::exception& ex ) {
@@ -1383,6 +1384,10 @@ ETH_REGISTER_PRECOMPILED( encryptECIES )
         // ABI encoding requires input to be a multiple of 32 bytes
         if ( _in.size() % 32 != 0 ) {
             return { false, toBigEndian( dev::u256( 3 ) ) };  // error 3: input not 32-byte aligned
+        }
+
+        if ( !g_skaleHost ) {
+            throw std::runtime_error( "SkaleHost accessor was not initialized" );
         }
 
         size_t offset = 0;
@@ -1446,20 +1451,17 @@ ETH_REGISTER_PRECOMPILED( encryptECIES )
             return { false, toBigEndian( dev::u256( 7 ) ) };  // error 7: invalid public key
         }
 
-        if ( !g_skaleHost )
-            throw std::runtime_error( "SkaleHost accessor was not initialized" );
-
-        // Get blockRandom to use as seed for deterministic encryption
-        // This ensures all nodes encrypt identically for consensus
+        // Get deterministic random value for this encryption call
+        // SkaleHost handles: Hash(blockRandom || counter)
         unsigned blockNumberToCall = _ctx.blockNumber.convert_to< unsigned >();
-        dev::u256 blockRandomValue =
-            g_skaleHost->getReencryptionBlockRandom( blockNumberToCall, !_ctx.isReadOnly );
-        bytes blockRandomBytes = toBigEndian( blockRandomValue );
+        dev::u256 encryptionRandom =
+            g_skaleHost->getEncryptionCallRandom( blockNumberToCall, !_ctx.isReadOnly );
+        bytes encryptionRandomBytes = toBigEndian( encryptionRandom );
 
-        // Create seed from blockRandom (32 bytes)
-        h256 seed( blockRandomBytes.data(), h256::ConstructFromPointer );
+        // Create seed from encryption random (32 bytes)
+        h256 seed( encryptionRandomBytes.data(), h256::ConstructFromPointer );
 
-        // Encrypt using ECIES-CBC helper with deterministic seed
+        // Encrypt using ECIES-CBC with deterministic IV based on encryption random
         bytes response =
             dev::encryptECIES_CBC( userPubKey, bytesConstRef( &dataToEncrypt ), &seed );
         if ( response.empty() ) {

@@ -129,7 +129,19 @@ public:
     dev::h256 receiveTransaction( std::string );
 
     void pushToBroadcastQueue( const dev::eth::Transaction& _transaction );
+
 #ifdef BITE2
+    // Get deterministic random value for encryption call
+    // Combines Hash(blockRandom || counter) where counter auto-increments for each call
+    // Counter resets at each new block - skaled calls resetEncryptionStateForBlock on
+    // every new commited block. For read-only calls, counter is not used and block
+    // random is computed for each call.
+    // Returns 32-byte random value suitable for use as encryption seed
+    dev::h256 getEncryptionCallRandom( unsigned _blockNumber, bool _isCalledFromTxn );
+
+    // Resets encryption counter & updates cached block random bytes for new block
+    void resetEncryptionStateForBlock( uint64_t _blockNumber );
+
     void addTempBITE2Transaction( dev::eth::Transaction&& _transaction );
     std::vector< dev::h256 > getBITE2HashesForCurrentTxn() const;
     void commitTempBITE2Transactions();
@@ -294,6 +306,19 @@ private:
     std::atomic_int total_sent, total_arrived;
 
     boost::chrono::high_resolution_clock::time_point latestBlockTime;
+
+#ifdef BITE2
+
+    // Per-block encryption counter for deterministic but unique encryption
+    // Counter resets when block number changes, increments for each encryption call
+    // No mutex needed since EVM execution is sequential
+    uint64_t m_encryptionCounter = 0;
+
+    // Cached block random bytes for current block to avoid recomputation
+    // updated at each new block
+    dev::bytes m_cachedBlockRandomBytes;
+
+#endif
 
     // reject old transactions that come through broadcast
     // if current ts is much bigger than currentBlock.ts
