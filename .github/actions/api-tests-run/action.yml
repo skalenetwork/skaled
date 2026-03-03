@@ -28,55 +28,31 @@ runs:
         set -euo pipefail
         uv sync --locked --project test/api-tests
 
-    - name: Prepare run.toml and private key
-      shell: bash
+    - name: Render run.toml from template
+      shell: python3 {0}
+      env:
+        FUNC_TEST_PRIVATE_KEY: ${{ env.FUNC_TEST_PRIVATE_KEY }}
+        SKALED_BINARY: ${{ inputs.skaled_binary }}
+        BUILD_SKALED: ${{ inputs.build_skaled }}
       run: |
-        set -euo pipefail
-        cd test/api-tests
-        cp run-example.toml run.toml
-        if [ -z "${FUNC_TEST_PRIVATE_KEY:-}" ]; then
-          echo "::error::Missing required FUNC_TEST_PRIVATE_KEY secret"
-          exit 1
-        fi
-        sed -i "s#^private_key[[:space:]]*=.*#private_key = \"${FUNC_TEST_PRIVATE_KEY}\"#" run.toml
-
-    - name: Apply skaled runner options
-      shell: bash
-      run: |
-        set -euo pipefail
-        cd test/api-tests
-        awk -v build_val="${{ inputs.build_skaled }}" '
-          BEGIN {
-            in_skaled = 0
-            build_set = 0
-          }
-          /^\[.*\]$/ {
-            if (in_skaled && !build_set) {
-              print "build = " build_val
-              build_set = 1
-            }
-            in_skaled = ($0 == "[skaled]")
-            print
-            next
-          }
-          {
-            if (in_skaled && $0 ~ /^build[[:space:]]*=/) {
-              print "build = " build_val
-              build_set = 1
-              next
-            }
-            print
-          }
-          END {
-            if (in_skaled && !build_set) {
-              print "build = " build_val
-            }
-          }
-        ' run.toml > run.toml.tmp
-        mv run.toml.tmp run.toml
-        if [ -n "${{ inputs.skaled_binary }}" ]; then
-          sed -i "s#^binary[[:space:]]*=.*#binary = \"${{ inputs.skaled_binary }}\"#" run.toml
-        fi
+        import os, sys
+        from jinja2 import Environment, FileSystemLoader, StrictUndefined
+        private_key = os.environ.get("FUNC_TEST_PRIVATE_KEY", "")
+        if not private_key:
+            print("::error::Missing required FUNC_TEST_PRIVATE_KEY secret", flush=True)
+            sys.exit(1)
+        context = {
+            "private_key":   private_key,
+            "skaled_binary": os.environ.get("SKALED_BINARY", ""),
+            "build_skaled":  os.environ.get("BUILD_SKALED", "true"),
+        }
+        env = Environment(
+            loader=FileSystemLoader("test/api-tests"),
+            undefined=StrictUndefined,
+            keep_trailing_newline=True,
+        )
+        rendered = env.get_template("run.toml.j2").render(context)
+        open("test/api-tests/run.toml", "w").write(rendered)
 
     - name: Run API test suite
       shell: bash

@@ -389,7 +389,8 @@ Transaction ClientBase::transaction( h256 _transactionHash ) const {
         EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
         InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp )
 #ifdef BITE2
-        , Bite2Patch::isEnabledWhen( blockTimestamp )
+            ,
+        Bite2Patch::isEnabledWhen( blockTimestamp )
 #endif  // BITE2
     );
 }
@@ -409,7 +410,8 @@ Transaction ClientBase::transaction( h256 _blockHash, unsigned _i ) const {
             EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
             InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp )
 #ifdef BITE2
-            , Bite2Patch::isEnabledWhen( blockTimestamp )
+                ,
+            Bite2Patch::isEnabledWhen( blockTimestamp )
 #endif  // BITE2
         );
     else
@@ -423,7 +425,8 @@ LocalisedTransaction ClientBase::localisedTransaction( h256 const& _blockHash, u
         EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
         InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp )
 #ifdef BITE2
-        , Bite2Patch::isEnabledWhen( blockTimestamp )
+            ,
+        Bite2Patch::isEnabledWhen( blockTimestamp )
 #endif  // BITE2
     );
     return LocalisedTransaction( t, _blockHash, _i, numberFromHash( _blockHash ) );
@@ -446,7 +449,8 @@ LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(
         EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
         InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp )
 #ifdef BITE2
-        , Bite2Patch::isEnabledWhen( blockTimestamp )
+            ,
+        Bite2Patch::isEnabledWhen( blockTimestamp )
 #endif  // BITE2
     );
 
@@ -509,7 +513,8 @@ Transactions ClientBase::transactions( h256 _blockHash ) const {
             EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
             InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp )
 #ifdef BITE2
-            , Bite2Patch::isEnabledWhen( blockTimestamp )
+                ,
+            Bite2Patch::isEnabledWhen( blockTimestamp )
 #endif  // BITE2
         );
     }

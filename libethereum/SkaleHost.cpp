@@ -426,7 +426,8 @@ h256 SkaleHost::receiveTransaction( std::string _rlp ) {
         EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
         InvalidTransactionFormatPatch::isEnabledInWorkingBlock()
 #ifdef BITE2
-        , Bite2Patch::isEnabledInWorkingBlock()
+            ,
+        Bite2Patch::isEnabledInWorkingBlock()
 #endif  // BITE2
     );
     h256 sha = transaction.sha3();
@@ -1039,7 +1040,8 @@ std::vector< Transaction > SkaleHost::processRegularTransactions(
             EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
             InvalidTransactionFormatPatch::isEnabledInWorkingBlock()
 #ifdef BITE2
-            , Bite2Patch::isEnabledInWorkingBlock()
+                ,
+            Bite2Patch::isEnabledInWorkingBlock()
 #endif  // BITE2
         );
 #ifdef BITE
@@ -1101,7 +1103,8 @@ std::vector< Transaction > SkaleHost::processCTXTransactions(
             EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
             InvalidTransactionFormatPatch::isEnabledInWorkingBlock()
 #ifdef BITE2
-            , Bite2Patch::isEnabledInWorkingBlock()
+                ,
+            Bite2Patch::isEnabledInWorkingBlock()
 #endif  // BITE2
         );
 

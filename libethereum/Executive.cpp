@@ -388,7 +388,7 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
                                               TransactionException::OutOfGas;
 #else
                 m_excepted = TransactionException::OutOfGas;
-#endif  // BITE2
+#endif                        // BITE2
                 return true;  // true means no need to run go().
             }
         }

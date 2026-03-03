@@ -1866,7 +1866,8 @@ VerifiedBlockRef BlockChain::verifyBlock( bytesConstRef _block,
                     false, EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
                     InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp )
 #ifdef BITE2
-                    , Bite2Patch::isEnabledWhen( blockTimestamp )
+                        ,
+                    Bite2Patch::isEnabledWhen( blockTimestamp )
 #endif  // BITE2
                 );
                 Ethash::verifyTransaction( chainParams(), _ir, t,
@@ -1926,9 +1927,10 @@ Transactions BlockChain::ctxListForPreviousBlock() const {
             EIP1559TransactionsPatch::isEnabledWhen( prevBlockTimestamp ),
             InvalidTransactionFormatPatch::isEnabledWhen( prevBlockTimestamp )
 #ifdef BITE2
-            , Bite2Patch::isEnabledWhen( prevBlockTimestamp )
+                ,
+            Bite2Patch::isEnabledWhen( prevBlockTimestamp )
 #endif  // BITE2
-        ) );
+                ) );
     }
     return ctxs;
 }

@@ -428,7 +428,8 @@ string Eth::eth_sendRawTransaction( std::string const& _rlp ) {
         EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
         InvalidTransactionFormatPatch::isEnabledInWorkingBlock()
 #ifdef BITE2
-        , Bite2Patch::isEnabledInWorkingBlock()
+            ,
+        Bite2Patch::isEnabledInWorkingBlock()
 #endif  // BITE2
     );
     return toJS( client()->importTransaction( t, TransactionBroadcast::BroadcastToAll ) );

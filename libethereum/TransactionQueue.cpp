@@ -99,7 +99,8 @@ ImportResult TransactionQueue::import(
             EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
             InvalidTransactionFormatPatch::isEnabledInWorkingBlock()
 #ifdef BITE2
-            , Bite2Patch::isEnabledInWorkingBlock()
+                ,
+            Bite2Patch::isEnabledInWorkingBlock()
 #endif  // BITE2
         );
         return import( t, _ik, _isFuture );
@@ -556,8 +557,9 @@ void TransactionQueue::verifierBody() {
                 EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
                 InvalidTransactionFormatPatch::isEnabledInWorkingBlock()
 #ifdef BITE2
-                , Bite2Patch::isEnabledInWorkingBlock()
-#endif  // BITE2
+                    ,
+                Bite2Patch::isEnabledInWorkingBlock()
+#endif          // BITE2
             );  // Signature will be checked later
             ImportResult ir = import( t );
             m_onImport( ir, t.sha3(), work.nodeId );
