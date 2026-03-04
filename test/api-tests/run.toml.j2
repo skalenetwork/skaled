@@ -133,14 +133,32 @@ keys_file = "test/api-tests/sgx-artifacts/sgx-keys.json"
 # Whether to launch the SGX wallet for this suite (overrides [sgx].enabled).
 use_sgx = false
 
+# ---------- BITE node (Phase 1) ----------
+
+# Path to the pre-built BITE binary (relative to repo root).
+bite_binary = "build_bite/skaled/skaled"
+
+# HTTP RPC port for the BITE node.
+bite_http_port = 4232
+
+# Datadir for the BITE node (relative to repo root).
+bite_datadir = "test/api-tests/bite-compat/datadir-bite"
+
+# Generated config file path for the BITE node (relative to repo root).
+bite_config = "test/api-tests/bite-compat/configs/config-bite.generated.json"
+
+# Config template for the BITE node (relative to test/api-tests/).
+bite_config_template = "bite-compat/config-templates/config-bite-template.json.j2"
+
+# ---------- BITE2 node (Phase 2a / 2b) ----------
+
 # Path to the pre-built BITE2 binary (relative to repo root).
 bite2_binary = "build_bite2/skaled/skaled"
 
-# HTTP RPC port used for both phases (choose a port not used by other suites).
+# HTTP RPC port for the BITE2 node.
 http_port = 4234
 
-# Datadir shared across both phases to verify state continuity after restart.
-# Path is relative to repo root.
+# Datadir for the BITE2 node (relative to repo root).
 datadir = "test/api-tests/bite-compat/datadir"
 
 # Generated config file path (relative to repo root).
@@ -169,4 +187,3 @@ EIP1559TransactionsPatchTimestamp       = 1
 singleStateCommitPerBlockPatchTimestamp = 1
 flexibleDeploymentPatchTimestamp        = 1
 snapshotIntervalSec                     = 0
-bite2PatchTimestamp                     = "now+101"

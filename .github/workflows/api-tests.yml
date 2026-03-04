@@ -56,6 +56,15 @@ jobs:
           ./build.sh DEBUG=1 PARALLEL_COUNT=$(nproc)
           cd ..
 
+      - name: Build BITE
+        uses: ./.github/actions/cmake-build
+        with:
+          build_dir: build_bite
+          cmake_build_type: ${{ env.CMAKE_BUILD_TYPE }}
+          coverage: ${{ env.CODE_COVERAGE }}
+          cmake_args: "-DBITE=1"
+          make_target: skaled
+
       - name: Build BITE2
         uses: ./.github/actions/cmake-build
         with:

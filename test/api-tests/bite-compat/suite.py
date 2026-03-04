@@ -64,6 +64,7 @@ def run_tests(cfg: dict, env) -> dict[str, list[TestResult]]:
         os.environ["BITE_COMPAT_CFG_JSON"] = cfg_file
         pytest.main(
             [
+                str(SUITE_DIR / "test_phase1_bite.py"),
                 str(SUITE_DIR / "test_bite_compat.py"),
                 "-v",
                 "--tb=short",

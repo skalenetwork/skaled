@@ -78,7 +78,7 @@ function compileSolidityContracts(): void {
 const tomlPath =
   process.env.BITE_COMPAT_TOML || resolve(__dirname, "..", "bite-compat.toml");
 const cfg = parseBiteCompatConfig(tomlPath);
-const providerUrl = `http://127.0.0.1:${cfg.httpPort}`;
+const providerUrl = process.env.BITE_PROVIDER_URL || `http://127.0.0.1:${cfg.httpPort}`;
 const to = process.env.BITE_TX_TO || cfg.toAddress;
 const value = process.env.BITE_TX_VALUE || cfg.valueWei;
 const data = process.env.BITE_TX_DATA || "0x";
