@@ -5819,6 +5819,8 @@ BOOST_AUTO_TEST_CASE( rejectExplicitCTXSubmission ) {
     std::string onDecryptSelector = dev::toHexPrefixed( dev::bite::ON_DECRYPT_FUNCTION_SELECTOR );
     Transaction t( dev::jsToBytes( formTransactionRlp( fixture, senderAddress, onDecryptSelector, nonce, dev::Address::random().hex() ) ), CheckTransaction::Everything );
     BOOST_REQUIRE_THROW( fixture.client->importTransaction( t ), IllegalCTXSubmission );
+
+    BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendRawTransaction( dev::toHexPrefixed( t.toBytes() ) ), jsonrpc::JsonRpcException );
 }
 
 BOOST_AUTO_TEST_CASE( submitCTX ) {
