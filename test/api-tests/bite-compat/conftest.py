@@ -43,6 +43,7 @@ FUNC_TESTS = SUITE_DIR.parent
 sys.path.insert(0, str(FUNC_TESTS))
 
 BITE2_PATCH_DELAY_SECONDS = 101
+CURRENT_BLOCK_RANDOM_PATCH_DELAY_SECONDS = 81
 
 
 # ---------------------------------------------------------------------------
@@ -128,11 +129,17 @@ def _launch_node(
     log_path: Path,
     sgx_url: Optional[str],
     label: str,
+    fresh: bool = True,
 ) -> tuple[subprocess.Popen, object]:
-    """Start a skaled node and return ``(proc, log_fd)``."""
-    if datadir.exists():
-        shutil.rmtree(datadir)
-    datadir.mkdir(parents=True)
+    """Start a skaled node and return ``(proc, log_fd)``.
+
+    When ``fresh=False`` the datadir is kept as-is so the node continues
+    from an existing chain state (e.g. BITE2 restarting on the BITE datadir).
+    """
+    if fresh:
+        if datadir.exists():
+            shutil.rmtree(datadir)
+        datadir.mkdir(parents=True)
 
     log_fd = open(log_path, "w")
     cmd = [
@@ -278,9 +285,11 @@ def skaled_session(run_cfg: dict, bite_cfg: dict):
         else None
     )
 
-    http_port    = int(bite_cfg.get("http_port", 4234))
+    http_port    = int(bite_cfg.get("bite_http_port", 4232))
     bite2_binary = _resolve(bite_cfg.get("bite2_binary", "build_bite2/skaled/skaled"))
-    datadir      = _resolve(bite_cfg.get("datadir", "test/api-tests/bite-compat/datadir"))
+    # Reuse the BITE node's datadir so BITE2 continues from the same chain state.
+    # This ensures the same contract addresses, committee keys, and block history.
+    datadir      = _resolve(bite_cfg.get("bite_datadir", "test/api-tests/bite-compat/datadir-bite"))
     cfg_out      = _resolve(bite_cfg.get(
         "bite2_config",
         "test/api-tests/bite-compat/configs/config-bite2.generated.json",
@@ -297,18 +306,30 @@ def skaled_session(run_cfg: dict, bite_cfg: dict):
             "&& cmake --build build_bite2 -j4"
         )
 
-    bite2_patch_ts = int(time.time()) + BITE2_PATCH_DELAY_SECONDS
+    now = int(time.time())
+    bite2_patch_ts = now + BITE2_PATCH_DELAY_SECONDS
+    current_block_random_patch_ts = now + CURRENT_BLOCK_RANDOM_PATCH_DELAY_SECONDS
     logger.info(
         "bite2PatchTimestamp = %d (now+%ds, activates at %s)",
         bite2_patch_ts,
         BITE2_PATCH_DELAY_SECONDS,
         time.strftime("%H:%M:%S", time.localtime(bite2_patch_ts)),
     )
+    logger.info(
+        "currentBlockRandomPatchTimestamp = %d (now+%ds, activates at %s)",
+        current_block_random_patch_ts,
+        CURRENT_BLOCK_RANDOM_PATCH_DELAY_SECONDS,
+        time.strftime("%H:%M:%S", time.localtime(current_block_random_patch_ts)),
+    )
 
     render_template_file(str(tmpl), str(cfg_out), tmpl_ctx)
     if sgx_ctx:
         apply_sgx_config(str(cfg_out), sgx_ctx)
-    inject_patches(str(cfg_out), {**patches, "bite2PatchTimestamp": bite2_patch_ts})
+    inject_patches(str(cfg_out), {
+        **patches,
+        "bite2PatchTimestamp": bite2_patch_ts,
+        "currentBlockRandomPatchTimestamp": current_block_random_patch_ts,
+    })
     ensure_genesis_balance(str(cfg_out), priv_key)
     configure_single_node_skaled(str(cfg_out))
 
@@ -319,6 +340,7 @@ def skaled_session(run_cfg: dict, bite_cfg: dict):
     proc, log_fd = _launch_node(
         bite2_binary, cfg_out, http_port, datadir,
         log_dir / "skaled-bite2.log", sgx_url, "BITE2",
+        fresh=False,
     )
     w3 = Web3(Web3.HTTPProvider(
         f"http://127.0.0.1:{http_port}", request_kwargs={"timeout": 10}
@@ -332,7 +354,7 @@ def skaled_session(run_cfg: dict, bite_cfg: dict):
         pytest.fail(str(e))
 
     try:
-        yield w3, bite2_patch_ts
+        yield w3, bite2_patch_ts, current_block_random_patch_ts
     finally:
         _stop_node(proc, log_fd, "BITE2")
 
@@ -345,3 +367,8 @@ def w3(skaled_session) -> Web3:
 @pytest.fixture(scope="session")
 def bite2_patch_ts(skaled_session) -> int:
     return skaled_session[1]
+
+
+@pytest.fixture(scope="session")
+def current_block_random_patch_ts(skaled_session) -> int:
+    return skaled_session[2]

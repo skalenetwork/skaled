@@ -8,13 +8,14 @@ import { ethers } from "ethers";
 // Mode — selected via CLI flag; defaults to --all
 // ---------------------------------------------------------------------------
 
-type Mode = "deploy" | "simulate" | "transaction" | "all";
+type Mode = "deploy" | "generate-encrypted" | "simulate" | "transaction" | "all";
 
 function parseMode(): Mode {
   const args = process.argv.slice(2);
-  if (args.includes("--deploy"))      return "deploy";
-  if (args.includes("--simulate"))    return "simulate";
-  if (args.includes("--transaction")) return "transaction";
+  if (args.includes("--deploy"))             return "deploy";
+  if (args.includes("--generate-encrypted")) return "generate-encrypted";
+  if (args.includes("--simulate"))           return "simulate";
+  if (args.includes("--transaction"))        return "transaction";
   return "all";
 }
 
@@ -162,14 +163,29 @@ async function main() {
   const signer = new ethers.Wallet(privateKey, provider);
   const bite = new BITE(providerUrl);
 
+  const CTX_GAS_PAYMENT = BigInt(60_000_000_000_000_000);
+
+  // -- generate-encrypted ----------------------------------------------------
+  if (mode === "generate-encrypted") {
+    const secret = "0x" + Buffer.from("Hello BITE!").toString("hex");
+    const aad = process.env.BITE_ENCRYPTION_AAD || process.env.BITE_CONTRACT_ADDRESS;
+    if (!aad)
+      throw new Error("BITE_CONTRACT_ADDRESS (or BITE_ENCRYPTION_AAD) is required for --generate-encrypted");
+    console.log(`Generating encrypted bytes: secret="${secret}" aad=${aad}`);
+    const encrypted = await bite.encryptMessageForCTX(secret, aad);
+    console.log(`Encrypted: ${encrypted}`);
+    const out = { encrypted };
+    if (outputJsonOnly) { console.log(JSON.stringify(out)); return; }
+    console.log("Encrypted result:", out);
+    return;
+  }
+
+  // -- deploy ----------------------------------------------------------------
   const artifactPath =
     process.env.BITE_SIMPLE_SECRET_ARTIFACT ||
     resolve(__dirname, "..", "sol/artifacts/contracts/SimpleSecret.sol/SimpleSecret.json");
   ensureSimpleSecretArtifact(artifactPath);
 
-  const CTX_GAS_PAYMENT = BigInt(60_000_000_000_000_000);
-
-  // -- deploy ----------------------------------------------------------------
   let contractAddress = process.env.BITE_CONTRACT_ADDRESS ?? "";
   let contractInstance: ethers.Contract;
 
@@ -191,11 +207,20 @@ async function main() {
     contractInstance = new ethers.Contract(contractAddress, artifact.abi, signer);
   }
 
-  // Encrypt once — shared by both simulate and transaction steps
-  const secret = "0x" + Buffer.from("Hello BITE!").toString("hex");
-  console.log(`Encrypting: "${secret}" (aad=${contractAddress})`);
-  const encrypted = await bite.encryptMessageForCTX(secret, contractAddress);
-  console.log(`Encrypted: ${encrypted}`);
+  // Encrypt once — shared by both simulate and transaction steps.
+  // BITE_FIXED_ENCRYPTED bypasses encryption entirely and uses pre-computed bytes, ensuring
+  // identical calldata across all phases (BITE, pre-patch BITE2, post-patch BITE2).
+  let encrypted: string;
+  if (process.env.BITE_FIXED_ENCRYPTED) {
+    encrypted = process.env.BITE_FIXED_ENCRYPTED;
+    console.log(`Using pre-computed encrypted bytes: ${encrypted}`);
+  } else {
+    const secret = "0x" + Buffer.from("Hello BITE!").toString("hex");
+    const aad = process.env.BITE_ENCRYPTION_AAD || contractAddress;
+    console.log(`Encrypting: "${secret}" (aad=${aad})`);
+    encrypted = await bite.encryptMessageForCTX(secret, aad);
+    console.log(`Encrypted: ${encrypted}`);
+  }
 
   // -- simulate --------------------------------------------------------------
   let gasEstimate: bigint | null = null;

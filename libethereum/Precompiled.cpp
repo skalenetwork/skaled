@@ -942,27 +942,7 @@ ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef, const PrecompiledCall
 
 #ifdef BITE2
 
-// Produce ABI-encoded Error(string) revert payload for a precompiled that is not yet active.
-static bytes abiEncodeError( const std::string& _message ) {
-    bytes result;
-    // Error(string) selector = keccak256("Error(string)")[0:4] = 0x08c379a0
-    result.insert( result.end(), { 0x08, 0xc3, 0x79, 0xa0 } );
-    // offset to string data = 32
-    bytes offset = toBigEndian( dev::u256( 32 ) );
-    result.insert( result.end(), offset.begin(), offset.end() );
-    // string length
-    bytes len = toBigEndian( dev::u256( _message.size() ) );
-    result.insert( result.end(), len.begin(), len.end() );
-    // string bytes + zero-padding to 32-byte boundary
-    result.insert( result.end(), _message.begin(), _message.end() );
-    size_t padLen = ( 32 - ( _message.size() % 32 ) ) % 32;
-    result.insert( result.end(), padLen, 0 );
-    return result;
-}
-
 ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallContext& _ctx ) {
-    if ( !Bite2Patch::isEnabledInWorkingBlock() )
-        return { false, abiEncodeError( "bite2Patch not enabled" ) };
     try {
         // Parse ABI-encoded input: abi.encode(uint256 gasLimit, bytes data)
         // Format: gasLimit(32) + offset_to_data(32) + data_length(32) + data_bytes
@@ -1224,8 +1204,6 @@ ETH_REGISTER_PRECOMPILED( getRandomWalletAndSignatureForCTX )
 
 ETH_REGISTER_PRECOMPILED( encryptTE )
 ( bytesConstRef _in, const PrecompiledCallContext& _ctx ) {
-    if ( !Bite2Patch::isEnabledInWorkingBlock() )
-        return { false, abiEncodeError( "bite2Patch not enabled" ) };
     try {
         static constexpr size_t MAX_SIZE_BYTES = 64 * 1024;  // 64KB
         if ( _in.size() > MAX_SIZE_BYTES ) {
@@ -1364,8 +1342,6 @@ ETH_REGISTER_PRECOMPILED( encryptTE )
 
 ETH_REGISTER_PRECOMPILED( encryptECIES )
 ( bytesConstRef _in, const PrecompiledCallContext& _ctx ) {
-    if ( !Bite2Patch::isEnabledInWorkingBlock() )
-        return { false, abiEncodeError( "bite2Patch not enabled" ) };
     try {
         static constexpr size_t MAX_SIZE_BYTES = 64 * 1024;  // 64KB
 

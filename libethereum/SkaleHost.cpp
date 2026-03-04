@@ -678,7 +678,9 @@ void SkaleHost::createBlock( const ConsensusExtFace::Transactions& _approvedTran
 #ifdef BITE2
     // Need to reset encryption state with new block id before processing txs to make
     // sure a random for current block id is set.
-    resetEncryptionStateForBlock( _blockID );
+    if ( Bite2Patch::isEnabledInWorkingBlock() ) {
+        resetEncryptionStateForBlock( _blockID );
+    }
 #endif
 
     DEV_GUARDED( m_client.m_blockImportMutex ) {

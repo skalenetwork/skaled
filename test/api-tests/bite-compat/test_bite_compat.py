@@ -3,9 +3,13 @@ BITE / BITE2 compatibility tests — Phase 2a / 2b.
 
 Test execution order (enforced by definition order in this file):
 
-  Phase 2a  — pre-patch BITE2: submitCTX must revert
+  Phase 2a  — pre-patch BITE2: behaviour must match BITE (revert via ABI-decode failure)
   Activation — block until bite2PatchTimestamp is reached
   Phase 2b  — post-patch: full BITE2 tests including CTX mining
+
+Pre-patch BITE2 precompileds (submitCTX, encryptTE, encryptECIES) return
+{true, {}} when bite2Patch is not yet active, making them indistinguishable
+from an unregistered precompile call (same as BITE).
 
 Phase 1 tests (BITE node) live in test_phase1_bite.py and run first.
 Reference data written there is read here via _test_cache.cache.
@@ -23,6 +27,7 @@ from web3 import Web3
 from _test_cache import cache as _cache
 from _test_utils import (
     TS_SIMPLE_SECRET_SCRIPT,
+    _bite_provider_env,
     _make_rpc_call,
     _run_ts_script,
     _wait_for_bite2_patch_active,
@@ -45,49 +50,59 @@ def test_node_rpc_up(w3: Web3):
     logger.info("BITE2 node RPC is up at block %d", bn)
 
 
+def test_current_block_random_patch_activation(
+    w3: Web3, current_block_random_patch_ts: int, timeouts: dict
+):
+    """Wait for currentBlockRandomPatch to activate before Phase 2a begins.
+
+    This patch makes resolveRandomBlockNumber return the current block ID,
+    ensuring the reencryption random written by BlockConsensusAgent for the
+    current block is the one read in resetEncryptionStateForBlock.
+    """
+    remaining    = max(0, current_block_random_patch_ts - int(time.time()))
+    wait_timeout = remaining + timeouts.get("block_produce", 60) + 60
+    active = _wait_for_bite2_patch_active(w3, current_block_random_patch_ts, wait_timeout)
+    assert active, (
+        f"currentBlockRandomPatchTimestamp {current_block_random_patch_ts} "
+        f"not reached after {wait_timeout}s"
+    )
+    logger.info("currentBlockRandomPatch is now active (patch_ts=%d)", current_block_random_patch_ts)
+
+
 # ---------------------------------------------------------------------------
 # Phase 2a — pre-patch BITE2
 # ---------------------------------------------------------------------------
-
-def test_phase2a_simple_secret_deploy(
-    w3: Web3, private_key: str, bite_cfg: dict, timeouts: dict
-):
-    """
-    Deploy a fresh SimpleSecret on the BITE2 node (separate chain from BITE).
-    The address is cached as ``bite2_simple_secret_address`` for Phase 2a/2b.
-    """
-    timeout = timeouts.get("tx_mine", 180)
-    payload = _run_ts_script(
-        TS_SIMPLE_SECRET_SCRIPT, bite_cfg, timeout, private_key,
-        extra_args=["--deploy"],
-    )
-    addr = payload.get("contractAddress")
-    assert isinstance(addr, str) and addr, f"--deploy JSON missing contractAddress: {payload!r}"
-    _cache["bite2_simple_secret_address"] = addr
-    logger.info("SimpleSecret deployed on BITE2 node at %s", addr)
-
 
 def test_phase2a_simple_secret_simulate(
     w3: Web3, private_key: str, bite_cfg: dict, timeouts: dict
 ):
     """
     Simulate revealSecret pre-patch on the BITE2 node via estimateGas.
-    Compares callSucceeded against the BITE reference from Phase 1.
-    Warns (does not fail) if no reference.
+    The contract was deployed on the BITE node (same chain — BITE2 continues
+    from the same datadir).  Pre-patch BITE2 routes BITE2-only precompile
+    addresses through the unregistered-address path (same as BITE), so
+    estimateGas must fail (callSucceeded=False), matching BITE behaviour.
     """
     timeout = timeouts.get("tx_mine", 60)
-    addr = _cache.get("bite2_simple_secret_address")
+    addr = _cache.get("bite_simple_secret_address")
     if not addr:
-        pytest.skip("bite2_simple_secret_address not in cache — deploy step did not run")
+        pytest.skip("bite_simple_secret_address not in cache — Phase 1 deploy did not run")
 
+    encrypted = _cache.get("simple_secret_encrypted", "")
     payload = _run_ts_script(
         TS_SIMPLE_SECRET_SCRIPT, bite_cfg, timeout, private_key,
         extra_args=["--simulate"],
-        extra_env={"BITE_CONTRACT_ADDRESS": addr},
+        extra_env=_bite_provider_env(bite_cfg, {
+            "BITE_CONTRACT_ADDRESS": addr,
+            **({"BITE_FIXED_ENCRYPTED": encrypted} if encrypted else {}),
+        }),
     )
     assert "callSucceeded" in payload, f"--simulate JSON missing callSucceeded: {payload!r}"
     print(f"[BITE2 pre-patch simulate raw] {payload}")
-    logger.info("Phase 2a (BITE2 pre-patch) simulate result: %s", payload)
+    assert payload["callSucceeded"] is False, (
+        f"Pre-patch BITE2 simulate must fail (callSucceeded=False) — "
+        f"submitCTX returns empty data, causing ABI-decode revert. got: {payload!r}"
+    )
 
     ref = _cache.get("simple_secret_simulate_reference")
     if ref is None:
@@ -109,19 +124,25 @@ def test_phase2a_simple_secret_transaction(
     w3: Web3, private_key: str, bite_cfg: dict, timeouts: dict
 ):
     """
-    Send revealSecret pre-patch on the BITE2 node; it must revert.
-    Compares receipt status against the BITE reference from Phase 1.
-    Warns (does not fail) if no reference exists.
+    Send revealSecret pre-patch on the BITE2 node using the identical transaction
+    data from Phase 1 (same contract, same encrypted bytes, same chain).
+    Pre-patch BITE2 routes BITE2-only precompile addresses through the
+    unregistered-address path, so the outer transaction reverts (status=0),
+    matching BITE.  Receipt fields (gasUsed, logsBloom) must equal the BITE reference.
     """
     timeout = timeouts.get("tx_mine", 180)
-    addr = _cache.get("bite2_simple_secret_address")
+    addr = _cache.get("bite_simple_secret_address")
     if not addr:
-        pytest.skip("bite2_simple_secret_address not in cache — deploy step did not run")
+        pytest.skip("bite_simple_secret_address not in cache — Phase 1 deploy did not run")
 
+    encrypted = _cache.get("simple_secret_encrypted", "")
     payload = _run_ts_script(
         TS_SIMPLE_SECRET_SCRIPT, bite_cfg, timeout, private_key,
         extra_args=["--transaction"],
-        extra_env={"BITE_CONTRACT_ADDRESS": addr},
+        extra_env=_bite_provider_env(bite_cfg, {
+            "BITE_CONTRACT_ADDRESS": addr,
+            **({"BITE_FIXED_ENCRYPTED": encrypted} if encrypted else {}),
+        }),
     )
     tx_hash = payload.get("txHash")
     assert isinstance(tx_hash, str) and tx_hash, f"--transaction JSON missing txHash: {payload!r}"
@@ -129,11 +150,11 @@ def test_phase2a_simple_secret_transaction(
     receipt = _wait_for_tx(w3, tx_hash, timeout)
     assert receipt is not None, f"submitCTX pre-patch tx {tx_hash} not mined within {timeout}s"
     assert receipt["status"] == 0, (
-        f"submitCTX tx {tx_hash} succeeded (status=1) before bite2Patch activation — "
-        f"expected revert (block {receipt['blockNumber']})"
+        f"Pre-patch BITE2 tx {tx_hash} succeeded (status=1) — "
+        f"expected revert to match BITE behaviour (block {receipt['blockNumber']})"
     )
     logger.info(
-        "submitCTX correctly reverted before patch activation (block %d)",
+        "Pre-patch BITE2 submitCTX reverted as expected — matches BITE (block %d)",
         receipt["blockNumber"],
     )
 
@@ -145,11 +166,42 @@ def test_phase2a_simple_secret_transaction(
     else:
         assert receipt["status"] == ref["receipt_status"], (
             f"Pre-patch BITE2 receipt status ({receipt['status']}) differs from "
-            f"BITE reference ({ref['receipt_status']}) — behaviour mismatch"
+            f"BITE reference ({ref['receipt_status']})"
         )
+        actual_logs = [
+            {"address": log["address"], "topics": [t.hex() for t in log["topics"]], "data": log["data"].hex()}
+            for log in receipt["logs"]
+        ]
+        assert actual_logs == ref["logs"], (
+            f"Pre-patch BITE2 logs differ from BITE reference:\n"
+            f"  BITE2: {actual_logs}\n"
+            f"  BITE:  {ref['logs']}"
+        )
+        if "gas_used" in ref:
+            assert receipt["gasUsed"] == ref["gas_used"], (
+                f"Pre-patch BITE2 gasUsed ({receipt['gasUsed']}) differs from "
+                f"BITE reference ({ref['gas_used']}) — BITE2 pre-patch precompileds should "
+                f"fall through to the unregistered-address path (same gas as BITE)"
+            )
+            logger.info(
+                "gasUsed matches BITE reference — BITE: %d  BITE2 pre-patch: %d",
+                ref["gas_used"], receipt["gasUsed"],
+            )
+        if "cumulative_gas_used" in ref:
+            assert receipt["cumulativeGasUsed"] == ref["cumulative_gas_used"], (
+                f"Pre-patch BITE2 cumulativeGasUsed ({receipt['cumulativeGasUsed']}) differs from "
+                f"BITE reference ({ref['cumulative_gas_used']})"
+            )
+        if "logs_bloom" in ref:
+            actual_bloom = receipt["logsBloom"].hex()
+            assert actual_bloom == ref["logs_bloom"], (
+                f"Pre-patch BITE2 logsBloom differs from BITE reference:\n"
+                f"  BITE2: {actual_bloom}\n"
+                f"  BITE:  {ref['logs_bloom']}"
+            )
         logger.info(
-            "Pre-patch BITE2 transaction matches BITE reference (status=%d)",
-            receipt["status"],
+            "Pre-patch BITE2 transaction matches BITE reference (status=%d gasUsed=%d cumulativeGasUsed=%d logs=%d)",
+            receipt["status"], receipt["gasUsed"], receipt["cumulativeGasUsed"], len(receipt["logs"]),
         )
 
 
@@ -217,16 +269,21 @@ def test_phase2b_simple_secret_simulate(
     """
     Simulate revealSecret post-patch on the BITE2 node via estimateGas.
     After bite2Patch activation the call must succeed (callSucceeded=True).
+    Uses the same contract address and encrypted bytes as Phase 1 / Phase 2a.
     """
     timeout = timeouts.get("tx_mine", 60)
-    addr = _cache.get("bite2_simple_secret_address")
+    addr = _cache.get("bite_simple_secret_address")
     if not addr:
-        pytest.skip("bite2_simple_secret_address not in cache — deploy step did not run")
+        pytest.skip("bite_simple_secret_address not in cache — Phase 1 deploy did not run")
 
+    encrypted = _cache.get("simple_secret_encrypted", "")
     payload = _run_ts_script(
         TS_SIMPLE_SECRET_SCRIPT, bite_cfg, timeout, private_key,
         extra_args=["--simulate"],
-        extra_env={"BITE_CONTRACT_ADDRESS": addr},
+        extra_env=_bite_provider_env(bite_cfg, {
+            "BITE_CONTRACT_ADDRESS": addr,
+            **({"BITE_FIXED_ENCRYPTED": encrypted} if encrypted else {}),
+        }),
     )
     assert "callSucceeded" in payload, f"--simulate JSON missing callSucceeded: {payload!r}"
     print(f"[BITE2 post-patch simulate raw] {payload}")
@@ -242,19 +299,21 @@ def test_phase2b_submit_ctx_success(
     """
     SimpleSecret.revealSecret() triggers submitCTX successfully; the crafted
     CTX transaction must appear in the immediately following block.
-    Reuses the contract deployed in Phase 2a (cached address).
+    Uses the same contract address and encrypted bytes as Phase 1 / Phase 2a.
     """
     timeout = timeouts.get("tx_mine", 60)
-    addr = _cache.get("bite2_simple_secret_address")
-    extra_args = ["--transaction"] if addr else []
-    extra_env  = {"BITE_CONTRACT_ADDRESS": addr} if addr else {}
+    addr = _cache.get("bite_simple_secret_address")
     if not addr:
-        logger.warning("bite2_simple_secret_address not cached — deploying fresh contract")
+        pytest.skip("bite_simple_secret_address not in cache — Phase 1 deploy did not run")
 
+    encrypted = _cache.get("simple_secret_encrypted", "")
     payload = _run_ts_script(
         TS_SIMPLE_SECRET_SCRIPT, bite_cfg, timeout, private_key,
-        extra_args=extra_args,
-        extra_env=extra_env,
+        extra_args=["--transaction"],
+        extra_env=_bite_provider_env(bite_cfg, {
+            "BITE_CONTRACT_ADDRESS": addr,
+            **({"BITE_FIXED_ENCRYPTED": encrypted} if encrypted else {}),
+        }),
     )
 
     tx_hash = payload.get("txHash")

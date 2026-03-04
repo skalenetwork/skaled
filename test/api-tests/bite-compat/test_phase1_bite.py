@@ -184,6 +184,34 @@ def test_phase1_simple_secret_deploy(
     logger.info("SimpleSecret deployed on BITE node at %s", addr)
 
 
+def test_phase1_simple_secret_generate_encrypted(
+    w3_bite: Web3, private_key: str, bite_cfg: dict, timeouts: dict
+):
+    """
+    Generate encrypted bytes once on the BITE node and cache them.
+    The same bytes are reused for Phase 1, Phase 2a, and Phase 2b so that
+    calldata is identical across all phases (same gasUsed, same intrinsic gas).
+    """
+    timeout = timeouts.get("tx_mine", 60)
+    addr = _cache.get("bite_simple_secret_address")
+    if not addr:
+        pytest.skip("bite_simple_secret_address not in cache — deploy step did not run")
+
+    payload = _run_ts_script(
+        TS_SIMPLE_SECRET_SCRIPT, bite_cfg, timeout, private_key,
+        extra_args=["--generate-encrypted"],
+        extra_env=_bite_provider_env(bite_cfg, {
+            "BITE_CONTRACT_ADDRESS": addr,
+        }),
+    )
+    encrypted = payload.get("encrypted")
+    assert isinstance(encrypted, str) and encrypted, (
+        f"--generate-encrypted JSON missing encrypted: {payload!r}"
+    )
+    _cache["simple_secret_encrypted"] = encrypted
+    logger.info("Encrypted bytes generated on BITE node: %s…", encrypted[:20])
+
+
 def test_phase1_simple_secret_simulate(
     w3_bite: Web3, private_key: str, bite_cfg: dict, timeouts: dict
 ):
@@ -196,13 +224,21 @@ def test_phase1_simple_secret_simulate(
     if not addr:
         pytest.skip("bite_simple_secret_address not in cache — deploy step did not run")
 
+    encrypted = _cache.get("simple_secret_encrypted", "")
     payload = _run_ts_script(
         TS_SIMPLE_SECRET_SCRIPT, bite_cfg, timeout, private_key,
         extra_args=["--simulate"],
-        extra_env=_bite_provider_env(bite_cfg, {"BITE_CONTRACT_ADDRESS": addr}),
+        extra_env=_bite_provider_env(bite_cfg, {
+            "BITE_CONTRACT_ADDRESS": addr,
+            **({"BITE_FIXED_ENCRYPTED": encrypted} if encrypted else {}),
+        }),
     )
     assert "callSucceeded" in payload, f"--simulate JSON missing callSucceeded: {payload!r}"
     print(f"[BITE simulate raw] {payload}")
+    assert payload["callSucceeded"] is False, (
+        f"BITE simulate must fail (callSucceeded=False) — "
+        f"submitCTX returns empty data, causing ABI-decode revert. got: {payload!r}"
+    )
     _cache["simple_secret_simulate_reference"] = payload
     logger.info("Phase 1 (BITE) simulate reference saved: %s", payload)
 
@@ -220,19 +256,38 @@ def test_phase1_simple_secret_transaction(
     if not addr:
         pytest.skip("bite_simple_secret_address not in cache — deploy step did not run")
 
+    encrypted = _cache.get("simple_secret_encrypted", "")
     payload = _run_ts_script(
         TS_SIMPLE_SECRET_SCRIPT, bite_cfg, timeout, private_key,
         extra_args=["--transaction"],
-        extra_env=_bite_provider_env(bite_cfg, {"BITE_CONTRACT_ADDRESS": addr}),
+        extra_env=_bite_provider_env(bite_cfg, {
+            "BITE_CONTRACT_ADDRESS": addr,
+            **({"BITE_FIXED_ENCRYPTED": encrypted} if encrypted else {}),
+        }),
     )
     tx_hash = payload.get("txHash")
     assert isinstance(tx_hash, str) and tx_hash, f"--transaction JSON missing txHash: {payload!r}"
 
     receipt = _wait_for_tx(w3_bite, tx_hash, timeout)
     assert receipt is not None, f"BITE simple-secret tx {tx_hash} not mined within {timeout}s"
+    assert receipt["status"] == 0, (
+        f"BITE simple-secret tx {tx_hash} succeeded (status=1) — "
+        f"expected revert: submitCTX returns empty data on BITE, "
+        f"causing ABI-decode failure in the calling contract (block {receipt['blockNumber']})"
+    )
 
-    _cache["simple_secret_tx_reference"] = {"receipt_status": receipt["status"]}
+    _cache["simple_secret_tx_reference"] = {
+        "receipt_status": receipt["status"],
+        "gas_used": receipt["gasUsed"],
+        "cumulative_gas_used": receipt["cumulativeGasUsed"],
+        "logs_bloom": receipt["logsBloom"].hex(),
+        "logs": [
+            {"address": log["address"], "topics": [t.hex() for t in log["topics"]], "data": log["data"].hex()}
+            for log in receipt["logs"]
+        ],
+    }
     logger.info(
-        "Phase 1 (BITE) transaction reference saved: status=%d block=%d",
-        receipt["status"], receipt["blockNumber"],
+        "Phase 1 (BITE) transaction reference saved: status=%d gasUsed=%d cumulativeGasUsed=%d logs=%d block=%d",
+        receipt["status"], receipt["gasUsed"], receipt["cumulativeGasUsed"],
+        len(receipt["logs"]), receipt["blockNumber"],
     )
