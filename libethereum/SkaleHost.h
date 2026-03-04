@@ -126,7 +126,7 @@ public:
     void noteNewBlocks();
     void onBlockImported( dev::eth::BlockHeader const& _info );
 
-    dev::h256 receiveTransaction( std::string );
+    dev::h256 receiveTransaction( const std::string& _rlp );
 
     void pushToBroadcastQueue( const dev::eth::Transaction& _transaction );
 
