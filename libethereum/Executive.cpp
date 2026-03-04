@@ -357,8 +357,8 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
     m_savepoint = m_s.savepoint();
 
     bool accessAsPrecompiled = m_chainParams.isPrecompiled( _p.codeAddress, m_envInfo.number() ) &&
-                            m_chainParams.precompiledExecutionAllowedFrom(
-                                _p.codeAddress, _p.senderAddress, m_readOnly );
+                               m_chainParams.precompiledExecutionAllowedFrom(
+                                   _p.codeAddress, _p.senderAddress, m_readOnly );
 #ifdef BITE2
     if ( accessAsPrecompiled && !Bite2Patch::isEnabledInWorkingBlock() &&
          isBite2OnlyPrecompiled( _p.codeAddress ) )
