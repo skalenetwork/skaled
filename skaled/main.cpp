@@ -586,7 +586,6 @@ bool downloadSnapshotFromUrl( std::shared_ptr< SnapshotManager >& snapshotManage
     else
         snapshotHashAgent.reset( new SnapshotHashAgent( chainParams, arrayCommonPublicKey ) );
 
-    libBLS::init();
     std::pair< dev::h256, libBLS::algebra::G1Point > votedHash;
     std::vector< std::string > listUrlsToDownload;
     std::tie( listUrlsToDownload, votedHash ) =
@@ -790,6 +789,9 @@ int main( int argc, char** argv ) {
         Defaults::get();
         Ethash::init();
         NoProof::init();
+
+        // init cryptographic parameters
+        libBLS::init();
 
         /// General params for Node operation
         NodeMode nodeMode = NodeMode::Full;
