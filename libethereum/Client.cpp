@@ -1216,7 +1216,7 @@ h256 Client::importTransaction( Transaction const& _t, TransactionBroadcast _txO
         _t.checkAndValidateBITETransaction( historicGroupIndex );
 
 #ifdef BITE2
-    if ( Bite2Patch::isEnabledInWorkingBlock() && _t.isCTX() ) {
+    if ( !Bite2Patch::isEnabledInWorkingBlock() && _t.isCTX() ) {
         // someone tried to submit CTX via standard RPC
         // such transaction must be rejected
         BOOST_THROW_EXCEPTION( IllegalCTXSubmission() << errinfo_comment(
