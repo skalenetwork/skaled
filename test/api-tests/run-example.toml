@@ -113,7 +113,8 @@ enabled = true
 url = "http://127.0.0.1:1029"
 
 # Docker image for the simulated SGX wallet.
-image = "skalenetwork/sgxwallet_sim:develop-latest"
+image = "skalenetwork/sgxwallet_sim:1.10.1-develop.5"
+
 container_name = "skaled-api-tests-sgx"
 
 # SGX runtime artifacts directory (relative to repo root).

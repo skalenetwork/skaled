@@ -5335,8 +5335,12 @@ static std::string const c_BITEConfigString =
             "schainName": "TestChain",
             "schainID": 1,
             "emptyBlockIntervalMs": -1,
-            "SingleStateCommitPerBlockPatchTimestamp": 1,
-            "nodeGroups": {
+            "SingleStateCommitPerBlockPatchTimestamp": 1,)"
+#ifdef BITE2
+    R"(            "Bite2PatchTimestamp": 1,
+            "currentBlockRandomPatchTimestamp": 1,)"
+#endif
+    R"(            "nodeGroups": {
                 "0": {
                     "nodes": {
                         "8": [
