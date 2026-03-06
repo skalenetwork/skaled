@@ -140,7 +140,8 @@ std::optional< CommittedProgressData > StateProgressLog::loadProgressData() cons
         for ( auto const& item : rlp[4] ) {
             data.ctxsCreatedInBlock.emplace_back( item.data(), dev::eth::CheckTransaction::None,
                 true, EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
-                InvalidTransactionFormatPatch::isEnabledInWorkingBlock() );
+                InvalidTransactionFormatPatch::isEnabledInWorkingBlock(),
+                Bite2Patch::isEnabledInWorkingBlock() );
         }
 #endif
         return data;

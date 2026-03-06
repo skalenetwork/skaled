@@ -1,0 +1,31 @@
+# ==========================================================================
+# bite-compat suite — test parameters
+# ==========================================================================
+# Merged on top of run.toml at runtime by the test runner.
+# Infrastructure settings (binaries, datadirs, configs, patches) live in run.toml.
+
+# --------------------------------------------------------------------------
+# Environment type override
+# --------------------------------------------------------------------------
+[type]
+# "delegated" tells the framework to skip auto-launching any nodes.
+# The bite-compat suite manages its own BITE and BITE2 node lifecycle.
+env_type = "delegated"
+
+# --------------------------------------------------------------------------
+# SGX override
+# --------------------------------------------------------------------------
+[bite_compat]
+# Optional override:
+use_sgx = true
+# If omitted, bite-compat inherits global [sgx].enabled from run.toml.
+# Set use_sgx=false to force stubbed submitCTX args (no real SGX keys),
+# or use_sgx=true to require SGX key injection into generated configs.
+
+# --------------------------------------------------------------------------
+# Timeouts
+# --------------------------------------------------------------------------
+[bite_compat.timeouts]
+rpc_up        = 360  # seconds to wait for RPC to become available (SGX launch)
+block_produce = 60   # seconds to wait for new blocks after launch
+tx_mine       = 180  # seconds to wait for a sent transaction to be mined

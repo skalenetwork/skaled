@@ -1216,11 +1216,11 @@ h256 Client::importTransaction( Transaction const& _t, TransactionBroadcast _txO
         _t.checkAndValidateBITETransaction( historicGroupIndex );
 
 #ifdef BITE2
-    if ( !Bite2Patch::isEnabledInWorkingBlock() && _t.isCTX() ) {
-        // someone tried to submit CTX via standard RPC
+    if ( Bite2Patch::isEnabledInWorkingBlock() && _t.isCTX() ) {
+        // someone tried to submit CTX through regular transaction flow
         // such transaction must be rejected
-        BOOST_THROW_EXCEPTION( IllegalCTXSubmission() << errinfo_comment(
-                                   "Illegal attempt to submit CTX through JSON-RPC API" ) );
+        BOOST_THROW_EXCEPTION(
+            IllegalCTXSubmission() << errinfo_comment( "Illegal attempt to submit CTX" ) );
     }
 #endif  // BITE2
 #endif  // BITE
