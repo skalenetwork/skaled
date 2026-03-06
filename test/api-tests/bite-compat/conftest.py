@@ -42,7 +42,7 @@ FUNC_TESTS = SUITE_DIR.parent
 # Add api-tests/ to sys.path so ``from run import ...`` works.
 sys.path.insert(0, str(FUNC_TESTS))
 
-BITE2_PATCH_DELAY_SECONDS = 101
+BITE2_PATCH_DELAY_SECONDS = 301
 CURRENT_BLOCK_RANDOM_PATCH_DELAY_SECONDS = 81
 
 
