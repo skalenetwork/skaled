@@ -2982,8 +2982,14 @@ string SkaleServerOverride::implPreformatTrafficJsonMessage(
     return jo2.dump();
 }
 
-size_t SkaleServerOverride::g_nMaxStringValueLengthForJsonLogs = 1024 * 32;
+size_t SkaleServerOverride::g_nMaxStringValueLengthForJsonLogs = 200;
 size_t SkaleServerOverride::g_nMaxStringValueLengthForTransactionParams = 64;
+
+bool SkaleServerOverride::isValidRequestToTransformLogs( const nlohmann::json& _request ) {
+    return _request.count( "method" ) > 0 && _request["method"].is_string() &&
+           _request["method"].get< string >() == "eth_sendRawTransaction" &&
+           _request.count( "params" ) > 0 && _request["params"].is_array();
+}
 
 void SkaleServerOverride::stat_transformJsonForLogOutput( json& jo, bool isRequest,
     size_t nMaxStringValueLengthForJsonLogs, size_t nMaxStringValueLengthForTransactionParams,
@@ -2995,8 +3001,9 @@ void SkaleServerOverride::stat_transformJsonForLogOutput( json& jo, bool isReque
         return;
     if ( jo.is_string() ) {
         string strValue = jo.get< string >();
-        if ( strValue.size() > nMaxStringValueLengthForJsonLogs )
+        if ( strValue.size() > nMaxStringValueLengthForJsonLogs ) {
             jo = strValue.substr( 0, nMaxStringValueLengthForJsonLogs ) + "...";
+        }
         return;
     }
     if ( jo.is_array() ) {
@@ -3017,12 +3024,10 @@ void SkaleServerOverride::stat_transformJsonForLogOutput( json& jo, bool isReque
     bool bSkipParams = false;
     if ( ( !( nMaxStringValueLengthForTransactionParams == 0 ||
               nMaxStringValueLengthForTransactionParams == string::npos ) ) &&
-         nCallIndent == 1 && isRequest && jo.count( "method" ) > 0 && jo["method"].is_string() &&
-         jo["method"].get< string >() == "eth_sendRawTransaction" && jo.count( "params" ) > 0 &&
-         jo["params"].is_array() ) {
+         nCallIndent == 1 && isRequest && isValidRequestToTransformLogs( jo ) ) {
         bSkipParams = true;
         json jarrNewParams = json::array();
-        for ( auto it : jo["params"].items() ) {
+        for ( const auto& it : jo["params"].items() ) {
             if ( it.value().is_string() ) {
                 string strValue = it.value().get< string >();
                 if ( strValue.size() > nMaxStringValueLengthForTransactionParams )
@@ -3035,9 +3040,9 @@ void SkaleServerOverride::stat_transformJsonForLogOutput( json& jo, bool isReque
         }
         jo["params"] = jarrNewParams;
     }
-    if ( nMaxStringValueLengthForJsonLogs == 0 ||
-         nMaxStringValueLengthForJsonLogs == string::npos ) {
-        for ( auto it : jo.items() ) {
+    if ( nMaxStringValueLengthForJsonLogs != 0 ||
+         nMaxStringValueLengthForJsonLogs != string::npos ) {
+        for ( const auto& it : jo.items() ) {
             if ( bSkipParams && it.key() == "params" )
                 continue;
             stat_transformJsonForLogOutput( it.value(), isRequest, nMaxStringValueLengthForJsonLogs,
