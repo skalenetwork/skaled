@@ -778,11 +778,11 @@ void BlockChain::insertTransactionsDetailsToDb(
 
 #ifdef BITE
 #ifdef BITE2
-        CtxOrigin ctxOrigin( _block.ctxHashesLists );
-        _extrasWriteBatch.insert( toSlice( _block.info.hash(), ExtraCtxOrigin ),
-            ( db::Slice ) dev::ref( ctxOrigin.rlp() ) );
+        if ( Bite2Patch::isEnabledInWorkingBlock() ) {
+            CtxOrigin ctxOrigin( _block.ctxHashesLists );
+            _extrasWriteBatch.insert( toSlice( _block.info.hash(), ExtraCtxOrigin ),
+                ( db::Slice ) dev::ref( ctxOrigin.rlp() ) );
 
-        if ( SingleStateCommitPerBlockPatch::isEnabledInWorkingBlock() ) {
             CHECK_EXPRESSION( _block.createdCtxs );
             RLPStream s;
             s.appendList( _block.createdCtxs->size() );
