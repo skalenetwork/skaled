@@ -154,6 +154,12 @@ public:
 
     Transactions debugGetFutureTransactions() const { return m_tq.debugGetFutureTransactions(); }
 
+#ifdef BITE2
+    Transactions debugGetPendingBITE2Transactions() const {
+        return m_tq.debug_pendingBITE2Transactions();
+    }
+#endif
+
     /// Queues a block for import.
     ImportResult queueBlock( bytes const& _block, bool _isSafe = false );
 
@@ -295,7 +301,7 @@ public:
     // main entry point after consensus
     size_t importTransactionsAsBlock( const Transactions& _transactions,
 #ifdef BITE
-        const std::shared_ptr< DecryptedTransactionFieldsMap >& _decryptedTransactionDataFields,
+        DecryptedTransactions _decryptedTransactions,
 #endif
         u256 _gasPrice,
 #ifdef FAIR
@@ -307,16 +313,16 @@ public:
         return m_snapshotAgent->createSnapshotFile( _blockNumber );
     }
 
+    uint64_t getGroupIndexForBlockNumber( uint64_t _blockNumber ) const;
+
 #ifdef BITE
     uint64_t getCurrentEpochId() const { return historicGroupIndex.load(); }
-#endif
+    bool isCommitteeRotationSoon() const;
+    std::pair< std::array< std::string, 4 >, uint64_t > getNextCommitteeBITEInfo() const;
+#endif  // BITE
 
 #ifdef FAIR
     bool updateGroupIfNeeded();
-
-    std::pair< std::array< std::string, 4 >, uint64_t > getNextCommitteeBITEInfo() const;
-
-    bool isCommitteeRotationSoon() const;
 #endif
 
     // set exiting time for node rotation

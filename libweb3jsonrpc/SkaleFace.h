@@ -109,7 +109,15 @@ class SkaleFace : public ServerInterface< SkaleFace > {
         const Json::Value& request, Json::Value& response ) {
         response = this->bite_getDecryptedTransactionData( request[0u].asString() );
     }
-#endif
+#ifdef BITE2
+    inline virtual void bite_getCraftedCtxsI( const Json::Value& request, Json::Value& response ) {
+        response = this->bite_getCraftedCtxs( request[0u].asString() );
+    }
+    inline virtual void bite_getCtxOriginI( const Json::Value& request, Json::Value& response ) {
+        response = this->bite_getCtxOrigin( request[0u].asString() );
+    }
+#endif  // BITE2
+#endif  // BITE
 
     virtual std::string skale_protocolVersion() = 0;
     virtual std::string skale_receiveTransaction( std::string const& _rlp ) = 0;
@@ -130,7 +138,11 @@ class SkaleFace : public ServerInterface< SkaleFace > {
 #ifdef BITE
     virtual Json::Value bite_getCommitteesInfo() = 0;
     virtual Json::Value bite_getDecryptedTransactionData( const std::string& request ) = 0;
-#endif
+#ifdef BITE2
+    virtual Json::Value bite_getCraftedCtxs( const std::string& request ) = 0;
+    virtual std::string bite_getCtxOrigin( const std::string& request ) = 0;
+#endif  // BITE2
+#endif  // BITE
 
 public:
     SkaleFace() {
@@ -186,7 +198,18 @@ public:
             jsonrpc::Procedure( "bite_getDecryptedTransactionData", jsonrpc::PARAMS_BY_POSITION,
                 jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::SkaleFace::bite_getDecryptedTransactionDataI );
-#endif
+#ifdef BITE2
+        this->bindAndAddMethod(
+            jsonrpc::Procedure( "bite_getCraftedCtxs", jsonrpc::PARAMS_BY_POSITION,
+                jsonrpc::JSON_ARRAY, "param1", jsonrpc::JSON_STRING, NULL ),
+            &dev::rpc::SkaleFace::bite_getCraftedCtxsI );
+        this->bindAndAddMethod(
+            jsonrpc::Procedure( "bite_getCtxOrigin", jsonrpc::PARAMS_BY_POSITION,
+                jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_STRING, NULL ),
+            &dev::rpc::SkaleFace::bite_getCtxOriginI );
+
+#endif  // BITE2
+#endif  // BITE
     }
 };
 

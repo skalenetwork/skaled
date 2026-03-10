@@ -41,6 +41,10 @@
 #include <mutex>
 #include <thread>
 
+#ifdef BITE2
+#include "BITE2TransactionQueue.h"
+#endif
+
 namespace dev {
 namespace eth {
 
@@ -154,12 +158,29 @@ public:
     void dropGood( Transaction const& _t );
 
 #ifdef BITE2
-    /// Inserts new CTX into separate queue. Always called from block-executing thread
-    void importBITE2Transaction( Transaction&& _t );
+    /// Get all pending BITE2 transactions. Returned transactions are not removed from the queue
+    /// automatically. For internal logic.
+    const Transactions& pendingBITE2Transactions() const;
 
     /// Get all pending BITE2 transactions. Returned transactions are not removed from the queue
-    /// automatically.
-    std::vector< Transaction > pendingBITE2Transactions() const;
+    /// automatically. For Debug/RPC.
+    std::vector< Transaction > debug_pendingBITE2Transactions() const;
+
+    /// Add BITE2 txn as temporary
+    void addTempBITE2Transaction( dev::eth::Transaction&& _transaction );
+    /// Get hashes of temporary CTXs in queue
+    std::vector< dev::h256 > getTempBITE2Hashes() const;
+    /// Move BITE2 txn from temporary to permanent
+    void commitTempBITE2Transactions();
+
+    void clearTempBITE2Transactions();
+    void clearAllBITE2Transactions();
+
+    /// finalizes BITE2 queue to be ready to start processing next block
+    std::shared_ptr< std::vector< dev::eth::Transaction > > finalizeBITE2QueueAndGetCtxs();
+
+    /// Set the queue on startup with CTXs that were created in the previous block
+    void setBITE2QueueOnInit( Transactions&& _ctxQueue );
 #endif
 
     struct Status {
@@ -382,8 +403,7 @@ private:
     std::atomic_bool m_aborting;                       ///< Exit condition for verifier.
 
 #ifdef BITE2
-    std::vector< Transaction > m_bite2Current;  ///< Only one thread at a time accesses it.
-                                                ///< therefore no need in extra synchronisation
+    BITE2TransactionQueue m_bite2Queue;
 #endif
 
     Logger m_loggerInfo{ createLogger( VerbosityInfo, "TransactionQueue" ) };

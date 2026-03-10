@@ -25,6 +25,7 @@
 
 #include "EVMSchedule.h"
 
+#include <libdevcore/CommonData.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/vector_ref.h>
 #include <libdevcrypto/Common.h>
@@ -35,6 +36,7 @@
 #ifdef BITE
 #include <libconsensus/libBLS/threshold_encryption/ThresholdEncryption.h>
 #include <libconsensus/node/ConsensusInterface.h>
+#include <libethcore/BITECommon.h>
 #endif
 using namespace std;
 
@@ -442,7 +444,12 @@ TransactionType TransactionBase::getTransactionType( bytesConstRef _rlp ) {
 }
 
 TransactionBase::TransactionBase( bytesConstRef _rlpData, CheckTransaction _checkSig,
-    bool _allowInvalid, bool _eip1559Enabled, bool _invalidTransactionFormatPatchEnabled ) {
+    bool _allowInvalid, bool _eip1559Enabled, bool _invalidTransactionFormatPatchEnabled
+#ifdef BITE2
+    ,
+    bool _bite2PatchEnabled
+#endif
+) {
     MICROPROFILE_SCOPEI( "TransactionBase", "ctor", MP_GOLD2 );
     try {
         if ( _eip1559Enabled ) {
@@ -457,7 +464,16 @@ TransactionBase::TransactionBase( bytesConstRef _rlpData, CheckTransaction _chec
         // bad formatted txns cannot make it to the block
         // therefore no need to check it anywhere else
         checkIfBITETxnAndSet( m_receiveAddress );
-#endif
+
+#ifdef BITE2
+        // check if a txn is a CTX here only when bite2Patch is enabled;
+        // bad formatted txns cannot make it to the block
+        // therefore no need to check it anywhere else
+        if ( _bite2PatchEnabled )
+            checkIfCTXAndSet( m_data );
+#endif  // BITE2
+
+#endif  // BITE
     } catch ( std::exception& e ) {
         m_type = Type::Invalid;
         RLPStream s;
@@ -746,6 +762,14 @@ bytesConstRef dev::eth::bytesRefFromTransactionRlp( const RLP& _rlp ) {
 }
 
 #ifdef BITE
+bool TransactionBase::isInvalidBiteTransaction() const {
+    return ( m_isBITETxn && ( !m_decryptedData && !m_decryptedTo ) )
+#ifdef BITE2
+           || ( m_isCTX && !m_decryptedData )
+#endif
+        ;
+}
+
 bytes const& TransactionBase::decryptedData() const {
     if ( !m_decryptedData )
         return data();
@@ -766,77 +790,31 @@ void TransactionBase::checkAndValidateBITETransaction( uint64_t _currentEpochId 
     if ( !isBite() )
         return;
 
-    RLP rlpEncodedBITETxn;
-    try {
-        try {
-            rlpEncodedBITETxn = RLP( m_data );
-        } catch ( ... ) {
-            BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment( std::string(
-                                       "BITE transaction's data must be RLP encoded" ) ) );
-        }
-
-        // RLP structure: [epochId1, encryptedBITEData]
-        // encryptedBITEData may optionally have 1 or 2 encrypted AES keys assosiated with it
-
-        if ( !rlpEncodedBITETxn.isList() )
-            BOOST_THROW_EXCEPTION(
-                InvalidBITETransaction() << errinfo_comment(
-                    std::string( "BITE transaction's data is invalid: RLP must be a list" ) ) );
-
-        if ( rlpEncodedBITETxn.itemCount() != 2 )
-            BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment(
-                                       std::string( "BITE transaction's data is invalid: RLP list "
-                                                    "should have exactly 2 elements, got: " ) +
-                                       std::to_string( rlpEncodedBITETxn.itemCount() ) ) );
-
-        // read encrypted data
-        dev::bytes encryptedBITEData = rlpEncodedBITETxn[1].toBytes();
-        if ( encryptedBITEData.size() < BITE_CIPHERTEXT_MIN_LEN )
-            BOOST_THROW_EXCEPTION(
-                BITETransactionTooShort() << errinfo_comment(
-                    std::string( "BITE transaction's data size must be at least " ) +
-                    std::to_string( BITE_CIPHERTEXT_MIN_LEN ) + std::string( ", got " ) +
-                    std::to_string( encryptedBITEData.size() ) ) );
-
-        // read epochId
-        if ( !rlpEncodedBITETxn[0].isInt() )
-            BOOST_THROW_EXCEPTION(
-                InvalidBITETransaction() << errinfo_comment(
-                    std::string( "BITE transaction's data is invalid: epochId must be an int" ) ) );
-        uint64_t epochIdCandidate = rlpEncodedBITETxn[0].toInt< uint64_t >();
-        // if a txn was sent before rotation it may have previous epochId: currentEpochId - 1
-        if ( _currentEpochId != epochIdCandidate && _currentEpochId != epochIdCandidate + 1 )
-            BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment(
-                                       std::string( "BITE transaction's data is invalid: no "
-                                                    "payload found with matching epochId " ) +
-                                       std::to_string( _currentEpochId ) ) );
-
-        try {
-            // check that ciphertext is valid
-            libBLS::Ciphertext ciphertext = libBLS::Ciphertext::fromBytes( encryptedBITEData );
-            // if currentEpochId = epochIdCandidate + 1, then ciphertext must have
-            // 2 encrypted AES keys associated with it
-            if ( epochIdCandidate != _currentEpochId && ciphertext.getKeys().size() != 2 )
-                BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment(
-                                           std::string( "BITE transaction's data is invalid: no "
-                                                        "payload found with matching epochId " ) +
-                                           std::to_string( _currentEpochId ) ) );
-            // validate encrypted AES keys
-            for ( const auto& cipheredKey : ciphertext.getKeys() )
-                libBLS::ThresholdEncryption::validateEncryption( cipheredKey );
-        } catch ( libBLS::ThresholdUtils::IncorrectInput& ex ) {
-            BOOST_THROW_EXCEPTION(
-                InvalidBITETransaction() << errinfo_comment(
-                    std::string( "BITE transaction's data is invalid: " ) + ex.what() ) );
-        } catch ( libBLS::ThresholdUtils::IsNotWellFormed& ex ) {
-            BOOST_THROW_EXCEPTION(
-                InvalidBITETransaction() << errinfo_comment(
-                    std::string( "BITE transaction's data is invalid: " ) + ex.what() ) );
-        }
-    } catch ( const Exception& _e ) {
-        BOOST_LOG( m_loggerDebug )
-            << std::string( "invalid BITE data format: " ) << std::string( _e.what() );
-        throw;
-    }
+    dev::bite::BITEVerificationData verificationData{ _currentEpochId, {} };
+    dev::bite::validateBITECiphertext( m_data, verificationData );
 }
-#endif
+
+#ifdef BITE2
+
+void TransactionBase::checkIfCTXAndSet( const dev::bytes& _data ) {
+    if ( _data.size() < dev::bite::ON_DECRYPT_FUNCTION_SELECTOR_SIZE_BYTES )
+        return;
+    m_isCTX = std::equal( _data.begin(),
+        _data.begin() + dev::bite::ON_DECRYPT_FUNCTION_SELECTOR_SIZE_BYTES,
+        dev::bite::ON_DECRYPT_FUNCTION_SELECTOR.begin() );
+}
+
+void TransactionBase::setDecryptedArgsCTX( const DecryptedCTXArgs& _decryptedCTXArgs ) {
+    if ( !isCTX() )
+        throw std::runtime_error( "Trying to set CTX arguments for not CTX-type transaction" );
+
+    m_ctxEncryptedArgsSize = _decryptedCTXArgs.args.size();
+
+    auto decryptedCTXData = dev::bite::constructDecryptedCTXData( m_data, _decryptedCTXArgs );
+
+    // Reconstruct decrypted data: selector + abi encoded arrays
+    m_decryptedData = std::make_shared< dev::bytes >( decryptedCTXData );
+}
+#endif  // BITE2
+
+#endif  // BITE

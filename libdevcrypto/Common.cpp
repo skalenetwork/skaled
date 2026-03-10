@@ -26,8 +26,10 @@
 #include "AES.h"
 #include "CryptoPP.h"
 #include "Exceptions.h"
+#include "Hash.h"
 
 #include <cryptopp/aes.h>
+#include <cryptopp/filters.h>
 #include <cryptopp/modes.h>
 #include <cryptopp/pwdbased.h>
 #include <cryptopp/sha.h>
@@ -410,4 +412,184 @@ SignatureStruct dev::makeSignature( const bytes& entropy, const dev::u256& txInd
 
     return SignatureStruct( h256( r ), h256( s ), parity );
 }
+
+bytes dev::compressPublicKey( Public const& _pub ) {
+    auto* ctx = getCtx();
+
+    // Build uncompressed format: 0x04 || x || y (65 bytes)
+    std::array< uint8_t, 65 > uncompressedPubKey;
+    uncompressedPubKey[0] = 0x04;
+    memcpy( uncompressedPubKey.data() + 1, _pub.data(), 64 );
+
+    // Parse into secp256k1 internal format
+    secp256k1_pubkey parsedPubKey;
+    if ( !secp256k1_ec_pubkey_parse(
+             ctx, &parsedPubKey, uncompressedPubKey.data(), uncompressedPubKey.size() ) ) {
+        return {};  // Invalid public key
+    }
+
+    // Serialize to compressed format (33 bytes)
+    bytes result( 33 );
+    size_t outputLen = 33;
+    secp256k1_ec_pubkey_serialize(
+        ctx, result.data(), &outputLen, &parsedPubKey, SECP256K1_EC_COMPRESSED );
+
+    return result;
+}
+
+Public dev::decompressPublicKey( bytesConstRef _compressed ) {
+    if ( _compressed.size() != 33 )
+        return {};
+
+    auto* ctx = getCtx();
+
+    // Parse compressed public key
+    secp256k1_pubkey parsedPubKey;
+    if ( !secp256k1_ec_pubkey_parse( ctx, &parsedPubKey, _compressed.data(), _compressed.size() ) )
+        return {};
+
+    // Serialize to uncompressed format (65 bytes: 0x04 prefix + 64 bytes)
+    std::array< uint8_t, 65 > uncompressedPubKey;
+    size_t outputLen = 65;
+    secp256k1_ec_pubkey_serialize(
+        ctx, uncompressedPubKey.data(), &outputLen, &parsedPubKey, SECP256K1_EC_UNCOMPRESSED );
+
+    // Return the 64 bytes (skip the 0x04 prefix)
+    return Public( &uncompressedPubKey[1], Public::ConstructFromPointer );
+}
+
+bool dev::isValidPublicKey( Public const& _pub ) {
+    if ( !_pub )
+        return false;
+
+    auto* ctx = getCtx();
+
+    // Build uncompressed format: 0x04 || x || y (65 bytes)
+    std::array< uint8_t, 65 > uncompressedPubKey;
+    uncompressedPubKey[0] = 0x04;
+    memcpy( uncompressedPubKey.data() + 1, _pub.data(), 64 );
+
+    // Try to parse - this validates it's on the curve
+    secp256k1_pubkey parsedPubKey;
+    return secp256k1_ec_pubkey_parse(
+        ctx, &parsedPubKey, uncompressedPubKey.data(), uncompressedPubKey.size() );
+}
+
+bytes dev::encryptECIES_CBC(
+    Public const& _recipientPubKey, bytesConstRef _plain, h256 const* _seed ) {
+    // Note: Empty plaintext is allowed - with PKCS7 padding it produces a 16-byte padding block
+    // This prevents distinguishing between empty and non-empty encrypted payloads
+
+    KeyPair ephemeralKeyPair{ Secret() };
+    h128 iv;
+
+    if ( _seed ) {
+        // Deterministic mode: derive ephemeral key and IV from seed with context strings
+        // Derive ephemeral private key: SHA256(seed || "ECIES_EPHEMERAL_KEY" || counter)
+        // Retry with incrementing counter until valid key is found
+        // attempt 255 times
+        h256 ephemeralPrivateKey;
+        for ( uint8_t attempt = 0; attempt < 255; ++attempt ) {
+            bytes seedWithKeyContext = _seed->asBytes();
+            const std::string keyContext = "ECIES_EPHEMERAL_KEY";
+            seedWithKeyContext.insert(
+                seedWithKeyContext.end(), keyContext.begin(), keyContext.end() );
+            seedWithKeyContext.push_back( attempt );  // Append counter for retries
+            ephemeralPrivateKey = dev::sha256( bytesConstRef( &seedWithKeyContext ) );
+
+            ephemeralKeyPair = KeyPair( Secret( ephemeralPrivateKey ) );
+            if ( ephemeralKeyPair.pub() )
+                break;  // Valid key found
+        }
+        if ( !ephemeralKeyPair.pub() ) {
+            return {};  // Failed after all attempts (extremely unlikely)
+        }
+
+        // Derive IV: SHA256(seed || "ECIES_IV"), take first 16 bytes
+        bytes seedWithIvContext = _seed->asBytes();
+        const std::string ivContext = "ECIES_IV";
+        seedWithIvContext.insert( seedWithIvContext.end(), ivContext.begin(), ivContext.end() );
+        h256 ivHash = dev::sha256( bytesConstRef( &seedWithIvContext ) );
+        iv = h128( ivHash.data(), h128::ConstructFromPointer );
+    } else {
+        // Random mode: generate ephemeral key pair and IV randomly
+        ephemeralKeyPair = KeyPair::create();
+        iv = h128::random();
+    }
+
+    // ECDH: shared secret = ephemeral_private * recipient_public
+    Secret sharedSecret;
+    if ( !crypto::ecdh::agree( ephemeralKeyPair.secret(), _recipientPubKey, sharedSecret ) )
+        return {};
+
+    // KDF: encryption_key = SHA-256(shared_secret)
+    h256 encryptionKey = dev::sha256( sharedSecret.ref() );
+
+    // AES-256-CBC encryption with PKCS7 padding
+    CryptoPP::CBC_Mode< CryptoPP::AES >::Encryption aesEncryptor;
+    aesEncryptor.SetKeyWithIV( encryptionKey.data(), encryptionKey.size, iv.data() );
+
+    std::string ciphertextStr;
+    CryptoPP::StreamTransformationFilter stfEncryptor(
+        aesEncryptor, new CryptoPP::StringSink( ciphertextStr ) );
+    stfEncryptor.Put( _plain.data(), _plain.size() );
+    stfEncryptor.MessageEnd();
+
+    // Compress ephemeral public key to 33 bytes
+    bytes compressedEphPubKey = compressPublicKey( ephemeralKeyPair.pub() );
+    if ( compressedEphPubKey.empty() )
+        return {};
+
+    // Output format: [IV(16)] [CompressedEphPubKey(33)] [Ciphertext]
+    bytes result;
+    result.reserve( 16 + 33 + ciphertextStr.size() );
+    result.insert( result.end(), iv.begin(), iv.end() );
+    result.insert( result.end(), compressedEphPubKey.begin(), compressedEphPubKey.end() );
+    result.insert( result.end(), ciphertextStr.begin(), ciphertextStr.end() );
+
+    return result;
+}
+
+bytes dev::decryptECIES_CBC( Secret const& _recipientPrivKey, bytesConstRef _cipher ) {
+    // Minimum size: IV(16) + CompressedPubKey(33) + at least 1 block(16)
+    static constexpr size_t MIN_CIPHER_SIZE = 16 + 33 + 16;
+    if ( _cipher.size() < MIN_CIPHER_SIZE )
+        return {};
+
+    // Parse input: [IV(16)] [CompressedEphPubKey(33)] [Ciphertext]
+    h128 iv( _cipher.cropped( 0, 16 ) );
+    bytesConstRef compressedEphPubKey = _cipher.cropped( 16, 33 );
+    bytesConstRef ciphertext = _cipher.cropped( 49 );
+
+    // Decompress ephemeral public key
+    Public ephemeralPubKey = decompressPublicKey( compressedEphPubKey );
+    if ( !ephemeralPubKey )
+        return {};
+
+    // ECDH: shared secret = recipient_private * ephemeral_public
+    Secret sharedSecret;
+    if ( !crypto::ecdh::agree( _recipientPrivKey, ephemeralPubKey, sharedSecret ) )
+        return {};
+
+    // KDF: encryption_key = SHA-256(shared_secret)
+    h256 encryptionKey = dev::sha256( sharedSecret.ref() );
+
+    // AES-256-CBC decryption with PKCS7 unpadding
+    CryptoPP::CBC_Mode< CryptoPP::AES >::Decryption aesDecryptor;
+    aesDecryptor.SetKeyWithIV( encryptionKey.data(), encryptionKey.size, iv.data() );
+
+    std::string plaintextStr;
+    try {
+        CryptoPP::StreamTransformationFilter stfDecryptor( aesDecryptor,
+            new CryptoPP::StringSink( plaintextStr ),
+            CryptoPP::BlockPaddingSchemeDef::PKCS_PADDING );
+        stfDecryptor.Put( ciphertext.data(), ciphertext.size() );
+        stfDecryptor.MessageEnd();
+    } catch ( ... ) {
+        return {};  // Decryption or padding error
+    }
+
+    return bytes( plaintextStr.begin(), plaintextStr.end() );
+}
+
 #endif

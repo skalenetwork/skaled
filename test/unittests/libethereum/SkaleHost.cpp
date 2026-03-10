@@ -7,6 +7,20 @@
 #endif
 #include <libskale/ConsensusGasPricer.h>
 
+#ifdef BITE2
+#include <libconsensus/libBLS/threshold_encryption/TEPrivateKey.h>
+#include <libconsensus/libBLS/threshold_encryption/TEPrivateKeyShare.h>
+#include <libconsensus/libBLS/threshold_encryption/TEPublicKeyShare.h>
+#include <libconsensus/libBLS/threshold_encryption/TEDecryptSet.h>
+#include <test/utils.h>
+#include <secp256k1.h>
+#include <secp256k1_ecdh.h>
+#include <secp256k1_sha256.h>
+#include <cryptopp/aes.h>
+#include <cryptopp/modes.h>
+#include <libdevcore/RLP.h>
+#endif
+
 #include <test/tools/libtesteth/TestHelper.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>
 
@@ -75,13 +89,13 @@ public:
     }
     void stop() {}
 
-    ConsensusExtFace::transactions_vector pendingTransactions( size_t _limit ) {
+    ConsensusExtFace::Transactions pendingTransactions( size_t _limit ) {
         u256 stateRoot = 0;
         return m_extFace.pendingTransactions( _limit, stateRoot );
     }
-    void createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
+    void createBlock( const ConsensusExtFace::Transactions& _approvedTransactions,
 #ifdef BITE
-        shared_ptr< DecryptedTransactionFieldsMap > _decryptedTransactions,
+        DecryptedTransactions _decryptedTransactions,
 #endif
         uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice = 0, u256 _stateRoot = 0,
 #ifdef FAIR
@@ -103,7 +117,11 @@ public:
         return block_gas_prices.at( _blockId );
     }
 
-    u256 getRandomForBlockId( uint64_t _blockId ) const override { return 0; }
+    u256 getRandomForBlockId( uint64_t _blockId ) const override { return _blockId; }
+
+#ifdef BITE2
+    u256 getReencryptionRandomForBlockId( uint64_t _blockId ) const override { return _blockId; }
+#endif
 
     u256 setPriceForBlockId( uint64_t _blockId, u256 _gasPrice ) {
         assert( _blockId <= block_gas_prices.size() );
@@ -268,6 +286,19 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         return tx.toBytes();
     }
 
+    void setBlsPublicKey( const std::array< std::string, 4 >& _key ) {
+        chainParams->sChain.nodeGroups[0].blsPublicKey = _key;
+    }
+
+    void setNodeGroups( const std::vector< dev::eth::NodeGroup >& _groups ) {
+        chainParams->sChain.nodeGroups = _groups;
+    }
+
+    void setGroupFinishTs( size_t _idx, uint64_t _ts ) {
+        BOOST_REQUIRE( _idx < chainParams->sChain.nodeGroups.size() );
+        chainParams->sChain.nodeGroups[_idx].finishTs = _ts;
+    }
+
     TransactionQueue* tq;
 
     TransientDirectory tempDir;  // ! should exist before client!
@@ -370,10 +401,17 @@ BOOST_DATA_TEST_CASE(
     CHECK_BALANCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
+    ConsensusExtFace::Transactions txns;
+    txns.pushBackRegular( tx.toBytes() );
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{ tx.toBytes() },
+        stub->createBlock( txns,
 #ifdef BITE
-            make_shared< DecryptedTransactionFieldsMap >(),
+                           DecryptedTransactions{
+#ifdef BITE2
+                                   std::make_shared< DecryptedCTXTxsMap >(),
+#endif  // BITE2
+                                   std::make_shared< DecryptedRegularTxsMap >()
+                               },
 #endif
             utcTime(), 1U ) );
 
@@ -416,10 +454,21 @@ BOOST_DATA_TEST_CASE(
     CHECK_BALANCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
+    ConsensusExtFace::Transactions blockTxns;
+    blockTxns.pushBackRegular( small_tx1 );
+    blockTxns.pushBackRegular( small_tx2 );
+    blockTxns.pushBackRegular( bad_tx1 );
+    blockTxns.pushBackRegular( bad_tx2 );
+
     BOOST_REQUIRE_NO_THROW( stub->createBlock(
-        ConsensusExtFace::transactions_vector{ small_tx1, small_tx2, bad_tx1, bad_tx2 },
+        blockTxns,
 #ifdef BITE
-        make_shared< DecryptedTransactionFieldsMap >(),
+                                DecryptedTransactions{
+#ifdef BITE2
+                                        std::make_shared< DecryptedCTXTxsMap >(),
+#endif  // BITE2
+                                        std::make_shared< DecryptedRegularTxsMap >()
+                                    },
 #endif
         utcTime(), 1U ) );
 
@@ -512,10 +561,18 @@ BOOST_DATA_TEST_CASE(
     CHECK_BALANCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
+    ConsensusExtFace::Transactions txns;
+    txns.pushBackRegular( tx.toBytes() );
+
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{ tx.toBytes() },
+            stub->createBlock( txns,
 #ifdef BITE
-            make_shared< DecryptedTransactionFieldsMap >(),
+                               DecryptedTransactions{
+#ifdef BITE2
+                                       std::make_shared< DecryptedCTXTxsMap >(),
+#endif  // BITE2
+                                       std::make_shared< DecryptedRegularTxsMap >()
+                                   },
 #endif
             utcTime(), 1U ) );
 
@@ -580,9 +637,17 @@ BOOST_DATA_TEST_CASE(
     CHECK_BALANCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
-    BOOST_REQUIRE_NO_THROW( stub->createBlock( ConsensusExtFace::transactions_vector{ rlpBytes },
+    ConsensusExtFace::Transactions txns;
+    txns.pushBackRegular( rlpBytes );
+
+    BOOST_REQUIRE_NO_THROW( stub->createBlock( txns,
 #ifdef BITE
-        make_shared< DecryptedTransactionFieldsMap >(),
+                                               DecryptedTransactions{
+#ifdef BITE2
+                                                       std::make_shared< DecryptedCTXTxsMap >(),
+#endif  // BITE2
+                                                       std::make_shared< DecryptedRegularTxsMap >()
+                                                   },
 #endif
         utcTime(), 1U ) );
 
@@ -636,10 +701,18 @@ BOOST_DATA_TEST_CASE(
     CHECK_BALANCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
+    ConsensusExtFace::Transactions txns;
+    txns.pushBackRegular( tx.toBytes() );
+
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{ tx.toBytes() },
+        stub->createBlock( txns,
 #ifdef BITE
-            make_shared< DecryptedTransactionFieldsMap >(),
+                           DecryptedTransactions{
+#ifdef BITE2
+                                   std::make_shared< DecryptedCTXTxsMap >(),
+#endif  // BITE2
+                                   std::make_shared< DecryptedRegularTxsMap >()
+                               },
 #endif
             utcTime(), 1U ) );
 
@@ -708,10 +781,18 @@ BOOST_DATA_TEST_CASE(
     CHECK_BALANCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
+    ConsensusExtFace::Transactions txns;
+    txns.pushBackRegular( tx.toBytes() );
+
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{ tx.toBytes() },
+        stub->createBlock( txns,
 #ifdef BITE
-            make_shared< DecryptedTransactionFieldsMap >(),
+                           DecryptedTransactions{
+#ifdef BITE2
+                                   std::make_shared< DecryptedCTXTxsMap >(),
+#endif  // BITE2
+                                   std::make_shared< DecryptedRegularTxsMap >()
+                               },
 #endif
             utcTime(), 1U ) );
 
@@ -757,10 +838,18 @@ BOOST_DATA_TEST_CASE(
     CHECK_BALANCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
+    ConsensusExtFace::Transactions txns;
+    txns.pushBackRegular( tx.toBytes() );
+
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{ tx.toBytes() },
+        stub->createBlock( txns,
 #ifdef BITE
-            make_shared< DecryptedTransactionFieldsMap >(),
+                           DecryptedTransactions{
+#ifdef BITE2
+                                   std::make_shared< DecryptedCTXTxsMap >(),
+#endif  // BITE2
+                                   std::make_shared< DecryptedRegularTxsMap >()
+                               },
 #endif
             utcTime(), 1U ) );
 
@@ -806,11 +895,19 @@ BOOST_DATA_TEST_CASE(
     pair< bool, Secret > ar = accountHolder->authenticate( ts );
     Transaction tx1( ts, ar.second );
 
+    ConsensusExtFace::Transactions block1Txns;
+    block1Txns.pushBackRegular( tx1.toBytes() );
+
     // create 1 txns in 1 block
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{ tx1.toBytes() },
+        stub->createBlock( block1Txns,
 #ifdef BITE
-            make_shared< DecryptedTransactionFieldsMap >(),
+                           DecryptedTransactions{
+#ifdef BITE2
+                                   std::make_shared< DecryptedCTXTxsMap >(),
+#endif  // BITE2
+                                   std::make_shared< DecryptedRegularTxsMap >()
+                               },
 #endif
             utcTime(), 1U ) );
 
@@ -827,10 +924,18 @@ BOOST_DATA_TEST_CASE(
     CHECK_BALANCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
+    ConsensusExtFace::Transactions block2Txns;
+    block2Txns.pushBackRegular( tx2.toBytes() );
+
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{ tx2.toBytes() },
+        stub->createBlock( block2Txns,
 #ifdef BITE
-            make_shared< DecryptedTransactionFieldsMap >(),
+                           DecryptedTransactions{
+#ifdef BITE2
+                                   std::make_shared< DecryptedCTXTxsMap >(),
+#endif  // BITE2
+                                   std::make_shared< DecryptedRegularTxsMap >()
+                               },
 #endif
             utcTime(), 2U ) );
 
@@ -888,10 +993,18 @@ BOOST_DATA_TEST_CASE(
     CHECK_BALANCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
+    ConsensusExtFace::Transactions block1Txns;
+    block1Txns.pushBackRegular( tx.toBytes() );
+
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{ tx.toBytes() },
+        stub->createBlock( block1Txns,
 #ifdef BITE
-            make_shared< DecryptedTransactionFieldsMap >(),
+                           DecryptedTransactions{
+#ifdef BITE2
+                                   std::make_shared< DecryptedCTXTxsMap >(),
+#endif  // BITE2
+                                   std::make_shared< DecryptedRegularTxsMap >()
+                               },
 #endif
             utcTime(), 1U ) );
 
@@ -921,9 +1034,17 @@ BOOST_DATA_TEST_CASE(
     // make money
     dev::eth::simulateMining( *client, 1, senderAddress );
 
-    stub->createBlock( ConsensusExtFace::transactions_vector{ tx.toBytes() },
+    ConsensusExtFace::Transactions block2Txns;
+    block2Txns.pushBackRegular( tx.toBytes() );
+
+    stub->createBlock( block2Txns,
 #ifdef BITE
-        make_shared< DecryptedTransactionFieldsMap >(),
+                       DecryptedTransactions{
+#ifdef BITE2
+                               std::make_shared< DecryptedCTXTxsMap >(),
+#endif  // BITE2
+                               std::make_shared< DecryptedRegularTxsMap >()
+                           },
 #endif
         utcTime(), 2U );
 
@@ -981,10 +1102,19 @@ BOOST_DATA_TEST_CASE(
     CHECK_BALANCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
+    ConsensusExtFace::Transactions txns;
+    txns.pushBackRegular( tx1.toBytes() );
+    txns.pushBackRegular( tx2.toBytes() );
+
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{ tx1.toBytes(), tx2.toBytes() },
+        stub->createBlock( txns,
 #ifdef BITE
-            make_shared< DecryptedTransactionFieldsMap >(),
+                           DecryptedTransactions{
+#ifdef BITE2
+                                   std::make_shared< DecryptedCTXTxsMap >(),
+#endif  // BITE2
+                                   std::make_shared< DecryptedRegularTxsMap >()
+                               },
 #endif
             utcTime(), 1U ) );
     BOOST_REQUIRE_EQUAL( client->number(), 1 );
@@ -1046,10 +1176,10 @@ BOOST_AUTO_TEST_CASE( gasLimitInBlockProposal ) {
 
     sleep( 1 );  // allow broadcast thread to move them
 
-    ConsensusExtFace::transactions_vector proposal = stub->pendingTransactions( 100 );
+    ConsensusExtFace::Transactions proposal = stub->pendingTransactions( 100 );
 
     BOOST_REQUIRE_EQUAL( proposal.size(), 1 );
-    BOOST_REQUIRE( proposal[0] == tx1.toBytes() );
+    BOOST_REQUIRE( proposal.at( 0 ) == tx1.toBytes() );
 }
 
 // positive test for 4 next ones
@@ -1106,9 +1236,17 @@ BOOST_AUTO_TEST_CASE( transactionDropReceive
     CHECK_BLOCK_BEGIN;
     CHECK_NONCE_BEGIN( senderAddress );
 
-    BOOST_REQUIRE_NO_THROW( stub->createBlock( ConsensusExtFace::transactions_vector{ tx3 },
+    ConsensusExtFace::Transactions txns;
+    txns.pushBackRegular( tx3 );
+
+    BOOST_REQUIRE_NO_THROW( stub->createBlock( txns,
 #ifdef BITE
-        make_shared< DecryptedTransactionFieldsMap >(),
+                                               DecryptedTransactions{
+        #ifdef BITE2
+                                                       std::make_shared< DecryptedCTXTxsMap >(),
+        #endif  // BITE2
+                                                       std::make_shared< DecryptedRegularTxsMap >()
+                                                   },
 #endif
         utcTime(), 1U ) );
     stub->setPriceForBlockId( 1, 1000 );
@@ -1119,8 +1257,8 @@ BOOST_AUTO_TEST_CASE( transactionDropReceive
     // both should be known, but
     BOOST_REQUIRE_EQUAL( tq->knownTransactions().size(), 2 );
     // 2nd should be dropped, 1st kept
-    ConsensusExtFace::transactions_vector txns = stub->pendingTransactions( 3 );
-    BOOST_REQUIRE_EQUAL( txns.size(), 1 );
+    ConsensusExtFace::Transactions pendingTxns = stub->pendingTransactions( 3 );
+    BOOST_REQUIRE_EQUAL( pendingTxns.size(), 1 );
 }
 
 BOOST_AUTO_TEST_CASE(
@@ -1170,10 +1308,18 @@ BOOST_AUTO_TEST_CASE(
     CHECK_BALANCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
+    ConsensusExtFace::Transactions txns;
+    txns.pushBackRegular( tx2.toBytes() );
+
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{ tx2.toBytes() },
+        stub->createBlock( txns,
 #ifdef BITE
-            make_shared< DecryptedTransactionFieldsMap >(),
+                           DecryptedTransactions{
+#ifdef BITE2
+                                   std::make_shared< DecryptedCTXTxsMap >(),
+#endif  // BITE2
+                                   std::make_shared< DecryptedRegularTxsMap >()
+                               },
 #endif
             utcTime(), 1U ) );
     stub->setPriceForBlockId( 1, 1000 );
@@ -1185,8 +1331,8 @@ BOOST_AUTO_TEST_CASE(
     REQUIRE_BALANCE_DECREASE( senderAddress, value2 );
 
     // should not be accessible from queue
-    ConsensusExtFace::transactions_vector txns = stub->pendingTransactions( 1 );
-    BOOST_REQUIRE_EQUAL( txns.size(), 0 );
+    ConsensusExtFace::Transactions pendingTxns = stub->pendingTransactions( 1 );
+    BOOST_REQUIRE_EQUAL( pendingTxns.size(), 0 );
 }
 
 // TODO Check exact dropping reason!
@@ -1238,10 +1384,18 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPrice
     CHECK_BALANCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
+    ConsensusExtFace::Transactions txns;
+    txns.pushBackRegular( tx2.toBytes() );
+
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{ tx2.toBytes() },
+        stub->createBlock( txns,
 #ifdef BITE
-            make_shared< DecryptedTransactionFieldsMap >(),
+                           DecryptedTransactions{
+#ifdef BITE2
+                                   std::make_shared< DecryptedCTXTxsMap >(),
+#endif  // BITE2
+                                   std::make_shared< DecryptedRegularTxsMap >()
+                               },
 #endif
             utcTime(), 1U, 1000 ) );
     stub->setPriceForBlockId( 1, 1100 );
@@ -1253,8 +1407,8 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPrice
     REQUIRE_BALANCE_DECREASE( senderAddress, value2 + 21000 * 1000 );
 
     // should not be accessible from queue
-    ConsensusExtFace::transactions_vector txns = stub->pendingTransactions( 1 );
-    BOOST_REQUIRE_EQUAL( txns.size(), 0 );
+    ConsensusExtFace::Transactions pendingTxns = stub->pendingTransactions( 1 );
+    BOOST_REQUIRE_EQUAL( pendingTxns.size(), 0 );
 }
 
 // TODO Check exact dropping reason!
@@ -1315,10 +1469,18 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive
     CHECK_BALANCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
+    ConsensusExtFace::Transactions txns;
+    txns.pushBackRegular( tx2.toBytes() );
+
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{ tx2.toBytes() },
+        stub->createBlock( txns,
 #ifdef BITE
-            make_shared< DecryptedTransactionFieldsMap >(),
+                           DecryptedTransactions{
+#ifdef BITE2
+                                   std::make_shared< DecryptedCTXTxsMap >(),
+#endif  // BITE2
+                                   std::make_shared< DecryptedRegularTxsMap >()
+                               },
 #endif
             utcTime(), 1U, 1000 ) );
     stub->setPriceForBlockId( 1, 1100 );
@@ -1330,8 +1492,8 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive
     REQUIRE_BALANCE_DECREASE_GE( account2.address(), value2 );
 
     // should not be accessible from queue
-    ConsensusExtFace::transactions_vector txns = stub->pendingTransactions( 1 );
-    BOOST_REQUIRE_EQUAL( txns.size(), 0 );
+    ConsensusExtFace::Transactions pendingTxns = stub->pendingTransactions( 1 );
+    BOOST_REQUIRE_EQUAL( pendingTxns.size(), 0 );
 }
 
 BOOST_AUTO_TEST_CASE( transactionRace
@@ -1365,11 +1527,19 @@ BOOST_AUTO_TEST_CASE( transactionRace
     CHECK_BALANCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
+    ConsensusExtFace::Transactions txns;
+    txns.pushBackRegular( tx.toBytes() );
+
     // 2 get it from consensus
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{ tx.toBytes() },
+        stub->createBlock( txns,
 #ifdef BITE
-            make_shared< DecryptedTransactionFieldsMap >(),
+                           DecryptedTransactions{
+#ifdef BITE2
+                                   std::make_shared< DecryptedCTXTxsMap >(),
+#endif  // BITE2
+                                   std::make_shared< DecryptedRegularTxsMap >()
+                               },
 #endif
             utcTime(), 1U ) );
     stub->setPriceForBlockId( 1, 1000 );
@@ -1382,7 +1552,7 @@ BOOST_AUTO_TEST_CASE( transactionRace
     REQUIRE_BALANCE_DECREASE( senderAddress, value + gasPrice * 21000 );
 
     // 2 should be dropped from q
-    ConsensusExtFace::transactions_vector tx_from_q = stub->pendingTransactions( 1 );
+    ConsensusExtFace::Transactions tx_from_q = stub->pendingTransactions( 1 );
     BOOST_REQUIRE_EQUAL( tx_from_q.size(), 0 );
 
     // 3 send new tx and see nonce
@@ -1416,11 +1586,19 @@ BOOST_AUTO_TEST_CASE( partialCatchUp
     pair< bool, Secret > ar = accountHolder->authenticate( ts );
     Transaction tx1( ts, ar.second );
 
+    ConsensusExtFace::Transactions block1txns;
+    block1txns.pushBackRegular( tx1.toBytes() );
+
     // create 1 txns in 1 block
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{ tx1.toBytes() },
+        stub->createBlock( block1txns,
 #ifdef BITE
-            make_shared< DecryptedTransactionFieldsMap >(),
+                           DecryptedTransactions{
+#ifdef BITE2
+                                   std::make_shared< DecryptedCTXTxsMap >(),
+#endif  // BITE2
+                                   std::make_shared< DecryptedRegularTxsMap >()
+                               },
 #endif
             utcTime(), 1U ) );
 
@@ -1439,10 +1617,19 @@ BOOST_AUTO_TEST_CASE( partialCatchUp
     CHECK_BALANCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
+    ConsensusExtFace::Transactions block2Txns;
+    block2Txns.pushBackRegular( tx1.toBytes() );
+    block2Txns.pushBackRegular( tx2.toBytes() );
+
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{ tx1.toBytes(), tx2.toBytes() },
+        stub->createBlock( block2Txns,
 #ifdef BITE
-            make_shared< DecryptedTransactionFieldsMap >(),
+                           DecryptedTransactions{
+#ifdef BITE2
+                                   std::make_shared< DecryptedCTXTxsMap >(),
+#endif  // BITE2
+                                   std::make_shared< DecryptedRegularTxsMap >()
+                               },
 #endif
             utcTime(), 2U ) );
 
@@ -1467,6 +1654,7 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
 #ifdef BITE2
                                         { 0 },
                                         1,
+                                        dev::ZeroAddress,
 #endif
                                         true } );
     u256 blockRandom = skaleHost->getBlockRandom( 0, false );
@@ -1482,8 +1670,9 @@ BOOST_AUTO_TEST_CASE( getCurrentBLSPublicKey ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getIMABLSPublicKey" );
     auto res = exec( bytesConstRef(), { 1,
 #ifdef BITE2
-                                        { 0 },
-                                        -1,
+                                        { -1 },
+                                        0,
+                                        dev::ZeroAddress,
 #endif
                                         true } );
     std::array< std::string, 4 > imaBLSPublicKey = skaleHost->getCurrentBLSPublicKey();
@@ -1494,6 +1683,815 @@ BOOST_AUTO_TEST_CASE( getCurrentBLSPublicKey ) {
                                      toBigEndian( dev::u256( imaBLSPublicKey[3] ) ) );
 }
 #endif
+
+#ifdef BITE2
+
+BOOST_AUTO_TEST_CASE( encryptionRandom_read_only_does_not_advance_counter ) {
+    SkaleHostFixture fixture;
+    bool isCalledFromTxn = true;
+    fixture.skaleHost->resetEncryptionStateForBlock( 1 );
+
+    // Read-only calls always use counter = 0.
+    h256 readOnlyRandom1 = fixture.skaleHost->getEncryptionCallRandom( 1, !isCalledFromTxn );
+    h256 readOnlyRandom2 = fixture.skaleHost->getEncryptionCallRandom( 1, !isCalledFromTxn );
+    BOOST_REQUIRE( readOnlyRandom1 == readOnlyRandom2 );
+
+    // Read-only calls must not advance non-read counter.
+    h256 firstNonReadAfterReadOnly = fixture.skaleHost->getEncryptionCallRandom( 1, isCalledFromTxn );
+    fixture.skaleHost->resetEncryptionStateForBlock( 1 );
+    h256 firstNonReadFresh = fixture.skaleHost->getEncryptionCallRandom( 1, isCalledFromTxn );
+    BOOST_REQUIRE( firstNonReadAfterReadOnly == firstNonReadFresh );
+}
+
+BOOST_AUTO_TEST_CASE( encryptionRandom_non_read_only_advances_counter ) {
+    SkaleHostFixture fixture;
+    bool isCalledFromTxn = true;
+    fixture.skaleHost->resetEncryptionStateForBlock( 1 );
+
+    h256 random1 = fixture.skaleHost->getEncryptionCallRandom( 1, isCalledFromTxn );
+    h256 random2 = fixture.skaleHost->getEncryptionCallRandom( 1, isCalledFromTxn );
+    h256 random3 = fixture.skaleHost->getEncryptionCallRandom( 1, isCalledFromTxn );
+
+    BOOST_REQUIRE( random1 != random2 );
+    BOOST_REQUIRE( random2 != random3 );
+
+    // Reset must return counter back to zero for the block.
+    fixture.skaleHost->resetEncryptionStateForBlock( 1 );
+    h256 randomAfterReset = fixture.skaleHost->getEncryptionCallRandom( 1, isCalledFromTxn );
+    BOOST_REQUIRE( randomAfterReset == random1 );
+}
+
+BOOST_AUTO_TEST_CASE( encryptionRandom_resets_on_commit ) {
+    SkaleHostFixture fixture;
+    bool isCalledFromTxn = true;
+    fixture.skaleHost->resetEncryptionStateForBlock( 1 );
+
+    h256 block1Counter0 = fixture.skaleHost->getEncryptionCallRandom( 1, isCalledFromTxn );
+    h256 block1Counter1 = fixture.skaleHost->getEncryptionCallRandom( 1, isCalledFromTxn );
+    BOOST_REQUIRE( block1Counter0 != block1Counter1 );
+
+    // Simulate commit/new-block transition.
+    fixture.skaleHost->resetEncryptionStateForBlock( 2 );
+    h256 block2Counter0 = fixture.skaleHost->getEncryptionCallRandom( 2, isCalledFromTxn );
+
+    // Repeating the same reset should reproduce the first value in the block.
+    fixture.skaleHost->resetEncryptionStateForBlock( 2 );
+    h256 block2Counter0Again = fixture.skaleHost->getEncryptionCallRandom( 2, isCalledFromTxn );
+    BOOST_REQUIRE( block2Counter0 == block2Counter0Again );
+    BOOST_REQUIRE( block2Counter0 != block1Counter1 );
+}
+
+BOOST_AUTO_TEST_CASE( encryptTE_success ) {
+    SkaleHostFixture fixture;
+
+    // TE helper from libBLS
+    auto keys = generateKeys(1, 1);
+
+    // set test key
+    fixture.setBlsPublicKey(keys.commonPublic.getPublicKeyRaw().toStringArray(libBLS::Base::DEC));
+
+    // Get the executor for encryptTE
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptTE" );
+
+    // Create test input data
+    std::string testMessage = "Hello, threshold encryption!";
+    bytes dataToEncrypt( testMessage.begin(), testMessage.end() );
+
+    // Create a test SC address (20 bytes)
+    dev::Address testScAddress = dev::Address( "0x1234567890123456789012345678901234567890" );
+
+    // Build ABI-encoded input: abi.encode(bytes data)
+    // Format: [offset_to_data(32)] [data_length(32)] [data(N)]
+    bytes input;
+
+    // Offset to data = 32 (after offset field itself)
+    bytes offsetData( 32, 0 );
+    offsetData[31] = 32;
+    input.insert( input.end(), offsetData.begin(), offsetData.end() );
+
+    // data length
+    bytes dataLenBytes( 32, 0 );
+    dataLenBytes[31] = static_cast<uint8_t>( dataToEncrypt.size() );
+    input.insert( input.end(), dataLenBytes.begin(), dataLenBytes.end() );
+
+    // data (with ABI-compliant padding to 32-byte boundary)
+    input.insert( input.end(), dataToEncrypt.begin(), dataToEncrypt.end() );
+    size_t paddingNeeded = 32 - ( dataToEncrypt.size() % 32 );
+    input.insert( input.end(), paddingNeeded, 0 );
+
+    // Call the precompiled contract
+    auto res = exec( bytesConstRef( input.data(), input.size() ),
+        PrecompiledCallContext( 1, 0, 0, testScAddress, true ) );
+
+    // Verify success
+    BOOST_REQUIRE( res.first );
+    BOOST_REQUIRE( !res.second.empty() );
+
+    // Parse output as RLP list [epochId, ciphertextBytes]
+    RLP rlp( res.second );
+    BOOST_REQUIRE( rlp.isList() );
+    BOOST_REQUIRE( rlp.itemCount() == 2 );
+
+    uint64_t epochId = rlp[0].toInt<uint64_t>();
+    bytes ciphertextBytes = rlp[1].toBytes();
+
+    BOOST_REQUIRE_EQUAL( epochId, fixture.client->getCurrentEpochId() );
+
+    // Parse ciphertext component
+    libBLS::Ciphertext ciphertext = libBLS::Ciphertext::fromBytes( ciphertextBytes, /* validate */ true );
+
+    // Verify exactly 1 key is present
+    BOOST_REQUIRE_EQUAL( ciphertext.getKeys().size(), 1 );
+
+    // Validate the TE ciphertext with SC address as AAD
+    auto ScBytes = testScAddress.asBytes();
+    std::vector< uint8_t > aadBytes{ ScBytes.begin(), ScBytes.end() };
+    BOOST_REQUIRE_NO_THROW(
+        libBLS::ThresholdEncryption::validateEncryption( ciphertext.getTargetKey(), &aadBytes ) );
+
+    // decrypt & check if decrypted = original
+    
+    // 1. Create a decryption share from the single private key share
+    libBLS::TEDecryptionShare share = libBLS::ThresholdEncryption::partialDecrypt(
+        ciphertext.getTargetKey(), keys.secretKeys[0] );
+    // 2. Add to decrypt set
+    libBLS::TEDecryptSet decryptSet( 1, 1 );  // t=1, n=1
+    decryptSet.addDecryptShare( share );
+    // 3. Combine shares → AES key
+    libBLS::AES256Key aesKey = libBLS::ThresholdEncryption::combineShares( 
+        ciphertext.getTargetKey(), decryptSet );
+    // 4. Decrypt using AES key
+    std::vector< uint8_t > decryptedMessage = 
+        libBLS::ThresholdEncryption::decrypt( ciphertext, aesKey );
+    // 5. Verify original message matches
+    BOOST_REQUIRE( decryptedMessage == dataToEncrypt );    
+}
+
+BOOST_AUTO_TEST_CASE( encryptTE_same_data ) {
+    SkaleHostFixture fixture;
+
+    // TE helper from libBLS
+    auto keys = generateKeys(1, 1);
+
+    // set test key
+    fixture.setBlsPublicKey(keys.commonPublic.getPublicKeyRaw().toStringArray(libBLS::Base::DEC));
+
+    // Get the executor for encryptTE
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptTE" );
+
+    // Create test input data
+    std::string testMessage = "Deterministic test!";
+    bytes dataToEncrypt( testMessage.begin(), testMessage.end() );
+
+    // Build ABI-encoded input: abi.encode(bytes data)
+    // Format: [offset_to_data(32)] [data_length(32)] [data(N)]
+    bytes input;
+    bytes offsetData( 32, 0 );
+    offsetData[31] = 32;
+    input.insert( input.end(), offsetData.begin(), offsetData.end() );
+    bytes dataLenBytes( 32, 0 );
+    dataLenBytes[31] = static_cast<uint8_t>( dataToEncrypt.size() );
+    input.insert( input.end(), dataLenBytes.begin(), dataLenBytes.end() );
+    input.insert( input.end(), dataToEncrypt.begin(), dataToEncrypt.end() );
+    size_t paddingNeeded = 32 - ( dataToEncrypt.size() % 32 );
+    input.insert( input.end(), paddingNeeded, 0 );
+
+    // READ ONLY -----
+
+    bool isReadOnly = true;
+    // Call the precompiled contract twice - read only
+    auto res1_ro = exec( bytesConstRef( input.data(), input.size() ),
+        PrecompiledCallContext( 1, 0, 0, dev::Address(), isReadOnly ) );
+    auto res2_ro = exec( bytesConstRef( input.data(), input.size() ),
+        PrecompiledCallContext( 1, 0, 0, dev::Address(), isReadOnly ) );
+
+    // Verify success
+    BOOST_REQUIRE( res1_ro.first );
+    BOOST_REQUIRE( res2_ro.first );
+    // Results should be the same -> counter should not increase in read-only calls
+    BOOST_REQUIRE( res1_ro.second == res2_ro.second );
+
+    // NOT READ ONLY -----
+
+    isReadOnly = false;
+    // Call the precompiled contract twice - not read only
+    // simulate block commit -> resets counter before any tx in block is executed
+    fixture.skaleHost->resetEncryptionStateForBlock( 1 );
+    auto res1 = exec( bytesConstRef( input.data(), input.size() ),
+        PrecompiledCallContext( 1, 0, 0, dev::Address(), isReadOnly ) );
+    auto res2 = exec( bytesConstRef( input.data(), input.size() ),
+        PrecompiledCallContext( 1, 0, 0, dev::Address(), isReadOnly ) );
+
+    // Verify success
+    BOOST_REQUIRE( res1.first );
+    BOOST_REQUIRE( res2.first );
+
+    // Results should differ since encryption counter was increased 
+    BOOST_REQUIRE( res1.second != res2.second );
+
+    bytes ciphertextBytes1 = test::parseEpochedCiphertextBytes( res1.second, fixture.client->getCurrentEpochId() );
+    bytes ciphertextBytes2 = test::parseEpochedCiphertextBytes( res2.second, fixture.client->getCurrentEpochId() );
+
+    // Build the same public key list as precompiled contract
+    std::vector< libBLS::TEPublicKey > publicKeys;
+    auto blsPublicKeyArray = fixture.skaleHost->getCurrentBLSPublicKey();
+    libBLS::algebra::G2Point publicKeyG2 =
+        libBLS::algebra::G2Point::fromString( blsPublicKeyArray, libBLS::Base::DEC );
+    publicKeys.emplace_back( publicKeyG2 );
+
+    // Counter starts at 0 and increments per call in a block
+    bool isFromTx = true;// we want to check the non-read-only case where counter increments
+    bytes expectedCiphertext1 = buildDeterministicCiphertext( fixture.skaleHost->getReencryptionBlockRandom( 1, isFromTx ), 0, publicKeys, dataToEncrypt );
+    bytes expectedCiphertext2 = buildDeterministicCiphertext( fixture.skaleHost->getReencryptionBlockRandom( 1, isFromTx ), 1, publicKeys, dataToEncrypt );
+
+    BOOST_REQUIRE( ciphertextBytes1 == expectedCiphertext1 );
+    BOOST_REQUIRE( ciphertextBytes2 == expectedCiphertext2 );
+}
+
+BOOST_AUTO_TEST_CASE( encryptTE_rotation_soon ) {
+    SkaleHostFixture fixture;
+
+    // Generate keys for group 0 and group 1
+    auto keys0 = generateKeys(1, 1);
+    auto keys1 = generateKeys(1, 1);
+
+    // Set up two groups in chainParams to simulate rotation
+    // NodeGroup struct: { nodes, finishTs, blsPublicKey }
+    fixture.setNodeGroups({
+        // 1000 is a palceholder here - will be substituted in lines below
+        { {}, 1000, keys0.commonPublic.getPublicKeyRaw().toStringArray(libBLS::Base::DEC) },
+        { {}, uint64_t(-1), keys1.commonPublic.getPublicKeyRaw().toStringArray(libBLS::Base::DEC) }
+    });
+    
+    // We need to manipulate the block timestamp
+    // SkaleHostFixture sets genesis timestamp to current time - 5.
+    // Let's just adjust the first group's finish timestamp to be close to NOW.
+    uint64_t now = std::time(nullptr);
+    fixture.setGroupFinishTs(0, now + 10); // rotation in 10 seconds
+
+    // Get the executor for encryptTE
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptTE" );
+
+    // Create test input data
+    std::string testMessage = "Rotation test!";
+    bytes dataToEncrypt( testMessage.begin(), testMessage.end() );
+
+    // Offset to data = 32 (after offset field itself)
+    bytes input;
+    bytes offsetData( 32, 0 );
+    offsetData[31] = 32;
+    input.insert( input.end(), offsetData.begin(), offsetData.end() );
+
+    // data length
+    bytes dataLenBytes( 32, 0 );
+    dataLenBytes[31] = static_cast<uint8_t>( dataToEncrypt.size() );
+    input.insert( input.end(), dataLenBytes.begin(), dataLenBytes.end() );
+
+    // data (with ABI-compliant padding to 32-byte boundary)
+    input.insert( input.end(), dataToEncrypt.begin(), dataToEncrypt.end() );
+    size_t paddingNeeded = 32 - ( dataToEncrypt.size() % 32 );
+    input.insert( input.end(), paddingNeeded, 0 );
+
+    // Call the precompiled contract
+    auto res = exec( bytesConstRef( input.data(), input.size() ),
+        PrecompiledCallContext( 1, 0, 0, dev::Address(), true ) );
+
+    // Verify success
+    BOOST_REQUIRE( res.first );
+    
+    // Parse RLP
+    RLP rlp( res.second );
+    BOOST_REQUIRE( rlp.isList() );
+    BOOST_REQUIRE_EQUAL( rlp.itemCount(), 2 );
+
+    // check epoch id
+    uint64_t epochId = rlp[0].toInt< uint64_t >();
+    BOOST_REQUIRE_EQUAL( epochId, fixture.client->getCurrentEpochId() );
+
+    bytes ciphertextBytes = rlp[1].toBytes();
+    libBLS::Ciphertext ciphertext = libBLS::Ciphertext::fromBytes( ciphertextBytes );
+
+    // Verify exactly 2 keys are present because rotation is soon
+    BOOST_REQUIRE_EQUAL( ciphertext.getKeys().size(), 2 );
+
+    // SC address used as AAD
+    auto ScBytes = dev::Address().asBytes();
+    std::vector< uint8_t > aadBytes{ ScBytes.begin(), ScBytes.end() };
+
+    // Validate and decrypt with both keys
+    // Key 0 (current)
+    {
+        libBLS::Ciphertext ctCopy = ciphertext;
+        ctCopy.keepKey(0);
+        
+        // Validate the TE ciphertext with SC address as AAD
+        BOOST_REQUIRE_NO_THROW(
+            libBLS::ThresholdEncryption::validateEncryption( ctCopy.getTargetKey(), &aadBytes ) );
+        
+        libBLS::TEDecryptionShare share = libBLS::ThresholdEncryption::partialDecrypt(
+            ctCopy.getTargetKey(), keys0.secretKeys[0] );
+        libBLS::TEDecryptSet decryptSet( 1, 1 );
+        decryptSet.addDecryptShare( share );
+        libBLS::AES256Key aesKey = libBLS::ThresholdEncryption::combineShares( 
+            ctCopy.getTargetKey(), decryptSet );
+        std::vector< uint8_t > decryptedMessage = 
+            libBLS::ThresholdEncryption::decrypt( ctCopy, aesKey );
+        BOOST_REQUIRE( decryptedMessage == dataToEncrypt );
+    }
+
+    // Key 1 (next)
+    {
+        libBLS::Ciphertext ctCopy = ciphertext;
+        ctCopy.keepKey(1);
+        
+        // Validate the TE ciphertext with SC address as AAD
+        BOOST_REQUIRE_NO_THROW(
+            libBLS::ThresholdEncryption::validateEncryption( ctCopy.getTargetKey(), &aadBytes ) );
+        
+        libBLS::TEDecryptionShare share = libBLS::ThresholdEncryption::partialDecrypt(
+            ctCopy.getTargetKey(), keys1.secretKeys[0] );
+        libBLS::TEDecryptSet decryptSet( 1, 1 );
+        decryptSet.addDecryptShare( share );
+        libBLS::AES256Key aesKey = libBLS::ThresholdEncryption::combineShares( 
+            ctCopy.getTargetKey(), decryptSet );
+        std::vector< uint8_t > decryptedMessage = 
+            libBLS::ThresholdEncryption::decrypt( ctCopy, aesKey );
+        BOOST_REQUIRE( decryptedMessage == dataToEncrypt );
+    }
+}
+
+BOOST_AUTO_TEST_CASE( encryptTE_inputTooLarge ) {
+    SkaleHostFixture fixture;
+
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptTE" );
+
+    // Create input larger than 64KB
+    bytes largeInput( 65 * 1024, 0x42 );  // 65KB of 'B's
+    auto res = exec( bytesConstRef( largeInput.data(), largeInput.size() ),
+        PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+
+    // Verify failure with error code 1 (input too large)
+    BOOST_REQUIRE( !res.first );
+    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 1 ) ) );
+}
+
+BOOST_AUTO_TEST_CASE( encryptTE_inputTooSmall ) {
+    SkaleHostFixture fixture;
+
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptTE" );
+
+    // Call with input smaller than minimum (64 bytes for ABI format)
+    bytes smallInput( 63, 0x42 );
+    auto res = exec( bytesConstRef( smallInput.data(), smallInput.size() ),
+        PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+
+    // Verify failure with error code 2 (input too small)
+    BOOST_REQUIRE( !res.first );
+    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 2 ) ) );
+}
+
+BOOST_AUTO_TEST_CASE( encryptTE_inputNotAligned ) {
+    SkaleHostFixture fixture;
+
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptTE" );
+
+    // Build input that is not a multiple of 32 bytes (65 bytes)
+    bytes input( 65, 0 );
+
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+
+    // Verify failure with error code 3 (input not 32-byte aligned)
+    BOOST_REQUIRE( !res.first );
+    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 3 ) ) );
+}
+
+BOOST_AUTO_TEST_CASE( encryptTE_invalidABIEncoding ) {
+    SkaleHostFixture fixture;
+
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptTE" );
+
+    // Build input with wrong data offset (should be 32, we set 64)
+    bytes input( 64, 0 );
+    input[31] = 64;  // Wrong data offset (should be 32)
+
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+
+    // Verify failure with error code 5 (invalid data offset)
+    BOOST_REQUIRE( !res.first );
+    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 5 ) ) );
+}
+
+BOOST_AUTO_TEST_CASE( encryptTE_dataLengthMismatch ) {
+    SkaleHostFixture fixture;
+
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptTE" );
+
+    // Build valid ABI structure but claim more data than available
+    bytes input( 96, 0 );
+    // offset (0-31): 32
+    input[31] = 32;
+    // data_length (32-63): claim 100 bytes, but only 32 bytes total remain
+    input[63] = 100;
+    // actual data (64-95): only 32 bytes of zeros
+
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+
+    // Verify failure with error code 6 (data length mismatch)
+    BOOST_REQUIRE( !res.first );
+    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 6 ) ) );
+}
+
+BOOST_AUTO_TEST_CASE( encryptTE_trailingPaddingNotZeros ) {
+    SkaleHostFixture fixture;
+
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptTE" );
+
+    // Build valid ABI structure with 1 byte of data, but non-zero trailing padding
+    bytes input( 96, 0 );
+    // offset (0-31): 32
+    input[31] = 32;
+    // data_length (32-63): 1 byte
+    input[63] = 1;
+    // actual data (64): one byte of data
+    input[64] = 0xAB;
+    // trailing padding (65-95): should be zeros but we set one to non-zero
+    input[95] = 0xFF;
+
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+
+    // Verify failure with error code 7 (trailing padding not zeros)
+    BOOST_REQUIRE( !res.first );
+    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 7 ) ) );
+}
+
+BOOST_AUTO_TEST_CASE( encryptTE_counter_reset_on_new_block ) {
+    SkaleHostFixture fixture;
+
+    // TE helper from libBLS
+    auto keys = generateKeys(1, 1);
+
+    // set test key
+    fixture.setBlsPublicKey(keys.commonPublic.getPublicKeyRaw().toStringArray(libBLS::Base::DEC));
+
+    // Get the executor for encryptTE
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptTE" );
+
+    // Create test input data
+    std::string testMessage = "Counter reset test!";
+    bytes dataToEncrypt( testMessage.begin(), testMessage.end() );
+
+    // Build ABI-encoded input
+    bytes input;
+    bytes offsetData( 32, 0 );
+    offsetData[31] = 32;
+    input.insert( input.end(), offsetData.begin(), offsetData.end() );
+    bytes dataLenBytes( 32, 0 );
+    dataLenBytes[31] = static_cast<uint8_t>( dataToEncrypt.size() );
+    input.insert( input.end(), dataLenBytes.begin(), dataLenBytes.end() );
+    input.insert( input.end(), dataToEncrypt.begin(), dataToEncrypt.end() );
+    size_t paddingNeeded = 32 - ( dataToEncrypt.size() % 32 );
+    input.insert( input.end(), paddingNeeded, 0 );
+
+    // Call the precompiled contract in block 1 context (simulating transaction execution)
+    // simulate block 1 has been comitted
+    fixture.skaleHost->resetEncryptionStateForBlock( 1 );
+    auto res1 = exec( bytesConstRef( input.data(), input.size() ),
+        PrecompiledCallContext( 1, 0, 0, dev::Address(), false ) );
+
+    BOOST_REQUIRE( res1.first );
+
+    // Call the precompiled contract in block 2 context (simulating transaction execution)
+    fixture.skaleHost->resetEncryptionStateForBlock( 2 );
+    auto res2 = exec( bytesConstRef( input.data(), input.size() ),
+        PrecompiledCallContext( 2, 0, 0, dev::Address(), false ) );
+
+    BOOST_REQUIRE( res2.first );
+
+    // Results should still be different - blockRandom differs
+    BOOST_REQUIRE( res1.second != res2.second );
+
+    // compute the ciphertexts manually using counter 0 for both blocks
+    bytes ciphertextBytes1 = test::parseEpochedCiphertextBytes( res1.second, fixture.client->getCurrentEpochId() );
+    bytes ciphertextBytes2 = test::parseEpochedCiphertextBytes( res2.second, fixture.client->getCurrentEpochId() );
+
+    // Build the same public key list as precompiled contract
+    std::vector< libBLS::TEPublicKey > publicKeys;
+    auto blsPublicKeyArray = fixture.skaleHost->getCurrentBLSPublicKey();
+    libBLS::algebra::G2Point publicKeyG2 =
+        libBLS::algebra::G2Point::fromString( blsPublicKeyArray, libBLS::Base::DEC );
+    publicKeys.emplace_back( publicKeyG2 );
+
+    // Counter resets to 0 on each new block
+    // Block 1: counter=0, blockRandom for block 1
+    bytes expectedCiphertext1 = test::buildDeterministicCiphertext( 
+        fixture.skaleHost->getReencryptionBlockRandom( 1, true ), 0, publicKeys, dataToEncrypt );
+
+    // Block 2: counter=0 (reset!), blockRandom for block 2
+    bytes expectedCiphertext2 = test::buildDeterministicCiphertext( 
+        fixture.skaleHost->getReencryptionBlockRandom( 2, true ), 0, publicKeys, dataToEncrypt );
+    // Verify both match expected (proving counter was reset to 0 in block 2)
+    BOOST_REQUIRE( ciphertextBytes1 == expectedCiphertext1 );
+    BOOST_REQUIRE( ciphertextBytes2 == expectedCiphertext2 );
+}
+
+BOOST_AUTO_TEST_CASE( encryptECIES_success ) {
+    SkaleHostFixture fixture;
+
+    // Generate a user keypair
+    dev::KeyPair userKeys = dev::KeyPair::create();
+    dev::Public userPublicKey = userKeys.pub();
+    dev::Secret userPrivateKey = userKeys.secret();
+
+    // Extract x and y coordinates from public key (64 bytes total)
+    bytes pubKeyX( userPublicKey.data(), userPublicKey.data() + 32 );
+    bytes pubKeyY( userPublicKey.data() + 32, userPublicKey.data() + 64 );
+
+    // Create test data to encrypt
+    std::string testMessage = "Hello, ECIES encryption!";
+    bytes dataToEncrypt( testMessage.begin(), testMessage.end() );
+
+    // Build ABI-encoded input: [offset_to_data(32)] [x(32)] [y(32)] [data_length(32)] [data(N)]
+    bytes input;
+    // Offset to data = 96 (0x60) = 3 * 32
+    input.insert( input.end(), 32, 0 );
+    input[31] = 96;
+    // x-coordinate (32 bytes)
+    input.insert( input.end(), pubKeyX.begin(), pubKeyX.end() );
+    // y-coordinate (32 bytes)
+    input.insert( input.end(), pubKeyY.begin(), pubKeyY.end() );
+    // Data length (32 bytes)
+    bytes lenBytes( 32, 0 );
+    lenBytes[31] = static_cast<uint8_t>( dataToEncrypt.size() );
+    input.insert( input.end(), lenBytes.begin(), lenBytes.end() );
+    // Data (with ABI-compliant padding to 32-byte boundary)
+    input.insert( input.end(), dataToEncrypt.begin(), dataToEncrypt.end() );
+    size_t paddingNeeded = 32 - ( dataToEncrypt.size() % 32 );
+    input.insert( input.end(), paddingNeeded, 0 );
+
+    // Get the executor for encryptECIES
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptECIES" );
+
+    // Call the precompiled contract
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+
+    // Verify success
+    BOOST_REQUIRE( res.first );
+    BOOST_REQUIRE( !res.second.empty() );
+
+    // Output format: [IV (16 bytes)] [Ephemeral Public Key (33 bytes)] [Ciphertext (N bytes)]
+    BOOST_REQUIRE( res.second.size() >= 16 + 33 + 16 );  // IV + pubkey + min ciphertext
+
+    // Parse output
+    bytes iv( res.second.begin(), res.second.begin() + 16 );
+    bytes ephemeralPubKeyCompressed( res.second.begin() + 16, res.second.begin() + 16 + 33 );
+
+    // Verify ephemeral public key prefix (0x02 or 0x03 for compressed format)
+    BOOST_REQUIRE( ephemeralPubKeyCompressed[0] == 0x02 || ephemeralPubKeyCompressed[0] == 0x03 );
+
+    auto decryptedBytes = dev::decryptECIES_CBC( userPrivateKey, &res.second );
+
+    // 7. Verify decrypted matches original
+    BOOST_REQUIRE( decryptedBytes == dataToEncrypt );
+}
+
+BOOST_AUTO_TEST_CASE( encryptECIES_deterministic ) {
+    SkaleHostFixture fixture;
+
+    // Generate a user keypair
+    dev::KeyPair userKeys = dev::KeyPair::create();
+    dev::Public userPublicKey = userKeys.pub();
+
+    // Extract x and y coordinates from public key
+    bytes pubKeyX( userPublicKey.data(), userPublicKey.data() + 32 );
+    bytes pubKeyY( userPublicKey.data() + 32, userPublicKey.data() + 64 );
+
+    // Create test data to encrypt
+    std::string testMessage = "Deterministic test";
+    bytes dataToEncrypt( testMessage.begin(), testMessage.end() );
+
+    // Build ABI-encoded input
+    bytes input;
+    input.insert( input.end(), 32, 0 );
+    input[31] = 96;  // offset
+    input.insert( input.end(), pubKeyX.begin(), pubKeyX.end() );
+    input.insert( input.end(), pubKeyY.begin(), pubKeyY.end() );
+    bytes lenBytes( 32, 0 );
+    lenBytes[31] = static_cast<uint8_t>( dataToEncrypt.size() );
+    input.insert( input.end(), lenBytes.begin(), lenBytes.end() );
+    input.insert( input.end(), dataToEncrypt.begin(), dataToEncrypt.end() );
+    size_t paddingNeeded = 32 - ( dataToEncrypt.size() % 32 );
+    input.insert( input.end(), paddingNeeded, 0 );
+
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptECIES" );
+
+    // Call the precompiled contract twice in the same context (same block random)
+    // not read only -> will increase counter
+    bool isReadOnly = false;
+    auto res1 = exec( bytesConstRef( input.data(), input.size() ),
+        PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, isReadOnly ) );
+    auto res2 = exec( bytesConstRef( input.data(), input.size() ),
+        PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, isReadOnly ) );
+    BOOST_REQUIRE( res1.first );
+    BOOST_REQUIRE( res2.first );
+
+    // Results should differ since encryption counter was increased
+    BOOST_REQUIRE( res1.second != res2.second );
+
+    // Compute deterministic seed: Hash(blockRandom || counter)
+    auto buildSeed = [&]( uint64_t counter ) {
+        // use block 0, since no commits have been made yet
+        bytes blockRandomBytes = toBigEndian( fixture.skaleHost->getBlockRandom( 0, isReadOnly ) );
+        bytes counterBytes = toBigEndian( dev::u256( counter ) );
+        bytes combined;
+        combined.insert( combined.end(), blockRandomBytes.begin(), blockRandomBytes.end() );
+        combined.insert( combined.end(), counterBytes.begin(), counterBytes.end() );
+        return dev::sha3( combined );
+    };
+
+    auto computeCiphertext = [&]( uint64_t counter ) {
+        dev::h256 seed = buildSeed( counter );
+        return dev::encryptECIES_CBC( userPublicKey, bytesConstRef( &dataToEncrypt ), &seed );
+    };
+
+    bytes expectedCiphertext1 = computeCiphertext( 0 );
+    bytes expectedCiphertext2 = computeCiphertext( 1 );
+
+    BOOST_REQUIRE( res1.second == expectedCiphertext1 );
+    BOOST_REQUIRE( res2.second == expectedCiphertext2 );
+}
+
+BOOST_AUTO_TEST_CASE( encryptECIES_inputTooLarge ) {
+    SkaleHostFixture fixture;
+
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptECIES" );
+
+    // Input larger than 64KB
+    bytes largeInput( 65 * 1024, 0x42 );
+    auto res = exec( bytesConstRef( largeInput.data(), largeInput.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+
+    // Verify failure with error code 1 (input too large)
+    BOOST_REQUIRE( !res.first );
+    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 1 ) ) );
+}
+
+BOOST_AUTO_TEST_CASE( encryptECIES_inputTooSmall ) {
+    SkaleHostFixture fixture;
+
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptECIES" );
+
+    // Input smaller than 128 bytes
+    bytes smallInput( 64, 0x42 );
+    auto res = exec( bytesConstRef( smallInput.data(), smallInput.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+
+    // Verify failure with error code 2 (input too small)
+    BOOST_REQUIRE( !res.first );
+    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 2 ) ) );
+}
+
+BOOST_AUTO_TEST_CASE( encryptECIES_inputNotAligned ) {
+    SkaleHostFixture fixture;
+
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptECIES" );
+
+    // Build input that is not a multiple of 32 bytes (129 bytes)
+    bytes input( 129, 0 );
+
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+
+    // Verify failure with error code 3 (input not 32-byte aligned)
+    BOOST_REQUIRE( !res.first );
+    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 3 ) ) );
+}
+
+BOOST_AUTO_TEST_CASE( encryptECIES_invalidABIOffset ) {
+    SkaleHostFixture fixture;
+
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptECIES" );
+
+    // Build input with wrong data offset (should be 96, we set 64)
+    bytes input( 128, 0 );
+    input[31] = 64;  // Wrong offset (should be 96)
+
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+
+    // Verify failure with error code 4 (invalid data offset)
+    BOOST_REQUIRE( !res.first );
+    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 4 ) ) );
+}
+
+BOOST_AUTO_TEST_CASE( encryptECIES_dataLengthMismatch ) {
+    SkaleHostFixture fixture;
+
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptECIES" );
+
+    // Build input where data_length claims more data than actually present
+    bytes input( 128, 0 );
+    input[31] = 96;   // Correct offset
+    input[127] = 100; // Claim 100 bytes of data, but none actually present
+
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+
+    // Verify failure with error code 5 (data length mismatch)
+    BOOST_REQUIRE( !res.first );
+    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 5 ) ) );
+}
+
+BOOST_AUTO_TEST_CASE( encryptECIES_emptyData ) {
+    SkaleHostFixture fixture;
+
+    // Generate a valid user keypair
+    dev::KeyPair userKeys = dev::KeyPair::create();
+    dev::Public userPublicKey = userKeys.pub();
+    dev::Secret userPrivateKey = userKeys.secret();
+
+    // Extract x and y coordinates from public key (64 bytes total)
+    bytes pubKeyX( userPublicKey.data(), userPublicKey.data() + 32 );
+    bytes pubKeyY( userPublicKey.data() + 32, userPublicKey.data() + 64 );
+
+    // Build ABI-encoded input with EMPTY data
+    // Format: [offset_to_data(32)] [x(32)] [y(32)] [data_length(32)] [no data]
+    bytes input;
+    // Offset to data = 96 (0x60) = 3 * 32
+    input.insert( input.end(), 32, 0 );
+    input[31] = 96;
+    // x-coordinate (32 bytes)
+    input.insert( input.end(), pubKeyX.begin(), pubKeyX.end() );
+    // y-coordinate (32 bytes)
+    input.insert( input.end(), pubKeyY.begin(), pubKeyY.end() );
+    // Data length = 0 (32 bytes of zeros)
+    input.insert( input.end(), 32, 0 );
+
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptECIES" );
+
+    // Call the precompiled contract
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+
+    // Verify success - empty data encryption should succeed
+    BOOST_REQUIRE( res.first );
+    BOOST_REQUIRE( !res.second.empty() );
+
+    // Verify we can decrypt back to empty data
+    auto decryptedBytes = dev::decryptECIES_CBC( userPrivateKey, &res.second );
+    BOOST_REQUIRE( decryptedBytes.empty() );
+}
+
+BOOST_AUTO_TEST_CASE( encryptECIES_trailingPaddingNotZeros ) {
+    SkaleHostFixture fixture;
+
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptECIES" );
+
+    // Build valid ABI structure with 1 byte of data, but non-zero trailing padding
+    bytes input( 192, 0 );
+    // offset (0-31): 96
+    input[31] = 96;
+    // pubKeyX (32-63): zeros (valid x coordinate check happens later)
+    // pubKeyY (64-95): zeros
+    // data_length (96-127): 1 byte
+    input[127] = 1;
+    // actual data (128): one byte of data
+    input[128] = 0xAB;
+    // trailing padding (129-191): should be zeros but we set one to non-zero
+    input[150] = 0xFF;
+
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+
+    // Verify failure with error code 6 (trailing padding not zeros)
+    BOOST_REQUIRE( !res.first );
+    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 6 ) ) );
+}
+
+BOOST_AUTO_TEST_CASE( encryptECIES_invalidPublicKey ) {
+    SkaleHostFixture fixture;
+
+    // Create invalid public key (not on curve)
+    bytes invalidPubKeyX( 32, 0xFF );
+    bytes invalidPubKeyY( 32, 0xFF );
+
+    std::string testMessage = "Test";
+    bytes dataToEncrypt( testMessage.begin(), testMessage.end() );
+
+    // Build ABI-encoded input
+    bytes input;
+    input.insert( input.end(), 32, 0 );
+    input[31] = 96;  // offset
+    input.insert( input.end(), invalidPubKeyX.begin(), invalidPubKeyX.end() );
+    input.insert( input.end(), invalidPubKeyY.begin(), invalidPubKeyY.end() );
+    bytes lenBytes( 32, 0 );
+    lenBytes[31] = static_cast<uint8_t>( dataToEncrypt.size() );
+    input.insert( input.end(), lenBytes.begin(), lenBytes.end() );
+    input.insert( input.end(), dataToEncrypt.begin(), dataToEncrypt.end() );
+    // Add ABI-compliant padding to 32-byte boundary
+    size_t paddingNeeded = 32 - ( dataToEncrypt.size() % 32 );
+    input.insert( input.end(), paddingNeeded, 0 );
+
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptECIES" );
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+
+    // Verify failure with error code 7 (invalid public key)
+    BOOST_REQUIRE( !res.first );
+    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 7 ) ) );
+}
+#endif  // BITE2
 
 #ifdef BITE
 BOOST_AUTO_TEST_CASE( biteTransactions ) {
@@ -1539,15 +2537,25 @@ BOOST_AUTO_TEST_CASE( biteTransactions ) {
     shared_ptr< vector< uint8_t > > originalDataBytesPtr =
         std::make_shared< vector< uint8_t > >( messageToEncrypt );
 
-    DecryptedTransactionFields txFields = { originalDataBytesPtr,
-        std::make_shared< dev::bytes >( receiver.address().asBytes() ) };
+    DecryptedRegularTxFields txFields{ messageToEncrypt, receiver.address().asArray() };
+    std::shared_ptr< DecryptedRegularTxsMap > regularTxsMap =
+        std::make_shared< DecryptedRegularTxsMap >(
+            DecryptedRegularTxsMap{ { 0, std::make_optional( txFields ) } }
+        );
 
-    DecryptedTransactionFieldsMap decryptedTxnDataMap{ { 0, txFields } };
+    DecryptedTransactions decryptedTxnDataMap(
+#ifdef BITE2
+                std::make_shared< DecryptedCTXTxsMap >(),
+#endif
+                regularTxsMap
+                );
+
+    ConsensusExtFace::Transactions txns;
+    txns.pushBackRegular( txEncrypted.toBytes() );
 
     // simulate new block
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{ txEncrypted.toBytes() },
-            make_shared< DecryptedTransactionFieldsMap >( decryptedTxnDataMap ), utcTime(), 1U ) );
+        stub->createBlock( txns, decryptedTxnDataMap, utcTime(), 1U ) );
 
     BOOST_REQUIRE( client->transaction( encryptedTxHash ).toBytes() == txEncrypted.toBytes() );
     BOOST_REQUIRE(
@@ -1605,14 +2613,15 @@ BOOST_AUTO_TEST_CASE(syncNodeGroupsUpdatesEpochIdWithoutRotation) {
     uint64_t blockTimestamp = currentTimestamp + 1;
     uint64_t blockId = client->number() + 1;
 
-#ifdef BITE
-    auto decryptedTransactions = std::make_shared< DecryptedTransactionFieldsMap >();
-#endif
-
     BOOST_REQUIRE_NO_THROW( stub->createBlock(
-        ConsensusExtFace::transactions_vector{},
+        ConsensusExtFace::Transactions{},
 #ifdef BITE
-        decryptedTransactions,
+                                DecryptedTransactions{
+#ifdef BITE2
+                                        std::make_shared< DecryptedCTXTxsMap >(),
+#endif  // BITE2
+                                        std::make_shared< DecryptedRegularTxsMap >()
+                                    },
 #endif
         blockTimestamp, blockId ) );
 
@@ -1656,18 +2665,26 @@ BOOST_FIXTURE_TEST_CASE(
     // it will be put to "future" queue
     skaleHost->receiveTransaction( toJS( tx1.toBytes() ) );
     sleep( 1 );
-    ConsensusExtFace::transactions_vector proposal = stub->pendingTransactions( 100 );
+    ConsensusExtFace::Transactions proposal = stub->pendingTransactions( 100 );
     // and not proposed
     BOOST_REQUIRE_EQUAL( proposal.size(), 0 );
 
     CHECK_NONCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
+    ConsensusExtFace::Transactions block1Txns;
+    block1Txns.pushBackRegular( tx1.toBytes() );
+
     // simulate it coming from another node
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{ tx1.toBytes() },
+        stub->createBlock( block1Txns,
 #ifdef BITE
-            make_shared< DecryptedTransactionFieldsMap >(),
+                           DecryptedTransactions{
+#ifdef BITE2
+                                   std::make_shared< DecryptedCTXTxsMap >(),
+#endif  // BITE2
+                                   std::make_shared< DecryptedRegularTxsMap >()
+                               },
 #endif
             utcTime(), 1U ) );
 
@@ -1695,9 +2712,17 @@ BOOST_FIXTURE_TEST_CASE(
     proposal = stub->pendingTransactions( 100 );
     BOOST_REQUIRE_EQUAL( proposal.size(), 2 );
 
-    BOOST_REQUIRE_NO_THROW( stub->createBlock( ConsensusExtFace::transactions_vector{ proposal[0] },
+    ConsensusExtFace::Transactions block2Txns;
+    block2Txns.pushBackRegular( proposal.at( 0 ) );
+
+    BOOST_REQUIRE_NO_THROW( stub->createBlock( block2Txns,
 #ifdef BITE
-        make_shared< DecryptedTransactionFieldsMap >(),
+                                               DecryptedTransactions{
+#ifdef BITE2
+                                                       std::make_shared< DecryptedCTXTxsMap >(),
+#endif  // BITE2
+                                                       std::make_shared< DecryptedRegularTxsMap >()
+                                                   },
 #endif
         utcTime(), 2U ) );
 
@@ -1715,10 +2740,18 @@ BOOST_FIXTURE_TEST_CASE(
     proposal = stub->pendingTransactions( 100 );
     BOOST_REQUIRE_EQUAL( proposal.size(), 1 );
 
+    ConsensusExtFace::Transactions block3Txns;
+    block3Txns.pushBackRegular( proposal.at( 0 ) );
+
     // submit it for sure
-    BOOST_REQUIRE_NO_THROW( stub->createBlock( ConsensusExtFace::transactions_vector{ proposal[0] },
+    BOOST_REQUIRE_NO_THROW( stub->createBlock( block3Txns,
 #ifdef BITE
-        make_shared< DecryptedTransactionFieldsMap >(),
+                                               DecryptedTransactions{
+#ifdef BITE2
+                                                       std::make_shared< DecryptedCTXTxsMap >(),
+#endif  // BITE2
+                                                       std::make_shared< DecryptedRegularTxsMap >()
+                                                   },
 #endif
         utcTime(), 3U ) );
 }

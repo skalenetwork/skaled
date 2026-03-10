@@ -46,6 +46,10 @@
 #include <libdevcore/LevelDB.h>
 #include <libdevcore/system_usage.h>
 
+#ifdef BITE
+#include <libethcore/BITECommon.h>
+#endif
+
 #ifdef HISTORIC_STATE
 #include <libhistoric/AlethStandardTrace.h>
 #include <libhistoric/HistoricState.h>
@@ -325,6 +329,11 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
 
     m_gp->update( bc() );
 
+#ifdef BITE2
+    if ( SingleStateCommitPerBlockPatch::isEnabledInWorkingBlock() )
+        m_tq.setBITE2QueueOnInit( bc().ctxListForPreviousBlock() );
+#endif
+
     if ( m_dbPath.size() )
         Defaults::setDBPath( m_dbPath );
 
@@ -546,7 +555,7 @@ void Client::syncBlockQueue() {
 
 size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
 #ifdef BITE
-    const std::shared_ptr< DecryptedTransactionFieldsMap >& _decryptedTransactionDataFields,
+    DecryptedTransactions _decryptedTransactions,
 #endif
     u256 _gasPrice,
 #ifdef FAIR
@@ -576,7 +585,7 @@ size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
     {
         // store encrypted transactions
         DEV_WRITE_GUARDED( x_working )
-        m_working.setDecryptedTransactionDataFields( _decryptedTransactionDataFields );
+        m_working.setDecryptedTransactionDataFields( _decryptedTransactions );
     }
 #endif
 
@@ -613,15 +622,7 @@ size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
     return cntSucceeded;
 }
 
-#ifdef FAIR
-Address Client::getWinningNodeBeneficiary( uint64_t _winningNodeIndex ) const {
-    if ( _winningNodeIndex > 0 ) {
-        return bc().chainParams().getNodeBeneficiaryInHistoricGroup(
-            historicGroupIndex, _winningNodeIndex );
-    } else {
-        return Block::DEFAULT_BLOCK_OWNER_ADDRESS;
-    }
-}
+#ifdef BITE
 
 bool Client::isCommitteeRotationSoon() const {
     auto currentGroupIndex = historicGroupIndex.load();
@@ -646,10 +647,22 @@ std::pair< std::array< std::string, 4 >, uint64_t > Client::getNextCommitteeBITE
         currentGroupIndex + 1 };
 }
 
+#ifdef FAIR
+Address Client::getWinningNodeBeneficiary( uint64_t _winningNodeIndex ) const {
+    if ( _winningNodeIndex > 0 ) {
+        return bc().chainParams().getNodeBeneficiaryInHistoricGroup(
+            historicGroupIndex, _winningNodeIndex );
+    } else {
+        return Block::DEFAULT_BLOCK_OWNER_ADDRESS;
+    }
+}
+
 bool Client::updateGroupIfNeeded() {
     return bc().updateGroupIfNeeded();
 }
-#endif
+#endif  // FAIR
+
+#endif  // BITE
 
 size_t Client::syncTransactions(
     const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {
@@ -1199,9 +1212,18 @@ h256 Client::importTransaction( Transaction const& _t, TransactionBroadcast _txO
 #ifdef BITE
     // invalid BITE transactions should not be added to txn queue
     // only validate in production setup
-    if ( !chainParams().isTestSignaturesEnabled() )
+    if ( dev::bite::isCiphertextValidationEnabled )
         _t.checkAndValidateBITETransaction( historicGroupIndex );
-#endif
+
+#ifdef BITE2
+    if ( Bite2Patch::isEnabledInWorkingBlock() && _t.isCTX() ) {
+        // someone tried to submit CTX through regular transaction flow
+        // such transaction must be rejected
+        BOOST_THROW_EXCEPTION(
+            IllegalCTXSubmission() << errinfo_comment( "Illegal attempt to submit CTX" ) );
+    }
+#endif  // BITE2
+#endif  // BITE
 
     ImportResult res;
     if ( chainParams().isMultiTransactionModeEnabled() &&
@@ -1414,16 +1436,13 @@ Json::Value Client::traceBlock( BlockNumber _blockNumber, Json::Value const& _js
 
 #endif
 
-
-void Client::initHistoricGroupIndex() {
-    if ( number() == 0 ) {
-        historicGroupIndex = 0;
-        return;
-    }
+uint64_t Client::getGroupIndexForBlockNumber( uint64_t _blockNumber ) const {
+    if ( _blockNumber == 0 )
+        return 0;
 
     auto nodeGroups = chainParams().getNodeGroups();
 
-    uint64_t currentBlockTimestamp = blockInfo( hashFromNumber( number() ) ).timestamp();
+    uint64_t currentBlockTimestamp = blockInfo( hashFromNumber( _blockNumber ) ).timestamp();
 
     // always returns it != end() because current finish ts equals to uint64_t(-1)
     auto it = std::find_if( nodeGroups.begin(), nodeGroups.end(),
@@ -1436,7 +1455,8 @@ void Client::initHistoricGroupIndex() {
     }
 
     if ( !GroupIndexInitPatch::isEnabledInWorkingBlock() ) {
-        uint64_t previousBlockTimestamp = blockInfo( hashFromNumber( number() - 1 ) ).timestamp();
+        uint64_t previousBlockTimestamp =
+            blockInfo( hashFromNumber( _blockNumber - 1 ) ).timestamp();
         if ( it != nodeGroups.begin() ) {
             auto prevIt = std::prev( it );
             if ( currentBlockTimestamp >= prevIt->finishTs &&
@@ -1445,7 +1465,18 @@ void Client::initHistoricGroupIndex() {
         }
     }
 
-    historicGroupIndex = std::distance( nodeGroups.begin(), it );
+    uint64_t groupIndex = std::distance( nodeGroups.begin(), it );
+
+    return groupIndex;
+}
+
+void Client::initHistoricGroupIndex() {
+    if ( number() == 0 ) {
+        historicGroupIndex = 0;
+        return;
+    }
+
+    historicGroupIndex = getGroupIndexForBlockNumber( number() );
 }
 
 bool Client::updateHistoricGroupIndex() {

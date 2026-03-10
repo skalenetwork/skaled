@@ -64,5 +64,4 @@ bytes DecryptedTransactionData::rlp() const {
     return s.out();
 }
 
-
 #endif

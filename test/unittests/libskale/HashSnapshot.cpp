@@ -405,18 +405,15 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
             shared_ptr< GasPricer >(), NULL, monitor, boost::filesystem::path( BTRFS_DIR_PATH ),
             WithExisting::Kill ) );
 
-        //        client.reset(
-        //            new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr<
-        //            GasPricer >(),
-        //                tempDir.path(), "", WithExisting::Kill, TransactionQueue::Limits{100000,
-        //                1024} ) );
-
         // wait for 1st block to prevent race conditions in UnsafeRegion
         std::promise< void > block_promise;
         auto importHandler = client->setOnBlockImport(
             [&block_promise]( BlockHeader const& ) { block_promise.set_value(); } );
 
         client->injectSkaleHost();
+#ifdef BITE2
+        dev::eth::g_skaleHost = client->skaleHost();
+#endif
         client->startWorking();
 
         block_promise.get_future().wait();
@@ -458,6 +455,10 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
             testIpcClient = nullptr;
         }
         rpcServer.reset();
+#ifdef BITE2
+        if ( g_skaleHost )
+            g_skaleHost.reset();
+#endif
         client.reset();
 
         const char* NC = getenv( "NC" );

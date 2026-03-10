@@ -124,19 +124,28 @@ qtbuild/
 
 scripts/skale_build/executable/skaled
 
-# func-tests runtime artifacts
-test/func-tests/.venv/
-test/func-tests/run.toml
-test/func-tests/**/__pycache__/
-test/func-tests/logs/
-test/func-tests/datadir-loop-*/
-test/func-tests/configs/*
-!test/func-tests/configs/*.j2
-test/func-tests/**/sol/artifacts/
-test/func-tests/**/sol/cache/
-test/func-tests/**/sol/deployments/
-test/func-tests/**/sol/typechain/
-test/func-tests/**/sol/typechain-types/
-test/func-tests/**/sol/coverage/
-test/func-tests/**/sol/coverage.json
-test/func-tests/**/sol/ignition/deployments/
+# local test runner configs
+/test/api-tests/run.toml
+
+# api-tests artifacts
+/test/api-tests/**/.venv/
+/test/api-tests/**/__pycache__/
+/test/api-tests/**/node_modules/
+/test/api-tests/**/.ropeproject/
+/test/api-tests/**/.pytest_cache/
+/test/api-tests/**/logs/
+/test/api-tests/**/sgx-artifacts/
+/test/api-tests/**/datadir/
+/test/api-tests/**/datadir-*/
+/test/api-tests/**/progress_log/
+/test/api-tests/**/sol/artifacts/
+/test/api-tests/**/sol/cache/
+/test/api-tests/**/sol/typechain-types/
+/test/api-tests/**/sol/deployments/
+/test/api-tests/**/configs/*
+!/test/api-tests/**/configs/*template*
+!/test/api-tests/**/configs/*example*
+/test/api-tests/**/config-*.generated.json
+/test/api-tests/**/skaled.status
+/test/api-tests/**/sgx-keys.json
+/test/api-tests/**/.*.swp

@@ -77,11 +77,13 @@
 #include <thread>
 
 #ifdef BITE
+#include <libethcore/BITECommon.h>
 #include <libconsensus/libBLS/threshold_encryption/ThresholdEncryption.h>
 #endif
 
 #ifdef BITE2
-#include <libethereum/BITEConstants.h>
+#include <libethcore/BITECommon.h>
+#include <libethereum/PrecompiledHelpers.h>
 #endif
 
 #ifdef FAIR
@@ -443,7 +445,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         const std::map< std::string, std::string >& params =
             std::map< std::string, std::string >() ) {
 
-        // this fixture is used in al tests to load config. So also init bls library as well
+        // this fixture is used in all tests to load config. So also init bls library as well
         libBLS::init();
 
         if ( _config != "" ) {
@@ -466,7 +468,10 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
 #endif
                 if ( params.count( "contractStorageLimit" ) )
                     ret["skaleConfig"]["sChain"]["contractStorageLimit"] = std::stoi( params.at( "contractStorageLimit" ) );
-
+#ifdef BITE2
+                if ( params.count( "BITE2PatchTimestamp" ) )
+                    ret["skaleConfig"]["sChain"]["Bite2PatchTimestamp"] = std::stoi( params.at( "BITE2PatchTimestamp" ) );
+#endif
                 Json::FastWriter fastWriter;
                 std::string output = fastWriter.write( ret );
                 chainParams->loadConfig( output );
@@ -570,6 +575,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             [&blockPromise]( BlockHeader const& ) { blockPromise.set_value(); } );
 
         client->injectSkaleHost();
+        dev::eth::g_skaleHost = client->skaleHost();
         client->startWorking();
 
         if ( !_isSyncNode )
@@ -4982,7 +4988,6 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
 
     dev::eth::simulateMining( *( fixture.client ), 20 );
     string senderAddress = toJS( fixture.coinbase.address() );
-    dev::eth::g_skaleHost = fixture.client->skaleHost();
 
     // create block and save block random for it
     Json::Value txRefill;
@@ -5000,6 +5005,7 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
 #ifdef BITE2
                                           0,
                                           1,
+                                          dev::ZeroAddress,
 #endif
                                           true );
     auto blockRandomEarly = blockRandomExecutor( dev::bytesConstRef(), ctx );
@@ -5059,6 +5065,7 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
 #ifdef BITE2
                                 0,
                                 1,
+                                dev::ZeroAddress,
 #endif
                                 true );
     auto executionResult = blockRandomExecutor( dev::bytesConstRef(), ctx );
@@ -5079,6 +5086,7 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
 #ifdef BITE2
                                 0,
                                 1,
+                                dev::ZeroAddress,
 #endif
                                 true );
     auto blockRandomEarlyHistoric = blockRandomExecutor(dev::bytesConstRef(), ctx );
@@ -5158,7 +5166,12 @@ static std::string const c_BITEConfigString =
             "schainID": 1,
             "contractStorageLimit": 128,
             "emptyBlockIntervalMs": -1,
-            "nodeGroups": {
+            "SingleStateCommitPerBlockPatchTimestamp": 1,)"
+#ifdef BITE2
+    R"(            "Bite2PatchTimestamp": 1,
+            "currentBlockRandomPatchTimestamp": 1,)"
+#endif
+    R"(            "nodeGroups": {
                 "0": {
                     "nodes": {
                         "8": [
@@ -5206,8 +5219,8 @@ static std::string const c_BITEConfigString =
         "0000000000000000000000000000000000000005": { "precompiled": { "name": "getBlockRandom", "linear": { "base": 15, "word": 0 } } },)"
 #ifdef BITE2
     R"(
-		"0000000000000000000000000000000000000006": { "precompiled": { "name": "getRandomWalletAndSignatureForCTX", "linear": { "base": 15, "word": 0 } } },
-        "0000000000000000000000000000000000000007": { "precompiled": { "name": "submitCTX", "linear": { "base": 15, "word": 0 } } },)"
+        "000000000000000000000000000000000000001A": { "precompiled": { "name": "getRandomWalletAndSignatureForCTX", "linear": { "base": 15, "word": 0 } } },
+        "000000000000000000000000000000000000001B": { "precompiled": { "name": "submitCTX", "linear": { "base": 15, "word": 0 } } },)"
 #endif
     /*
 pragma solidity ^0.4.25;
@@ -5332,7 +5345,12 @@ static std::string const c_BITEConfigString =
             "schainName": "TestChain",
             "schainID": 1,
             "emptyBlockIntervalMs": -1,
-            "nodeGroups": {
+            "SingleStateCommitPerBlockPatchTimestamp": 1,)"
+#ifdef BITE2
+    R"(            "Bite2PatchTimestamp": 1,
+            "currentBlockRandomPatchTimestamp": 1,)"
+#endif
+    R"(            "nodeGroups": {
                 "0": {
                     "nodes": {
                         "8": [
@@ -5400,8 +5418,8 @@ static std::string const c_BITEConfigString =
         "0000000000000000000000000000000000000005": { "precompiled": { "name": "getBlockRandom", "linear": { "base": 15, "word": 0 } } },)"
 #ifdef BITE2
     R"(
-        "0000000000000000000000000000000000000006": { "precompiled": { "name": "getRandomWalletAndSignatureForCTX", "linear": { "base": 15, "word": 0 } } },
-        "0000000000000000000000000000000000000007": { "precompiled": { "name": "submitCTX", "linear": { "base": 15, "word": 0 } } },)"
+        "0x000000000000000000000000000000000000001A": { "precompiled": { "name": "getRandomWalletAndSignatureForCTX", "linear": { "base": 15, "word": 0 } } },
+        "0x000000000000000000000000000000000000001B": { "precompiled": { "name": "submitCTX", "linear": { "base": 15, "word": 0 } } },)"
 #endif
     /*
 pragma solidity ^0.4.25;
@@ -5812,364 +5830,94 @@ dev::bytes buildAbiEncodedArrays( const std::vector<dev::bytes>& args1Elements, 
     return result;
 }
 
-BOOST_AUTO_TEST_CASE( getRandomWalletAndSignatureForCTX ) {
-    JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true, false, -1, {{ "contractStorageLimit", "100000" }} );
-
-    dev::eth::g_skaleHost = fixture.client->skaleHost();
-
+BOOST_AUTO_TEST_CASE( rejectExplicitCTXSubmission ) {
+    JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true, false, -1, { { "contractStorageLimit", "100000" } } );
     string senderAddress = toJS( fixture.coinbase.address() );
-
-//    pragma solidity ^0.8.13;
-
-//    contract Precompile0x06Caller {
-//        address public lastGenerated;
-//        address public preLastGenerated;
-//        bytes public lastSignature;
-//        bytes public preLastSignature;
-
-//        function generateRandomWallet() public returns (address) {
-//            uint256 randomNumber = uint256(keccak256(abi.encodePacked(block.timestamp, block.number)));
-//            bytes[] memory args1 = new bytes[](2);
-//            // args1 elements must be at least BITE_CIPHERTEXT_MIN_LEN bytes (276 bytes)
-//            args1[0] = new bytes(276);
-//            for (uint i = 0; i < 276; i++) {
-//                args1[0][i] = 0x11;
-//            }
-//            args1[1] = new bytes(276);
-//            for (uint i = 0; i < 276; i++) {
-//                args1[1][i] = 0x22;
-//            }
-//            bytes[] memory args2 = new bytes[](2);
-//            args2[0] = abi.encodePacked("plaintext1");
-//            args2[1] = abi.encodePacked("plaintext2");
-//            bytes memory randomBytes = abi.encode(args1, args2);
-//            bytes memory input = abi.encode(address(this), randomNumber, randomBytes);
-
-//            (bool success, bytes memory result) = address(0x06).staticcall(input);
-
-//            preLastGenerated = lastGenerated;
-//            preLastSignature = lastSignature;
-
-//            address addr = address(bytes20(result));
-
-//            bytes memory signature = new bytes(result.length - 20);
-//            for (uint i = 0; i < result.length - 20; i++) {
-//                signature[i] = result[i + 20];
-//            }
-
-//            lastGenerated = addr;
-//            lastSignature = signature;
-
-//            return addr;
-//        }
-
-//        function generateRandomWalletWithInput(bytes calldata input) public returns (address) {
-//            (bool success, bytes memory result) = address(0x06).staticcall(input);
-
-//            preLastGenerated = lastGenerated;
-//            preLastSignature = lastSignature;
-
-//            address addr = address(bytes20(result));
-
-//            bytes memory signature = new bytes(result.length - 20);
-//            for (uint i = 0; i < result.length - 20; i++) {
-//                signature[i] = result[i + 20];
-//            }
-
-//            lastGenerated = addr;
-//            lastSignature = signature;
-
-//            return addr;
-//        }
-
-//        function getLastGeneratedAddress() public view returns (address) {
-//            return lastGenerated;
-//        }
-
-//        function getPreLastGeneratedAddress() public view returns (address) {
-//            return preLastGenerated;
-//        }
-
-//        function getLastSignature() public view returns (bytes memory) {
-//            return lastSignature;
-//        }
-
-//        function getPreLastSignature() public view returns (bytes memory) {
-//            return preLastSignature;
-//        }
-//    }
-    std::string bytecode = "6080604052348015600f57600080fd5b506117a78061001f6000396000f3fe608060405234801561001057600080fd5b506004361061009e5760003560e01c80638628f93a116100665780638628f93a146101395780638ee64f3614610169578063c667882614610187578063cdf72f9e146101a5578063fcab457f146101c35761009e565b8063041d5d7b146100a35780630c2dd5f4146100c15780632bbdbd7e146100df57806352c92885146100fd5780638482f2461461011b575b600080fd5b6100ab6101e1565b6040516100b89190610cf6565b60405180910390f35b6100c961020a565b6040516100d69190610cf6565b60405180910390f35b6100e7610230565b6040516100f49190610da1565b60405180910390f35b6101056102be565b6040516101129190610cf6565b60405180910390f35b610123610873565b6040516101309190610da1565b60405180910390f35b610153600480360381019061014e9190610e32565b610905565b6040516101609190610cf6565b60405180910390f35b610171610b47565b60405161017e9190610da1565b60405180910390f35b61018f610bd9565b60405161019c9190610da1565b60405180910390f35b6101ad610c67565b6040516101ba9190610cf6565b60405180910390f35b6101cb610c8b565b6040516101d89190610cf6565b60405180910390f35b60008060009054906101000a900473ffffffffffffffffffffffffffffffffffffffff16905090565b600160009054906101000a900473ffffffffffffffffffffffffffffffffffffffff1681565b6003805461023d90610eae565b80601f016020809104026020016040519081016040528092919081815260200182805461026990610eae565b80156102b65780601f1061028b576101008083540402835291602001916102b6565b820191906000526020600020905b81548152906001019060200180831161029957829003601f168201915b505050505081565b60008042436040516020016102d4929190610f0a565b6040516020818303038152906040528051906020012060001c90506000600267ffffffffffffffff81111561030c5761030b610f36565b5b60405190808252806020026020018201604052801561033f57816020015b606081526020019060019003908161032a5790505b50905061011467ffffffffffffffff81111561035e5761035d610f36565b5b6040519080825280601f01601f1916602001820160405280156103905781602001600182028036833780820191505090505b50816000815181106103a5576103a4610f65565b5b602002602001018190525060005b61011481101561042c57601160f81b826000815181106103d6576103d5610f65565b5b602002602001015182815181106103f0576103ef610f65565b5b60200101907effffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff1916908160001a90535080806001019150506103b3565b5061011467ffffffffffffffff81111561044957610448610f36565b5b6040519080825280601f01601f19166020018201604052801561047b5781602001600182028036833780820191505090505b50816001815181106104905761048f610f65565b5b602002602001018190525060005b61011481101561051757602260f81b826001815181106104c1576104c0610f65565b5b602002602001015182815181106104db576104da610f65565b5b60200101907effffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff1916908160001a905350808060010191505061049e565b506000600267ffffffffffffffff81111561053557610534610f36565b5b60405190808252806020026020018201604052801561056857816020015b60608152602001906001900390816105535790505b50905060405160200161057a90610feb565b6040516020818303038152906040528160008151811061059d5761059c610f65565b5b60200260200101819052506040516020016105b79061104c565b604051602081830303815290604052816001815181106105da576105d9610f65565b5b6020026020010181905250600082826040516020016105fa92919061116d565b60405160208183030381529060405290506000308583604051602001610622939291906111b3565b6040516020818303038152906040529050600080600673ffffffffffffffffffffffffffffffffffffffff168360405161065c919061122d565b600060405180830381855afa9150503d8060008114610697576040519150601f19603f3d011682016040523d82523d6000602084013e61069c565b606091505b509150915060008054906101000a900473ffffffffffffffffffffffffffffffffffffffff16600160006101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff160217905550600260039081610712919061141b565b5060008161071f90611554565b60601c905060006014835161073491906115ea565b67ffffffffffffffff81111561074d5761074c610f36565b5b6040519080825280601f01601f19166020018201604052801561077f5781602001600182028036833780820191505090505b50905060005b6014845161079391906115ea565b81101561081357836014826107a8919061161e565b815181106107b9576107b8610f65565b5b602001015160f81c60f81b8282815181106107d7576107d6610f65565b5b60200101907effffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff1916908160001a9053508080600101915050610785565b50816000806101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff16021790555080600290816108639190611652565b5081995050505050505050505090565b60606002805461088290610eae565b80601f01602080910402602001604051908101604052809291908181526020018280546108ae90610eae565b80156108fb5780601f106108d0576101008083540402835291602001916108fb565b820191906000526020600020905b8154815290600101906020018083116108de57829003601f168201915b5050505050905090565b6000806000600673ffffffffffffffffffffffffffffffffffffffff168585604051610932929190611758565b600060405180830381855afa9150503d806000811461096d576040519150601f19603f3d011682016040523d82523d6000602084013e610972565b606091505b509150915060008054906101000a900473ffffffffffffffffffffffffffffffffffffffff16600160006101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff1602179055506002600390816109e8919061141b565b506000816109f590611554565b60601c9050600060148351610a0a91906115ea565b67ffffffffffffffff811115610a2357610a22610f36565b5b6040519080825280601f01601f191660200182016040528015610a555781602001600182028036833780820191505090505b50905060005b60148451610a6991906115ea565b811015610ae95783601482610a7e919061161e565b81518110610a8f57610a8e610f65565b5b602001015160f81c60f81b828281518110610aad57610aac610f65565b5b60200101907effffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff1916908160001a9053508080600101915050610a5b565b50816000806101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff1602179055508060029081610b399190611652565b508194505050505092915050565b606060038054610b5690610eae565b80601f0160208091040260200160405190810160405280929190818152602001828054610b8290610eae565b8015610bcf5780601f10610ba457610100808354040283529160200191610bcf565b820191906000526020600020905b815481529060010190602001808311610bb257829003601f168201915b5050505050905090565b60028054610be690610eae565b80601f0160208091040260200160405190810160405280929190818152602001828054610c1290610eae565b8015610c5f5780601f10610c3457610100808354040283529160200191610c5f565b820191906000526020600020905b815481529060010190602001808311610c4257829003601f168201915b505050505081565b60008054906101000a900473ffffffffffffffffffffffffffffffffffffffff1681565b6000600160009054906101000a900473ffffffffffffffffffffffffffffffffffffffff16905090565b600073ffffffffffffffffffffffffffffffffffffffff82169050919050565b6000610ce082610cb5565b9050919050565b610cf081610cd5565b82525050565b6000602082019050610d0b6000830184610ce7565b92915050565b600081519050919050565b600082825260208201905092915050565b60005b83811015610d4b578082015181840152602081019050610d30565b60008484015250505050565b6000601f19601f8301169050919050565b6000610d7382610d11565b610d7d8185610d1c565b9350610d8d818560208601610d2d565b610d9681610d57565b840191505092915050565b60006020820190508181036000830152610dbb8184610d68565b905092915050565b600080fd5b600080fd5b600080fd5b600080fd5b600080fd5b60008083601f840112610df257610df1610dcd565b5b8235905067ffffffffffffffff811115610e0f57610e0e610dd2565b5b602083019150836001820283011115610e2b57610e2a610dd7565b5b9250929050565b60008060208385031215610e4957610e48610dc3565b5b600083013567ffffffffffffffff811115610e6757610e66610dc8565b5b610e7385828601610ddc565b92509250509250929050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052602260045260246000fd5b60006002820490506001821680610ec657607f821691505b602082108103610ed957610ed8610e7f565b5b50919050565b6000819050919050565b6000819050919050565b610f04610eff82610edf565b610ee9565b82525050565b6000610f168285610ef3565b602082019150610f268284610ef3565b6020820191508190509392505050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052604160045260246000fd5b7f4e487b7100000000000000000000000000000000000000000000000000000000600052603260045260246000fd5b600081905092915050565b7f706c61696e746578743100000000000000000000000000000000000000000000600082015250565b6000610fd5600a83610f94565b9150610fe082610f9f565b600a82019050919050565b6000610ff682610fc8565b9150819050919050565b7f706c61696e746578743200000000000000000000000000000000000000000000600082015250565b6000611036600a83610f94565b915061104182611000565b600a82019050919050565b600061105782611029565b9150819050919050565b600081519050919050565b600082825260208201905092915050565b6000819050602082019050919050565b600082825260208201905092915050565b60006110a982610d11565b6110b3818561108d565b93506110c3818560208601610d2d565b6110cc81610d57565b840191505092915050565b60006110e3838361109e565b905092915050565b6000602082019050919050565b600061110382611061565b61110d818561106c565b93508360208202850161111f8561107d565b8060005b8581101561115b578484038952815161113c85826110d7565b9450611147836110eb565b925060208a01995050600181019050611123565b50829750879550505050505092915050565b6000604082019050818103600083015261118781856110f8565b9050818103602083015261119b81846110f8565b90509392505050565b6111ad81610edf565b82525050565b60006060820190506111c86000830186610ce7565b6111d560208301856111a4565b81810360408301526111e78184610d68565b9050949350505050565b600081905092915050565b600061120782610d11565b61121181856111f1565b9350611221818560208601610d2d565b80840191505092915050565b600061123982846111fc565b915081905092915050565b60008154905061125381610eae565b9050919050565b60008190508160005260206000209050919050565b60008190508160005260206000209050919050565b60006020601f8301049050919050565b600082821b905092915050565b6000600883026112d17fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff82611294565b6112db8683611294565b95508019841693508086168417925050509392505050565b6000819050919050565b600061131861131361130e84610edf565b6112f3565b610edf565b9050919050565b6000819050919050565b611332836112fd565b61134661133e8261131f565b8484546112a1565b825550505050565b600090565b61135b61134e565b611366818484611329565b505050565b5b8181101561138a5761137f600082611353565b60018101905061136c565b5050565b601f8211156113cf576113a08161125a565b6113a984611284565b810160208510156113b8578190505b6113cc6113c485611284565b83018261136b565b50505b505050565b600082821c905092915050565b60006113f2600019846008026113d4565b1980831691505092915050565b600061140b83836113e1565b9150826002028217905092915050565b818103611429575050611501565b61143282611244565b67ffffffffffffffff81111561144b5761144a610f36565b5b6114558254610eae565b61146082828561138e565b6000601f83116001811461148f576000841561147d578287015490505b61148785826113ff565b8655506114fa565b601f19841661149d8761126f565b96506114a88661125a565b60005b828110156114d0578489015482556001820191506001850194506020810190506114ab565b868310156114ed57848901546114e9601f8916826113e1565b8355505b6001600288020188555050505b5050505050505b565b6000819050602082019050919050565b60007fffffffffffffffffffffffffffffffffffffffff00000000000000000000000082169050919050565b600061154b8251611513565b80915050919050565b600061155f82610d11565b8261156984611503565b90506115748161153f565b925060148210156115b4576115af7fffffffffffffffffffffffffffffffffffffffff00000000000000000000000083601403600802611294565b831692505b5050919050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052601160045260246000fd5b60006115f582610edf565b915061160083610edf565b9250828203905081811115611618576116176115bb565b5b92915050565b600061162982610edf565b915061163483610edf565b925082820190508082111561164c5761164b6115bb565b5b92915050565b61165b82610d11565b67ffffffffffffffff81111561167457611673610f36565b5b61167e8254610eae565b61168982828561138e565b600060209050601f8311600181146116bc57600084156116aa578287015190505b6116b485826113ff565b86555061171c565b601f1984166116ca8661125a565b60005b828110156116f2578489015182556001820191506020850194506020810190506116cd565b8683101561170f578489015161170b601f8916826113e1565b8355505b6001600288020188555050505b505050505050565b82818337600083830152505050565b600061173f83856111f1565b935061174c838584611724565b82840190509392505050565b6000611765828486611733565b9150819050939250505056fea26469706673582212207b6fd0a0d4cd02303d170f0a0bf04ef7650f8eb3e54238c2f571b99f020b2c8664736f6c634300081e0033";
-
-    // deploy contract
-    Json::Value create;
-    create["from"] = toJS( senderAddress );
-    create["code"] = bytecode;
-    create["gas"] = "1500000";
-    create["nonce"] = 0;
-    string txHash = fixture.rpcClient->eth_sendTransaction( create );
-    dev::eth::mineTransaction( *( fixture.client ), 1 );
-    auto txReceipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
-    std::string contractAddress = txReceipt["contractAddress"].asString();
-    BOOST_REQUIRE_EQUAL( txReceipt["status"], "0x1" );
-
-    // submit 2 transactions in different blocks
-    Json::Value txGenerate;
-    txGenerate["to"] = contractAddress;
-    txGenerate["gas"] = "1000000";
-    txGenerate["data"] = "0x52c92885";
-    txGenerate["from"] = toJS( senderAddress );
-    txGenerate["nonce"] = 1;
-
-    txHash = fixture.rpcClient->eth_sendTransaction( txGenerate );
-    dev::eth::mineTransaction( *( fixture.client ), 1 );
-    txReceipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
-    BOOST_REQUIRE_EQUAL( txReceipt["status"], "0x1" );
-
-    txGenerate["nonce"] = 2;
-    txHash = fixture.rpcClient->eth_sendTransaction( txGenerate );
-    dev::eth::mineTransaction( *( fixture.client ), 1 );
-    txReceipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
-    BOOST_REQUIRE_EQUAL( txReceipt["status"], "0x1" );
-
-    // read data from contract
-    Json::Value callGetLastAddress;
-    callGetLastAddress["to"] = contractAddress;
-    callGetLastAddress["data"] = "0x041d5d7b";
-    callGetLastAddress["from"] = toJS( senderAddress );
-    dev::Address randomAddress1( dev::unpadLeft( dev::fromHex( fixture.rpcClient->eth_call( callGetLastAddress, "latest" ) ) ) );
-
-    Json::Value callGetPreLastAddress;
-    callGetPreLastAddress["to"] = contractAddress;
-    callGetPreLastAddress["data"] = "0xfcab457f";
-    callGetPreLastAddress["from"] = toJS( senderAddress );
-    dev::Address randomAddress2( dev::unpadLeft( dev::fromHex( fixture.rpcClient->eth_call( callGetPreLastAddress, "latest" ) ) ) );
-
-    BOOST_REQUIRE_NE( randomAddress1, randomAddress2 );
-
-    Json::Value callGetLastSignature;
-    callGetLastSignature["to"] = contractAddress;
-    callGetLastSignature["data"] = "0x8482f246";
-    callGetLastSignature["from"] = toJS( senderAddress );
-    dev::bytes randomSignatureBytes = dev::fromHex( fixture.rpcClient->eth_call( callGetLastSignature, "latest" ) );
-    dev::h256 rBytes( dev::bytes( randomSignatureBytes.begin(), randomSignatureBytes.begin() + dev::h256::size ) );
-    dev::h256 sBytes( dev::bytes( randomSignatureBytes.begin() + dev::h256::size, randomSignatureBytes.begin() + 2 * dev::h256::size ) );
-    dev::h256 vBytes( dev::bytes( randomSignatureBytes.begin() + 2 * dev::h256::size, randomSignatureBytes.begin() + 3 * dev::h256::size ) );
-    dev::SignatureStruct randomSignature1( rBytes, sBytes, dev::h256::Arith( vBytes ).convert_to< _byte_ >() );
-
-    Json::Value callGetPreLastSignature;
-    callGetPreLastSignature["to"] = contractAddress;
-    callGetPreLastSignature["data"] = "0x8ee64f36";
-    callGetPreLastSignature["from"] = toJS( senderAddress );
-    randomSignatureBytes = dev::fromHex( fixture.rpcClient->eth_call( callGetPreLastSignature, "latest" ) );
-    rBytes = dev::h256( dev::bytes( randomSignatureBytes.begin(), randomSignatureBytes.begin() + dev::h256::size ) );
-    sBytes = dev::h256( dev::bytes( randomSignatureBytes.begin() + dev::h256::size, randomSignatureBytes.begin() + 2 * dev::h256::size ) );
-    vBytes = dev::h256( dev::bytes( randomSignatureBytes.begin() + 2 * dev::h256::size, randomSignatureBytes.begin() + 3 * dev::h256::size ) );
-    dev::SignatureStruct randomSignature2( rBytes, sBytes, dev::h256::Arith( vBytes ).convert_to< _byte_ >() );
-
-    BOOST_REQUIRE( randomSignature1 != randomSignature2 );
-
-    // submit 2 transactions in one block
-    fixture.rpcClient->debug_pauseConsensus( true );
-    txGenerate["nonce"] = 3;
-    fixture.rpcClient->eth_sendTransaction( txGenerate );
-
-    txGenerate["nonce"] = 4;
-    fixture.rpcClient->eth_sendTransaction( txGenerate );
-    fixture.rpcClient->debug_pauseConsensus( false );
-    dev::eth::mineTransaction( *( fixture.client ), 1 );
-
-    Json::Value latestBlock = fixture.rpcClient->eth_getBlockByNumber( "latest", "false" );
-    BOOST_REQUIRE_EQUAL( latestBlock["transactions"].size(), 2 );
-
-    // read data from contract again
-    dev::Address randomAddress3( dev::unpadLeft( dev::fromHex( fixture.rpcClient->eth_call( callGetLastAddress, "latest" ) ) ) );
-    dev::Address randomAddress4( dev::unpadLeft( dev::fromHex( fixture.rpcClient->eth_call( callGetPreLastAddress, "latest" ) ) ) );
-    BOOST_REQUIRE_NE( randomAddress1, randomAddress3 );
-    BOOST_REQUIRE_NE( randomAddress3, randomAddress4 );
-    randomSignatureBytes = dev::fromHex( fixture.rpcClient->eth_call( callGetLastSignature, "latest" ) );
-    rBytes = dev::h256( dev::bytes( randomSignatureBytes.begin(), randomSignatureBytes.begin() + dev::h256::size ) );
-    sBytes = dev::h256( dev::bytes( randomSignatureBytes.begin() + dev::h256::size, randomSignatureBytes.begin() + 2 * dev::h256::size ) );
-    vBytes = dev::h256( dev::bytes( randomSignatureBytes.begin() + 2 * dev::h256::size, randomSignatureBytes.begin() + 3 * dev::h256::size ) );
-    dev::SignatureStruct randomSignature3( rBytes, sBytes, dev::h256::Arith( vBytes ).convert_to< _byte_ >() );
-    randomSignatureBytes = dev::fromHex( fixture.rpcClient->eth_call( callGetPreLastSignature, "latest" ) );
-    rBytes = dev::h256( dev::bytes( randomSignatureBytes.begin(), randomSignatureBytes.begin() + dev::h256::size ) );
-    sBytes = dev::h256( dev::bytes( randomSignatureBytes.begin() + dev::h256::size, randomSignatureBytes.begin() + 2 * dev::h256::size ) );
-    vBytes = dev::h256( dev::bytes( randomSignatureBytes.begin() + 2 * dev::h256::size, randomSignatureBytes.begin() + 3 * dev::h256::size ) );
-    dev::SignatureStruct randomSignature4( rBytes, sBytes, dev::h256::Arith( vBytes ).convert_to< _byte_ >() );
-    BOOST_REQUIRE( randomSignature1 != randomSignature3 );
-    BOOST_REQUIRE( randomSignature3 != randomSignature4 );
-
-    // verify data is parsed correctly
-    dev::Address randomAddress = dev::Address::random();
-    dev::bytes randomAddressBytes = randomAddress.asBytes();
-    dev::bytes randomAddressLeftPadded( 32, 0 );
-    std::copy( randomAddressBytes.begin(), randomAddressBytes.end(), randomAddressLeftPadded.begin() + 12 );
-    dev::u256 randomGasLimit = dev::h256::Arith( dev::h256::random() );
-    dev::bytes randomGasLimitBytes = dev::toBigEndian( randomGasLimit );
-
-    // Build abi.encode(bytes[] args1, bytes[] args2) with 2 elements each
-    // args1 elements must be at least BITE_CIPHERTEXT_MIN_LEN bytes (encrypted data)
-    std::vector<dev::bytes> args1 = {
-        dev::bytes( BITE_CIPHERTEXT_MIN_LEN, 0x11 ),  // First encrypted element (minimum length)
-        dev::bytes( BITE_CIPHERTEXT_MIN_LEN, 0x22 )  // Second encrypted element (slightly longer)
-    };
-    std::vector<dev::bytes> args2 = {
-        dev::fromHex("706c61696e746578743122"),  // "plaintext1"
-        dev::fromHex("706c61696e746578743222")   // "plaintext2"
-    };
-
-    dev::bytes randomData = buildAbiEncodedArrays( args1, args2 );
-
-    // Build ABI-encoded input: abi.encode(address, uint256, bytes)
-    // Format: address(32) + gasLimit(32) + offset_to_bytes(32) + bytes_length(32) + bytes_data
-    dev::bytes resultData;
-
-    // address value (left-padded to 32 bytes)
-    resultData.insert( resultData.end(), randomAddressLeftPadded.begin(), randomAddressLeftPadded.end() );
-
-    // gasLimit value (32 bytes)
-    resultData.insert( resultData.end(), randomGasLimitBytes.begin(), randomGasLimitBytes.end() );
-
-    // offset to bytes data (points to position 96 = 3 * 32)
-    dev::bytes dataOffset = dev::toBigEndian( dev::u256( 96 ) );
-    resultData.insert( resultData.end(), dataOffset.begin(), dataOffset.end() );
-    // bytes data (length + content)
-    dev::bytes dataLength = dev::toBigEndian( dev::u256( randomData.size() ) );
-    resultData.insert( resultData.end(), dataLength.begin(), dataLength.end() );
-    resultData.insert( resultData.end(), randomData.begin(), randomData.end() );
-
-    txGenerate["to"] = contractAddress;
-    txGenerate["data"] = "0x8628f93a" + dev::toHex( dev::u256( 32 ) ) + dev::toHex( dev::u256( resultData.size() ) ) + dev::toHex( resultData );
-    txGenerate["from"] = toJS( senderAddress );
-    txGenerate["nonce"] = 5;
-    fixture.rpcClient->eth_sendTransaction( txGenerate );
-    dev::eth::mineTransaction( *( fixture.client ), 1 );
-    dev::Address randomAddress5( dev::unpadLeft( dev::fromHex( fixture.rpcClient->eth_call( callGetLastAddress, "latest" ) ) ) );
-
-    PrecompiledExecutor randomWalletExecutor = PrecompiledRegistrar::executor( "getRandomWalletAndSignatureForCTX" );
-    dev::eth::PrecompiledCallContext ctx( fixture.client->number(), 0, 1, true );
-
-    dev::bytesConstRef input( resultData.data(), resultData.size() );
-    auto res = randomWalletExecutor( input, ctx );
-    BOOST_REQUIRE( res.first );
-
-    dev::Address addressFromPrecompiled( dev::bytes( res.second.begin(), res.second.begin() + dev::Address::size ) );
-    randomSignatureBytes = dev::bytes( res.second.begin() + dev::Address::size, res.second.end() );
-    rBytes = dev::h256( dev::bytes( randomSignatureBytes.begin(), randomSignatureBytes.begin() + dev::h256::size ) );
-    sBytes = dev::h256( dev::bytes( randomSignatureBytes.begin() + dev::h256::size, randomSignatureBytes.begin() + 2 * dev::h256::size ) );
-    vBytes = dev::h256( dev::bytes( randomSignatureBytes.begin() + 2 * dev::h256::size, randomSignatureBytes.begin() + 3 * dev::h256::size ) );
-    dev::SignatureStruct signatureFromPrecompiled( rBytes, sBytes, dev::h256::Arith( vBytes ).convert_to< _byte_ >() );
-
-    PrecompiledExecutor blockRandomExecutor = PrecompiledRegistrar::executor( "getBlockRandom" );
-    auto vrs = dev::makeSignature( blockRandomExecutor( bytesConstRef(), ctx ).second, ctx.currentTxnIndex );
-    dev::u256 gasPrice = g_skaleHost->getGasPrice( ctx.blockNumber.convert_to< unsigned >() );
-
-    // Build expected RLP-encoded data: RLP(RLP(args1[0], args1[1]), RLP(args2[0], args2[1]))
-    RLPStream args1Stream;
-    args1Stream.appendList( args1.size() );
-    for ( const auto& elem : args1 ) {
-        args1Stream << elem;
-    }
-
-    RLPStream args2Stream;
-    args2Stream.appendList( args2.size() );
-    for ( const auto& elem : args2 ) {
-        args2Stream << elem;
-    }
-
-    RLPStream finalStream;
-    finalStream.appendList( 2 );
-    finalStream.appendRaw( args1Stream.out() );
-    finalStream.appendRaw( args2Stream.out() );
-
-    dev::bytes rlpEncodedData = finalStream.out();
-    rlpEncodedData.insert( rlpEncodedData.begin(),
-        ON_DECRYPT_FUNCTION_SELECTOR.begin(),
-        ON_DECRYPT_FUNCTION_SELECTOR.end() );
-
-    // Create expected transaction for signature verification using RLP-encoded data
-    Transaction expectedTransaction( 0, gasPrice, randomGasLimit, randomAddress, rlpEncodedData, 0 );
-    dev::h256 expectedTxnHash = expectedTransaction.sha3( dev::eth::WithoutSignature );
-    dev::Public expectedPublicKey = recover( vrs, expectedTxnHash );
-    dev::Address expectedWalletAddress = dev::toAddress( expectedPublicKey );
-
-    BOOST_REQUIRE( signatureFromPrecompiled == vrs );
-    BOOST_REQUIRE_EQUAL( addressFromPrecompiled, expectedWalletAddress );
-    BOOST_REQUIRE_EQUAL( addressFromPrecompiled, randomAddress5 );
+    size_t nonce = 0;
+    std::string onDecryptSelector = dev::toHexPrefixed( dev::bite::ON_DECRYPT_FUNCTION_SELECTOR );
+    Transaction t( dev::jsToBytes( formTransactionRlp( fixture, senderAddress, onDecryptSelector, nonce, dev::Address::random().hex() ) ), CheckTransaction::Everything,
+        false, false, false, true
+    );
+    BOOST_REQUIRE_THROW( fixture.client->importTransaction( t ), IllegalCTXSubmission );
+    BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendRawTransaction( dev::toHexPrefixed( t.toBytes() ) ), jsonrpc::JsonRpcException );
 }
 
 BOOST_AUTO_TEST_CASE( submitCTX ) {
     JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true, false, -1, {{ "contractStorageLimit", "100000" }} );
 
-    dev::eth::g_skaleHost = fixture.client->skaleHost();
-
     string senderAddress = toJS( fixture.coinbase.address() );
 
-//    pragma solidity ^0.8.13;
+    std::vector< dev::bytes > pregeneratedDecryptedValues{ dev::fromHex( "5b221ee6b5c5751ff5808beddbc0644dc4fdda6b5efb13dbb49d698cb0e3f172" ),
+                                                           dev::fromHex( "006aa7d63edcfb03635a2ecf5064a9eec076c2466fb2a6c35d59b5f1039f2535" ) };
+    std::vector< dev::bytes > pregeneratedPlaintextValues{ dev::asBytes( "plaintext1" ), dev::asBytes( "plaintext2" ) };
+// pragma solidity ^0.8.13;
 
-//    contract Precompile0x07Caller {
-//        constructor() payable {}
-//
-//        function submitCTX() public {
-//            uint256 randomNumber = uint256(keccak256(abi.encodePacked(block.timestamp, block.number))) % 250000 + 100000;
-//            bytes[] memory args1 = new bytes[](2);
-//            // args1 elements must be at least BITE_CIPHERTEXT_MIN_LEN bytes (276 bytes)
-//            args1[0] = new bytes(276);
-//            for (uint i = 0; i < 276; i++) {
-//                args1[0][i] = 0x11;
-//            }
-//            args1[1] = new bytes(276);
-//            for (uint i = 0; i < 276; i++) {
-//                args1[1][i] = 0x22;
-//            }
-//            bytes[] memory args2 = new bytes[](2);
-//            args2[0] = abi.encodePacked("plaintext1");
-//            args2[1] = abi.encodePacked("plaintext2");
+// contract Precompile0x1BCaller {
+//     bytes[] decrypted = new bytes[](1);
+//     bytes[] plaintext = new bytes[](1);
+//     constructor() payable {}
 
-//            bytes memory randomBytes = abi.encode(args1, args2);
-//            bytes memory input = abi.encode(address(this), randomNumber, randomBytes);
+//     function submitCTX() public {
+//         uint256 randomNumber = uint256(keccak256(abi.encodePacked(block.timestamp, block.number))) % 2500000 + 1000000;
+//         bytes[] memory args1 = new bytes[](2);
+//         // Use pre-generated args1 values instead of generating them dynamically
+//         args1[0] = hex"f9015880b9015401cc5504bac92b5ccafa0c3202372d7bb0b8cb6861795deddafae0ed7be924ff170000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006360e4a05b2e03056b2d61c7ad2deb47b0be0084ffab44bf506bfff07b951fb0bf37c171584f74d80c96306e124152458183a7a2c570a136099f7c4ffc9dde340cbed4f87133200fc4e425946925eaac958209aba78e190feeb5c9f31182ec8d458260279adb3976c158471b932bbee5bb320c";
+//         args1[1] = hex"f9015880b9015401154918854780593f1c6bf620684b29ab3d4c4a4f5996dcbd1c1d0b48c06d56b40000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000751884c80374b7b5d6d0ef740dacbea91b3d53ee5243eeacf94a970f131185c69dfd44e868e370602c72484bc2f34e9466255ef50ca817d34d61a46bff368318b6fff300eb566dac8d1c569a270c6d9c1f99664643582cafcb276fea83d5564cd38f4b1be0e8ee6c06e10f10f10dc39120884";
 
-//            (bool success, bytes memory result) = address(0x06).staticcall(input);
-//            require(success, "0x06 call failed");
-//
-//            // Extract address from first 20 bytes of result and transfer
-//            address walletAddress = address(bytes20(result));
-//            payable(walletAddress).transfer(1000);
+//         bytes[] memory args2 = new bytes[](2);
+//         args2[0] = abi.encodePacked("plaintext1");
+//         args2[1] = abi.encodePacked("plaintext2");
 
-//            input = abi.encode(result, address( this ), randomNumber, randomBytes);
+//         bytes memory randomBytes = abi.encode(args1, args2);
+//         bytes memory input = abi.encode(randomNumber, randomBytes);
 
-//            ( success, result ) = address(0x07).staticcall( input );
-//            require(success, "0x07 call failed");
-//        }
+//         (bool success, bytes memory result) = address(0x1B).staticcall(input);
+//         require(success, "0x1B call failed");
+        
+//         // Extract address from first 20 bytes of result and transfer
+//         address walletAddress = address(bytes20(result));
+//         payable(walletAddress).transfer(400000000000);
+//     }
 
-//        function submitCTXWithInput(bytes calldata input) public {
-//            (bool success, bytes memory result) = address(0x06).staticcall(input);
-//            require(success, "0x06 call failed");
-//
-//            // Extract address from first 20 bytes of result and transfer
-//            address walletAddress = address(bytes20(result));
-//            payable(walletAddress).transfer(1000);
+//     function submitCTXWithInput(bytes calldata input) public {
+//         (bool success, bytes memory result) = address(0x1B).staticcall(input);
+//         require(success, "0x1B call failed");
 
-//            (address destination, uint256 gasLimit, bytes memory randomBytes) = abi.decode(input, (address, uint256, bytes));
+//         // Extract address from first 20 bytes of result and transfer
+//         address walletAddress = address(bytes20(result));
+//         payable(walletAddress).transfer(400000000000 );
+//     }
 
-//            bytes memory input1 = abi.encode(result, destination, gasLimit, randomBytes);
+//     function onDecrypt(bytes[] calldata decryptedArguments, bytes[] calldata plaintextArguments) public {
+//         delete decrypted;
+//         decrypted = new bytes[](decryptedArguments.length);
+//         for (uint i = 0; i < decryptedArguments.length; ++i) {
+//             decrypted[i] = decryptedArguments[i];
+//         }
+//         delete  plaintext;
+//         plaintext = new bytes[](plaintextArguments.length);
+//         for (uint i = 0; i < plaintextArguments.length; ++i) {
+//             plaintext[i] = plaintextArguments[i];
+//         }
+//         return;
+//     }
 
-//            (success, result) = address(0x07).staticcall(input1);
-//            require(success, "0x07 call failed");
-//        }
+//     function getDecrypted() public view returns (bytes[] memory) {
+//         return decrypted;
+//     }
 
-//        function onDecrypt(bytes[] calldata decryptedArguments, bytes[] calldata plaintextArguments) external {
-//            return;
-//        }
-//    }
-    std::string bytecode = "60806040526112f4806100136000396000f3fe608060405234801561001057600080fd5b50600436106100415760003560e01c806357983ac8146100465780636040c1fb146100625780637372aa261461007e575b600080fd5b610060600480360381019061005b9190610888565b610088565b005b61007c6004803603810190610077919061095f565b61008e565b005b610086610296565b005b50505050565b600080600673ffffffffffffffffffffffffffffffffffffffff1684846040516100b99291906109eb565b600060405180830381855afa9150503d80600081146100f4576040519150601f19603f3d011682016040523d82523d6000602084013e6100f9565b606091505b50915091508161013e576040517f08c379a000000000000000000000000000000000000000000000000000000000815260040161013590610a61565b60405180910390fd5b60008161014a90610aea565b60601c90508073ffffffffffffffffffffffffffffffffffffffff166108fc6103e89081150290604051600060405180830381858888f19350505050158015610197573d6000803e3d6000fd5b50600080600087878101906101ac9190610d17565b9250925092506000858484846040516020016101cb9493929190610e2a565b6040516020818303038152906040529050600773ffffffffffffffffffffffffffffffffffffffff16816040516102029190610eae565b600060405180830381855afa9150503d806000811461023d576040519150601f19603f3d011682016040523d82523d6000602084013e610242565b606091505b5080975081985050508661028b576040517f08c379a000000000000000000000000000000000000000000000000000000000815260040161028290610f11565b60405180910390fd5b505050505050505050565b6000620186a06203d09042436040516020016102b3929190610f52565b6040516020818303038152906040528051906020012060001c6102d69190610fad565b6102e0919061100d565b90506000600267ffffffffffffffff8111156102ff576102fe610bfb565b5b60405190808252806020026020018201604052801561033257816020015b606081526020019060019003908161031d5790505b50905061011467ffffffffffffffff81111561035157610350610bfb565b5b6040519080825280601f01601f1916602001820160405280156103835781602001600182028036833780820191505090505b508160008151811061039857610397611041565b5b602002602001018190525060005b61011481101561041f57601160f81b826000815181106103c9576103c8611041565b5b602002602001015182815181106103e3576103e2611041565b5b60200101907effffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff1916908160001a90535080806001019150506103a6565b5061011467ffffffffffffffff81111561043c5761043b610bfb565b5b6040519080825280601f01601f19166020018201604052801561046e5781602001600182028036833780820191505090505b508160018151811061048357610482611041565b5b602002602001018190525060005b61011481101561050a57602260f81b826001815181106104b4576104b3611041565b5b602002602001015182815181106104ce576104cd611041565b5b60200101907effffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff1916908160001a9053508080600101915050610491565b506000600267ffffffffffffffff81111561052857610527610bfb565b5b60405190808252806020026020018201604052801561055b57816020015b60608152602001906001900390816105465790505b50905060405160200161056d906110c7565b604051602081830303815290604052816000815181106105905761058f611041565b5b60200260200101819052506040516020016105aa90611128565b604051602081830303815290604052816001815181106105cd576105cc611041565b5b6020026020010181905250600082826040516020016105ed929190611249565b6040516020818303038152906040529050600030858360405160200161061593929190611280565b6040516020818303038152906040529050600080600673ffffffffffffffffffffffffffffffffffffffff168360405161064f9190610eae565b600060405180830381855afa9150503d806000811461068a576040519150601f19603f3d011682016040523d82523d6000602084013e61068f565b606091505b5091509150816106d4576040517f08c379a00000000000000000000000000000000000000000000000000000000081526004016106cb90610a61565b60405180910390fd5b6000816106e090610aea565b60601c90508073ffffffffffffffffffffffffffffffffffffffff166108fc6103e89081150290604051600060405180830381858888f1935050505015801561072d573d6000803e3d6000fd5b50813089876040516020016107459493929190610e2a565b6040516020818303038152906040529350600773ffffffffffffffffffffffffffffffffffffffff168460405161077c9190610eae565b600060405180830381855afa9150503d80600081146107b7576040519150601f19603f3d011682016040523d82523d6000602084013e6107bc565b606091505b50809350819450505082610805576040517f08c379a00000000000000000000000000000000000000000000000000000000081526004016107fc90610f11565b60405180910390fd5b5050505050505050565b6000604051905090565b600080fd5b600080fd5b600080fd5b600080fd5b600080fd5b60008083601f84011261084857610847610823565b5b8235905067ffffffffffffffff81111561086557610864610828565b5b6020830191508360208202830111156108815761088061082d565b5b9250929050565b600080600080604085870312156108a2576108a1610819565b5b600085013567ffffffffffffffff8111156108c0576108bf61081e565b5b6108cc87828801610832565b9450945050602085013567ffffffffffffffff8111156108ef576108ee61081e565b5b6108fb87828801610832565b925092505092959194509250565b60008083601f84011261091f5761091e610823565b5b8235905067ffffffffffffffff81111561093c5761093b610828565b5b6020830191508360018202830111156109585761095761082d565b5b9250929050565b6000806020838503121561097657610975610819565b5b600083013567ffffffffffffffff8111156109945761099361081e565b5b6109a085828601610909565b92509250509250929050565b600081905092915050565b82818337600083830152505050565b60006109d283856109ac565b93506109df8385846109b7565b82840190509392505050565b60006109f88284866109c6565b91508190509392505050565b600082825260208201905092915050565b7f307830362063616c6c206661696c656400000000000000000000000000000000600082015250565b6000610a4b601083610a04565b9150610a5682610a15565b602082019050919050565b60006020820190508181036000830152610a7a81610a3e565b9050919050565b600081519050919050565b6000819050602082019050919050565b60007fffffffffffffffffffffffffffffffffffffffff00000000000000000000000082169050919050565b6000610ad48251610a9c565b80915050919050565b600082821b905092915050565b6000610af582610a81565b82610aff84610a8c565b9050610b0a81610ac8565b92506014821015610b4a57610b457fffffffffffffffffffffffffffffffffffffffff00000000000000000000000083601403600802610add565b831692505b5050919050565b600073ffffffffffffffffffffffffffffffffffffffff82169050919050565b6000610b7c82610b51565b9050919050565b610b8c81610b71565b8114610b9757600080fd5b50565b600081359050610ba981610b83565b92915050565b6000819050919050565b610bc281610baf565b8114610bcd57600080fd5b50565b600081359050610bdf81610bb9565b92915050565b600080fd5b6000601f19601f8301169050919050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052604160045260246000fd5b610c3382610bea565b810181811067ffffffffffffffff82111715610c5257610c51610bfb565b5b80604052505050565b6000610c6561080f565b9050610c718282610c2a565b919050565b600067ffffffffffffffff821115610c9157610c90610bfb565b5b610c9a82610bea565b9050602081019050919050565b6000610cba610cb584610c76565b610c5b565b905082815260208101848484011115610cd657610cd5610be5565b5b610ce18482856109b7565b509392505050565b600082601f830112610cfe57610cfd610823565b5b8135610d0e848260208601610ca7565b91505092915050565b600080600060608486031215610d3057610d2f610819565b5b6000610d3e86828701610b9a565b9350506020610d4f86828701610bd0565b925050604084013567ffffffffffffffff811115610d7057610d6f61081e565b5b610d7c86828701610ce9565b9150509250925092565b600082825260208201905092915050565b60005b83811015610db5578082015181840152602081019050610d9a565b60008484015250505050565b6000610dcc82610a81565b610dd68185610d86565b9350610de6818560208601610d97565b610def81610bea565b840191505092915050565b6000610e0582610b51565b9050919050565b610e1581610dfa565b82525050565b610e2481610baf565b82525050565b60006080820190508181036000830152610e448187610dc1565b9050610e536020830186610e0c565b610e606040830185610e1b565b8181036060830152610e728184610dc1565b905095945050505050565b6000610e8882610a81565b610e9281856109ac565b9350610ea2818560208601610d97565b80840191505092915050565b6000610eba8284610e7d565b915081905092915050565b7f307830372063616c6c206661696c656400000000000000000000000000000000600082015250565b6000610efb601083610a04565b9150610f0682610ec5565b602082019050919050565b60006020820190508181036000830152610f2a81610eee565b9050919050565b6000819050919050565b610f4c610f4782610baf565b610f31565b82525050565b6000610f5e8285610f3b565b602082019150610f6e8284610f3b565b6020820191508190509392505050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052601260045260246000fd5b6000610fb882610baf565b9150610fc383610baf565b925082610fd357610fd2610f7e565b5b828206905092915050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052601160045260246000fd5b600061101882610baf565b915061102383610baf565b925082820190508082111561103b5761103a610fde565b5b92915050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052603260045260246000fd5b600081905092915050565b7f706c61696e746578743100000000000000000000000000000000000000000000600082015250565b60006110b1600a83611070565b91506110bc8261107b565b600a82019050919050565b60006110d2826110a4565b9150819050919050565b7f706c61696e746578743200000000000000000000000000000000000000000000600082015250565b6000611112600a83611070565b915061111d826110dc565b600a82019050919050565b600061113382611105565b9150819050919050565b600081519050919050565b600082825260208201905092915050565b6000819050602082019050919050565b600082825260208201905092915050565b600061118582610a81565b61118f8185611169565b935061119f818560208601610d97565b6111a881610bea565b840191505092915050565b60006111bf838361117a565b905092915050565b6000602082019050919050565b60006111df8261113d565b6111e98185611148565b9350836020820285016111fb85611159565b8060005b85811015611237578484038952815161121885826111b3565b9450611223836111c7565b925060208a019950506001810190506111ff565b50829750879550505050505092915050565b6000604082019050818103600083015261126381856111d4565b9050818103602083015261127781846111d4565b90509392505050565b60006060820190506112956000830186610e0c565b6112a26020830185610e1b565b81810360408301526112b48184610dc1565b905094935050505056fea2646970667358221220e3794164e411fb968cf25cc9e7fa58bc47934919a716197518e9c08a20b639dd64736f6c634300081e0033";
+//     function getPlaintext() public view returns (bytes[] memory) {
+//         return plaintext;
+//     }
+// }
+    std::string bytecode = "6080604052600167ffffffffffffffff81111561001f5761001e6101ad565b5b60405190808252806020026020018201604052801561005257816020015b606081526020019060019003908161003d5790505b50600090805190602001906100689291906100d3565b50600167ffffffffffffffff811115610084576100836101ad565b5b6040519080825280602002602001820160405280156100b757816020015b60608152602001906001900390816100a25790505b50600190805190602001906100cd9291906100d3565b506104cf565b82805482825590600052602060002090810192821561011b579160200282015b8281111561011a57825182908161010a91906103fd565b50916020019190600101906100f3565b5b509050610128919061012c565b5090565b5b8082111561014c57600081816101439190610150565b5060010161012d565b5090565b50805461015c90610216565b6000825580601f1061016e575061018d565b601f01602090049060005260206000209081019061018c9190610190565b5b50565b5b808211156101a9576000816000905550600101610191565b5090565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052604160045260246000fd5b600081519050919050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052602260045260246000fd5b6000600282049050600182168061022e57607f821691505b602082108103610241576102406101e7565b5b50919050565b60008190508160005260206000209050919050565b60006020601f8301049050919050565b600082821b905092915050565b6000600883026102a97fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff8261026c565b6102b3868361026c565b95508019841693508086168417925050509392505050565b6000819050919050565b6000819050919050565b60006102fa6102f56102f0846102cb565b6102d5565b6102cb565b9050919050565b6000819050919050565b610314836102df565b61032861032082610301565b848454610279565b825550505050565b600090565b61033d610330565b61034881848461030b565b505050565b5b8181101561036c57610361600082610335565b60018101905061034e565b5050565b601f8211156103b15761038281610247565b61038b8461025c565b8101602085101561039a578190505b6103ae6103a68561025c565b83018261034d565b50505b505050565b600082821c905092915050565b60006103d4600019846008026103b6565b1980831691505092915050565b60006103ed83836103c3565b9150826002028217905092915050565b610406826101dc565b67ffffffffffffffff81111561041f5761041e6101ad565b5b6104298254610216565b610434828285610370565b600060209050601f8311600181146104675760008415610455578287015190505b61045f85826103e1565b8655506104c7565b601f19841661047586610247565b60005b8281101561049d57848901518255600182019150602085019450602081019050610478565b868310156104ba57848901516104b6601f8916826103c3565b8355505b6001600288020188555050505b505050505050565b6118b5806104de6000396000f3fe608060405234801561001057600080fd5b50600436106100575760003560e01c806338d5a3121461005c57806357983ac81461007a5780636040c1fb146100965780637372aa26146100b2578063cc159120146100bc575b600080fd5b6100646100da565b6040516100719190610af5565b60405180910390f35b610094600480360381019061008f9190610b86565b6101b3565b005b6100b060048036038101906100ab9190610c5d565b610378565b005b6100ba61048c565b005b6100c46107cf565b6040516100d19190610af5565b60405180910390f35b60606000805480602002602001604051908101604052809291908181526020016000905b828210156101aa57838290600052602060002001805461011d90610cd9565b80601f016020809104026020016040519081016040528092919081815260200182805461014990610cd9565b80156101965780601f1061016b57610100808354040283529160200191610196565b820191906000526020600020905b81548152906001019060200180831161017957829003601f168201915b5050505050815260200190600101906100fe565b50505050905090565b6000806101c091906108a8565b8383905067ffffffffffffffff8111156101dd576101dc610d0a565b5b60405190808252806020026020018201604052801561021057816020015b60608152602001906001900390816101fb5790505b50600090805190602001906102269291906108c9565b5060005b848490508110156102915784848281811061024857610247610d39565b5b905060200281019061025a9190610d77565b6000838154811061026e5761026d610d39565b5b906000526020600020019182610285929190610f9b565b5080600101905061022a565b50600160006102a091906108a8565b8181905067ffffffffffffffff8111156102bd576102bc610d0a565b5b6040519080825280602002602001820160405280156102f057816020015b60608152602001906001900390816102db5790505b50600190805190602001906103069291906108c9565b5060005b828290508110156103715782828281811061032857610327610d39565b5b905060200281019061033a9190610d77565b6001838154811061034e5761034d610d39565b5b906000526020600020019182610365929190610f9b565b5080600101905061030a565b5050505050565b600080601b73ffffffffffffffffffffffffffffffffffffffff1684846040516103a39291906110aa565b600060405180830381855afa9150503d80600081146103de576040519150601f19603f3d011682016040523d82523d6000602084013e6103e3565b606091505b509150915081610428576040517f08c379a000000000000000000000000000000000000000000000000000000000815260040161041f90611120565b60405180910390fd5b60008161043490611191565b60601c90508073ffffffffffffffffffffffffffffffffffffffff166108fc645d21dba0009081150290604051600060405180830381858888f19350505050158015610484573d6000803e3d6000fd5b505050505050565b6000620f4240622625a042436040516020016104a9929190611219565b6040516020818303038152906040528051906020012060001c6104cc9190611274565b6104d691906112d4565b90506000600267ffffffffffffffff8111156104f5576104f4610d0a565b5b60405190808252806020026020018201604052801561052857816020015b60608152602001906001900390816105135790505b50905060405180610180016040528061015b81526020016115b061015b91398160008151811061055b5761055a610d39565b5b602002602001018190525060405180610180016040528061015b815260200161170b61015b91398160018151811061059657610595610d39565b5b60200260200101819052506000600267ffffffffffffffff8111156105be576105bd610d0a565b5b6040519080825280602002602001820160405280156105f157816020015b60608152602001906001900390816105dc5790505b5090506040516020016106039061135f565b6040516020818303038152906040528160008151811061062657610625610d39565b5b6020026020010181905250604051602001610640906113c0565b6040516020818303038152906040528160018151811061066357610662610d39565b5b6020026020010181905250600082826040516020016106839291906113d5565b6040516020818303038152906040529050600084826040516020016106a9929190611465565b6040516020818303038152906040529050600080601b73ffffffffffffffffffffffffffffffffffffffff16836040516106e391906114c6565b600060405180830381855afa9150503d806000811461071e576040519150601f19603f3d011682016040523d82523d6000602084013e610723565b606091505b509150915081610768576040517f08c379a000000000000000000000000000000000000000000000000000000000815260040161075f90611120565b60405180910390fd5b60008161077490611191565b60601c90508073ffffffffffffffffffffffffffffffffffffffff166108fc645d21dba0009081150290604051600060405180830381858888f193505050501580156107c4573d6000803e3d6000fd5b505050505050505050565b60606001805480602002602001604051908101604052809291908181526020016000905b8282101561089f57838290600052602060002001805461081290610cd9565b80601f016020809104026020016040519081016040528092919081815260200182805461083e90610cd9565b801561088b5780601f106108605761010080835404028352916020019161088b565b820191906000526020600020905b81548152906001019060200180831161086e57829003601f168201915b5050505050815260200190600101906107f3565b50505050905090565b50805460008255906000526020600020908101906108c69190610922565b50565b828054828255906000526020600020908101928215610911579160200282015b8281111561091057825182908161090091906114dd565b50916020019190600101906108e9565b5b50905061091e9190610922565b5090565b5b8082111561094257600081816109399190610946565b50600101610923565b5090565b50805461095290610cd9565b6000825580601f106109645750610983565b601f0160209004906000526020600020908101906109829190610986565b5b50565b5b8082111561099f576000816000905550600101610987565b5090565b600081519050919050565b600082825260208201905092915050565b6000819050602082019050919050565b600081519050919050565b600082825260208201905092915050565b60005b83811015610a095780820151818401526020810190506109ee565b60008484015250505050565b6000601f19601f8301169050919050565b6000610a31826109cf565b610a3b81856109da565b9350610a4b8185602086016109eb565b610a5481610a15565b840191505092915050565b6000610a6b8383610a26565b905092915050565b6000602082019050919050565b6000610a8b826109a3565b610a9581856109ae565b935083602082028501610aa7856109bf565b8060005b85811015610ae35784840389528151610ac48582610a5f565b9450610acf83610a73565b925060208a01995050600181019050610aab565b50829750879550505050505092915050565b60006020820190508181036000830152610b0f8184610a80565b905092915050565b600080fd5b600080fd5b600080fd5b600080fd5b600080fd5b60008083601f840112610b4657610b45610b21565b5b8235905067ffffffffffffffff811115610b6357610b62610b26565b5b602083019150836020820283011115610b7f57610b7e610b2b565b5b9250929050565b60008060008060408587031215610ba057610b9f610b17565b5b600085013567ffffffffffffffff811115610bbe57610bbd610b1c565b5b610bca87828801610b30565b9450945050602085013567ffffffffffffffff811115610bed57610bec610b1c565b5b610bf987828801610b30565b925092505092959194509250565b60008083601f840112610c1d57610c1c610b21565b5b8235905067ffffffffffffffff811115610c3a57610c39610b26565b5b602083019150836001820283011115610c5657610c55610b2b565b5b9250929050565b60008060208385031215610c7457610c73610b17565b5b600083013567ffffffffffffffff811115610c9257610c91610b1c565b5b610c9e85828601610c07565b92509250509250929050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052602260045260246000fd5b60006002820490506001821680610cf157607f821691505b602082108103610d0457610d03610caa565b5b50919050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052604160045260246000fd5b7f4e487b7100000000000000000000000000000000000000000000000000000000600052603260045260246000fd5b600080fd5b600080fd5b600080fd5b60008083356001602003843603038112610d9457610d93610d68565b5b80840192508235915067ffffffffffffffff821115610db657610db5610d6d565b5b602083019250600182023603831315610dd257610dd1610d72565b5b509250929050565b600082905092915050565b60008190508160005260206000209050919050565b60006020601f8301049050919050565b600082821b905092915050565b600060088302610e477fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff82610e0a565b610e518683610e0a565b95508019841693508086168417925050509392505050565b6000819050919050565b6000819050919050565b6000610e98610e93610e8e84610e69565b610e73565b610e69565b9050919050565b6000819050919050565b610eb283610e7d565b610ec6610ebe82610e9f565b848454610e17565b825550505050565b600090565b610edb610ece565b610ee6818484610ea9565b505050565b5b81811015610f0a57610eff600082610ed3565b600181019050610eec565b5050565b601f821115610f4f57610f2081610de5565b610f2984610dfa565b81016020851015610f38578190505b610f4c610f4485610dfa565b830182610eeb565b50505b505050565b600082821c905092915050565b6000610f7260001984600802610f54565b1980831691505092915050565b6000610f8b8383610f61565b9150826002028217905092915050565b610fa58383610dda565b67ffffffffffffffff811115610fbe57610fbd610d0a565b5b610fc88254610cd9565b610fd3828285610f0e565b6000601f8311600181146110025760008415610ff0578287013590505b610ffa8582610f7f565b865550611062565b601f19841661101086610de5565b60005b8281101561103857848901358255600182019150602085019450602081019050611013565b868310156110555784890135611051601f891682610f61565b8355505b6001600288020188555050505b50505050505050565b600081905092915050565b82818337600083830152505050565b6000611091838561106b565b935061109e838584611076565b82840190509392505050565b60006110b7828486611085565b91508190509392505050565b600082825260208201905092915050565b7f307831422063616c6c206661696c656400000000000000000000000000000000600082015250565b600061110a6010836110c3565b9150611115826110d4565b602082019050919050565b60006020820190508181036000830152611139816110fd565b9050919050565b6000819050602082019050919050565b60007fffffffffffffffffffffffffffffffffffffffff00000000000000000000000082169050919050565b60006111888251611150565b80915050919050565b600061119c826109cf565b826111a684611140565b90506111b18161117c565b925060148210156111f1576111ec7fffffffffffffffffffffffffffffffffffffffff00000000000000000000000083601403600802610e0a565b831692505b5050919050565b6000819050919050565b61121361120e82610e69565b6111f8565b82525050565b60006112258285611202565b6020820191506112358284611202565b6020820191508190509392505050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052601260045260246000fd5b600061127f82610e69565b915061128a83610e69565b92508261129a57611299611245565b5b828206905092915050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052601160045260246000fd5b60006112df82610e69565b91506112ea83610e69565b9250828201905080821115611302576113016112a5565b5b92915050565b600081905092915050565b7f706c61696e746578743100000000000000000000000000000000000000000000600082015250565b6000611349600a83611308565b915061135482611313565b600a82019050919050565b600061136a8261133c565b9150819050919050565b7f706c61696e746578743200000000000000000000000000000000000000000000600082015250565b60006113aa600a83611308565b91506113b582611374565b600a82019050919050565b60006113cb8261139d565b9150819050919050565b600060408201905081810360008301526113ef8185610a80565b905081810360208301526114038184610a80565b90509392505050565b61141581610e69565b82525050565b600082825260208201905092915050565b6000611437826109cf565b611441818561141b565b93506114518185602086016109eb565b61145a81610a15565b840191505092915050565b600060408201905061147a600083018561140c565b818103602083015261148c818461142c565b90509392505050565b60006114a0826109cf565b6114aa818561106b565b93506114ba8185602086016109eb565b80840191505092915050565b60006114d28284611495565b915081905092915050565b6114e6826109cf565b67ffffffffffffffff8111156114ff576114fe610d0a565b5b6115098254610cd9565b611514828285610f0e565b600060209050601f8311600181146115475760008415611535578287015190505b61153f8582610f7f565b8655506115a7565b601f19841661155586610de5565b60005b8281101561157d57848901518255600182019150602085019450602081019050611558565b8683101561159a5784890151611596601f891682610f61565b8355505b6001600288020188555050505b50505050505056fef9015880b9015401cc5504bac92b5ccafa0c3202372d7bb0b8cb6861795deddafae0ed7be924ff170000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006360e4a05b2e03056b2d61c7ad2deb47b0be0084ffab44bf506bfff07b951fb0bf37c171584f74d80c96306e124152458183a7a2c570a136099f7c4ffc9dde340cbed4f87133200fc4e425946925eaac958209aba78e190feeb5c9f31182ec8d458260279adb3976c158471b932bbee5bb320cf9015880b9015401154918854780593f1c6bf620684b29ab3d4c4a4f5996dcbd1c1d0b48c06d56b40000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000751884c80374b7b5d6d0ef740dacbea91b3d53ee5243eeacf94a970f131185c69dfd44e868e370602c72484bc2f34e9466255ef50ca817d34d61a46bff368318b6fff300eb566dac8d1c569a270c6d9c1f99664643582cafcb276fea83d5564cd38f4b1be0e8ee6c06e10f10f10dc39120884a26469706673582212209f594371591c2c5cc2a967353f54d26d3d236ad0e4c36a1598ff39cef70eae1664736f6c63781c302e382e33312d7072652e312b636f6d6d69742e6235393536366636004d";
 
     // deploy contract
     Json::Value create;
     create["from"] = toJS( senderAddress );
     create["code"] = bytecode;
-    create["gas"] = "1500000";
-    create["value"] = "1000000000000000000";
+    create["gas"] = "1800000";
+    create["value"] = "10000000000000000000";
     create["nonce"] = 0;
     string txHash = fixture.rpcClient->eth_sendTransaction( create );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
@@ -6198,17 +5946,22 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
     auto to = bite2Txn.to();
     BOOST_REQUIRE_EQUAL( to, dev::Address( contractAddress ) );
 
-    dev::bytes randomAddressBytes = dev::Address( contractAddress ).asBytes();
-    dev::bytes randomAddressLeftPadded( 32, 0 );
-    std::copy( randomAddressBytes.begin(), randomAddressBytes.end(), randomAddressLeftPadded.begin() + 12 );
-    dev::u256 randomGasLimit = dev::h256::Arith( dev::h256::random() ) % 250000 + 100000;
+    Json::Value craftedCTXs = fixture.rpcClient->bite_getCraftedCtxs( txHash );
+    BOOST_REQUIRE_EQUAL( craftedCTXs.size(), 1 );
+    BOOST_REQUIRE_EQUAL( craftedCTXs[0].asString(), bite2Txn.sha3().hex() );
+
+    dev::u256 randomGasLimit = dev::h256::Arith( dev::h256::random() ) % 2500000 + 1000000;
     dev::bytes randomGasLimitBytes = dev::toBigEndian( randomGasLimit );
+
+    std::vector< dev::bytes > originalValues{ dev::h256::random().asBytes(), dev::h256::random().asBytes() };
+
+    dev::bytes encryptedArg1 = formEncryptedMessageMockup( originalValues[0], dev::Address( contractAddress ) );
+    dev::bytes encryptedArg2 = formEncryptedMessageMockup( originalValues[1], dev::Address( contractAddress ) );
 
     // Build abi.encode(bytes[] args1, bytes[] args2) with 2 elements each
     // args1 elements must be at least BITE_CIPHERTEXT_MIN_LEN bytes (encrypted data)
     std::vector<dev::bytes> args1 = {
-        dev::bytes( BITE_CIPHERTEXT_MIN_LEN, 0x11 ),  // First encrypted element (minimum length)
-        dev::bytes( BITE_CIPHERTEXT_MIN_LEN, 0x22 )  // Second encrypted element (slightly longer)
+        encryptedArg1, encryptedArg2
     };
     std::vector<dev::bytes> args2 = {
         dev::fromHex("706c61696e746578743122"),  // "plaintext1"
@@ -6218,17 +5971,13 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
     dev::bytes randomData = buildAbiEncodedArrays( args1, args2 );
 
     // Build ABI-encoded input: abi.encode(address, uint256, bytes)
-    // Format: address(32) + gasLimit(32) + offset_to_bytes(32) + bytes_length(32) + bytes_data
+    // Format: gasLimit(32) + offset_to_bytes(32) + bytes_length(32) + bytes_data
     dev::bytes resultData;
-
-    // address value (left-padded to 32 bytes)
-    resultData.insert( resultData.end(), randomAddressLeftPadded.begin(), randomAddressLeftPadded.end() );
-
     // gasLimit value (32 bytes)
     resultData.insert( resultData.end(), randomGasLimitBytes.begin(), randomGasLimitBytes.end() );
 
-    // offset to bytes data (points to position 96 = 3 * 32)
-    dev::bytes dataOffset = dev::toBigEndian( dev::u256( 96 ) );
+    // offset to bytes data (points to position 64 = 2 * 32)
+    dev::bytes dataOffset = dev::toBigEndian( dev::u256( 64 ) );
     resultData.insert( resultData.end(), dataOffset.begin(), dataOffset.end() );
     // bytes data (length + content)
     dev::bytes dataLength = dev::toBigEndian( dev::u256( randomData.size() ) );
@@ -6239,22 +5988,20 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
     txGenerate["data"] = "0x6040c1fb" + dev::toHex( dev::u256( 32 ) ) + dev::toHex( dev::u256( resultData.size() ) ) + dev::toHex( resultData );
     txGenerate["from"] = toJS( senderAddress );
     txGenerate["nonce"] = 2;
-    fixture.rpcClient->eth_sendTransaction( txGenerate );
+    std::string txGenerateHash = fixture.rpcClient->eth_sendTransaction( txGenerate );
+    BOOST_REQUIRE_EQUAL( fixture.client->debugGetTransactionQueue()->pendingBITE2Transactions().size(), 1 );
+    BOOST_REQUIRE_EQUAL( fixture.client->pending().size(), 1 );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
-    PrecompiledExecutor randomWalletExecutor = PrecompiledRegistrar::executor( "getRandomWalletAndSignatureForCTX" );
-    dev::eth::PrecompiledCallContext ctx( fixture.client->number(), 0, 1, true );
+    PrecompiledExecutor submitCTXExecutor = PrecompiledRegistrar::executor( "submitCTX" );
+    dev::eth::PrecompiledCallContext ctx( fixture.client->number(), 1, 1,
+                                          dev::Address( contractAddress ), true );
 
     dev::bytesConstRef input( resultData.data(), resultData.size() );
-    auto res = randomWalletExecutor( input, ctx );
+    auto res = submitCTXExecutor( input, ctx );
     BOOST_REQUIRE( res.first );
 
     dev::Address addressFromPrecompiled( dev::bytes( res.second.begin(), res.second.begin() + dev::Address::size ) );
-    auto randomSignatureBytes = dev::bytes( res.second.begin() + dev::Address::size, res.second.end() );
-    auto rBytes = dev::h256( dev::bytes( randomSignatureBytes.begin(), randomSignatureBytes.begin() + dev::h256::size ) );
-    auto sBytes = dev::h256( dev::bytes( randomSignatureBytes.begin() + dev::h256::size, randomSignatureBytes.begin() + 2 * dev::h256::size ) );
-    auto vBytes = dev::h256( dev::bytes( randomSignatureBytes.begin() + 2 * dev::h256::size, randomSignatureBytes.begin() + 3 * dev::h256::size ) );
-    dev::SignatureStruct signatureFromPrecompiled( rBytes, sBytes, dev::h256::Arith( vBytes ).convert_to< _byte_ >() );
 
     PrecompiledExecutor blockRandomExecutor = PrecompiledRegistrar::executor( "getBlockRandom" );
     auto vrs = dev::makeSignature( blockRandomExecutor( bytesConstRef(), ctx ).second, ctx.currentTxnIndex );
@@ -6281,8 +6028,8 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
     dev::bytes rlpEncodedData = finalStream.out();
 
     rlpEncodedData.insert( rlpEncodedData.begin(),
-        ON_DECRYPT_FUNCTION_SELECTOR.begin(),
-        ON_DECRYPT_FUNCTION_SELECTOR.end() );
+        dev::bite::ON_DECRYPT_FUNCTION_SELECTOR.begin(),
+        dev::bite::ON_DECRYPT_FUNCTION_SELECTOR.end() );
 
     // Create expected transaction for signature verification using RLP-encoded data
     Transaction expectedTransaction( 0, gasPrice, randomGasLimit, dev::Address( contractAddress ), rlpEncodedData, 0 );
@@ -6290,12 +6037,337 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
     dev::Public expectedPublicKey = recover( vrs, expectedTxnHash );
     dev::Address expectedWalletAddress = dev::toAddress( expectedPublicKey );
 
-    BOOST_REQUIRE( fixture.client->debugGetTransactionQueue()->pendingBITE2Transactions().size() == 2 );
-    bite2Txn = fixture.client->debugGetTransactionQueue()->pendingBITE2Transactions().back();
-    BOOST_REQUIRE_EQUAL( bite2Txn.to(), dev::Address( contractAddress ) );
-    BOOST_REQUIRE_EQUAL( bite2Txn.sender(), expectedWalletAddress );
-    BOOST_REQUIRE_EQUAL( bite2Txn.gas(), randomGasLimit );
-    BOOST_REQUIRE( bite2Txn.data() == rlpEncodedData );
+    auto bn = fixture.client->number();
+    BOOST_REQUIRE_EQUAL( fixture.client->transactions( bn ).size(), 2 );
+    BOOST_REQUIRE( fixture.client->transactions( bn )[0].isCTX() );
+
+    // call getDecrypted()
+    Json::Value callDecrypted;
+    callDecrypted["to"] = contractAddress;
+    callDecrypted["data"] = "0x38d5a312";
+    dev::bytes result = dev::fromHex( fixture.rpcClient->eth_call( callDecrypted, "latest" ) );
+    auto [rlpStreamDecrypted, decryptedLength] = dev::bite::parseAbiEncodedBytesArray( dev::bytesConstRef( result.data(), result.size() ), 32, "" );
+    BOOST_REQUIRE_EQUAL( decryptedLength, pregeneratedDecryptedValues.size() );
+    dev::RLP rlpDecrypted( rlpStreamDecrypted.out() );
+    for (size_t i = 0; i < decryptedLength; ++i) {
+        dev::RLP decryptedPayload( rlpDecrypted[i].payload() );
+        BOOST_REQUIRE( decryptedPayload[0].toBytes() == pregeneratedDecryptedValues[i] );
+        BOOST_REQUIRE_EQUAL( dev::toHexPrefixed( decryptedPayload[1].toBytes() ), contractAddress );
+    }
+
+    // call getPlaintext()
+    Json::Value callPlaintext;
+    callPlaintext["to"] = contractAddress;
+    callPlaintext["data"] = "0xcc159120";
+    result = dev::fromHex( fixture.rpcClient->eth_call( callPlaintext, "latest" ) );
+    auto [rlpStreamPlaintext, plaintextLength] = dev::bite::parseAbiEncodedBytesArray( dev::bytesConstRef( result.data(), result.size() ), 32, "" );
+    BOOST_REQUIRE_EQUAL( plaintextLength, pregeneratedPlaintextValues.size() );
+    dev::RLP rlpPlaintext( rlpStreamPlaintext.out() );
+    for (size_t i = 0; i < plaintextLength; ++i) {
+        BOOST_REQUIRE_EQUAL( dev::toHex( rlpPlaintext[i].toBytes() ), dev::toHex( pregeneratedPlaintextValues[i] ) );
+    }
+
+    BOOST_REQUIRE_EQUAL( fixture.client->debugGetTransactionQueue()->pendingBITE2Transactions().size(), 1 );
+
+    auto lastBlockCTXs = fixture.client->blockChain().ctxListForPreviousBlock();
+    BOOST_REQUIRE_EQUAL( lastBlockCTXs.size(), 1 );
+    auto ctxFromLastBlock = lastBlockCTXs[0];
+    BOOST_REQUIRE( ctxFromLastBlock.isCTX() );
+    BOOST_REQUIRE_EQUAL( ctxFromLastBlock.to(), dev::Address( contractAddress ) );
+    BOOST_REQUIRE_EQUAL( ctxFromLastBlock.gas(), randomGasLimit );
+
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    bn = fixture.client->number();
+    BOOST_REQUIRE_EQUAL( fixture.client->transactions( bn ).size(), 1 );
+    Transaction ctxFromBlockchain = fixture.client->transaction( fixture.client->blockInfo( bn ).hash(), unsigned( 0 ) );
+
+    BOOST_REQUIRE( ctxFromBlockchain.isCTX() );
+    BOOST_REQUIRE_EQUAL( ctxFromBlockchain.to(), dev::Address( contractAddress ) );
+    BOOST_REQUIRE_EQUAL( ctxFromBlockchain.gas(), randomGasLimit );
+    BOOST_REQUIRE( ctxFromBlockchain.data() == rlpEncodedData );
+    BOOST_REQUIRE( ctxFromBlockchain.signature() == vrs );
+    BOOST_REQUIRE_EQUAL( ctxFromBlockchain.sender(), expectedWalletAddress );
+
+    auto ctxOrigin = fixture.rpcClient->bite_getCtxOrigin( "0x" + ctxFromBlockchain.sha3().hex() );
+    BOOST_REQUIRE_EQUAL( "0x" + ctxOrigin, txGenerateHash );
+
+    // call getDecrypted()
+    result = dev::fromHex( fixture.rpcClient->eth_call( callDecrypted, "latest" ) );
+    auto [rlpStreamDecrypted1, decryptedLength1] = dev::bite::parseAbiEncodedBytesArray( dev::bytesConstRef( result.data(), result.size() ), 32, "" );
+    BOOST_REQUIRE_EQUAL( decryptedLength1, pregeneratedDecryptedValues.size() );
+    dev::RLP rlpDecrypted1( rlpStreamDecrypted1.out() );
+    for (size_t i = 0; i < decryptedLength1; ++i) {
+        dev::RLP decryptedPayload( rlpDecrypted1[i].payload() );
+        BOOST_REQUIRE( decryptedPayload[0].toBytes() == originalValues[i] );
+        BOOST_REQUIRE_EQUAL( dev::toHexPrefixed( decryptedPayload[1].toBytes() ), contractAddress );
+    }
+
+    // call getPlaintext()
+    result = dev::fromHex( fixture.rpcClient->eth_call( callPlaintext, "latest" ) );
+    auto [rlpStreamPlaintext1, plaintextLength1] = dev::bite::parseAbiEncodedBytesArray( dev::bytesConstRef( result.data(), result.size() ), 32, "" );
+    BOOST_REQUIRE_EQUAL( plaintextLength1, pregeneratedPlaintextValues.size() );
+    dev::RLP rlpPlaintext1( rlpStreamPlaintext1.out() );
+    for (size_t i = 0; i < plaintextLength1; ++i) {
+        BOOST_REQUIRE_EQUAL( dev::toHex( rlpPlaintext1[i].toBytes() ), dev::toHex( args2[i] ) );
+    }
+}
+
+BOOST_AUTO_TEST_CASE( CTXTransactionAfterRevert ) {
+    JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true, false, -1, {{ "contractStorageLimit", "100000" }} );
+
+    string senderAddress = toJS( fixture.coinbase.address() );
+
+//     pragma solidity ^0.8.13;
+
+// contract submitCTXCaller {
+//     bytes[] decrypted = new bytes[](1);
+//     bytes[] plaintext = new bytes[](1);
+//     constructor() payable {}
+
+//     function submitCTX() public {
+//         uint256 randomNumber = uint256(keccak256(abi.encodePacked(block.timestamp, block.number))) % 2500000 + 1000000;
+//         bytes[] memory args1 = new bytes[](2);
+//         // Use pre-generated args1 values instead of generating them dynamically
+//         args1[0] = hex"f9015880b9015401cc5504bac92b5ccafa0c3202372d7bb0b8cb6861795deddafae0ed7be924ff170000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006360e4a05b2e03056b2d61c7ad2deb47b0be0084ffab44bf506bfff07b951fb0bf37c171584f74d80c96306e124152458183a7a2c570a136099f7c4ffc9dde340cbed4f87133200fc4e425946925eaac958209aba78e190feeb5c9f31182ec8d458260279adb3976c158471b932bbee5bb320c";
+//         args1[1] = hex"f9015880b9015401154918854780593f1c6bf620684b29ab3d4c4a4f5996dcbd1c1d0b48c06d56b40000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000751884c80374b7b5d6d0ef740dacbea91b3d53ee5243eeacf94a970f131185c69dfd44e868e370602c72484bc2f34e9466255ef50ca817d34d61a46bff368318b6fff300eb566dac8d1c569a270c6d9c1f99664643582cafcb276fea83d5564cd38f4b1be0e8ee6c06e10f10f10dc39120884";
+
+//         bytes[] memory args2 = new bytes[](2);
+//         args2[0] = abi.encodePacked("plaintext1");
+//         args2[1] = abi.encodePacked("plaintext2");
+
+//         bytes memory randomBytes = abi.encode(args1, args2);
+//         bytes memory input = abi.encode(randomNumber, randomBytes);
+
+//         (bool success, bytes memory result) = address(0x1B).call(input);
+//         require(success, "0x1B call failed");
+        
+//         // Extract address from first 20 bytes of result and transfer
+//         address walletAddress = address(bytes20(result));
+//         payable(walletAddress).transfer(400000000000);
+//     }
+
+//     function submitCTXWithRevert() public {
+//         uint256 randomNumber = uint256(keccak256(abi.encodePacked(block.timestamp, block.number))) % 2500000 + 1000000;
+//         bytes[] memory args1 = new bytes[](2);
+//         // Use pre-generated args1 values instead of generating them dynamically
+//         args1[0] = hex"f9015880b9015401cc5504bac92b5ccafa0c3202372d7bb0b8cb6861795deddafae0ed7be924ff170000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006360e4a05b2e03056b2d61c7ad2deb47b0be0084ffab44bf506bfff07b951fb0bf37c171584f74d80c96306e124152458183a7a2c570a136099f7c4ffc9dde340cbed4f87133200fc4e425946925eaac958209aba78e190feeb5c9f31182ec8d458260279adb3976c158471b932bbee5bb320c";
+//         args1[1] = hex"f9015880b9015401154918854780593f1c6bf620684b29ab3d4c4a4f5996dcbd1c1d0b48c06d56b40000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000751884c80374b7b5d6d0ef740dacbea91b3d53ee5243eeacf94a970f131185c69dfd44e868e370602c72484bc2f34e9466255ef50ca817d34d61a46bff368318b6fff300eb566dac8d1c569a270c6d9c1f99664643582cafcb276fea83d5564cd38f4b1be0e8ee6c06e10f10f10dc39120884";
+
+//         bytes[] memory args2 = new bytes[](2);
+//         args2[0] = abi.encodePacked("plaintext1");
+//         args2[1] = abi.encodePacked("plaintext2");
+
+//         bytes memory randomBytes = abi.encode(args1, args2);
+//         bytes memory input = abi.encode(randomNumber, randomBytes);
+
+//         (bool success, bytes memory result) = address(0x1B).staticcall(input);
+//         require(success, "0x1B call failed");
+        
+//         // Extract address from first 20 bytes of result and transfer
+//         address walletAddress = address(bytes20(result));
+//         payable(walletAddress).transfer(400000000000);
+//         require(false);
+//     }
+
+//     function onDecrypt(bytes[] calldata decryptedArguments, bytes[] calldata plaintextArguments) public {
+//         delete decrypted;
+//         decrypted = new bytes[](decryptedArguments.length);
+//         for (uint i = 0; i < decryptedArguments.length; ++i) {
+//             decrypted[i] = decryptedArguments[i];
+//         }
+//         delete  plaintext;
+//         plaintext = new bytes[](plaintextArguments.length);
+//         for (uint i = 0; i < plaintextArguments.length; ++i) {
+//             plaintext[i] = plaintextArguments[i];
+//         }
+//         return;
+//     }
+
+//     function getDecrypted() public view returns (bytes[] memory) {
+//         return decrypted;
+//     }
+
+//     function getPlaintext() public view returns (bytes[] memory) {
+//         return plaintext;
+//     }
+// }
+    std::string bytecode = "6080604052600167ffffffffffffffff81111561001f5761001e6101ad565b5b60405190808252806020026020018201604052801561005257816020015b606081526020019060019003908161003d5790505b50600090805190602001906100689291906100d3565b50600167ffffffffffffffff811115610084576100836101ad565b5b6040519080825280602002602001820160405280156100b757816020015b60608152602001906001900390816100a25790505b50600190805190602001906100cd9291906100d3565b506104cf565b82805482825590600052602060002090810192821561011b579160200282015b8281111561011a57825182908161010a91906103fd565b50916020019190600101906100f3565b5b509050610128919061012c565b5090565b5b8082111561014c57600081816101439190610150565b5060010161012d565b5090565b50805461015c90610216565b6000825580601f1061016e575061018d565b601f01602090049060005260206000209081019061018c9190610190565b5b50565b5b808211156101a9576000816000905550600101610191565b5090565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052604160045260246000fd5b600081519050919050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052602260045260246000fd5b6000600282049050600182168061022e57607f821691505b602082108103610241576102406101e7565b5b50919050565b60008190508160005260206000209050919050565b60006020601f8301049050919050565b600082821b905092915050565b6000600883026102a97fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff8261026c565b6102b3868361026c565b95508019841693508086168417925050509392505050565b6000819050919050565b6000819050919050565b60006102fa6102f56102f0846102cb565b6102d5565b6102cb565b9050919050565b6000819050919050565b610314836102df565b61032861032082610301565b848454610279565b825550505050565b600090565b61033d610330565b61034881848461030b565b505050565b5b8181101561036c57610361600082610335565b60018101905061034e565b5050565b601f8211156103b15761038281610247565b61038b8461025c565b8101602085101561039a578190505b6103ae6103a68561025c565b83018261034d565b50505b505050565b600082821c905092915050565b60006103d4600019846008026103b6565b1980831691505092915050565b60006103ed83836103c3565b9150826002028217905092915050565b610406826101dc565b67ffffffffffffffff81111561041f5761041e6101ad565b5b6104298254610216565b610434828285610370565b600060209050601f8311600181146104675760008415610455578287015190505b61045f85826103e1565b8655506104c7565b601f19841661047586610247565b60005b8281101561049d57848901518255600182019150602085019450602081019050610478565b868310156104ba57848901516104b6601f8916826103c3565b8355505b6001600288020188555050505b505050505050565b6119ef806104de6000396000f3fe608060405234801561001057600080fd5b50600436106100575760003560e01c806338d5a3121461005c57806357983ac81461007a5780637372aa2614610096578063a2934a8c146100a0578063cc159120146100aa575b600080fd5b6100646100c8565b6040516100719190610d1f565b60405180910390f35b610094600480360381019061008f9190610db0565b6101a1565b005b61009e610366565b005b6100a86106ab565b005b6100b26109f9565b6040516100bf9190610d1f565b60405180910390f35b60606000805480602002602001604051908101604052809291908181526020016000905b8282101561019857838290600052602060002001805461010b90610e60565b80601f016020809104026020016040519081016040528092919081815260200182805461013790610e60565b80156101845780601f1061015957610100808354040283529160200191610184565b820191906000526020600020905b81548152906001019060200180831161016757829003601f168201915b5050505050815260200190600101906100ec565b50505050905090565b6000806101ae9190610ad2565b8383905067ffffffffffffffff8111156101cb576101ca610e91565b5b6040519080825280602002602001820160405280156101fe57816020015b60608152602001906001900390816101e95790505b5060009080519060200190610214929190610af3565b5060005b8484905081101561027f5784848281811061023657610235610ec0565b5b90506020028101906102489190610efe565b6000838154811061025c5761025b610ec0565b5b906000526020600020019182610273929190611122565b50806001019050610218565b506001600061028e9190610ad2565b8181905067ffffffffffffffff8111156102ab576102aa610e91565b5b6040519080825280602002602001820160405280156102de57816020015b60608152602001906001900390816102c95790505b50600190805190602001906102f4929190610af3565b5060005b8282905081101561035f5782828281811061031657610315610ec0565b5b90506020028101906103289190610efe565b6001838154811061033c5761033b610ec0565b5b906000526020600020019182610353929190611122565b508060010190506102f8565b5050505050565b6000620f4240622625a04243604051602001610383929190611213565b6040516020818303038152906040528051906020012060001c6103a6919061126e565b6103b091906112ce565b90506000600267ffffffffffffffff8111156103cf576103ce610e91565b5b60405190808252806020026020018201604052801561040257816020015b60608152602001906001900390816103ed5790505b50905060405180610180016040528061015b81526020016116ea61015b91398160008151811061043557610434610ec0565b5b602002602001018190525060405180610180016040528061015b815260200161184561015b9139816001815181106104705761046f610ec0565b5b60200260200101819052506000600267ffffffffffffffff81111561049857610497610e91565b5b6040519080825280602002602001820160405280156104cb57816020015b60608152602001906001900390816104b65790505b5090506040516020016104dd90611359565b60405160208183030381529060405281600081518110610500576104ff610ec0565b5b602002602001018190525060405160200161051a906113ba565b6040516020818303038152906040528160018151811061053d5761053c610ec0565b5b60200260200101819052506000828260405160200161055d9291906113cf565b60405160208183030381529060405290506000848260405160200161058392919061145f565b6040516020818303038152906040529050600080601b73ffffffffffffffffffffffffffffffffffffffff16836040516105bd91906114cb565b6000604051808303816000865af19150503d80600081146105fa576040519150601f19603f3d011682016040523d82523d6000602084013e6105ff565b606091505b509150915081610644576040517f08c379a000000000000000000000000000000000000000000000000000000000815260040161063b9061153f565b60405180910390fd5b600081610650906115b0565b60601c90508073ffffffffffffffffffffffffffffffffffffffff166108fc645d21dba0009081150290604051600060405180830381858888f193505050501580156106a0573d6000803e3d6000fd5b505050505050505050565b6000620f4240622625a042436040516020016106c8929190611213565b6040516020818303038152906040528051906020012060001c6106eb919061126e565b6106f591906112ce565b90506000600267ffffffffffffffff81111561071457610713610e91565b5b60405190808252806020026020018201604052801561074757816020015b60608152602001906001900390816107325790505b50905060405180610180016040528061015b81526020016116ea61015b91398160008151811061077a57610779610ec0565b5b602002602001018190525060405180610180016040528061015b815260200161184561015b9139816001815181106107b5576107b4610ec0565b5b60200260200101819052506000600267ffffffffffffffff8111156107dd576107dc610e91565b5b60405190808252806020026020018201604052801561081057816020015b60608152602001906001900390816107fb5790505b50905060405160200161082290611359565b6040516020818303038152906040528160008151811061084557610844610ec0565b5b602002602001018190525060405160200161085f906113ba565b6040516020818303038152906040528160018151811061088257610881610ec0565b5b6020026020010181905250600082826040516020016108a29291906113cf565b6040516020818303038152906040529050600084826040516020016108c892919061145f565b6040516020818303038152906040529050600080601b73ffffffffffffffffffffffffffffffffffffffff168360405161090291906114cb565b600060405180830381855afa9150503d806000811461093d576040519150601f19603f3d011682016040523d82523d6000602084013e610942565b606091505b509150915081610987576040517f08c379a000000000000000000000000000000000000000000000000000000000815260040161097e9061153f565b60405180910390fd5b600081610993906115b0565b60601c90508073ffffffffffffffffffffffffffffffffffffffff166108fc645d21dba0009081150290604051600060405180830381858888f193505050501580156109e3573d6000803e3d6000fd5b5060006109ef57600080fd5b5050505050505050565b60606001805480602002602001604051908101604052809291908181526020016000905b82821015610ac9578382906000526020600020018054610a3c90610e60565b80601f0160208091040260200160405190810160405280929190818152602001828054610a6890610e60565b8015610ab55780601f10610a8a57610100808354040283529160200191610ab5565b820191906000526020600020905b815481529060010190602001808311610a9857829003601f168201915b505050505081526020019060010190610a1d565b50505050905090565b5080546000825590600052602060002090810190610af09190610b4c565b50565b828054828255906000526020600020908101928215610b3b579160200282015b82811115610b3a578251829081610b2a9190611617565b5091602001919060010190610b13565b5b509050610b489190610b4c565b5090565b5b80821115610b6c5760008181610b639190610b70565b50600101610b4d565b5090565b508054610b7c90610e60565b6000825580601f10610b8e5750610bad565b601f016020900490600052602060002090810190610bac9190610bb0565b5b50565b5b80821115610bc9576000816000905550600101610bb1565b5090565b600081519050919050565b600082825260208201905092915050565b6000819050602082019050919050565b600081519050919050565b600082825260208201905092915050565b60005b83811015610c33578082015181840152602081019050610c18565b60008484015250505050565b6000601f19601f8301169050919050565b6000610c5b82610bf9565b610c658185610c04565b9350610c75818560208601610c15565b610c7e81610c3f565b840191505092915050565b6000610c958383610c50565b905092915050565b6000602082019050919050565b6000610cb582610bcd565b610cbf8185610bd8565b935083602082028501610cd185610be9565b8060005b85811015610d0d5784840389528151610cee8582610c89565b9450610cf983610c9d565b925060208a01995050600181019050610cd5565b50829750879550505050505092915050565b60006020820190508181036000830152610d398184610caa565b905092915050565b600080fd5b600080fd5b600080fd5b600080fd5b600080fd5b60008083601f840112610d7057610d6f610d4b565b5b8235905067ffffffffffffffff811115610d8d57610d8c610d50565b5b602083019150836020820283011115610da957610da8610d55565b5b9250929050565b60008060008060408587031215610dca57610dc9610d41565b5b600085013567ffffffffffffffff811115610de857610de7610d46565b5b610df487828801610d5a565b9450945050602085013567ffffffffffffffff811115610e1757610e16610d46565b5b610e2387828801610d5a565b925092505092959194509250565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052602260045260246000fd5b60006002820490506001821680610e7857607f821691505b602082108103610e8b57610e8a610e31565b5b50919050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052604160045260246000fd5b7f4e487b7100000000000000000000000000000000000000000000000000000000600052603260045260246000fd5b600080fd5b600080fd5b600080fd5b60008083356001602003843603038112610f1b57610f1a610eef565b5b80840192508235915067ffffffffffffffff821115610f3d57610f3c610ef4565b5b602083019250600182023603831315610f5957610f58610ef9565b5b509250929050565b600082905092915050565b60008190508160005260206000209050919050565b60006020601f8301049050919050565b600082821b905092915050565b600060088302610fce7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff82610f91565b610fd88683610f91565b95508019841693508086168417925050509392505050565b6000819050919050565b6000819050919050565b600061101f61101a61101584610ff0565b610ffa565b610ff0565b9050919050565b6000819050919050565b61103983611004565b61104d61104582611026565b848454610f9e565b825550505050565b600090565b611062611055565b61106d818484611030565b505050565b5b818110156110915761108660008261105a565b600181019050611073565b5050565b601f8211156110d6576110a781610f6c565b6110b084610f81565b810160208510156110bf578190505b6110d36110cb85610f81565b830182611072565b50505b505050565b600082821c905092915050565b60006110f9600019846008026110db565b1980831691505092915050565b600061111283836110e8565b9150826002028217905092915050565b61112c8383610f61565b67ffffffffffffffff81111561114557611144610e91565b5b61114f8254610e60565b61115a828285611095565b6000601f8311600181146111895760008415611177578287013590505b6111818582611106565b8655506111e9565b601f19841661119786610f6c565b60005b828110156111bf5784890135825560018201915060208501945060208101905061119a565b868310156111dc57848901356111d8601f8916826110e8565b8355505b6001600288020188555050505b50505050505050565b6000819050919050565b61120d61120882610ff0565b6111f2565b82525050565b600061121f82856111fc565b60208201915061122f82846111fc565b6020820191508190509392505050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052601260045260246000fd5b600061127982610ff0565b915061128483610ff0565b9250826112945761129361123f565b5b828206905092915050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052601160045260246000fd5b60006112d982610ff0565b91506112e483610ff0565b92508282019050808211156112fc576112fb61129f565b5b92915050565b600081905092915050565b7f706c61696e746578743100000000000000000000000000000000000000000000600082015250565b6000611343600a83611302565b915061134e8261130d565b600a82019050919050565b600061136482611336565b9150819050919050565b7f706c61696e746578743200000000000000000000000000000000000000000000600082015250565b60006113a4600a83611302565b91506113af8261136e565b600a82019050919050565b60006113c582611397565b9150819050919050565b600060408201905081810360008301526113e98185610caa565b905081810360208301526113fd8184610caa565b90509392505050565b61140f81610ff0565b82525050565b600082825260208201905092915050565b600061143182610bf9565b61143b8185611415565b935061144b818560208601610c15565b61145481610c3f565b840191505092915050565b60006040820190506114746000830185611406565b81810360208301526114868184611426565b90509392505050565b600081905092915050565b60006114a582610bf9565b6114af818561148f565b93506114bf818560208601610c15565b80840191505092915050565b60006114d7828461149a565b915081905092915050565b600082825260208201905092915050565b7f307831422063616c6c206661696c656400000000000000000000000000000000600082015250565b60006115296010836114e2565b9150611534826114f3565b602082019050919050565b600060208201905081810360008301526115588161151c565b9050919050565b6000819050602082019050919050565b60007fffffffffffffffffffffffffffffffffffffffff00000000000000000000000082169050919050565b60006115a7825161156f565b80915050919050565b60006115bb82610bf9565b826115c58461155f565b90506115d08161159b565b925060148210156116105761160b7fffffffffffffffffffffffffffffffffffffffff00000000000000000000000083601403600802610f91565b831692505b5050919050565b61162082610bf9565b67ffffffffffffffff81111561163957611638610e91565b5b6116438254610e60565b61164e828285611095565b600060209050601f831160018114611681576000841561166f578287015190505b6116798582611106565b8655506116e1565b601f19841661168f86610f6c565b60005b828110156116b757848901518255600182019150602085019450602081019050611692565b868310156116d457848901516116d0601f8916826110e8565b8355505b6001600288020188555050505b50505050505056fef9015880b9015401cc5504bac92b5ccafa0c3202372d7bb0b8cb6861795deddafae0ed7be924ff170000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006360e4a05b2e03056b2d61c7ad2deb47b0be0084ffab44bf506bfff07b951fb0bf37c171584f74d80c96306e124152458183a7a2c570a136099f7c4ffc9dde340cbed4f87133200fc4e425946925eaac958209aba78e190feeb5c9f31182ec8d458260279adb3976c158471b932bbee5bb320cf9015880b9015401154918854780593f1c6bf620684b29ab3d4c4a4f5996dcbd1c1d0b48c06d56b40000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000751884c80374b7b5d6d0ef740dacbea91b3d53ee5243eeacf94a970f131185c69dfd44e868e370602c72484bc2f34e9466255ef50ca817d34d61a46bff368318b6fff300eb566dac8d1c569a270c6d9c1f99664643582cafcb276fea83d5564cd38f4b1be0e8ee6c06e10f10f10dc39120884a2646970667358221220fc4b359f946612f95cce9c035d3fb72316657813aa43c0d7e630b942efcc079e64736f6c63781c302e382e33312d7072652e312b636f6d6d69742e6235393536366636004d";
+    
+    // deploy contract
+    Json::Value create;
+    create["from"] = toJS( senderAddress );
+    create["code"] = bytecode;
+    create["gas"] = "1800000";
+    create["value"] = "10000000000000000000";
+    create["nonce"] = 0;
+    string txHash = fixture.rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    auto txReceipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    std::string contractAddress = txReceipt["contractAddress"].asString();
+    BOOST_REQUIRE( txReceipt["status"] == "0x1" );
+    
+    // call submitCTX()
+    // BITE2 queue should become non-empty
+    Json::Value txGenerate;
+    txGenerate["to"] = contractAddress;
+    txGenerate["gas"] = "1000000";
+    txGenerate["data"] = "0x7372aa26";
+    txGenerate["from"] = toJS( senderAddress );
+    txGenerate["nonce"] = 1;
+    txHash = fixture.rpcClient->eth_sendTransaction( txGenerate );
+
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    txReceipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE( txReceipt["status"] == "0x1" );
+    BOOST_REQUIRE_EQUAL( fixture.client->debugGetTransactionQueue()->pendingBITE2Transactions().size(), 1 );
+
+
+    // call submitCTXWithRevert()
+    // BITE2 queue size should remain empty
+    Json::Value txFailGenerate;
+    txFailGenerate["to"] = contractAddress;
+    txFailGenerate["gas"] = "1000000";
+    txFailGenerate["data"] = "0xa2934a8c";
+    txFailGenerate["from"] = toJS( senderAddress );
+    txFailGenerate["nonce"] = 2;
+    txHash = fixture.rpcClient->eth_sendTransaction( txFailGenerate );
+
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    txReceipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE( txReceipt["status"] == "0x0" );
+
+    BOOST_REQUIRE_EQUAL( fixture.client->debugGetTransactionQueue()->pendingBITE2Transactions().size(), 0 );
+}
+
+BOOST_AUTO_TEST_CASE( CTXOutOfBlockGasLimit ) {
+    JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true, false, -1, {{ "contractStorageLimit", "100000" }} );
+
+    dev::eth::g_skaleHost = fixture.client->skaleHost();
+
+    string senderAddress = toJS( fixture.coinbase.address() );
+
+   // pragma solidity ^0.8.13;
+
+   // contract Precompile0x07Caller {
+   //     bytes[] decrypted = new bytes[](1);
+   //     bytes[] plaintext = new bytes[](1);
+   //     constructor() payable {}
+
+   //     function submitCTX(uint256 gasAmount) public {
+   //         uint256 randomNumber = gasAmount + 100000;
+   //         bytes[] memory args1 = new bytes[](2);
+   //         // Use pre-generated args1 values instead of generating them dynamically
+   //         args1[0] = hex"f9015880b9015401cc5504bac92b5ccafa0c3202372d7bb0b8cb6861795deddafae0ed7be924ff170000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006360e4a05b2e03056b2d61c7ad2deb47b0be0084ffab44bf506bfff07b951fb0bf37c171584f74d80c96306e124152458183a7a2c570a136099f7c4ffc9dde340cbed4f87133200fc4e425946925eaac958209aba78e190feeb5c9f31182ec8d458260279adb3976c158471b932bbee5bb320c";
+   //         args1[1] = hex"f9015880b9015401154918854780593f1c6bf620684b29ab3d4c4a4f5996dcbd1c1d0b48c06d56b40000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000751884c80374b7b5d6d0ef740dacbea91b3d53ee5243eeacf94a970f131185c69dfd44e868e370602c72484bc2f34e9466255ef50ca817d34d61a46bff368318b6fff300eb566dac8d1c569a270c6d9c1f99664643582cafcb276fea83d5564cd38f4b1be0e8ee6c06e10f10f10dc39120884";
+
+   //         bytes[] memory args2 = new bytes[](1);
+   //         args2[0] = abi.encode(gasAmount);
+
+   //         bytes memory randomBytes = abi.encode(args1, args2);
+   //         bytes memory input = abi.encode(randomNumber, randomBytes);
+
+   //         (bool success, bytes memory result) = address(0x1B).staticcall(input);
+   //         require(success, "0x1B call failed");
+
+   //         // Extract address from first 20 bytes of result and transfer
+   //         address walletAddress = address(bytes20(result));
+   //         payable(walletAddress).transfer(25169190900000);
+   //     }
+
+   //     function onDecrypt(bytes[] calldata decryptedArguments, bytes[] calldata plaintextArguments) public {
+   //         delete decrypted;
+   //         decrypted = new bytes[](decryptedArguments.length);
+   //         for (uint i = 0; i < decryptedArguments.length; ++i) {
+   //             decrypted[i] = decryptedArguments[i];
+   //         }
+   //         delete plaintext;
+   //         plaintext = new bytes[](plaintextArguments.length);
+   //         for (uint i = 0; i < plaintextArguments.length; ++i) {
+   //             plaintext[i] = plaintextArguments[i];
+   //         }
+   //         uint256 gasAmount = abi.decode(plaintext[0], (uint256));
+   //         uint256 startGas = gasleft();
+   //         while (startGas - gasleft() < gasAmount && gasleft() > 50000) {
+   //             plaintext.push(abi.encode(gasleft()));
+   //         }
+   //         return;
+   //     }
+
+   //     function getDecrypted() public view returns (bytes[] memory) {
+   //         return decrypted;
+   //     }
+
+   //     function getPlaintext() public view returns (bytes[] memory) {
+   //         return plaintext;
+   //     }
+   // }
+
+    std::string bytecode = "6080604052600167ffffffffffffffff81111561001f5761001e6101ad565b5b60405190808252806020026020018201604052801561005257816020015b606081526020019060019003908161003d5790505b50600090805190602001906100689291906100d3565b50600167ffffffffffffffff811115610084576100836101ad565b5b6040519080825280602002602001820160405280156100b757816020015b60608152602001906001900390816100a25790505b50600190805190602001906100cd9291906100d3565b506104cf565b82805482825590600052602060002090810192821561011b579160200282015b8281111561011a57825182908161010a91906103fd565b50916020019190600101906100f3565b5b509050610128919061012c565b5090565b5b8082111561014c57600081816101439190610150565b5060010161012d565b5090565b50805461015c90610216565b6000825580601f1061016e575061018d565b601f01602090049060005260206000209081019061018c9190610190565b5b50565b5b808211156101a9576000816000905550600101610191565b5090565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052604160045260246000fd5b600081519050919050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052602260045260246000fd5b6000600282049050600182168061022e57607f821691505b602082108103610241576102406101e7565b5b50919050565b60008190508160005260206000209050919050565b60006020601f8301049050919050565b600082821b905092915050565b6000600883026102a97fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff8261026c565b6102b3868361026c565b95508019841693508086168417925050509392505050565b6000819050919050565b6000819050919050565b60006102fa6102f56102f0846102cb565b6102d5565b6102cb565b9050919050565b6000819050919050565b610314836102df565b61032861032082610301565b848454610279565b825550505050565b600090565b61033d610330565b61034881848461030b565b505050565b5b8181101561036c57610361600082610335565b60018101905061034e565b5050565b601f8211156103b15761038281610247565b61038b8461025c565b8101602085101561039a578190505b6103ae6103a68561025c565b83018261034d565b50505b505050565b600082821c905092915050565b60006103d4600019846008026103b6565b1980831691505092915050565b60006103ed83836103c3565b9150826002028217905092915050565b610406826101dc565b67ffffffffffffffff81111561041f5761041e6101ad565b5b6104298254610216565b610434828285610370565b600060209050601f8311600181146104675760008415610455578287015190505b61045f85826103e1565b8655506104c7565b601f19841661047586610247565b60005b8281101561049d57848901518255600182019150602085019450602081019050610478565b868310156104ba57848901516104b6601f8916826103c3565b8355505b6001600288020188555050505b505050505050565b6116da806104de6000396000f3fe608060405234801561001057600080fd5b506004361061004c5760003560e01c806338d5a312146100515780634c6f6c221461006f57806357983ac81461008b578063cc159120146100a7575b600080fd5b6100596100c5565b6040516100669190610a9a565b60405180910390f35b61008960048036038101906100849190610afc565b61019e565b005b6100a560048036038101906100a09190610b8e565b61046f565b005b6100af610774565b6040516100bc9190610a9a565b60405180910390f35b60606000805480602002602001604051908101604052809291908181526020016000905b8282101561019557838290600052602060002001805461010890610c3e565b80601f016020809104026020016040519081016040528092919081815260200182805461013490610c3e565b80156101815780601f1061015657610100808354040283529160200191610181565b820191906000526020600020905b81548152906001019060200180831161016457829003601f168201915b5050505050815260200190600101906100e9565b50505050905090565b6000620186a0826101af9190610c9e565b90506000600267ffffffffffffffff8111156101ce576101cd610cd2565b5b60405190808252806020026020018201604052801561020157816020015b60608152602001906001900390816101ec5790505b50905060405180610180016040528061015b81526020016113d561015b91398160008151811061023457610233610d01565b5b602002602001018190525060405180610180016040528061015b815260200161153061015b91398160018151811061026f5761026e610d01565b5b60200260200101819052506000600167ffffffffffffffff81111561029757610296610cd2565b5b6040519080825280602002602001820160405280156102ca57816020015b60608152602001906001900390816102b55790505b509050836040516020016102de9190610d3f565b6040516020818303038152906040528160008151811061030157610300610d01565b5b602002602001018190525060008282604051602001610321929190610d5a565b604051602081830303815290604052905060008482604051602001610347929190610ddb565b6040516020818303038152906040529050600080601b73ffffffffffffffffffffffffffffffffffffffff16836040516103819190610e47565b600060405180830381855afa9150503d80600081146103bc576040519150601f19603f3d011682016040523d82523d6000602084013e6103c1565b606091505b509150915081610406576040517f08c379a00000000000000000000000000000000000000000000000000000000081526004016103fd90610ebb565b60405180910390fd5b60008161041290610f39565b60601c90508073ffffffffffffffffffffffffffffffffffffffff166108fc6516e428aed1209081150290604051600060405180830381858888f19350505050158015610463573d6000803e3d6000fd5b50505050505050505050565b60008061047c919061084d565b8383905067ffffffffffffffff81111561049957610498610cd2565b5b6040519080825280602002602001820160405280156104cc57816020015b60608152602001906001900390816104b75790505b50600090805190602001906104e292919061086e565b5060005b8484905081101561054d5784848281811061050457610503610d01565b5b90506020028101906105169190610faf565b6000838154811061052a57610529610d01565b5b9060005260206000200191826105419291906111bc565b508060010190506104e6565b506001600061055c919061084d565b8181905067ffffffffffffffff81111561057957610578610cd2565b5b6040519080825280602002602001820160405280156105ac57816020015b60608152602001906001900390816105975790505b50600190805190602001906105c292919061086e565b5060005b8282905081101561062d578282828181106105e4576105e3610d01565b5b90506020028101906105f69190610faf565b6001838154811061060a57610609610d01565b5b9060005260206000200191826106219291906111bc565b508060010190506105c6565b506000600160008154811061064557610644610d01565b5b90600052602060002001805461065a90610c3e565b80601f016020809104026020016040519081016040528092919081815260200182805461068690610c3e565b80156106d35780601f106106a8576101008083540402835291602001916106d3565b820191906000526020600020905b8154815290600101906020018083116106b657829003601f168201915b50505050508060200190518101906106eb91906112a1565b905060005a90505b815a8261070091906112ce565b10801561070e575061c3505a115b1561076c5760015a6040516020016107269190610d3f565b6040516020818303038152906040529080600181540180825580915050600190039060005260206000200160009091909190915090816107669190611302565b506106f3565b505050505050565b60606001805480602002602001604051908101604052809291908181526020016000905b828210156108445783829060005260206000200180546107b790610c3e565b80601f01602080910402602001604051908101604052809291908181526020018280546107e390610c3e565b80156108305780601f1061080557610100808354040283529160200191610830565b820191906000526020600020905b81548152906001019060200180831161081357829003601f168201915b505050505081526020019060010190610798565b50505050905090565b508054600082559060005260206000209081019061086b91906108c7565b50565b8280548282559060005260206000209081019282156108b6579160200282015b828111156108b55782518290816108a59190611302565b509160200191906001019061088e565b5b5090506108c391906108c7565b5090565b5b808211156108e757600081816108de91906108eb565b506001016108c8565b5090565b5080546108f790610c3e565b6000825580601f106109095750610928565b601f016020900490600052602060002090810190610927919061092b565b5b50565b5b8082111561094457600081600090555060010161092c565b5090565b600081519050919050565b600082825260208201905092915050565b6000819050602082019050919050565b600081519050919050565b600082825260208201905092915050565b60005b838110156109ae578082015181840152602081019050610993565b60008484015250505050565b6000601f19601f8301169050919050565b60006109d682610974565b6109e0818561097f565b93506109f0818560208601610990565b6109f9816109ba565b840191505092915050565b6000610a1083836109cb565b905092915050565b6000602082019050919050565b6000610a3082610948565b610a3a8185610953565b935083602082028501610a4c85610964565b8060005b85811015610a885784840389528151610a698582610a04565b9450610a7483610a18565b925060208a01995050600181019050610a50565b50829750879550505050505092915050565b60006020820190508181036000830152610ab48184610a25565b905092915050565b600080fd5b600080fd5b6000819050919050565b610ad981610ac6565b8114610ae457600080fd5b50565b600081359050610af681610ad0565b92915050565b600060208284031215610b1257610b11610abc565b5b6000610b2084828501610ae7565b91505092915050565b600080fd5b600080fd5b600080fd5b60008083601f840112610b4e57610b4d610b29565b5b8235905067ffffffffffffffff811115610b6b57610b6a610b2e565b5b602083019150836020820283011115610b8757610b86610b33565b5b9250929050565b60008060008060408587031215610ba857610ba7610abc565b5b600085013567ffffffffffffffff811115610bc657610bc5610ac1565b5b610bd287828801610b38565b9450945050602085013567ffffffffffffffff811115610bf557610bf4610ac1565b5b610c0187828801610b38565b925092505092959194509250565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052602260045260246000fd5b60006002820490506001821680610c5657607f821691505b602082108103610c6957610c68610c0f565b5b50919050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052601160045260246000fd5b6000610ca982610ac6565b9150610cb483610ac6565b9250828201905080821115610ccc57610ccb610c6f565b5b92915050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052604160045260246000fd5b7f4e487b7100000000000000000000000000000000000000000000000000000000600052603260045260246000fd5b610d3981610ac6565b82525050565b6000602082019050610d546000830184610d30565b92915050565b60006040820190508181036000830152610d748185610a25565b90508181036020830152610d888184610a25565b90509392505050565b600082825260208201905092915050565b6000610dad82610974565b610db78185610d91565b9350610dc7818560208601610990565b610dd0816109ba565b840191505092915050565b6000604082019050610df06000830185610d30565b8181036020830152610e028184610da2565b90509392505050565b600081905092915050565b6000610e2182610974565b610e2b8185610e0b565b9350610e3b818560208601610990565b80840191505092915050565b6000610e538284610e16565b915081905092915050565b600082825260208201905092915050565b7f307831422063616c6c206661696c656400000000000000000000000000000000600082015250565b6000610ea5601083610e5e565b9150610eb082610e6f565b602082019050919050565b60006020820190508181036000830152610ed481610e98565b9050919050565b6000819050602082019050919050565b60007fffffffffffffffffffffffffffffffffffffffff00000000000000000000000082169050919050565b6000610f238251610eeb565b80915050919050565b600082821b905092915050565b6000610f4482610974565b82610f4e84610edb565b9050610f5981610f17565b92506014821015610f9957610f947fffffffffffffffffffffffffffffffffffffffff00000000000000000000000083601403600802610f2c565b831692505b5050919050565b600080fd5b600080fd5b600080fd5b60008083356001602003843603038112610fcc57610fcb610fa0565b5b80840192508235915067ffffffffffffffff821115610fee57610fed610fa5565b5b60208301925060018202360383131561100a57611009610faa565b5b509250929050565b600082905092915050565b60008190508160005260206000209050919050565b60006020601f8301049050919050565b6000600883026110727fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff82610f2c565b61107c8683610f2c565b95508019841693508086168417925050509392505050565b6000819050919050565b60006110b96110b46110af84610ac6565b611094565b610ac6565b9050919050565b6000819050919050565b6110d38361109e565b6110e76110df826110c0565b848454611042565b825550505050565b600090565b6110fc6110ef565b6111078184846110ca565b505050565b5b8181101561112b576111206000826110f4565b60018101905061110d565b5050565b601f821115611170576111418161101d565b61114a84611032565b81016020851015611159578190505b61116d61116585611032565b83018261110c565b50505b505050565b600082821c905092915050565b600061119360001984600802611175565b1980831691505092915050565b60006111ac8383611182565b9150826002028217905092915050565b6111c68383611012565b67ffffffffffffffff8111156111df576111de610cd2565b5b6111e98254610c3e565b6111f482828561112f565b6000601f8311600181146112235760008415611211578287013590505b61121b85826111a0565b865550611283565b601f1984166112318661101d565b60005b8281101561125957848901358255600182019150602085019450602081019050611234565b868310156112765784890135611272601f891682611182565b8355505b6001600288020188555050505b50505050505050565b60008151905061129b81610ad0565b92915050565b6000602082840312156112b7576112b6610abc565b5b60006112c58482850161128c565b91505092915050565b60006112d982610ac6565b91506112e483610ac6565b92508282039050818111156112fc576112fb610c6f565b5b92915050565b61130b82610974565b67ffffffffffffffff81111561132457611323610cd2565b5b61132e8254610c3e565b61133982828561112f565b600060209050601f83116001811461136c576000841561135a578287015190505b61136485826111a0565b8655506113cc565b601f19841661137a8661101d565b60005b828110156113a25784890151825560018201915060208501945060208101905061137d565b868310156113bf57848901516113bb601f891682611182565b8355505b6001600288020188555050505b50505050505056fef9015880b9015401cc5504bac92b5ccafa0c3202372d7bb0b8cb6861795deddafae0ed7be924ff170000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006360e4a05b2e03056b2d61c7ad2deb47b0be0084ffab44bf506bfff07b951fb0bf37c171584f74d80c96306e124152458183a7a2c570a136099f7c4ffc9dde340cbed4f87133200fc4e425946925eaac958209aba78e190feeb5c9f31182ec8d458260279adb3976c158471b932bbee5bb320cf9015880b9015401154918854780593f1c6bf620684b29ab3d4c4a4f5996dcbd1c1d0b48c06d56b40000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000751884c80374b7b5d6d0ef740dacbea91b3d53ee5243eeacf94a970f131185c69dfd44e868e370602c72484bc2f34e9466255ef50ca817d34d61a46bff368318b6fff300eb566dac8d1c569a270c6d9c1f99664643582cafcb276fea83d5564cd38f4b1be0e8ee6c06e10f10f10dc39120884a26469706673582212207709b91a00629c07db20a39f6c7636d35cc5abbd73e615e9843332b487d0f11664736f6c63781c302e382e33312d7072652e312b636f6d6d69742e6235393536366636004d";
+
+    // deploy contract
+    Json::Value create;
+    create["from"] = toJS( senderAddress );
+    create["code"] = bytecode;
+    create["gas"] = "1800000";
+    create["value"] = "10000000000000000000";
+    create["nonce"] = 0;
+    string txHash = fixture.rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    auto txReceipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    std::string contractAddress = txReceipt["contractAddress"].asString();
+    BOOST_REQUIRE( txReceipt["status"] == "0x1" );
+
+    fixture.rpcClient->debug_pauseConsensus( true );
+
+    // get block gas limit
+    dev::u256 blockGasLimit = fixture.client->blockInfo( fixture.client->number() ).gasLimit();
+
+    // send 2 submitCTXWithInput transactions in one block.
+    // total gasLimit specified in the payload of these transactions should extend block gas limit
+    // gasUsed of these transactions corresponds to their gasLimit
+    dev::u256 highGasLimit = (blockGasLimit * 90) / 100;
+    dev::bytes highGasLimitBytes = dev::toBigEndian( highGasLimit );
+
+    dev::u256 gasAmountForTx = highGasLimit;
+
+    std::string calldata = "0x4c6f6c22" + dev::toHex( gasAmountForTx );
+
+    auto startBlockNumber = fixture.client->number();
+
+    // send a transaction -> BITE2 txn queue should become non-empty
+    Json::Value txGenerate;
+    txGenerate["to"] = contractAddress;
+    txGenerate["gas"] = "1000000";
+    txGenerate["data"] = calldata;
+    txGenerate["from"] = toJS( senderAddress );
+    txGenerate["nonce"] = 1;
+    fixture.rpcClient->eth_sendTransaction( txGenerate );
+
+    txGenerate["nonce"] = 2;
+    fixture.rpcClient->eth_sendTransaction( txGenerate );
+
+    fixture.rpcClient->debug_pauseConsensus( false );
+
+    // call mineTransaction to create a block
+    dev::eth::mineTransaction( *( fixture.client ), 2 );
+
+    // wait for 2 blocks to appear
+    auto endBlockNumber = fixture.client->number();
+    BOOST_REQUIRE_EQUAL( endBlockNumber, startBlockNumber + 2 );
+
+    // check last block - gasUsed should be bigger than block gas limit
+    auto lastBlock = fixture.client->blockInfo( endBlockNumber );
+    BOOST_REQUIRE_GT( lastBlock.gasUsed(), blockGasLimit );
+
+    // check transactions status
+    auto txnHashes = fixture.client->transactionHashes( endBlockNumber );
+    BOOST_REQUIRE_EQUAL( txnHashes.size(), 2 );
+    for ( const auto& hash: txnHashes ) {
+        auto receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+        BOOST_REQUIRE( receipt["status"] == "0x1" );
+    }
 }
 
 #endif // BITE2
@@ -6433,6 +6505,8 @@ BOOST_AUTO_TEST_CASE( dencunOpcodesInTransaction ) {
 
 BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     JsonRpcFixture fixture( c_BITEConfigString, false, false, true, true );
+
+    dev::bite::isCiphertextValidationEnabled = true;
 
     string senderAddress = toJS( fixture.coinbase.address() );
     size_t nonce = 0;
@@ -8443,7 +8517,12 @@ BOOST_AUTO_TEST_CASE( test_transactions ) {
 
     client->importTransactionsAsBlock( Transactions{ invalid, valid },
 #ifdef BITE
-        std::make_shared< DecryptedTransactionFieldsMap >(),
+                                       DecryptedTransactions{
+#ifdef BITE2
+                                               std::make_shared< DecryptedCTXTxsMap >(),
+#endif  // BITE2
+                                               std::make_shared< DecryptedRegularTxsMap >()
+                                           },
 #endif
 
 #ifdef FAIR
@@ -8492,13 +8571,18 @@ BOOST_AUTO_TEST_CASE( test_exceptions ) {
 
     client->importTransactionsAsBlock( Transactions{ invalid, valid },
 #ifdef BITE
-        std::make_shared< DecryptedTransactionFieldsMap >(),
+                                       DecryptedTransactions{
+#ifdef BITE2
+                                               std::make_shared< DecryptedCTXTxsMap >(),
+#endif  // BITE2
+                                               std::make_shared< DecryptedRegularTxsMap >()
+                                           },
 #endif
 
 #ifdef FAIR
                                       1,
 #endif
-                                       1 );
+                                      1 );
     BOOST_REQUIRE_THROW( cache.realIndexFromGapped( LatestBlock, 1 ), std::out_of_range );
     BOOST_REQUIRE_THROW( cache.realIndexFromGapped( LatestBlock, 2 ), std::out_of_range );
     BOOST_REQUIRE_THROW( cache.gappedIndexFromReal( LatestBlock, 2 ), std::out_of_range );

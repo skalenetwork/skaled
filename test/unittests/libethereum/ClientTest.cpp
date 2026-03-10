@@ -136,11 +136,6 @@ public:
 
         auto nodesState = contents( m_tmpDir.path() / fs::path( "network.rlp" ) );
 
-        //        bool testingMode = true;
-        //        m_web3.reset( new dev::WebThreeDirect( WebThreeDirect::composeClientVersion( "eth"
-        //        ), dir,
-        //            dir, chainParams, WithExisting::Kill, {"eth"}, testingMode ) );
-
         auto monitor = make_shared< InstanceMonitor >( "test" );
 
         setenv("DATA_DIR", m_tmpDir.path().c_str(), 1);
@@ -149,17 +144,14 @@ public:
 
         m_ethereum->setAuthor( coinbase.address() );
 
-        //        m_ethereum.reset(
-        //            new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr<
-        //            GasPricer >(),
-        //                dir, dir, WithExisting::Kill, TransactionQueue::Limits{100000, 1024} ) );
-
-        // wait for 1st block - because it's always empty
         std::promise< void > block_promise;
         auto importHandler = m_ethereum->setOnBlockImport(
             [&block_promise]( BlockHeader const& ) { block_promise.set_value(); } );
 
         m_ethereum->injectSkaleHost();
+#ifdef BITE2
+        dev::eth::g_skaleHost = m_ethereum->skaleHost();
+#endif
         m_ethereum->startWorking();
 
         block_promise.get_future().wait();
@@ -227,8 +219,8 @@ public:
         return Transaction( ts, ar.second );
     }
 
-#ifdef FAIR
     ~TestClientFixture() {
+#ifdef FAIR
         const auto deadline = chrono::steady_clock::now() + chrono::seconds( 10 );
         while ( m_ethereum->skaleHost()->ignoreNewBlocksEnabled() && chrono::steady_clock::now() < deadline ) {
             usleep( 10 );
@@ -236,9 +228,16 @@ public:
         if ( m_ethereum->skaleHost()->isConsesusUpdateHappened() )
             m_ethereum->skaleHost()->handleConsensusUpdate();
         accountHolder.reset();
+        if ( g_skaleHost )
+            g_skaleHost.reset();
         m_ethereum.reset();
+#else
+#ifdef BITE2
+        if ( g_skaleHost )
+            g_skaleHost.reset();
+#endif   // BITE2
+#endif   // FAIR
     }
-#endif
 
 private:
     TransientDirectory m_tmpDir;
@@ -306,17 +305,15 @@ public:
         m_ethereum.reset( new eth::ClientTest( chainParams, ( int ) chainParams->getNetworkId(),
             shared_ptr< GasPricer >(), mgr, monitor, m_tmpDir.path(), WithExisting::Kill ) );
 
-        //        m_ethereum.reset(
-        //            new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr<
-        //            GasPricer >(),
-        //                dir, dir, WithExisting::Kill, TransactionQueue::Limits{100000, 1024} ) );
-
         // wait for 1st block - because it's always empty
         std::promise< void > block_promise;
         auto importHandler = m_ethereum->setOnBlockImport(
             [&block_promise]( BlockHeader const& ) { block_promise.set_value(); } );
 
         m_ethereum->injectSkaleHost();
+#ifdef BITE2
+        dev::eth::g_skaleHost = m_ethereum->skaleHost();
+#endif
         m_ethereum->startWorking();
 
         block_promise.get_future().wait();
@@ -337,6 +334,10 @@ public:
     fs::path getTmpDataDir() { return m_tmpDir.path(); }
 
     ~TestClientSnapshotsFixture() {
+#ifdef BITE2
+        if ( dev::eth::g_skaleHost )
+            dev::eth::g_skaleHost.reset();
+#endif
         m_ethereum.reset( 0 );
         const char* NC = getenv( "NC" );
         if ( NC )
@@ -531,7 +532,7 @@ static std::string const c_genesisInfoSkaleTest = std::string() +
                         "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea105a3d21845e5660bc3d4e7c82e7af1daa3baad393b1521467"
                     ]
                 },
-                "finish_ts": 1,
+                "finish_ts": null,
                 "bls_public_key": {
                     "blsPublicKey0": "15959969554621958245201075983340071881770733084910870228938077786643587385029",
                     "blsPublicKey1": "7970122607051572307517094692346020360016825923464107614135327251488152616550",
@@ -1288,7 +1289,12 @@ BOOST_AUTO_TEST_CASE( initAndUpdateHistoricConfigFields ) {
 
     testClient->importTransactionsAsBlock( Transactions(),
 #ifdef BITE
-    make_shared< DecryptedTransactionFieldsMap >(),
+       DecryptedTransactions{
+#ifdef BITE2
+               std::make_shared< DecryptedCTXTxsMap >(),
+#endif  // BITE2
+               std::make_shared< DecryptedRegularTxsMap >()
+           },
 #endif
         1000,
 #ifdef FAIR

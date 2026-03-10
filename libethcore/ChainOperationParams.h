@@ -370,6 +370,8 @@ public:
 
     void setByzantiumForkBlock( u256 _bn ) { byzantiumForkBlock = _bn; }
 
+    void setPatchTimestamps( const std::map< SchainPatchEnum, time_t >& _patchTimestampsToSet );
+
     // GENERAL CHAIN GETTERS
 
     uint64_t getChainId() const { return chainID; }

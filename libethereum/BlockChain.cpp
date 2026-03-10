@@ -623,10 +623,15 @@ ImportRoute BlockChain::import( const Block& _block ) {
     verifiedBlock.block = ref( _block.blockData() );
     verifiedBlock.transactions = _block.pending();
 #ifdef BITE
-    verifiedBlock.decryptedTransactionDataFields = _block.decryptedTransactionDataFields();
-    CHECK_EXPRESSION( verifiedBlock.decryptedTransactionDataFields );
-#endif
-    //    verifyBlock( ref( _block.blockData() ), m_onBad, ImportRequirements::OutOfOrderChecks );
+    verifiedBlock.decryptedTransactions = _block.decryptedTransactions();
+    CHECK_EXPRESSION( verifiedBlock.decryptedTransactions.regularTxsMap );
+
+#ifdef BITE2
+    CHECK_EXPRESSION( verifiedBlock.decryptedTransactions.ctxTxsMap );
+    verifiedBlock.ctxHashesLists = _block.ctxHashesLists();
+    verifiedBlock.createdCtxs = _block.createdCtxs();
+#endif  // BITE2
+#endif  // BITE
 
     BlockReceipts blockReceipts;
     for ( unsigned i = 0; i < _block.pending().size(); ++i )
@@ -772,9 +777,25 @@ void BlockChain::insertTransactionsDetailsToDb(
         RLP txns_rlp = blockRLP[1];
 
 #ifdef BITE
-        auto decryptedTransactionFieldsIt = _block.decryptedTransactionDataFields->begin();
-#endif
+#ifdef BITE2
+        if ( Bite2Patch::isEnabledInWorkingBlock() ) {
+            CtxOrigin ctxOrigin( _block.ctxHashesLists );
+            _extrasWriteBatch.insert( toSlice( _block.info.hash(), ExtraCtxOrigin ),
+                ( db::Slice ) dev::ref( ctxOrigin.rlp() ) );
 
+            CHECK_EXPRESSION( _block.createdCtxs );
+            RLPStream s;
+            s.appendList( _block.createdCtxs->size() );
+            for ( const auto& ctx : *_block.createdCtxs )
+                s.appendRaw( ctx.toBytes() );
+            dev::bytes ctxListRlp = s.out();
+            _extrasWriteBatch.insert(
+                db::Slice( "lastBlockCTXs" ), ( db::Slice ) dev::ref( ctxListRlp ) );
+        }
+#endif  // BITE2
+        CHECK_EXPRESSION( _block.decryptedTransactions.regularTxsMap );
+        auto regularTxnsIterator = _block.decryptedTransactions.regularTxsMap->begin();
+#endif  // BITE
         for ( RLP::iterator it = txns_rlp.begin(); it != txns_rlp.end(); ++it ) {
             MICROPROFILE_SCOPEI( "insertBlockAndExtras", "for2", MP_HONEYDEW );
 
@@ -783,14 +804,18 @@ void BlockChain::insertTransactionsDetailsToDb(
                 ( db::Slice ) dev::ref( ta.rlp() ) );
 
 #ifdef BITE
-            if ( decryptedTransactionFieldsIt != _block.decryptedTransactionDataFields->end() &&
-                 decryptedTransactionFieldsIt->first == ta.index ) {
-                DecryptedTransactionFields& txFields = decryptedTransactionFieldsIt->second;
-                dev::Address to = dev::Address( txFields.to.get() );
-                DecryptedTransactionData txData( *txFields.data, to );
-                _extrasWriteBatch.insert( toSlice( sha3( txBytes ), ExtraTransactionDecryptedData ),
-                    ( db::Slice ) dev::ref( txData.rlp() ) );
-                ++decryptedTransactionFieldsIt;
+            if ( regularTxnsIterator != _block.decryptedTransactions.regularTxsMap->end() &&
+                 regularTxnsIterator->first == ta.index ) {
+                if ( regularTxnsIterator->second.has_value() ) {
+                    const DecryptedRegularTxFields& txFields = regularTxnsIterator->second.value();
+                    dev::Address to =
+                        dev::Address( txFields.to.data(), dev::Address::ConstructFromPointer );
+                    DecryptedTransactionData txData( txFields.data, to );
+                    _extrasWriteBatch.insert(
+                        toSlice( sha3( txBytes ), ExtraTransactionDecryptedData ),
+                        ( db::Slice ) dev::ref( txData.rlp() ) );
+                    ++regularTxnsIterator;
+                }
             }
 #endif
 
@@ -977,11 +1002,6 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     bytesConstRef _receipts, LogBloom* pLogBloomFull, u256 const& _totalDifficulty,
     ImportPerformanceLogger& _performanceLogger ) {
     MICROPROFILE_SCOPEI( "BlockChain", "insertBlockAndExtras", MP_YELLOWGREEN );
-
-    // get "safeLastExecutedTransactionHash" value from state, for debug reasons only
-    // dev::h256 shaLastTx = skale::OverlayDB::stat_safeLastExecutedTransactionHash( m_stateDB.get()
-    // ); std::cout << "--- got \"safeLastExecutedTransactionHash\" = " << shaLastTx.hex() << "\n";
-    // std::cout.flush();
 
     h256 newLastBlockHash = currentHash();
     unsigned newLastBlockNumber = number();
@@ -1352,7 +1372,13 @@ void BlockChain::updateStats() const {
         m_lastStats.memDecryptedTransactionsData =
             getApproximateHashSize( m_decryptedTransactionsData );
     }
-#endif
+#ifdef BITE2
+    {
+        DEV_READ_GUARDED( x_ctxOrigin )
+        m_lastStats.memCtxOrigin = getApproximateHashSize( m_ctxOrigin );
+    }
+#endif  // BITE2
+#endif  // BITE
 }
 
 uint64_t BlockChain::getTotalCacheMemory() {
@@ -1421,7 +1447,14 @@ void BlockChain::garbageCollect( bool _force ) {
                 m_decryptedTransactionsData.erase( id.first );
                 break;
             }
-#endif
+#ifdef BITE2
+            case ExtraCtxOrigin: {
+                WriteGuard l( x_ctxOrigin );
+                m_ctxOrigin.erase( id.first );
+                break;
+            }
+#endif  // BITE2
+#endif  // BITE
             }
         }
         m_cacheUsage.pop_back();
@@ -1485,7 +1518,13 @@ void BlockChain::clearCaches() {
         WriteGuard l( x_decryptedTransactionsData );
         m_decryptedTransactionsData.clear();
     }
-#endif
+#ifdef BITE2
+    {
+        WriteGuard l( x_ctxOrigin );
+        m_ctxOrigin.clear();
+    }
+#endif  // BITE2
+#endif  // BITE
 }
 
 void BlockChain::doLevelDbCompaction() const {
@@ -1534,7 +1573,11 @@ void BlockChain::clearCachesDuringChainReversion( unsigned _firstInvalid ) {
 #ifdef BITE
     DEV_WRITE_GUARDED( x_decryptedTransactionsData )
     m_decryptedTransactionsData.clear();
-#endif
+#ifdef BITE2
+    DEV_WRITE_GUARDED( x_ctxOrigin )
+    m_ctxOrigin.clear();
+#endif  // BITE2
+#endif  // BITE
 
     // If we are reverting previous blocks, we need to clear their blooms (in particular, to
     // rebuild any higher level blooms that they contributed to).
@@ -1821,7 +1864,12 @@ VerifiedBlockRef BlockChain::verifyBlock( bytesConstRef _block,
                         CheckTransaction::Everything :
                         CheckTransaction::None,
                     false, EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
-                    InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp ) );
+                    InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp )
+#ifdef BITE2
+                        ,
+                    Bite2Patch::isEnabledWhen( blockTimestamp )
+#endif  // BITE2
+                );
                 Ethash::verifyTransaction( chainParams(), _ir, t,
                     this->info( numberHash( h.number() - 1 ) ).timestamp(), h,
                     0 );  // the gasUsed vs
@@ -1863,3 +1911,27 @@ bool BlockChain::isPatchTimestampActiveInBlockNumber( time_t _ts, BlockNumber _b
 
     return prev_ts >= _ts;
 }
+
+#ifdef BITE2
+
+Transactions BlockChain::ctxListForPreviousBlock() const {
+    std::string lastBlockCTXs = this->m_extrasDB->lookup( ( db::Slice ) "lastBlockCTXs" );
+    if ( lastBlockCTXs.empty() )
+        return {};
+    RLP rlp( lastBlockCTXs );
+    Transactions ctxs;
+    ctxs.reserve( rlp.itemCount() );
+    uint64_t prevBlockTimestamp = info().timestamp();
+    for ( auto const& txRlp : rlp ) {
+        ctxs.push_back( Transaction( txRlp.data(), CheckTransaction::None, true,
+            EIP1559TransactionsPatch::isEnabledWhen( prevBlockTimestamp ),
+            InvalidTransactionFormatPatch::isEnabledWhen( prevBlockTimestamp )
+#ifdef BITE2
+                ,
+            Bite2Patch::isEnabledWhen( prevBlockTimestamp )
+#endif  // BITE2
+                ) );
+    }
+    return ctxs;
+}
+#endif  // BITE2

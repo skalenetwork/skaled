@@ -1,6 +1,8 @@
 #include "StateProgressLog.h"
 
 #include <libdevcore/RLP.h>
+#include <libethereum/SchainPatch.h>
+#include <libethereum/Transaction.h>
 
 #include <fstream>
 #include <stdexcept>
@@ -37,18 +39,26 @@ void StateProgressLog::markBlockCommitStarted( uint64_t _blockNumber ) {
 }
 
 void StateProgressLog::markBlockCommitCompleted(
-    uint64_t _blockNumber, const dev::eth::TransactionReceipts& _receipts, uint64_t _timestamp ) {
+    uint64_t _blockNumber, const dev::eth::TransactionReceipts& _receipts, uint64_t _timestamp
+#ifdef BITE2
+    ,
+    const std::vector< dev::eth::Transaction >& _ctxsCreatedInBlock
+#endif
+) {
     CommittedProgressData data;
     data.blockNumber = _blockNumber;
     data.status = static_cast< uint8_t >( Status::Completed );
     data.timestamp = _timestamp;
     data.receipts = _receipts;
+#ifdef BITE2
+    data.ctxsCreatedInBlock = _ctxsCreatedInBlock;
+#endif
     writeProgressData( data );
 }
 
 void StateProgressLog::writeProgressData( const CommittedProgressData& _data ) {
     dev::RLPStream rlpStream;
-    rlpStream.appendList( 4 );
+    rlpStream.appendList( rlpItemsCount );
     rlpStream << _data.blockNumber;
     rlpStream << _data.status;
     rlpStream << _data.timestamp;
@@ -61,6 +71,15 @@ void StateProgressLog::writeProgressData( const CommittedProgressData& _data ) {
         receiptsStream << receipt.typedRlp();
     }
     rlpStream.appendRaw( receiptsStream.out() );
+
+#ifdef BITE2
+    dev::RLPStream ctxsStream;
+    ctxsStream.appendList( _data.ctxsCreatedInBlock.size() );
+    for ( const auto& ctx : _data.ctxsCreatedInBlock ) {
+        ctxsStream.appendRaw( ctx.toBytes() );
+    }
+    rlpStream.appendRaw( ctxsStream.out() );
+#endif
 
     dev::bytes encoded = rlpStream.out();
 
@@ -104,8 +123,9 @@ std::optional< CommittedProgressData > StateProgressLog::loadProgressData() cons
     try {
         dev::RLP rlp( encoded );
 
-        if ( !rlp.isList() || rlp.itemCount() != 4 ) {
-            BOOST_LOG( m_logger ) << "Invalid progress data format: expected list of 4 items";
+        if ( !rlp.isList() || rlp.itemCount() != rlpItemsCount ) {
+            BOOST_LOG( m_logger ) << "Invalid progress data format: expected list of "
+                                  << rlpItemsCount << " items";
             return std::nullopt;
         }
 
@@ -126,6 +146,15 @@ std::optional< CommittedProgressData > StateProgressLog::loadProgressData() cons
                 data.receipts.emplace_back( item.data() );
             }
         }
+
+#ifdef BITE2
+        for ( auto const& item : rlp[4] ) {
+            data.ctxsCreatedInBlock.emplace_back( item.data(), dev::eth::CheckTransaction::None,
+                true, EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
+                InvalidTransactionFormatPatch::isEnabledInWorkingBlock(),
+                Bite2Patch::isEnabledInWorkingBlock() );
+        }
+#endif
         return data;
     } catch ( const std::exception& ex ) {
         BOOST_LOG( m_logger ) << "Failed to decode progress data: " << ex.what();

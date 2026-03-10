@@ -155,6 +155,29 @@ bool isValidSecp256k1X( const u256& x );
 // Return (r,s,v) fabricated from entropy bytes and transaction index.
 SignatureStruct makeSignature( const bytes& entropy, const dev::u256& txIndex );
 
+// Compress a 64-byte public key to 33-byte compressed format.
+// Returns empty bytes on failure.
+bytes compressPublicKey( Public const& _pub );
+
+// Decompress a 33-byte compressed public key to 64-byte uncompressed format.
+// Returns null Public on failure.
+Public decompressPublicKey( bytesConstRef _compressed );
+
+// Check if a 64-byte public key is a valid point on the secp256k1 curve.
+bool isValidPublicKey( Public const& _pub );
+
+/// Encrypt using ECIES with AES-256-CBC and PKCS7 padding.
+/// Output format: [IV(16)] [CompressedEphPubKey(33)] [Ciphertext]
+/// If _seed is provided, derives ephemeral key and IV deterministically.
+/// Returns empty bytes on failure.
+bytes encryptECIES_CBC(
+    Public const& _recipientPubKey, bytesConstRef _plain, h256 const* _seed = nullptr );
+
+/// Decrypt ECIES ciphertext encrypted with AES-256-CBC and PKCS7 padding.
+/// Input format: [IV(16)] [CompressedEphPubKey(33)] [Ciphertext]
+/// Returns empty bytes on failure.
+bytes decryptECIES_CBC( Secret const& _recipientPrivKey, bytesConstRef _cipher );
+
 inline bool operator==( const dev::SignatureStruct& lhs, const dev::SignatureStruct& rhs ) {
     return lhs.r == rhs.r && lhs.s == rhs.s && lhs.v == rhs.v;
 }

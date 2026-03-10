@@ -323,16 +323,27 @@ public:
     void startReadState();
 
 #ifdef BITE
-    void setDecryptedTransactionDataFields(
-        const std::shared_ptr< DecryptedTransactionFieldsMap >& _decryptedTransactionDataFields ) {
-        CHECK_EXPRESSION( _decryptedTransactionDataFields );
-        m_decryptedTransactionDataFields = _decryptedTransactionDataFields;
+    void setDecryptedTransactionDataFields( DecryptedTransactions _decryptedTransactions ) {
+#ifdef BITE2
+        CHECK_EXPRESSION( _decryptedTransactions.ctxTxsMap );
+#endif
+        CHECK_EXPRESSION( _decryptedTransactions.regularTxsMap );
+        m_decryptedTransactions = _decryptedTransactions;
     }
 
-    const std::shared_ptr< DecryptedTransactionFieldsMap >& decryptedTransactionDataFields() const {
-        return m_decryptedTransactionDataFields;
+    const DecryptedTransactions& decryptedTransactions() const { return m_decryptedTransactions; }
+
+#ifdef BITE2
+    const std::vector< std::vector< dev::h256 > > ctxHashesLists() const {
+        return m_ctxHashesLists;
     }
-#endif
+
+    const std::shared_ptr< std::vector< dev::eth::Transaction > >& createdCtxs() const {
+        CHECK_EXPRESSION( m_createdCtxs );
+        return m_createdCtxs;
+    }
+#endif  // BITE2
+#endif  // BITE
 
 private:
     struct SyncContext {
@@ -416,9 +427,24 @@ private:
 #ifdef BITE
     // decrypted transaction data fields to be stored with the block and their indexes
     // only filled for a working block
-    std::shared_ptr< DecryptedTransactionFieldsMap > m_decryptedTransactionDataFields =
-        std::make_shared< DecryptedTransactionFieldsMap >();
-#endif
+    DecryptedTransactions m_decryptedTransactions = DecryptedTransactions{
+#ifdef BITE2
+        std::make_shared< DecryptedCTXTxsMap >(),
+#endif  // BITE2
+        std::make_shared< DecryptedRegularTxsMap >()
+    };
+
+#ifdef BITE2
+    // list of ctx hashes crafted by every txn in block
+    // only filled for a working block
+    std::vector< std::vector< dev::h256 > > m_ctxHashesLists;
+    // list of ctxs created by every txn in block
+    // only filled for a working block
+    // safe, because it is filled with transactions from BITE2 queue
+    // which stay there until the block is committed
+    std::shared_ptr< Transactions > m_createdCtxs = std::make_shared< Transactions >();
+#endif  // BITE2
+#endif  // BITE
 
     Logger m_loggerDebug{ createLogger( VerbosityDebug, "block" ) };
     Logger m_loggerTrace{ createLogger( VerbosityTrace, "block" ) };

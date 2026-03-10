@@ -61,6 +61,16 @@ find_library( YAML_CPP_LIBRARIES NAMES yaml-cpp HINTS "${DEPS_INSTALL_ROOT}/lib"
 
 add_executable(testeth ${sources} unittests/libethereum/InstanceMonitorTest.cpp)
 
+# Add libBLS test utils for BITE2 tests
+if(BITE2)
+    target_sources(testeth PRIVATE
+        ${CMAKE_SOURCE_DIR}/libconsensus/libBLS/test/utils.cpp
+    )
+    target_include_directories(testeth PRIVATE
+        ${CMAKE_SOURCE_DIR}/libconsensus/libBLS
+    )
+endif()
+
 target_compile_options( testeth PRIVATE
     -Wno-error=deprecated-copy -Wno-error=unused-result -Wno-unused-parameter -Wno-error=unused-variable -Wno-maybe-uninitialized
     -Wno-error=pessimizing-move

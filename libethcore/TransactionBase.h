@@ -28,6 +28,9 @@
 #include <libethcore/EVMSchedule.h>
 
 #include <SkaleCommon.h>
+#ifdef BITE2
+#include <libconsensus/node/ConsensusTypes.h>
+#endif
 #include <boost/optional.hpp>
 
 namespace dev {
@@ -157,16 +160,32 @@ public:
           m_type( ContractCreation ) {}
 
     /// Constructs a transaction from the given RLP.
-    explicit TransactionBase( bytesConstRef _rlp, CheckTransaction _checkSig,
-        bool _allowInvalid = false, bool _eip1559Enabled = false,
-        bool _invalidTransactionFormatPatchEnabled = false );
+    explicit TransactionBase(
+        bytesConstRef _rlp, CheckTransaction _checkSig, bool _allowInvalid = false,
+        bool _eip1559Enabled = false, bool _invalidTransactionFormatPatchEnabled = false
+#ifdef BITE2
+        ,
+        bool _bite2PatchEnabled = false
+#endif
+    );
 
     /// Constructs a transaction from the given RLP.
-    explicit TransactionBase( bytes const& _rlp, CheckTransaction _checkSig,
-        bool _allowInvalid = false, bool _eip1559Enabled = false,
-        bool _invalidTransactionFormatPatchEnabled = false )
+    explicit TransactionBase(
+        bytes const& _rlp, CheckTransaction _checkSig, bool _allowInvalid = false,
+        bool _eip1559Enabled = false, bool _invalidTransactionFormatPatchEnabled = false
+#ifdef BITE2
+        ,
+        bool _bite2PatchEnabled = false
+#endif
+        )
         : TransactionBase( &_rlp, _checkSig, _allowInvalid, _eip1559Enabled,
-              _invalidTransactionFormatPatchEnabled ) {}
+              _invalidTransactionFormatPatchEnabled
+#ifdef BITE2
+              ,
+              _bite2PatchEnabled
+#endif
+          ) {
+    }
 
     TransactionBase( TransactionBase const& ) = default;
 
@@ -224,14 +243,21 @@ public:
     Address decryptedTo() const;
 
     // Tx is only valid BITE if is marked as BITE and has the decrypted fields set
-    bool isInvalidBiteTransaction() const {
-        return m_isBITETxn && !m_decryptedData && !m_decryptedTo;
-    }
+    bool isInvalidBiteTransaction() const;
 
     bool isBite() const { return m_isBITETxn; }
 
     void checkAndValidateBITETransaction( uint64_t _epochId ) const;
-#endif
+
+#ifdef BITE2
+    bool isCTX() const { return m_isCTX; }
+
+    void checkIfCTXAndSet( const dev::bytes& _data );
+
+    void setDecryptedArgsCTX( const DecryptedCTXArgs& _decryptedCTXArgs );
+#endif  // BITE2
+
+#endif  // BITE
 
     /// @throws TransactionIsUnsigned if signature was not initialized
     /// @throws InvalidSValue if the signature has an invalid S value.
@@ -367,7 +393,7 @@ public:
 #endif
 #ifdef BITE2
             ,
-            m_bite2EncryptedArgsSize
+            m_ctxEncryptedArgsSize
 #endif
         );
         if ( _es.eip2930Mode && m_txType != TransactionType::Legacy )
@@ -402,7 +428,7 @@ public:
         std::vector< bytes > const& _accessList, EVMSchedule const& _es );
 
 #ifdef BITE2
-    void setBITE2EncryptedArgsSize( size_t _s ) { m_bite2EncryptedArgsSize = _s; }
+    void setBITE2EncryptedArgsSize( size_t _s ) { m_ctxEncryptedArgsSize = _s; }
 #endif
 
 protected:
@@ -460,7 +486,8 @@ protected:
 #endif
 
 #ifdef BITE2
-    std::optional< size_t > m_bite2EncryptedArgsSize = std::nullopt;
+    std::optional< size_t > m_ctxEncryptedArgsSize = std::nullopt;
+    bool m_isCTX = false;
 #endif
 
     TransactionType m_txType = TransactionType::Legacy;

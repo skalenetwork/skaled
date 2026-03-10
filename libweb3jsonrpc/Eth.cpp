@@ -32,6 +32,7 @@
 #include <libethashseal/EthashClient.h>
 #include <libethcore/CommonJS.h>
 #include <libethereum/Client.h>
+#include <libethereum/SchainPatch.h>
 #include <libskale/SkipInvalidTransactionsPatch.h>
 #include <libweb3jsonrpc/JsonHelper.h>
 
@@ -425,7 +426,12 @@ string Eth::eth_sendRawTransaction( std::string const& _rlp ) {
     // will be checked as a part of transaction import
     Transaction t( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::None, false,
         EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
-        InvalidTransactionFormatPatch::isEnabledInWorkingBlock() );
+        InvalidTransactionFormatPatch::isEnabledInWorkingBlock()
+#ifdef BITE2
+            ,
+        Bite2Patch::isEnabledInWorkingBlock()
+#endif  // BITE2
+    );
     return toJS( client()->importTransaction( t, TransactionBroadcast::BroadcastToAll ) );
 }
 
@@ -1208,7 +1214,7 @@ string dev::rpc::exceptionToErrorMessage() {
 #ifdef BITE
     // BITE exceptions
     catch ( InvalidBITETransaction const& _e ) {
-        ret = "Invalid BITE transaction format.";
+        ret = std::string( "Invalid BITE transaction format." ) + " " + _e.what();
     } catch ( BITETransactionTooShort const& _e ) {
         ret = "BITE transaction too short.";
     }
