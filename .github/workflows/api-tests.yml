@@ -1,0 +1,89 @@
+name: API tests
+on:
+  push:
+    branches-ignore:
+      - 'master'
+      - 'beta'
+      - 'stable'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  NO_ULIMIT_CHECK: 1
+  NO_NTP_CHECK: 1
+  TARGET: all
+  CMAKE_BUILD_TYPE: Debug
+
+jobs:
+  api-tests:
+    name: API tests
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Install packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libunwind-dev autoconf build-essential cmake libprocps-dev libtool texinfo wget yasm flex bison btrfs-progs python3 python3-pip gawk git vim doxygen
+          sudo apt-get install -y make pkg-config libgnutls28-dev libssl-dev unzip zlib1g-dev libgcrypt20-dev gcc-11 g++-11 gperf clang-format-11 gnutls-dev
+          sudo apt-get install -y nettle-dev libhiredis-dev redis-server google-perftools libgoogle-perftools-dev lcov libv8-dev
+          sudo apt-get install -y gettext
+
+          # Remove deps installed in the next steps
+          sudo apt-get purge -y libbz2-dev liblz4-dev
+
+      - name: Set gcc
+        run: |
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 11
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 11
+          sudo update-alternatives --install /usr/bin/gcov gcov /usr/bin/gcov-11 11
+          sudo update-alternatives --install /usr/bin/gcov-dump gcov-dump /usr/bin/gcov-dump-11 11
+          sudo update-alternatives --install /usr/bin/gcov-tool gcov-tool /usr/bin/gcov-tool-11 11
+          gcc --version
+
+      - name: Build dependencies
+        run: |
+          cd deps
+          ./build.sh DEBUG=1 PARALLEL_COUNT=$(nproc)
+          cd ..
+
+      - name: Build BITE
+        uses: ./.github/actions/cmake-build
+        with:
+          build_dir: build_bite
+          cmake_build_type: ${{ env.CMAKE_BUILD_TYPE }}
+          coverage: ${{ env.CODE_COVERAGE }}
+          cmake_args: "-DBITE=1"
+          make_target: skaled
+
+      - name: Build BITE2
+        uses: ./.github/actions/cmake-build
+        with:
+          build_dir: build_bite2
+          cmake_build_type: ${{ env.CMAKE_BUILD_TYPE }}
+          coverage: ${{ env.CODE_COVERAGE }}
+          cmake_args: "-DBITE2=1"
+          make_target: skaled
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install ts dependencies
+        run: bun install --frozen-lockfile
+        working-directory: test/api-tests/bite-compat/
+
+      - name: API tests (bite-compat)
+        uses: ./.github/actions/api-tests-run
+        with:
+          suite: bite-compat
+        env:
+          FUNC_TEST_PRIVATE_KEY: ${{ secrets.FUNC_TEST_PRIVATE_KEY }}

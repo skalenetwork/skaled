@@ -90,6 +90,10 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
     patchTimeStamps["verifyBlsSyncPatchTimestamp"] =
         m_client.chainParams().getPatchTimestamp( SchainPatchEnum::VerifyBlsSyncPatch );
 #endif  // FAIR
+#ifdef BITE2
+    patchTimeStamps["bite2PatchTimestamp"] =
+        m_client.chainParams().getPatchTimestamp( SchainPatchEnum::Bite2Patch );
+#endif  // BITE2
 
     auto consensusEnginePtr = make_unique< ConsensusEngine >( _extFace, m_client.number(), ts, 0,
         patchTimeStamps, m_client.chainParams().getConsensusStorageLimit() );
@@ -430,7 +434,12 @@ h256 SkaleHost::receiveTransaction( const std::string& _rlp ) {
 
     Transaction transaction( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::None, false,
         EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
-        InvalidTransactionFormatPatch::isEnabledInWorkingBlock() );
+        InvalidTransactionFormatPatch::isEnabledInWorkingBlock()
+#ifdef BITE2
+            ,
+        Bite2Patch::isEnabledInWorkingBlock()
+#endif  // BITE2
+    );
     h256 sha = transaction.sha3();
 
     //
@@ -669,7 +678,9 @@ void SkaleHost::createBlock( const ConsensusExtFace::Transactions& _approvedTran
 #ifdef BITE2
     // Need to reset encryption state with new block id before processing txs to make
     // sure a random for current block id is set.
-    resetEncryptionStateForBlock( _blockID );
+    if ( Bite2Patch::isEnabledInWorkingBlock() ) {
+        resetEncryptionStateForBlock( _blockID );
+    }
 #endif
 
     DEV_GUARDED( m_client.m_blockImportMutex ) {
@@ -1047,7 +1058,12 @@ std::vector< Transaction > SkaleHost::processRegularTransactions(
 
         Transaction t( data, CheckTransaction::Everything, true,
             EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
-            InvalidTransactionFormatPatch::isEnabledInWorkingBlock() );
+            InvalidTransactionFormatPatch::isEnabledInWorkingBlock()
+#ifdef BITE2
+                ,
+            Bite2Patch::isEnabledInWorkingBlock()
+#endif  // BITE2
+        );
 #ifdef BITE
         if ( regularTxnsIterator != _decryptedTransactions.regularTxsMap->end() &&
              regularTxnsIterator->first == i ) {
@@ -1105,7 +1121,12 @@ std::vector< Transaction > SkaleHost::processCTXTransactions(
 
         Transaction t( data, CheckTransaction::Everything, true,
             EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
-            InvalidTransactionFormatPatch::isEnabledInWorkingBlock() );
+            InvalidTransactionFormatPatch::isEnabledInWorkingBlock()
+#ifdef BITE2
+                ,
+            Bite2Patch::isEnabledInWorkingBlock()
+#endif  // BITE2
+        );
 
         if ( ctxIterator != _decryptedTransactions.ctxTxsMap->end() && ctxIterator->first == i ) {
             std::optional< DecryptedCTXArgs > decryptedArgs = ctxIterator->second;

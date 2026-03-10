@@ -778,11 +778,11 @@ void BlockChain::insertTransactionsDetailsToDb(
 
 #ifdef BITE
 #ifdef BITE2
-        CtxOrigin ctxOrigin( _block.ctxHashesLists );
-        _extrasWriteBatch.insert( toSlice( _block.info.hash(), ExtraCtxOrigin ),
-            ( db::Slice ) dev::ref( ctxOrigin.rlp() ) );
+        if ( Bite2Patch::isEnabledInWorkingBlock() ) {
+            CtxOrigin ctxOrigin( _block.ctxHashesLists );
+            _extrasWriteBatch.insert( toSlice( _block.info.hash(), ExtraCtxOrigin ),
+                ( db::Slice ) dev::ref( ctxOrigin.rlp() ) );
 
-        if ( SingleStateCommitPerBlockPatch::isEnabledInWorkingBlock() ) {
             CHECK_EXPRESSION( _block.createdCtxs );
             RLPStream s;
             s.appendList( _block.createdCtxs->size() );
@@ -1864,7 +1864,12 @@ VerifiedBlockRef BlockChain::verifyBlock( bytesConstRef _block,
                         CheckTransaction::Everything :
                         CheckTransaction::None,
                     false, EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
-                    InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp ) );
+                    InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp )
+#ifdef BITE2
+                        ,
+                    Bite2Patch::isEnabledWhen( blockTimestamp )
+#endif  // BITE2
+                );
                 Ethash::verifyTransaction( chainParams(), _ir, t,
                     this->info( numberHash( h.number() - 1 ) ).timestamp(), h,
                     0 );  // the gasUsed vs
@@ -1920,7 +1925,12 @@ Transactions BlockChain::ctxListForPreviousBlock() const {
     for ( auto const& txRlp : rlp ) {
         ctxs.push_back( Transaction( txRlp.data(), CheckTransaction::None, true,
             EIP1559TransactionsPatch::isEnabledWhen( prevBlockTimestamp ),
-            InvalidTransactionFormatPatch::isEnabledWhen( prevBlockTimestamp ) ) );
+            InvalidTransactionFormatPatch::isEnabledWhen( prevBlockTimestamp )
+#ifdef BITE2
+                ,
+            Bite2Patch::isEnabledWhen( prevBlockTimestamp )
+#endif  // BITE2
+                ) );
     }
     return ctxs;
 }

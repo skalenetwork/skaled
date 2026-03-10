@@ -1990,6 +1990,12 @@ BOOST_AUTO_TEST_CASE( submitCTX_validateBITECiphertext_Success ) {
     client.get()->injectSkaleHost();
     dev::eth::g_skaleHost = client->skaleHost();
     dev::bite::isCiphertextValidationEnabled = true;
+    struct Cleanup {
+        ~Cleanup() {
+            if ( dev::eth::g_skaleHost ) dev::eth::g_skaleHost.reset();
+            dev::bite::isCiphertextValidationEnabled = false;
+        }
+    } cleanup;
     client->startWorking();
 
     sleep( 2 );
@@ -2057,9 +2063,6 @@ BOOST_AUTO_TEST_CASE( submitCTX_validateBITECiphertext_Success ) {
     // Error 6 is ABI_TO_RLP_CONVERSION_FAILED which happens if validation fails.
     // We expect verification to PASS, so check that we DO NOT get error 6.
     BOOST_REQUIRE_NE( dev::fromBigEndian< dev::u256 >( res.second ), dev::u256( 6 ) );
-
-    if ( g_skaleHost )
-        g_skaleHost.reset();
 }
 
 BOOST_AUTO_TEST_CASE( submitCTX_validateBITECiphertext_Failure ) {
@@ -2089,6 +2092,12 @@ BOOST_AUTO_TEST_CASE( submitCTX_validateBITECiphertext_Failure ) {
     client.get()->injectSkaleHost();
     dev::eth::g_skaleHost = client->skaleHost();
     dev::bite::isCiphertextValidationEnabled = true;
+    struct Cleanup {
+        ~Cleanup() {
+            if ( dev::eth::g_skaleHost ) dev::eth::g_skaleHost.reset();
+            dev::bite::isCiphertextValidationEnabled = false;
+        }
+    } cleanup;
     client->startWorking();
 
     sleep( 2 );
@@ -2210,9 +2219,6 @@ BOOST_AUTO_TEST_CASE( submitCTX_validateBITECiphertext_Failure ) {
     
     BOOST_REQUIRE( !res.first );
     BOOST_REQUIRE_EQUAL( dev::fromBigEndian< dev::u256 >( res.second ), dev::u256( 6 ) );
-    
-    if ( g_skaleHost )
-        g_skaleHost.reset();
 }
 
 #endif
