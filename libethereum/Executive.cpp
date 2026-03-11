@@ -204,14 +204,6 @@ void Executive::accrueSubState( SubState& _parentContext ) {
         _parentContext += m_ext->sub;
 }
 
-void Executive::propagateAccessSets( SubState const& _parentContext ) {
-    if ( m_ext ) {
-        m_ext->sub.accessedAddresses.insert(
-            _parentContext.accessedAddresses.begin(), _parentContext.accessedAddresses.end() );
-        m_ext->sub.accessedStorageKeys.insert(
-            _parentContext.accessedStorageKeys.begin(), _parentContext.accessedStorageKeys.end() );
-    }
-}
 
 void Executive::verifyTransaction( Transaction const& _transaction, time_t _committedBlockTimestamp,
     BlockHeader const& _blockHeader, const State& _state,
@@ -357,23 +349,21 @@ void Executive::initAccessSets( bool _eip2930Mode ) {
     if ( !m_ext )
         return;
 
-    SubState& sub = m_ext->sub;
-
     // EIP-2929: pre-warm tx.sender and tx.to (or created address).
-    sub.accessedAddresses.insert( m_t.sender() );
+    m_accessSets->accessedAddresses.insert( m_t.sender() );
     if ( !m_t.isCreation() ) {
 #ifdef BITE
-        sub.accessedAddresses.insert( m_t.decryptedTo() );
+        m_accessSets->accessedAddresses.insert( m_t.decryptedTo() );
 #else
-        sub.accessedAddresses.insert( m_t.receiveAddress() );
+        m_accessSets->accessedAddresses.insert( m_t.receiveAddress() );
 #endif
     } else {
-        sub.accessedAddresses.insert( m_newAddress );
+        m_accessSets->accessedAddresses.insert( m_newAddress );
     }
 
     // EIP-2929: pre-warm all precompile addresses.
     for ( auto const& addr : m_chainParams.precompiledAddresses() ) {
-        sub.accessedAddresses.insert( addr );
+        m_accessSets->accessedAddresses.insert( addr );
     }
 
     // EIP-2930: pre-warm addresses and storage keys from the access list.
@@ -384,14 +374,14 @@ void Executive::initAccessSets( bool _eip2930Mode ) {
                 continue;
 
             Address addr = entry[0].toHash< Address >();
-            sub.accessedAddresses.insert( addr );
+            m_accessSets->accessedAddresses.insert( addr );
 
             if ( entry[1].isList() ) {
                 for ( size_t i = 0; i < entry[1].itemCount(); ++i ) {
                     // Storage keys are 32-byte hashes (not canonical integers),
                     // so decode as h256 to avoid BadCast on leading zeros.
                     u256 key = u256( entry[1][i].toHash< h256 >() );
-                    sub.accessedStorageKeys.insert( { addr, key } );
+                    m_accessSets->accessedStorageKeys.insert( { addr, key } );
                 }
             }
         }
@@ -488,6 +478,7 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
                 m_txnIndex
 #endif
             );
+            m_ext->accessSets = m_accessSets;
         }
     }
 
@@ -561,7 +552,7 @@ bool Executive::executeCreate( Address const& _sender, u256 const& _endowment,
     m_s.clearStorage( m_newAddress );
 
     // Schedule _init execution if not empty.
-    if ( !_init.empty() )
+    if ( !_init.empty() ) {
         m_ext = make_shared< ExtVM >(
             m_s, m_envInfo, m_chainParams, m_newAddress, _sender, _origin, _endowment, _gasPrice,
             bytesConstRef(), _init, sha3( _init ), _version, m_depth, true, false
@@ -570,7 +561,8 @@ bool Executive::executeCreate( Address const& _sender, u256 const& _endowment,
             true, m_txnIndex
 #endif
         );
-    else
+        m_ext->accessSets = m_accessSets;
+    } else
         // code stays empty, but we set the version
         m_s.setCode( m_newAddress, {}, _version );
 

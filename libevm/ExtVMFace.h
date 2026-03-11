@@ -79,22 +79,22 @@ private:
     bytes m_bytes;
 };
 
+/// EIP-2929: transaction-global warm address/storage sets, shared across all subcall frames.
+/// Never rolled back on revert (per spec).
+struct AccessSets {
+    std::set< Address > accessedAddresses;
+    std::set< std::pair< Address, u256 > > accessedStorageKeys;
+};
+
 struct SubState {
     std::set< Address > suicides;  ///< Any accounts that have suicided.
     LogEntries logs;               ///< Any logs.
     int64_t refunds = 0;           ///< Refund counter for storage changes.
 
-    /// EIP-2929: per-transaction warm sets for state access gas metering.
-    std::set< Address > accessedAddresses;
-    std::set< std::pair< Address, u256 > > accessedStorageKeys;
-
     SubState& operator+=( SubState const& _s ) {
         suicides += _s.suicides;
         refunds += _s.refunds;
         logs += _s.logs;
-        // EIP-2929: merge access sets from sub-context into parent.
-        accessedAddresses.insert( _s.accessedAddresses.begin(), _s.accessedAddresses.end() );
-        accessedStorageKeys.insert( _s.accessedStorageKeys.begin(), _s.accessedStorageKeys.end() );
         return *this;
     }
 
@@ -102,8 +102,6 @@ struct SubState {
         suicides.clear();
         logs.clear();
         refunds = 0;
-        accessedAddresses.clear();
-        accessedStorageKeys.clear();
     }
 };
 
@@ -241,7 +239,7 @@ public:
     /// EIP-2929: Mark an account address as accessed (warm).
     /// @returns true if the address was already in the accessed set (warm), false if cold.
     virtual bool accessAccount( Address const& _addr ) {
-        auto [_, present] = sub.accessedAddresses.insert( _addr );
+        auto [_, present] = accessSets->accessedAddresses.insert( _addr );
         return !present;  // true = was already present = warm
     }
 
@@ -249,7 +247,7 @@ public:
     /// @returns true if the (address, key) pair was already in the accessed set (warm), false if
     /// cold.
     virtual bool accessStorageKey( Address const& _addr, u256 const& _key ) {
-        auto [_, present] = sub.accessedStorageKeys.insert( { _addr, _key } );
+        auto [_, present] = accessSets->accessedStorageKeys.insert( { _addr, _key } );
         return !present;  // true = was already present = warm
     }
 
@@ -287,12 +285,14 @@ public:
     Address origin;     ///< Original transactor.
     u256 value;         ///< Value (in Wei) that was passed to this address.
     u256 gasPrice;      ///< Price of gas (that we already paid).
-    bytesConstRef data;       ///< Current input data.
-    bytes code;               ///< Current code that is executing.
-    h256 codeHash;            ///< SHA3 hash of the executing code
-    u256 version;             ///< Version of the VM to execute code
-    u256 salt;                ///< Values used in new address construction by CREATE2
-    SubState sub;             ///< Sub-band VM state (suicides, refund counter, logs).
+    bytesConstRef data;  ///< Current input data.
+    bytes code;          ///< Current code that is executing.
+    h256 codeHash;       ///< SHA3 hash of the executing code
+    u256 version;        ///< Version of the VM to execute code
+    u256 salt;           ///< Values used in new address construction by CREATE2
+    SubState sub;        ///< Sub-band VM state (suicides, refund counter, logs).
+    /// EIP-2929: transaction-global warm sets, shared across all subcall frames.
+    std::shared_ptr< AccessSets > accessSets = std::make_shared< AccessSets >();
     unsigned depth = 0;       ///< Depth of the present call.
     bool isCreate = false;    ///< Is this a CREATE call?
     bool staticCall = false;  ///< Throw on state changing.

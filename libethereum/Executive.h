@@ -192,9 +192,8 @@ public:
     /// Finalise an operation through accruing the substate into the parent context.
     void accrueSubState( SubState& _parentContext );
 
-    /// EIP-2929: copy parent's warm access sets into this executive's child ExtVM sub-state,
-    /// so that already-accessed addresses and storage keys are visible in sub-calls.
-    void propagateAccessSets( SubState const& _parentContext );
+    /// EIP-2929: share the transaction-global access sets with this executive's child context.
+    void setAccessSets( std::shared_ptr< AccessSets > _sets ) { m_accessSets = std::move( _sets ); }
 
     /// Executes (or continues execution of) the VM.
     /// @returns false iff go() must be called again to finish the transaction.
@@ -263,6 +262,9 @@ private:
     bool m_isCreation = false;
     Address m_newAddress;
     size_t m_savepoint = 0;
+
+    /// EIP-2929: transaction-global warm access sets shared across all subcall frames.
+    std::shared_ptr< AccessSets > m_accessSets = std::make_shared< AccessSets >();
 
 #ifdef BITE2
     u256 m_txnIndex = u256( -1 );  ///< Index of transaction under execution. -1 for external calls
