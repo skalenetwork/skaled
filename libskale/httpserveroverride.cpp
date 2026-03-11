@@ -3040,7 +3040,7 @@ void SkaleServerOverride::stat_transformJsonForLogOutput( json& jo, bool isReque
         }
         jo["params"] = jarrNewParams;
     }
-    if ( nMaxStringValueLengthForJsonLogs != 0 ||
+    if ( nMaxStringValueLengthForJsonLogs != 0 &&
          nMaxStringValueLengthForJsonLogs != string::npos ) {
         for ( const auto& it : jo.items() ) {
             if ( bSkipParams && it.key() == "params" )
