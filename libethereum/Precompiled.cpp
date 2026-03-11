@@ -177,18 +177,20 @@ bigint expLengthAdjust( bigint const& _expOffset, bigint const& _expLength, byte
     }
 }
 
-bigint multComplexity( bigint const& _x ) {
-    if ( _x <= 64 )
-        return _x * _x;
-    if ( _x <= 1024 )
-        return ( _x * _x ) / 4 + 96 * _x - 3072;
+bigint modexpGasLegacy( bigint const& _maxLength, bigint const& _iterationCount ) {
+    bigint complexity;
+    if ( _maxLength <= 64 )
+        complexity = _maxLength * _maxLength;
+    else if ( _maxLength <= 1024 )
+        complexity = ( _maxLength * _maxLength ) / 4 + 96 * _maxLength - 3072;
     else
-        return ( _x * _x ) / 16 + 480 * _x - 199680;
+        complexity = ( _maxLength * _maxLength ) / 16 + 480 * _maxLength - 199680;
+    return complexity * _iterationCount / 20;
 }
 
-bigint multComplexityEIP2565( bigint const& _x ) {
-    bigint const xInWords = ( _x + 7 ) / 8;
-    return xInWords * xInWords;
+bigint modexpGasBerlin( bigint const& _maxLength, bigint const& _iterationCount ) {
+    bigint const words = ( _maxLength + 7 ) / 8;
+    return max< bigint >( words * words * _iterationCount / 3, 200 );
 }
 }  // namespace
 
@@ -197,15 +199,12 @@ ETH_REGISTER_PRECOMPILED_PRICER( modexp )
     bigint const baseLength( parseBigEndianRightPadded( _in, 0, 32 ) );
     bigint const expLength( parseBigEndianRightPadded( _in, 32, 32 ) );
     bigint const modLength( parseBigEndianRightPadded( _in, 64, 32 ) );
-
     bigint const maxLength( max( modLength, baseLength ) );
     bigint const adjustedExpLength( expLengthAdjust( baseLength + 96, expLength, _in ) );
     bigint const iterationCount = max< bigint >( adjustedExpLength, 1 );
-    if ( BerlinForkPatch::isEnabledInWorkingBlock() ) {
-        bigint const gas = multComplexityEIP2565( maxLength ) * iterationCount / 3;
-        return max< bigint >( gas, 200 );
-    }
-    return multComplexity( maxLength ) * iterationCount / 20;
+    if ( BerlinForkPatch::isEnabledInWorkingBlock() )
+        return modexpGasBerlin( maxLength, iterationCount );
+    return modexpGasLegacy( maxLength, iterationCount );
 }
 
 ETH_REGISTER_PRECOMPILED( alt_bn128_G1_add )( bytesConstRef _in, const PrecompiledCallContext& ) {
