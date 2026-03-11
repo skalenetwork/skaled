@@ -2064,7 +2064,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
 
 #ifdef BITE2
 
-BOOST_AUTO_TEST_CASE( submitCTX_validateBITECiphertext_Success ) {    
+BOOST_AUTO_TEST_CASE( submitCTX_validateBITECiphertext_Success ) {
     Json::Value ret;
     Json::Reader().parse( genesisInfoSkaleConfigTest, ret );
 #ifndef FAIR
@@ -2105,13 +2105,13 @@ BOOST_AUTO_TEST_CASE( submitCTX_validateBITECiphertext_Success ) {
     Address destination = Address( "0x1111111111111111111111111111111111111111" );
     libBLS::init();
     libBLS::TEPublicKey publicKey = libBLS::TEPublicKey::random();
-    
+
     dev::bytes messageBytes(32, 'a');
     libBLS::EncryptMetaData metadata;
     metadata.associatedDataTE = destination.asBytes();
     auto encryptedMessage = libBLS::ThresholdEncryption::encrypt( messageBytes, publicKey, metadata );
     uint64_t epochId = g_skaleHost->client().getCurrentEpochId();
-    
+
     // Prepare BITE Payload RLP: [epochId, encryptedData]
     RLPStream bitePayloadRlp( 2 );
     bitePayloadRlp << epochId << encryptedMessage.toBytes();
@@ -2124,7 +2124,7 @@ BOOST_AUTO_TEST_CASE( submitCTX_validateBITECiphertext_Success ) {
         if (rem != 0) out.insert(out.end(), 32 - rem, 0);
         return out;
     };
-    
+
     // Construct EncryptedArgs Array (bytes[])
     // 1 element: validBiteCiphertext
     bytes encArr;
@@ -2144,23 +2144,23 @@ BOOST_AUTO_TEST_CASE( submitCTX_validateBITECiphertext_Success ) {
     txnData += toBigEndian( u256( 64 + encArr.size() ) ); // offset to plainArr
     txnData += encArr;
     txnData += plainArr;
-    
+
     // Now construct full input: submitCTX(uint256 gasLimit, bytes memory data)
     // 0: gasLimit
     // 32: offset to data = 64
     // 64: length of data
-    // 96: data... 
-    
+    // 96: data...
+
     bytes input;
     input += toBigEndian( u256( 1000000 ) );
     input += toBigEndian( u256( 64 ) ); // offset to txnData
     input += toBigEndian( u256( txnData.size() ) );
-    input += txnData; 
-    
+    input += txnData;
+
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "submitCTX" );
     PrecompiledCallContext ctx = { 2, u256( 0 ), 1, destination, true };
     auto res = exec( bytesConstRef( input.data(), input.size() ), ctx );
-    
+
     // Error 6 is ABI_TO_RLP_CONVERSION_FAILED which happens if validation fails.
     // We expect verification to PASS, so check that we DO NOT get error 6.
     BOOST_REQUIRE_NE( dev::fromBigEndian< dev::u256 >( res.second ), dev::u256( 6 ) );
@@ -2210,7 +2210,7 @@ BOOST_AUTO_TEST_CASE( submitCTX_validateBITECiphertext_Failure ) {
     // elem0 offset = 32 (0x20)
     // elem0 length = 1 (too short)
     // elem0 data = 0xAA (padded to 32)
-    
+
     bytes encArr;
     encArr += toBigEndian( u256( 1 ) ); // length
     encArr += toBigEndian( u256( 32 ) ); // offset elem0
@@ -2227,17 +2227,17 @@ BOOST_AUTO_TEST_CASE( submitCTX_validateBITECiphertext_Failure ) {
     txnData += toBigEndian( u256( 64 + encArr.size() ) );
     txnData += encArr;
     txnData += plainArr;
-    
+
     bytes input;
     input += toBigEndian( u256( 1000000 ) );
     input += toBigEndian( u256( 64 ) ); // offset to txnData
     input += toBigEndian( u256( txnData.size() ) );
-    input += txnData; 
-    
+    input += txnData;
+
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "submitCTX" );
     PrecompiledCallContext ctx = { 2, u256( 0 ), 1, destination, true };
     auto res = exec( bytesConstRef( input.data(), input.size() ), ctx );
-    
+
     BOOST_REQUIRE( !res.first );
     // Check against SubmitCTXStatus::ABI_TO_RLP_CONVERSION_FAILED which is 6
     BOOST_REQUIRE_EQUAL( dev::fromBigEndian< dev::u256 >( res.second ), dev::u256( 6 ) );
@@ -2254,14 +2254,14 @@ BOOST_AUTO_TEST_CASE( submitCTX_validateBITECiphertext_Failure ) {
     // Create valid BITE ciphertext, but without AAD TE
     libBLS::init();
     libBLS::TEPublicKey publicKey = libBLS::TEPublicKey::random();
-    
+
     dev::bytes messageBytes(32, 'a');
     libBLS::EncryptMetaData metadata;
     // metadata.associatedDataTE is empty by default
 
     auto encryptedMessage = libBLS::ThresholdEncryption::encrypt( messageBytes, publicKey, metadata );
     uint64_t epochId = g_skaleHost->client().getCurrentEpochId();
-    
+
     // Prepare BITE Payload RLP: [epochId, encryptedData]
     RLPStream bitePayloadRlp( 2 );
     bitePayloadRlp << epochId << encryptedMessage.toBytes();
@@ -2283,10 +2283,10 @@ BOOST_AUTO_TEST_CASE( submitCTX_validateBITECiphertext_Failure ) {
     input += toBigEndian( u256( 1000000 ) );
     input += toBigEndian( u256( 64 ) ); // offset to txnData
     input += toBigEndian( u256( txnData.size() ) );
-    input += txnData; 
+    input += txnData;
 
     res = exec( bytesConstRef( input.data(), input.size() ), ctx );
-    
+
     BOOST_REQUIRE( !res.first );
     BOOST_REQUIRE_EQUAL( dev::fromBigEndian< dev::u256 >( res.second ), dev::u256( 6 ) );
 
@@ -2314,10 +2314,10 @@ BOOST_AUTO_TEST_CASE( submitCTX_validateBITECiphertext_Failure ) {
     input += toBigEndian( u256( 1000000 ) );
     input += toBigEndian( u256( 64 ) ); // offset to txnData
     input += toBigEndian( u256( txnData.size() ) );
-    input += txnData; 
+    input += txnData;
 
     res = exec( bytesConstRef( input.data(), input.size() ), ctx );
-    
+
     BOOST_REQUIRE( !res.first );
     BOOST_REQUIRE_EQUAL( dev::fromBigEndian< dev::u256 >( res.second ), dev::u256( 6 ) );
 }
@@ -2508,8 +2508,6 @@ BOOST_AUTO_TEST_CASE( getMaliciousFileSize ) {
     auto res = exec( bytesConstRef( in.data(), in.size() ),
         { 1,
 #ifdef BITE2
-<<<<<<< HEAD
-            { 0 }, -1,
                                                               { -1 },
                                                               0,
                                                               dev::ZeroAddress,

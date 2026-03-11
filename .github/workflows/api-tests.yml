@@ -56,6 +56,14 @@ jobs:
           ./build.sh DEBUG=1 PARALLEL_COUNT=$(nproc)
           cd ..
 
+      - name: Build skaled
+        uses: ./.github/actions/cmake-build
+        with:
+          build_dir: build
+          cmake_build_type: ${{ env.CMAKE_BUILD_TYPE }}
+          cmake_args: ""
+          make_target: skaled
+
       - name: Build BITE
         uses: ./.github/actions/cmake-build
         with:
@@ -77,13 +85,26 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
-      - name: Install ts dependencies
+      - name: Install bite-compat ts dependencies
         run: bun install --frozen-lockfile
         working-directory: test/api-tests/bite-compat/
+
+      - name: Install hardfork-support ts dependencies
+        run: bun install --frozen-lockfile
+        working-directory: test/api-tests/hardfork-support/sol/
 
       - name: API tests (bite-compat)
         uses: ./.github/actions/api-tests-run
         with:
           suite: bite-compat
+        env:
+          FUNC_TEST_PRIVATE_KEY: ${{ secrets.FUNC_TEST_PRIVATE_KEY }}
+
+      - name: API tests (hardfork-support)
+        uses: ./.github/actions/api-tests-run
+        with:
+          suite: hardfork-support
+          skaled_binary: build/skaled/skaled
+          build_skaled: "false"
         env:
           FUNC_TEST_PRIVATE_KEY: ${{ secrets.FUNC_TEST_PRIVATE_KEY }}
