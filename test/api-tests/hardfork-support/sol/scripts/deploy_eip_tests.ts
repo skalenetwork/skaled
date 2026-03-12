@@ -43,6 +43,14 @@ async function main() {
   const addr2565 = await eip2565.getAddress();
   console.log("EIP2565Test deployed to:", addr2565);
 
+  // Deploy EIP2929RevertTest
+  console.log("\nDeploying EIP2929RevertTest...");
+  const EIP2929Revert = await ethers.getContractFactory("EIP2929RevertTest");
+  const eip2929Revert = await EIP2929Revert.deploy();
+  await eip2929Revert.waitForDeployment();
+  const addr2929Revert = await eip2929Revert.getAddress();
+  console.log("EIP2929RevertTest deployed to:", addr2929Revert);
+
   console.log("\n" + "=".repeat(50));
 
   const deploymentInfo = {
@@ -53,6 +61,7 @@ async function main() {
       EIP2929Test: addr2929,
       EIP2930Test: addr2930,
       EIP2565Test: addr2565,
+      EIP2929RevertTest: addr2929Revert,
     },
     deploymentTime: new Date().toISOString(),
     blockNumber: await ethers.provider.getBlockNumber(),

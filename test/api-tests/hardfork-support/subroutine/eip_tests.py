@@ -423,17 +423,94 @@ def test_eip_2565(w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int
 
 
 # ---------------------------------------------------------------------------
+# EIP-2929 revert semantics: access sets restored on sub-call revert
+# ---------------------------------------------------------------------------
+
+def test_eip_2929_revert(
+    w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000
+) -> EIPTestResult:
+    """
+    EIP-2929 specifies that when a sub-call scope reverts, accessed_addresses
+    and accessed_storage_keys are restored to the state they were in before that
+    scope was entered.  A slot warmed only inside a reverted sub-call must
+    therefore cost cold gas (2100) in the outer frame.
+
+    Test:
+    1. Deploy EIP2929RevertTest.
+    2. Call measureWarmSload() to obtain the warm-SLOAD reference cost.
+    3. Call measureSlotCostAfterRevert():
+       - internally does try { this.readSlot0ThenRevert() } catch {}
+       - then measures SLOAD cost of slot0 (warmed inside the reverted sub-call)
+       - and SLOAD cost of slot1 (never accessed anywhere — always cold).
+    4. Assert gasAfterRevert is close to gasSlot1 (both cold, ~2100) and NOT
+       close to warmGas (~100), proving the access set was rolled back.
+    """
+    logger.info("=== EIP-2929 revert semantics test ===")
+    abi, bytecode = _load_artifact(sol_dir, "EIP2929RevertTest")
+    addr = _deploy_contract(w3, deployer, abi, bytecode, gas_limit)
+    contract = w3.eth.contract(address=addr, abi=abi)
+
+    warm_gas = contract.functions.measureWarmSload().call()
+    logger.info("Warm SLOAD reference: %d gas", warm_gas)
+
+    gas_after_revert, gas_slot1 = contract.functions.measureSlotCostAfterRevert().call()
+    logger.info(
+        "After reverted sub-call: slot0 SLOAD=%d gas, slot1 (cold ref)=%d gas, warm ref=%d gas",
+        gas_after_revert, gas_slot1, warm_gas,
+    )
+
+    details = {
+        "warm_gas": warm_gas,
+        "gas_after_revert": gas_after_revert,
+        "gas_slot1_cold_ref": gas_slot1,
+        "contract": addr,
+    }
+
+    errors = []
+
+    # gasAfterRevert should be cold (~2100), not warm (~100).
+    # We require it to be at least MIN_COLD_WARM_RATIO times the warm cost.
+    if warm_gas == 0:
+        errors.append("measureWarmSload() returned 0 — cannot determine warm gas cost")
+    elif gas_after_revert / warm_gas < MIN_COLD_WARM_RATIO:
+        errors.append(
+            f"slot0 SLOAD after reverted sub-call cost only {gas_after_revert} gas "
+            f"(warm ref={warm_gas}), ratio={gas_after_revert / warm_gas:.1f} < {MIN_COLD_WARM_RATIO}. "
+            f"Access set was NOT restored on revert."
+        )
+
+    if errors:
+        return EIPTestResult(
+            eip="2929-revert",
+            passed=False,
+            message="; ".join(errors),
+            details=details,
+        )
+
+    return EIPTestResult(
+        eip="2929-revert",
+        passed=True,
+        message=(
+            f"slot0 SLOAD after reverted sub-call={gas_after_revert} gas (cold, as expected); "
+            f"warm ref={warm_gas}; ratio={gas_after_revert / warm_gas:.1f}"
+        ),
+        details=details,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Orchestrator
 # ---------------------------------------------------------------------------
 
 EIP_TEST_MAP = {
     "2929": test_eip_2929,
+    "2929-revert": test_eip_2929_revert,
     "2930": test_eip_2930,
     "2718": test_eip_2930,  # EIP-2718 is covered by the Type 1 tx test
     "2565": test_eip_2565,
 }
 
-ALL_EIPS = ["2929", "2930", "2565"]  # canonical list (no duplicates)
+ALL_EIPS = ["2929", "2929-revert", "2930", "2565"]  # canonical list (no duplicates)
 
 
 def run_eip_tests(
