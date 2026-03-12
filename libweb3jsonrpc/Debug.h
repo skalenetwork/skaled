@@ -57,7 +57,7 @@ public:
 
     virtual Json::Value debug_getPatchTimestamps() override;
 
-#ifdef BITE2
+#ifdef BITE
     virtual Json::Value debug_getPendingBITE2Transactions() override;
 #endif
 

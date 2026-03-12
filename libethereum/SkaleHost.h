@@ -130,7 +130,7 @@ public:
 
     void pushToBroadcastQueue( const dev::eth::Transaction& _transaction );
 
-#ifdef BITE2
+#ifdef BITE
     // Get deterministic random value for encryption call
     // Combines Hash(blockRandom || counter) where counter auto-increments for each call
     // Counter resets at each new block - skaled calls resetEncryptionStateForBlock on
@@ -192,7 +192,7 @@ public:
 
     SkaleDebugInterface::handler getDebugHandler() const { return m_debugHandler; }
 
-#ifdef BITE2
+#ifdef BITE
     const dev::eth::Client& client() const { return m_client; }
 #endif
 
@@ -241,7 +241,7 @@ private:
         DecryptedTransactions _decryptedTransactions
 #endif
     );
-#ifdef BITE2
+#ifdef BITE
     std::vector< dev::eth::Transaction > processCTXTransactions(
         const ConsensusExtFace::Transactions& _approvedTransactions,
         [[maybe_unused]] const dev::eth::BlockHeader& latestInfo,
@@ -307,7 +307,7 @@ private:
 
     boost::chrono::high_resolution_clock::time_point latestBlockTime;
 
-#ifdef BITE2
+#ifdef BITE
 
     // Per-block encryption counter for deterministic but unique encryption
     // Counter resets when block number changes, increments for each encryption call

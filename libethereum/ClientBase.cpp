@@ -388,10 +388,10 @@ Transaction ClientBase::transaction( h256 _transactionHash ) const {
     return Transaction( bc().transaction( _transactionHash ), CheckTransaction::Cheap, true,
         EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
         InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp )
-#ifdef BITE2
+#ifdef BITE
             ,
         Bite2Patch::isEnabledWhen( blockTimestamp )
-#endif  // BITE2
+#endif  // BITE
     );
 }
 
@@ -409,10 +409,10 @@ Transaction ClientBase::transaction( h256 _blockHash, unsigned _i ) const {
         return Transaction( b[1][_i].data(), CheckTransaction::Cheap, true,
             EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
             InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp )
-#ifdef BITE2
+#ifdef BITE
                 ,
             Bite2Patch::isEnabledWhen( blockTimestamp )
-#endif  // BITE2
+#endif  // BITE
         );
     else
         return Transaction();
@@ -424,10 +424,10 @@ LocalisedTransaction ClientBase::localisedTransaction( h256 const& _blockHash, u
     Transaction t = Transaction( bc().transaction( _blockHash, _i ), CheckTransaction::Cheap, true,
         EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
         InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp )
-#ifdef BITE2
+#ifdef BITE
             ,
         Bite2Patch::isEnabledWhen( blockTimestamp )
-#endif  // BITE2
+#endif  // BITE
     );
     return LocalisedTransaction( t, _blockHash, _i, numberFromHash( _blockHash ) );
 }
@@ -448,10 +448,10 @@ LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(
         true,                                                                    // allow invalid
         EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
         InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp )
-#ifdef BITE2
+#ifdef BITE
             ,
         Bite2Patch::isEnabledWhen( blockTimestamp )
-#endif  // BITE2
+#endif  // BITE
     );
 
     TransactionReceipt receipt = bc().transactionReceipt( blockHash, transactionIdx );
@@ -512,10 +512,10 @@ Transactions ClientBase::transactions( h256 _blockHash ) const {
         res.emplace_back( bytesRefFromTransactionRlp( txRlp ), CheckTransaction::Cheap, true,
             EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
             InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp )
-#ifdef BITE2
+#ifdef BITE
                 ,
             Bite2Patch::isEnabledWhen( blockTimestamp )
-#endif  // BITE2
+#endif  // BITE
         );
     }
     return res;
@@ -530,7 +530,6 @@ DecryptedTransactionData ClientBase::decryptedTransactionData( h256 _transaction
     return bc().decryptedTransactionData( _transactionHash );
 }
 
-#ifdef BITE2
 dev::h256 ClientBase::ctxOrigin( const dev::h256& _ctxHash ) const {
     auto tx = transaction( _ctxHash );
     if ( !tx.isCTX() )
@@ -555,7 +554,6 @@ std::vector< dev::h256 > ClientBase::craftedCTXs( const dev::h256& _transactionH
         return {};
     return ctxHashesLists[tl.second];
 }
-#endif  // BITE2
 #endif  // BITE
 
 BlockHeader ClientBase::uncle( h256 _blockHash, unsigned _i ) const {

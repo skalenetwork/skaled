@@ -53,7 +53,7 @@ extern std::shared_ptr< SkaleHost > g_skaleHost;
 struct PrecompiledCallContext {
     PrecompiledCallContext()
         : blockNumber( 0 ),
-#ifdef BITE2
+#ifdef BITE
           currentTxnIndex( -1 ),
           latestBlockTimestamp( 0 ),
           from( dev::ZeroAddress ),
@@ -61,12 +61,12 @@ struct PrecompiledCallContext {
           isReadOnly( true ) {
     }
     PrecompiledCallContext( const dev::u256& _bn,
-#ifdef BITE2
+#ifdef BITE
         const dev::u256& _currentTxnIndex, int64_t _latestBlockTimestamp, const dev::Address& _from,
 #endif
         bool _readOnly )
         : blockNumber( _bn ),
-#ifdef BITE2
+#ifdef BITE
           currentTxnIndex( _currentTxnIndex ),
           latestBlockTimestamp( _latestBlockTimestamp ),
           from( _from ),
@@ -74,7 +74,7 @@ struct PrecompiledCallContext {
           isReadOnly( _readOnly ) {
     }
     dev::u256 blockNumber;
-#ifdef BITE2
+#ifdef BITE
     dev::u256 currentTxnIndex;
     int64_t latestBlockTimestamp;
     dev::Address from;

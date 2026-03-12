@@ -107,10 +107,8 @@ enum {
 #ifdef BITE
     ,
     ExtraTransactionDecryptedData
-#ifdef BITE2
     ,
     ExtraCtxOrigin
-#endif  // BITE2
 #endif  // BITE
 };
 
@@ -346,14 +344,12 @@ public:
             NullDecryptedTransactionData );
     }
 
-#ifdef BITE2
     CtxOrigin ctxHashesForBlock( const dev::h256& _blockHash ) const {
         return queryExtras< CtxOrigin, ExtraCtxOrigin >(
             _blockHash, m_ctxOrigin, x_ctxOrigin, NullCtxOrigin );
     }
 
     Transactions ctxListForPreviousBlock() const;
-#endif  // BITE2
 #endif  // BITE
 
     /// Get a number for the given hash (or the most recent mined if none given). Thread-safe.
@@ -423,18 +419,14 @@ public:
         unsigned memBlockHashes = 0;
 #ifdef BITE
         unsigned memDecryptedTransactionsData = 0;
-#ifdef BITE2
         unsigned memCtxOrigin = 0;
-#endif  // BITE2
 #endif  // BITE
         unsigned memTotal() const {
             return memBlocks + memDetails + memLogBlooms + memReceipts + memTransactionAddresses +
                    memBlockHashes
 #ifdef BITE
                    + memDecryptedTransactionsData
-#ifdef BITE2
                    + memCtxOrigin
-#endif  // BITE2
 #endif  // BITE
                 ;
         }
@@ -636,10 +628,8 @@ private:
 #ifdef BITE
     mutable SharedMutex x_decryptedTransactionsData;
     mutable DecryptedTransactionDataHash m_decryptedTransactionsData;
-#ifdef BITE2
     mutable SharedMutex x_ctxOrigin;
     mutable CtxOriginHash m_ctxOrigin;
-#endif  // BITE2
 #endif  // BITE
 
     using CacheID = std::pair< h256, unsigned >;

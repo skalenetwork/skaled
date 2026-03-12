@@ -41,7 +41,7 @@ public:
         Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice,
         bytesConstRef _data, bytesConstRef _code, h256 const& _codeHash, u256 const& _version,
         unsigned _depth, bool _isCreate, bool _staticCall, bool _readOnly = true
-#ifdef BITE2
+#ifdef BITE
         ,
         const u256& _txnIndex = u256( -1 )
 #endif
@@ -52,7 +52,7 @@ public:
           m_chainParams( _chainParams ),
           m_evmSchedule( initEvmSchedule( _version ) ),
           m_readOnly( _readOnly )
-#ifdef BITE2
+#ifdef BITE
           ,
           m_txnIndex( _txnIndex )
 #endif
@@ -128,7 +128,7 @@ private:
     ChainOperationParams const& m_chainParams;
     EVMSchedule const m_evmSchedule;
     bool m_readOnly;
-#ifdef BITE2
+#ifdef BITE
     u256 m_txnIndex;
 #endif
 };

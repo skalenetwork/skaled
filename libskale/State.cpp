@@ -1128,7 +1128,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
     // HACK 0 here is for gasPrice
     // TODO Not sure that 1st 0 as timestamp is acceptable here
     Executive e( *this, _envInfo, _chainParams, 0, 0, !isStateCommitting( _p )
-#ifdef BITE2
+#ifdef BITE
                                                           ,
         dev::u256( _transactionIndex )
 #endif

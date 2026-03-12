@@ -367,7 +367,7 @@ TransactionType TransactionBase::getTransactionType( bytesConstRef _rlp ) {
 
 TransactionBase::TransactionBase( bytesConstRef _rlpData, CheckTransaction _checkSig,
     bool _allowInvalid, bool _eip1559Enabled, bool _invalidTransactionFormatPatchEnabled
-#ifdef BITE2
+#ifdef BITE
     ,
     bool _bite2PatchEnabled
 #endif
@@ -387,13 +387,11 @@ TransactionBase::TransactionBase( bytesConstRef _rlpData, CheckTransaction _chec
         // therefore no need to check it anywhere else
         checkIfBITETxnAndSet( m_receiveAddress );
 
-#ifdef BITE2
         // check if a txn is a CTX here only when bite2Patch is enabled;
         // bad formatted txns cannot make it to the block
         // therefore no need to check it anywhere else
         if ( _bite2PatchEnabled )
             checkIfCTXAndSet( m_data );
-#endif  // BITE2
 
 #endif  // BITE
     } catch ( std::exception& e ) {
@@ -575,7 +573,7 @@ int64_t TransactionBase::baseGasRequired(
     ,
     bool _isBITETxn
 #endif
-#ifdef BITE2
+#ifdef BITE
     ,
     std::optional< size_t > _bite2EncryptedArgsSize
 #endif
@@ -592,8 +590,8 @@ int64_t TransactionBase::baseGasRequired(
     }
 #endif
 
-#ifdef BITE2
-    // BITE2 transaction - charge for every encrypted payload
+#ifdef BITE
+    // BITE transaction - charge for every encrypted payload
     if ( _bite2EncryptedArgsSize.has_value() ) {
         // Check for multiplication overflow
         if ( _bite2EncryptedArgsSize.value() > 0 &&
@@ -686,9 +684,7 @@ bytesConstRef dev::eth::bytesRefFromTransactionRlp( const RLP& _rlp ) {
 #ifdef BITE
 bool TransactionBase::isInvalidBiteTransaction() const {
     return ( m_isBITETxn && ( !m_decryptedData && !m_decryptedTo ) )
-#ifdef BITE2
            || ( m_isCTX && !m_decryptedData )
-#endif
         ;
 }
 
@@ -716,8 +712,6 @@ void TransactionBase::checkAndValidateBITETransaction( uint64_t _currentEpochId 
     dev::bite::validateBITECiphertext( m_data, verificationData );
 }
 
-#ifdef BITE2
-
 void TransactionBase::checkIfCTXAndSet( const dev::bytes& _data ) {
     if ( _data.size() < dev::bite::ON_DECRYPT_FUNCTION_SELECTOR_SIZE_BYTES )
         return;
@@ -737,6 +731,5 @@ void TransactionBase::setDecryptedArgsCTX( const DecryptedCTXArgs& _decryptedCTX
     // Reconstruct decrypted data: selector + abi encoded arrays
     m_decryptedData = std::make_shared< dev::bytes >( decryptedCTXData );
 }
-#endif  // BITE2
 
 #endif  // BITE

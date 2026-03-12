@@ -51,7 +51,6 @@ inline bool isCiphertextValidationEnabled = false;
 void validateBITECiphertext(
     const dev::bytes& _ciphertext, const BITEVerificationData& _verificationData );
 
-#ifdef BITE2
 // Solidity adds 12 left-padded zero bytes when encoding an address parameter in the ABI format.
 // Format: address to, uint256 gasLimit, uint256 biteDataOffset, uint256 biteDataLength, bytes
 // biteData
@@ -111,7 +110,6 @@ constexpr uint64_t INSUFFICIENT_GAS_LIMIT = 8;
 constexpr uint64_t INVALID_TRANSACTION = 9;
 constexpr uint64_t WALLET_ALREADY_ACTIVE = 10;
 }  // namespace GetRandomWalletStatus
-#endif  // BITE2
 
 }  // namespace bite
 }  // namespace dev
