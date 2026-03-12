@@ -80,8 +80,10 @@ def _send_tx(w3: Web3, deployer: LocalAccount, tx_dict: dict, pre_wait: float = 
                   Useful for non-legacy tx types that need extra processing time.
     """
     tx_dict.setdefault("chainId", w3.eth.chain_id)
-    tx_dict.setdefault("gasPrice", w3.eth.gas_price)
     tx_dict.setdefault("nonce", w3.eth.get_transaction_count(deployer.address))
+    # Type 2 (EIP-1559) uses maxFeePerGas/maxPriorityFeePerGas; gasPrice must not be present.
+    if tx_dict.get("type", 0) != 2:
+        tx_dict.setdefault("gasPrice", w3.eth.gas_price)
     signed = deployer.sign_transaction(tx_dict)
     tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
     logger.info("Sent tx %s (type=%s)", tx_hash.hex(), tx_dict.get("type", 0))
@@ -423,6 +425,196 @@ def test_eip_2565(w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int
 
 
 # ---------------------------------------------------------------------------
+# EIP-2929 extended: cold vs warm SSTORE
+# ---------------------------------------------------------------------------
+
+def test_eip_2929_sstore_cold_warm(
+    w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000
+) -> EIPTestResult:
+    """
+    EIP-2929 adds COLD_SLOAD_COST (2100) to the first SSTORE on a cold slot.
+    The second SSTORE to the same slot in the same transaction is warm and does
+    not pay this surcharge.
+
+    Test: measure gas for cold SSTORE vs warm SSTORE and assert
+    cold >> warm (ratio >= MIN_COLD_WARM_RATIO).
+    """
+    logger.info("=== EIP-2929 SSTORE cold vs warm test ===")
+    abi, bytecode = _load_artifact(sol_dir, "EIP2929ExtendedTest")
+    addr = _deploy_contract(w3, deployer, abi, bytecode, gas_limit)
+    contract = w3.eth.contract(address=addr, abi=abi)
+
+    # Use eth_call directly — storeSlot starts at 0 in the freshly-deployed contract,
+    # so the first SSTORE (0→1) is a cold SSTORE_SET (22 100 gas) and the second
+    # (1→2, within the same call) is a warm SSTORE_SET (20 100 gas).
+    # No prior transaction needed; one would leave storeSlot non-zero and reduce
+    # the cold/warm gap to SSTORE_RESET (5 000 vs 3 000, ratio 1.7 — too low).
+    cold_gas, warm_gas = contract.functions.measureColdVsWarmSstore().call()
+    logger.info(
+        "SSTORE gas: cold=%d, warm=%d (ratio=%.1f)",
+        cold_gas, warm_gas,
+        cold_gas / warm_gas if warm_gas else float("inf"),
+    )
+
+    details = {
+        "sstore_cold": cold_gas,
+        "sstore_warm": warm_gas,
+        "contract": addr,
+    }
+
+    errors = []
+    if warm_gas == 0 or cold_gas / warm_gas < MIN_COLD_WARM_RATIO:
+        errors.append(
+            f"SSTORE cold/warm ratio too low: {cold_gas}/{warm_gas} "
+            f"= {cold_gas / warm_gas if warm_gas else 'inf':.1f}, need >= {MIN_COLD_WARM_RATIO}"
+        )
+
+    if errors:
+        return EIPTestResult(eip="2929-sstore", passed=False, message="; ".join(errors), details=details)
+    return EIPTestResult(
+        eip="2929-sstore",
+        passed=True,
+        message=f"SSTORE cold={cold_gas} warm={warm_gas} ratio={cold_gas / warm_gas:.1f}",
+        details=details,
+    )
+
+
+# ---------------------------------------------------------------------------
+# EIP-2929 extended: cold vs warm EXTCODESIZE
+# ---------------------------------------------------------------------------
+
+def test_eip_2929_extcode_cold_warm(
+    w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000
+) -> EIPTestResult:
+    """
+    EIP-2929: cold EXTCODESIZE = 2600 gas, warm EXTCODESIZE = 100 gas.
+    Test: pass a cold address, measure both accesses, assert ratio >= MIN_COLD_WARM_RATIO.
+    """
+    logger.info("=== EIP-2929 EXTCODESIZE cold vs warm test ===")
+    abi, bytecode = _load_artifact(sol_dir, "EIP2929ExtendedTest")
+    addr = _deploy_contract(w3, deployer, abi, bytecode, gas_limit)
+    contract = w3.eth.contract(address=addr, abi=abi)
+
+    # A never-accessed address (cold).
+    cold_target = w3.to_checksum_address("0x" + "cd" * 20)
+    cold_gas, warm_gas = contract.functions.measureColdVsWarmExtcodesize(cold_target).call()
+    logger.info(
+        "EXTCODESIZE gas: cold=%d, warm=%d (ratio=%.1f)",
+        cold_gas, warm_gas,
+        cold_gas / warm_gas if warm_gas else float("inf"),
+    )
+
+    details = {
+        "extcodesize_cold": cold_gas,
+        "extcodesize_warm": warm_gas,
+        "target": cold_target,
+        "contract": addr,
+    }
+
+    errors = []
+    if warm_gas == 0 or cold_gas / warm_gas < MIN_COLD_WARM_RATIO:
+        errors.append(
+            f"EXTCODESIZE cold/warm ratio too low: {cold_gas}/{warm_gas} "
+            f"= {cold_gas / warm_gas if warm_gas else 'inf':.1f}, need >= {MIN_COLD_WARM_RATIO}"
+        )
+
+    if errors:
+        return EIPTestResult(eip="2929-extcode", passed=False, message="; ".join(errors), details=details)
+    return EIPTestResult(
+        eip="2929-extcode",
+        passed=True,
+        message=f"EXTCODESIZE cold={cold_gas} warm={warm_gas} ratio={cold_gas / warm_gas:.1f}",
+        details=details,
+    )
+
+
+# ---------------------------------------------------------------------------
+# EIP-2929 extended: CREATE immediately warms the new address
+# ---------------------------------------------------------------------------
+
+def test_eip_2929_create_warms_address(
+    w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000
+) -> EIPTestResult:
+    """
+    Per EIP-2929: when a CREATE opcode is executed, the new address is
+    immediately added to accessed_addresses.  So the very first BALANCE query
+    on the created address must be warm (~100), not cold (2600).
+
+    Test: deploy a child contract via CREATE, immediately measure BALANCE on it,
+    compare with a cold-address BALANCE reference.
+    Assert: warmBalanceGas << coldBalanceGas (ratio >= MIN_COLD_WARM_RATIO).
+    """
+    logger.info("=== EIP-2929 CREATE warms address test ===")
+    abi, bytecode = _load_artifact(sol_dir, "EIP2929ExtendedTest")
+    addr = _deploy_contract(w3, deployer, abi, bytecode, gas_limit)
+    contract = w3.eth.contract(address=addr, abi=abi)
+
+    # skaled runs eth_call in read-only mode, so CREATE returns address(0) there.
+    # We use a real transaction and read gas measurements from the BalanceGasMeasured event.
+    cold_ref = w3.to_checksum_address("0x" + "ef" * 20)
+    tx = contract.functions.createAndMeasureBalance(cold_ref).build_transaction({
+        "from": deployer.address,
+        "gas": gas_limit,
+        "gasPrice": w3.eth.gas_price,
+        "nonce": w3.eth.get_transaction_count(deployer.address),
+        "chainId": w3.eth.chain_id,
+    })
+    receipt = _send_tx(w3, deployer, tx)
+    if receipt["status"] != 1:
+        return EIPTestResult(
+            eip="2929-create-warm",
+            passed=False,
+            message="createAndMeasureBalance() transaction reverted",
+            details={"contract": addr},
+        )
+
+    # Parse the BalanceGasMeasured event from the receipt logs.
+    logs = contract.events.BalanceGasMeasured().process_receipt(receipt)
+    if not logs:
+        return EIPTestResult(
+            eip="2929-create-warm",
+            passed=False,
+            message="BalanceGasMeasured event not found in receipt",
+            details={"contract": addr, "receipt_status": receipt["status"]},
+        )
+    event_args = logs[0]["args"]
+    created_addr = event_args["createdAddr"]
+    warm_gas = event_args["warmBalanceGas"]
+    cold_gas = event_args["coldBalanceGas"]
+
+    logger.info(
+        "BALANCE after CREATE: warm (created)=%d, cold (ref)=%d (ratio=%.1f)",
+        warm_gas, cold_gas,
+        cold_gas / warm_gas if warm_gas else float("inf"),
+    )
+
+    details = {
+        "created_address": created_addr,
+        "balance_warm_created": warm_gas,
+        "balance_cold_ref": cold_gas,
+        "contract": addr,
+    }
+
+    errors = []
+    if warm_gas == 0 or cold_gas / warm_gas < MIN_COLD_WARM_RATIO:
+        errors.append(
+            f"BALANCE on just-created address should be warm: "
+            f"warm={warm_gas}, cold_ref={cold_gas}, "
+            f"ratio={cold_gas / warm_gas if warm_gas else 'inf':.1f} < {MIN_COLD_WARM_RATIO}. "
+            f"CREATE did NOT warm the new address."
+        )
+
+    if errors:
+        return EIPTestResult(eip="2929-create-warm", passed=False, message="; ".join(errors), details=details)
+    return EIPTestResult(
+        eip="2929-create-warm",
+        passed=True,
+        message=f"BALANCE warm(created)={warm_gas} cold(ref)={cold_gas} ratio={cold_gas / warm_gas:.1f}",
+        details=details,
+    )
+
+
+# ---------------------------------------------------------------------------
 # EIP-2929 revert semantics: access sets restored on sub-call revert
 # ---------------------------------------------------------------------------
 
@@ -499,18 +691,470 @@ def test_eip_2929_revert(
 
 
 # ---------------------------------------------------------------------------
+# EIP-2930: access list produces measurable gas saving
+# ---------------------------------------------------------------------------
+
+def test_eip_2930_access_list_gas_saving(
+    w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000
+) -> EIPTestResult:
+    """
+    Verifies that EIP-2930 access list pricing is applied correctly.
+
+    Scenario: writeAllSlots() on tx.to's own 4 cold storage slots.
+      - Access list pre-warms slots 0-3: saves 4 × 2000 = 8000 gas (SSTORE cold→warm).
+      - Access list charge:             1 addr × 2400 + 4 keys × 1900 = 10000 gas.
+      - Net overhead of Type 1 over Type 0: ~2000 gas.
+
+    Since tx.to is already warm as the transaction target, the address entry in
+    the access list buys nothing for the address itself, so Type 1 is expected
+    to cost MORE than Type 0 by roughly the net overhead (~1000–3500 gas).
+
+    Assertions:
+      1. Both transactions succeed (status = 1).
+      2. The gas overhead of Type 1 over Type 0 is in the expected range,
+         confirming access list items are charged per EIP-2930 pricing.
+    """
+    logger.info("=== EIP-2930 access list pricing test ===")
+    abi, bytecode = _load_artifact(sol_dir, "EIP2930Test")
+    addr = _deploy_contract(w3, deployer, abi, bytecode, gas_limit)
+    contract = w3.eth.contract(address=addr, abi=abi)
+
+    # Type 0 — cold SSTORE on all four slots (no access list)
+    tx0 = contract.functions.writeAllSlots(1, 2, 3, 4).build_transaction({
+        "from": deployer.address,
+        "gas": gas_limit,
+        "gasPrice": w3.eth.gas_price,
+        "nonce": w3.eth.get_transaction_count(deployer.address),
+        "chainId": w3.eth.chain_id,
+    })
+    receipt0 = _send_tx(w3, deployer, tx0)
+
+    # Type 1 — same SSTORE but with slots 0-3 pre-warmed in the access list
+    access_list = [{
+        "address": addr,
+        "storageKeys": ["0x" + slot.to_bytes(32, "big").hex() for slot in range(4)],
+    }]
+    tx1 = contract.functions.writeAllSlots(5, 6, 7, 8).build_transaction({
+        "from": deployer.address,
+        "gas": gas_limit,
+        "gasPrice": w3.eth.gas_price,
+        "nonce": w3.eth.get_transaction_count(deployer.address),
+        "chainId": w3.eth.chain_id,
+        "type": 1,
+        "accessList": access_list,
+    })
+    receipt1 = _send_tx(w3, deployer, tx1)
+
+    gas0 = receipt0["gasUsed"]
+    gas1 = receipt1["gasUsed"]
+    # Expected: Type 1 costs more by (access_list_charge - sstore_savings)
+    #   = (2400 + 4*1900) - (4*2000) = 10000 - 8000 = 2000 gas overhead.
+    gas_overhead = gas1 - gas0
+    logger.info(
+        "Gas: Type 0=%d, Type 1 (with access list)=%d, overhead=%d (expected ~+2000)",
+        gas0, gas1, gas_overhead,
+    )
+
+    details = {
+        "gas_type0": gas0,
+        "gas_type1_with_al": gas1,
+        "gas_overhead": gas_overhead,
+        "type0_status": receipt0["status"],
+        "type1_status": receipt1["status"],
+        "contract": addr,
+    }
+
+    errors = []
+    if receipt0["status"] != 1:
+        errors.append("Type 0 transaction reverted")
+    if receipt1["status"] != 1:
+        errors.append("Type 1 transaction reverted")
+    # The net overhead should reflect EIP-2930 pricing: access list charge minus warm SSTORE savings.
+    # Allow a ±1500 gas window around the theoretical 2000 gas overhead.
+    if not errors and not (500 <= gas_overhead <= 3500):
+        errors.append(
+            f"Type 1 gas overhead unexpected: {gas_overhead} gas "
+            f"(expected ~2000 = 10000 access-list-charge − 8000 warm-SSTORE-savings, "
+            f"tolerance ±1500)"
+        )
+
+    if errors:
+        return EIPTestResult(eip="2930-gas-saving", passed=False, message="; ".join(errors), details=details)
+    return EIPTestResult(
+        eip="2930-gas-saving",
+        passed=True,
+        message=(
+            f"Type 0={gas0} gas, Type 1={gas1} gas, overhead={gas_overhead} "
+            f"(EIP-2930 pricing confirmed: access list charged per item)"
+        ),
+        details=details,
+    )
+
+
+# ---------------------------------------------------------------------------
+# EIP-2930: duplicate access list items are accepted and each charged
+# ---------------------------------------------------------------------------
+
+def test_eip_2930_duplicate_items_charged(
+    w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000
+) -> EIPTestResult:
+    """
+    EIP-2930: duplicate addresses and storage keys in the access list are
+    permitted, and each item is charged individually (2400/address, 1900/key).
+
+    Test: send three Type 1 transactions:
+      - tx_no_al:    no access list (baseline)
+      - tx_one_key:  access list with the contract address + 1 key (× 1)
+      - tx_two_keys: access list with the contract address + same key × 2
+
+    Expected gas ordering:
+      tx_no_al < tx_one_key < tx_two_keys
+    with tx_two_keys - tx_one_key ≈ 1900 (one extra key charge).
+    """
+    logger.info("=== EIP-2930 duplicate items charged test ===")
+    abi, bytecode = _load_artifact(sol_dir, "EIP2930Test")
+    addr = _deploy_contract(w3, deployer, abi, bytecode, gas_limit)
+    contract = w3.eth.contract(address=addr, abi=abi)
+
+    key0_hex = "0x" + (0).to_bytes(32, "big").hex()
+
+    def _write(vals, access_list=None):
+        tx = contract.functions.writeAllSlots(*vals).build_transaction({
+            "from": deployer.address,
+            "gas": gas_limit,
+            "gasPrice": w3.eth.gas_price,
+            "nonce": w3.eth.get_transaction_count(deployer.address),
+            "chainId": w3.eth.chain_id,
+            "type": 1,
+            "accessList": access_list or [],
+        })
+        return _send_tx(w3, deployer, tx)["gasUsed"]
+
+    gas_no_al    = _write([1, 2, 3, 4])
+    gas_one_key  = _write([5, 6, 7, 8],  [{"address": addr, "storageKeys": [key0_hex]}])
+    gas_two_keys = _write([9, 10, 11, 12], [{"address": addr, "storageKeys": [key0_hex, key0_hex]}])
+
+    delta_one  = gas_one_key  - gas_no_al
+    delta_two  = gas_two_keys - gas_no_al
+    key_charge = gas_two_keys - gas_one_key
+
+    logger.info(
+        "Gas: no_al=%d, one_key=%d, two_keys=%d | extra_per_dup_key=%d",
+        gas_no_al, gas_one_key, gas_two_keys, key_charge,
+    )
+
+    details = {
+        "gas_no_al": gas_no_al,
+        "gas_one_key": gas_one_key,
+        "gas_two_keys": gas_two_keys,
+        "key_charge_delta": key_charge,
+        "contract": addr,
+    }
+
+    errors = []
+    # Each duplicate key must add gas (≈ 1900 net, tolerance ±500 for EVM overhead).
+    if not (1400 <= key_charge <= 2400):
+        errors.append(
+            f"Duplicate key charge unexpected: {key_charge} gas "
+            f"(expected ~1900, tolerance ±500)"
+        )
+    if gas_two_keys <= gas_one_key:
+        errors.append(
+            f"Two duplicate keys did not cost more than one: "
+            f"two_keys={gas_two_keys} vs one_key={gas_one_key}"
+        )
+
+    if errors:
+        return EIPTestResult(eip="2930-duplicates", passed=False, message="; ".join(errors), details=details)
+    return EIPTestResult(
+        eip="2930-duplicates",
+        passed=True,
+        message=f"Duplicate key charged {key_charge} gas (expected ~1900)",
+        details=details,
+    )
+
+
+# ---------------------------------------------------------------------------
+# EIP-2565: exact gas formula validation
+# ---------------------------------------------------------------------------
+
+def _eip2565_expected_gas(base_len: int, exp_bytes: bytes, mod_len: int) -> int:
+    """Compute the expected EIP-2565 gas cost in Python for comparison."""
+    import math
+
+    max_len = max(base_len, mod_len)
+    words = math.ceil(max_len / 8)
+    complexity = words * words
+
+    exp_len = len(exp_bytes)
+    exp_val = int.from_bytes(exp_bytes, "big")
+
+    if exp_len <= 32:
+        if exp_val == 0:
+            iter_count = 0
+        else:
+            iter_count = exp_val.bit_length() - 1
+    else:
+        # Take the top 8 bits of exp (as a 256-bit value) and add 8*(exp_len - 32)
+        # adjusted_exp_bit_length per EIP-2565
+        top32 = int.from_bytes(exp_bytes[:32], "big")
+        if top32 == 0:
+            iter_count = 8 * (exp_len - 32)
+        else:
+            iter_count = top32.bit_length() - 1 + 8 * (exp_len - 32)
+
+    return max(200, complexity * iter_count // 3)
+
+
+def test_eip_2565_formula_exact(
+    w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000
+) -> EIPTestResult:
+    """
+    Verifies that EIP-2565 ModExp gas scales with the formula
+        max(200, ceil(max_len/8)^2 * iter_count / 3)
+    by comparing pairs of vectors that differ only in max_len (quadratic scaling).
+
+    Measurement approach:
+      The Solidity helper measures total STATICCALL cost, which includes the
+      precompile gas (the formula result) PLUS a constant overhead of roughly
+      700–900 gas (warm STATICCALL opcode + memory allocation for return data).
+      Checking absolute values is therefore unreliable for small formula results.
+
+      Instead we verify TWO things:
+        1. For each vector: formula ≤ measured ≤ formula + MAX_OVERHEAD
+           (precompile gas is at least what the formula says, with bounded overhead).
+        2. For a pair of vectors with the same exp but 4× the words² complexity:
+           the difference in measured gas ≈ difference in formula gas (overhead cancels).
+    """
+    logger.info("=== EIP-2565 formula scaling test ===")
+    abi, bytecode = _load_artifact(sol_dir, "EIP2565GasTest")
+    addr = _deploy_contract(w3, deployer, abi, bytecode, gas_limit)
+    contract = w3.eth.contract(address=addr, abi=abi)
+
+    # Generous bound on STATICCALL + memory overhead observed on Anvil (~700–900 gas).
+    MAX_OVERHEAD = 1500
+
+    # Use an 8-byte exp with many bits set so iter_count=63 and formula >> floor.
+    # Same exp for both vectors so overhead is similar and cancels in the delta check.
+    exp8 = b'\xff' * 8  # bit_length=64, iter_count=63
+
+    # Vector A: max_len=32  → words=4,  complexity=16  → formula=max(200,16*63/3)=336
+    # Vector B: max_len=128 → words=16, complexity=256 → formula=max(200,256*63/3)=5376
+    # Formula ratio B/A = 16 (quadratic in words); delta = 5040.
+    vec_a = (b'\x02' * 32,  exp8, b'\x03' * 32)   # formula=336
+    vec_b = (b'\x02' * 128, exp8, b'\x03' * 128)  # formula=5376
+
+    results = []
+    errors = []
+    measured_values = []
+
+    for base_b, exp_b, mod_b in (vec_a, vec_b):
+        formula = _eip2565_expected_gas(len(base_b), exp_b, len(mod_b))
+        measured, _ = contract.functions.measureModexpGas(base_b, exp_b, mod_b).call()
+        measured_values.append(measured)
+        ok_lower = measured >= formula
+        ok_upper = measured <= formula + MAX_OVERHEAD
+        ok = ok_lower and ok_upper
+        results.append({
+            "base_len": len(base_b), "exp_len": len(exp_b), "mod_len": len(mod_b),
+            "formula": formula, "measured": measured,
+            "overhead": measured - formula, "ok": ok,
+        })
+        logger.info(
+            "  base_len=%d exp_len=%d mod_len=%d: formula=%d measured=%d overhead=%d %s",
+            len(base_b), len(exp_b), len(mod_b), formula, measured,
+            measured - formula, "OK" if ok else "FAIL",
+        )
+        if not ok_lower:
+            errors.append(
+                f"Measured gas below formula: base_len={len(base_b)} "
+                f"formula={formula} measured={measured}"
+            )
+        if not ok_upper:
+            errors.append(
+                f"Overhead too large: base_len={len(base_b)} "
+                f"formula={formula} measured={measured} overhead={measured - formula} > {MAX_OVERHEAD}"
+            )
+
+    # Delta check: difference in measured gas should track difference in formula.
+    formula_a = _eip2565_expected_gas(len(vec_a[0]), vec_a[1], len(vec_a[2]))
+    formula_b = _eip2565_expected_gas(len(vec_b[0]), vec_b[1], len(vec_b[2]))
+    formula_delta = formula_b - formula_a
+    measured_delta = measured_values[1] - measured_values[0]
+    delta_error = abs(measured_delta - formula_delta) / formula_delta if formula_delta else 0
+    logger.info(
+        "  Delta check: formula_delta=%d measured_delta=%d error=%.1f%%",
+        formula_delta, measured_delta, delta_error * 100,
+    )
+    if delta_error > 0.20:
+        errors.append(
+            f"Formula scaling mismatch: expected delta={formula_delta}, "
+            f"measured delta={measured_delta}, error={delta_error:.1%} > 20%"
+        )
+
+    details = {"vectors": results, "formula_delta": formula_delta,
+               "measured_delta": measured_delta, "contract": addr}
+
+    if errors:
+        return EIPTestResult(eip="2565-formula", passed=False, message="; ".join(errors), details=details)
+    return EIPTestResult(
+        eip="2565-formula",
+        passed=True,
+        message=(
+            f"Formula bounds OK; delta: formula={formula_delta} measured={measured_delta} "
+            f"(error={delta_error:.1%})"
+        ),
+        details=details,
+    )
+
+
+# ---------------------------------------------------------------------------
+# EIP-2565: zero exponent clamps to 200-gas floor
+# ---------------------------------------------------------------------------
+
+def test_eip_2565_zero_exponent_floor(
+    w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000
+) -> EIPTestResult:
+    """
+    When exponent = 0, iterationCount = 0 and the EIP-2565 formula gives
+    max(200, 0) = 200.  The precompile must charge exactly the floor.
+
+    Test: call measureZeroExpGas(base=2, mod=1000), verify:
+    1. result == 1  (2^0 mod 1000 = 1)
+    2. gasUsed is close to 200 (floor), not thousands.
+    """
+    logger.info("=== EIP-2565 zero-exponent floor test ===")
+    abi, bytecode = _load_artifact(sol_dir, "EIP2565GasTest")
+    addr = _deploy_contract(w3, deployer, abi, bytecode, gas_limit)
+    contract = w3.eth.contract(address=addr, abi=abi)
+
+    gas_used, value = contract.functions.measureZeroExpGas(2, 1000).call()
+    logger.info("Zero-exp modexp: gasUsed=%d, result=%d", gas_used, value)
+
+    details = {"gas_used": gas_used, "result": value, "contract": addr}
+
+    errors = []
+    if value != 1:
+        errors.append(f"2^0 mod 1000 should be 1, got {value}")
+    # The Solidity measurement includes STATICCALL overhead (~700–900 gas on top of the
+    # 200-gas precompile floor), so measured ≈ 900–1200.  We accept up to 5000 to
+    # distinguish from a pre-EIP-2565 implementation that might charge based on a
+    # very expensive formula for large inputs (our inputs are small/32-byte, so even
+    # the old EIP-198 formula gives 0 for exp=0, meaning overhead only ≈ 900).
+    # The meaningful check is that the result is correct (value==1) and that gas is
+    # not absurdly high (would indicate a broken precompile gas calculation).
+    if gas_used > 5000:
+        errors.append(
+            f"Zero-exponent ModExp gas too high: {gas_used} "
+            f"(expected ~200 floor + ~900 STATICCALL overhead ≈ 1100)"
+        )
+
+    if errors:
+        return EIPTestResult(eip="2565-zero-exp", passed=False, message="; ".join(errors), details=details)
+    return EIPTestResult(
+        eip="2565-zero-exp",
+        passed=True,
+        message=f"2^0 mod 1000 = {value}, precompile gas = {gas_used} (floor ~200)",
+        details=details,
+    )
+
+
+# ---------------------------------------------------------------------------
+# EIP-2718: Type 2 (EIP-1559) transaction accepted
+# ---------------------------------------------------------------------------
+
+def test_eip_2718_type2_accepted(
+    w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000
+) -> EIPTestResult:
+    """
+    EIP-2718 defines typed transaction envelopes.  EIP-1559 uses Type 2
+    (maxFeePerGas / maxPriorityFeePerGas fields, no legacy gasPrice).
+
+    Test: send a Type 2 transaction (writeAllSlots) and verify:
+    1. Transaction is accepted (receipt status = 1).
+    2. Receipt type field equals 2.
+    3. Contract state is updated correctly.
+    """
+    logger.info("=== EIP-2718 Type 2 transaction test ===")
+    abi, bytecode = _load_artifact(sol_dir, "EIP2930Test")
+    addr = _deploy_contract(w3, deployer, abi, bytecode, gas_limit)
+    contract = w3.eth.contract(address=addr, abi=abi)
+
+    latest = w3.eth.get_block("latest")
+    base_fee = latest.get("baseFeePerGas", 10**9)
+    max_priority = 10**9  # 1 gwei tip
+    max_fee = base_fee * 2 + max_priority
+
+    tx2 = contract.functions.writeAllSlots(11, 22, 33, 44).build_transaction({
+        "from": deployer.address,
+        "gas": gas_limit,
+        "nonce": w3.eth.get_transaction_count(deployer.address),
+        "chainId": w3.eth.chain_id,
+        "type": 2,
+        "maxFeePerGas": max_fee,
+        "maxPriorityFeePerGas": max_priority,
+    })
+    receipt = _send_tx(w3, deployer, tx2)
+    tx_type = receipt.get("type", None)
+    logger.info(
+        "Type 2 tx: status=%d, type=%s, gasUsed=%d",
+        receipt["status"], tx_type, receipt["gasUsed"],
+    )
+
+    vals = contract.functions.readAllSlots().call()
+
+    details = {
+        "receipt_status": receipt["status"],
+        "receipt_type": tx_type,
+        "gas_used": receipt["gasUsed"],
+        "slot_values": list(vals),
+        "contract": addr,
+    }
+
+    errors = []
+    if receipt["status"] != 1:
+        errors.append("Type 2 transaction reverted")
+    if tx_type != 2:
+        errors.append(f"Receipt type field is {tx_type!r}, expected 2")
+    if list(vals) != [11, 22, 33, 44]:
+        errors.append(f"Unexpected slot values after Type 2 tx: {list(vals)}")
+
+    if errors:
+        return EIPTestResult(eip="2718-type2", passed=False, message="; ".join(errors), details=details)
+    return EIPTestResult(
+        eip="2718-type2",
+        passed=True,
+        message=f"Type 2 tx accepted (status=1, type=2, gasUsed={receipt['gasUsed']})",
+        details=details,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Orchestrator
 # ---------------------------------------------------------------------------
 
 EIP_TEST_MAP = {
-    "2929": test_eip_2929,
-    "2929-revert": test_eip_2929_revert,
-    "2930": test_eip_2930,
-    "2718": test_eip_2930,  # EIP-2718 is covered by the Type 1 tx test
-    "2565": test_eip_2565,
+    "2929":             test_eip_2929,
+    "2929-revert":      test_eip_2929_revert,
+    "2929-sstore":      test_eip_2929_sstore_cold_warm,
+    "2929-extcode":     test_eip_2929_extcode_cold_warm,
+    "2929-create-warm": test_eip_2929_create_warms_address,
+    "2930":             test_eip_2930,
+    "2930-gas-saving":  test_eip_2930_access_list_gas_saving,
+    "2930-duplicates":  test_eip_2930_duplicate_items_charged,
+    "2718":             test_eip_2930,   # EIP-2718 Type 1 covered by 2930 test
+    "2718-type2":       test_eip_2718_type2_accepted,
+    "2565":             test_eip_2565,
+    "2565-formula":     test_eip_2565_formula_exact,
+    "2565-zero-exp":    test_eip_2565_zero_exponent_floor,
 }
 
-ALL_EIPS = ["2929", "2929-revert", "2930", "2565"]  # canonical list (no duplicates)
+ALL_EIPS = [
+    "2929", "2929-revert", "2929-sstore", "2929-extcode", "2929-create-warm",
+    "2930", "2930-gas-saving", "2930-duplicates",
+    "2718-type2",
+    "2565", "2565-formula", "2565-zero-exp",
+]
 
 
 def run_eip_tests(

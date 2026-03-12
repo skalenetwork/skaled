@@ -51,6 +51,22 @@ async function main() {
   const addr2929Revert = await eip2929Revert.getAddress();
   console.log("EIP2929RevertTest deployed to:", addr2929Revert);
 
+  // Deploy EIP2929ExtendedTest
+  console.log("\nDeploying EIP2929ExtendedTest...");
+  const EIP2929Extended = await ethers.getContractFactory("EIP2929ExtendedTest");
+  const eip2929Extended = await EIP2929Extended.deploy();
+  await eip2929Extended.waitForDeployment();
+  const addr2929Extended = await eip2929Extended.getAddress();
+  console.log("EIP2929ExtendedTest deployed to:", addr2929Extended);
+
+  // Deploy EIP2565GasTest
+  console.log("\nDeploying EIP2565GasTest...");
+  const EIP2565Gas = await ethers.getContractFactory("EIP2565GasTest");
+  const eip2565Gas = await EIP2565Gas.deploy();
+  await eip2565Gas.waitForDeployment();
+  const addr2565Gas = await eip2565Gas.getAddress();
+  console.log("EIP2565GasTest deployed to:", addr2565Gas);
+
   console.log("\n" + "=".repeat(50));
 
   const deploymentInfo = {
@@ -62,6 +78,8 @@ async function main() {
       EIP2930Test: addr2930,
       EIP2565Test: addr2565,
       EIP2929RevertTest: addr2929Revert,
+      EIP2929ExtendedTest: addr2929Extended,
+      EIP2565GasTest: addr2565Gas,
     },
     deploymentTime: new Date().toISOString(),
     blockNumber: await ethers.provider.getBlockNumber(),
