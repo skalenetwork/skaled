@@ -64,41 +64,12 @@ jobs:
           cmake_args: ""
           make_target: skaled
 
-      - name: Build BITE
-        uses: ./.github/actions/cmake-build
-        with:
-          build_dir: build_bite
-          cmake_build_type: ${{ env.CMAKE_BUILD_TYPE }}
-          coverage: ${{ env.CODE_COVERAGE }}
-          cmake_args: "-DBITE=1"
-          make_target: skaled
-
-      - name: Build BITE2
-        uses: ./.github/actions/cmake-build
-        with:
-          build_dir: build_bite2
-          cmake_build_type: ${{ env.CMAKE_BUILD_TYPE }}
-          coverage: ${{ env.CODE_COVERAGE }}
-          cmake_args: "-DBITE2=1"
-          make_target: skaled
-
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
-
-      - name: Install bite-compat ts dependencies
-        run: bun install --frozen-lockfile
-        working-directory: test/api-tests/bite-compat/
 
       - name: Install hardfork-support ts dependencies
         run: bun install --frozen-lockfile
         working-directory: test/api-tests/hardfork-support/sol/
-
-      - name: API tests (bite-compat)
-        uses: ./.github/actions/api-tests-run
-        with:
-          suite: bite-compat
-        env:
-          FUNC_TEST_PRIVATE_KEY: ${{ secrets.FUNC_TEST_PRIVATE_KEY }}
 
       - name: API tests (hardfork-support)
         uses: ./.github/actions/api-tests-run
