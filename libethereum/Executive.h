@@ -265,6 +265,9 @@ private:
 
     /// EIP-2929: transaction-global warm access sets shared across all subcall frames.
     std::shared_ptr< AccessSets > m_accessSets = std::make_shared< AccessSets >();
+    /// Snapshot of access sets taken at savepoint; restored in revert() to roll back
+    /// any warmings that occurred inside this sub-call frame.
+    AccessSets m_accessSetsSnapshot;
 
 #ifdef BITE2
     u256 m_txnIndex = u256( -1 );  ///< Index of transaction under execution. -1 for external calls

@@ -80,7 +80,10 @@ def _send_tx(w3: Web3, deployer: LocalAccount, tx_dict: dict, pre_wait: float = 
                   Useful for non-legacy tx types that need extra processing time.
     """
     tx_dict.setdefault("chainId", w3.eth.chain_id)
-    tx_dict.setdefault("nonce", w3.eth.get_transaction_count(deployer.address))
+    # Always fetch nonce here (not in build_transaction) so it is as fresh as possible,
+    # avoiding stale-nonce races on remote nodes where eth_getTransactionCount("latest")
+    # may lag behind a recently confirmed transaction.
+    tx_dict["nonce"] = w3.eth.get_transaction_count(deployer.address)
     # Type 2 (EIP-1559) uses maxFeePerGas/maxPriorityFeePerGas; gasPrice must not be present.
     if tx_dict.get("type", 0) != 2:
         tx_dict.setdefault("gasPrice", w3.eth.gas_price)
@@ -242,9 +245,6 @@ def test_eip_2930(w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int
             "from": deployer.address,
             "gas": gas_limit,
             "gasPrice": w3.eth.gas_price,
-            "nonce": w3.eth.get_transaction_count(
-                deployer.address,
-            ),
             "chainId": w3.eth.chain_id,
         }
     )
@@ -272,9 +272,6 @@ def test_eip_2930(w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int
         {
             "from": deployer.address,
             "gas": gas_limit,
-            "nonce": w3.eth.get_transaction_count(
-                deployer.address,
-            ),
             "chainId": w3.eth.chain_id,
             "type": 1,
             "gasPrice": w3.eth.gas_price,
@@ -556,7 +553,6 @@ def test_eip_2929_create_warms_address(
         "from": deployer.address,
         "gas": gas_limit,
         "gasPrice": w3.eth.gas_price,
-        "nonce": w3.eth.get_transaction_count(deployer.address),
         "chainId": w3.eth.chain_id,
     })
     receipt = _send_tx(w3, deployer, tx)
@@ -665,10 +661,23 @@ def test_eip_2929_revert(
     if warm_gas == 0:
         errors.append("measureWarmSload() returned 0 — cannot determine warm gas cost")
     elif gas_after_revert / warm_gas < MIN_COLD_WARM_RATIO:
+        # Distinguish two failure modes:
+        # A) slot1 (never accessed) is also warm → skaled pre-warms all touched storage
+        # B) slot1 is cold but slot0 is warm → access set not rolled back on revert (skaled bug)
+        if gas_slot1 < warm_gas * MIN_COLD_WARM_RATIO:
+            diag = (
+                f"slot1 (never accessed) also warm ({gas_slot1} gas) — "
+                f"skaled may be pre-warming all non-zero storage slots"
+            )
+        else:
+            diag = (
+                f"slot1 (never accessed) is cold ({gas_slot1} gas) as expected — "
+                f"skaled does not roll back accessed_storage_keys on sub-call revert"
+            )
         errors.append(
             f"slot0 SLOAD after reverted sub-call cost only {gas_after_revert} gas "
             f"(warm ref={warm_gas}), ratio={gas_after_revert / warm_gas:.1f} < {MIN_COLD_WARM_RATIO}. "
-            f"Access set was NOT restored on revert."
+            f"{diag}"
         )
 
     if errors:
@@ -684,7 +693,8 @@ def test_eip_2929_revert(
         passed=True,
         message=(
             f"slot0 SLOAD after reverted sub-call={gas_after_revert} gas (cold, as expected); "
-            f"warm ref={warm_gas}; ratio={gas_after_revert / warm_gas:.1f}"
+            f"slot1 cold ref={gas_slot1} gas; warm ref={warm_gas}; "
+            f"ratio={gas_after_revert / warm_gas:.1f}"
         ),
         details=details,
     )
@@ -724,7 +734,6 @@ def test_eip_2930_access_list_gas_saving(
         "from": deployer.address,
         "gas": gas_limit,
         "gasPrice": w3.eth.gas_price,
-        "nonce": w3.eth.get_transaction_count(deployer.address),
         "chainId": w3.eth.chain_id,
     })
     receipt0 = _send_tx(w3, deployer, tx0)
@@ -738,7 +747,6 @@ def test_eip_2930_access_list_gas_saving(
         "from": deployer.address,
         "gas": gas_limit,
         "gasPrice": w3.eth.gas_price,
-        "nonce": w3.eth.get_transaction_count(deployer.address),
         "chainId": w3.eth.chain_id,
         "type": 1,
         "accessList": access_list,
@@ -823,7 +831,6 @@ def test_eip_2930_duplicate_items_charged(
             "from": deployer.address,
             "gas": gas_limit,
             "gasPrice": w3.eth.gas_price,
-            "nonce": w3.eth.get_transaction_count(deployer.address),
             "chainId": w3.eth.chain_id,
             "type": 1,
             "accessList": access_list or [],
@@ -1088,7 +1095,6 @@ def test_eip_2718_type2_accepted(
     tx2 = contract.functions.writeAllSlots(11, 22, 33, 44).build_transaction({
         "from": deployer.address,
         "gas": gas_limit,
-        "nonce": w3.eth.get_transaction_count(deployer.address),
         "chainId": w3.eth.chain_id,
         "type": 2,
         "maxFeePerGas": max_fee,

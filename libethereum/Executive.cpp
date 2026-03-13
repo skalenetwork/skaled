@@ -410,6 +410,7 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
     }
 
     m_savepoint = m_s.savepoint();
+    m_accessSetsSnapshot = *m_accessSets;  // EIP-2929: snapshot for rollback on revert
 
     bool accessAsPrecompiled = m_chainParams.isPrecompiled( _p.codeAddress, m_envInfo.number() ) &&
                                m_chainParams.precompiledExecutionAllowedFrom(
@@ -522,6 +523,7 @@ bool Executive::executeCreate( Address const& _sender, u256 const& _endowment,
         m_s.incNonce( _sender );
 
     m_savepoint = m_s.savepoint();
+    m_accessSetsSnapshot = *m_accessSets;  // EIP-2929: snapshot for rollback on revert
 
     m_isCreation = true;
 
@@ -749,4 +751,7 @@ void Executive::revert() {
     // Set result address to the null one.
     m_newAddress = {};
     m_s.rollback( m_savepoint );
+    // EIP-2929: restore the access sets to the state before this sub-call frame executed.
+    // Warmings added by opcodes inside this frame (SLOAD, CALL, etc.) are discarded.
+    *m_accessSets = m_accessSetsSnapshot;
 }

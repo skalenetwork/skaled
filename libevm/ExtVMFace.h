@@ -80,7 +80,7 @@ private:
 };
 
 /// EIP-2929: transaction-global warm address/storage sets, shared across all subcall frames.
-/// Never rolled back on revert (per spec).
+/// Changes are rolled back when a sub-call reverts (Executive saves/restores a snapshot).
 struct AccessSets {
     std::set< Address > accessedAddresses;
     std::set< std::pair< Address, u256 > > accessedStorageKeys;
