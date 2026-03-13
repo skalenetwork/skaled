@@ -1,7 +1,10 @@
-import { ethers } from "hardhat";
+import { ethers, run } from "hardhat";
 import * as fs from "fs";
 
 async function main() {
+  console.log("Compiling contracts...");
+  await run("compile");
+
   console.log("Starting EIP test contracts deployment...");
   console.log("=".repeat(50));
   console.log("RPC endpoint:", process.env.ENDPOINT || "(not set)");
