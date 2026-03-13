@@ -349,7 +349,6 @@ void Executive::initAccessSets( bool _eip2930Mode ) {
     if ( !m_ext )
         return;
 
-    // EIP-2929: pre-warm tx.sender and tx.to (or created address).
     m_accessSets->accessedAddresses.insert( m_t.sender() );
     if ( !m_t.isCreation() ) {
 #ifdef BITE
@@ -361,12 +360,10 @@ void Executive::initAccessSets( bool _eip2930Mode ) {
         m_accessSets->accessedAddresses.insert( m_newAddress );
     }
 
-    // EIP-2929: pre-warm all precompile addresses.
     for ( auto const& addr : m_chainParams.precompiledAddresses() ) {
         m_accessSets->accessedAddresses.insert( addr );
     }
 
-    // EIP-2930: pre-warm addresses and storage keys from the access list.
     if ( _eip2930Mode && m_t.txType() != TransactionType::Legacy ) {
         for ( auto const& entryRaw : m_t.accessList() ) {
             RLP const entry( entryRaw );
@@ -410,7 +407,7 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
     }
 
     m_savepoint = m_s.savepoint();
-    m_accessSetsSnapshot = *m_accessSets;  // EIP-2929: snapshot for rollback on revert
+    m_accessSetsSnapshot = *m_accessSets;
 
     bool accessAsPrecompiled = m_chainParams.isPrecompiled( _p.codeAddress, m_envInfo.number() ) &&
                                m_chainParams.precompiledExecutionAllowedFrom(
@@ -523,7 +520,7 @@ bool Executive::executeCreate( Address const& _sender, u256 const& _endowment,
         m_s.incNonce( _sender );
 
     m_savepoint = m_s.savepoint();
-    m_accessSetsSnapshot = *m_accessSets;  // EIP-2929: snapshot for rollback on revert
+    m_accessSetsSnapshot = *m_accessSets;
 
     m_isCreation = true;
 

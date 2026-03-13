@@ -79,8 +79,7 @@ private:
     bytes m_bytes;
 };
 
-/// EIP-2929: transaction-global warm address/storage sets, shared across all subcall frames.
-/// Changes are rolled back when a sub-call reverts (Executive saves/restores a snapshot).
+
 struct AccessSets {
     std::set< Address > accessedAddresses;
     std::set< std::pair< Address, u256 > > accessedStorageKeys;
@@ -236,16 +235,11 @@ public:
     /// Does the account exist?
     virtual bool exists( Address ) { return false; }
 
-    /// EIP-2929: Mark an account address as accessed (warm).
-    /// @returns true if the address was already in the accessed set (warm), false if cold.
     virtual bool accessAccount( Address const& _addr ) {
         auto [_, present] = accessSets->accessedAddresses.insert( _addr );
         return !present;  // true = was already present = warm
     }
 
-    /// EIP-2929: Mark a storage slot as accessed (warm).
-    /// @returns true if the (address, key) pair was already in the accessed set (warm), false if
-    /// cold.
     virtual bool accessStorageKey( Address const& _addr, u256 const& _key ) {
         auto [_, present] = accessSets->accessedStorageKeys.insert( { _addr, _key } );
         return !present;  // true = was already present = warm
@@ -291,7 +285,6 @@ public:
     u256 version;        ///< Version of the VM to execute code
     u256 salt;           ///< Values used in new address construction by CREATE2
     SubState sub;        ///< Sub-band VM state (suicides, refund counter, logs).
-    /// EIP-2929: transaction-global warm sets, shared across all subcall frames.
     std::shared_ptr< AccessSets > accessSets = std::make_shared< AccessSets >();
     unsigned depth = 0;       ///< Depth of the present call.
     bool isCreate = false;    ///< Is this a CREATE call?

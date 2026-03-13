@@ -79,14 +79,9 @@ public:
         streamRLP( s );
         return s.out();
     }
-
-    /// EIP-2718/EIP-2930: set the transaction type for typed receipt encoding.
     void setTxType( int _txType ) { m_txType = _txType; }
     int txType() const { return m_txType; }
 
-    /// EIP-2718: return receipt bytes for trie encoding.
-    /// For Legacy (type 0): returns bare rlp([status, gasUsed, bloom, logs]).
-    /// For typed (type 1, 2, ...): returns type_byte || rlp([status, gasUsed, bloom, logs]).
     bytes typedRlp() const {
         if ( m_txType > 0 ) {
             bytes result( 1, static_cast< uint8_t >( m_txType ) );

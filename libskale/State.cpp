@@ -1271,7 +1271,6 @@ TransactionReceipt State::makeReceipt( bool _statusCode, dev::u256 const& _start
             EmptyTrie, _startGasUsed + _executive.gasUsed(), _executive.logs(), _revertReason );
     }();
 
-    // EIP-2718: propagate transaction type so receipt can be encoded as typed receipt.
     receipt.setTxType( static_cast< int >( _t.txType() ) );
     return receipt;
 }

@@ -224,8 +224,6 @@ public:
         const bool _allowFuture = false );
 
 private:
-    /// EIP-2929 / EIP-2930: initialize per-transaction warm access sets.
-    /// Pre-warms tx.sender, tx.to, precompile addresses, and access list entries.
     void initAccessSets( bool _eip2930Mode );
 
     /// @returns false iff go() must be called (and thus a VM execution in required).
@@ -263,7 +261,6 @@ private:
     Address m_newAddress;
     size_t m_savepoint = 0;
 
-    /// EIP-2929: transaction-global warm access sets shared across all subcall frames.
     std::shared_ptr< AccessSets > m_accessSets = std::make_shared< AccessSets >();
     /// Snapshot of access sets taken at savepoint; restored in revert() to roll back
     /// any warmings that occurred inside this sub-call frame.
