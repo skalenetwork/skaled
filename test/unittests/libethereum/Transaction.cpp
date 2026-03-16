@@ -29,6 +29,7 @@
 #include <test/tools/libtesteth/BlockChainHelper.h>
 
 #ifdef BITE
+#include <libconsensus/bite/Constants.h>
 #include <libconsensus/libBLS/threshold_encryption/ThresholdEncryption.h>
 #endif
 
