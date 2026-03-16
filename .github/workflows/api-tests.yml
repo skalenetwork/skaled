@@ -26,8 +26,12 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - uses: actions/checkout@v6
+      # Checkout the last pre-merge BITE tag so the BITE binary reflects the
+      # original BITE codebase (before BITE and BITE2 were unified).
+      - name: Checkout BITE tag 09ec35e for BITE build
+        uses: actions/checkout@v6
         with:
+          ref: '09ec35e5e'  # last commit on develop before BITE was merged with BITE2
           submodules: recursive
 
       - name: Install packages
@@ -56,7 +60,7 @@ jobs:
           ./build.sh DEBUG=1 PARALLEL_COUNT=$(nproc)
           cd ..
 
-      - name: Build BITE
+      - name: Build BITE (tag 09ec35e, -DBITE=1)
         uses: ./.github/actions/cmake-build
         with:
           build_dir: build_bite
@@ -65,13 +69,23 @@ jobs:
           cmake_args: "-DBITE=1"
           make_target: skaled
 
-      - name: Build BITE2
+      # Switch to the current branch. build_bite/ is untracked so it is
+      # preserved by the checkout (clean: false). BITE2 is built with -DBITE=1
+      # because BITE and BITE2 are unified in this branch.
+      - name: Checkout current branch (preserves build_bite artifacts)
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          submodules: recursive
+          clean: false
+
+      - name: Build BITE2 (current branch, -DBITE=1)
         uses: ./.github/actions/cmake-build
         with:
           build_dir: build_bite2
           cmake_build_type: ${{ env.CMAKE_BUILD_TYPE }}
           coverage: ${{ env.CODE_COVERAGE }}
-          cmake_args: "-DBITE2=1"
+          cmake_args: "-DBITE=1"
           make_target: skaled
 
       - name: Setup Bun
