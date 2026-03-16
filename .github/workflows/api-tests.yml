@@ -31,7 +31,7 @@ jobs:
       - name: Checkout BITE tag 09ec35e for BITE build
         uses: actions/checkout@v6
         with:
-          ref: '09ec35e5e'  # last commit on develop before BITE was merged with BITE2
+          ref: "09ec35e5e8a4f0574fd493790b69632a0d8296c0"  # last commit on develop before BITE was merged with BITE2
           submodules: recursive
 
       - name: Install packages
