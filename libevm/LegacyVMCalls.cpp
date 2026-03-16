@@ -213,7 +213,6 @@ bool LegacyVM::caseCallSetup( CallParameters* callParams, bytesRef& o_output ) {
 
     Address destinationAddr = asAddress( m_SP[1] );
 
-    // EIP-2929: charge warm (100) or cold (2600) instead of flat callGas (700).
     if ( m_schedule->eip2929Mode ) {
         bool warm = m_ext->accessAccount( destinationAddr );
         m_runGas = warm ? toInt63( m_schedule->warmStorageReadCost ) :

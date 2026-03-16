@@ -1224,7 +1224,6 @@ void LegacyVM::interpretCases() {
         NEXT
 
         CASE( EXTCODESIZE ) {
-            // EIP-2929: charge warm (100) or cold (2600) depending on access status.
             if ( m_schedule->eip2929Mode ) {
                 bool warm = m_ext->accessAccount( asAddress( m_SP[0] ) );
                 m_runGas = warm ? toInt63( m_schedule->warmStorageReadCost ) :
