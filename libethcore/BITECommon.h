@@ -29,6 +29,7 @@
 #include <libdevcore/CommonData.h>
 
 #ifdef BITE
+#include <libconsensus/bite/Constants.h>
 #include <libconsensus/node/ConsensusInterface.h>
 #endif
 
