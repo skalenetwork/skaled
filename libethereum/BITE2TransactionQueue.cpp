@@ -99,14 +99,15 @@ void BITE2TransactionQueue::clear( size_t _cnt ) {
     CHECK_EXPRESSION( m_current );
     if ( _cnt == m_current->size() ) {
         m_current->clear();
+        m_currentHeadIndex = 0;
     } else {
         CHECK_EXPRESSION( _cnt < m_current->size() );
         for ( size_t i = 0; i < _cnt; ++i ) {
             m_current->pop_front();
         }
+        m_currentHeadIndex.store( m_current->size() - 1, std::memory_order_relaxed );
     }
-    m_currentHeadIndex.store( 0, std::memory_order_relaxed );
-    m_empty = !!( m_current->size() );
+    m_empty = m_current->empty();
 }
 
 std::shared_ptr< std::deque< Transaction > > BITE2TransactionQueue::finalizeAndGetCtxs() {
