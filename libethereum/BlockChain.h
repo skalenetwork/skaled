@@ -106,8 +106,7 @@ enum {
     ExtraBlocksBlooms
 #ifdef BITE
     ,
-    ExtraTransactionDecryptedData
-    ,
+    ExtraTransactionDecryptedData,
     ExtraCtxOrigin
 #endif  // BITE
 };
@@ -425,8 +424,7 @@ public:
             return memBlocks + memDetails + memLogBlooms + memReceipts + memTransactionAddresses +
                    memBlockHashes
 #ifdef BITE
-                   + memDecryptedTransactionsData
-                   + memCtxOrigin
+                   + memDecryptedTransactionsData + memCtxOrigin
 #endif  // BITE
                 ;
         }

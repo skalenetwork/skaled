@@ -423,10 +423,9 @@ private:
 #ifdef BITE
     // decrypted transaction data fields to be stored with the block and their indexes
     // only filled for a working block
-    DecryptedTransactions m_decryptedTransactions = DecryptedTransactions{
-        std::make_shared< DecryptedCTXTxsMap >(),
-        std::make_shared< DecryptedRegularTxsMap >()
-    };
+    DecryptedTransactions m_decryptedTransactions =
+        DecryptedTransactions{ std::make_shared< DecryptedCTXTxsMap >(),
+            std::make_shared< DecryptedRegularTxsMap >() };
 
     // list of ctx hashes crafted by every txn in block
     // only filled for a working block

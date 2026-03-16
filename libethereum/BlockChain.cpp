@@ -1914,8 +1914,7 @@ Transactions BlockChain::ctxListForPreviousBlock() const {
         ctxs.push_back( Transaction( txRlp.data(), CheckTransaction::None, true,
             EIP1559TransactionsPatch::isEnabledWhen( prevBlockTimestamp ),
             InvalidTransactionFormatPatch::isEnabledWhen( prevBlockTimestamp ),
-            Bite2Patch::isEnabledWhen( prevBlockTimestamp )
-                ) );
+            Bite2Patch::isEnabledWhen( prevBlockTimestamp ) ) );
     }
     return ctxs;
 }

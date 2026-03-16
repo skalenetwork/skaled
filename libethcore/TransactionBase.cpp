@@ -683,9 +683,8 @@ bytesConstRef dev::eth::bytesRefFromTransactionRlp( const RLP& _rlp ) {
 
 #ifdef BITE
 bool TransactionBase::isInvalidBiteTransaction() const {
-    return ( m_isBITETxn && ( !m_decryptedData && !m_decryptedTo ) )
-           || ( m_isCTX && !m_decryptedData )
-        ;
+    return ( m_isBITETxn && ( !m_decryptedData && !m_decryptedTo ) ) ||
+           ( m_isCTX && !m_decryptedData );
 }
 
 bytes const& TransactionBase::decryptedData() const {
