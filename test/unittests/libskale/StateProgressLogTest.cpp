@@ -21,7 +21,7 @@ BOOST_AUTO_TEST_SUITE( StateProgressLogSuite )
 
 static const dev::eth::TransactionReceipts emptyReceipts;
 #ifdef BITE2
-static const dev::eth::Transactions emptyCtxs;
+static const std::deque< dev::eth::Transaction > emptyCtxs;
 static const dev::eth::Transaction defaultCtx;
 #endif
 
@@ -53,7 +53,8 @@ BOOST_AUTO_TEST_CASE( mark_block_commit_completed ) {
     StateProgressLog log( tempDir.path() );
     log.markBlockCommitCompleted( 67890, emptyReceipts, 0
 #ifdef BITE2
-                                  , emptyCtxs
+        ,
+        emptyCtxs
 #endif
     );
 
@@ -69,7 +70,8 @@ BOOST_AUTO_TEST_CASE( is_block_commit_completed_true ) {
     StateProgressLog log( tempDir.path() );
     log.markBlockCommitCompleted( 100, emptyReceipts, 0
 #ifdef BITE2
-                                  , emptyCtxs
+        ,
+        emptyCtxs
 #endif
     );
 
@@ -91,7 +93,8 @@ BOOST_AUTO_TEST_CASE( is_block_commit_completed_false_wrong_block ) {
     StateProgressLog log( tempDir.path() );
     log.markBlockCommitCompleted( 100, emptyReceipts, 0
 #ifdef BITE2
-                                  , emptyCtxs
+        ,
+        emptyCtxs
 #endif
     );
 
@@ -114,7 +117,8 @@ BOOST_AUTO_TEST_CASE( file_overwrite ) {
     log.markBlockCommitStarted( 1 );
     log.markBlockCommitCompleted( 1, emptyReceipts, 0
 #ifdef BITE2
-                                  , emptyCtxs
+        ,
+        emptyCtxs
 #endif
     );
     log.markBlockCommitStarted( 2 );
@@ -133,7 +137,8 @@ BOOST_AUTO_TEST_CASE( large_block_number ) {
     uint64_t largeBlockNumber = 18446744073709551615ULL;
     log.markBlockCommitCompleted( largeBlockNumber, emptyReceipts, 0
 #ifdef BITE2
-                                  , emptyCtxs
+        ,
+        emptyCtxs
 #endif
     );
 
@@ -147,7 +152,8 @@ BOOST_AUTO_TEST_CASE( zero_block_number ) {
 
     log.markBlockCommitCompleted( 0, emptyReceipts, 0
 #ifdef BITE2
-                                  , emptyCtxs
+        ,
+        emptyCtxs
 #endif
     );
 
@@ -164,7 +170,8 @@ BOOST_AUTO_TEST_CASE( started_then_completed_sequence ) {
 
     log.markBlockCommitCompleted( 42, emptyReceipts, 0
 #ifdef BITE2
-                                  , emptyCtxs
+        ,
+        emptyCtxs
 #endif
     );
     BOOST_CHECK( log.isBlockCommitCompleted( 42 ) );
@@ -177,7 +184,8 @@ BOOST_AUTO_TEST_CASE( persistence_across_instances ) {
         StateProgressLog log( tempDir.path() );
         log.markBlockCommitCompleted( 500, emptyReceipts, 0
 #ifdef BITE2
-                                      , emptyCtxs
+            ,
+            emptyCtxs
 #endif
         );
     }
@@ -205,8 +213,7 @@ BOOST_AUTO_TEST_CASE( persistence_started_status ) {
 BOOST_AUTO_TEST_CASE( corrupted_file_content ) {
     dev::TransientDirectory tempDir;
 
-    fs::path progressLogDir =
-        fs::path( tempDir.path() ) / StateProgressLog::PROGRESS_LOG_DIR;
+    fs::path progressLogDir = fs::path( tempDir.path() ) / StateProgressLog::PROGRESS_LOG_DIR;
     fs::create_directories( progressLogDir );
 
     fs::path logFile = progressLogDir / StateProgressLog::PROGRESS_LOG_FILE;
@@ -223,14 +230,11 @@ BOOST_AUTO_TEST_CASE( corrupted_file_content ) {
 BOOST_AUTO_TEST_CASE( empty_file ) {
     dev::TransientDirectory tempDir;
 
-    fs::path progressLogDir =
-        fs::path( tempDir.path() ) / StateProgressLog::PROGRESS_LOG_DIR;
+    fs::path progressLogDir = fs::path( tempDir.path() ) / StateProgressLog::PROGRESS_LOG_DIR;
     fs::create_directories( progressLogDir );
 
     fs::path logFile = progressLogDir / StateProgressLog::PROGRESS_LOG_FILE;
-    {
-        std::ofstream file( logFile.string() );
-    }
+    { std::ofstream file( logFile.string() ); }
 
     StateProgressLog log( tempDir.path() );
     BOOST_CHECK( !log.isBlockCommitCompleted( 0 ) );
@@ -247,7 +251,8 @@ BOOST_AUTO_TEST_CASE( consecutive_block_numbers ) {
 
         log.markBlockCommitCompleted( block, emptyReceipts, 0
 #ifdef BITE2
-                                      , emptyCtxs
+            ,
+            emptyCtxs
 #endif
         );
         BOOST_CHECK( log.isBlockCommitCompleted( block ) );
@@ -272,7 +277,8 @@ BOOST_AUTO_TEST_CASE( crash_after_mark_started ) {
         log.markBlockCommitStarted( 10 );
         log.markBlockCommitCompleted( 10, emptyReceipts, 0
 #ifdef BITE2
-                                      , emptyCtxs
+            ,
+            emptyCtxs
 #endif
         );
 
@@ -288,7 +294,8 @@ BOOST_AUTO_TEST_CASE( skip_already_committed_block ) {
         log.markBlockCommitStarted( 40 );
         log.markBlockCommitCompleted( 40, emptyReceipts, 0
 #ifdef BITE2
-                                      , emptyCtxs
+            ,
+            emptyCtxs
 #endif
         );
     }
@@ -314,7 +321,8 @@ BOOST_AUTO_TEST_CASE( reprocess_incomplete_block ) {
         log.markBlockCommitStarted( 50 );
         log.markBlockCommitCompleted( 50, emptyReceipts, 0
 #ifdef BITE2
-                                      , emptyCtxs
+            ,
+            emptyCtxs
 #endif
         );
 
@@ -331,7 +339,8 @@ BOOST_AUTO_TEST_CASE( multiple_blocks_with_crash_in_middle ) {
             log.markBlockCommitStarted( block );
             log.markBlockCommitCompleted( block, emptyReceipts, 0
 #ifdef BITE2
-                                          , emptyCtxs
+                ,
+                emptyCtxs
 #endif
             );
         }
@@ -347,7 +356,8 @@ BOOST_AUTO_TEST_CASE( multiple_blocks_with_crash_in_middle ) {
         log.markBlockCommitStarted( 6 );
         log.markBlockCommitCompleted( 6, emptyReceipts, 0
 #ifdef BITE2
-                                      , emptyCtxs
+            ,
+            emptyCtxs
 #endif
         );
 
@@ -365,7 +375,8 @@ BOOST_AUTO_TEST_CASE( restart_same_block_allowed ) {
 
     log.markBlockCommitCompleted( 70, emptyReceipts, 0
 #ifdef BITE2
-                                  , emptyCtxs
+        ,
+        emptyCtxs
 #endif
     );
     BOOST_CHECK( log.isBlockCommitCompleted( 70 ) );
@@ -379,7 +390,8 @@ BOOST_AUTO_TEST_CASE( start_next_block_after_completion ) {
     log.markBlockCommitStarted( 80 );
     log.markBlockCommitCompleted( 80, emptyReceipts, 0
 #ifdef BITE2
-                                  , emptyCtxs
+        ,
+        emptyCtxs
 #endif
     );
 
@@ -389,7 +401,8 @@ BOOST_AUTO_TEST_CASE( start_next_block_after_completion ) {
 
     log.markBlockCommitCompleted( 81, emptyReceipts, 0
 #ifdef BITE2
-                                  , emptyCtxs
+        ,
+        emptyCtxs
 #endif
     );
     BOOST_CHECK( log.isBlockCommitCompleted( 81 ) );
@@ -406,7 +419,8 @@ BOOST_AUTO_TEST_CASE( is_block_commit_started_but_not_completed ) {
 
     log.markBlockCommitCompleted( 99, emptyReceipts, 0
 #ifdef BITE2
-                                  , emptyCtxs
+        ,
+        emptyCtxs
 #endif
     );
     BOOST_CHECK( !log.isBlockCommitStartedButNotCompleted( 99 ) );
@@ -420,7 +434,8 @@ BOOST_AUTO_TEST_CASE( save_load_empty_receipts ) {
     uint64_t timestamp = 1700000000;
     log.markBlockCommitCompleted( 1, emptyReceipts, timestamp
 #ifdef BITE2
-                                  , emptyCtxs
+        ,
+        emptyCtxs
 #endif
     );
 
@@ -446,7 +461,8 @@ BOOST_AUTO_TEST_CASE( save_load_single_receipt ) {
     uint64_t timestamp = 1700000001;
     log.markBlockCommitCompleted( 2, receipts, timestamp
 #ifdef BITE2
-                                  , emptyCtxs
+        ,
+        emptyCtxs
 #endif
     );
 
@@ -477,7 +493,8 @@ BOOST_AUTO_TEST_CASE( save_load_multiple_receipts ) {
     uint64_t timestamp = 1700000002;
     log.markBlockCommitCompleted( 3, receipts, timestamp
 #ifdef BITE2
-                                  , emptyCtxs
+        ,
+        emptyCtxs
 #endif
     );
 
@@ -516,7 +533,8 @@ BOOST_AUTO_TEST_CASE( save_load_receipt_with_logs ) {
     uint64_t timestamp = 1700000003;
     log.markBlockCommitCompleted( 4, receipts, timestamp
 #ifdef BITE2
-                                  , emptyCtxs
+        ,
+        emptyCtxs
 #endif
     );
 
@@ -552,7 +570,8 @@ BOOST_AUTO_TEST_CASE( save_load_receipt_with_revert_reason ) {
     uint64_t timestamp = 1700000004;
     log.markBlockCommitCompleted( 5, receipts, timestamp
 #ifdef BITE2
-                                  , emptyCtxs
+        ,
+        emptyCtxs
 #endif
     );
 
@@ -580,7 +599,8 @@ BOOST_AUTO_TEST_CASE( receipts_persistence_across_instances ) {
         StateProgressLog log( tempDir.path() );
         log.markBlockCommitCompleted( 6, receipts, timestamp
 #ifdef BITE2
-                                      , emptyCtxs
+            ,
+            emptyCtxs
 #endif
         );
     }
@@ -623,12 +643,14 @@ BOOST_AUTO_TEST_CASE( receipts_overwrite ) {
     uint64_t timestamp2 = 1700000007;
     log.markBlockCommitCompleted( 7, receipts1, timestamp1
 #ifdef BITE2
-                                  , emptyCtxs
+        ,
+        emptyCtxs
 #endif
     );
     log.markBlockCommitCompleted( 8, receipts2, timestamp2
 #ifdef BITE2
-                                  , emptyCtxs
+        ,
+        emptyCtxs
 #endif
     );
 
@@ -662,7 +684,8 @@ BOOST_AUTO_TEST_CASE( save_load_receipt_bloom_preserved ) {
     uint64_t timestamp = 1700000008;
     log.markBlockCommitCompleted( 9, receipts, timestamp
 #ifdef BITE2
-                                  , emptyCtxs
+        ,
+        emptyCtxs
 #endif
     );
 
@@ -681,11 +704,11 @@ static dev::bytes makeCTXData( const dev::bytes& _payload = {} ) {
     return data;
 }
 
-static dev::eth::Transaction makeSignedCTX(
-    dev::u256 _value, dev::u256 _gasPrice, dev::u256 _gas,
+static dev::eth::Transaction makeSignedCTX( dev::u256 _value, dev::u256 _gasPrice, dev::u256 _gas,
     const dev::Address& _to, const dev::bytes& _payload, dev::u256 _nonce ) {
     dev::Secret secret( "0x1122334455667788112233445566778811223344556677881122334455667788" );
-    return dev::eth::Transaction( _value, _gasPrice, _gas, _to, makeCTXData( _payload ), _nonce, secret );
+    return dev::eth::Transaction(
+        _value, _gasPrice, _gas, _to, makeCTXData( _payload ), _nonce, secret );
 }
 
 BOOST_AUTO_TEST_CASE( save_load_single_ctx ) {
@@ -697,7 +720,7 @@ BOOST_AUTO_TEST_CASE( save_load_single_ctx ) {
     dev::bytes payload = { 0x01, 0x02, 0x03 };
     auto ctx = makeSignedCTX( 1000, 20, 21000, dest, payload, 0 );
 
-    dev::eth::Transactions ctxs = { ctx };
+    std::deque< dev::eth::Transaction > ctxs = { ctx };
 
     uint64_t timestamp = 1700001000;
     log.markBlockCommitCompleted( 100, emptyReceipts, timestamp, ctxs );
@@ -731,7 +754,7 @@ BOOST_AUTO_TEST_CASE( save_load_multiple_ctxs ) {
     auto ctx2 = makeSignedCTX( 200, 20, 42000, dest2, { 0xbb, 0xcc }, 1 );
     auto ctx3 = makeSignedCTX( 300, 30, 63000, dest3, {}, 2 );
 
-    dev::eth::Transactions ctxs = { ctx1, ctx2, ctx3 };
+    std::deque< dev::eth::Transaction > ctxs = { ctx1, ctx2, ctx3 };
 
     uint64_t timestamp = 1700001001;
     log.markBlockCommitCompleted( 101, emptyReceipts, timestamp, ctxs );
@@ -770,7 +793,7 @@ BOOST_AUTO_TEST_CASE( save_load_ctxs_with_receipts ) {
     // Create CTXs
     dev::Address dest( "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" );
     auto ctx = makeSignedCTX( 500, 15, 30000, dest, { 0x01, 0x02 }, 5 );
-    dev::eth::Transactions ctxs = { ctx };
+    std::deque< dev::eth::Transaction > ctxs = { ctx };
 
     uint64_t timestamp = 1700001002;
     log.markBlockCommitCompleted( 102, receipts, timestamp, ctxs );
@@ -813,7 +836,7 @@ BOOST_AUTO_TEST_CASE( ctxs_persistence_across_instances ) {
 
     dev::Address dest( "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" );
     auto ctx = makeSignedCTX( 777, 10, 21000, dest, { 0xde, 0xad }, 42 );
-    dev::eth::Transactions ctxs = { ctx };
+    std::deque< dev::eth::Transaction > ctxs = { ctx };
 
     uint64_t timestamp = 1700001004;
 
@@ -874,7 +897,7 @@ BOOST_AUTO_TEST_CASE( save_load_ctx_with_larger_data ) {
     dev::Address dest( "0xcccccccccccccccccccccccccccccccccccccccc" );
     auto ctx = makeSignedCTX( 0, 100, 100000, dest, largePayload, 99 );
 
-    dev::eth::Transactions ctxs = { ctx };
+    std::deque< dev::eth::Transaction > ctxs = { ctx };
 
     uint64_t timestamp = 1700001007;
     log.markBlockCommitCompleted( 107, emptyReceipts, timestamp, ctxs );
@@ -884,7 +907,8 @@ BOOST_AUTO_TEST_CASE( save_load_ctx_with_larger_data ) {
     BOOST_REQUIRE_EQUAL( loaded->ctxsCreatedInBlock.size(), 1 );
     BOOST_CHECK( loaded->ctxsCreatedInBlock[0].isCTX() );
     BOOST_CHECK( loaded->ctxsCreatedInBlock[0].data() == expectedData );
-    BOOST_CHECK_EQUAL( loaded->ctxsCreatedInBlock[0].data().size(), 1024 + dev::bite::ON_DECRYPT_FUNCTION_SELECTOR_SIZE_BYTES );
+    BOOST_CHECK_EQUAL( loaded->ctxsCreatedInBlock[0].data().size(),
+        1024 + dev::bite::ON_DECRYPT_FUNCTION_SELECTOR_SIZE_BYTES );
 }
 
 BOOST_AUTO_TEST_CASE( save_load_ctx_preserves_gas_fields ) {
@@ -901,7 +925,7 @@ BOOST_AUTO_TEST_CASE( save_load_ctx_preserves_gas_fields ) {
     dev::bytes expectedData = makeCTXData( payload );
 
     auto ctx = makeSignedCTX( value, gasPrice, gas, dest, payload, nonce );
-    dev::eth::Transactions ctxs = { ctx };
+    std::deque< dev::eth::Transaction > ctxs = { ctx };
 
     uint64_t timestamp = 1700001008;
     log.markBlockCommitCompleted( 108, emptyReceipts, timestamp, ctxs );

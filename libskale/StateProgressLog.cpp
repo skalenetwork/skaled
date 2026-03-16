@@ -42,7 +42,7 @@ void StateProgressLog::markBlockCommitCompleted(
     uint64_t _blockNumber, const dev::eth::TransactionReceipts& _receipts, uint64_t _timestamp
 #ifdef BITE2
     ,
-    const std::vector< dev::eth::Transaction >& _ctxsCreatedInBlock
+    const std::deque< dev::eth::Transaction >& _ctxsCreatedInBlock
 #endif
 ) {
     CommittedProgressData data;

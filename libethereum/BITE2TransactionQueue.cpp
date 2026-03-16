@@ -25,14 +25,14 @@
 using namespace dev;
 using namespace dev::eth;
 
-std::vector< Transaction > BITE2TransactionQueue::debug_pendingBITE2Transactions() const {
+std::deque< Transaction > BITE2TransactionQueue::debug_pendingBITE2Transactions() const {
     // requires lock because called from JSON RPC API
     ReadGuard l( m_lock );
     CHECK_EXPRESSION( m_current );
     return *m_current;
 }
 
-const std::vector< Transaction >& BITE2TransactionQueue::pendingBITE2Transactions() const {
+const std::deque< Transaction >& BITE2TransactionQueue::pendingBITE2Transactions() const {
     // no lock - called strictly AFTER finalize(), no new txns can be added at this point
     CHECK_EXPRESSION( m_current );
     return *m_current;
@@ -94,15 +94,22 @@ void BITE2TransactionQueue::clearTemp() {
     }
 }
 
-void BITE2TransactionQueue::clear() {
+void BITE2TransactionQueue::clear( size_t _cnt ) {
     WriteGuard l( m_lock );
     CHECK_EXPRESSION( m_current );
-    m_current->clear();
+    if ( _cnt == m_current->size() ) {
+        m_current->clear();
+    } else {
+        CHECK_EXPRESSION( _cnt < m_current->size() );
+        for ( size_t i = 0; i < _cnt; ++i ) {
+            m_current->pop_front();
+        }
+    }
     m_currentHeadIndex.store( 0, std::memory_order_relaxed );
-    m_empty = true;
+    m_empty = !!( m_current->size() );
 }
 
-std::shared_ptr< std::vector< Transaction > > BITE2TransactionQueue::finalizeAndGetCtxs() {
+std::shared_ptr< std::deque< Transaction > > BITE2TransactionQueue::finalizeAndGetCtxs() {
     CHECK_EXPRESSION( m_current );
     // prepare for the next block processing - skaled may delete CTXs added into blockchain
     // m_currentHeadIndex points to first not yet verified CTX
@@ -123,15 +130,5 @@ bool BITE2TransactionQueue::dropGood( const Transaction& _t ) {
     }
     return false;
 }
-
-void BITE2TransactionQueue::setQueueOnInit( Transactions&& _ctxQueue ) {
-    WriteGuard l( m_lock );
-    CHECK_EXPRESSION( m_current );
-    m_current = std::make_shared< std::vector< Transaction > >( std::move( _ctxQueue ) );
-    m_currentHeadIndex.store( 0, std::memory_order_relaxed );
-    m_empty = m_current->empty();
-    BOOST_LOG( m_loggerInfo ) << "BITE2 queue initialized with " << m_current->size() << " CTXs";
-}
-
 
 #endif  // BITE2

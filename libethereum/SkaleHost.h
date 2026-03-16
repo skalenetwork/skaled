@@ -37,6 +37,7 @@
 #include <libethcore/Common.h>
 #include <libethereum/InstanceMonitor.h>
 #include <libethereum/Transaction.h>
+#include <libethereum/TransactionQueue.h>
 #include <libskale/SkaleClient.h>
 
 #include <jsonrpccpp/client/client.h>
@@ -53,7 +54,6 @@ namespace dev {
 namespace eth {
 struct SyncStatus;
 class Client;
-class TransactionQueue;
 class BlockHeader;
 }  // namespace eth
 }  // namespace dev
@@ -148,8 +148,12 @@ public:
     void clearTempBITE2Transactions();
 
     dev::u256 getReencryptionBlockRandom( unsigned _blockNumber, bool _isCalledFromTxn ) const;
-    std::shared_ptr< std::vector< dev::eth::Transaction > > finalizeBITE2QueueAndGetCtxs();
-    void setBITE2QueueOnInit( std::vector< dev::eth::Transaction >&& _ctxs );
+    std::shared_ptr< std::deque< dev::eth::Transaction > > finalizeBITE2QueueAndGetCtxs();
+
+    template < LinearContainer C >
+    void setBITE2QueueOnInit( C&& _ctxs ) {
+        return m_tq.setBITE2QueueOnInit( std::move( _ctxs ) );
+    }
 #endif
 
     dev::u256 getGasPrice( unsigned _blockNumber = dev::eth::LatestBlock ) const;

@@ -53,7 +53,7 @@ BOOST_AUTO_TEST_CASE( addCommitClear ) {
     queue.clearTemp();
     BOOST_REQUIRE_EQUAL( queue.pendingBITE2Transactions().size(), 2 );
 
-    queue.clear();
+    queue.clear( 2 );
     BOOST_REQUIRE_EQUAL( queue.pendingBITE2Transactions().size(), 0 );
 }
 
@@ -115,7 +115,7 @@ BOOST_AUTO_TEST_CASE( dropGood ) {
 
     BOOST_REQUIRE( queue.dropGood( txCtx ) );
 
-    queue.clear();
+    queue.clear( 1 );
     Transaction txCtx2( 1, 100, 21000, Address(), ctxData, 0, sec );
     txCtx2.checkIfCTXAndSet( ctxData );
 
@@ -127,7 +127,7 @@ BOOST_AUTO_TEST_CASE( dropGood ) {
     BOOST_REQUIRE( queue.dropGood( txCtx ) );
     BOOST_REQUIRE( queue.dropGood( txCtx2 ) );
 
-    queue.clear();
+    queue.clear( 0 );
     queue.addTemp( Transaction( txNormal ) );
     queue.commitTemp();
     queue.finalizeAndGetCtxs();

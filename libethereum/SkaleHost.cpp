@@ -51,7 +51,6 @@ using namespace std;
 #include <libethereum/Client.h>
 #include <libethereum/CommonNet.h>
 #include <libethereum/Executive.h>
-#include <libethereum/TransactionQueue.h>
 
 #include <libweb3jsonrpc/JsonHelper.h>
 
@@ -415,13 +414,10 @@ void SkaleHost::clearTempBITE2Transactions() {
     m_tq.clearTempBITE2Transactions();
 }
 
-std::shared_ptr< std::vector< dev::eth::Transaction > > SkaleHost::finalizeBITE2QueueAndGetCtxs() {
+std::shared_ptr< std::deque< dev::eth::Transaction > > SkaleHost::finalizeBITE2QueueAndGetCtxs() {
     return m_tq.finalizeBITE2QueueAndGetCtxs();
 }
 
-void SkaleHost::setBITE2QueueOnInit( std::vector< dev::eth::Transaction >&& _ctxs ) {
-    return m_tq.setBITE2QueueOnInit( std::move( _ctxs ) );
-}
 #endif
 
 h256 SkaleHost::receiveTransaction( const std::string& _rlp ) {
@@ -1163,7 +1159,7 @@ std::vector< Transaction > SkaleHost::processCTXTransactions(
         if ( ctxIterator != _decryptedTransactions.ctxTxsMap->end() )
             ++ctxIterator;
     }
-    m_tq.clearAllBITE2Transactions();
+    m_tq.clearBITE2Transactions( _approvedTransactions.sizeCTX() );
     return outTxns;
 }
 #endif

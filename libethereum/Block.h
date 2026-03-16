@@ -338,7 +338,7 @@ public:
         return m_ctxHashesLists;
     }
 
-    const std::shared_ptr< std::vector< dev::eth::Transaction > >& createdCtxs() const {
+    const std::shared_ptr< std::deque< dev::eth::Transaction > >& createdCtxs() const {
         CHECK_EXPRESSION( m_createdCtxs );
         return m_createdCtxs;
     }
@@ -442,7 +442,8 @@ private:
     // only filled for a working block
     // safe, because it is filled with transactions from BITE2 queue
     // which stay there until the block is committed
-    std::shared_ptr< Transactions > m_createdCtxs = std::make_shared< Transactions >();
+    std::shared_ptr< std::deque< Transaction > > m_createdCtxs =
+        std::make_shared< std::deque< Transaction > >();
 #endif  // BITE2
 #endif  // BITE
 

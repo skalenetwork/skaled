@@ -584,11 +584,11 @@ Transactions TransactionQueue::debugGetFutureTransactions() const {
 }
 
 #ifdef BITE2
-const Transactions& TransactionQueue::pendingBITE2Transactions() const {
+const std::deque< Transaction >& TransactionQueue::pendingBITE2Transactions() const {
     return m_bite2Queue.pendingBITE2Transactions();
 }
 
-Transactions TransactionQueue::debug_pendingBITE2Transactions() const {
+std::deque< Transaction > TransactionQueue::debug_pendingBITE2Transactions() const {
     return m_bite2Queue.debug_pendingBITE2Transactions();
 }
 
@@ -608,16 +608,13 @@ void TransactionQueue::clearTempBITE2Transactions() {
     m_bite2Queue.clearTemp();
 }
 
-void TransactionQueue::clearAllBITE2Transactions() {
-    m_bite2Queue.clear();
+void TransactionQueue::clearBITE2Transactions( size_t _cnt ) {
+    m_bite2Queue.clear( _cnt );
 }
 
-std::shared_ptr< std::vector< dev::eth::Transaction > >
+std::shared_ptr< std::deque< dev::eth::Transaction > >
 TransactionQueue::finalizeBITE2QueueAndGetCtxs() {
     return m_bite2Queue.finalizeAndGetCtxs();
 }
 
-void TransactionQueue::setBITE2QueueOnInit( Transactions&& _ctxQueue ) {
-    m_bite2Queue.setQueueOnInit( std::move( _ctxQueue ) );
-}
 #endif
