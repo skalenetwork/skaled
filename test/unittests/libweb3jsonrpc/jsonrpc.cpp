@@ -6314,9 +6314,10 @@ BOOST_AUTO_TEST_CASE( CTXOutOfBlockGasLimit ) {
     // get block gas limit
     dev::u256 blockGasLimit = fixture.client->blockInfo( fixture.client->number() ).gasLimit();
 
-    // send 2 submitCTXWithInput transactions in one block.
+    // send 2 submitCTXWithInput transactions in one block
     // total gasLimit specified in the payload of these transactions should extend block gas limit
     // gasUsed of these transactions corresponds to their gasLimit
+    // regular txns should not be processed until CTX queue is not empty
     dev::u256 highGasLimit = (blockGasLimit * 90) / 100;
     dev::bytes highGasLimitBytes = dev::toBigEndian( highGasLimit );
 
@@ -6341,18 +6342,33 @@ BOOST_AUTO_TEST_CASE( CTXOutOfBlockGasLimit ) {
     fixture.rpcClient->debug_pauseConsensus( false );
 
     // call mineTransaction to create a block
-    dev::eth::mineTransaction( *( fixture.client ), 2 );
+    dev::eth::mineTransaction( *( fixture.client ), 3 );
 
-    // wait for 2 blocks to appear
+    // wait for 3 blocks to appear
     auto endBlockNumber = fixture.client->number();
-    BOOST_REQUIRE_EQUAL( endBlockNumber, startBlockNumber + 2 );
+    BOOST_REQUIRE_EQUAL( endBlockNumber, startBlockNumber + 3 );
 
-    // check last block - gasUsed should be bigger than block gas limit
+    // check two last block - each should contain 1 CTX
+    // last block also contains a regular txn
+    auto beforeLastBlock = fixture.client->blockInfo( endBlockNumber - 1 );
     auto lastBlock = fixture.client->blockInfo( endBlockNumber );
-    BOOST_REQUIRE_GT( lastBlock.gasUsed(), blockGasLimit );
+    BOOST_REQUIRE_LT( lastBlock.gasUsed(), blockGasLimit );
+    BOOST_REQUIRE_LT( beforeLastBlock.gasUsed(), blockGasLimit );
+
+    auto beforeLastBlockTxns = fixture.client->transactions( endBlockNumber - 1 );
+    auto lastBlockTxns = fixture.client->transactions( endBlockNumber );
+    BOOST_REQUIRE_EQUAL( lastBlockTxns.size(), 1 );
+    BOOST_REQUIRE( lastBlockTxns[0].isCTX() );
+    BOOST_REQUIRE_EQUAL( lastBlockTxns.size(), 2 );
+    BOOST_REQUIRE( lastBlockTxns[0].isCTX() );
+    BOOST_REQUIRE( !lastBlockTxns[1].isCTX() );
 
     // check transactions status
-    auto txnHashes = fixture.client->transactionHashes( endBlockNumber );
+    auto txnHashes = fixture.client->transactionHashes( endBlockNumber - 1 );
+    auto receipt = fixture.rpcClient->eth_getTransactionReceipt( txnHashes[0] );
+    BOOST_REQUIRE( receipt["status"] == "0x1" );
+
+    txnHashes = fixture.client->transactionHashes( endBlockNumber );
     BOOST_REQUIRE_EQUAL( txnHashes.size(), 2 );
     for ( const auto& hash: txnHashes ) {
         auto receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
