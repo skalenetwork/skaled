@@ -503,6 +503,7 @@ ConsensusExtFace::Transactions SkaleHost::pendingTransactions( size_t _limit, u2
 
     int counter = 0;
     BlockHeader latestInfo = static_cast< const Interface& >( m_client ).blockInfo( LatestBlock );
+    u256 blockGasLimit = this->m_client.chainParams().getGasLimit();
 
 #ifdef BITE2
     auto bite2Transactions = m_tq.pendingBITE2Transactions();
@@ -510,6 +511,10 @@ ConsensusExtFace::Transactions SkaleHost::pendingTransactions( size_t _limit, u2
     // CTXs are not the subject for block gas limit
     for ( const auto& ctx : bite2Transactions ) {
         gasAccByCTXs += ctx.gas();
+        if ( gasAccByCTXs > blockGasLimit ) {
+            // we should skip regular txns until we process all CTXs in queue
+            break;
+        }
         out_vector.pushBackCTX( ctx.toBytes() );
         m_debugTracer.tracepoint( "sent_txn" );
         BOOST_LOG( m_loggerTrace ) << "Sent CTX";
@@ -546,7 +551,6 @@ ConsensusExtFace::Transactions SkaleHost::pendingTransactions( size_t _limit, u2
     std::lock_guard< std::recursive_mutex > lock( m_pending_createMutex, std::adopt_lock );
 
     // drop by block gas limit
-    u256 blockGasLimit = this->m_client.chainParams().getGasLimit();
     u256 gasAcc = 0;
 #ifdef BITE2
     gasAcc = gasAccByCTXs;
