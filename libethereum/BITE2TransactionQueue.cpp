@@ -32,10 +32,11 @@ std::deque< Transaction > BITE2TransactionQueue::debug_pendingBITE2Transactions(
     return *m_current;
 }
 
-const std::deque< Transaction >& BITE2TransactionQueue::pendingBITE2Transactions() const {
-    // no lock - called strictly AFTER finalize(), no new txns can be added at this point
+std::shared_ptr< std::deque< Transaction > > BITE2TransactionQueue::pendingBITE2Transactions() const {
+    // no lock - always called AFTER all txns in block are executed
+    // no new txns can be added at this point
     CHECK_EXPRESSION( m_current );
-    return *m_current;
+    return m_current;
 }
 
 void BITE2TransactionQueue::addTemp( Transaction&& _t ) {
@@ -76,7 +77,7 @@ void BITE2TransactionQueue::commitTemp() {
         return;
     // m_currentHeadIndex should always point to last element during block execution
     // used as checkpoint for rollbacks
-    m_currentHeadIndex.store( m_current->size() - 1, std::memory_order_relaxed );
+    m_currentHeadIndex = m_current->size() - 1;
     m_empty = false;
 }
 
@@ -94,39 +95,22 @@ void BITE2TransactionQueue::clearTemp() {
     }
 }
 
-void BITE2TransactionQueue::clear( size_t _cnt ) {
-    WriteGuard l( m_lock );
-    CHECK_EXPRESSION( m_current );
-    if ( _cnt == m_current->size() ) {
-        m_current->clear();
-        m_currentHeadIndex = 0;
-    } else {
-        CHECK_EXPRESSION( _cnt < m_current->size() );
-        for ( size_t i = 0; i < _cnt; ++i ) {
-            m_current->pop_front();
-        }
-        m_currentHeadIndex.store( m_current->size() - 1, std::memory_order_relaxed );
-    }
-    m_empty = m_current->empty();
-}
-
-std::shared_ptr< std::deque< Transaction > > BITE2TransactionQueue::finalizeAndGetCtxs() {
-    CHECK_EXPRESSION( m_current );
-    // prepare for the next block processing - skaled may delete CTXs added into blockchain
-    // m_currentHeadIndex points to first not yet verified CTX
-    m_currentHeadIndex = 0;
-    return m_current;
-}
-
 bool BITE2TransactionQueue::dropGood( const Transaction& _t ) {
     if ( _t.isCTX() ) {
+        WriteGuard l( m_lock );
         CHECK_EXPRESSION( m_current );
+        CHECK_EXPRESSION( !m_current->empty() );
         // BITE2 transactions are stored separately
         // they are also stored in the strict order
-        CHECK_EXPRESSION( m_currentHeadIndex < m_current->size() );
         // Check that we indeed are dropping the front transaction
-        CHECK_EXPRESSION( _t == ( *m_current )[m_currentHeadIndex] );
-        m_currentHeadIndex.fetch_add( 1, std::memory_order_relaxed );
+        CHECK_EXPRESSION( _t == m_current->front() );
+        m_current->pop_front();
+        if ( m_current->empty() ) {
+            m_currentHeadIndex = 0;
+            m_empty = true;
+        } else {
+            m_currentHeadIndex -= 1;
+        }
         return true;
     }
     return false;

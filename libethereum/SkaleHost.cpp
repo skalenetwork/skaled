@@ -414,8 +414,8 @@ void SkaleHost::clearTempBITE2Transactions() {
     m_tq.clearTempBITE2Transactions();
 }
 
-std::shared_ptr< std::deque< dev::eth::Transaction > > SkaleHost::finalizeBITE2QueueAndGetCtxs() {
-    return m_tq.finalizeBITE2QueueAndGetCtxs();
+std::shared_ptr< std::deque< Transaction > > SkaleHost::pendingBITE2Transactions() const {
+    return m_tq.pendingBITE2Transactions();
 }
 
 #endif
@@ -509,7 +509,7 @@ ConsensusExtFace::Transactions SkaleHost::pendingTransactions( size_t _limit, u2
     auto bite2Transactions = m_tq.pendingBITE2Transactions();
     u256 gasAccByCTXs = 0;
     // CTXs are not the subject for block gas limit
-    for ( const auto& ctx : bite2Transactions ) {
+    for ( const auto& ctx : *bite2Transactions ) {
         gasAccByCTXs += ctx.gas();
         if ( gasAccByCTXs > blockGasLimit ) {
             // we should skip regular txns until we process all CTXs in queue
@@ -1107,12 +1107,6 @@ std::vector< Transaction > SkaleHost::processCTXTransactions(
     [[maybe_unused]] const dev::eth::BlockHeader& latestInfo,
     DecryptedTransactions _decryptedTransactions ) {
     std::vector< Transaction > outTxns;
-    if ( _approvedTransactions.sizeCTX() != m_tq.pendingBITE2Transactions().size() ) {
-        BOOST_LOG( m_loggerInfo ) << "Expected " << m_tq.pendingBITE2Transactions().size()
-                                  << " CTX, but received " << _approvedTransactions.sizeCTX()
-                                  << ".\n Exiting with code 200, repair will be needed.";
-        ExitHandler::exitHandler( -1, ExitHandler::ec_state_root_mismatch );
-    }
     auto ctxIterator = _decryptedTransactions.ctxTxsMap->begin();
     for ( size_t i = 0; i < _approvedTransactions.sizeCTX(); ++i ) {
         const bytes& data = _approvedTransactions.at( i );
@@ -1163,7 +1157,6 @@ std::vector< Transaction > SkaleHost::processCTXTransactions(
         if ( ctxIterator != _decryptedTransactions.ctxTxsMap->end() )
             ++ctxIterator;
     }
-    m_tq.clearBITE2Transactions( _approvedTransactions.sizeCTX() );
     return outTxns;
 }
 #endif

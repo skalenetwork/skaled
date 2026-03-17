@@ -789,6 +789,7 @@ void BlockChain::insertTransactionsDetailsToDb(
             for ( const auto& ctx : *_block.createdCtxs )
                 s.appendRaw( ctx.toBytes() );
             dev::bytes ctxListRlp = s.out();
+            BOOST_LOG( m_loggerDebug ) << "Committing " << _block.createdCtxs->size() << " CTXs";
             _extrasWriteBatch.insert(
                 db::Slice( "lastBlockCTXs" ), ( db::Slice ) dev::ref( ctxListRlp ) );
         }
@@ -1080,6 +1081,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
                 db::Slice( std::to_string( _block.info.timestamp() ) ) );
 #endif
             m_db->commit( "insertBlockAndExtras" );
+            BOOST_LOG( m_loggerDebug ) << "Committed into blocks_and_extras.db ";
         } catch ( boost::exception const& ex ) {
             BOOST_LOG( m_loggerWarning ) << "Error writing to blocks_and_extras database: "
                                          << boost::diagnostic_information( ex );

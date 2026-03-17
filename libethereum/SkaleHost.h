@@ -146,9 +146,9 @@ public:
     std::vector< dev::h256 > getBITE2HashesForCurrentTxn() const;
     void commitTempBITE2Transactions();
     void clearTempBITE2Transactions();
+    std::shared_ptr< std::deque< dev::eth::Transaction > > pendingBITE2Transactions() const;
 
     dev::u256 getReencryptionBlockRandom( unsigned _blockNumber, bool _isCalledFromTxn ) const;
-    std::shared_ptr< std::deque< dev::eth::Transaction > > finalizeBITE2QueueAndGetCtxs();
 
     template < LinearContainer C >
     void setBITE2QueueOnInit( C&& _ctxs ) {
