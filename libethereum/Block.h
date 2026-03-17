@@ -437,7 +437,6 @@ private:
     std::shared_ptr< std::deque< Transaction > > m_createdCtxs =
         std::make_shared< std::deque< Transaction > >();
 #endif  // BITE
-#endif  // BITE
 
     Logger m_loggerDebug{ createLogger( VerbosityDebug, "block" ) };
     Logger m_loggerTrace{ createLogger( VerbosityTrace, "block" ) };
