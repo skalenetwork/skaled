@@ -30,7 +30,7 @@
 
 #ifdef BITE
 #include <libconsensus/bite/Constants.h>
-#include <libconsensus/node/ConsensusInterface.h>
+#include <libconsensus/node/ConsensusTypes.h>
 #endif
 
 #ifdef BITE
