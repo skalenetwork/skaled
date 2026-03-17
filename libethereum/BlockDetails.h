@@ -180,7 +180,6 @@ struct DecryptedTransactionData {
     size_t size = -1;
 };
 
-#ifdef BITE2
 struct CtxOrigin {
     CtxOrigin() {}
     CtxOrigin( const std::vector< std::vector< dev::h256 > >& _ctxHashesLists )
@@ -217,7 +216,6 @@ struct CtxOrigin {
     size_t size = 0;
 };
 
-#endif  // BITE2
 #endif  // BITE
 
 using BlockDetailsHash = std::unordered_map< h256, BlockDetails >;
@@ -228,9 +226,7 @@ using BlockHashHash = std::map< uint64_t, BlockHash >;
 using BlocksBloomsHash = std::unordered_map< h256, BlocksBlooms >;
 #ifdef BITE
 using DecryptedTransactionDataHash = std::unordered_map< h256, DecryptedTransactionData >;
-#ifdef BITE2
 using CtxOriginHash = std::unordered_map< h256, CtxOrigin >;
-#endif  // BITE2
 #endif  // BITE
 
 static const BlockDetails NullBlockDetails;
@@ -241,9 +237,7 @@ static const BlockHash NullBlockHash;
 static const BlocksBlooms NullBlocksBlooms;
 #ifdef BITE
 static const DecryptedTransactionData NullDecryptedTransactionData;
-#ifdef BITE2
 static const CtxOrigin NullCtxOrigin;
-#endif  // BITE2
 #endif  // BITE
 
 }  // namespace eth

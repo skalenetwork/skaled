@@ -411,7 +411,7 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
             [&block_promise]( BlockHeader const& ) { block_promise.set_value(); } );
 
         client->injectSkaleHost();
-#ifdef BITE2
+#ifdef BITE
         dev::eth::g_skaleHost = client->skaleHost();
 #endif
         client->startWorking();
@@ -455,7 +455,7 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
             testIpcClient = nullptr;
         }
         rpcServer.reset();
-#ifdef BITE2
+#ifdef BITE
         if ( g_skaleHost )
             g_skaleHost.reset();
 #endif

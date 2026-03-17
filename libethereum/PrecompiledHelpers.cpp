@@ -24,7 +24,7 @@
  */
 
 #include "PrecompiledHelpers.h"
-#ifdef BITE2
+#ifdef BITE
 #include <libconsensus/node/ConsensusInterface.h>
 #include <libethcore/BITECommon.h>
 #endif

@@ -92,7 +92,7 @@ public:
         this->bindAndAddMethod( jsonrpc::Procedure( "debug_getPatchTimestamps",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, NULL ),
             &dev::rpc::DebugFace::debug_getPatchTimestampsI );
-#ifdef BITE2
+#ifdef BITE
         this->bindAndAddMethod( jsonrpc::Procedure( "debug_getPendingBITE2Transactions",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::DebugFace::debug_getPendingBITE2TransactionsI );
@@ -172,7 +172,7 @@ public:
         response = this->debug_getPatchTimestamps();
     }
 
-#ifdef BITE2
+#ifdef BITE
     inline virtual void debug_getPendingBITE2TransactionsI(
         const Json::Value&, Json::Value& response ) {
         response = this->debug_getPendingBITE2Transactions();
@@ -204,7 +204,7 @@ public:
 
     virtual Json::Value debug_getPatchTimestamps() = 0;
 
-#ifdef BITE2
+#ifdef BITE
     virtual Json::Value debug_getPendingBITE2Transactions() = 0;
 #endif
 };

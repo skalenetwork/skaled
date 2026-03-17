@@ -17,7 +17,7 @@
     along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifdef BITE2
+#ifdef BITE
 
 #include "BITE2TransactionQueue.h"
 #include <libethcore/Exceptions.h>
@@ -113,7 +113,7 @@ std::shared_ptr< std::vector< Transaction > > BITE2TransactionQueue::finalizeAnd
 bool BITE2TransactionQueue::dropGood( const Transaction& _t ) {
     if ( _t.isCTX() ) {
         CHECK_EXPRESSION( m_current );
-        // BITE2 transactions are stored separately
+        // BITE transactions are stored separately
         // they are also stored in the strict order
         CHECK_EXPRESSION( m_currentHeadIndex < m_current->size() );
         // Check that we indeed are dropping the front transaction
@@ -134,4 +134,4 @@ void BITE2TransactionQueue::setQueueOnInit( Transactions&& _ctxQueue ) {
 }
 
 
-#endif  // BITE2
+#endif  // BITE

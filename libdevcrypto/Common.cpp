@@ -348,7 +348,7 @@ bytes ecies::kdf( Secret const& _z, bytes const& _s1, unsigned kdByteLen ) {
     return k;
 }
 
-#ifdef BITE2
+#ifdef BITE
 // Check if x is a valid x-coordinate on secp256k1 curve (y² = x³ + 7 mod p)
 bool dev::isValidSecp256k1X( const u256& x ) {
     static const u256 secp256k1P{

@@ -1456,7 +1456,7 @@ Json::Value WebThreeStubClient::bite_getDecryptedTransactionData( const std::str
             jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
 }
 
-#ifdef BITE2
+#ifdef BITE
 Json::Value WebThreeStubClient::bite_getCraftedCtxs( const std::string& param1 ) {
     Json::Value p;
     p.append( param1 );
@@ -1478,7 +1478,7 @@ std::string WebThreeStubClient::bite_getCtxOrigin( const std::string& param1 ) {
         throw jsonrpc::JsonRpcException(
             jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
 }
-#endif   // BITE2
+#endif   // BITE
 #endif   // BITE
 
 #ifdef FAIR

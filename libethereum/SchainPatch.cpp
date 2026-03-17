@@ -48,10 +48,10 @@ SchainPatchEnum getEnumForPatchName( const std::string& _patchName ) {
         return SchainPatchEnum::CurrentBlockRandomPatch;
     else if ( _patchName == "GroupIndexInitPatch" )
         return SchainPatchEnum::GroupIndexInitPatch;
-#ifdef BITE2
+#ifdef BITE
     else if ( _patchName == "BITE2Patch" || _patchName == "Bite2Patch" )
         return SchainPatchEnum::Bite2Patch;
-#endif  // BITE2
+#endif  // BITE
 #ifdef FAIR
     else if ( _patchName == "DisableSelfDestructPatch" )
         return SchainPatchEnum::DisableSelfDestructPatch;
@@ -102,10 +102,10 @@ std::string getPatchNameForEnum( SchainPatchEnum _enumValue ) {
         return "CurrentBlockRandomPatch";
     case SchainPatchEnum::GroupIndexInitPatch:
         return "GroupIndexInitPatch";
-#ifdef BITE2
+#ifdef BITE
     case SchainPatchEnum::Bite2Patch:
         return "Bite2Patch";
-#endif  // BITE2
+#endif  // BITE
 #ifdef FAIR
     case SchainPatchEnum::DisableSelfDestructPatch:
         return "DisableSelfDestructPatch";

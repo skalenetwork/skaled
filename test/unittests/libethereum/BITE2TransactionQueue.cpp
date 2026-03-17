@@ -29,7 +29,7 @@ using namespace dev::test;
 
 BOOST_FIXTURE_TEST_SUITE( BITE2TransactionQueueSuite, TestOutputHelperFixture )
 
-#ifdef BITE2
+#ifdef BITE
 
 BOOST_AUTO_TEST_CASE( addCommitClear ) {
     BITE2TransactionQueue queue;

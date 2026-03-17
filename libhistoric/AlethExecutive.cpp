@@ -192,7 +192,7 @@ bool AlethExecutive::call(
             bytes output;
             bool success;
             PrecompiledCallContext ctx{ m_envInfo.number(),
-#ifdef BITE2
+#ifdef BITE
                 m_txnIndex, m_envInfo.committedBlockTimestamp(), _p.senderAddress,
 #endif
                 true };
@@ -217,7 +217,7 @@ bool AlethExecutive::call(
             m_ext = make_shared< AlethExtVM >( m_s, m_envInfo, m_chainParams, _p.receiveAddress,
                 _p.senderAddress, _origin, _p.apparentValue, _gasPrice, _p.data, &c, codeHash,
                 version, m_depth, false, _p.staticCall
-#ifdef BITE2
+#ifdef BITE
                 ,
                 m_txnIndex
 #endif
@@ -307,7 +307,7 @@ bool AlethExecutive::executeCreate( Address const& _sender, u256 const& _endowme
         m_ext = make_shared< AlethExtVM >(
             m_s, m_envInfo, m_chainParams, m_newAddress, _sender, _origin, _endowment, _gasPrice,
             bytesConstRef(), _init, sha3( _init ), _version, m_depth, true, false
-#ifdef BITE2
+#ifdef BITE
             ,
             m_txnIndex
 #endif

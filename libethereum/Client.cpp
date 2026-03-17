@@ -329,7 +329,7 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
 
     m_gp->update( bc() );
 
-#ifdef BITE2
+#ifdef BITE
     if ( SingleStateCommitPerBlockPatch::isEnabledInWorkingBlock() )
         m_tq.setBITE2QueueOnInit( bc().ctxListForPreviousBlock() );
 #endif
@@ -1215,14 +1215,12 @@ h256 Client::importTransaction( Transaction const& _t, TransactionBroadcast _txO
     if ( dev::bite::isCiphertextValidationEnabled )
         _t.checkAndValidateBITETransaction( historicGroupIndex );
 
-#ifdef BITE2
     if ( Bite2Patch::isEnabledInWorkingBlock() && _t.isCTX() ) {
         // someone tried to submit CTX through regular transaction flow
         // such transaction must be rejected
         BOOST_THROW_EXCEPTION(
             IllegalCTXSubmission() << errinfo_comment( "Illegal attempt to submit CTX" ) );
     }
-#endif  // BITE2
 #endif  // BITE
 
     ImportResult res;
