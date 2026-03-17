@@ -27,7 +27,7 @@
 #include <libethcore/Counter.h>
 
 #include <SkaleCommon.h>
-#ifdef BITE2
+#ifdef BITE
 #include <libconsensus/node/ConsensusTypes.h>
 #endif
 #include <boost/optional.hpp>
@@ -164,7 +164,7 @@ public:
     explicit TransactionBase(
         bytesConstRef _rlp, CheckTransaction _checkSig, bool _allowInvalid = false,
         bool _eip1559Enabled = false, bool _invalidTransactionFormatPatchEnabled = false
-#ifdef BITE2
+#ifdef BITE
         ,
         bool _bite2PatchEnabled = false
 #endif
@@ -174,14 +174,14 @@ public:
     explicit TransactionBase(
         bytes const& _rlp, CheckTransaction _checkSig, bool _allowInvalid = false,
         bool _eip1559Enabled = false, bool _invalidTransactionFormatPatchEnabled = false
-#ifdef BITE2
+#ifdef BITE
         ,
         bool _bite2PatchEnabled = false
 #endif
         )
         : TransactionBase( &_rlp, _checkSig, _allowInvalid, _eip1559Enabled,
               _invalidTransactionFormatPatchEnabled
-#ifdef BITE2
+#ifdef BITE
               ,
               _bite2PatchEnabled
 #endif
@@ -250,13 +250,11 @@ public:
 
     void checkAndValidateBITETransaction( uint64_t _epochId ) const;
 
-#ifdef BITE2
     bool isCTX() const { return m_isCTX; }
 
     void checkIfCTXAndSet( const dev::bytes& _data );
 
     void setDecryptedArgsCTX( const DecryptedCTXArgs& _decryptedCTXArgs );
-#endif  // BITE2
 
 #endif  // BITE
 
@@ -392,7 +390,7 @@ public:
             ,
             m_isBITETxn
 #endif
-#ifdef BITE2
+#ifdef BITE
             ,
             m_ctxEncryptedArgsSize
 #endif
@@ -416,13 +414,13 @@ public:
         ,
         bool _isBITETxn = false
 #endif
-#ifdef BITE2
+#ifdef BITE
         ,
         std::optional< size_t > _bite2EncryptedArgsSize = std::nullopt
 #endif
     );
 
-#ifdef BITE2
+#ifdef BITE
     void setBITE2EncryptedArgsSize( size_t _s ) { m_ctxEncryptedArgsSize = _s; }
 #endif
 
@@ -480,7 +478,7 @@ protected:
     static const Address BITE_ADDRESS;
 #endif
 
-#ifdef BITE2
+#ifdef BITE
     std::optional< size_t > m_ctxEncryptedArgsSize = std::nullopt;
     bool m_isCTX = false;
 #endif

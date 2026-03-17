@@ -38,20 +38,15 @@ struct VerifiedBlockRef {
     BlockHeader info;                         ///< Prepopulated block info
     std::vector< Transaction > transactions;  ///< Verified list of block transactions
 #ifdef BITE
-    DecryptedTransactions decryptedTransactions = DecryptedTransactions{
-#ifdef BITE2
-        std::make_shared< DecryptedCTXTxsMap >(),
-#endif  // BITE2
-        std::make_shared< DecryptedRegularTxsMap >()
-    };  ///< Decrypted transactions
-        ///< to be stored in blockchain
+    DecryptedTransactions decryptedTransactions =
+        DecryptedTransactions{ std::make_shared< DecryptedCTXTxsMap >(),
+            std::make_shared< DecryptedRegularTxsMap >() };  ///< Decrypted transactions
+                                                             ///< to be stored in blockchain
 
-#ifdef BITE2
     std::vector< std::vector< dev::h256 > > ctxHashesLists;
     std::shared_ptr< std::deque< Transaction > > createdCtxs =
         std::make_shared< std::deque< Transaction > >();  ///< List of ctxs created by transactions
                                                           ///< in block
-#endif                                                    // BITE2
 #endif                                                    // BITE
 };
 

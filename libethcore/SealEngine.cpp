@@ -178,7 +178,7 @@ void SealEngineFace::verifyTransaction( ChainOperationParams const& _chainParams
 
         // Avoid transactions that would take us beyond the block gas limit.
         // Skip this check for CTX - they are not a subject for block gas limit
-#ifdef BITE2
+#ifdef BITE
     if ( !_t.isCTX() ) {
 #endif
         if ( _gasUsed + static_cast< bigint >( gas ) > _header.gasLimit() )
@@ -187,7 +187,7 @@ void SealEngineFace::verifyTransaction( ChainOperationParams const& _chainParams
                 << RequirementErrorComment( static_cast< bigint >( _header.gasLimit() - _gasUsed ),
                        static_cast< bigint >( gas ),
                        string( "_gasUsed + (bigint)_t.gas() > _header.gasLimit()" ) ) );
-#ifdef BITE2
+#ifdef BITE
     }
 #endif
 }

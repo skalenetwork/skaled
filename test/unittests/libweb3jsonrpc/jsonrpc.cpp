@@ -81,7 +81,7 @@
 #include <libconsensus/libBLS/threshold_encryption/ThresholdEncryption.h>
 #endif
 
-#ifdef BITE2
+#ifdef BITE
 #include <libethcore/BITECommon.h>
 #include <libethereum/PrecompiledHelpers.h>
 #endif
@@ -468,7 +468,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
 #endif
                 if ( params.count( "contractStorageLimit" ) )
                     ret["skaleConfig"]["sChain"]["contractStorageLimit"] = std::stoi( params.at( "contractStorageLimit" ) );
-#ifdef BITE2
+#ifdef BITE
                 if ( params.count( "BITE2PatchTimestamp" ) )
                     ret["skaleConfig"]["sChain"]["Bite2PatchTimestamp"] = std::stoi( params.at( "BITE2PatchTimestamp" ) );
 #endif
@@ -4992,7 +4992,7 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
     PrecompiledExecutor blockRandomExecutor = PrecompiledRegistrar::executor( "getBlockRandom" );
     auto blockNumberEarly = fixture.client->number();
     dev::eth::PrecompiledCallContext ctx( blockNumberEarly,
-#ifdef BITE2
+#ifdef BITE
                                           0,
                                           1,
                                           dev::ZeroAddress,
@@ -5052,7 +5052,7 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
     dev::bytes blockRandomFromContract = dev::fromHex( fixture.rpcClient->eth_call( callGetLast, "latest" ) );
 
     ctx = PrecompiledCallContext( fixture.client->number(),
-#ifdef BITE2
+#ifdef BITE
                                 0,
                                 1,
                                 dev::ZeroAddress,
@@ -5073,7 +5073,7 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
 
     // ask for blockRandom for early block
     ctx = PrecompiledCallContext( blockNumberEarly,
-#ifdef BITE2
+#ifdef BITE
                                 0,
                                 1,
                                 dev::ZeroAddress,
@@ -5157,7 +5157,7 @@ static std::string const c_BITEConfigString =
             "contractStorageLimit": 128,
             "emptyBlockIntervalMs": -1,
             "SingleStateCommitPerBlockPatchTimestamp": 1,)"
-#ifdef BITE2
+#ifdef BITE
     R"(            "Bite2PatchTimestamp": 1,
             "currentBlockRandomPatchTimestamp": 1,)"
 #endif
@@ -5207,7 +5207,7 @@ static std::string const c_BITEConfigString =
         "0000000000000000000000000000000000000003": { "precompiled": { "name": "ripemd160", "linear": { "base": 600, "word": 120 } } },
         "0000000000000000000000000000000000000004": { "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } } },
         "0000000000000000000000000000000000000005": { "precompiled": { "name": "getBlockRandom", "linear": { "base": 15, "word": 0 } } },)"
-#ifdef BITE2
+#ifdef BITE
     R"(
         "000000000000000000000000000000000000001A": { "precompiled": { "name": "getRandomWalletAndSignatureForCTX", "linear": { "base": 15, "word": 0 } } },
         "000000000000000000000000000000000000001B": { "precompiled": { "name": "submitCTX", "linear": { "base": 15, "word": 0 } } },)"
@@ -5336,7 +5336,7 @@ static std::string const c_BITEConfigString =
             "schainID": 1,
             "emptyBlockIntervalMs": -1,
             "SingleStateCommitPerBlockPatchTimestamp": 1,)"
-#ifdef BITE2
+#ifdef BITE
     R"(            "Bite2PatchTimestamp": 1,
             "currentBlockRandomPatchTimestamp": 1,)"
 #endif
@@ -5406,7 +5406,7 @@ static std::string const c_BITEConfigString =
         "0000000000000000000000000000000000000003": { "precompiled": { "name": "ripemd160", "linear": { "base": 600, "word": 120 } } },
         "0000000000000000000000000000000000000004": { "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } } },
         "0000000000000000000000000000000000000005": { "precompiled": { "name": "getBlockRandom", "linear": { "base": 15, "word": 0 } } },)"
-#ifdef BITE2
+#ifdef BITE
     R"(
         "0x000000000000000000000000000000000000001A": { "precompiled": { "name": "getRandomWalletAndSignatureForCTX", "linear": { "base": 15, "word": 0 } } },
         "0x000000000000000000000000000000000000001B": { "precompiled": { "name": "submitCTX", "linear": { "base": 15, "word": 0 } } },)"
@@ -5748,7 +5748,7 @@ BOOST_AUTO_TEST_CASE( getCommonPublicKey ) {
     BOOST_REQUIRE_EQUAL( epochId, fixture.client->getCurrentEpochId() );
 }
 
-#ifdef BITE2
+#ifdef BITE
 
 // Helper function to build abi.encode(bytes[] args1, bytes[] args2)
 dev::bytes buildAbiEncodedArrays( const std::vector<dev::bytes>& args1Elements, const std::vector<dev::bytes>& args2Elements ) {
@@ -6397,7 +6397,7 @@ BOOST_AUTO_TEST_CASE( CTXOutOfBlockGasLimit ) {
     }
 }
 
-#endif // BITE2
+#endif // BITE
 
 #ifdef FAIR
 BOOST_AUTO_TEST_CASE( getBLSPublicKey ) {
@@ -8541,9 +8541,9 @@ BOOST_AUTO_TEST_CASE( test_transactions ) {
     client->importTransactionsAsBlock( Transactions{ invalid, valid },
 #ifdef BITE
                                        DecryptedTransactions{
-#ifdef BITE2
+#ifdef BITE
                                                std::make_shared< DecryptedCTXTxsMap >(),
-#endif  // BITE2
+#endif // BITE
                                                std::make_shared< DecryptedRegularTxsMap >()
                                            },
 #endif
@@ -8595,9 +8595,9 @@ BOOST_AUTO_TEST_CASE( test_exceptions ) {
     client->importTransactionsAsBlock( Transactions{ invalid, valid },
 #ifdef BITE
                                        DecryptedTransactions{
-#ifdef BITE2
+#ifdef BITE
                                                std::make_shared< DecryptedCTXTxsMap >(),
-#endif  // BITE2
+#endif // BITE
                                                std::make_shared< DecryptedRegularTxsMap >()
                                            },
 #endif

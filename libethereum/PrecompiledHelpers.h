@@ -28,7 +28,7 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonData.h>
 #include <libdevcore/Log.h>
-#ifdef BITE2
+#ifdef BITE
 #include <libdevcore/RLP.h>
 #endif
 #include <libethcore/Common.h>

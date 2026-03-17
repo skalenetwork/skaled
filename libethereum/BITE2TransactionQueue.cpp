@@ -17,7 +17,7 @@
     along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifdef BITE2
+#ifdef BITE
 
 #include "BITE2TransactionQueue.h"
 #include <libethcore/Exceptions.h>
@@ -117,4 +117,4 @@ bool BITE2TransactionQueue::dropGood( const Transaction& _t ) {
     return false;
 }
 
-#endif  // BITE2
+#endif  // BITE

@@ -19,7 +19,7 @@
 
 #pragma once
 
-#ifdef BITE2
+#ifdef BITE
 
 #include "Transaction.h"
 #include <libdevcore/Common.h>
@@ -86,4 +86,4 @@ void BITE2TransactionQueue::setQueueOnInit( C&& _ctxQueue ) {
 }  // namespace eth
 }  // namespace dev
 
-#endif  // BITE2
+#endif  // BITE

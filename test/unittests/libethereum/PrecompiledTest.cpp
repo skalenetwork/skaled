@@ -28,7 +28,7 @@
 #include <libethereum/Client.h>
 #include <libethereum/ClientTest.h>
 #include <libethereum/SkaleHost.h>
-#ifdef BITE2
+#ifdef BITE
 #include <libconsensus/libBLS/threshold_encryption/ThresholdEncryption.h>
 #include <libethcore/BITECommon.h>
 #endif
@@ -77,7 +77,7 @@ BOOST_AUTO_TEST_CASE( modexpFermatTheorem,
         "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e"
         "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f" );
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
-#ifdef BITE2
+#ifdef BITE
                                                               0,
                                                               1,
                                                               dev::ZeroAddress,
@@ -101,7 +101,7 @@ BOOST_AUTO_TEST_CASE( modexpZeroBase,
         "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e"
         "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f" );
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
-#ifdef BITE2
+#ifdef BITE
                                                               0,
                                                               1,
                                                               dev::ZeroAddress,
@@ -127,7 +127,7 @@ BOOST_AUTO_TEST_CASE( modexpExtraByteIgnored,
         "8000000000000000000000000000000000000000000000000000000000000000"
         "07" );
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
-#ifdef BITE2
+#ifdef BITE
                                                               0,
                                                               1,
                                                               dev::ZeroAddress,
@@ -152,7 +152,7 @@ BOOST_AUTO_TEST_CASE( modexpRightPadding,
         "ffff"
         "80" );
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
-#ifdef BITE2
+#ifdef BITE
                                                               0,
                                                               1,
                                                               dev::ZeroAddress,
@@ -174,7 +174,7 @@ BOOST_AUTO_TEST_CASE( modexpMissingValues ) {
         "0000000000000000000000000000000000000000000000000000000000000020"
         "03" );
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
-#ifdef BITE2
+#ifdef BITE
                                                               0,
                                                               1,
                                                               dev::ZeroAddress,
@@ -198,7 +198,7 @@ BOOST_AUTO_TEST_CASE( modexpEmptyValue,
         "03"
         "8000000000000000000000000000000000000000000000000000000000000000" );
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
-#ifdef BITE2
+#ifdef BITE
                                                               0,
                                                               1,
                                                               dev::ZeroAddress,
@@ -223,7 +223,7 @@ BOOST_AUTO_TEST_CASE( modexpZeroPowerZero,
         "00"
         "80" );
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
-#ifdef BITE2
+#ifdef BITE
                                                               0,
                                                               1,
                                                               dev::ZeroAddress,
@@ -248,7 +248,7 @@ BOOST_AUTO_TEST_CASE( modexpZeroPowerZeroModZero,
         "00"
         "00" );
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
-#ifdef BITE2
+#ifdef BITE
                                                               0,
                                                               1,
                                                               dev::ZeroAddress,
@@ -272,7 +272,7 @@ BOOST_AUTO_TEST_CASE( modexpModLengthZero,
         "01"
         "01" );
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
-#ifdef BITE2
+#ifdef BITE
                                                               0,
                                                               1,
                                                               dev::ZeroAddress,
@@ -1518,7 +1518,7 @@ void benchmarkPrecompiled( char const name[], vector_ref< const PrecompiledTest 
         bytesConstRef inputRef = &input;
 
         auto res = exec( inputRef, { 1,
-#ifdef BITE2
+#ifdef BITE
                                      0,
                                      1,
                                      dev::ZeroAddress,
@@ -1530,7 +1530,7 @@ void benchmarkPrecompiled( char const name[], vector_ref< const PrecompiledTest 
         timer.restart();
         for ( int i = 0; i < n; ++i )
             exec( inputRef, { 1,
-#ifdef BITE2
+#ifdef BITE
                               0,
                               1,
                               dev::ZeroAddress,
@@ -1792,7 +1792,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     client->setAuthor( Address("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF") );
 
     client->injectSkaleHost();
-#ifdef BITE2
+#ifdef BITE
     dev::eth::g_skaleHost = client->skaleHost();
 #endif
     client->startWorking();
@@ -1805,9 +1805,9 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
         dev::eth::Transactions(),
 #ifdef BITE
         DecryptedTransactions{
-#ifdef BITE2
+#ifdef BITE
                 std::make_shared< DecryptedCTXTxsMap >(),
-#endif  // BITE2
+#endif  // BITE
                 std::make_shared< DecryptedRegularTxsMap >()
             },
 #endif
@@ -1822,7 +1822,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
 
     bytes in = fromHex( numberToHex( 29 ) + input );
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
-#ifdef BITE2
+#ifdef BITE
                                                               { -1 },
                                                               0,
                                                               dev::ZeroAddress,
@@ -1836,7 +1836,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     input = input.substr(0, 76); // remove 0s in the end
     in = fromHex( numberToHex( 38 ) + input );
     res = exec( bytesConstRef( in.data(), in.size() ), { 1,
-#ifdef BITE2
+#ifdef BITE
                                                          { -1 },
                                                          0,
                                                          dev::ZeroAddress,
@@ -1850,7 +1850,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     input = input.substr(0, 72); // remove 0s in the end
     in = fromHex( numberToHex( 36 ) + input );
     res = exec( bytesConstRef( in.data(), in.size() ), { 1,
-#ifdef BITE2
+#ifdef BITE
                                                          { -1 },
                                                          0,
                                                          dev::ZeroAddress,
@@ -1863,7 +1863,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     input = input.substr(0, 78); // remove 0s in the end
     in = fromHex( numberToHex( 39 ) + input );
     res = exec( bytesConstRef( in.data(), in.size() ), { 1,
-#ifdef BITE2
+#ifdef BITE
                                                          { -1 },
                                                          0,
                                                          dev::ZeroAddress,
@@ -1876,7 +1876,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     input = input.substr(0, 68); // remove 0s in the end
     in = fromHex( numberToHex( 34 ) + input );
     res = exec( bytesConstRef( in.data(), in.size() ), { 1,
-#ifdef BITE2
+#ifdef BITE
                                                          { -1 },
                                                          0,
                                                          dev::ZeroAddress,
@@ -1890,7 +1890,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     input = input.substr(0, 68); // remove 0s in the end
     in = fromHex( numberToHex( 34 ) + input );
     res = exec( bytesConstRef( in.data(), in.size() ), { 1,
-#ifdef BITE2
+#ifdef BITE
                                                          { -1 },
                                                          0,
                                                          dev::ZeroAddress,
@@ -1905,7 +1905,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     input = input.substr(0, 72); // remove 0s in the end
     in = fromHex( numberToHex( 36 ) + input );
     res = exec( bytesConstRef( in.data(), in.size() ), { 1,
-#ifdef BITE2
+#ifdef BITE
                                                          { -1 },
                                                          0,
                                                          dev::ZeroAddress,
@@ -1920,7 +1920,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
 
     in = fromHex( numberToHex( 29 ) + input );
     res = exec( bytesConstRef( in.data(), in.size() ), { 1,
-#ifdef BITE2
+#ifdef BITE
                                                          { -1 },
                                                          0,
                                                          dev::ZeroAddress,
@@ -1933,7 +1933,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     input = input.substr(0, 76); // remove 0s in the end
     in = fromHex( numberToHex( 38 ) + input );
     res = exec( bytesConstRef( in.data(), in.size() ), { 1,
-#ifdef BITE2
+#ifdef BITE
                                                          { -1 },
                                                          0,
                                                          dev::ZeroAddress,
@@ -1946,7 +1946,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     input = input.substr(0, 78); // remove 0s in the end
     in = fromHex( numberToHex( 39 ) + input );
     res = exec( bytesConstRef( in.data(), in.size() ), { 1,
-#ifdef BITE2
+#ifdef BITE
                                                          { -1 },
                                                          0,
                                                          dev::ZeroAddress,
@@ -1955,13 +1955,13 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
 
     BOOST_REQUIRE( !res.first );
 
-#ifdef BITE2
+#ifdef BITE
     if ( g_skaleHost )
         g_skaleHost.reset();
 #endif
 }
 
-#ifdef BITE2
+#ifdef BITE
 
 BOOST_AUTO_TEST_CASE( submitCTX_validateBITECiphertext_Success ) {    
     Json::Value ret;
@@ -2274,7 +2274,7 @@ BOOST_AUTO_TEST_CASE( createFile ) {
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
                         numberToHex( fileSize ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
-#ifdef BITE2
+#ifdef BITE
                                                               { -1 },
                                                               0,
                                                               dev::ZeroAddress,
@@ -2298,7 +2298,7 @@ BOOST_AUTO_TEST_CASE( fileWithHashExtension ) {
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
             numberToHex( fileSize ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
-#ifdef BITE2
+#ifdef BITE
                                                               { -1 },
                                                               0,
                                                               dev::ZeroAddress,
@@ -2317,7 +2317,7 @@ BOOST_AUTO_TEST_CASE( uploadChunk ) {
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
                         numberToHex( 0 ) + numberToHex( data.length() ) + stringToHex( data ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
-#ifdef BITE2
+#ifdef BITE
                                                               { -1 },
                                                               0,
                                                               dev::ZeroAddress,
@@ -2339,7 +2339,7 @@ BOOST_AUTO_TEST_CASE( readChunk ) {
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
                         numberToHex( 0 ) + numberToHex( fileSize ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
-#ifdef BITE2
+#ifdef BITE
                                                               { -1 },
                                                               0,
                                                               dev::ZeroAddress,
@@ -2362,7 +2362,7 @@ BOOST_AUTO_TEST_CASE( readMaliciousChunk ) {
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
                         numberToHex( 0 ) + numberToHex( fileSize ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
-#ifdef BITE2
+#ifdef BITE
                                                               { -1 },
                                                               0,
                                                               dev::ZeroAddress,
@@ -2376,7 +2376,7 @@ BOOST_AUTO_TEST_CASE( getFileSize ) {
 
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
-#ifdef BITE2
+#ifdef BITE
                                                               { -1 },
                                                               0,
                                                               dev::ZeroAddress,
@@ -2393,7 +2393,7 @@ BOOST_AUTO_TEST_CASE( getMaliciousFileSize ) {
 
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
-#ifdef BITE2
+#ifdef BITE
                                                               { -1 },
                                                               0,
                                                               dev::ZeroAddress,
@@ -2407,7 +2407,7 @@ BOOST_AUTO_TEST_CASE( deleteFile ) {
     bytes inCreate = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
                             numberToHex( fileSize ) );
     execCreate( bytesConstRef( inCreate.data(), inCreate.size() ), { 1,
-#ifdef BITE2
+#ifdef BITE
                                                                      { -1 },
                                                                      0,
                                                                      dev::ZeroAddress,
@@ -2419,7 +2419,7 @@ BOOST_AUTO_TEST_CASE( deleteFile ) {
     bytes inHash = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
                         numberToHex( fileSize ) );
     execHash( bytesConstRef( inHash.data(), inHash.size() ), { 1,
-#ifdef BITE2
+#ifdef BITE
                                                                { -1 },
                                                                0,
                                                                dev::ZeroAddress,
@@ -2432,7 +2432,7 @@ BOOST_AUTO_TEST_CASE( deleteFile ) {
 
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
-#ifdef BITE2
+#ifdef BITE
                                                               { -1 },
                                                               0,
                                                               dev::ZeroAddress,
@@ -2454,7 +2454,7 @@ BOOST_AUTO_TEST_CASE( createDirectory ) {
 
     bytes in = fromHex( hexAddress + numberToHex( dirName.length() ) + stringToHex( dirName ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
-#ifdef BITE2
+#ifdef BITE
                                                               { -1 },
                                                               0,
                                                               dev::ZeroAddress,
@@ -2477,7 +2477,7 @@ BOOST_AUTO_TEST_CASE( deleteDirectory ) {
 
     bytes in = fromHex( hexAddress + numberToHex( dirName.length() ) + stringToHex( dirName ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
-#ifdef BITE2
+#ifdef BITE
                                                               { -1 },
                                                               0,
                                                               dev::ZeroAddress,
@@ -2505,7 +2505,7 @@ BOOST_AUTO_TEST_CASE( calculateFileHash ) {
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
                         numberToHex( fileSize ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
-#ifdef BITE2
+#ifdef BITE
                                                               { -1 },
                                                               0,
                                                               dev::ZeroAddress,

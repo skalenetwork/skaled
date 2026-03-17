@@ -145,7 +145,7 @@ bigint dev::parseBigEndianRightPadded(
     return ret;
 }
 
-#ifdef BITE2
+#ifdef BITE
 dev::bytes dev::abiEncodeArray( const std::vector< dev::bytes >& _elements ) {
     dev::bytes result;
 

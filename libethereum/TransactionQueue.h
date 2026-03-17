@@ -41,7 +41,7 @@
 #include <mutex>
 #include <thread>
 
-#ifdef BITE2
+#ifdef BITE
 #include "BITE2TransactionQueue.h"
 #endif
 
@@ -157,7 +157,7 @@ public:
     /// @param _t Transaction hash
     void dropGood( Transaction const& _t );
 
-#ifdef BITE2
+#ifdef BITE
     /// Get all pending BITE2 transactions. Returned transactions are not removed from the queue
     /// automatically. For internal logic.
     std::shared_ptr< std::deque< Transaction > > pendingBITE2Transactions() const;
@@ -401,7 +401,7 @@ private:
     mutable Mutex x_queue;                             ///< Verification queue mutex
     std::atomic_bool m_aborting;                       ///< Exit condition for verifier.
 
-#ifdef BITE2
+#ifdef BITE
     BITE2TransactionQueue m_bite2Queue;
 #endif
 

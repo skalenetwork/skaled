@@ -87,7 +87,6 @@ void validateBITECiphertext(
     }
 }
 
-#ifdef BITE2
 dev::bytes constructDecryptedCTXData(
     const dev::bytes& _txData, const DecryptedCTXArgs& _decryptedCTXArgs ) {
     // Transform _txData from: selector(4 bytes) + RLP(RLP(encrypted_args), RLP(plaintext_args))
@@ -238,7 +237,6 @@ std::pair< dev::bytes, size_t > abiEncodedArraysToRlp(
 
     return { finalStream.out(), encryptedArgsCount };
 }
-#endif  // BITE2
 
 }  // namespace bite
 }  // namespace dev

@@ -61,8 +61,8 @@ find_library( YAML_CPP_LIBRARIES NAMES yaml-cpp HINTS "${DEPS_INSTALL_ROOT}/lib"
 
 add_executable(testeth ${sources} unittests/libethereum/InstanceMonitorTest.cpp)
 
-# Add libBLS test utils for BITE2 tests
-if(BITE2)
+# Add libBLS test utils for BITE tests
+if(BITE)
     target_sources(testeth PRIVATE
         ${CMAKE_SOURCE_DIR}/libconsensus/libBLS/test/utils.cpp
     )

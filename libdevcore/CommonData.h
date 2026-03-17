@@ -384,7 +384,7 @@ bool contains( std::unordered_set< V > const& _set, V const& _v ) {
 // If there's not enough bytes in _in, consider it infinitely right-padded with zeroes.
 bigint parseBigEndianRightPadded( bytesConstRef _in, bigint const& _begin, bigint const& _count );
 
-#ifdef BITE2
+#ifdef BITE
 dev::bytes abiEncodeArray( const std::vector< dev::bytes >& _elements );
 
 dev::bytes rlpToAbiEncodedArrays( const dev::bytes& _rlpData );

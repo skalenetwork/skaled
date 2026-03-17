@@ -45,7 +45,7 @@
 
 #include <skutils/console_colors.h>
 
-#ifdef BITE2
+#ifdef BITE
 #include <libethereum/Precompiled.h>
 #include <libethereum/SkaleHost.h>
 #endif
@@ -539,7 +539,7 @@ std::pair< TransactionReceipts, unsigned > Block::recoverFromReceipts(
         m_transactionSet.insert( tx.sha3() );
     }
     m_receipts = std::move( savedData->receipts );
-#ifdef BITE2
+#ifdef BITE
     // set CTXs from previous block to BITE2 queue
     g_skaleHost->setBITE2QueueOnInit( std::move( savedData->ctxsCreatedInBlock ) );
     m_createdCtxs = g_skaleHost->pendingBITE2Transactions();
@@ -595,7 +595,7 @@ void Block::executeTransactions( BlockChain const& _bc, const Transactions& _tra
 
     TransactionReceipts savedReceipts = m_receipts;
 
-#ifdef BITE2
+#ifdef BITE
     m_ctxHashesLists.resize( _transactions.size() );
 #endif
 
@@ -625,7 +625,7 @@ void Block::executeTransactions( BlockChain const& _bc, const Transactions& _tra
             BOOST_LOG( m_loggerError ) << "FAILED transaction after consensus! " << ex.what();
         }
     }
-#ifdef BITE2
+#ifdef BITE
     // finalize BITE2 queue after executing all txns from current block
     m_createdCtxs = g_skaleHost->pendingBITE2Transactions();
 #endif
@@ -666,7 +666,7 @@ std::optional< TransactionReceipt > Block::executeSingleTransaction( BlockChain 
 
     ExecutionResult res = execute( _bc.lastBlockHashes(), _tx, _permanence, OnOpFunc(), _txIndex );
 
-#ifdef BITE2
+#ifdef BITE
     if ( res.excepted != TransactionException::None ) {
         // clear all CTXs that were added by last tx
         // because it was reverted
@@ -741,12 +741,12 @@ void Block::saveStateChanges(
     createBlockSnapshot();
 
     if ( progressLog && _context.singleCommitEnabled ) {
-#ifdef BITE2
+#ifdef BITE
         CHECK_EXPRESSION( m_createdCtxs );
 #endif
         progressLog->markBlockCommitCompleted(
             m_currentBlock.number(), _context.receipts, m_currentBlock.timestamp()
-#ifdef BITE2
+#ifdef BITE
                                                             ,
             *m_createdCtxs
 #endif
@@ -1097,7 +1097,7 @@ ExecutionResult Block::executeHistoricCall( LastBlockHashesFace const& _lh, Tran
 
                 auto resultReceipt = m_state.mutableHistoricState().execute(
                     envInfo, m_sealEngine->chainParams(), _t, skale::Permanence::Uncommitted, onOp
-#ifdef BITE2
+#ifdef BITE
                     ,
                     _transactionIndex
 #endif
@@ -1117,7 +1117,7 @@ ExecutionResult Block::executeHistoricCall( LastBlockHashesFace const& _lh, Tran
         } else {
             auto resultReceipt = m_state.mutableHistoricState().execute(
                 envInfo, m_sealEngine->chainParams(), _t, skale::Permanence::Reverted, onOp
-#ifdef BITE2
+#ifdef BITE
                 ,
                 _transactionIndex
 #endif

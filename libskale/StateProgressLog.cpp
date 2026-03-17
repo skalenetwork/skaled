@@ -40,7 +40,7 @@ void StateProgressLog::markBlockCommitStarted( uint64_t _blockNumber ) {
 
 void StateProgressLog::markBlockCommitCompleted(
     uint64_t _blockNumber, const dev::eth::TransactionReceipts& _receipts, uint64_t _timestamp
-#ifdef BITE2
+#ifdef BITE
     ,
     const std::deque< dev::eth::Transaction >& _ctxsCreatedInBlock
 #endif
@@ -50,7 +50,7 @@ void StateProgressLog::markBlockCommitCompleted(
     data.status = static_cast< uint8_t >( Status::Completed );
     data.timestamp = _timestamp;
     data.receipts = _receipts;
-#ifdef BITE2
+#ifdef BITE
     data.ctxsCreatedInBlock = _ctxsCreatedInBlock;
 #endif
     writeProgressData( data );
@@ -70,7 +70,7 @@ void StateProgressLog::writeProgressData( const CommittedProgressData& _data ) {
     }
     rlpStream.appendRaw( receiptsStream.out() );
 
-#ifdef BITE2
+#ifdef BITE
     dev::RLPStream ctxsStream;
     ctxsStream.appendList( _data.ctxsCreatedInBlock.size() );
     for ( const auto& ctx : _data.ctxsCreatedInBlock ) {
@@ -136,7 +136,7 @@ std::optional< CommittedProgressData > StateProgressLog::loadProgressData() cons
             data.receipts.emplace_back( item.data() );
         }
 
-#ifdef BITE2
+#ifdef BITE
         for ( auto const& item : rlp[4] ) {
             data.ctxsCreatedInBlock.emplace_back( item.data(), dev::eth::CheckTransaction::None,
                 true, EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
