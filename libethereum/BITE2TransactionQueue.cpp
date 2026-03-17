@@ -32,7 +32,8 @@ std::deque< Transaction > BITE2TransactionQueue::debug_pendingBITE2Transactions(
     return *m_current;
 }
 
-std::shared_ptr< std::deque< Transaction > > BITE2TransactionQueue::pendingBITE2Transactions() const {
+std::shared_ptr< std::deque< Transaction > > BITE2TransactionQueue::pendingBITE2Transactions()
+    const {
     // no lock - always called AFTER all txns in block are executed
     // no new txns can be added at this point
     CHECK_EXPRESSION( m_current );
