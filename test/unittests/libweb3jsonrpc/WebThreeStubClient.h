@@ -180,10 +180,10 @@ public:
 #ifdef BITE
     Json::Value bite_getCommitteesInfo() noexcept( false );
     Json::Value bite_getDecryptedTransactionData( const std::string& param1 ) noexcept( false );
-#ifdef BITE2
+#ifdef BITE
     Json::Value bite_getCraftedCtxs( const std::string& request ) noexcept( false );
     std::string bite_getCtxOrigin( const std::string& request ) noexcept( false );
-#endif   // BITE2
+#endif   // BITE
 #endif   // BITE
 
 #ifdef FAIR

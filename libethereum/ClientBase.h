@@ -148,10 +148,8 @@ public:
 
 #ifdef BITE
     DecryptedTransactionData decryptedTransactionData( h256 _transactionHash ) const;
-#ifdef BITE2
     dev::h256 ctxOrigin( const dev::h256& _ctxHash ) const;
     std::vector< dev::h256 > craftedCTXs( const dev::h256& _transactionHash ) const;
-#endif  // BITE2
 #endif  // BITE
 
     EVMSchedule evmSchedule() const override;

@@ -149,7 +149,7 @@ public:
             [&block_promise]( BlockHeader const& ) { block_promise.set_value(); } );
 
         m_ethereum->injectSkaleHost();
-#ifdef BITE2
+#ifdef BITE
         dev::eth::g_skaleHost = m_ethereum->skaleHost();
 #endif
         m_ethereum->startWorking();
@@ -232,10 +232,10 @@ public:
             g_skaleHost.reset();
         m_ethereum.reset();
 #else
-#ifdef BITE2
+#ifdef BITE
         if ( g_skaleHost )
             g_skaleHost.reset();
-#endif   // BITE2
+#endif   // BITE
 #endif   // FAIR
     }
 
@@ -311,7 +311,7 @@ public:
             [&block_promise]( BlockHeader const& ) { block_promise.set_value(); } );
 
         m_ethereum->injectSkaleHost();
-#ifdef BITE2
+#ifdef BITE
         dev::eth::g_skaleHost = m_ethereum->skaleHost();
 #endif
         m_ethereum->startWorking();
@@ -334,7 +334,7 @@ public:
     fs::path getTmpDataDir() { return m_tmpDir.path(); }
 
     ~TestClientSnapshotsFixture() {
-#ifdef BITE2
+#ifdef BITE
         if ( dev::eth::g_skaleHost )
             dev::eth::g_skaleHost.reset();
 #endif
@@ -1286,9 +1286,7 @@ BOOST_AUTO_TEST_CASE( initAndUpdateHistoricConfigFields ) {
     testClient->importTransactionsAsBlock( Transactions(),
 #ifdef BITE
        DecryptedTransactions{
-#ifdef BITE2
                std::make_shared< DecryptedCTXTxsMap >(),
-#endif  // BITE2
                std::make_shared< DecryptedRegularTxsMap >()
            },
 #endif

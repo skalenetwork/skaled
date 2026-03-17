@@ -7,7 +7,7 @@
 #endif
 #include <libskale/ConsensusGasPricer.h>
 
-#ifdef BITE2
+#ifdef BITE
 #include <libconsensus/libBLS/threshold_encryption/TEPrivateKey.h>
 #include <libconsensus/libBLS/threshold_encryption/TEPrivateKeyShare.h>
 #include <libconsensus/libBLS/threshold_encryption/TEPublicKeyShare.h>
@@ -119,7 +119,7 @@ public:
 
     u256 getRandomForBlockId( uint64_t _blockId ) const override { return _blockId; }
 
-#ifdef BITE2
+#ifdef BITE
     u256 getReencryptionRandomForBlockId( uint64_t _blockId ) const override { return _blockId; }
 #endif
 
@@ -407,9 +407,9 @@ BOOST_DATA_TEST_CASE(
         stub->createBlock( txns,
 #ifdef BITE
                            DecryptedTransactions{
-#ifdef BITE2
+#ifdef BITE
                                    std::make_shared< DecryptedCTXTxsMap >(),
-#endif  // BITE2
+#endif  // BITE
                                    std::make_shared< DecryptedRegularTxsMap >()
                                },
 #endif
@@ -464,9 +464,9 @@ BOOST_DATA_TEST_CASE(
         blockTxns,
 #ifdef BITE
                                 DecryptedTransactions{
-#ifdef BITE2
+#ifdef BITE
                                         std::make_shared< DecryptedCTXTxsMap >(),
-#endif  // BITE2
+#endif  // BITE
                                         std::make_shared< DecryptedRegularTxsMap >()
                                     },
 #endif
@@ -568,9 +568,9 @@ BOOST_DATA_TEST_CASE(
             stub->createBlock( txns,
 #ifdef BITE
                                DecryptedTransactions{
-#ifdef BITE2
+#ifdef BITE
                                        std::make_shared< DecryptedCTXTxsMap >(),
-#endif  // BITE2
+#endif  // BITE
                                        std::make_shared< DecryptedRegularTxsMap >()
                                    },
 #endif
@@ -643,9 +643,9 @@ BOOST_DATA_TEST_CASE(
     BOOST_REQUIRE_NO_THROW( stub->createBlock( txns,
 #ifdef BITE
                                                DecryptedTransactions{
-#ifdef BITE2
+#ifdef BITE
                                                        std::make_shared< DecryptedCTXTxsMap >(),
-#endif  // BITE2
+#endif  // BITE
                                                        std::make_shared< DecryptedRegularTxsMap >()
                                                    },
 #endif
@@ -708,9 +708,9 @@ BOOST_DATA_TEST_CASE(
         stub->createBlock( txns,
 #ifdef BITE
                            DecryptedTransactions{
-#ifdef BITE2
+#ifdef BITE
                                    std::make_shared< DecryptedCTXTxsMap >(),
-#endif  // BITE2
+#endif  // BITE
                                    std::make_shared< DecryptedRegularTxsMap >()
                                },
 #endif
@@ -788,9 +788,9 @@ BOOST_DATA_TEST_CASE(
         stub->createBlock( txns,
 #ifdef BITE
                            DecryptedTransactions{
-#ifdef BITE2
+#ifdef BITE
                                    std::make_shared< DecryptedCTXTxsMap >(),
-#endif  // BITE2
+#endif  // BITE
                                    std::make_shared< DecryptedRegularTxsMap >()
                                },
 #endif
@@ -845,9 +845,9 @@ BOOST_DATA_TEST_CASE(
         stub->createBlock( txns,
 #ifdef BITE
                            DecryptedTransactions{
-#ifdef BITE2
+#ifdef BITE
                                    std::make_shared< DecryptedCTXTxsMap >(),
-#endif  // BITE2
+#endif  // BITE
                                    std::make_shared< DecryptedRegularTxsMap >()
                                },
 #endif
@@ -903,9 +903,9 @@ BOOST_DATA_TEST_CASE(
         stub->createBlock( block1Txns,
 #ifdef BITE
                            DecryptedTransactions{
-#ifdef BITE2
+#ifdef BITE
                                    std::make_shared< DecryptedCTXTxsMap >(),
-#endif  // BITE2
+#endif  // BITE
                                    std::make_shared< DecryptedRegularTxsMap >()
                                },
 #endif
@@ -931,9 +931,9 @@ BOOST_DATA_TEST_CASE(
         stub->createBlock( block2Txns,
 #ifdef BITE
                            DecryptedTransactions{
-#ifdef BITE2
+#ifdef BITE
                                    std::make_shared< DecryptedCTXTxsMap >(),
-#endif  // BITE2
+#endif  // BITE
                                    std::make_shared< DecryptedRegularTxsMap >()
                                },
 #endif
@@ -1000,9 +1000,9 @@ BOOST_DATA_TEST_CASE(
         stub->createBlock( block1Txns,
 #ifdef BITE
                            DecryptedTransactions{
-#ifdef BITE2
+#ifdef BITE
                                    std::make_shared< DecryptedCTXTxsMap >(),
-#endif  // BITE2
+#endif  // BITE
                                    std::make_shared< DecryptedRegularTxsMap >()
                                },
 #endif
@@ -1040,9 +1040,9 @@ BOOST_DATA_TEST_CASE(
     stub->createBlock( block2Txns,
 #ifdef BITE
                        DecryptedTransactions{
-#ifdef BITE2
+#ifdef BITE
                                std::make_shared< DecryptedCTXTxsMap >(),
-#endif  // BITE2
+#endif  // BITE
                                std::make_shared< DecryptedRegularTxsMap >()
                            },
 #endif
@@ -1110,9 +1110,9 @@ BOOST_DATA_TEST_CASE(
         stub->createBlock( txns,
 #ifdef BITE
                            DecryptedTransactions{
-#ifdef BITE2
+#ifdef BITE
                                    std::make_shared< DecryptedCTXTxsMap >(),
-#endif  // BITE2
+#endif  // BITE
                                    std::make_shared< DecryptedRegularTxsMap >()
                                },
 #endif
@@ -1242,9 +1242,9 @@ BOOST_AUTO_TEST_CASE( transactionDropReceive
     BOOST_REQUIRE_NO_THROW( stub->createBlock( txns,
 #ifdef BITE
                                                DecryptedTransactions{
-        #ifdef BITE2
+        #ifdef BITE
                                                        std::make_shared< DecryptedCTXTxsMap >(),
-        #endif  // BITE2
+        #endif  // BITE
                                                        std::make_shared< DecryptedRegularTxsMap >()
                                                    },
 #endif
@@ -1315,9 +1315,9 @@ BOOST_AUTO_TEST_CASE(
         stub->createBlock( txns,
 #ifdef BITE
                            DecryptedTransactions{
-#ifdef BITE2
+#ifdef BITE
                                    std::make_shared< DecryptedCTXTxsMap >(),
-#endif  // BITE2
+#endif  // BITE
                                    std::make_shared< DecryptedRegularTxsMap >()
                                },
 #endif
@@ -1391,9 +1391,9 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPrice
         stub->createBlock( txns,
 #ifdef BITE
                            DecryptedTransactions{
-#ifdef BITE2
+#ifdef BITE
                                    std::make_shared< DecryptedCTXTxsMap >(),
-#endif  // BITE2
+#endif  // BITE
                                    std::make_shared< DecryptedRegularTxsMap >()
                                },
 #endif
@@ -1476,9 +1476,9 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive
         stub->createBlock( txns,
 #ifdef BITE
                            DecryptedTransactions{
-#ifdef BITE2
+#ifdef BITE
                                    std::make_shared< DecryptedCTXTxsMap >(),
-#endif  // BITE2
+#endif  // BITE
                                    std::make_shared< DecryptedRegularTxsMap >()
                                },
 #endif
@@ -1535,9 +1535,9 @@ BOOST_AUTO_TEST_CASE( transactionRace
         stub->createBlock( txns,
 #ifdef BITE
                            DecryptedTransactions{
-#ifdef BITE2
+#ifdef BITE
                                    std::make_shared< DecryptedCTXTxsMap >(),
-#endif  // BITE2
+#endif  // BITE
                                    std::make_shared< DecryptedRegularTxsMap >()
                                },
 #endif
@@ -1594,9 +1594,9 @@ BOOST_AUTO_TEST_CASE( partialCatchUp
         stub->createBlock( block1txns,
 #ifdef BITE
                            DecryptedTransactions{
-#ifdef BITE2
+#ifdef BITE
                                    std::make_shared< DecryptedCTXTxsMap >(),
-#endif  // BITE2
+#endif  // BITE
                                    std::make_shared< DecryptedRegularTxsMap >()
                                },
 #endif
@@ -1625,9 +1625,9 @@ BOOST_AUTO_TEST_CASE( partialCatchUp
         stub->createBlock( block2Txns,
 #ifdef BITE
                            DecryptedTransactions{
-#ifdef BITE2
+#ifdef BITE
                                    std::make_shared< DecryptedCTXTxsMap >(),
-#endif  // BITE2
+#endif  // BITE
                                    std::make_shared< DecryptedRegularTxsMap >()
                                },
 #endif
@@ -1651,7 +1651,7 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
 
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getBlockRandom" );
     auto res = exec( bytesConstRef(), { 1,
-#ifdef BITE2
+#ifdef BITE
                                         { 0 },
                                         1,
                                         dev::ZeroAddress,
@@ -1669,7 +1669,7 @@ BOOST_AUTO_TEST_CASE( getCurrentBLSPublicKey ) {
 
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getIMABLSPublicKey" );
     auto res = exec( bytesConstRef(), { 1,
-#ifdef BITE2
+#ifdef BITE
                                         { -1 },
                                         0,
                                         dev::ZeroAddress,
@@ -1684,7 +1684,7 @@ BOOST_AUTO_TEST_CASE( getCurrentBLSPublicKey ) {
 }
 #endif
 
-#ifdef BITE2
+#ifdef BITE
 
 BOOST_AUTO_TEST_CASE( encryptionRandom_read_only_does_not_advance_counter ) {
     SkaleHostFixture fixture;
@@ -2491,7 +2491,7 @@ BOOST_AUTO_TEST_CASE( encryptECIES_invalidPublicKey ) {
     BOOST_REQUIRE( !res.first );
     BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 7 ) ) );
 }
-#endif  // BITE2
+#endif  // BITE
 
 #ifdef BITE
 BOOST_AUTO_TEST_CASE( biteTransactions ) {
@@ -2544,7 +2544,7 @@ BOOST_AUTO_TEST_CASE( biteTransactions ) {
         );
 
     DecryptedTransactions decryptedTxnDataMap(
-#ifdef BITE2
+#ifdef BITE
                 std::make_shared< DecryptedCTXTxsMap >(),
 #endif
                 regularTxsMap
@@ -2617,9 +2617,9 @@ BOOST_AUTO_TEST_CASE(syncNodeGroupsUpdatesEpochIdWithoutRotation) {
         ConsensusExtFace::Transactions{},
 #ifdef BITE
                                 DecryptedTransactions{
-#ifdef BITE2
+#ifdef BITE
                                         std::make_shared< DecryptedCTXTxsMap >(),
-#endif  // BITE2
+#endif  // BITE
                                         std::make_shared< DecryptedRegularTxsMap >()
                                     },
 #endif
@@ -2680,9 +2680,9 @@ BOOST_FIXTURE_TEST_CASE(
         stub->createBlock( block1Txns,
 #ifdef BITE
                            DecryptedTransactions{
-#ifdef BITE2
+#ifdef BITE
                                    std::make_shared< DecryptedCTXTxsMap >(),
-#endif  // BITE2
+#endif  // BITE
                                    std::make_shared< DecryptedRegularTxsMap >()
                                },
 #endif
@@ -2718,9 +2718,9 @@ BOOST_FIXTURE_TEST_CASE(
     BOOST_REQUIRE_NO_THROW( stub->createBlock( block2Txns,
 #ifdef BITE
                                                DecryptedTransactions{
-#ifdef BITE2
+#ifdef BITE
                                                        std::make_shared< DecryptedCTXTxsMap >(),
-#endif  // BITE2
+#endif  // BITE
                                                        std::make_shared< DecryptedRegularTxsMap >()
                                                    },
 #endif
@@ -2747,9 +2747,9 @@ BOOST_FIXTURE_TEST_CASE(
     BOOST_REQUIRE_NO_THROW( stub->createBlock( block3Txns,
 #ifdef BITE
                                                DecryptedTransactions{
-#ifdef BITE2
+#ifdef BITE
                                                        std::make_shared< DecryptedCTXTxsMap >(),
-#endif  // BITE2
+#endif  // BITE
                                                        std::make_shared< DecryptedRegularTxsMap >()
                                                    },
 #endif

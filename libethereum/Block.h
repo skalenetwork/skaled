@@ -324,16 +324,13 @@ public:
 
 #ifdef BITE
     void setDecryptedTransactionDataFields( DecryptedTransactions _decryptedTransactions ) {
-#ifdef BITE2
         CHECK_EXPRESSION( _decryptedTransactions.ctxTxsMap );
-#endif
         CHECK_EXPRESSION( _decryptedTransactions.regularTxsMap );
         m_decryptedTransactions = _decryptedTransactions;
     }
 
     const DecryptedTransactions& decryptedTransactions() const { return m_decryptedTransactions; }
 
-#ifdef BITE2
     const std::vector< std::vector< dev::h256 > > ctxHashesLists() const {
         return m_ctxHashesLists;
     }
@@ -342,7 +339,6 @@ public:
         CHECK_EXPRESSION( m_createdCtxs );
         return m_createdCtxs;
     }
-#endif  // BITE2
 #endif  // BITE
 
 private:
@@ -427,23 +423,18 @@ private:
 #ifdef BITE
     // decrypted transaction data fields to be stored with the block and their indexes
     // only filled for a working block
-    DecryptedTransactions m_decryptedTransactions = DecryptedTransactions{
-#ifdef BITE2
-        std::make_shared< DecryptedCTXTxsMap >(),
-#endif  // BITE2
-        std::make_shared< DecryptedRegularTxsMap >()
-    };
+    DecryptedTransactions m_decryptedTransactions =
+        DecryptedTransactions{ std::make_shared< DecryptedCTXTxsMap >(),
+            std::make_shared< DecryptedRegularTxsMap >() };
 
-#ifdef BITE2
     // list of ctx hashes crafted by every txn in block
     // only filled for a working block
     std::vector< std::vector< dev::h256 > > m_ctxHashesLists;
     // list of ctxs created by every txn in block
     // only filled for a working block
-    // safe, because it is filled with transactions from BITE2 queue
+    // safe, because it is filled with transactions from BITE queue
     // which stay there until the block is committed
     std::shared_ptr< Transactions > m_createdCtxs = std::make_shared< Transactions >();
-#endif  // BITE2
 #endif  // BITE
 
     Logger m_loggerDebug{ createLogger( VerbosityDebug, "block" ) };
