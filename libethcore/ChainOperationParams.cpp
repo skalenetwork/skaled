@@ -100,6 +100,8 @@ EVMSchedule const ChainOperationParams::makeEvmSchedule(
         result = PushZeroPatch::makeSchedule( result );
     if ( BerlinForkPatch::isEnabledWhen( _committedBlockTimestamp ) )
         result = BerlinForkPatch::makeSchedule( result );
+    if ( LondonForkPatch::isEnabledWhen( _committedBlockTimestamp ) )
+        result = LondonForkPatch::makeSchedule( result );
 
 #ifdef FAIR
     if ( BlockRewardsActivationPatch::isEnabled( chainID ) )

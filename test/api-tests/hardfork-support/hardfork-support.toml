@@ -43,6 +43,7 @@ http_port       = 3234
 berlinForkPatchTimestamp                = 1
 pushZeroPatchTimestamp                  = 1
 EIP1559TransactionsPatchTimestamp       = 1
+londonForkPatchTimestamp                = 1
 singleStateCommitPerBlockPatchTimestamp = 1
 flexibleDeploymentPatchTimestamp        = 1
 
@@ -51,7 +52,7 @@ flexibleDeploymentPatchTimestamp        = 1
 # --------------------------------------------------------------------------
 [anvil]
 image      = "ghcr.io/foundry-rs/foundry:rc-3"
-extra_args = []
+extra_args = ["--hardfork", "london"]
 
 # --------------------------------------------------------------------------
 # Contract deployment (Step 2)
@@ -67,7 +68,7 @@ command = "bun hardhat run scripts/deploy_eip_tests.ts --network custom"
 # Number of iterations (0 = infinite loop until Ctrl-C).
 iterations = 1
 
-# EIPs to test (empty = all: 2929, 2930, 2718, 2565).
+# EIPs to test (empty = all: Berlin + London suite EIPs).
 eips = []
 
 # Gas limit for deployment and test transactions.

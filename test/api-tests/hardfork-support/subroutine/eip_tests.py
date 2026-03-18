@@ -85,8 +85,21 @@ def _send_tx(w3: Web3, deployer: LocalAccount, tx_dict: dict, pre_wait: float = 
     # may lag behind a recently confirmed transaction.
     tx_dict["nonce"] = w3.eth.get_transaction_count(deployer.address)
     # Type 2 (EIP-1559) uses maxFeePerGas/maxPriorityFeePerGas; gasPrice must not be present.
-    if tx_dict.get("type", 0) != 2:
+    # web3.py may set type as "0x2" (str) or 2 (int), and may auto-add maxFeePerGas when it
+    # detects EIP-1559 support.  Treat any of these as a type-2 tx and skip gasPrice.
+    tx_type = tx_dict.get("type", 0)
+    if isinstance(tx_type, str):
+        tx_type = int(tx_type, 16) if tx_type.startswith("0x") else int(tx_type)
+    if tx_type != 2 and "maxFeePerGas" not in tx_dict:
         tx_dict.setdefault("gasPrice", w3.eth.gas_price)
+    else:
+        # Type 2 tx: web3.py may compute maxFeePerGas=0 when baseFeePerGas=0 and
+        # eth_maxPriorityFeePerGas is unsupported. The node enforces a minimum floor
+        # equal to eth_gasPrice, so bump maxFeePerGas up if needed.
+        min_price = int(w3.eth.gas_price)
+        if min_price > 0 and tx_dict.get("maxFeePerGas", 0) < min_price:
+            tx_dict["maxFeePerGas"] = min_price
+            tx_dict["maxPriorityFeePerGas"] = min_price
     signed = deployer.sign_transaction(tx_dict)
     tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
     logger.info("Sent tx %s (type=%s)", tx_hash.hex(), tx_dict.get("type", 0))
@@ -96,6 +109,16 @@ def _send_tx(w3: Web3, deployer: LocalAccount, tx_dict: dict, pre_wait: float = 
     return w3.eth.wait_for_transaction_receipt(
         tx_hash, timeout=300, poll_latency=5
     )
+
+
+def _as_int(value):
+    if value is None:
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        return int(value, 16) if value.startswith("0x") else int(value)
+    return int(value)
 
 
 # ---------------------------------------------------------------------------
@@ -1136,6 +1159,384 @@ def test_eip_2718_type2_accepted(
 
 
 # ---------------------------------------------------------------------------
+# EIP-3198 / EIP-3529 / EIP-3541 / EIP-1559 London tests
+# ---------------------------------------------------------------------------
+
+def test_eip_3198(w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000) -> EIPTestResult:
+    """BASEFEE opcode returns the same value as block.baseFeePerGas."""
+    logger.info("=== EIP-3198 BASEFEE opcode test ===")
+    abi, bytecode = _load_artifact(sol_dir, "EIP3198Test")
+    addr = _deploy_contract(w3, deployer, abi, bytecode, gas_limit)
+    contract = w3.eth.contract(address=addr, abi=abi)
+
+    opcode_base_fee = _as_int(contract.functions.getBaseFee().call())
+    block = w3.eth.get_block("latest")
+    header_base_fee = _as_int(block.get("baseFeePerGas"))
+
+    details = {
+        "opcode_base_fee": opcode_base_fee,
+        "header_base_fee": header_base_fee,
+        "block_number": block["number"],
+        "contract": addr,
+    }
+
+    if header_base_fee is None:
+        return EIPTestResult(
+            eip="3198",
+            passed=False,
+            message="baseFeePerGas missing from block header",
+            details=details,
+        )
+    if opcode_base_fee != header_base_fee:
+        return EIPTestResult(
+            eip="3198",
+            passed=False,
+            message=f"BASEFEE opcode={opcode_base_fee}, header={header_base_fee}",
+            details=details,
+        )
+
+    return EIPTestResult(
+        eip="3198",
+        passed=True,
+        message=f"BASEFEE matches header value ({opcode_base_fee})",
+        details=details,
+    )
+
+
+def test_eip_3529(w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000) -> EIPTestResult:
+    """Smoke test for reduced SSTORE refunds under London."""
+    logger.info("=== EIP-3529 SSTORE refund test ===")
+    abi, bytecode = _load_artifact(sol_dir, "EIP3529Test")
+    addr = _deploy_contract(w3, deployer, abi, bytecode, gas_limit)
+    contract = w3.eth.contract(address=addr, abi=abi)
+
+    key = 42
+    receipt_prep = _send_tx(
+        w3,
+        deployer,
+        contract.functions.prepopulate(key, 1).build_transaction(
+            {"from": deployer.address, "gas": gas_limit, "chainId": w3.eth.chain_id}
+        ),
+    )
+    receipt_clear = _send_tx(
+        w3,
+        deployer,
+        contract.functions.clearSlot(key).build_transaction(
+            {"from": deployer.address, "gas": gas_limit, "chainId": w3.eth.chain_id}
+        ),
+    )
+
+    details = {
+        "gas_used_prepopulate": receipt_prep["gasUsed"],
+        "gas_used_clear": receipt_clear["gasUsed"],
+        "status_prepopulate": receipt_prep["status"],
+        "status_clear": receipt_clear["status"],
+        "contract": addr,
+    }
+
+    errors = []
+    if receipt_prep["status"] != 1:
+        errors.append("prepopulate transaction reverted")
+    if receipt_clear["status"] != 1:
+        errors.append("clearSlot transaction reverted")
+
+    if errors:
+        return EIPTestResult(
+            eip="3529",
+            passed=False,
+            message="; ".join(errors),
+            details=details,
+        )
+
+    return EIPTestResult(
+        eip="3529",
+        passed=True,
+        message=f"SSTORE clear succeeded, gasUsed={receipt_clear['gasUsed']}",
+        details=details,
+    )
+
+
+def test_eip_3529_selfdestruct(
+    w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000
+) -> EIPTestResult:
+    """SELFDESTRUCT path should execute successfully with London semantics."""
+    logger.info("=== EIP-3529 SELFDESTRUCT refund removal test ===")
+    abi, bytecode = _load_artifact(sol_dir, "EIP3529Test")
+    addr = _deploy_contract(w3, deployer, abi, bytecode, gas_limit)
+    contract = w3.eth.contract(address=addr, abi=abi)
+
+    receipt = _send_tx(
+        w3,
+        deployer,
+        contract.functions.measureSelfdestructRefund().build_transaction(
+            {"from": deployer.address, "gas": gas_limit, "chainId": w3.eth.chain_id}
+        ),
+    )
+
+    details = {
+        "status": receipt["status"],
+        "gas_used": receipt["gasUsed"],
+        "contract": addr,
+    }
+
+    if receipt["status"] != 1:
+        return EIPTestResult(
+            eip="3529-selfdestruct",
+            passed=False,
+            message="SELFDESTRUCT measurement transaction reverted",
+            details=details,
+        )
+    return EIPTestResult(
+        eip="3529-selfdestruct",
+        passed=True,
+        message=f"SELFDESTRUCT measurement succeeded, gasUsed={receipt['gasUsed']}",
+        details=details,
+    )
+
+
+def test_eip_3541(w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000) -> EIPTestResult:
+    """Reject deployment of contracts whose runtime code starts with 0xEF."""
+    logger.info("=== EIP-3541 reject 0xEF contracts test ===")
+    abi, bytecode = _load_artifact(sol_dir, "EIP3541Test")
+    addr = _deploy_contract(w3, deployer, abi, bytecode, gas_limit)
+    contract = w3.eth.contract(address=addr, abi=abi)
+
+    receipt_ef = _send_tx(
+        w3,
+        deployer,
+        contract.functions.deployEFCode().build_transaction(
+            {"from": deployer.address, "gas": gas_limit, "chainId": w3.eth.chain_id}
+        ),
+    )
+    receipt_fe = _send_tx(
+        w3,
+        deployer,
+        contract.functions.deployFECode().build_transaction(
+            {"from": deployer.address, "gas": gas_limit, "chainId": w3.eth.chain_id}
+        ),
+    )
+    receipt_ef2 = _send_tx(
+        w3,
+        deployer,
+        contract.functions.deployEFCodeCreate2(bytes(32)).build_transaction(
+            {"from": deployer.address, "gas": gas_limit, "chainId": w3.eth.chain_id}
+        ),
+    )
+
+    logs_ef = contract.events.DeployResult().process_receipt(receipt_ef)
+    logs_fe = contract.events.DeployResult().process_receipt(receipt_fe)
+    logs_ef2 = contract.events.DeployResult().process_receipt(receipt_ef2)
+
+    ef_success = bool(logs_ef and logs_ef[0]["args"]["success"])
+    fe_success = bool(logs_fe and logs_fe[0]["args"]["success"])
+    ef2_success = bool(logs_ef2 and logs_ef2[0]["args"]["success"])
+
+    details = {
+        "ef_create_success": ef_success,
+        "fe_create_success": fe_success,
+        "ef_create2_success": ef2_success,
+        "contract": addr,
+    }
+
+    if ef_success:
+        return EIPTestResult(
+            eip="3541",
+            passed=False,
+            message="CREATE with 0xEF runtime code unexpectedly succeeded",
+            details=details,
+        )
+    if ef2_success:
+        return EIPTestResult(
+            eip="3541",
+            passed=False,
+            message="CREATE2 with 0xEF runtime code unexpectedly succeeded",
+            details=details,
+        )
+    if not fe_success:
+        return EIPTestResult(
+            eip="3541",
+            passed=False,
+            message="CREATE with 0xFE runtime code unexpectedly failed",
+            details=details,
+        )
+
+    return EIPTestResult(
+        eip="3541",
+        passed=True,
+        message="0xEF deployments rejected (CREATE/CREATE2), 0xFE accepted",
+        details=details,
+    )
+
+
+def test_eip_1559_effective_price(
+    w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000
+) -> EIPTestResult:
+    """Type 2 tx: GASPRICE opcode should report effectiveGasPrice."""
+    logger.info("=== EIP-1559 effective gas price test ===")
+    abi, bytecode = _load_artifact(sol_dir, "EIP1559EffectiveGasPrice")
+    addr = _deploy_contract(w3, deployer, abi, bytecode, gas_limit)
+    contract = w3.eth.contract(address=addr, abi=abi)
+
+    latest = w3.eth.get_block("latest")
+    base_fee = _as_int(latest.get("baseFeePerGas")) or 0
+    max_priority = 0
+    max_fee = max(base_fee, max_priority)
+
+    tx = contract.functions.reportGasPrice().build_transaction(
+        {
+            "from": deployer.address,
+            "gas": gas_limit,
+            "type": 2,
+            "chainId": w3.eth.chain_id,
+            "maxFeePerGas": max_fee,
+            "maxPriorityFeePerGas": max_priority,
+        }
+    )
+    receipt = _send_tx(w3, deployer, tx, pre_wait=1.0)
+
+    logs = contract.events.GasPriceReported().process_receipt(receipt)
+    reported_gas_price = _as_int(logs[0]["args"]["gasPrice"]) if logs else None
+    receipt_effective = _as_int(receipt.get("effectiveGasPrice"))
+
+    details = {
+        "reported_gas_price": reported_gas_price,
+        "receipt_effective_gas_price": receipt_effective,
+        "base_fee": base_fee,
+        "max_fee_per_gas": max_fee,
+        "max_priority_fee_per_gas": max_priority,
+        "status": receipt["status"],
+        "contract": addr,
+    }
+
+    if receipt["status"] != 1:
+        return EIPTestResult(
+            eip="1559-effective-price",
+            passed=False,
+            message="Type 2 transaction reverted",
+            details=details,
+        )
+    if reported_gas_price is None:
+        return EIPTestResult(
+            eip="1559-effective-price",
+            passed=False,
+            message="GasPriceReported event not found",
+            details=details,
+        )
+    if receipt_effective is not None and reported_gas_price != receipt_effective:
+        return EIPTestResult(
+            eip="1559-effective-price",
+            passed=False,
+            message=(
+                f"GASPRICE opcode={reported_gas_price} differs from "
+                f"receipt.effectiveGasPrice={receipt_effective}"
+            ),
+            details=details,
+        )
+
+    return EIPTestResult(
+        eip="1559-effective-price",
+        passed=True,
+        message=(
+            f"GASPRICE opcode={reported_gas_price}, "
+            f"receipt.effectiveGasPrice={receipt_effective}"
+        ),
+        details=details,
+    )
+
+
+def test_eip_1559_basefee_header(
+    w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000
+) -> EIPTestResult:
+    """eth_getBlockBy* should expose baseFeePerGas."""
+    logger.info("=== EIP-1559 baseFeePerGas header test ===")
+    block = w3.eth.get_block("latest")
+    base_fee = _as_int(block.get("baseFeePerGas"))
+
+    details = {
+        "base_fee_per_gas": base_fee,
+        "block_number": block["number"],
+    }
+    if base_fee is None:
+        return EIPTestResult(
+            eip="1559-basefee-header",
+            passed=False,
+            message="baseFeePerGas missing from latest block",
+            details=details,
+        )
+    return EIPTestResult(
+        eip="1559-basefee-header",
+        passed=True,
+        message=f"baseFeePerGas present in header ({base_fee})",
+        details=details,
+    )
+
+
+def test_eip_1559_fee_history(
+    w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000
+) -> EIPTestResult:
+    """eth_feeHistory should return baseFeePerGas data."""
+    logger.info("=== EIP-1559 feeHistory RPC test ===")
+    try:
+        result = w3.eth.fee_history(4, "latest", [25, 75])
+    except Exception as e:
+        return EIPTestResult(
+            eip="1559-fee-history",
+            passed=False,
+            message=f"eth_feeHistory failed: {e}",
+        )
+
+    base_fees_raw = result.get("baseFeePerGas", [])
+    base_fees = [_as_int(v) for v in base_fees_raw]
+    details = {
+        "base_fee_per_gas": base_fees,
+        "oldest_block": _as_int(result.get("oldestBlock")),
+    }
+    if not base_fees:
+        return EIPTestResult(
+            eip="1559-fee-history",
+            passed=False,
+            message="eth_feeHistory returned empty baseFeePerGas array",
+            details=details,
+        )
+    return EIPTestResult(
+        eip="1559-fee-history",
+        passed=True,
+        message=f"eth_feeHistory returned {len(base_fees)} baseFeePerGas entries",
+        details=details,
+    )
+
+
+def test_eip_1559_max_priority_fee(
+    w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000
+) -> EIPTestResult:
+    """eth_maxPriorityFeePerGas should be available."""
+    logger.info("=== EIP-1559 maxPriorityFeePerGas RPC test ===")
+    response = w3.provider.make_request("eth_maxPriorityFeePerGas", [])
+    if "error" in response:
+        return EIPTestResult(
+            eip="1559-max-priority-fee",
+            passed=False,
+            message=f"eth_maxPriorityFeePerGas failed: {response['error']}",
+        )
+
+    value = _as_int(response.get("result"))
+    details = {"max_priority_fee_per_gas": value}
+    if value is None:
+        return EIPTestResult(
+            eip="1559-max-priority-fee",
+            passed=False,
+            message="eth_maxPriorityFeePerGas returned null result",
+            details=details,
+        )
+    return EIPTestResult(
+        eip="1559-max-priority-fee",
+        passed=True,
+        message=f"eth_maxPriorityFeePerGas returned {value}",
+        details=details,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Orchestrator
 # ---------------------------------------------------------------------------
 
@@ -1153,6 +1554,14 @@ EIP_TEST_MAP = {
     "2565":             test_eip_2565,
     "2565-formula":     test_eip_2565_formula_exact,
     "2565-zero-exp":    test_eip_2565_zero_exponent_floor,
+    "3198":             test_eip_3198,
+    "3529":             test_eip_3529,
+    "3529-selfdestruct": test_eip_3529_selfdestruct,
+    "3541":             test_eip_3541,
+    "1559-effective-price": test_eip_1559_effective_price,
+    "1559-basefee-header": test_eip_1559_basefee_header,
+    "1559-fee-history": test_eip_1559_fee_history,
+    "1559-max-priority-fee": test_eip_1559_max_priority_fee,
 }
 
 ALL_EIPS = [
@@ -1160,6 +1569,9 @@ ALL_EIPS = [
     "2930", "2930-gas-saving", "2930-duplicates",
     "2718-type2",
     "2565", "2565-formula", "2565-zero-exp",
+    "3198", "3529", "3529-selfdestruct", "3541",
+    "1559-effective-price", "1559-basefee-header",
+    "1559-fee-history", "1559-max-priority-fee",
 ]
 
 

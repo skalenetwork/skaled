@@ -1391,6 +1391,18 @@ void LegacyVM::interpretCases() {
         }
         NEXT
 
+        CASE( BASEFEE ) {
+            ON_OP();
+
+            if ( !m_schedule->haveBaseFee )
+                throwBadInstruction();
+
+            updateIOGas();
+
+            m_SPP[0] = m_ext->envInfo().baseFeePerGas();
+        }
+        NEXT
+
         CASE( POP ) {
             ON_OP();
             updateIOGas();

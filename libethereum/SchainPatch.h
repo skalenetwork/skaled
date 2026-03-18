@@ -190,6 +190,12 @@ DEFINE_SIMPLE_PATCH( CurrentBlockRandomPatch );
  */
 DEFINE_AMNESIC_PATCH( GroupIndexInitPatch );
 
+/*
+ * Enable London fork changes (EIP-1559 baseFee, EIP-3198 BASEFEE opcode,
+ * EIP-3529 reduced refunds, EIP-3541 reject 0xEF contracts)
+ */
+DEFINE_EVM_PATCH( LondonForkPatch );
+
 #ifdef BITE
 /*
  * Purpose: gate BITE2 features (CTX precompileds and CTX transaction detection)

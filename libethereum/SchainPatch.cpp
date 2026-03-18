@@ -50,6 +50,8 @@ SchainPatchEnum getEnumForPatchName( const std::string& _patchName ) {
         return SchainPatchEnum::CurrentBlockRandomPatch;
     else if ( _patchName == "GroupIndexInitPatch" )
         return SchainPatchEnum::GroupIndexInitPatch;
+    else if ( _patchName == "LondonForkPatch" )
+        return SchainPatchEnum::LondonForkPatch;
 #ifdef BITE
     else if ( _patchName == "BITE2Patch" || _patchName == "Bite2Patch" )
         return SchainPatchEnum::Bite2Patch;
@@ -106,6 +108,8 @@ std::string getPatchNameForEnum( SchainPatchEnum _enumValue ) {
         return "CurrentBlockRandomPatch";
     case SchainPatchEnum::GroupIndexInitPatch:
         return "GroupIndexInitPatch";
+    case SchainPatchEnum::LondonForkPatch:
+        return "LondonForkPatch";
 #ifdef BITE
     case SchainPatchEnum::Bite2Patch:
         return "Bite2Patch";
@@ -129,7 +133,8 @@ const std::unordered_set< SchainPatchEnum > SchainPatch::preEnabledForFAIR = {
     SchainPatchEnum::FastConsensusPatch, SchainPatchEnum::BerlinForkPatch,
     SchainPatchEnum::EIP1559TransactionsPatch, SchainPatchEnum::VerifyBlsSyncPatch,
     SchainPatchEnum::ClearPartialReceiptsPatch, SchainPatchEnum::InvalidTransactionFormatPatch,
-    SchainPatchEnum::CurrentBlockRandomPatch, SchainPatchEnum::GroupIndexInitPatch
+    SchainPatchEnum::CurrentBlockRandomPatch, SchainPatchEnum::GroupIndexInitPatch,
+    SchainPatchEnum::LondonForkPatch
 };
 const std::unordered_set< SchainPatchEnum > SchainPatch::preDisabledForFAIR = {
     SchainPatchEnum::RevertableFSPatch, SchainPatchEnum::FlexibleDeploymentPatch,
@@ -182,6 +187,25 @@ bool SchainPatch::isPatchEnabledWhen(
 EVMSchedule PushZeroPatch::makeSchedule( const EVMSchedule& _base ) {
     EVMSchedule ret = _base;
     ret.havePush0 = true;
+    return ret;
+}
+
+EVMSchedule LondonForkPatch::makeSchedule( const EVMSchedule& _base ) {
+    EVMSchedule ret = _base;
+
+    // EIP-3198: BASEFEE opcode
+    ret.haveBaseFee = true;
+
+    // EIP-3529: reduced refunds
+    ret.eip3529Mode = true;
+    ret.maxRefundQuotient = 5;   // was 2
+    ret.suicideRefundGas = 0;    // was 24000; no SELFDESTRUCT refund under London
+    // sstoreRefundGas becomes SSTORE_RESET_GAS(2900) + ACCESS_LIST_STORAGE_KEY_COST(1900) = 4800
+    ret.sstoreRefundGas = 4800;  // was 15000
+
+    // EIP-3541: reject contracts starting with 0xEF
+    ret.eip3541Mode = true;
+
     return ret;
 }
 

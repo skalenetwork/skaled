@@ -80,6 +80,7 @@ enum class Instruction : uint8_t {
     GASLIMIT,          ///< get the block's gas limit
     CHAINID,           ///< get the network's ChainID
     SELFBALANCE,       ///< get balance of the current address
+    BASEFEE = 0x48,    ///< get the block's base fee (EIP-3198)
 
     POP = 0x50,  ///< remove item from stack
     MLOAD,       ///< load word from memory

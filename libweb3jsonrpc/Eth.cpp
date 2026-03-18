@@ -586,21 +586,8 @@ Json::Value Eth::eth_getBlockByHash( string const& _blockHash, bool _includeTran
         if ( !client()->isKnown( h ) )
             return Json::Value( Json::nullValue );
 
-        u256 baseFeePerGas;
-        BlockNumber bn = client()->numberFromHash( h );
-        if ( bn > 0 &&
-             EIP1559TransactionsPatch::isEnabledWhen( client()->blockInfo( bn - 1 ).timestamp() ) )
-            try {
-                baseFeePerGas = client()->gasBidPrice( bn - 1 );
-            } catch ( std::invalid_argument& _e ) {
-                BOOST_LOG( m_loggerDebug ) << "Cannot get gas price for block " << h;
-                BOOST_LOG( m_loggerDebug ) << _e.what();
-                // set default gasPrice
-                // probably the price was rotated out as we are asking the price for the old block
-                baseFeePerGas = client()->gasBidPrice();
-            }
-        else
-            baseFeePerGas = 0;
+        // Post-London: read baseFeePerGas from the block header (always 0 on standard SKALE).
+        u256 baseFeePerGas = client()->blockInfo( h ).baseFeePerGas();
 
         if ( _includeTransactions ) {
             Transactions transactions = client()->transactions( h );
@@ -648,22 +635,8 @@ Json::Value Eth::eth_getBlockByNumber( string const& _blockNumber, bool _include
         if ( !client()->isKnown( h ) )
             return Json::Value( Json::nullValue );
 
-        BlockNumber bn = ( h == LatestBlock || h == PendingBlock ) ? client()->number() : h;
-
-        u256 baseFeePerGas;
-        if ( bn > 0 &&
-             EIP1559TransactionsPatch::isEnabledWhen( client()->blockInfo( bn - 1 ).timestamp() ) )
-            try {
-                baseFeePerGas = client()->gasBidPrice( bn - 1 );
-            } catch ( std::invalid_argument& _e ) {
-                BOOST_LOG( m_loggerDebug ) << "Cannot get gas price for block " << bn;
-                BOOST_LOG( m_loggerDebug ) << _e.what();
-                // set default gasPrice
-                // probably the price was rotated out as we are asking the price for the old block
-                baseFeePerGas = client()->gasBidPrice();
-            }
-        else
-            baseFeePerGas = 0;
+        // Post-London: read baseFeePerGas from the block header (always 0 on standard SKALE).
+        u256 baseFeePerGas = client()->blockInfo( h ).baseFeePerGas();
 
 #ifdef HISTORIC_STATE
         h256 bh = client()->hashFromNumber( h );
@@ -1066,10 +1039,8 @@ Json::Value Eth::eth_feeHistory( dev::u256 _blockCount, const std::string& _newe
         for ( auto bn = newestBlock; bn > oldestBlock - 1; --bn ) {
             auto blockInfo = client()->blockInfo( bn - 1 );
 
-            if ( EIP1559TransactionsPatch::isEnabledWhen( blockInfo.timestamp() ) )
-                result["baseFeePerGas"].append( toJS( client()->gasBidPrice( bn - 1 ) ) );
-            else
-                result["baseFeePerGas"].append( toJS( 0 ) );
+            // Post-London: read baseFeePerGas from the block header (always 0 on standard SKALE).
+            result["baseFeePerGas"].append( toJS( blockInfo.baseFeePerGas() ) );
 
             double gasUsedRatio = blockInfo.gasUsed().convert_to< double >() /
                                   blockInfo.gasLimit().convert_to< double >();

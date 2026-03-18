@@ -1,11 +1,16 @@
-import * as dotenv from "dotenv";
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import "@nomicfoundation/hardhat-ethers";
 import { ethers } from "ethers";
 import { HardhatNetworkAccountUserConfig } from "hardhat/types";
 
-dotenv.config();
+try {
+  // Optional in CI/local environments where env is already injected.
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  require("dotenv").config();
+} catch (_e) {
+  // no-op
+}
 
 function getAccounts() {
   const accounts: HardhatNetworkAccountUserConfig[] = [];
