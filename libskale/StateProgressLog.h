@@ -15,7 +15,7 @@ struct CommittedProgressData {
     uint8_t status;  // 0 = started, 1 = completed
     uint64_t timestamp;
     dev::eth::TransactionReceipts receipts;
-#ifdef BITE2
+#ifdef BITE
     std::vector< dev::eth::Transaction > ctxsCreatedInBlock;
 #endif
 };
@@ -29,7 +29,7 @@ public:
     void markBlockCommitStarted( uint64_t _blockNumber );
     void markBlockCommitCompleted(
         uint64_t _blockNumber, const dev::eth::TransactionReceipts& _receipts, uint64_t _timestamp
-#ifdef BITE2
+#ifdef BITE
         ,
         const std::vector< dev::eth::Transaction >& _ctxsCreatedInBlock
 #endif
@@ -52,7 +52,7 @@ private:
     boost::filesystem::path m_tmpPath;
 
     mutable dev::Logger m_logger{ dev::createLogger( dev::VerbosityWarning, "StateProgressLog" ) };
-#ifdef BITE2
+#ifdef BITE
     static constexpr size_t rlpItemsCount = 5;
 #else
     static constexpr size_t rlpItemsCount = 4;

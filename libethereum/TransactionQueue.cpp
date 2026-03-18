@@ -98,10 +98,10 @@ ImportResult TransactionQueue::import(
         Transaction t = Transaction( _transactionRLP, CheckTransaction::Everything, false,
             EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
             InvalidTransactionFormatPatch::isEnabledInWorkingBlock()
-#ifdef BITE2
+#ifdef BITE
                 ,
             Bite2Patch::isEnabledInWorkingBlock()
-#endif  // BITE2
+#endif  // BITE
         );
         return import( t, _ik, _isFuture );
     } catch ( Exception const& ) {
@@ -472,8 +472,8 @@ void TransactionQueue::dropGood( Transaction const& _t ) {
     WriteGuard l( m_lock );
     MICROPROFILE_LEAVE();
 
-#ifdef BITE2
-    // BITE2 transactions are stored separately
+#ifdef BITE
+    // BITE transactions are stored separately
     // they are also stored in the strict order
     // delete and return
     if ( m_bite2Queue.dropGood( _t ) )
@@ -556,10 +556,10 @@ void TransactionQueue::verifierBody() {
             Transaction t( work.transaction, CheckTransaction::Cheap, false,
                 EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
                 InvalidTransactionFormatPatch::isEnabledInWorkingBlock()
-#ifdef BITE2
+#ifdef BITE
                     ,
                 Bite2Patch::isEnabledInWorkingBlock()
-#endif          // BITE2
+#endif          // BITE
             );  // Signature will be checked later
             ImportResult ir = import( t );
             m_onImport( ir, t.sha3(), work.nodeId );
@@ -583,7 +583,7 @@ Transactions TransactionQueue::debugGetFutureTransactions() const {
     return res;
 }
 
-#ifdef BITE2
+#ifdef BITE
 const Transactions& TransactionQueue::pendingBITE2Transactions() const {
     return m_bite2Queue.pendingBITE2Transactions();
 }

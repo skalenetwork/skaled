@@ -42,14 +42,16 @@ on:
       
 jobs:
   main:
-    runs-on: self-hosted
+    runs-on: ubuntu-22.04
     outputs:
       version: ${{ env.VERSION }}
-    env:
-      ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+    env: 
+      CC: gcc-11
+      CXX: g++-11
+      BRANCH: ${{ inputs.branch_name }}
+      BUILD_TYPE: ${{ inputs.build_type }}
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-      BUILD_TYPE: ${{ inputs.build_type }}
       PLAIN_VERSION: ${{ inputs.use_plain_version }}
     steps:
       - name: Prepare workflow variables
@@ -124,105 +126,41 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           export CMAKE_OPTS="-DBITE2=1 -DHISTORIC_STATE=1 ${{ inputs.cmake_options }}"
           echo "CMAKE_OPTS=$CMAKE_OPTS" >> $GITHUB_ENV
-      - name: update apt
-        run: |
-          sudo add-apt-repository ppa:ubuntu-toolchain-r/test || true 
-          sudo apt-get update || true
-      - name: install packages
-        run: |
-          sudo apt-get -y remove libzmq* || true
-          sudo apt-get -y install software-properties-common gcc-11 g++-11 || true
-  
-      - name: Use g++-11 and gcov-11 by default
-        run: |
-          echo "Updating all needed alternatives"
-          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 11
-          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 11
-          sudo update-alternatives --install /usr/bin/gcov gcov /usr/bin/gcov-11 11
-          sudo update-alternatives --install /usr/bin/gcov-dump gcov-dump /usr/bin/gcov-dump-11 11
-          sudo update-alternatives --install /usr/bin/gcov-tool gcov-tool /usr/bin/gcov-tool-11 11
-          echo "Checking alternative for gcc"
-          which gcc
-          gcc --version
-          echo "Checking alternative for g++"
-          which g++
-          g++ --version
-          echo "Checking alternative for gcov"
-          which gcov
-          gcov --version
-          echo "Checking alternative for gcov-dump"
-          which gcov-dump
-          gcov-dump --version
-          echo "Checking alternative for gcov-tool"
-          which gcov-tool
-          gcov-tool --version
-  
-      - name: Extract repo name
-        run: echo ::set-env name=REPOSITORY_NAME::$(echo "$GITHUB_REPOSITORY" | awk -F / '{print $2}')
-        shell: bash
-        env:
-          ACTIONS_ALLOW_UNSECURE_COMMANDS: true
-      - name: Extract branch name
-        shell: bash
-        run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
-        id: extract_branch
-      - name: checkout
-        uses: actions/checkout@v2
+      
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.branch_name }}
-      - name: Submodule update
+          submodules: recursive
+
+      - name: Install packages
         run: |
-          rm -rf ./libconsensus || true
-          ls -1
-          git submodule update --init --recursive 
-  
-      - name: Prepare ccache timestamp
-        id: ccache_cache_timestamp
-        shell: cmake -P {0}
-        run: |
-          string(TIMESTAMP current_date "%Y-%m-%d-%H;%M;%S" UTC)
-          message("::set-output name=timestamp::${current_date}")
-      - name: Ccache cache files
-        uses: actions/cache@v4.2.0
-        with:
-          path: .ccache
-          key: ${ { matrix.config.name } }-ccache-${ { steps.ccache_cache_timestamp.outputs.timestamp } }
-          restore-keys: |
-            ${ { matrix.config.name } }-ccache-
+          sudo apt-get update
+          sudo apt-get install -y libunwind-dev autoconf build-essential cmake libprocps-dev libtool texinfo wget yasm flex bison btrfs-progs python3 python3-pip gawk git vim doxygen
+          sudo apt-get install -y make pkg-config libgnutls28-dev libssl-dev unzip zlib1g-dev libgcrypt20-dev gcc-11 g++-11 gperf clang-format-11 gnutls-dev
+          sudo apt-get install -y nettle-dev libhiredis-dev redis-server google-perftools libgoogle-perftools-dev lcov libv8-dev 
+          sudo apt-get install -y gettext
+
+          # Remove deps installed in the next steps
+          sudo apt-get purge -y libbz2-dev liblz4-dev
+
       - name: Build dependencies
         run: |
-          export CC=gcc-11
-          export CXX=g++-11
-          export TARGET=all
-          export CMAKE_BUILD_TYPE=$BUILD_TYPE
-          [[ $CMAKE_BUILD_TYPE = "Debug" ]] && export DEBUG_FLAG=1 || export DEBUG_FLAG=0
+          [[ $BUILD_TYPE = "Debug" ]] && export DEBUG_FLAG=1 || export DEBUG_FLAG=0
           cd deps
-          ./clean.sh
-          # prepare boost library
-          cp ~/skaled_deps_predownloaded/boost_1_87_0.tar.bz2 ../libconsensus/libBLS/deps/boost_1_87_0.tar.bz2
-          rm -f ./libwebsockets-from-git.tar.gz
           ./build.sh PARALLEL_COUNT=$(nproc) DEBUG=$DEBUG_FLAG
           cd ..
-      - name: Configure all
-        env:
-          CMAKE_OPTS: ${{ env.CMAKE_OPTS }}
+
+      - name: Build skaled binary
+        uses: ./.github/actions/cmake-build
+        with:
+          build_dir: build
+          cmake_build_type: ${{ env.BUILD_TYPE }}
+          cmake_args: ${{ env.CMAKE_OPTS }}
+          make_target: skaled
+          
+      - name: Binary post-processing
         run: |
-          export CC=gcc-11
-          export CXX=g++-11
-          export TARGET=all
-          export CMAKE_BUILD_TYPE=$BUILD_TYPE
-          mkdir -p build
           cd build
-          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE $CMAKE_OPTS ..
-          cd ..
-      - name: Build all
-        run: |
-          export CC=gcc-11
-          export CXX=g++-11
-          export TARGET=all
-          export CMAKE_BUILD_TYPE=$BUILD_TYPE
-          cd build
-          make skaled -j$(nproc)
           if [[ "$BUILD_TYPE" = "Release" ]]; then
               debug_wc=$(objdump -h skaled/skaled | grep -i debug | wc -l)
               sym_wc=$(readelf -s skaled/skaled | wc -l)
@@ -235,13 +173,12 @@ jobs:
               strip --strip-all skaled/skaled
           fi
           cd ..
-      - name: Build and publish container
+
+      - name: Build and publish docker image
         env:
           VERSION: ${{ env.VERSION }}
         run: |
           cp build/skaled/skaled scripts/skale_build/executable/
-          export BRANCH=${{ inputs.branch_name }}
-          export RELEASE=true
           bash ./scripts/build_and_publish.sh
   
       - name: Upload skaled binary as artifact

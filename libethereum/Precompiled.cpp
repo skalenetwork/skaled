@@ -23,7 +23,7 @@
 
 #include "Precompiled.h"
 
-#ifdef BITE2
+#ifdef BITE
 #include <libconsensus/libBLS/threshold_encryption/TEPublicKey.h>
 #include <libconsensus/libBLS/threshold_encryption/ThresholdEncryption.h>
 #include <libdevcore/RLP.h>
@@ -77,7 +77,7 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-#ifdef BITE2
+#ifdef BITE
 using namespace dev::bite;
 #endif
 
@@ -948,7 +948,7 @@ ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef, const PrecompiledCall
     return { false, response };  // 1st false - means bad error occur
 }
 
-#ifdef BITE2
+#ifdef BITE
 
 ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallContext& _ctx ) {
     try {

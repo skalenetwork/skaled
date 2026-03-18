@@ -132,7 +132,7 @@ evmc_status_code transactionExceptionToEvmcStatusCode( TransactionException ex )
 
 CallResult ExtVM::call( CallParameters& _p ) {
     Executive e{ m_s, envInfo(), m_chainParams, 0, depth + 1, m_readOnly
-#ifdef BITE2
+#ifdef BITE
         ,
         m_txnIndex
 #endif
@@ -176,7 +176,7 @@ CreateResult ExtVM::create( u256 _endowment, u256& io_gas, bytesConstRef _code, 
     }
 
     Executive e{ m_s, envInfo(), m_chainParams, 0, depth + 1
-#ifdef BITE2
+#ifdef BITE
         ,
         true, m_txnIndex
 #endif

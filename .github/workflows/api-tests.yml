@@ -26,9 +26,20 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - uses: actions/checkout@v6
+      # Checkout the last pre-merge BITE tag so the BITE binary reflects the
+      # original BITE codebase (before BITE and BITE2 were unified).
+      - name: Checkout BITE tag 09ec35e for BITE build
+        uses: actions/checkout@v6
         with:
+          ref: "09ec35e5e8a4f0574fd493790b69632a0d8296c0"  # last commit on develop before BITE was merged with BITE2
           submodules: recursive
+      - name: Free disk space
+        run: |
+          sudo apt-get remove -yq cmake libjsoncpp-dev aria2 ansible azure-cli shellcheck rpm xorriso zsync \
+            clang-6.0 lldb-6.0 lld-6.0 clang-8 lldb-8 lld-8 \
+            clang-9 lldb-9 lld-9 clangd-9 clang-format-14 dotnet-sdk-3.0 dotnet-sdk-3.1=3.1.101-1 \
+            esl-erlang firefox g++-11 g++-11 gfortran-8 gfortran-9 google-chrome-stable \
+            || true >/dev/null 2>&1;
 
       - name: Install packages
         run: |

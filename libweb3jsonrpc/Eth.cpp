@@ -427,10 +427,10 @@ string Eth::eth_sendRawTransaction( std::string const& _rlp ) {
     Transaction t( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::None, false,
         EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
         InvalidTransactionFormatPatch::isEnabledInWorkingBlock()
-#ifdef BITE2
+#ifdef BITE
             ,
         Bite2Patch::isEnabledInWorkingBlock()
-#endif  // BITE2
+#endif  // BITE
     );
     return toJS( client()->importTransaction( t, TransactionBroadcast::BroadcastToAll ) );
 }

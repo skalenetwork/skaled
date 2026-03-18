@@ -626,11 +626,9 @@ ImportRoute BlockChain::import( const Block& _block ) {
     verifiedBlock.decryptedTransactions = _block.decryptedTransactions();
     CHECK_EXPRESSION( verifiedBlock.decryptedTransactions.regularTxsMap );
 
-#ifdef BITE2
     CHECK_EXPRESSION( verifiedBlock.decryptedTransactions.ctxTxsMap );
     verifiedBlock.ctxHashesLists = _block.ctxHashesLists();
     verifiedBlock.createdCtxs = _block.createdCtxs();
-#endif  // BITE2
 #endif  // BITE
 
     BlockReceipts blockReceipts;
@@ -777,7 +775,6 @@ void BlockChain::insertTransactionsDetailsToDb(
         RLP txns_rlp = blockRLP[1];
 
 #ifdef BITE
-#ifdef BITE2
         if ( Bite2Patch::isEnabledInWorkingBlock() ) {
             CtxOrigin ctxOrigin( _block.ctxHashesLists );
             _extrasWriteBatch.insert( toSlice( _block.info.hash(), ExtraCtxOrigin ),
@@ -792,7 +789,6 @@ void BlockChain::insertTransactionsDetailsToDb(
             _extrasWriteBatch.insert(
                 db::Slice( "lastBlockCTXs" ), ( db::Slice ) dev::ref( ctxListRlp ) );
         }
-#endif  // BITE2
         CHECK_EXPRESSION( _block.decryptedTransactions.regularTxsMap );
         auto regularTxnsIterator = _block.decryptedTransactions.regularTxsMap->begin();
 #endif  // BITE
@@ -1372,12 +1368,10 @@ void BlockChain::updateStats() const {
         m_lastStats.memDecryptedTransactionsData =
             getApproximateHashSize( m_decryptedTransactionsData );
     }
-#ifdef BITE2
     {
         DEV_READ_GUARDED( x_ctxOrigin )
         m_lastStats.memCtxOrigin = getApproximateHashSize( m_ctxOrigin );
     }
-#endif  // BITE2
 #endif  // BITE
 }
 
@@ -1447,13 +1441,11 @@ void BlockChain::garbageCollect( bool _force ) {
                 m_decryptedTransactionsData.erase( id.first );
                 break;
             }
-#ifdef BITE2
             case ExtraCtxOrigin: {
                 WriteGuard l( x_ctxOrigin );
                 m_ctxOrigin.erase( id.first );
                 break;
             }
-#endif  // BITE2
 #endif  // BITE
             }
         }
@@ -1518,12 +1510,10 @@ void BlockChain::clearCaches() {
         WriteGuard l( x_decryptedTransactionsData );
         m_decryptedTransactionsData.clear();
     }
-#ifdef BITE2
     {
         WriteGuard l( x_ctxOrigin );
         m_ctxOrigin.clear();
     }
-#endif  // BITE2
 #endif  // BITE
 }
 
@@ -1573,10 +1563,8 @@ void BlockChain::clearCachesDuringChainReversion( unsigned _firstInvalid ) {
 #ifdef BITE
     DEV_WRITE_GUARDED( x_decryptedTransactionsData )
     m_decryptedTransactionsData.clear();
-#ifdef BITE2
     DEV_WRITE_GUARDED( x_ctxOrigin )
     m_ctxOrigin.clear();
-#endif  // BITE2
 #endif  // BITE
 
     // If we are reverting previous blocks, we need to clear their blooms (in particular, to
@@ -1865,10 +1853,10 @@ VerifiedBlockRef BlockChain::verifyBlock( bytesConstRef _block,
                         CheckTransaction::None,
                     false, EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
                     InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp )
-#ifdef BITE2
+#ifdef BITE
                         ,
                     Bite2Patch::isEnabledWhen( blockTimestamp )
-#endif  // BITE2
+#endif  // BITE
                 );
                 Ethash::verifyTransaction( chainParams(), _ir, t,
                     this->info( numberHash( h.number() - 1 ) ).timestamp(), h,
@@ -1912,7 +1900,7 @@ bool BlockChain::isPatchTimestampActiveInBlockNumber( time_t _ts, BlockNumber _b
     return prev_ts >= _ts;
 }
 
-#ifdef BITE2
+#ifdef BITE
 
 Transactions BlockChain::ctxListForPreviousBlock() const {
     std::string lastBlockCTXs = this->m_extrasDB->lookup( ( db::Slice ) "lastBlockCTXs" );
@@ -1925,13 +1913,9 @@ Transactions BlockChain::ctxListForPreviousBlock() const {
     for ( auto const& txRlp : rlp ) {
         ctxs.push_back( Transaction( txRlp.data(), CheckTransaction::None, true,
             EIP1559TransactionsPatch::isEnabledWhen( prevBlockTimestamp ),
-            InvalidTransactionFormatPatch::isEnabledWhen( prevBlockTimestamp )
-#ifdef BITE2
-                ,
-            Bite2Patch::isEnabledWhen( prevBlockTimestamp )
-#endif  // BITE2
-                ) );
+            InvalidTransactionFormatPatch::isEnabledWhen( prevBlockTimestamp ),
+            Bite2Patch::isEnabledWhen( prevBlockTimestamp ) ) );
     }
     return ctxs;
 }
-#endif  // BITE2
+#endif  // BITE

@@ -148,7 +148,7 @@ bytesSec pbkdf2(
 bytesSec scrypt( std::string const& _pass, bytes const& _salt, uint64_t _n, uint32_t _r,
     uint32_t _p, unsigned _dkLen );
 
-#ifdef BITE2
+#ifdef BITE
 // Check if x is a valid x-coordinate on secp256k1 curve (y² = x³ + 7 mod p)
 bool isValidSecp256k1X( const u256& x );
 
