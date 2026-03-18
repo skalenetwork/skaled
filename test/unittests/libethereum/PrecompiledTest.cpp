@@ -2399,16 +2399,10 @@ BOOST_AUTO_TEST_CASE( fileWithHashExtension ) {
     auto path = dev::getDataDir() / "filestorage" / Address( ownerAddress ).hex() / fileName;
 
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
-<<<<<<< HEAD
                         numberToHex( fileSize ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ),
         { 1,
-#ifdef BITE2
-=======
-            numberToHex( fileSize ) );
-    auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
 #ifdef BITE
->>>>>>> v5.1.0
                                                               { -1 },
                                                               0,
                                                               dev::ZeroAddress,
@@ -2427,14 +2421,9 @@ BOOST_AUTO_TEST_CASE( uploadChunk ) {
     std::string data = "random_data";
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
                         numberToHex( 0 ) + numberToHex( data.length() ) + stringToHex( data ) );
-<<<<<<< HEAD
     auto res = exec( bytesConstRef( in.data(), in.size() ),
         { 1,
-#ifdef BITE2
-=======
-    auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
 #ifdef BITE
->>>>>>> v5.1.0
                                                               { -1 },
                                                               0,
                                                               dev::ZeroAddress,
@@ -2456,14 +2445,9 @@ BOOST_AUTO_TEST_CASE( readChunk ) {
 
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
                         numberToHex( 0 ) + numberToHex( fileSize ) );
-<<<<<<< HEAD
     auto res = exec( bytesConstRef( in.data(), in.size() ),
         { 1,
-#ifdef BITE2
-=======
-    auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
 #ifdef BITE
->>>>>>> v5.1.0
                                                               { -1 },
                                                               0,
                                                               dev::ZeroAddress,
@@ -2486,14 +2470,9 @@ BOOST_AUTO_TEST_CASE( readMaliciousChunk ) {
     fileName = "../../test";
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
                         numberToHex( 0 ) + numberToHex( fileSize ) );
-<<<<<<< HEAD
     auto res = exec( bytesConstRef( in.data(), in.size() ),
         { 1,
-#ifdef BITE2
-=======
-    auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
 #ifdef BITE
->>>>>>> v5.1.0
                                                               { -1 },
                                                               0,
                                                               dev::ZeroAddress,
@@ -2507,14 +2486,9 @@ BOOST_AUTO_TEST_CASE( getFileSize ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getFileSize" );
 
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) );
-<<<<<<< HEAD
     auto res = exec( bytesConstRef( in.data(), in.size() ),
         { 1,
-#ifdef BITE2
-=======
-    auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
 #ifdef BITE
->>>>>>> v5.1.0
                                                               { -1 },
                                                               0,
                                                               dev::ZeroAddress,
@@ -2531,14 +2505,9 @@ BOOST_AUTO_TEST_CASE( getMaliciousFileSize ) {
     fileName = "../../test";
 
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) );
-<<<<<<< HEAD
     auto res = exec( bytesConstRef( in.data(), in.size() ),
         { 1,
-#ifdef BITE2
-=======
-    auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
 #ifdef BITE
->>>>>>> v5.1.0
                                                               { -1 },
                                                               0,
                                                               dev::ZeroAddress,
@@ -2550,18 +2519,11 @@ BOOST_AUTO_TEST_CASE( getMaliciousFileSize ) {
 
 BOOST_AUTO_TEST_CASE( deleteFile ) {
     PrecompiledExecutor execCreate = PrecompiledRegistrar::executor( "createFile" );
-<<<<<<< HEAD
     bytes inCreate = fromHex( hexAddress + numberToHex( fileName.length() ) +
                               stringToHex( fileName ) + numberToHex( fileSize ) );
     execCreate( bytesConstRef( inCreate.data(), inCreate.size() ),
         { 1,
-#ifdef BITE2
-=======
-    bytes inCreate = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
-                            numberToHex( fileSize ) );
-    execCreate( bytesConstRef( inCreate.data(), inCreate.size() ), { 1,
 #ifdef BITE
->>>>>>> v5.1.0
                                                                      { -1 },
                                                                      0,
                                                                      dev::ZeroAddress,
@@ -2570,18 +2532,11 @@ BOOST_AUTO_TEST_CASE( deleteFile ) {
     m_overlayFS->commit();
 
     PrecompiledExecutor execHash = PrecompiledRegistrar::executor( "calculateFileHash" );
-<<<<<<< HEAD
     bytes inHash = fromHex( hexAddress + numberToHex( fileName.length() ) +
                             stringToHex( fileName ) + numberToHex( fileSize ) );
     execHash( bytesConstRef( inHash.data(), inHash.size() ),
         { 1,
-#ifdef BITE2
-=======
-    bytes inHash = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
-                        numberToHex( fileSize ) );
-    execHash( bytesConstRef( inHash.data(), inHash.size() ), { 1,
 #ifdef BITE
->>>>>>> v5.1.0
                                                                { -1 },
                                                                0,
                                                                dev::ZeroAddress,
@@ -2593,14 +2548,9 @@ BOOST_AUTO_TEST_CASE( deleteFile ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "deleteFile" );
 
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) );
-<<<<<<< HEAD
     auto res = exec( bytesConstRef( in.data(), in.size() ),
         { 1,
-#ifdef BITE2
-=======
-    auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
 #ifdef BITE
->>>>>>> v5.1.0
                                                               { -1 },
                                                               0,
                                                               dev::ZeroAddress,
@@ -2622,14 +2572,9 @@ BOOST_AUTO_TEST_CASE( createDirectory ) {
         dev::getDataDir() / "filestorage" / ownerAddress.hex() / dirName;
 
     bytes in = fromHex( hexAddress + numberToHex( dirName.length() ) + stringToHex( dirName ) );
-<<<<<<< HEAD
     auto res = exec( bytesConstRef( in.data(), in.size() ),
         { 1,
-#ifdef BITE2
-=======
-    auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
 #ifdef BITE
->>>>>>> v5.1.0
                                                               { -1 },
                                                               0,
                                                               dev::ZeroAddress,
@@ -2652,14 +2597,9 @@ BOOST_AUTO_TEST_CASE( deleteDirectory ) {
     boost::filesystem::create_directories( pathToDir );
 
     bytes in = fromHex( hexAddress + numberToHex( dirName.length() ) + stringToHex( dirName ) );
-<<<<<<< HEAD
     auto res = exec( bytesConstRef( in.data(), in.size() ),
         { 1,
-#ifdef BITE2
-=======
-    auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
 #ifdef BITE
->>>>>>> v5.1.0
                                                               { -1 },
                                                               0,
                                                               dev::ZeroAddress,
@@ -2688,14 +2628,9 @@ BOOST_AUTO_TEST_CASE( calculateFileHash ) {
 
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
                         numberToHex( fileSize ) );
-<<<<<<< HEAD
     auto res = exec( bytesConstRef( in.data(), in.size() ),
         { 1,
-#ifdef BITE2
-=======
-    auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
 #ifdef BITE
->>>>>>> v5.1.0
                                                               { -1 },
                                                               0,
                                                               dev::ZeroAddress,
