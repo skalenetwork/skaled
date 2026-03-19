@@ -190,6 +190,15 @@ void SealEngineFace::verifyTransaction( ChainOperationParams const& _chainParams
 #ifdef BITE
     }
 #endif
+
+    // EIP-1559: for Type 2 transactions, maxFeePerGas must be >= block baseFeePerGas.
+    // maxPriorityFeePerGas <= maxFeePerGas is already enforced in TransactionBase parsing.
+    if ( _t.txType() == 2 ) {
+        u256 baseFee = _header.baseFeePerGas();
+        if ( _t.maxFeePerGas() < baseFee )
+            BOOST_THROW_EXCEPTION( InvalidTransactionFormat()
+                << errinfo_comment( "maxFeePerGas < baseFeePerGas" ) );
+    }
 }
 
 SealEngineFace* SealEngineRegistrar::create( ChainOperationParams const& _params ) {

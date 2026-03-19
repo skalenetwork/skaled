@@ -15,6 +15,12 @@ contract EIP3529Test {
         gasUsed = g0 - g1;
     }
 
+    function clearSlots(uint256[] calldata keys) external {
+        for (uint256 i = 0; i < keys.length; i++) {
+            store[keys[i]] = 0;
+        }
+    }
+
     function measureSelfdestructRefund() external returns (uint256 gasUsed) {
         SelfdestructTarget target = new SelfdestructTarget();
         uint256 g0 = gasleft();

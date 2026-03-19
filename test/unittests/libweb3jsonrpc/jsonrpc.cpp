@@ -4554,6 +4554,8 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
 
     block = fixture.rpcClient->eth_getBlockByNumber( "4", true );
     BOOST_REQUIRE( !block["baseFeePerGas"].asString().empty() );
+    // On SKALE, baseFeePerGas is always 0 (no dynamic fee market)
+    BOOST_REQUIRE( block["baseFeePerGas"].asString() == "0x0" );
     BOOST_REQUIRE( block["transactions"].size() == 1 );
     BOOST_REQUIRE( block["transactions"][0]["hash"].asString() == txHash );
     BOOST_REQUIRE( block["transactions"][0]["type"] == "0x2" );
@@ -4570,7 +4572,10 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE( receipt["status"] == string( "0x1" ) );
     BOOST_REQUIRE( receipt["type"] == "0x2" );
-    BOOST_REQUIRE( receipt["effectiveGasPrice"] == "0x4a817c801" );
+    // EIP-1559: effectiveGasPrice = min(maxFeePerGas, baseFeePerGas + maxPriorityFeePerGas)
+    // baseFee=0 on SKALE, maxFeePerGas=0x4a817c801, maxPriorityFeePerGas=0x4a817c800
+    // => min(0x4a817c801, 0 + 0x4a817c800) = 0x4a817c800
+    BOOST_REQUIRE( receipt["effectiveGasPrice"] == "0x4a817c800" );
 
     result = fixture.rpcClient->eth_getTransactionByHash( txHash );
     BOOST_REQUIRE( result["hash"].asString() == txHash );
@@ -4640,6 +4645,50 @@ BOOST_AUTO_TEST_CASE( eip2930RpcMethods ) {
     BOOST_REQUIRE( accessList.isMember( "accessList" ) && accessList.isMember( "gasUsed" ) );
     BOOST_REQUIRE( accessList["accessList"].isArray() && accessList["accessList"].size() == 0 );
     BOOST_REQUIRE( accessList["gasUsed"].isString() );
+}
+
+BOOST_AUTO_TEST_CASE( eip3541Deployment ) {
+    // EIP-3541: contracts whose deployed bytecode starts with 0xEF must be rejected post-London.
+    std::string _config = c_genesisConfigString;
+    Json::Value ret;
+    Json::Reader().parse( _config, ret );
+
+    // Activate LondonForkPatch 1 hour in the past so all mined blocks see it as active.
+    time_t londonTimestamp = time( nullptr ) - 3600;
+    ret["skaleConfig"]["sChain"]["LondonForkPatchTimestamp"] = londonTimestamp;
+
+    Json::FastWriter fastWriter;
+    std::string config = fastWriter.write( ret );
+    JsonRpcFixture fixture( config );
+
+    dev::eth::simulateMining( *( fixture.client ), 5 );
+    string senderAddress = toJS( fixture.coinbase.address() );
+
+    // Init code: PUSH1 0xEF, PUSH1 0x00, MSTORE8, PUSH1 0x01, PUSH1 0x00, RETURN
+    // Deploys a 1-byte contract with runtime code 0xEF — rejected by EIP-3541.
+    Json::Value txEF;
+    txEF["from"] = senderAddress;
+    txEF["gas"] = "100000";
+    txEF["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txEF["data"] = "0x60ef60005360016000f3";
+    string txHashEF = fixture.rpcClient->eth_sendTransaction( txEF );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    Json::Value receiptEF = fixture.rpcClient->eth_getTransactionReceipt( txHashEF );
+    BOOST_REQUIRE( receiptEF["status"] == string( "0x0" ) );
+
+    // Init code: PUSH1 0xFE, PUSH1 0x00, MSTORE8, PUSH1 0x01, PUSH1 0x00, RETURN
+    // Deploys a 1-byte contract with runtime code 0xFE — not restricted, must succeed.
+    Json::Value txFE;
+    txFE["from"] = senderAddress;
+    txFE["gas"] = "100000";
+    txFE["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txFE["data"] = "0x60fe60005360016000f3";
+    string txHashFE = fixture.rpcClient->eth_sendTransaction( txFE );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    Json::Value receiptFE = fixture.rpcClient->eth_getTransactionReceipt( txHashFE );
+    BOOST_REQUIRE( receiptFE["status"] == string( "0x1" ) );
 }
 
 BOOST_AUTO_TEST_CASE( eip1559RpcMethods ) {

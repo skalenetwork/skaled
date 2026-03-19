@@ -220,6 +220,9 @@ void BlockHeader::populateFromParent( BlockHeader const& _parent ) {
     m_gasLimit = _parent.m_gasLimit;
     m_difficulty = _parent.m_difficulty;
     m_gasUsed = 0;
+    // EIP-1559: propagate baseFeePerGas from parent.
+    // On SKALE, baseFee is always 0 (no dynamic fee market).
+    m_baseFeePerGas = _parent.m_baseFeePerGas;
 }
 
 void BlockHeader::verify( Strictness _s, BlockHeader const& _parent, bytesConstRef _block ) const {

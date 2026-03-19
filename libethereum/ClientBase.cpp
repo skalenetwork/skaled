@@ -492,7 +492,16 @@ LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(
     dev::h256 txHash{ t.sha3() };
     dev::Address from{ t.isInvalid() ? dev::Address( 0 ) : t.from() };
     int txType{ t.txType() };
-    dev::u256 effectiveGasPrice{ t.isInvalid() ? 0 : t.gasPrice() };
+    dev::u256 effectiveGasPrice{ 0 };
+    if ( !t.isInvalid() ) {
+        if ( t.txType() == 2 ) {
+            // EIP-1559: effectiveGasPrice = min(maxFeePerGas, baseFeePerGas + maxPriorityFeePerGas)
+            dev::u256 baseFee = bc().info( blockHash ).baseFeePerGas();
+            effectiveGasPrice = std::min( t.maxFeePerGas(), baseFee + t.maxPriorityFeePerGas() );
+        } else {
+            effectiveGasPrice = t.gasPrice();
+        }
+    }
 
     return LocalisedTransactionReceipt( receipt, txHash, blockHash, blockNumber, transactionIdx,
         from, to, gasUsed, contractAddress, txType, effectiveGasPrice );
