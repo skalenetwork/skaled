@@ -31,6 +31,7 @@
 #include <time.h>
 
 #include <boost/filesystem/path.hpp>
+#include <boost/container/flat_map.hpp>
 
 #include <libbatched-io/batched_db.h>
 #include <libbatched-io/batched_rotating_db_io.h>
@@ -107,6 +108,7 @@ enum {
 #ifdef BITE
     ,
     ExtraTransactionDecryptedData,
+    ExtraCreatedCTXs,
     ExtraCtxOrigin
 #endif  // BITE
 };
@@ -343,12 +345,17 @@ public:
             NullDecryptedTransactionData );
     }
 
-    CtxOrigin ctxHashesForBlock( const dev::h256& _blockHash ) const {
-        return queryExtras< CtxOrigin, ExtraCtxOrigin >(
-            _blockHash, m_ctxOrigin, x_ctxOrigin, NullCtxOrigin );
+    CreatedCTXs ctxHashesForBlock( const dev::h256& _blockHash ) const {
+        return queryExtras< CreatedCTXs, ExtraCreatedCTXs >(
+            _blockHash, m_createdCTXs, x_createdCTXs, NullCreatedCTXs );
     }
 
     Transactions ctxListForPreviousBlock() const;
+
+    TransactionHash ctxOrigin( const dev::h256& _ctxHash ) const {
+        return queryExtras< TransactionHash, ExtraCtxOrigin >(
+                    _ctxHash, m_ctxOrigin, x_ctxOrigin, NullTransactionHash );
+    }
 #endif  // BITE
 
     /// Get a number for the given hash (or the most recent mined if none given). Thread-safe.
@@ -418,13 +425,14 @@ public:
         unsigned memBlockHashes = 0;
 #ifdef BITE
         unsigned memDecryptedTransactionsData = 0;
+        unsigned memCreatedCTXs = 0;
         unsigned memCtxOrigin = 0;
 #endif  // BITE
         unsigned memTotal() const {
             return memBlocks + memDetails + memLogBlooms + memReceipts + memTransactionAddresses +
                    memBlockHashes
 #ifdef BITE
-                   + memDecryptedTransactionsData + memCtxOrigin
+                   + memDecryptedTransactionsData + memCreatedCTXs + memCtxOrigin
 #endif  // BITE
                 ;
         }
@@ -626,8 +634,10 @@ private:
 #ifdef BITE
     mutable SharedMutex x_decryptedTransactionsData;
     mutable DecryptedTransactionDataHash m_decryptedTransactionsData;
+    mutable SharedMutex x_createdCTXs;
+    mutable CreatedCTXsByOrigin m_createdCTXs;
     mutable SharedMutex x_ctxOrigin;
-    mutable CtxOriginHash m_ctxOrigin;
+    mutable CtxOrigin m_ctxOrigin;
 #endif  // BITE
 
     using CacheID = std::pair< h256, unsigned >;

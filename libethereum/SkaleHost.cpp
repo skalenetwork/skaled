@@ -695,6 +695,13 @@ void SkaleHost::createBlock( const ConsensusExtFace::Transactions& _approvedTran
 #endif
             );
 #ifdef BITE
+            if ( m_tq.pendingBITE2Transactions().size() && !_decryptedTransactions.ctxTxsMap->size() && _winningNodeIndex ) {
+                // non-default block doesn't address CTXs created before - this should never happen
+                BOOST_LOG( m_loggerError ) << "Expected decrypted data for CTXs that were created before. Exiting.";
+                m_ignoreNewBlocks = true;
+                m_consensus->exitGracefully();
+                ExitHandler::exitHandler( -1, ExitHandler::ec_state_root_mismatch );
+            }
             auto ctxTxns =
                 processCTXTransactions( _approvedTransactions, latestInfo, _decryptedTransactions );
             outTxns.insert( outTxns.begin(), ctxTxns.begin(), ctxTxns.end() );
