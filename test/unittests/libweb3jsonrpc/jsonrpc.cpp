@@ -6103,7 +6103,7 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
 }
 
 BOOST_AUTO_TEST_CASE( submitCTXInContractConstructor ) {
-    JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true, false, -1, {{ "contractStorageLimit", "100000", "ContractCreationReadOnlyPatch", "1" }} );
+    JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true, false, -1, {{ "contractStorageLimit", "100000"}, {"ContractCreationReadOnlyPatch", "1" }} );
 
     string senderAddress = toJS( fixture.coinbase.address() );
 

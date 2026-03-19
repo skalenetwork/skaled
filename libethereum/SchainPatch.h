@@ -200,7 +200,7 @@ DEFINE_SIMPLE_PATCH( Bite2Patch );
  */
 DEFINE_SIMPLE_PATCH( SingleStateCommitPerBlockPatch );
 
-DEFINE_AMNESIC_PATCH( ContractCreationReadOnlyPatch );
+DEFINE_SIMPLE_PATCH( ContractCreationReadOnlyPatch );
 
 #ifdef FAIR
 DEFINE_SIMPLE_PATCH( DisableSelfDestructPatch );
