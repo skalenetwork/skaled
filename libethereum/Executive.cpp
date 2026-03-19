@@ -502,7 +502,7 @@ bool Executive::executeCreate( Address const& _sender, u256 const& _endowment,
             bytesConstRef(), _init, sha3( _init ), _version, m_depth, true, false
 #ifdef BITE
             ,
-            true, m_txnIndex
+            m_readOnly, m_txnIndex
 #endif
         );
     else
