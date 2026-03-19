@@ -4456,6 +4456,8 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     time_t eip1559PatchActivationTimestamp = time( nullptr ) + 10;
     ret["skaleConfig"]["sChain"]["EIP1559TransactionsPatchTimestamp"] =
         eip1559PatchActivationTimestamp;
+    ret["skaleConfig"]["sChain"]["LondonForkPatchTimestamp"] =
+        eip1559PatchActivationTimestamp;
 
     Json::FastWriter fastWriter;
     std::string config = fastWriter.write( ret );
