@@ -589,6 +589,10 @@ Json::Value Eth::eth_getBlockByHash( string const& _blockHash, bool _includeTran
         // Post-London: read baseFeePerGas from the block header (always 0 on standard SKALE).
         u256 baseFeePerGas = client()->blockInfo( h ).baseFeePerGas();
 
+#ifdef HISTORIC_STATE
+        BlockNumber bn = client()->numberFromHash( h );
+#endif
+
         if ( _includeTransactions ) {
             Transactions transactions = client()->transactions( h );
 
@@ -635,15 +639,14 @@ Json::Value Eth::eth_getBlockByNumber( string const& _blockNumber, bool _include
         if ( !client()->isKnown( h ) )
             return Json::Value( Json::nullValue );
 
-        // Post-London: read baseFeePerGas from the block header (always 0 on standard SKALE).
-        u256 baseFeePerGas = client()->blockInfo( h ).baseFeePerGas();
-
 #ifdef HISTORIC_STATE
         h256 bh = client()->hashFromNumber( h );
         return eth_getBlockByHash( "0x" + bh.hex(), _includeTransactions );
     } catch ( const JsonRpcException& ) {
         throw;
 #else
+        // Post-London: read baseFeePerGas from the block header (always 0 on standard SKALE).
+        u256 baseFeePerGas = client()->blockInfo( h ).baseFeePerGas();
 
         if ( _includeTransactions )
             return toJson( client()->blockInfo( h ), client()->blockDetails( h ),
