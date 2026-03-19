@@ -44,8 +44,8 @@ BOOST_AUTO_TEST_CASE( addCommitClear ) {
     Transaction tx2( 1, 100, 21000, Address(), ctxData, 10, sec );
     tx2.checkIfCTXAndSet( ctxData );
 
-    queue.addTemp( std::move( tx1 ) );
-    queue.addTemp( std::move( tx2 ) );
+    queue.addTemp( Transaction( tx1 ) );
+    queue.addTemp( Transaction( tx2 ) );
 
     BOOST_REQUIRE_EQUAL( queue.debug_pendingBITE2Transactions().size(), 2 );
 
@@ -56,7 +56,7 @@ BOOST_AUTO_TEST_CASE( addCommitClear ) {
 
     Transaction tx3( 2, 100, 21000, Address(), ctxData, 10, sec );
     tx3.checkIfCTXAndSet( ctxData );
-    queue.addTemp( std::move( tx3 ) );
+    queue.addTemp( Transaction( tx3 ) );
     BOOST_REQUIRE_EQUAL( queue.pendingBITE2Transactions()->size(), 3 );
 
     queue.clearTemp();
