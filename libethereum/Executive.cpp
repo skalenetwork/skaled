@@ -498,7 +498,7 @@ bool Executive::executeCreate( Address const& _sender, u256 const& _endowment,
     // Schedule _init execution if not empty.
     if ( !_init.empty() ) {
         bool isReadOnly =
-                Bite2Patch::isEnabledWhen( m_envInfo.committedBlockTimestamp() ) ? m_readOnly : true;
+           Bite2Patch::isEnabledWhen( m_envInfo.committedBlockTimestamp() ) ? m_readOnly : true;
         m_ext = make_shared< ExtVM >(
             m_s, m_envInfo, m_chainParams, m_newAddress, _sender, _origin, _endowment, _gasPrice,
             bytesConstRef(), _init, sha3( _init ), _version, m_depth, true, false
