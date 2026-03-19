@@ -139,6 +139,37 @@ BOOST_AUTO_TEST_CASE( dropGood ) {
     BOOST_REQUIRE( !queue.dropGood( txNormal ) );
 }
 
+BOOST_AUTO_TEST_CASE( setQueueOnInit ) {
+    BITE2TransactionQueue queue;
+    Secret sec = Secret( "0x45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8" );
+
+    bytes ctxData;
+    ctxData.insert( ctxData.end(), std::begin( BITE2_FUNCTION_SELECTOR_AS_BYTE_ARRAY ),
+        std::end( BITE2_FUNCTION_SELECTOR_AS_BYTE_ARRAY ) );
+    Transactions ctxs;
+    for ( size_t i = 0; i < 5; ++i ) {
+        Transaction txCtx( i, 100, 21000, Address(), ctxData, i, sec );
+        txCtx.checkIfCTXAndSet( ctxData );
+        ctxs.push_back( std::move( txCtx ) );
+    }
+    queue.setQueueOnInit( ctxs );
+    BOOST_REQUIRE_EQUAL( queue.pendingBITE2Transactions()->size(), 5 );
+    
+    Transaction ctx6( 5, 100, 21000, Address(), ctxData, 5, sec );
+    ctx6.checkIfCTXAndSet( ctxData );
+    queue.addTemp( Transaction( ctx6 ) );
+    queue.clearTemp();
+    BOOST_REQUIRE_EQUAL( queue.pendingBITE2Transactions()->size(), 5 );
+    BOOST_REQUIRE( queue.debug_pendingBITE2Transactions().at( 0 ) == ctxs[0] );
+    BOOST_REQUIRE( queue.debug_pendingBITE2Transactions().at( 4 ) == ctxs[4] );
+    queue.addTemp( Transaction( ctx6 ) );
+    queue.commitTemp();
+    BOOST_REQUIRE_EQUAL( queue.pendingBITE2Transactions()->size(), 6 );
+    BOOST_REQUIRE( queue.debug_pendingBITE2Transactions().at( 5 ) == ctx6 );
+    ctxs.push_back( ctx6 );
+    BOOST_REQUIRE( queue.debug_pendingBITE2Transactions() == ctxs );
+}
+
 BOOST_AUTO_TEST_CASE( clear ) {
     BITE2TransactionQueue queue;
     Secret sec = Secret( "0x45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8" );

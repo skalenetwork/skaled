@@ -110,6 +110,7 @@ bool BITE2TransactionQueue::dropGood( const Transaction& _t ) {
             m_currentHeadIndex = 0;
             m_empty = true;
         } else {
+            CHECK_EXPRESSION( m_currentHeadIndex > 0 );
             m_currentHeadIndex -= 1;
         }
         return true;

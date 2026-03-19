@@ -78,7 +78,7 @@ void BITE2TransactionQueue::setQueueOnInit( C&& _ctxQueue ) {
     CHECK_EXPRESSION( m_current );
     m_current = std::make_shared< std::deque< Transaction > >(
         std::make_move_iterator( _ctxQueue.begin() ), std::make_move_iterator( _ctxQueue.end() ) );
-    m_currentHeadIndex = 0;
+    m_currentHeadIndex = m_current->empty() ? 0 : m_current->size() - 1;
     m_empty = m_current->empty();
     BOOST_LOG( m_loggerInfo ) << "BITE2 queue initialized with " << m_current->size() << " CTXs";
 }
