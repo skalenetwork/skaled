@@ -198,8 +198,8 @@ EVMSchedule LondonForkPatch::makeSchedule( const EVMSchedule& _base ) {
 
     // EIP-3529: reduced refunds
     ret.eip3529Mode = true;
-    ret.maxRefundQuotient = 5;   // was 2
-    ret.suicideRefundGas = 0;    // was 24000; no SELFDESTRUCT refund under London
+    ret.maxRefundQuotient = 5;  // was 2
+    ret.suicideRefundGas = 0;   // was 24000; no SELFDESTRUCT refund under London
     // sstoreRefundGas becomes SSTORE_RESET_GAS(2900) + ACCESS_LIST_STORAGE_KEY_COST(1900) = 4800
     ret.sstoreRefundGas = 4800;  // was 15000
 

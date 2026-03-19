@@ -23,7 +23,6 @@
 
 #include "BlockHeader.h"
 #include "Exceptions.h"
-#include <libethereum/SchainPatch.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/OverlayDB.h>
@@ -31,6 +30,7 @@
 #include <libdevcore/TrieDB.h>
 #include <libdevcore/TrieHash.h>
 #include <libethcore/Common.h>
+#include <libethereum/SchainPatch.h>
 
 using namespace std;
 using namespace dev;
@@ -142,11 +142,9 @@ void BlockHeader::streamRLPFields( RLPStream& _s ) const {
 
 void BlockHeader::streamRLP( RLPStream& _s, IncludeSeal _i ) const {
     if ( _i != OnlySeal ) {
-        const bool london =
-            LondonForkPatch::isEnabledWhen( static_cast< time_t >( timestamp() ) );
-        _s.appendList(
-            BlockHeader::BasicFields + ( london ? 1 : 0 ) +
-            ( _i == WithoutSeal ? 0 : m_seal.size() ) );
+        const bool london = LondonForkPatch::isEnabledWhen( static_cast< time_t >( timestamp() ) );
+        _s.appendList( BlockHeader::BasicFields + ( london ? 1 : 0 ) +
+                       ( _i == WithoutSeal ? 0 : m_seal.size() ) );
         BlockHeader::streamRLPFields( _s );
     }
     if ( _i != WithoutSeal )

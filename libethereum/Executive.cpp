@@ -625,8 +625,7 @@ bool Executive::go( OnOpFunc const& _onOp ) {
                 if ( out.size() > m_ext->evmSchedule().maxCodeSize )
                     BOOST_THROW_EXCEPTION( OutOfGas() );
                 // EIP-3541: reject contracts whose deployed code starts with 0xEF
-                else if ( m_ext->evmSchedule().eip3541Mode && !out.empty() &&
-                          out[0] == 0xEF )
+                else if ( m_ext->evmSchedule().eip3541Mode && !out.empty() && out[0] == 0xEF )
                     BOOST_THROW_EXCEPTION( OutOfGas() );
                 else if ( out.size() * m_ext->evmSchedule().createDataGas <= m_gas ) {
                     if ( m_res )
@@ -705,8 +704,7 @@ bool Executive::finalize() {
         // Refunds must be applied before the miner gets the fees.
         assert( m_ext->sub.refunds >= 0 );
         // EIP-3529: refund cap is gasUsed / maxRefundQuotient (2 pre-London, 5 London+)
-        int64_t gasUsed =
-            static_cast< int64_t >( m_t.gas() ) - static_cast< int64_t >( m_gas );
+        int64_t gasUsed = static_cast< int64_t >( m_t.gas() ) - static_cast< int64_t >( m_gas );
         int64_t maxRefund =
             gasUsed / static_cast< int64_t >( m_ext->evmSchedule().maxRefundQuotient );
         m_gas += min( maxRefund, m_ext->sub.refunds );

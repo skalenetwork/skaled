@@ -196,8 +196,8 @@ void SealEngineFace::verifyTransaction( ChainOperationParams const& _chainParams
     if ( _t.txType() == 2 ) {
         u256 baseFee = _header.baseFeePerGas();
         if ( _t.maxFeePerGas() < baseFee )
-            BOOST_THROW_EXCEPTION( InvalidTransactionFormat()
-                << errinfo_comment( "maxFeePerGas < baseFeePerGas" ) );
+            BOOST_THROW_EXCEPTION(
+                InvalidTransactionFormat() << errinfo_comment( "maxFeePerGas < baseFeePerGas" ) );
     }
 }
 
