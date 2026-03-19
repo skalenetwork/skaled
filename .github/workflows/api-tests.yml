@@ -26,6 +26,10 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
       - name: Install packages
         run: |
           sudo apt-get update
