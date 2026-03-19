@@ -135,16 +135,22 @@ void BlockHeader::streamRLPFields( RLPStream& _s ) const {
     _s << m_parentHash << m_sha3Uncles << m_author << m_stateRoot << m_transactionsRoot
        << m_receiptsRoot << m_logBloom << m_difficulty << m_number << m_gasLimit << m_gasUsed
        << ( useTimestampHack ? ( m_number + 1 ) : m_timestamp ) << m_extraData;
+#ifdef FAIR
     // EIP-1559: post-London headers include baseFeePerGas as the 14th field
     if ( LondonForkPatch::isEnabledWhen( static_cast< time_t >( timestamp() ) ) )
         _s << m_baseFeePerGas;
+#endif
 }
 
 void BlockHeader::streamRLP( RLPStream& _s, IncludeSeal _i ) const {
     if ( _i != OnlySeal ) {
+#ifdef FAIR
         const bool london = LondonForkPatch::isEnabledWhen( static_cast< time_t >( timestamp() ) );
         _s.appendList( BlockHeader::BasicFields + ( london ? 1 : 0 ) +
                        ( _i == WithoutSeal ? 0 : m_seal.size() ) );
+#else
+        _s.appendList( BlockHeader::BasicFields + ( _i == WithoutSeal ? 0 : m_seal.size() ) );
+#endif
         BlockHeader::streamRLPFields( _s );
     }
     if ( _i != WithoutSeal )
@@ -194,14 +200,15 @@ void BlockHeader::populate( RLP const& _header ) {
         m_timestamp = _header[field = 11].toPositiveInt64();
         m_extraData = _header[field = 12].toBytes();
         m_seal.clear();
-        // EIP-1559: post-London headers carry baseFeePerGas as field 13;
-        // detect by checking if London was active at this block's timestamp.
+        // EIP-1559: post-London headers carry baseFeePerGas as field 13 (FAIR only).
         unsigned sealStart = 13;
+#ifdef FAIR
         if ( LondonForkPatch::isEnabledWhen( static_cast< time_t >( m_timestamp ) ) &&
              _header.itemCount() > 13 ) {
             m_baseFeePerGas = _header[field = 13].toInt< u256 >();
             sealStart = 14;
         }
+#endif
         for ( unsigned i = sealStart; i < _header.itemCount(); ++i )
             m_seal.push_back( _header[i].data().toBytes() );
     } catch ( Exception const& _e ) {
@@ -218,9 +225,11 @@ void BlockHeader::populateFromParent( BlockHeader const& _parent ) {
     m_gasLimit = _parent.m_gasLimit;
     m_difficulty = _parent.m_difficulty;
     m_gasUsed = 0;
+#ifdef FAIR
     // EIP-1559: propagate baseFeePerGas from parent.
     // On SKALE, baseFee is always 0 (no dynamic fee market).
     m_baseFeePerGas = _parent.m_baseFeePerGas;
+#endif
 }
 
 void BlockHeader::verify( Strictness _s, BlockHeader const& _parent, bytesConstRef _block ) const {
