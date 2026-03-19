@@ -1379,8 +1379,10 @@ def test_eip_1559_effective_price(
 
     latest = w3.eth.get_block("latest")
     base_fee = _as_int(latest.get("baseFeePerGas")) or 0
-    max_priority = 0
-    max_fee = max(base_fee, max_priority)
+    # Use non-zero, EIP-1559-style fee fields so helper-side fee-floor normalization
+    # does not rewrite the tx into edge-case values on Anvil.
+    max_priority = 10**9  # 1 gwei tip
+    max_fee = base_fee * 2 + max_priority
 
     tx = contract.functions.reportGasPrice().build_transaction(
         {
