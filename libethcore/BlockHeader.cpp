@@ -135,7 +135,6 @@ void BlockHeader::streamRLPFields( RLPStream& _s ) const {
     _s << m_parentHash << m_sha3Uncles << m_author << m_stateRoot << m_transactionsRoot
        << m_receiptsRoot << m_logBloom << m_difficulty << m_number << m_gasLimit << m_gasUsed
        << ( useTimestampHack ? ( m_number + 1 ) : m_timestamp ) << m_extraData;
-    // EIP-1559: post-London headers include baseFeePerGas as the 14th field
     if ( LondonForkPatch::isEnabledWhen( static_cast< time_t >( timestamp() ) ) )
         _s << m_baseFeePerGas;
 }
@@ -194,7 +193,6 @@ void BlockHeader::populate( RLP const& _header ) {
         m_timestamp = _header[field = 11].toPositiveInt64();
         m_extraData = _header[field = 12].toBytes();
         m_seal.clear();
-        // EIP-1559: post-London headers carry baseFeePerGas as field 13.
         unsigned sealStart = 13;
         if ( LondonForkPatch::isEnabledWhen( static_cast< time_t >( m_timestamp ) ) &&
              _header.itemCount() > 13 ) {
@@ -217,8 +215,6 @@ void BlockHeader::populateFromParent( BlockHeader const& _parent ) {
     m_gasLimit = _parent.m_gasLimit;
     m_difficulty = _parent.m_difficulty;
     m_gasUsed = 0;
-    // EIP-1559: propagate baseFeePerGas from parent.
-    // On SKALE, baseFee is always 0 (no dynamic fee market).
     m_baseFeePerGas = _parent.m_baseFeePerGas;
 }
 
