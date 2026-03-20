@@ -108,25 +108,6 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           export CMAKE_OPTS="-DFAIR=1 -DHISTORIC_STATE=1 ${{ inputs.cmake_options }}"
           echo "CMAKE_OPTS=$CMAKE_OPTS" >> $GITHUB_ENV
-      - name: Prepare workflow variables (BITE2)
-        if: inputs.node_type == 'bite2'
-        run: |
-          export VERSION_SUFFIX=$(echo "$BUILD_TYPE" | tr '[:upper:]' '[:lower:]')
-          [[ $PLAIN_VERSION = "true" ]] && export VERSION=${{ inputs.image_version }} || \
-            export VERSION=${{ inputs.image_version }}-$VERSION_SUFFIX
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          export CMAKE_OPTS="-DBITE2=1 ${{ inputs.cmake_options }}"
-          echo "CMAKE_OPTS=$CMAKE_OPTS" >> $GITHUB_ENV
-      - name: Prepare workflow variables (BITE2-HISTORIC)
-        if: inputs.node_type == 'bite2-historic'
-        run: |
-          export VERSION_SUFFIX=$(echo "$BUILD_TYPE" | tr '[:upper:]' '[:lower:]')
-          [[ $PLAIN_VERSION = "true" ]] && export VERSION=${{ inputs.image_version }} || \
-            export VERSION=${{ inputs.image_version }}-$VERSION_SUFFIX
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          export CMAKE_OPTS="-DBITE2=1 -DHISTORIC_STATE=1 ${{ inputs.cmake_options }}"
-          echo "CMAKE_OPTS=$CMAKE_OPTS" >> $GITHUB_ENV
-      
       - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.branch_name }}

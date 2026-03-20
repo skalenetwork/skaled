@@ -22,8 +22,6 @@ jobs:
       version_fair_historic: ${{ steps.set-version.outputs.version_fair_historic }}
       version_bite: ${{ steps.set-version.outputs.version_bite }}
       version_bite_historic: ${{ steps.set-version.outputs.version_bite_historic }}
-      version_bite2: ${{ steps.set-version.outputs.version_bite2 }}
-      version_bite2_historic: ${{ steps.set-version.outputs.version_bite2_historic }}
       release_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
       - name: Checkout repository
@@ -52,8 +50,6 @@ jobs:
           echo "::set-output name=version_fair_historic::$VERSION-fair-historic"
           echo "::set-output name=version_bite::$VERSION-bite"
           echo "::set-output name=version_bite_historic::$VERSION-bite-historic"
-          echo "::set-output name=version_bite2::$VERSION-bite2"
-          echo "::set-output name=version_bite2_historic::$VERSION-bite2-historic"
           
       - name: Create GitHub Release
         id: create_release
@@ -138,30 +134,6 @@ jobs:
       use_plain_version: true
     secrets: inherit
   
-  build-bite2:
-    needs: configure
-    uses: ./.github/workflows/setup-build-publish.yml
-    with:
-      branch_name: ${{ github.ref_name }}
-      image_version: ${{ needs.configure.outputs.version_bite2 }}
-      build_type: "RelWithDebInfo"
-      node_type: bite2
-      release_url: ${{ needs.configure.outputs.release_url }}
-      use_plain_version: true
-    secrets: inherit
-  
-  build-bite2-historic:
-    needs: configure
-    uses: ./.github/workflows/setup-build-publish.yml
-    with:
-      branch_name: ${{ github.ref_name }}
-      image_version: ${{ needs.configure.outputs.version_bite2_historic }}
-      build_type: "RelWithDebInfo"
-      node_type: bite2-historic
-      release_url: ${{ needs.configure.outputs.release_url }}
-      use_plain_version: true
-    secrets: inherit
-
   functional-tests:
     uses: ./.github/workflows/functional-tests.yml
     name: Functional testing for orig build
