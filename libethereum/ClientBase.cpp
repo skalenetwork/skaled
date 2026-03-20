@@ -494,8 +494,10 @@ LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(
     int txType{ t.txType() };
     dev::u256 effectiveGasPrice{ 0 };
     if ( !t.isInvalid() ) {
-        if ( t.txType() == 2 ) {
+        if ( t.txType() == 2 && LondonForkPatch::isEnabledWhen( blockTimestamp ) ) {
             // EIP-1559: effectiveGasPrice = min(maxFeePerGas, baseFeePerGas + maxPriorityFeePerGas)
+            // Only apply this formula when London is active; before London, baseFeePerGas is 0 and
+            // the correct price is maxFeePerGas (t.gasPrice()).
             dev::u256 baseFee = bc().info( blockHash ).baseFeePerGas();
             effectiveGasPrice = std::min( t.maxFeePerGas(), baseFee + t.maxPriorityFeePerGas() );
         } else {
