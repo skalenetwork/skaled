@@ -19,6 +19,17 @@ link_directories( "${DEPS_INSTALL_ROOT}/lib" )
 set( CMAKE_PREFIX_PATH "${DEPS_INSTALL_ROOT}" )
 list( APPEND CMAKE_MODULE_PATH ${DEPS_INSTALL_ROOT}/lib/cmake )
 
+if (NOT TARGET skale_libcurl)
+    add_library(skale_libcurl INTERFACE)
+    target_link_libraries(skale_libcurl INTERFACE
+        "${DEPS_INSTALL_ROOT}/lib/libcurl.a"
+        idn2
+        "${DEPS_INSTALL_ROOT}/lib/libz.a"
+        "${DEPS_INSTALL_ROOT}/lib/libssl.a"
+        "${DEPS_INSTALL_ROOT}/lib/libcrypto.a"
+    )
+endif ()
+
 link_directories( ${CMAKE_BINARY_DIR}/deps/lib )          # HACK for not-found -lff in testeth
 
 option( SKALED_PROFILING "Build for profiling" OFF )
@@ -172,15 +183,8 @@ if (BITE)
     add_definitions(-DBITE=1)
 endif()
 
-if (BITE2)
-    set(BITE "1")
-    add_definitions(-DBITE=1)
-    add_definitions(-DBITE2=1)
-endif()
-
 if (FAIR)
     set(BITE "1")
-    set(BITE2 "1")
     add_definitions(-DBITE=1)
     add_definitions(-DBITE2=1)
     add_definitions(-DFAIR=1)
@@ -251,6 +255,7 @@ if ( CONSENSUS )
     add_subdirectory( libconsensus EXCLUDE_FROM_ALL)
     target_compile_options( consensus PRIVATE -Wno-unused-variable ) # silence libff warnings
     target_compile_options( bls PRIVATE -Wno-unused-variable) # silence libff warnings
+    target_compile_options( consensus PRIVATE -Wno-error=ignored-attributes )
 else()
     add_subdirectory( libconsensus/libBLS )
     target_compile_options( bls PRIVATE -Wno-unused-variable) # silence libff warnings
