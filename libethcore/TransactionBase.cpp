@@ -351,6 +351,9 @@ void TransactionBase::fillFromBytesType2( bytesConstRef _rlpData, CheckTransacti
         m_accessList = validateAccessListRLP( rlp[8] );
 
         bool const yParity = rlp[9].toInt< uint8_t >();
+        // EIP-1559: r and s may be encoded as fixed-width 32-byte values with
+        // leading zeros (not valid as strict RLP integers), or as compact values
+        // shorter than 32 bytes. Decode as h256 with Strict (allows short, rejects long).
         h256 const r = rlp[10].toHash< h256 >( RLP::Strict );
         h256 const s = rlp[11].toHash< h256 >( RLP::Strict );
 
