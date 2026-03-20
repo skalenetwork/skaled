@@ -172,17 +172,10 @@ if (BITE)
     add_definitions(-DBITE=1)
 endif()
 
-if (BITE2)
-    set(BITE "1")
-    add_definitions(-DBITE=1)
-    add_definitions(-DBITE2=1)
-endif()
 
 if (FAIR)
     set(BITE "1")
-    set(BITE2 "1")
     add_definitions(-DBITE=1)
-    add_definitions(-DBITE2=1)
     add_definitions(-DFAIR=1)
 endif()
 
