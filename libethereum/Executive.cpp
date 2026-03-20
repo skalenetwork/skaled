@@ -496,16 +496,20 @@ bool Executive::executeCreate( Address const& _sender, u256 const& _endowment,
     m_s.clearStorage( m_newAddress );
 
     // Schedule _init execution if not empty.
-    if ( !_init.empty() )
+    if ( !_init.empty() ) {
+        bool isReadOnly =
+            ContractCreationReadOnlyPatch::isEnabledWhen( m_envInfo.committedBlockTimestamp() ) ?
+                m_readOnly :
+                true;
         m_ext = make_shared< ExtVM >(
             m_s, m_envInfo, m_chainParams, m_newAddress, _sender, _origin, _endowment, _gasPrice,
             bytesConstRef(), _init, sha3( _init ), _version, m_depth, true, false
 #ifdef BITE
             ,
-            true, m_txnIndex
+            isReadOnly, m_txnIndex
 #endif
         );
-    else
+    } else
         // code stays empty, but we set the version
         m_s.setCode( m_newAddress, {}, _version );
 
