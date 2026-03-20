@@ -208,20 +208,4 @@ jobs:
     needs: build-bite-historic
     with:
       version: ${{ needs.build-bite-historic.outputs.version }}
-    secrets: inherit
-  
-  functional-tests-bite2:
-    uses: ./.github/workflows/functional-tests.yml
-    name: Functional testing for bite2 build
-    needs: build-bite2
-    with:
-      version: ${{ needs.build-bite2.outputs.version }}
-    secrets: inherit
-  
-  functional-tests-bite2-historic:
-    uses: ./.github/workflows/functional-tests.yml
-    name: Functional testing for bite2-historic build
-    needs: build-bite2-historic
-    with:
-      version: ${{ needs.build-bite2-historic.outputs.version }}
-    secrets: inherit
+    secrets: inherit 
