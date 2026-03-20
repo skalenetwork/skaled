@@ -1461,10 +1461,17 @@ def test_eip_1559_effective_price(
     reported_gas_price = _as_int(logs[0]["args"]["gasPrice"]) if logs else None
     receipt_effective = _as_int(receipt.get("effectiveGasPrice"))
 
+    # Use the baseFee from the block that actually included the transaction —
+    # baseFeePerGas can change between blocks, so using the pre-send value causes
+    # a spurious mismatch when the tx lands in a later block.
+    inclusion_block = w3.eth.get_block(receipt["blockNumber"])
+    inclusion_base_fee = _as_int(inclusion_block.get("baseFeePerGas")) or 0
+
     details = {
         "reported_gas_price": reported_gas_price,
         "receipt_effective_gas_price": receipt_effective,
-        "base_fee": base_fee,
+        "pre_send_base_fee": base_fee,
+        "inclusion_base_fee": inclusion_base_fee,
         "max_fee_per_gas": max_fee,
         "max_priority_fee_per_gas": max_priority,
         "status": receipt["status"],
@@ -1496,16 +1503,16 @@ def test_eip_1559_effective_price(
             details=details,
         )
 
-    # Verify the EIP-1559 effective gas price formula:
+    # Verify the EIP-1559 effective gas price formula using the inclusion block's baseFee:
     # effectiveGasPrice = min(maxFeePerGas, baseFeePerGas + maxPriorityFeePerGas)
-    expected_effective = min(max_fee, base_fee + max_priority)
+    expected_effective = min(max_fee, inclusion_base_fee + max_priority)
     if receipt_effective is not None and receipt_effective != expected_effective:
         return EIPTestResult(
             eip="1559-effective-price",
             passed=False,
             message=(
                 f"effectiveGasPrice={receipt_effective} does not match "
-                f"min(maxFee={max_fee}, baseFee={base_fee} + maxPriority={max_priority}) "
+                f"min(maxFee={max_fee}, baseFee={inclusion_base_fee} + maxPriority={max_priority}) "
                 f"= {expected_effective}"
             ),
             details=details,
@@ -1517,7 +1524,7 @@ def test_eip_1559_effective_price(
         message=(
             f"GASPRICE opcode={reported_gas_price}, "
             f"receipt.effectiveGasPrice={receipt_effective}, "
-            f"formula min({max_fee}, {base_fee}+{max_priority})={expected_effective}"
+            f"formula min({max_fee}, {inclusion_base_fee}+{max_priority})={expected_effective}"
         ),
         details=details,
     )
@@ -1616,6 +1623,205 @@ def test_eip_1559_max_priority_fee(
 
 
 # ---------------------------------------------------------------------------
+# EIP-1559: block hash integrity (Gap 2 regression test)
+# ---------------------------------------------------------------------------
+# Recomputes the block hash from the fields returned by eth_getBlockByNumber
+# using independent Python RLP encoding.  This catches the class of bug where
+# baseFeePerGas is present in the JSON response but absent from the RLP used
+# to compute the hash (as happened when the London RLP code was guarded by
+# #ifdef FAIR and compiled out of non-FAIR builds).
+# ---------------------------------------------------------------------------
+
+def _uint_to_bytes(v: int) -> bytes:
+    """Encode a non-negative integer as minimal big-endian bytes (RLP integer)."""
+    if v == 0:
+        return b""
+    return v.to_bytes((v.bit_length() + 7) // 8, "big")
+
+
+def _rlp_item(data: bytes) -> bytes:
+    """RLP-encode a single byte string."""
+    if len(data) == 1 and data[0] < 0x80:
+        return data
+    n = len(data)
+    if n < 56:
+        return bytes([0x80 + n]) + data
+    nb = n.to_bytes((n.bit_length() + 7) // 8, "big")
+    return bytes([0xb7 + len(nb)]) + nb + data
+
+
+def _rlp_list(items: list) -> bytes:
+    """RLP-encode a flat list of byte strings."""
+    payload = b"".join(_rlp_item(i) for i in items)
+    n = len(payload)
+    if n < 56:
+        return bytes([0xc0 + n]) + payload
+    nb = n.to_bytes((n.bit_length() + 7) // 8, "big")
+    return bytes([0xf7 + len(nb)]) + nb + payload
+
+
+def _compute_block_hash(block) -> dict:
+    """
+    Recompute the keccak256 block hash from eth_getBlockByNumber fields.
+
+    Returns a dict mapping variant name -> bytes so the caller can determine
+    which variant the node uses.  Known variants:
+
+    "skale"    — SKALE non-genesis blocks: no seal fields, baseFeePerGas
+                 directly after extraData.  mixHash/nonce are NOT part of the
+                 hash even though jsInfo() exposes zero defaults via JSON-RPC.
+    "london"   — Ethereum London spec (Anvil/geth): extraData + mixHash +
+                 nonce + baseFeePerGas.
+    "shanghai" — EIP-4895: London fields + withdrawalsRoot.
+    "cancun"   — EIP-4844: Shanghai fields + blobGasUsed + excessBlobGas +
+                 parentBeaconBlockRoot.
+
+    Field order (13 base fields):
+      parentHash, sha3Uncles, miner, stateRoot, transactionsRoot,
+      receiptsRoot, logsBloom, difficulty, number, gasLimit, gasUsed,
+      timestamp, extraData
+    """
+    from eth_utils import keccak
+
+    def h(v) -> bytes:
+        return bytes(v)
+
+    base_fields = [
+        h(block["parentHash"]),
+        h(block["sha3Uncles"]),
+        bytes.fromhex(block["miner"][2:]),
+        h(block["stateRoot"]),
+        h(block["transactionsRoot"]),
+        h(block["receiptsRoot"]),
+        h(block["logsBloom"]),
+        _uint_to_bytes(block["difficulty"]),
+        _uint_to_bytes(block["number"]),
+        _uint_to_bytes(block["gasLimit"]),
+        _uint_to_bytes(block["gasUsed"]),
+        _uint_to_bytes(block["timestamp"]),
+        h(block["extraData"]),
+    ]
+
+    base_fee = block.get("baseFeePerGas")
+    mix_hash_raw = block.get("mixHash")
+    nonce_raw = block.get("nonce")
+    withdrawals_root_raw = block.get("withdrawalsRoot")
+    blob_gas_used = block.get("blobGasUsed")
+    excess_blob_gas = block.get("excessBlobGas")
+    parent_beacon_root_raw = block.get("parentBeaconBlockRoot")
+
+    variants: dict = {}
+
+    # Variant "skale": no seal, baseFeePerGas directly after extraData.
+    skale_fields = list(base_fields)
+    if base_fee is not None:
+        skale_fields.append(_uint_to_bytes(base_fee))
+    variants["skale"] = keccak(primitive=_rlp_list(skale_fields))
+
+    if mix_hash_raw is not None and nonce_raw is not None:
+        nonce_bytes = bytes(nonce_raw)
+        if len(nonce_bytes) != 8:
+            nonce_bytes = nonce_bytes.rjust(8, b"\x00")
+
+        # Variant "london": extraData + mixHash + nonce + baseFeePerGas
+        london_fields = list(base_fields) + [h(mix_hash_raw), nonce_bytes]
+        if base_fee is not None:
+            london_fields.append(_uint_to_bytes(base_fee))
+        variants["london"] = keccak(primitive=_rlp_list(london_fields))
+
+        # Variant "shanghai": London + withdrawalsRoot (EIP-4895).
+        # Anvil rc-3 uses this block structure even when --hardfork london is
+        # set, because the internal block representation always includes it.
+        if withdrawals_root_raw is not None:
+            shanghai_fields = list(london_fields) + [h(withdrawals_root_raw)]
+            variants["shanghai"] = keccak(primitive=_rlp_list(shanghai_fields))
+
+            # Variant "cancun": Shanghai + blobGasUsed + excessBlobGas +
+            # parentBeaconBlockRoot (EIP-4844 / EIP-4788).
+            if (blob_gas_used is not None and excess_blob_gas is not None
+                    and parent_beacon_root_raw is not None):
+                cancun_fields = shanghai_fields + [
+                    _uint_to_bytes(blob_gas_used),
+                    _uint_to_bytes(excess_blob_gas),
+                    h(parent_beacon_root_raw),
+                ]
+                variants["cancun"] = keccak(primitive=_rlp_list(cancun_fields))
+
+    return variants
+
+
+def test_eip_1559_block_hash_integrity(
+    w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000
+) -> EIPTestResult:
+    """
+    Recompute block hash from eth_getBlockByNumber fields and compare against
+    the hash reported by the node.
+
+    This detects RLP serialization bugs where a field (e.g. baseFeePerGas) is
+    present in the JSON response but missing from the actual RLP used to hash
+    the block.
+    """
+    logger.info("=== EIP-1559 block hash integrity test ===")
+    block = w3.eth.get_block("latest")
+    reported_hash = bytes(block["hash"])
+
+    details = {
+        "block_number": block["number"],
+        "reported_hash": reported_hash.hex(),
+        "has_base_fee": block.get("baseFeePerGas") is not None,
+    }
+
+    try:
+        hash_variants = _compute_block_hash(block)
+    except Exception as e:
+        return EIPTestResult(
+            eip="1559-block-hash-integrity",
+            passed=False,
+            message=f"Hash recomputation failed: {e}",
+            details=details,
+        )
+
+    details["computed_hashes"] = {k: v.hex() for k, v in hash_variants.items()}
+    # Keep legacy keys for existing log consumers.
+    details["computed_hash_skale"] = hash_variants.get("skale", b"").hex()
+    details["computed_hash_eth"] = hash_variants.get("london", b"").hex()
+
+    _variant_labels = {
+        "skale":    "SKALE (no seal)",
+        "london":   "Ethereum London (mixHash+nonce+baseFee)",
+        "shanghai": "Shanghai (+ withdrawalsRoot)",
+        "cancun":   "Cancun (+ blob fields)",
+    }
+
+    matched = next(
+        (name for name, h in hash_variants.items() if reported_hash == h), None
+    )
+
+    if matched is None:
+        computed_summary = ", ".join(
+            f"{k}={v.hex()[:12]}…" for k, v in hash_variants.items()
+        )
+        return EIPTestResult(
+            eip="1559-block-hash-integrity",
+            passed=False,
+            message=(
+                f"Block hash mismatch: node reports {reported_hash.hex()[:12]}…, "
+                f"{computed_summary} — "
+                f"likely a field order or encoding error in RLP"
+            ),
+            details=details,
+        )
+
+    variant = _variant_labels.get(matched, matched)
+    return EIPTestResult(
+        eip="1559-block-hash-integrity",
+        passed=True,
+        message=f"Block hash matches recomputed RLP/{variant} ({reported_hash.hex()[:12]}…)",
+        details=details,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Orchestrator
 # ---------------------------------------------------------------------------
 
@@ -1642,6 +1848,7 @@ EIP_TEST_MAP = {
     "1559-basefee-header": test_eip_1559_basefee_header,
     "1559-fee-history": test_eip_1559_fee_history,
     "1559-max-priority-fee": test_eip_1559_max_priority_fee,
+    "1559-block-hash-integrity": test_eip_1559_block_hash_integrity,
 }
 
 ALL_EIPS = [
@@ -1652,6 +1859,7 @@ ALL_EIPS = [
     "3198", "3529", "3529-refund-cap", "3529-selfdestruct", "3541",
     "1559-effective-price", "1559-basefee-header",
     "1559-fee-history", "1559-max-priority-fee",
+    "1559-block-hash-integrity",
 ]
 
 
