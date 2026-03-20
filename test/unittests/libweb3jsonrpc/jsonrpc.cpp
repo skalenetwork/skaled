@@ -5156,6 +5156,7 @@ static std::string const c_BITEConfigString =
             "schainID": 1,
             "contractStorageLimit": 128,
             "emptyBlockIntervalMs": -1,
+            "ContractCreationReadOnlyPatchTimestamp": 1,
             "SingleStateCommitPerBlockPatchTimestamp": 1,)"
 #ifdef BITE
     R"(            "Bite2PatchTimestamp": 1,
@@ -5335,6 +5336,7 @@ static std::string const c_BITEConfigString =
             "schainName": "TestChain",
             "schainID": 1,
             "emptyBlockIntervalMs": -1,
+            "ContractCreationReadOnlyPatchTimestamp": 1,
             "SingleStateCommitPerBlockPatchTimestamp": 1,)"
 #ifdef BITE
     R"(            "Bite2PatchTimestamp": 1,
@@ -6103,7 +6105,7 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
 }
 
 BOOST_AUTO_TEST_CASE( submitCTXInContractConstructor ) {
-    JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true, false, -1, {{ "contractStorageLimit", "100000"}, {"ContractCreationReadOnlyPatch", "1" }} );
+    JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true, false, -1, {{ "contractStorageLimit", "100000"}} );
 
     string senderAddress = toJS( fixture.coinbase.address() );
 
