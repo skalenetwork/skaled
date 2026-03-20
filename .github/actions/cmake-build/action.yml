@@ -1,5 +1,5 @@
 name: cmake-build
-description: Configure and build a CMake build dir (supports extra cmake args for FAIR/BITE2/HISTORIC)
+description: Configure and build a CMake build dir (supports extra cmake args for FAIR/BITE/HISTORIC)
 inputs:
   build_dir:
     required: true

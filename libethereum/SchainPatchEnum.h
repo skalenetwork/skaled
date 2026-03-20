@@ -27,6 +27,7 @@ enum class SchainPatchEnum {
     CurrentBlockRandomPatch,
     GroupIndexInitPatch,
     LondonForkPatch,
+    ContractCreationReadOnlyPatch,
 #ifdef BITE
     Bite2Patch,
 #endif  // BITE
