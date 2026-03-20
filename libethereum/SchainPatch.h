@@ -190,6 +190,8 @@ DEFINE_AMNESIC_PATCH( GroupIndexInitPatch );
  */
 DEFINE_SIMPLE_PATCH( SingleStateCommitPerBlockPatch );
 
+DEFINE_SIMPLE_PATCH( ContractCreationReadOnlyPatch );
+
 #ifdef FAIR
 DEFINE_SIMPLE_PATCH( DisableSelfDestructPatch );
 #endif
