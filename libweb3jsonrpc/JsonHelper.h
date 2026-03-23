@@ -104,8 +104,8 @@ namespace rpc {
 h256 h256fromHex( std::string const& _s );
 }
 
-template < class Container >
-auto toJson( Container const& _es ) -> decltype( _es.begin(), _es.end(), Json::Value() ) {
+template < class LinearContainer >
+Json::Value toJson( LinearContainer const& _es ) {
     Json::Value res( Json::arrayValue );
     for ( auto const& e : _es )
         res.append( toJson( e ) );
