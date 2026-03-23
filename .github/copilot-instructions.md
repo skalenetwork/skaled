@@ -48,7 +48,7 @@ skaled/
 │   ├── workflows/          # CI/CD GitHub Actions workflows
 │   └── actions/            # Custom GitHub Actions (cmake-build, testeth-run)
 ├── CMakeLists.txt          # Root CMake configuration (C++20, all options)
-├── CODING_STYLE.md         # Comprehensive C++ coding standards
+├── CODING_STYLE.md         # Legacy C++ coding style reference (not enforced)
 ├── CHANGELOG.md            # Version history
 └── VERSION                 # Current version number
 ```
@@ -238,7 +238,7 @@ Runs on: `ubuntu-22.04` with GCC 11.
 
 ## Code Style and Conventions
 
-All C++ code must comply with **CODING_STYLE.md**. Formatting is enforced by `clang-format-11` with the config in `.clang-format` (based on Chromium style, 100-char column limit).
+Code formatting is enforced by `clang-format-11` with the config in `.clang-format` (based on Chromium style, 100-char column limit). All naming conventions, structure rules, and quality guidelines are described in the **Code Review Guidelines** section below.
 
 ### Code Format Check
 
@@ -300,7 +300,6 @@ clog(VerbosityDebug, "mymodule") << "message";
 | `libdevcore/Common.h` | Common types and utilities |
 | `test/unittests/` | All unit test files |
 | `deps/build.sh` | External dependency builder |
-| `CODING_STYLE.md` | Full C++ coding standards |
 | `CHANGELOG.md` | Version history |
 | `docs/` | Feature-level documentation |
 
@@ -730,7 +729,6 @@ When reviewing or writing code in this repository, apply these standards (aligne
 ## Documentation
 
 - `README.md` — Project overview and quickstart build instructions
-- `CODING_STYLE.md` — C++ coding standards (read before writing any code)
 - `CHANGELOG.md` — Version history
 - `docs/features/json-rpc-interface.md` — JSON-RPC method reference
 - `docs/features/snapshots.md` — Snapshot functionality
@@ -746,7 +744,6 @@ When reviewing or writing code in this repository, apply these standards (aligne
 ## Contributing
 
 - All development goes into the `develop` branch
-- Read `CODING_STYLE.md` thoroughly before submitting code
 - Code formatting is enforced in CI via `clang-format-check.yml`
 - All 8 CI matrix variants must pass before merging
 - Use GitHub Issues for bugs and feature requests
