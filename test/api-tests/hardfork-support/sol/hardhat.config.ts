@@ -48,7 +48,7 @@ const config: HardhatUserConfig = {
       },
     },
     custom: {
-      url: process.env.ENDPOINT,
+      url: process.env.ENDPOINT ?? "http://localhost:1234",
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
     },
   },
