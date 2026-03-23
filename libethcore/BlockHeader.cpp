@@ -194,6 +194,7 @@ void BlockHeader::populate( RLP const& _header ) {
         m_extraData = _header[field = 12].toBytes();
         m_seal.clear();
         unsigned sealStart = 13;
+        m_baseFeePerGas = 0;  // default for RLP without baseFeePerGas field
         if ( LondonForkPatch::isEnabledWhen( static_cast< time_t >( m_timestamp ) ) &&
              _header.itemCount() > 13 ) {
             m_baseFeePerGas = _header[field = 13].toInt< u256 >();
