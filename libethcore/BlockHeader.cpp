@@ -109,7 +109,7 @@ void BlockHeader::clear() {
     m_receiptsRoot = EmptyTrie;
     m_logBloom = LogBloom();
     m_difficulty = 0;
-    m_baseFeePerGas = 0;
+    m_baseFeePerGas = 1;
     m_number = 0;
     m_gasLimit = 0;
     m_gasUsed = 0;

@@ -15,4 +15,10 @@ contract EIP3198Test {
         blockNum = block.number;
         timestamp = block.timestamp;
     }
+
+    function rewardScalarFromBaseFee() external view returns (uint256) {
+        uint256 currentBaseFee = block.basefee;
+        uint256 rewardScalar = 1000 / currentBaseFee;
+        return rewardScalar;
+    }
 }

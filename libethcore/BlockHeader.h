@@ -244,7 +244,7 @@ private:
 
     Address m_author;
     u256 m_difficulty;
-    u256 m_baseFeePerGas = 0;
+    u256 m_baseFeePerGas = 1;
 
     std::vector< bytes > m_seal;  ///< Additional (RLP-encoded) header fields.
     mutable Mutex m_sealLock;

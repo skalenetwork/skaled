@@ -4554,8 +4554,8 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
 
     block = fixture.rpcClient->eth_getBlockByNumber( "4", true );
     BOOST_REQUIRE( !block["baseFeePerGas"].asString().empty() );
-    // On SKALE, baseFeePerGas is always 0 (no dynamic fee market)
-    BOOST_REQUIRE( block["baseFeePerGas"].asString() == "0x0" );
+    // On SKALE, baseFeePerGas is always 1 (no dynamic fee market)
+    BOOST_REQUIRE( block["baseFeePerGas"].asString() == "0x1" );
     BOOST_REQUIRE( block["transactions"].size() == 1 );
     BOOST_REQUIRE( block["transactions"][0]["hash"].asString() == txHash );
     BOOST_REQUIRE( block["transactions"][0]["type"] == "0x2" );
@@ -4573,9 +4573,9 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     BOOST_REQUIRE( receipt["status"] == string( "0x1" ) );
     BOOST_REQUIRE( receipt["type"] == "0x2" );
     // EIP-1559: effectiveGasPrice = min(maxFeePerGas, baseFeePerGas + maxPriorityFeePerGas)
-    // baseFee=0 on SKALE, maxFeePerGas=0x4a817c801, maxPriorityFeePerGas=0x4a817c800
-    // => min(0x4a817c801, 0 + 0x4a817c800) = 0x4a817c800
-    BOOST_REQUIRE( receipt["effectiveGasPrice"] == "0x4a817c800" );
+    // baseFee=1 on SKALE, maxFeePerGas=0x4a817c801, maxPriorityFeePerGas=0x4a817c800
+    // => min(0x4a817c801, 1 + 0x4a817c800) = 0x4a817c801
+    BOOST_REQUIRE( receipt["effectiveGasPrice"] == "0x4a817c801" );
 
     result = fixture.rpcClient->eth_getTransactionByHash( txHash );
     BOOST_REQUIRE( result["hash"].asString() == txHash );
@@ -4744,7 +4744,7 @@ BOOST_AUTO_TEST_CASE( eip1559RpcMethods ) {
             EIP1559TransactionsPatch::isEnabledWhen(
                 fixture.client->blockInfo( bn - i - 1 ).timestamp() ) ?
                 toJS( fixture.client->gasBidPrice( bn - i - 1 ) ) :
-                toJS( 0 );
+                toJS( u256( 1 ) );
         BOOST_REQUIRE( feeHistory["baseFeePerGas"][i].asString() == estimatedBaseFeePerGas );
         BOOST_REQUIRE_GT( feeHistory["gasUsedRatio"][i].asDouble(), 0 );
         BOOST_REQUIRE_GT( 1, feeHistory["gasUsedRatio"][i].asDouble() );

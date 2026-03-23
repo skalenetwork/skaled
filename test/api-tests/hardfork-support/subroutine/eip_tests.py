@@ -1195,10 +1195,53 @@ def test_eip_3198(w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int
             details=details,
         )
 
+    try:
+        reward_scalar = _as_int(contract.functions.rewardScalarFromBaseFee().call())
+    except Exception as e:
+        details["reward_scalar_error"] = str(e)
+        return EIPTestResult(
+            eip="3198",
+            passed=False,
+            message=(
+                "rewardScalarFromBaseFee reverted; reward calculation must not revert "
+                f"(baseFeePerGas={header_base_fee})"
+            ),
+            details=details,
+        )
+
+    if header_base_fee == 0:
+        return EIPTestResult(
+            eip="3198",
+            passed=False,
+            message=(
+                "rewardScalarFromBaseFee unexpectedly succeeded with baseFeePerGas=0; "
+                "contract/test assumptions are inconsistent"
+            ),
+            details=details,
+        )
+
+    expected_reward_scalar = 1000 // header_base_fee
+    details["reward_scalar"] = reward_scalar
+    details["expected_reward_scalar"] = expected_reward_scalar
+
+    if reward_scalar != expected_reward_scalar:
+        return EIPTestResult(
+            eip="3198",
+            passed=False,
+            message=(
+                f"rewardScalar mismatch: got {reward_scalar}, expected "
+                f"1000/{header_base_fee}={expected_reward_scalar}"
+            ),
+            details=details,
+        )
+
     return EIPTestResult(
         eip="3198",
         passed=True,
-        message=f"BASEFEE matches header value ({opcode_base_fee})",
+        message=(
+            f"BASEFEE matches header ({opcode_base_fee}); "
+            f"rewardScalar=1000/baseFee={reward_scalar}"
+        ),
         details=details,
     )
 
@@ -1442,8 +1485,10 @@ def test_eip_1559_effective_price(
     base_fee = _as_int(latest.get("baseFeePerGas")) or 0
     # Use non-zero, EIP-1559-style fee fields so helper-side fee-floor normalization
     # does not rewrite the tx into edge-case values on Anvil.
+    # max_fee == base_fee + max_priority ensures min(max_fee, base_fee+max_priority) == max_fee,
+    # keeping GASPRICE opcode (= maxFeePerGas on SKALE) consistent with receipt effectiveGasPrice.
     max_priority = 10**9  # 1 gwei tip
-    max_fee = base_fee * 2 + max_priority
+    max_fee = base_fee + max_priority
 
     tx = contract.functions.reportGasPrice().build_transaction(
         {
