@@ -628,7 +628,7 @@ ImportRoute BlockChain::import( const Block& _block ) {
 
     CHECK_EXPRESSION( verifiedBlock.decryptedTransactions.ctxTxsMap );
     verifiedBlock.ctxHashesLists = _block.ctxHashesLists();
-    verifiedBlock.createdCtxs = _block.createdCtxs();
+    verifiedBlock.pendingCtxs = _block.pendingCtxs();
 #endif  // BITE
 
     BlockReceipts blockReceipts;
@@ -780,14 +780,14 @@ void BlockChain::insertTransactionsDetailsToDb(
             _extrasWriteBatch.insert( toSlice( _block.info.hash(), ExtraCreatedCTXs ),
                 ( db::Slice ) dev::ref( ctxOrigin.rlp() ) );
 
-            CHECK_EXPRESSION( _block.createdCtxs );
+            CHECK_EXPRESSION( _block.pendingCtxs );
             RLPStream s;
-            s.appendList( _block.createdCtxs->size() );
-            for ( const auto& ctx : *_block.createdCtxs )
+            s.appendList( _block.pendingCtxs->size() );
+            for ( const auto& ctx : *_block.pendingCtxs )
                 s.appendRaw( ctx.toBytes() );
             dev::bytes ctxListRlp = s.out();
             _extrasWriteBatch.insert(
-                db::Slice( "lastBlockCTXs" ), ( db::Slice ) dev::ref( ctxListRlp ) );
+                db::Slice( "pendingCTXs" ), ( db::Slice ) dev::ref( ctxListRlp ) );
         }
         CHECK_EXPRESSION( _block.decryptedTransactions.regularTxsMap );
         auto regularTxnsIterator = _block.decryptedTransactions.regularTxsMap->begin();
@@ -1920,13 +1920,12 @@ bool BlockChain::isPatchTimestampActiveInBlockNumber( time_t _ts, BlockNumber _b
 
 #ifdef BITE
 
-Transactions BlockChain::ctxListForPreviousBlock() const {
-    std::string lastBlockCTXs = this->m_extrasDB->lookup( ( db::Slice ) "lastBlockCTXs" );
+std::deque< Transaction > BlockChain::pendingCTXsList() const {
+    std::string lastBlockCTXs = this->m_extrasDB->lookup( ( db::Slice ) "pendingCTXs" );
     if ( lastBlockCTXs.empty() )
         return {};
     RLP rlp( lastBlockCTXs );
-    Transactions ctxs;
-    ctxs.reserve( rlp.itemCount() );
+    std::deque< Transaction > ctxs;
     uint64_t prevBlockTimestamp = info().timestamp();
     for ( auto const& txRlp : rlp ) {
         ctxs.push_back( Transaction( txRlp.data(), CheckTransaction::None, true,

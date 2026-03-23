@@ -48,6 +48,8 @@ SchainPatchEnum getEnumForPatchName( const std::string& _patchName ) {
         return SchainPatchEnum::CurrentBlockRandomPatch;
     else if ( _patchName == "GroupIndexInitPatch" )
         return SchainPatchEnum::GroupIndexInitPatch;
+    else if ( _patchName == "ContractCreationReadOnlyPatch" )
+        return SchainPatchEnum::ContractCreationReadOnlyPatch;
 #ifdef BITE
     else if ( _patchName == "BITE2Patch" || _patchName == "Bite2Patch" )
         return SchainPatchEnum::Bite2Patch;
@@ -102,6 +104,8 @@ std::string getPatchNameForEnum( SchainPatchEnum _enumValue ) {
         return "CurrentBlockRandomPatch";
     case SchainPatchEnum::GroupIndexInitPatch:
         return "GroupIndexInitPatch";
+    case SchainPatchEnum::ContractCreationReadOnlyPatch:
+        return "ContractCreationReadOnlyPatch";
 #ifdef BITE
     case SchainPatchEnum::Bite2Patch:
         return "Bite2Patch";

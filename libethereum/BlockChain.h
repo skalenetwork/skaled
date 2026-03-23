@@ -350,12 +350,11 @@ public:
             _blockHash, m_createdCTXs, x_createdCTXs, NullCreatedCTXs );
     }
 
-    Transactions ctxListForPreviousBlock() const;
-
     TransactionHash ctxOrigin( const dev::h256& _ctxHash ) const {
         return queryExtras< TransactionHash, ExtraCtxOrigin >(
                     _ctxHash, m_ctxOrigin, x_ctxOrigin, NullTransactionHash );
     }
+    std::deque< Transaction > pendingCTXsList() const;
 #endif  // BITE
 
     /// Get a number for the given hash (or the most recent mined if none given). Thread-safe.
