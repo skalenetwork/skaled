@@ -370,11 +370,205 @@ Many features are gated by preprocessor defines set via CMake options:
 | CMake Option | Preprocessor Define | Affected Code |
 |-------------|---------------------|---------------|
 | `-DHISTORIC_STATE=1` | `HISTORIC_STATE` | `libhistoric/`, historic JSON-RPC methods |
-| `-DBITE=1` | `BITEVM` | BITE transaction handling |
-| `-DBITE2=1` | `BITEVM2` | BITE2 variant (also sets BITEVM) |
-| `-DFAIR=1` | `FAIRVM` | FAIR consensus (also sets BITEVM, BITEVM2) |
+| `-DBITE=1` | `BITE` | BITE transaction handling |
+| `-DBITE2=1` | `BITE2` (also sets `BITE`) | BITE2 variant |
+| `-DFAIR=1` | `FAIR` (also sets `BITE` and `BITE2`) | FAIR consensus |
 
 When making changes that relate to any of these features, ensure code compiles and tests pass in all relevant matrix variants.
+
+---
+
+## Ethereum Compatibility
+
+SKALED targets **Ethereum Istanbul** as the latest supported fork. Berlin-era EVM schedules exist in the code but Istanbul is the production-stable baseline.
+
+### EVM Fork Schedule
+
+The fork hierarchy is defined in `libethcore/EVMSchedule.h`:
+
+```
+Frontier → Homestead → EIP150 (Tangerine Whistle) → EIP158 (Spurious Dragon)
+  → Byzantium → Constantinople → ConstantinopleFix → Istanbul → Berlin
+```
+
+**Istanbul** adds (among others):
+- `CHAINID` opcode (`haveChainID = true`)
+- `SELFBALANCE` opcode (`haveSelfbalance = true`)
+- Reduced `txDataNonZeroGas` (16, down from 68)
+- Increased `sloadGas` (800), `balanceGas` (700), `extcodehashGas` (700)
+
+### Checking EVM JSON API Compatibility
+
+Any change touching EVM execution, gas schedules, opcodes, or transaction handling **must** be validated against the [Ethereum JSON-RPC API specification](https://ethereum.github.io/execution-apis/api-documentation/) and the EVM test suite:
+
+```bash
+# Run the JSON test suite (requires jsontests submodule)
+cd build/test
+./testeth -t GeneralStateTests -- --all
+./testeth -t VMTests -- --all
+```
+
+- All standard `eth_*` JSON-RPC methods must behave identically to a standard Ethereum node at Istanbul level.
+- SKALE-specific extensions use the `skale_*` namespace and must not collide with Ethereum standard methods.
+- EVM schedule parameters for each fork are in `libethcore/EVMSchedule.h`; fork activation block numbers are in `libethcore/ChainOperationParams.h`.
+
+---
+
+## Key Functionality Overview
+
+### Snapshot System
+
+Snapshots allow nodes joining a SKALE chain (rotation or recovery) to sync quickly without replaying the entire chain from genesis.
+
+**How it works:**
+1. At configurable block intervals, the node creates a **btrfs filesystem snapshot** of its data directory.
+2. A hash is computed over all files in the snapshot (database + file storage) and stored alongside.
+3. When a new node needs to join, it collects BLS-signed snapshot hashes from ≥ 2/3+1 existing nodes to agree on a canonical snapshot.
+4. The new node downloads the snapshot in chunks via `skale_downloadSnapshotFragment`, verifies the hash, and restores it locally.
+
+**Key files:**
+- `libskale/SnapshotManager.h/.cpp` — snapshot creation, storage, cleanup
+- `libskale/SnapshotHashAgent.h/.cpp` — hash computation and BLS signature collection
+- `libweb3jsonrpc/Skale.cpp` — JSON-RPC endpoints
+
+**Snapshot JSON-RPC methods:**
+
+| Method | Purpose |
+|--------|---------|
+| `skale_getLatestSnapshotBlockNumber` | Get the most recent snapshot block number |
+| `skale_getSnapshot` | Prepare a snapshot for download |
+| `skale_downloadSnapshotFragment` | Download a chunk of the snapshot |
+| `skale_getSnapshotSignature` | Retrieve the BLS threshold signature for a snapshot hash |
+
+**Important:** Snapshots require **btrfs** as the underlying filesystem for the data directory.
+
+---
+
+### Transaction Flow
+
+A transaction follows this path from submission to block finalization:
+
+```
+eth_sendRawTransaction (libweb3jsonrpc/Eth.cpp)
+  → Client::submitTransaction (libethereum/Client.cpp)
+    → TransactionQueue::import (libethereum/TransactionQueue.h)
+      → SkaleHost::pendingTransactions (libskale/SkaleHost.cpp)
+        → Consensus engine (libconsensus/)
+          → Client::importTransactionsAsBlock (libethereum/Client.cpp)
+            → Block::executeTransactions (libethereum/Block.cpp)
+              → EVM execution (libevm/)
+```
+
+**Details:**
+1. **Submission**: `eth_sendRawTransaction` decodes and validates the signed transaction, then calls `Client::submitTransaction`.
+2. **Queue**: The transaction enters `TransactionQueue`, which maintains a *current* queue (correct nonce) and a *future* queue (future nonce). Default limit is 1024 entries per queue.
+3. **Consensus proposal**: The consensus engine calls `SkaleHost::pendingTransactions()` to retrieve transactions ready for inclusion in the next block proposal.
+4. **Block execution**: After consensus agrees on a block, `Client::importTransactionsAsBlock()` executes each transaction in the EVM, updates state, and generates receipts.
+5. **Finalization**: The new state root is written, the block is appended to the blockchain, and included transactions are removed from the queue.
+
+**BITE mode note:** When compiled with `-DBITE=1`, transactions can carry encrypted payloads. The consensus engine decrypts these fields before passing them to `importTransactionsAsBlock`. The `DecryptedTransactionFieldsMap` carries the plaintext data.
+
+**Key files:**
+- `libweb3jsonrpc/Eth.cpp` — JSON-RPC transaction submission
+- `libethereum/Client.cpp` — `submitTransaction`, `importTransactionsAsBlock`
+- `libethereum/TransactionQueue.h` — pending transaction pool
+- `libskale/SkaleHost.cpp` — consensus ↔ client bridge
+- `libethereum/Block.cpp` — per-block EVM execution loop
+
+---
+
+### Historic State (Archive Mode)
+
+When built with `-DHISTORIC_STATE=1`, SKALED operates as an **archive node** that stores the complete state trie at every block height. This enables querying past contract state and full transaction tracing.
+
+**What it enables:**
+- Query account balances, storage, and code at any historical block.
+- Geth-compatible transaction tracing (`debug_traceTransaction`, `debug_traceCall`, etc.).
+- Pre-state and post-state inspection for debugging and auditing.
+
+**How it works:**
+- `HistoricState` (in `libhistoric/`) maintains a separate database indexed by block number alongside the normal state database.
+- On each block, the state trie for that block is committed to the historic DB.
+- Trace requests replay the transaction within the historic state to reconstruct execution.
+
+**Historic-only JSON-RPC methods (require `HISTORIC_STATE` build):**
+
+| Method | Purpose |
+|--------|---------|
+| `debug_traceTransaction` | Full EVM trace for a transaction |
+| `debug_traceCall` | Simulate and trace a call at a given block |
+| `debug_traceBlockByNumber` | Trace all transactions in a block |
+| `debug_traceBlockByHash` | Trace all transactions in a block (by hash) |
+| `debug_accountRangeAt` | Enumerate accounts at a block |
+| `debug_storageRangeAt` | Enumerate contract storage at a block |
+
+**Supported tracers:** `callTracer`, `4byteTracer`, `prestateTracer`, `noopTracer`, `replayTracer`, `allTracer`
+
+**Key files:**
+- `libhistoric/HistoricState.h/.cpp` — core historic state DB
+- `libhistoric/AlethExecutive.h/.cpp` — transaction replay with tracing
+- `libhistoric/TracePrinter.h/.cpp` — trace output formatting
+- `libweb3jsonrpc/Debug.cpp` / `Tracing.cpp` — JSON-RPC trace endpoints
+
+---
+
+## Code Review Guidelines
+
+When reviewing or writing code in this repository, apply these standards (aligned with SKALE consensus project guidelines):
+
+### Logic and Correctness
+- Verify changes are logically correct, complete, and fully satisfy the intended functionality.
+- Identify incorrect behaviors, missing edge cases, and violations of expected input/output contracts.
+- For EVM/transaction changes: validate against the Ethereum JSON API spec and run the JSON test suite.
+
+### Code Quality
+- **Line length**: ≤ 100 characters in source files.
+- **Function length**: ≤ 100 lines per function.
+- All comments and identifiers must be in **English with correct spelling**.
+- Use consistent naming style — no mixing `snake_case` with `camelCase` in the same file.
+- Names must be descriptive and searchable (e.g., `userAccountBalance`, not `x` or `data`).
+
+### Function Best Practices
+- Each function must perform **one task only**.
+- Every function needs: a clear name or preceding comment, input validation (preconditions), and output validation (postconditions).
+- Avoid deeply nested logic; prefer early returns.
+
+### Variables and Fields
+- All global or class fields must be well-named or have a comment explaining their purpose.
+- Avoid single-letter variable names except for loop counters (`i`, `j`).
+
+### Error Handling
+- Never ignore errors or silently discard return values.
+- Handle all error cases explicitly with conditionals or exceptions.
+- Use exceptions only for exceptional, non-recoverable cases — not for normal control flow.
+- Prefer exceptions over `assert` for runtime error handling.
+
+### Safety and Concurrency
+- Avoid raw pointers unless necessary; always null-check before dereferencing.
+- All shared data structures accessed from multiple threads must be protected with mutexes, atomics, or other synchronization primitives.
+- Eliminate race conditions and data races.
+
+### Performance
+- Use `const` and `const&` wherever applicable to avoid unnecessary copies.
+- Prefer `std::move` when transferring ownership.
+- Avoid heap allocations and expensive operations inside tight loops or hot paths.
+- Cache repeated values or function results locally if reused.
+
+### Resource Management
+- Use RAII for managing resources and memory.
+- Prefer `std::unique_ptr` / `std::shared_ptr` over raw pointers.
+- Ensure deterministic cleanup via destructors or scoped guards.
+
+### Logging
+- Do not spam logs; `info`-level logging must be concise.
+- Never use `std::cout` or raw output — use the SKALE logging macros (see `libdevcore/Log.h`).
+- No ANSI color codes in logs (logs must remain plaintext for ElasticSearch and similar tools).
+
+### Code Hygiene
+- No commented-out code.
+- No redundant code — factor repeated logic into helper functions.
+- Prefer `private` fields and methods; minimize public interface surface.
+- Use standard library facilities over custom implementations for common operations.
 
 ---
 
