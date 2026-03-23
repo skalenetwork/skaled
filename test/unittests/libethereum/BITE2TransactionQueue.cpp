@@ -146,13 +146,14 @@ BOOST_AUTO_TEST_CASE( setQueueOnInit ) {
     bytes ctxData;
     ctxData.insert( ctxData.end(), std::begin( BITE2_FUNCTION_SELECTOR_AS_BYTE_ARRAY ),
         std::end( BITE2_FUNCTION_SELECTOR_AS_BYTE_ARRAY ) );
-    Transactions ctxs;
+    std::deque< Transaction > ctxs;
     for ( size_t i = 0; i < 5; ++i ) {
         Transaction txCtx( i, 100, 21000, Address(), ctxData, i, sec );
         txCtx.checkIfCTXAndSet( ctxData );
         ctxs.push_back( std::move( txCtx ) );
     }
-    queue.setQueueOnInit( ctxs );
+    auto ctxsCopy = ctxs;
+    queue.setQueueOnInit( std::move( ctxsCopy ) );
     BOOST_REQUIRE_EQUAL( queue.pendingBITE2Transactions()->size(), 5 );
 
     Transaction ctx6( 5, 100, 21000, Address(), ctxData, 5, sec );
@@ -167,7 +168,7 @@ BOOST_AUTO_TEST_CASE( setQueueOnInit ) {
     BOOST_REQUIRE_EQUAL( queue.pendingBITE2Transactions()->size(), 6 );
     BOOST_REQUIRE( queue.debug_pendingBITE2Transactions().at( 5 ) == ctx6 );
     ctxs.push_back( ctx6 );
-    BOOST_REQUIRE( std::ranges::equal( queue.debug_pendingBITE2Transactions(), ctxs ) );
+    BOOST_REQUIRE( queue.debug_pendingBITE2Transactions() == ctxs );
 }
 
 BOOST_AUTO_TEST_CASE( clear ) {

@@ -1902,13 +1902,12 @@ bool BlockChain::isPatchTimestampActiveInBlockNumber( time_t _ts, BlockNumber _b
 
 #ifdef BITE
 
-Transactions BlockChain::pendingCTXsList() const {
+std::deque< Transaction > BlockChain::pendingCTXsList() const {
     std::string lastBlockCTXs = this->m_extrasDB->lookup( ( db::Slice ) "pendingCTXs" );
     if ( lastBlockCTXs.empty() )
         return {};
     RLP rlp( lastBlockCTXs );
-    Transactions ctxs;
-    ctxs.reserve( rlp.itemCount() );
+    std::deque< Transaction > ctxs;
     uint64_t prevBlockTimestamp = info().timestamp();
     for ( auto const& txRlp : rlp ) {
         ctxs.push_back( Transaction( txRlp.data(), CheckTransaction::None, true,
