@@ -542,7 +542,7 @@ std::pair< TransactionReceipts, unsigned > Block::recoverFromReceipts(
 #ifdef BITE
     // set CTXs from previous block to BITE2 queue
     g_skaleHost->setBITE2QueueOnInit( std::move( savedData->ctxsCreatedInBlock ) );
-    m_createdCtxs = g_skaleHost->finalizeBITE2QueueAndGetCtxs();
+    m_pendingCtxs = g_skaleHost->pendingBITE2Transactions();
 #endif
 
     unsigned badCount = 0;
@@ -627,7 +627,7 @@ void Block::executeTransactions( BlockChain const& _bc, const Transactions& _tra
     }
 #ifdef BITE
     // finalize BITE2 queue after executing all txns from current block
-    m_createdCtxs = g_skaleHost->finalizeBITE2QueueAndGetCtxs();
+    m_pendingCtxs = g_skaleHost->pendingBITE2Transactions();
 #endif
 }
 
@@ -742,13 +742,13 @@ void Block::saveStateChanges(
 
     if ( progressLog && _context.singleCommitEnabled ) {
 #ifdef BITE
-        CHECK_EXPRESSION( m_createdCtxs );
+        CHECK_EXPRESSION( m_pendingCtxs );
 #endif
         progressLog->markBlockCommitCompleted(
             m_currentBlock.number(), _context.receipts, m_currentBlock.timestamp()
 #ifdef BITE
                                                             ,
-            *m_createdCtxs
+            *m_pendingCtxs
 #endif
         );
     }

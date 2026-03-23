@@ -5931,8 +5931,8 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
     txReceipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE( txReceipt["status"] == "0x1" );
 
-    BOOST_REQUIRE( fixture.client->debugGetTransactionQueue()->pendingBITE2Transactions().size() == 1 );
-    auto bite2Txn = fixture.client->debugGetTransactionQueue()->pendingBITE2Transactions().front();
+    BOOST_REQUIRE( fixture.client->debugGetTransactionQueue()->pendingBITE2Transactions()->size() == 1 );
+    auto bite2Txn = fixture.client->debugGetTransactionQueue()->pendingBITE2Transactions()->front();
     BOOST_REQUIRE( !bite2Txn.isInvalid() );
     BOOST_REQUIRE_NE( bite2Txn.sender(), dev::ZeroAddress );
     auto to = bite2Txn.to();
@@ -5981,7 +5981,7 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
     txGenerate["from"] = toJS( senderAddress );
     txGenerate["nonce"] = 2;
     std::string txGenerateHash = fixture.rpcClient->eth_sendTransaction( txGenerate );
-    BOOST_REQUIRE_EQUAL( fixture.client->debugGetTransactionQueue()->pendingBITE2Transactions().size(), 1 );
+    BOOST_REQUIRE_EQUAL( fixture.client->debugGetTransactionQueue()->pendingBITE2Transactions()->size(), 1 );
     BOOST_REQUIRE_EQUAL( fixture.client->pending().size(), 1 );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
@@ -6059,9 +6059,9 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
         BOOST_REQUIRE_EQUAL( dev::toHex( rlpPlaintext[i].toBytes() ), dev::toHex( pregeneratedPlaintextValues[i] ) );
     }
 
-    BOOST_REQUIRE_EQUAL( fixture.client->debugGetTransactionQueue()->pendingBITE2Transactions().size(), 1 );
+    BOOST_REQUIRE_EQUAL( fixture.client->debugGetTransactionQueue()->pendingBITE2Transactions()->size(), 1 );
 
-    auto lastBlockCTXs = fixture.client->blockChain().ctxListForPreviousBlock();
+    auto lastBlockCTXs = fixture.client->blockChain().pendingCTXsList();
     BOOST_REQUIRE_EQUAL( lastBlockCTXs.size(), 1 );
     auto ctxFromLastBlock = lastBlockCTXs[0];
     BOOST_REQUIRE( ctxFromLastBlock.isCTX() );
@@ -6155,8 +6155,8 @@ BOOST_AUTO_TEST_CASE( submitCTXInContractConstructor ) {
     BOOST_REQUIRE( txReceipt["status"] == "0x1" );
 
     // BITE2 txn queue should become non-empty
-    BOOST_REQUIRE( fixture.client->debugGetTransactionQueue()->pendingBITE2Transactions().size() == 1 );
-    auto bite2Txn = fixture.client->debugGetTransactionQueue()->pendingBITE2Transactions().front();
+    BOOST_REQUIRE( fixture.client->debugGetTransactionQueue()->pendingBITE2Transactions()->size() == 1 );
+    auto bite2Txn = fixture.client->debugGetTransactionQueue()->pendingBITE2Transactions()->front();
     BOOST_REQUIRE( !bite2Txn.isInvalid() );
     BOOST_REQUIRE_NE( bite2Txn.sender(), dev::ZeroAddress );
     auto to = bite2Txn.to();
@@ -6271,7 +6271,7 @@ BOOST_AUTO_TEST_CASE( CTXTransactionAfterRevert ) {
 
     txReceipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE( txReceipt["status"] == "0x1" );
-    BOOST_REQUIRE_EQUAL( fixture.client->debugGetTransactionQueue()->pendingBITE2Transactions().size(), 1 );
+    BOOST_REQUIRE_EQUAL( fixture.client->debugGetTransactionQueue()->pendingBITE2Transactions()->size(), 1 );
 
 
     // call submitCTXWithRevert()
@@ -6289,7 +6289,7 @@ BOOST_AUTO_TEST_CASE( CTXTransactionAfterRevert ) {
     txReceipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE( txReceipt["status"] == "0x0" );
 
-    BOOST_REQUIRE_EQUAL( fixture.client->debugGetTransactionQueue()->pendingBITE2Transactions().size(), 0 );
+    BOOST_REQUIRE_EQUAL( fixture.client->debugGetTransactionQueue()->pendingBITE2Transactions()->size(), 0 );
 }
 
 BOOST_AUTO_TEST_CASE( CTXOutOfBlockGasLimit ) {
