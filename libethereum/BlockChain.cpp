@@ -32,7 +32,6 @@
 #include <libdevcore/Assertions.h>
 #include <libdevcore/Common.h>
 
-// #include <libdevcore/DBImpl.h>
 #include <libdevcore/ManuallyRotatingLevelDB.h>
 
 #include <libdevcore/FileSystem.h>
@@ -799,7 +798,6 @@ void BlockChain::insertTransactionsDetailsToDb(
             auto txHash = sha3( txBytes );
             _extrasWriteBatch.insert(
                 toSlice( txHash, ExtraTransactionAddress ), ( db::Slice ) dev::ref( ta.rlp() ) );
-
 #ifdef BITE
             if ( regularTxnsIterator != _block.decryptedTransactions.regularTxsMap->end() &&
                  regularTxnsIterator->first == ta.index ) {
@@ -814,7 +812,8 @@ void BlockChain::insertTransactionsDetailsToDb(
                     ++regularTxnsIterator;
                 }
             } else if ( _block.transactions.at( ta.index ).isCTX() ) {
-                dev::h256 ctxOriginHash;
+                dev::h256 ctxOriginHash = _block.transactions[ta.index].getCTXOrigin();
+                CHECK_EXPRESSION( ctxOriginHash != dev::h256( 0 ) );
                 _extrasWriteBatch.insert( toSlice( txHash, ExtraCtxOrigin ),
                     ( db::Slice ) dev::ref( ctxOriginHash.asBytes() ) );
             }

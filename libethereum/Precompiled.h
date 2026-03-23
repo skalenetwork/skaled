@@ -88,7 +88,7 @@ struct PrecompiledCallContext {
 
 inline PrecompiledCallContext defaultPrecompiledContext = { 1,
 #ifdef BITE
-    0, dev::h256::random(), 1, dev::ZeroAddress,
+    0, dev::h256( 0 ), 1, dev::ZeroAddress,
 #endif
     true };
 
