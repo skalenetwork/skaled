@@ -240,41 +240,6 @@ Runs on: `ubuntu-22.04` with GCC 11.
 
 All C++ code must comply with **CODING_STYLE.md**. Formatting is enforced by `clang-format-11` with the config in `.clang-format` (based on Chromium style, 100-char column limit).
 
-### Key Rules
-
-**Naming (Golden Rule: Preprocessor = ALL_CAPS; C++ = camelCase)**
-
-| Symbol | Convention | Example |
-|--------|-----------|---------|
-| Types, templates, enum members | PascalCase | `MyClass`, `MyEnum::Value` |
-| Functions, local variables | camelCase | `myFunction()`, `myVar` |
-| Preprocessor macros | ALL_CAPS | `MY_MACRO` |
-| Function parameters | `_paramName` | `_value` |
-| Output-only parameters | `o_paramName` | `o_result` |
-| Input/output parameters | `io_paramName` | `io_buffer` |
-| `const` variables | `c_name` | `c_maxSize` |
-| Global non-const | `g_name` | `g_logger` |
-| Static non-const | `s_name` | `s_instance` |
-| Class private members | `m_name` | `m_data` |
-
-**Collections:**
-- `MyTypes` → `std::vector<MyType>`
-- `MyTypeSet` → `std::set<MyType>`
-- `MyTypeHash` → `std::unordered_set<MyType>`
-
-**Classes vs Structs:**
-- Use `struct` only for all-public, no-virtual-function data aggregates
-- Use `class` otherwise; private members prefixed with `m_`
-- Property pattern: member `m_foo`, getter `foo()` (or `isFoo()` for bools), setter `setFoo()`
-
-**Other rules:**
-- `#pragma once` (not include guards)
-- No `using namespace` in headers
-- Prefer exceptions over bool/int error return codes
-- One declaration per line; declare close to first use
-- Non-trivial parameters passed as `const&`
-- Doxygen comments with `@` notation on interfaces
-
 ### Code Format Check
 
 ```bash
@@ -292,15 +257,32 @@ find . ... | xargs clang-format-11 -i
 
 ## Logging
 
-Logging uses the SKALE log system (see `libdevcore/`). Verbosity levels:
+Logging uses the SKALE log system (Boost.Log backend, see `libdevcore/Log.h`). Each log site uses a dedicated macro that maps to a fixed verbosity level and channel.
 
-| Level | Use |
-|-------|-----|
-| 0 | Critical user-facing messages |
-| 1 | Non-essential user messages |
-| 2+ | Repetitive messages |
-| 3+ | Developer-level details |
-| 4+ | Low-level debug (peer disconnects, timers, etc.) |
+| Macro | Verbosity | Channel | Use |
+|-------|-----------|---------|-----|
+| `cerror` | 0 (`VerbosityError`) | `error` | Errors that must always be visible |
+| `cwarn` | 1 (`VerbosityWarning`) | `warn` | Warnings: non-fatal problems users should see |
+| `cnote` | 2 (`VerbosityInfo`) | `info` | Normal operational messages (default visible level) |
+| `cdebug` | 3 (`VerbosityDebug`) | `debug` | Developer-level detail, enabled with `-v 3` |
+| `ctrace` | 4 (`VerbosityTrace`) | `trace` | High-frequency low-level detail, enabled with `-v 4` |
+
+For a custom channel, use `clog(severity, "channel")`:
+```cpp
+clog(VerbosityDebug, "mymodule") << "message";
+```
+
+**Verbosity guidelines:**
+- Level 0 — Reserved for critical messages users must see and can understand
+- Level 1 — Non-essential user messages (e.g., startup banners)
+- Level 2+ — Anything that may repeat more than once per minute
+- Level 3+ — Developer-only details
+- Level 4+ — Low-level events (e.g., peer disconnects, timer cancellations)
+
+**Rules:**
+- Never use `std::cout` — always use the logging macros
+- Do not spam `cnote`/`cwarn` in hot paths; use `cdebug` or `ctrace`
+- No ANSI colour codes — logs are consumed by ElasticSearch and similar tools
 
 ---
 
@@ -321,6 +303,43 @@ Logging uses the SKALE log system (see `libdevcore/`). Verbosity levels:
 | `CODING_STYLE.md` | Full C++ coding standards |
 | `CHANGELOG.md` | Version history |
 | `docs/` | Feature-level documentation |
+
+---
+
+## Database Overview
+
+SKALED uses several LevelDB databases. Their full schema is documented in `docs/databases-info.md`.
+
+### skaled Databases
+
+| Database | Location | Description |
+|----------|----------|-------------|
+| `state.db` | `<chainDir>/` | Accounts: balance, nonce, code hash, storage. Never rotated; bounded by `contractStorageLimit`. |
+| `blocks_and_extras.db` | `<chainDir>/` | Block headers, bodies, transaction addresses, receipts, and log blooms. Rotated when a size limit is reached. |
+| `prices_<nodeId>.db` | `dataDir/` | Per-block gas price history. Used in snapshot hash computation. |
+| `blocks_<nodeId>.db` | `dataDir/` | Additional block data used by the consensus engine. |
+
+### Archive Node Databases (require `-DHISTORIC_STATE=1`)
+
+| Database | Description |
+|----------|-------------|
+| `historic_state/` | All historical account data (balance, nonce, storage) at every block. Never rotated. |
+| `historic_roots/` | Maps block numbers to their state trie root hash. Never rotated. |
+
+### Consensus Databases
+
+The libconsensus engine maintains **13 rotated LevelDB databases**, each sharded into 4 pieces. Their size is proportional to `totalStorageLimitBytes`. Key databases include:
+
+| Database | Purpose |
+|----------|---------|
+| `blocks.db` | Finalized consensus blocks |
+| `block_proposal.db` | Block proposal messages |
+| `random.db`, `price.db` | Per-block random values and gas prices |
+| `da_proof.db`, `da_sigshare.db` | Data-availability proofs and signature shares |
+
+For archive/indexer nodes, `blocks.db` does not rotate — historical blocks accumulate beyond the normal 4 active shards.
+
+The `skale_getDBUsage` JSON-RPC method returns byte-level usage for all databases.
 
 ---
 
@@ -385,27 +404,66 @@ The VM is **fully compatible with the Istanbul fork** and all earlier Ethereum f
 The full JSON-RPC API specification for the VM is documented at:
 `docs/json-rpc-interface.md` (a versioned reference is published at https://github.com/skalenetwork/skaled/blob/v4.1.0/docs/json-rpc-interface.md)
 
-### EVM Fork Schedule
+### EVM Compatibility Overview
 
-The fork hierarchy is defined in `libethcore/EVMSchedule.h`:
+| Category | Status | Details |
+|----------|--------|---------|
+| Istanbul and earlier | **Fully supported** | All opcodes, gas costs, and precompiles behave identically to a canonical Ethereum node |
+| Berlin, London (post-Istanbul) | **Partially supported** | Most JSON-RPC methods work; some EIPs from these forks are available via `SchainPatch` activation |
+| Shanghai, Cancun (Dencun) | **Not supported** | EIP-4844 (blobs), EIP-1153 (transient storage), `PUSH0` and related opcodes not available |
+| Pectra and later | **Not supported** | No EIPs from Pectra or later are implemented |
 
-```
-Frontier → Homestead → EIP150 (Tangerine Whistle) → EIP158 (Spurious Dragon)
-  → Byzantium → Constantinople → ConstantinopleFix → Istanbul → Berlin
-```
-
-**Istanbul** adds (among others):
-- `CHAINID` opcode (`haveChainID = true`)
-- `SELFBALANCE` opcode (`haveSelfbalance = true`)
-- Reduced `txDataNonZeroGas` (16, down from 68)
-- Increased `sloadGas` (800), `balanceGas` (700), `extcodehashGas` (700)
+**What "partially supported" means:** The node accepts and processes transactions, and the JSON-RPC API responds correctly for standard queries. However, opcodes and precompiles introduced after Istanbul may not be present, or their gas costs may differ from canonical Ethereum. New functionality is introduced incrementally through the patch system (see [Patches](#patches) in the Code Review section).
 
 ### Custom Precompiles
 
-SKALED provides a **random number generator precompile** at address `0x18` (decimal 24). It returns a deterministic 256-bit random value derived from the current block's consensus randomness. This is a SKALE extension — it does not exist in vanilla Ethereum.
+SKALED extends the standard Ethereum precompile set with SKALE-specific contracts. All addresses are configured per-chain in the genesis `accounts` section. The implementations live in `libethereum/Precompiled.cpp`.
 
-- Implementation: `libethereum/Precompiled.cpp`, function `getBlockRandom`
-- Documentation: https://docs.skale.space/building-applications/random-number-generation/
+**Standard Ethereum precompiles (addresses 0x01–0x08):**
+
+| Address | Name | Standard |
+|---------|------|----------|
+| `0x01` | `ecrecover` | EIP-1 |
+| `0x02` | `sha256` | EIP-1 |
+| `0x03` | `ripemd160` | EIP-1 |
+| `0x04` | `identity` | EIP-1 |
+| `0x05` | `modexp` | EIP-198 |
+| `0x06` | `alt_bn128_G1_add` | EIP-196 |
+| `0x07` | `alt_bn128_G1_mul` | EIP-196 |
+| `0x08` | `alt_bn128_pairing_product` | EIP-197 |
+
+**SKALE File Storage precompiles (addresses 0x0A–0x11):**
+
+These provide on-chain file storage access. Enabled via `RevertableFSPatch`.
+
+| Address | Name | Description |
+|---------|------|-------------|
+| `0x0A` | `readChunk` | Read a file chunk |
+| `0x0B` | `createFile` | Create a new file (restricted access) |
+| `0x0C` | `uploadChunk` | Upload a chunk to a file |
+| `0x0D` | `getFileSize` | Get the size of a file |
+| `0x0E` | `deleteFile` | Delete a file |
+| `0x0F` | `createDirectory` | Create a directory |
+| `0x10` | `deleteDirectory` | Delete a directory |
+| `0x11` | `calculateFileHash` | Compute SHA-256 hash of a file |
+
+**SKALE Config / Utility precompiles:**
+
+| Address | Name | Description |
+|---------|------|-------------|
+| `0x12` | `logTextMessage` | Emit a log message at a specified verbosity level |
+| `0x13` | `getConfigVariableUint256` | Read a uint256 value from the node config (e.g., node IDs) |
+| `0x14` | `getConfigVariableAddress` | Read an address value from the node config |
+| `0x15` | `getConfigVariableString` | Read a string value from the node config |
+| `0x17` | `getConfigPermissionFlag` | Check a permission flag from the node config |
+
+**SKALE Consensus / IMA precompiles:**
+
+| Address | Name | Description |
+|---------|------|-------------|
+| `0x18` | `getBlockRandom` | Return a deterministic 256-bit random value for the current block (see [docs](https://docs.skale.space/building-applications/random-number-generation/)) |
+| `0x19` | `getIMABLSPublicKey` | Return the IMA BLS public key for the current rotation |
+
 
 ### Transaction Types
 
@@ -595,6 +653,22 @@ When built with `-DHISTORIC_STATE=1`, SKALED operates as an **archive node** tha
 ## Code Review Guidelines
 
 When reviewing or writing code in this repository, apply these standards (aligned with SKALE consensus project guidelines):
+
+### Patches
+
+> ⚠️ **Critical**: Any code change that alters EVM execution behavior **must** be gated behind a `SchainPatch`. Deploying unguarded EVM behavior changes causes **state root mismatches** between nodes, breaking consensus.
+
+**How patches work:**
+- Each behavioral change is represented as a named entry in `SchainPatchEnum` (`libethereum/SchainPatchEnum.h`).
+- A concrete patch class derives from `SchainPatch` and exposes `isEnabledInWorkingBlock()`.
+- The patch activation timestamp is set per-chain in `chainParams.patchTimestamps`. A patch is inactive until the committed block timestamp passes that value.
+- FAIR builds have a static pre-enabled/pre-disabled set for some patches (see `SchainPatch::preEnabledForFAIR`).
+
+**Examples of existing patches:** `EIP1559TransactionsPatch`, `PushZeroPatch`, `ContractStoragePatch`, `StorageDestructionPatch`, `SkipInvalidTransactionsPatch`, `FlexibleDeploymentPatch`.
+
+**When reviewing:**
+- If a PR changes gas accounting, opcode semantics, transaction validation, or contract execution — verify the change is wrapped in a `SchainPatch`.
+- A patch-free EVM behavior change is a **blocking review issue**.
 
 ### Logic and Correctness
 - Verify changes are logically correct, complete, and fully satisfy the intended functionality.
