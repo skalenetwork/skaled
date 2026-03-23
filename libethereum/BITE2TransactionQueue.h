@@ -22,11 +22,11 @@
 #ifdef BITE
 
 #include "Transaction.h"
+#include <libdevcore/Common.h>
 #include <libdevcore/Guards.h>
 #include <libdevcore/Log.h>
 
-#include <atomic>
-#include <vector>
+#include <deque>
 
 namespace dev {
 namespace eth {
@@ -34,38 +34,36 @@ namespace eth {
 class BITE2TransactionQueue {
 public:
     /// Thread-safe, locks and returns a copy. For Debug/RPC.
-    std::vector< Transaction > debug_pendingBITE2Transactions() const;
+    std::deque< Transaction > debug_pendingBITE2Transactions() const;
 
     /// No lock, returns reference to entire buffer. For internal logic.
-    const std::vector< Transaction >& pendingBITE2Transactions() const;
+    std::shared_ptr< std::deque< Transaction > > pendingBITE2Transactions() const;
 
-    // addTemp(), getTempHashes(), commitTemp(), clearTemp(), clear() and finalize()
+    // addTemp(), getTempHashes(), commitTemp(), clearTemp()
     // are always called from the same thread
     // and pendingBITE2Transactions() always called AFTER methods above are executed
     // therefore, there is no need in extra synchronization
     // only debug_pendingBITE2Transactions requires synchronization
-    // because it is used by JSON RPC API
-
-    std::shared_ptr< std::vector< Transaction > > finalizeAndGetCtxs();
+    // because it is used by external JSON RPC API
 
     void addTemp( Transaction&& _t );
     /// Get hashes of CTXs crafted by transaction that is being executed now
     std::vector< h256 > getTempHashes() const;
     void commitTemp();
     void clearTemp();
-    void clear();
 
     // Returns true if transaction was a BITE2 transaction and was handled
     // Returns false if it's not a BITE2 transaction.
     bool dropGood( const Transaction& _t );
 
     /// Set the queue on startup with CTXs that were created in the previous block
-    void setQueueOnInit( Transactions&& _ctxQueue );
+    template < LinearContainer C >
+    void setQueueOnInit( C&& _ctxQueue );
 
 private:
-    std::shared_ptr< std::vector< Transaction > > m_current =
-        std::make_shared< std::vector< Transaction > >();
-    std::atomic_size_t m_currentHeadIndex = 0;
+    std::shared_ptr< std::deque< Transaction > > m_current =
+        std::make_shared< std::deque< Transaction > >();
+    size_t m_currentHeadIndex = 0;
     bool m_empty = true;
     mutable SharedMutex m_lock;
 
@@ -73,6 +71,17 @@ private:
     Logger m_loggerWarning{ createLogger( VerbosityWarning, "BITE2Queue" ) };
     Logger m_loggerTrace{ createLogger( VerbosityTrace, "BITE2Queue" ) };
 };
+
+template < LinearContainer C >
+void BITE2TransactionQueue::setQueueOnInit( C&& _ctxQueue ) {
+    WriteGuard l( m_lock );
+    CHECK_EXPRESSION( m_current );
+    m_current = std::make_shared< std::deque< Transaction > >(
+        std::make_move_iterator( _ctxQueue.begin() ), std::make_move_iterator( _ctxQueue.end() ) );
+    m_currentHeadIndex = m_current->empty() ? 0 : m_current->size() - 1;
+    m_empty = m_current->empty();
+    BOOST_LOG( m_loggerInfo ) << "BITE2 queue initialized with " << m_current->size() << " CTXs";
+}
 
 }  // namespace eth
 }  // namespace dev
