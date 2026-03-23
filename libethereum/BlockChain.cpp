@@ -797,8 +797,8 @@ void BlockChain::insertTransactionsDetailsToDb(
 
             auto txBytes = bytesRefFromTransactionRlp( *it );
             auto txHash = sha3( txBytes );
-            _extrasWriteBatch.insert( toSlice( txHash, ExtraTransactionAddress ),
-                ( db::Slice ) dev::ref( ta.rlp() ) );
+            _extrasWriteBatch.insert(
+                toSlice( txHash, ExtraTransactionAddress ), ( db::Slice ) dev::ref( ta.rlp() ) );
 
 #ifdef BITE
             if ( regularTxnsIterator != _block.decryptedTransactions.regularTxsMap->end() &&

@@ -55,6 +55,7 @@ struct PrecompiledCallContext {
         : blockNumber( 0 ),
 #ifdef BITE
           currentTxnIndex( -1 ),
+          currentTxnHash( dev::h256( 0 ) ),
           latestBlockTimestamp( 0 ),
           from( dev::ZeroAddress ),
 #endif
@@ -62,12 +63,14 @@ struct PrecompiledCallContext {
     }
     PrecompiledCallContext( const dev::u256& _bn,
 #ifdef BITE
-        const dev::u256& _currentTxnIndex, int64_t _latestBlockTimestamp, const dev::Address& _from,
+        const dev::u256& _currentTxnIndex, const dev::h256& _currentTxnHash,
+        int64_t _latestBlockTimestamp, const dev::Address& _from,
 #endif
         bool _readOnly )
         : blockNumber( _bn ),
 #ifdef BITE
           currentTxnIndex( _currentTxnIndex ),
+          currentTxnHash( _currentTxnHash ),
           latestBlockTimestamp( _latestBlockTimestamp ),
           from( _from ),
 #endif
@@ -76,11 +79,18 @@ struct PrecompiledCallContext {
     dev::u256 blockNumber;
 #ifdef BITE
     dev::u256 currentTxnIndex;
+    dev::h256 currentTxnHash;
     int64_t latestBlockTimestamp;
     dev::Address from;
 #endif
     bool isReadOnly;
 };
+
+inline PrecompiledCallContext defaultPrecompiledContext = { 1,
+#ifdef BITE
+    0, dev::h256::random(), 1, dev::ZeroAddress,
+#endif
+    true };
 
 struct ChainOperationParams;
 

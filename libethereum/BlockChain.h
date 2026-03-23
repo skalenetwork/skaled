@@ -30,8 +30,8 @@
 
 #include <time.h>
 
-#include <boost/filesystem/path.hpp>
 #include <boost/container/flat_map.hpp>
+#include <boost/filesystem/path.hpp>
 
 #include <libbatched-io/batched_db.h>
 #include <libbatched-io/batched_rotating_db_io.h>
@@ -352,7 +352,7 @@ public:
 
     TransactionHash ctxOrigin( const dev::h256& _ctxHash ) const {
         return queryExtras< TransactionHash, ExtraCtxOrigin >(
-                    _ctxHash, m_ctxOrigin, x_ctxOrigin, NullTransactionHash );
+            _ctxHash, m_ctxOrigin, x_ctxOrigin, NullTransactionHash );
     }
     std::deque< Transaction > pendingCTXsList() const;
 #endif  // BITE

@@ -1046,6 +1046,7 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
             return { true, response };
         } else {
             // push txn to BITE2 queue
+            signedTransaction.setCTXOrigin( _ctx.currentTxnHash );
             g_skaleHost->addTempBITE2Transaction( std::move( signedTransaction ) );
         }
 
