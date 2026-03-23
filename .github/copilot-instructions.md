@@ -399,7 +399,7 @@ When making changes that relate to any of these features, ensure code compiles a
 
 ## Ethereum Compatibility
 
-The VM is **fully compatible with the Istanbul fork** and all earlier Ethereum forks. Later forks (post-Istanbul) are **partially supported**. The **Dencun** (Deneb+Cancun) and **Pectra** forks are **not supported**.
+The VM is **fully compatible with the Istanbul fork** and all earlier Ethereum forks. Later forks (post-Istanbul) are **partially supported**. The **Cancun** (Dencun) and **Pectra** forks are **not supported**.
 
 The full JSON-RPC API specification for the VM is documented at:
 `docs/json-rpc-interface.md` (a versioned reference is published at https://github.com/skalenetwork/skaled/blob/v4.1.0/docs/json-rpc-interface.md)
@@ -410,7 +410,8 @@ The full JSON-RPC API specification for the VM is documented at:
 |----------|--------|---------|
 | Istanbul and earlier | **Fully supported** | All opcodes, gas costs, and precompiles behave identically to a canonical Ethereum node |
 | Berlin, London (post-Istanbul) | **Partially supported** | Most JSON-RPC methods work; some EIPs from these forks are available via `SchainPatch` activation |
-| Shanghai, Cancun (Dencun) | **Not supported** | EIP-4844 (blobs), EIP-1153 (transient storage), `PUSH0` and related opcodes not available |
+| Shanghai | **Partially supported** | `PUSH0` (EIP-3855) is available via `PushZeroPatch`; other Shanghai EIPs (EIP-3651, EIP-3860, EIP-4895) are not implemented |
+| Cancun (Dencun) | **Not supported** | EIP-4844 (blobs), EIP-1153 (transient storage opcodes `TLOAD`/`TSTORE`), and EIP-5656 (`MCOPY`) are not available |
 | Pectra and later | **Not supported** | No EIPs from Pectra or later are implemented |
 
 **What "partially supported" means:** The node accepts and processes transactions, and the JSON-RPC API responds correctly for standard queries. However, opcodes and precompiles introduced after Istanbul may not be present, or their gas costs may differ from canonical Ethereum. New functionality is introduced incrementally through the patch system (see [Patches](#patches) in the Code Review section).
