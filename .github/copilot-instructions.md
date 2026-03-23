@@ -380,7 +380,10 @@ When making changes that relate to any of these features, ensure code compiles a
 
 ## Ethereum Compatibility
 
-SKALED targets **Ethereum Istanbul** as the latest supported fork. Berlin-era EVM schedules exist in the code but Istanbul is the production-stable baseline.
+The VM is **fully compatible with the Istanbul fork** and all earlier Ethereum forks. Later forks (post-Istanbul) are **partially supported**. The **Dencun** (Deneb+Cancun) and **Pectra** forks are **not supported**.
+
+The full JSON-RPC API specification for the VM is documented at:
+`docs/json-rpc-interface.md` (a versioned reference is published at https://github.com/skalenetwork/skaled/blob/v4.1.0/docs/json-rpc-interface.md)
 
 ### EVM Fork Schedule
 
@@ -396,6 +399,35 @@ Frontier → Homestead → EIP150 (Tangerine Whistle) → EIP158 (Spurious Drago
 - `SELFBALANCE` opcode (`haveSelfbalance = true`)
 - Reduced `txDataNonZeroGas` (16, down from 68)
 - Increased `sloadGas` (800), `balanceGas` (700), `extcodehashGas` (700)
+
+### Custom Precompiles
+
+SKALED provides a **random number generator precompile** at address `0x18` (decimal 24). It returns a deterministic 256-bit random value derived from the current block's consensus randomness. This is a SKALE extension — it does not exist in vanilla Ethereum.
+
+- Implementation: `libethereum/Precompiled.cpp`, function `getBlockRandom`
+- Documentation: https://docs.skale.space/building-applications/random-number-generation/
+
+### Transaction Types
+
+SKALED supports the following Ethereum transaction types:
+
+| Type | Standard | Notes |
+|------|----------|-------|
+| Type-0 | Legacy | Fully supported |
+| Type-1 | Access List (EIP-2930) | Fully supported |
+| Type-2 | EIP-1559 | Supported at the API level (see gas model note below) |
+
+### Gas Price Model
+
+SKALED follows Ethereum's **pre-EIP-1559** gas pricing behavior regardless of transaction type:
+
+- Transaction fee is calculated as: `transactionFee = gasUsed × gasPrice`
+- For Type-0 and Type-1 transactions: `gasPrice` is used normally.
+- For Type-2 transactions: `maxFeePerGas` is interpreted as `gasPrice`; `maxPriorityFeePerGas` is ignored.
+
+### Known Limitations
+
+- **`eth_getLogs`**: Supports querying at most **2000 blocks** per request.
 
 ### Checking EVM JSON API Compatibility
 
@@ -421,14 +453,62 @@ cd build/test
 Snapshots allow nodes joining a SKALE chain (rotation or recovery) to sync quickly without replaying the entire chain from genesis.
 
 **How it works:**
-1. At configurable block intervals, the node creates a **btrfs filesystem snapshot** of its data directory.
-2. A hash is computed over all files in the snapshot (database + file storage) and stored alongside.
+1. At configurable time intervals, the node creates a **btrfs filesystem snapshot** of its data directory.
+2. A hash (snapshot state root) is computed over all snapshot contents and stored alongside as `snapshot_hash.txt`.
 3. When a new node needs to join, it collects BLS-signed snapshot hashes from ≥ 2/3+1 existing nodes to agree on a canonical snapshot.
 4. The new node downloads the snapshot in chunks via `skale_downloadSnapshotFragment`, verifies the hash, and restores it locally.
 
+**Snapshot interval:**
+Configured via `snapshotIntervalSec` in chain parameters. A snapshot is taken whenever a new block's timestamp crosses the next `snapshotIntervalSec` boundary (i.e., `blockTimestamp / snapshotIntervalSec` increments). Setting `snapshotIntervalSec ≤ 0` disables snapshots. An initial snapshot of block 0 is always created at startup.
+
+**What is included in a snapshot:**
+
+Each snapshot is a set of **btrfs read-only subvolume snapshots** of the following directories:
+
+| Volume | Condition |
+|--------|-----------|
+| Chain DB (`<chainName>/` directory) | Always |
+| `filestorage/` | Excluded in FAIR builds |
+| `prices_<nodeId>.db` | Always |
+| `blocks_<nodeId>.db` | Always |
+| `historic_roots/` | Only with `-DHISTORIC_STATE=1` (archive builds) |
+| `historic_state/` | Only with `-DHISTORIC_STATE=1` (archive builds) |
+
+**Snapshot state root (hash):**
+The snapshot hash is computed using the libsecp256k1 SHA-256 implementation (`secp256k1_sha256_write` / `secp256k1_sha256_finalize`) over the following components in order:
+1. The state database (`state` LevelDB under the chain volume)
+2. The blocks-and-extras database chunks
+3. All file storage contents (file path hash + file content hash for files; directory path hash for directories)
+4. The latest gas price value from `prices_<nodeId>.db`
+
+The resulting 256-bit hash is written to `snapshot_hash.txt` inside the snapshot directory. This hash is what nodes sign with BLS to prove agreement on a canonical chain state.
+
+**Data directory layout:**
+
+```
+dataDir/
+├── snapshots/
+│   ├── 0/                    (genesis snapshot, kept permanently)
+│   │   ├── <chainVolume>/    (btrfs read-only subvolume)
+│   │   ├── filestorage/
+│   │   └── snapshot_hash.txt
+│   └── <blockN>/             (named by block number)
+│       ├── <chainVolume>/
+│       ├── filestorage/
+│       └── snapshot_hash.txt
+├── diffs/                    (incremental btrfs send/receive diffs)
+├── <chainVolume>/            (active chain data btrfs subvolume)
+├── filestorage/              (active file storage btrfs subvolume)
+├── prices_<nodeId>.db/
+└── blocks_<nodeId>.db/
+```
+
+The node retains the **last 2 snapshots** with valid hashes (plus the genesis block 0 snapshot which is never deleted). Older snapshots are deleted via btrfs subvolume deletion. The **last 2 diffs** are kept independently using the same count policy.
+
 **Key files:**
-- `libskale/SnapshotManager.h/.cpp` — snapshot creation, storage, cleanup
-- `libskale/SnapshotHashAgent.h/.cpp` — hash computation and BLS signature collection
+- `libskale/SnapshotManager.h/.cpp` — snapshot creation, hash computation, storage, cleanup
+- `libethereum/SnapshotAgent.h/.cpp` — interval scheduling and hash thread management
+- `libskale/SnapshotHashAgent.h/.cpp` — BLS signature collection from peer nodes
 - `libweb3jsonrpc/Skale.cpp` — JSON-RPC endpoints
 
 **Snapshot JSON-RPC methods:**
