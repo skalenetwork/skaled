@@ -30,7 +30,6 @@
 
 #include <time.h>
 
-#include <boost/container/flat_map.hpp>
 #include <boost/filesystem/path.hpp>
 
 #include <libbatched-io/batched_db.h>

@@ -256,6 +256,12 @@ public:
 
     void setDecryptedArgsCTX( const DecryptedCTXArgs& _decryptedCTXArgs );
 
+    void setBITE2EncryptedArgsSize( size_t _s ) { m_ctxEncryptedArgsSize = _s; }
+
+    void setCTXOrigin( const dev::h256& _txHash ) { m_ctxOrigin = _txHash; }
+
+    dev::h256 getCTXOrigin() const { return m_ctxOrigin; }
+
 #endif  // BITE
 
     /// @throws TransactionIsUnsigned if signature was not initialized
@@ -419,12 +425,6 @@ public:
         std::optional< size_t > _bite2EncryptedArgsSize = std::nullopt
 #endif
     );
-
-#ifdef BITE
-    void setBITE2EncryptedArgsSize( size_t _s ) { m_ctxEncryptedArgsSize = _s; }
-    void setCTXOrigin( const dev::h256& _txHash ) { m_ctxOrigin = _txHash; }
-    dev::h256 getCTXOrigin() const { return m_ctxOrigin; }
-#endif
 
 protected:
     /// Type of transaction.

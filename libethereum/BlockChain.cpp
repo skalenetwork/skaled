@@ -782,8 +782,13 @@ void BlockChain::insertTransactionsDetailsToDb(
             CHECK_EXPRESSION( _block.pendingCtxs );
             RLPStream s;
             s.appendList( _block.pendingCtxs->size() );
-            for ( const auto& ctx : *_block.pendingCtxs )
-                s.appendRaw( ctx.toBytes() );
+            for ( const auto& ctx : *_block.pendingCtxs ) {
+                RLPStream ctxEntry;
+                ctxEntry.appendList( 2 );
+                ctxEntry.appendRaw( ctx.toBytes() );
+                ctxEntry << ctx.getCTXOrigin();
+                s.appendRaw( ctxEntry.out() );
+            }
             dev::bytes ctxListRlp = s.out();
             _extrasWriteBatch.insert(
                 db::Slice( "pendingCTXs" ), ( db::Slice ) dev::ref( ctxListRlp ) );
@@ -811,7 +816,8 @@ void BlockChain::insertTransactionsDetailsToDb(
                         ( db::Slice ) dev::ref( txData.rlp() ) );
                     ++regularTxnsIterator;
                 }
-            } else if ( _block.transactions.at( ta.index ).isCTX() ) {
+            } else if ( _block.transactions.at( ta.index ).isCTX() &&
+                        Bite2Patch::isEnabledInWorkingBlock() ) {
                 dev::h256 ctxOriginHash = _block.transactions[ta.index].getCTXOrigin();
                 CHECK_EXPRESSION( ctxOriginHash != dev::h256( 0 ) );
                 _extrasWriteBatch.insert( toSlice( txHash, ExtraCtxOrigin ),
@@ -1926,11 +1932,14 @@ std::deque< Transaction > BlockChain::pendingCTXsList() const {
     RLP rlp( lastBlockCTXs );
     std::deque< Transaction > ctxs;
     uint64_t prevBlockTimestamp = info().timestamp();
-    for ( auto const& txRlp : rlp ) {
-        ctxs.push_back( Transaction( txRlp.data(), CheckTransaction::None, true,
+    for ( auto const& entry : rlp ) {
+        CHECK_EXPRESSION( entry.isList() && entry.itemCount() == 2 );
+        Transaction tx( entry[0].data(), CheckTransaction::None, true,
             EIP1559TransactionsPatch::isEnabledWhen( prevBlockTimestamp ),
             InvalidTransactionFormatPatch::isEnabledWhen( prevBlockTimestamp ),
-            Bite2Patch::isEnabledWhen( prevBlockTimestamp ) ) );
+            Bite2Patch::isEnabledWhen( prevBlockTimestamp ) );
+        tx.setCTXOrigin( entry[1].toHash< dev::h256 >() );
+        ctxs.push_back( std::move( tx ) );
     }
     return ctxs;
 }
