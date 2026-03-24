@@ -313,8 +313,8 @@ SKALED uses several LevelDB databases. Their full schema is documented in `docs/
 
 | Database | Location | Description |
 |----------|----------|-------------|
-| `state.db` | `<chainDir>/` | Accounts: balance, nonce, code hash, storage. Never rotated; bounded by `contractStorageLimit`. |
-| `blocks_and_extras.db` | `<chainDir>/` | Block headers, bodies, transaction addresses, receipts, and log blooms. Rotated when a size limit is reached. |
+| `state` | `<chainDir>/<dbVersion>/` | Accounts: balance, nonce, code hash, storage. Never rotated; bounded by `contractStorageLimit`. |
+| `blocks_and_extras` | `<chainDir>/` | Block headers, bodies, transaction addresses, receipts, and log blooms. Rotated when a size limit is reached. |
 | `prices_<nodeId>.db` | `dataDir/` | Per-block gas price history. Used in snapshot hash computation. |
 | `blocks_<nodeId>.db` | `dataDir/` | Additional block data used by the consensus engine. |
 
