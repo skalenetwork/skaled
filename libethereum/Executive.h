@@ -259,7 +259,7 @@ private:
 
 #ifdef BITE
     u256 m_txnIndex = u256( -1 );  ///< Index of transaction under execution. -1 for external calls
-    h256 m_txnHash = h256( 0 );  ///< hash of transaction under execution. 0 for external calls
+    h256 m_txnHash = h256( 0 );    ///< hash of transaction under execution. 0 for external calls
 #endif
 
     Logger m_loggerDebug{ createLogger( VerbosityDebug, "Executive" ) };
