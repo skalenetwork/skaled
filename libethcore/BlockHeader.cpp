@@ -217,6 +217,11 @@ void BlockHeader::populateFromParent( BlockHeader const& _parent ) {
     m_difficulty = _parent.m_difficulty;
     m_gasUsed = 0;
     m_baseFeePerGas = _parent.m_baseFeePerGas;
+    // At London activation, the parent may be a pre-London block with baseFeePerGas=0
+    // (no field 13 in its RLP). Ensure the first post-London block starts at 1.
+    if ( LondonForkPatch::isEnabledWhen( static_cast< time_t >( m_timestamp ) ) &&
+         m_baseFeePerGas == 0 )
+        m_baseFeePerGas = 1;
 }
 
 void BlockHeader::verify( Strictness _s, BlockHeader const& _parent, bytesConstRef _block ) const {
