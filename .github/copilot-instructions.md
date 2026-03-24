@@ -243,14 +243,11 @@ Code formatting is enforced by `clang-format-11` with the config in `.clang-form
 ### Code Format Check
 
 ```bash
-# Check formatting (run from repo root):
-find . -path ./build -prune -o -path ./deps -prune -o -path ./evmc -prune \
-  -o -path ./evmjit -prune -o -path ./libconsensus -prune \
-  -o \( -name '*.cpp' -o -name '*.h' \) -print | \
-  xargs clang-format-11 --dry-run --Werror
+# Check formatting (requires a configured build directory):
+cd build && make format-check
 
 # Auto-fix formatting:
-find . ... | xargs clang-format-11 -i
+cd build && make format
 ```
 
 ---
@@ -302,43 +299,6 @@ clog(VerbosityDebug, "mymodule") << "message";
 | `deps/build.sh` | External dependency builder |
 | `CHANGELOG.md` | Version history |
 | `docs/` | Feature-level documentation |
-
----
-
-## Database Overview
-
-SKALED uses several LevelDB databases. Their full schema is documented in `docs/databases-info.md`.
-
-### skaled Databases
-
-| Database | Location | Description |
-|----------|----------|-------------|
-| `state` | `<chainDir>/<dbVersion>/` | Accounts: balance, nonce, code hash, storage. Never rotated; bounded by `contractStorageLimit`. |
-| `blocks_and_extras` | `<chainDir>/` | Block headers, bodies, transaction addresses, receipts, and log blooms. Rotated when a size limit is reached. |
-| `prices_<nodeId>.db` | `dataDir/` | Per-block gas price history. Used in snapshot hash computation. |
-| `blocks_<nodeId>.db` | `dataDir/` | Additional block data used by the consensus engine. |
-
-### Archive Node Databases (require `-DHISTORIC_STATE=1`)
-
-| Database | Description |
-|----------|-------------|
-| `historic_state/` | All historical account data (balance, nonce, storage) at every block. Never rotated. |
-| `historic_roots/` | Maps block numbers to their state trie root hash. Never rotated. |
-
-### Consensus Databases
-
-The libconsensus engine maintains **13 rotated LevelDB databases**, each sharded into 4 pieces. Their size is proportional to `totalStorageLimitBytes`. Key databases include:
-
-| Database | Purpose |
-|----------|---------|
-| `blocks.db` | Finalized consensus blocks |
-| `block_proposal.db` | Block proposal messages |
-| `random.db`, `price.db` | Per-block random values and gas prices |
-| `da_proof.db`, `da_sigshare.db` | Data-availability proofs and signature shares |
-
-For archive/indexer nodes, `blocks.db` does not rotate — historical blocks accumulate beyond the normal 4 active shards.
-
-The `skale_getDBUsage` JSON-RPC method returns byte-level usage for all databases.
 
 ---
 
