@@ -1171,7 +1171,6 @@ def run_eip_tests(
     gas_limit: int = 3_000_000,
 ) -> list[EIPTestResult]:
     """Run selected EIP compliance tests and return results."""
-    print(rpc_url)
     w3 = Web3(Web3.HTTPProvider(rpc_url))
     if not w3.is_connected():
         raise ConnectionError(f"Cannot connect to {rpc_url}")
