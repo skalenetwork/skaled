@@ -6064,12 +6064,14 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
 
     BOOST_REQUIRE_EQUAL( fixture.client->debugGetTransactionQueue()->pendingBITE2Transactions()->size(), 1 );
 
-    auto lastBlockCTXs = fixture.client->blockChain().pendingCTXsList();
-    BOOST_REQUIRE_EQUAL( lastBlockCTXs.size(), 1 );
-    auto ctxFromLastBlock = lastBlockCTXs[0];
-    BOOST_REQUIRE( ctxFromLastBlock.isCTX() );
-    BOOST_REQUIRE_EQUAL( ctxFromLastBlock.to(), dev::Address( contractAddress ) );
-    BOOST_REQUIRE_EQUAL( ctxFromLastBlock.gas(), randomGasLimit );
+    auto pendingCTXs = fixture.client->blockChain().pendingCTXsList();
+    BOOST_REQUIRE_EQUAL( pendingCTXs.size(), 1 );
+    auto pendingCTX = pendingCTXs[0];
+    BOOST_REQUIRE( pendingCTX.isCTX() );
+    BOOST_REQUIRE_EQUAL( pendingCTX.to(), dev::Address( contractAddress ) );
+    BOOST_REQUIRE_EQUAL( pendingCTX.gas(), randomGasLimit );
+    BOOST_REQUIRE_EQUAL( pendingCTX.sender(), expectedWalletAddress );
+    BOOST_REQUIRE_EQUAL( "0x" + pendingCTX.getCTXOrigin().hex(), txGenerateHash );
 
     dev::eth::mineTransaction( *( fixture.client ), 1 );
     bn = fixture.client->number();

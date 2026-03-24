@@ -821,7 +821,7 @@ void BlockChain::insertTransactionsDetailsToDb(
                 dev::h256 ctxOriginHash = _block.transactions[ta.index].getCTXOrigin();
                 CHECK_EXPRESSION( ctxOriginHash != dev::h256( 0 ) );
                 _extrasWriteBatch.insert( toSlice( txHash, ExtraCtxOrigin ),
-                    ( db::Slice ) dev::ref( ctxOriginHash.asBytes() ) );
+                    ( db::Slice ) dev::ref( TransactionHash( ctxOriginHash ).rlp() ) );
             }
 #endif
         }
