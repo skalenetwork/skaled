@@ -4698,6 +4698,9 @@ BOOST_AUTO_TEST_CASE( eip1559RpcMethods ) {
 
     // Set chainID = 151
     ret["params"]["chainID"] = "0x97";
+    // Activate LondonForkPatch 1 hour in the past so all mined blocks carry baseFeePerGas=1 in RLP.
+    ret["skaleConfig"]["sChain"]["LondonForkPatchTimestamp"] =
+        static_cast< Json::Int64 >( time( nullptr ) - 3600 );
     time_t eip1559PatchActivationTimestamp = time( nullptr ) + 5;
     ret["skaleConfig"]["sChain"]["EIP1559TransactionsPatchTimestamp"] =
         eip1559PatchActivationTimestamp;
