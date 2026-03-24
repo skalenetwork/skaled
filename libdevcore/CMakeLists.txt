@@ -1,8 +1,7 @@
 file(GLOB sources "*.cpp" "*.c")
 file(GLOB headers "*.h")
 
-set( CMAKE_CXX_STANDARD 17 )
-
+set( CMAKE_CXX_STANDARD 20 )
 
 if( NOT MICROPROFILE )
     file(GLOB_RECURSE microprofile_files "*microprofile*" "miniz.*")
