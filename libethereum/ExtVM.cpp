@@ -29,9 +29,7 @@
 
 #include "LastBlockHashesFace.h"
 
-#ifdef BITE
 #include "SchainPatch.h"
-#endif
 
 using namespace dev;
 using namespace dev::eth;

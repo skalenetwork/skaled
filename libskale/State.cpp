@@ -1136,6 +1136,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         dev::u256( _transactionIndex ), currentTxnHash
 #endif
     );
+    ( void ) currentTxnHash;
     ExecutionResult res;
     e.setResultRecipient( res );
 
