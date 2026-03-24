@@ -709,3 +709,67 @@ When reviewing or writing code in this repository, apply these standards (aligne
 - Use GitHub Issues for bugs and feature requests
 - Community discussions: Discord at https://discord.gg/vvUtWJB
 - Issues labeled `help wanted` are newcomer-friendly
+- **All commits must be GPG-signed** so they show the "Verified" badge on GitHub (see below)
+
+### GPG Commit Signing Setup
+
+Every commit to this repository must be cryptographically signed so it appears as **Verified** on GitHub.
+
+#### For human contributors (local development)
+
+1. **Generate a GPG key** (skip if you already have one):
+   ```bash
+   gpg --full-generate-key
+   # Choose RSA, 4096 bits, no expiry (or a sensible expiry)
+   # Use the same email address as your GitHub account
+   ```
+
+2. **Find your key ID**:
+   ```bash
+   gpg --list-secret-keys --keyid-format=long
+   # The key ID is the long hex string after "rsa4096/"
+   ```
+
+3. **Export the public key and add it to GitHub**:
+   ```bash
+   gpg --armor --export <YOUR_KEY_ID>
+   # Copy the output and paste it at GitHub → Settings → SSH and GPG keys → New GPG key
+   ```
+
+4. **Configure git to sign all commits**:
+   ```bash
+   git config --global user.signingkey <YOUR_KEY_ID>
+   git config --global commit.gpgsign true
+   ```
+
+5. **Verify signing works**:
+   ```bash
+   git commit --allow-empty -m "test signed commit"
+   git log --show-signature -1
+   # Should show "Good signature from ..."
+   ```
+
+#### For CI workflows that make automated commits
+
+Use the [`crazy-max/ghaction-import-gpg`](https://github.com/crazy-max/ghaction-import-gpg) action with a key stored as a repository secret:
+
+1. **Add repository secrets** (Settings → Secrets and variables → Actions):
+   - `GPG_PRIVATE_KEY` — the ASCII-armoured private key (`gpg --armor --export-secret-keys <KEY_ID>`)
+   - `GPG_PASSPHRASE` — the passphrase for the key (use an empty string if the key has no passphrase)
+
+2. **Add these steps to any workflow job that commits**:
+   ```yaml
+   - name: Import GPG key
+     uses: crazy-max/ghaction-import-gpg@v6
+     with:
+       gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+       passphrase: ${{ secrets.GPG_PASSPHRASE }}
+       git_user_signingkey: true
+       git_commit_gpgsign: true
+
+   - name: Commit changes
+     run: |
+       git add .
+       git commit -S -m "chore: automated update"
+       git push
+   ```
