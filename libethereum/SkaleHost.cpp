@@ -511,7 +511,7 @@ ConsensusExtFace::Transactions SkaleHost::pendingTransactions( size_t _limit, u2
 #ifdef BITE
     auto bite2Transactions = m_tq.pendingBITE2Transactions();
     u256 gasAccByCTXs = 0;
-    // CTXs are not the subject for block gas limit
+    // limit CTXs by block gas limit
     for ( const auto& ctx : *bite2Transactions ) {
         gasAccByCTXs += ctx.gas();
         if ( gasAccByCTXs > blockGasLimit ) {
