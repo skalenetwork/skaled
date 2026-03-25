@@ -44,9 +44,8 @@ struct VerifiedBlockRef {
                                                              ///< to be stored in blockchain
 
     std::vector< std::vector< dev::h256 > > ctxHashesLists;
-    std::shared_ptr< std::deque< Transaction > > createdCtxs =
-        std::make_shared< std::deque< Transaction > >();  ///< List of ctxs created by transactions
-                                                          ///< in block
+    std::shared_ptr< std::deque< Transaction > > pendingCtxs =
+        std::make_shared< std::deque< Transaction > >();  ///< List of pending ctxs for working block
 #endif                                                    // BITE
 };
 

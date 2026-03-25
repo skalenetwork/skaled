@@ -32,7 +32,6 @@
 #include <libdevcore/Assertions.h>
 #include <libdevcore/Common.h>
 
-// #include <libdevcore/DBImpl.h>
 #include <libdevcore/ManuallyRotatingLevelDB.h>
 
 #include <libdevcore/FileSystem.h>
@@ -628,7 +627,7 @@ ImportRoute BlockChain::import( const Block& _block ) {
 
     CHECK_EXPRESSION( verifiedBlock.decryptedTransactions.ctxTxsMap );
     verifiedBlock.ctxHashesLists = _block.ctxHashesLists();
-    verifiedBlock.createdCtxs = _block.createdCtxs();
+    verifiedBlock.pendingCtxs = _block.pendingCtxs();
 #endif  // BITE
 
     BlockReceipts blockReceipts;
@@ -776,30 +775,35 @@ void BlockChain::insertTransactionsDetailsToDb(
 
 #ifdef BITE
         if ( Bite2Patch::isEnabledInWorkingBlock() ) {
-            CtxOrigin ctxOrigin( _block.ctxHashesLists );
-            _extrasWriteBatch.insert( toSlice( _block.info.hash(), ExtraCtxOrigin ),
+            CreatedCTXs ctxOrigin( _block.ctxHashesLists );
+            _extrasWriteBatch.insert( toSlice( _block.info.hash(), ExtraCreatedCTXs ),
                 ( db::Slice ) dev::ref( ctxOrigin.rlp() ) );
 
-            CHECK_EXPRESSION( _block.createdCtxs );
+            CHECK_EXPRESSION( _block.pendingCtxs );
             RLPStream s;
-            s.appendList( _block.createdCtxs->size() );
-            for ( const auto& ctx : *_block.createdCtxs )
-                s.appendRaw( ctx.toBytes() );
+            s.appendList( _block.pendingCtxs->size() );
+            for ( const auto& ctx : *_block.pendingCtxs ) {
+                RLPStream ctxEntry;
+                ctxEntry.appendList( 2 );
+                ctxEntry.appendRaw( ctx.toBytes() );
+                ctxEntry << ctx.getCTXOrigin();
+                s.appendRaw( ctxEntry.out() );
+            }
             dev::bytes ctxListRlp = s.out();
             BOOST_LOG( m_loggerDebug ) << "Committing " << _block.createdCtxs->size() << " CTXs";
             _extrasWriteBatch.insert(
-                db::Slice( "lastBlockCTXs" ), ( db::Slice ) dev::ref( ctxListRlp ) );
+                db::Slice( "pendingCTXs" ), ( db::Slice ) dev::ref( ctxListRlp ) );
         }
         CHECK_EXPRESSION( _block.decryptedTransactions.regularTxsMap );
         auto regularTxnsIterator = _block.decryptedTransactions.regularTxsMap->begin();
 #endif  // BITE
-        for ( RLP::iterator it = txns_rlp.begin(); it != txns_rlp.end(); ++it ) {
+        for ( RLP::iterator it = txns_rlp.begin(); it != txns_rlp.end(); ++it, ++ta.index ) {
             MICROPROFILE_SCOPEI( "insertBlockAndExtras", "for2", MP_HONEYDEW );
 
             auto txBytes = bytesRefFromTransactionRlp( *it );
-            _extrasWriteBatch.insert( toSlice( sha3( txBytes ), ExtraTransactionAddress ),
-                ( db::Slice ) dev::ref( ta.rlp() ) );
-
+            auto txHash = sha3( txBytes );
+            _extrasWriteBatch.insert(
+                toSlice( txHash, ExtraTransactionAddress ), ( db::Slice ) dev::ref( ta.rlp() ) );
 #ifdef BITE
             if ( regularTxnsIterator != _block.decryptedTransactions.regularTxsMap->end() &&
                  regularTxnsIterator->first == ta.index ) {
@@ -813,10 +817,14 @@ void BlockChain::insertTransactionsDetailsToDb(
                         ( db::Slice ) dev::ref( txData.rlp() ) );
                     ++regularTxnsIterator;
                 }
+            } else if ( _block.transactions.at( ta.index ).isCTX() &&
+                        Bite2Patch::isEnabledInWorkingBlock() ) {
+                dev::h256 ctxOriginHash = _block.transactions[ta.index].getCTXOrigin();
+                CHECK_EXPRESSION( ctxOriginHash != dev::h256( 0 ) );
+                _extrasWriteBatch.insert( toSlice( txHash, ExtraCtxOrigin ),
+                    ( db::Slice ) dev::ref( TransactionHash( ctxOriginHash ).rlp() ) );
             }
 #endif
-
-            ++ta.index;
         }
     }
 }
@@ -1371,8 +1379,12 @@ void BlockChain::updateStats() const {
             getApproximateHashSize( m_decryptedTransactionsData );
     }
     {
+        DEV_READ_GUARDED( x_createdCTXs )
+        m_lastStats.memCreatedCTXs = getApproximateHashSize( m_createdCTXs );
+    }
+    {
         DEV_READ_GUARDED( x_ctxOrigin )
-        m_lastStats.memCtxOrigin = getApproximateHashSize( m_ctxOrigin );
+        m_lastStats.memCtxOrigin = m_ctxOrigin.size() * ( dev::h256::size + TransactionHash::size );
     }
 #endif  // BITE
 }
@@ -1441,6 +1453,11 @@ void BlockChain::garbageCollect( bool _force ) {
             case ExtraTransactionDecryptedData: {
                 WriteGuard l( x_decryptedTransactionsData );
                 m_decryptedTransactionsData.erase( id.first );
+                break;
+            }
+            case ExtraCreatedCTXs: {
+                WriteGuard l( x_createdCTXs );
+                m_createdCTXs.erase( id.first );
                 break;
             }
             case ExtraCtxOrigin: {
@@ -1513,6 +1530,10 @@ void BlockChain::clearCaches() {
         m_decryptedTransactionsData.clear();
     }
     {
+        WriteGuard l( x_createdCTXs );
+        m_createdCTXs.clear();
+    }
+    {
         WriteGuard l( x_ctxOrigin );
         m_ctxOrigin.clear();
     }
@@ -1565,6 +1586,8 @@ void BlockChain::clearCachesDuringChainReversion( unsigned _firstInvalid ) {
 #ifdef BITE
     DEV_WRITE_GUARDED( x_decryptedTransactionsData )
     m_decryptedTransactionsData.clear();
+    DEV_WRITE_GUARDED( x_createdCTXs )
+    m_createdCTXs.clear();
     DEV_WRITE_GUARDED( x_ctxOrigin )
     m_ctxOrigin.clear();
 #endif  // BITE
@@ -1904,19 +1927,21 @@ bool BlockChain::isPatchTimestampActiveInBlockNumber( time_t _ts, BlockNumber _b
 
 #ifdef BITE
 
-Transactions BlockChain::ctxListForPreviousBlock() const {
-    std::string lastBlockCTXs = this->m_extrasDB->lookup( ( db::Slice ) "lastBlockCTXs" );
+std::deque< Transaction > BlockChain::pendingCTXsList() const {
+    std::string lastBlockCTXs = this->m_extrasDB->lookup( ( db::Slice ) "pendingCTXs" );
     if ( lastBlockCTXs.empty() )
         return {};
     RLP rlp( lastBlockCTXs );
-    Transactions ctxs;
-    ctxs.reserve( rlp.itemCount() );
+    std::deque< Transaction > ctxs;
     uint64_t prevBlockTimestamp = info().timestamp();
-    for ( auto const& txRlp : rlp ) {
-        ctxs.push_back( Transaction( txRlp.data(), CheckTransaction::None, true,
+    for ( auto const& entry : rlp ) {
+        CHECK_EXPRESSION( entry.isList() && entry.itemCount() == 2 );
+        Transaction tx( entry[0].data(), CheckTransaction::None, true,
             EIP1559TransactionsPatch::isEnabledWhen( prevBlockTimestamp ),
             InvalidTransactionFormatPatch::isEnabledWhen( prevBlockTimestamp ),
-            Bite2Patch::isEnabledWhen( prevBlockTimestamp ) ) );
+            Bite2Patch::isEnabledWhen( prevBlockTimestamp ) );
+        tx.setCTXOrigin( entry[1].toHash< dev::h256 >() );
+        ctxs.push_back( std::move( tx ) );
     }
     return ctxs;
 }

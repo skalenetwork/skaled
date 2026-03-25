@@ -172,14 +172,12 @@ public:
     std::vector< dev::h256 > getTempBITE2Hashes() const;
     /// Move BITE2 txn from temporary to permanent
     void commitTempBITE2Transactions();
+    /// Get origin for first N CTXs in queue
+    std::vector< dev::h256 > getNCTXOrigins( size_t _n ) const;
 
     void clearTempBITE2Transactions();
 
-    /// Set the queue on startup with CTXs that were created in the previous block
-    template < LinearContainer C >
-    void setBITE2QueueOnInit( C&& _ctxQueue ) {
-        return m_bite2Queue.setQueueOnInit( std::move( _ctxQueue ) );
-    }
+    void setBITE2QueueOnInit( std::deque< Transaction >&& _ctxQueue );
 #endif
 
     struct Status {

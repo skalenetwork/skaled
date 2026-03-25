@@ -57,8 +57,9 @@ public:
     bool dropGood( const Transaction& _t );
 
     /// Set the queue on startup with CTXs that were created in the previous block
-    template < LinearContainer C >
-    void setQueueOnInit( C&& _ctxQueue );
+    void setQueueOnInit( std::deque< Transaction >&& _ctxQueue );
+
+    std::vector< dev::h256 > getNCTXOrigins( size_t _n ) const;
 
 private:
     std::shared_ptr< std::deque< Transaction > > m_current =
