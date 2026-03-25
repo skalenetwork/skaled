@@ -8,7 +8,7 @@ This document outlines the structure, functionality, and rotation process of the
 
 ### Core Nodes
 
-#### `state`
+#### `state.db`
 
 This database stores information about all accounts in the network.
 
@@ -18,11 +18,11 @@ Each account contains:
 - `code hash` (default if the account is not a user contract)
 - `storage used` (0 if the account is not a user contract)
 
-In addition, `state` stores the code of every deployed contract.
+In addition, `state.db` stores the code of every deployed contract.
 
 This database is **never rotated**, but it is limited by `contractStorageLimit`. The total storage used by all contracts in the network must not exceed this limit.
 
-#### `blocks_and_extras`
+#### `blocks_and_extras.db`
 
 Detailed information about this database can be found here ().
 
