@@ -1016,8 +1016,12 @@ Json::Value Eth::eth_feeHistory( dev::u256 _blockCount, const std::string& _newe
             throw std::runtime_error( "Reward percentiles must be a list" );
 
         for ( auto p : _rewardPercentiles ) {
-            if ( !p.isUInt() || p > 100 ) {
-                throw std::runtime_error( "Percentiles must be positive integers less then 100" );
+            if ( !p.isNumeric() ) {
+                throw std::runtime_error( "Percentiles must be numbers between 0 and 100" );
+            }
+            double val = p.asDouble();
+            if ( val < 0.0 || val > 100.0 ) {
+                throw std::runtime_error( "Percentiles must be between 0 and 100" );
             }
         }
 

@@ -5,6 +5,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
+import requests as _requests
+
 from eth_account import Account
 from eth_account.signers.local import LocalAccount
 from web3 import Web3
@@ -1634,6 +1636,55 @@ def test_eip_1559_fee_history(
         passed=True,
         message=f"eth_feeHistory returned {len(base_fees)} baseFeePerGas entries",
         details=details,
+    )
+
+
+def test_eip_1559_fee_history_float_percentiles(
+    w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000
+) -> EIPTestResult:
+    """eth_feeHistory must accept float reward percentiles (e.g. 25.5, 75.5)."""
+    logger.info("=== EIP-1559 feeHistory float-percentile RPC test ===")
+    rpc_url = w3.provider.endpoint_uri  # type: ignore[attr-defined]
+    payload = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "eth_feeHistory",
+        "params": ["0x4", "latest", [25.5, 75.5]],
+    }
+    try:
+        resp = _requests.post(rpc_url, json=payload, timeout=10)
+        resp.raise_for_status()
+        body = resp.json()
+    except Exception as e:
+        return EIPTestResult(
+            eip="1559-fee-history-float",
+            passed=False,
+            message=f"HTTP call failed: {e}",
+        )
+
+    if "error" in body:
+        return EIPTestResult(
+            eip="1559-fee-history-float",
+            passed=False,
+            message=f"eth_feeHistory rejected float percentiles: {body['error']}",
+            details={"response": body},
+        )
+
+    result = body.get("result", {})
+    base_fees = result.get("baseFeePerGas", [])
+    if not base_fees:
+        return EIPTestResult(
+            eip="1559-fee-history-float",
+            passed=False,
+            message="eth_feeHistory with float percentiles returned empty baseFeePerGas",
+            details={"result": result},
+        )
+
+    return EIPTestResult(
+        eip="1559-fee-history-float",
+        passed=True,
+        message=f"eth_feeHistory accepted float percentiles, returned {len(base_fees)} baseFeePerGas entries",
+        details={"base_fee_per_gas": base_fees},
     )
 
 
