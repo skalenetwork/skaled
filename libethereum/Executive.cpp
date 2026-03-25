@@ -388,7 +388,7 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
             bool success;
             PrecompiledCallContext ctx{ m_envInfo.number(),
 #ifdef BITE
-                m_txnIndex, m_envInfo.committedBlockTimestamp(), _p.senderAddress,
+                m_txnIndex, m_txnHash, m_envInfo.committedBlockTimestamp(), _p.senderAddress,
 #endif
                 m_readOnly };
 #ifdef FAIR
@@ -420,7 +420,7 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
                 version, m_depth, false, _p.staticCall, m_readOnly
 #ifdef BITE
                 ,
-                m_txnIndex
+                m_txnIndex, m_txnHash
 #endif
             );
         }
@@ -506,7 +506,7 @@ bool Executive::executeCreate( Address const& _sender, u256 const& _endowment,
             bytesConstRef(), _init, sha3( _init ), _version, m_depth, true, false
 #ifdef BITE
             ,
-            isReadOnly, m_txnIndex
+            isReadOnly, m_txnIndex, m_txnHash
 #endif
         );
     } else

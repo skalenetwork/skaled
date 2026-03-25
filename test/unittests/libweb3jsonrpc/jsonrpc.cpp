@@ -4994,6 +4994,7 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
     dev::eth::PrecompiledCallContext ctx( blockNumberEarly,
 #ifdef BITE
                                           0,
+                                          dev::h256::random(),
                                           1,
                                           dev::ZeroAddress,
 #endif
@@ -5054,6 +5055,7 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
     ctx = PrecompiledCallContext( fixture.client->number(),
 #ifdef BITE
                                 0,
+                                dev::h256::random(),
                                 1,
                                 dev::ZeroAddress,
 #endif
@@ -5075,6 +5077,7 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
     ctx = PrecompiledCallContext( blockNumberEarly,
 #ifdef BITE
                                 0,
+                                dev::h256::random(),
                                 1,
                                 dev::ZeroAddress,
 #endif
@@ -5986,7 +5989,7 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
     PrecompiledExecutor submitCTXExecutor = PrecompiledRegistrar::executor( "submitCTX" );
-    dev::eth::PrecompiledCallContext ctx( fixture.client->number(), 1, 1,
+    dev::eth::PrecompiledCallContext ctx( fixture.client->number(), 1, dev::h256::random(), 1,
                                           dev::Address( contractAddress ), true );
 
     dev::bytesConstRef input( resultData.data(), resultData.size() );
@@ -6061,12 +6064,14 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
 
     BOOST_REQUIRE_EQUAL( fixture.client->debugGetTransactionQueue()->pendingBITE2Transactions()->size(), 1 );
 
-    auto lastBlockCTXs = fixture.client->blockChain().pendingCTXsList();
-    BOOST_REQUIRE_EQUAL( lastBlockCTXs.size(), 1 );
-    auto ctxFromLastBlock = lastBlockCTXs[0];
-    BOOST_REQUIRE( ctxFromLastBlock.isCTX() );
-    BOOST_REQUIRE_EQUAL( ctxFromLastBlock.to(), dev::Address( contractAddress ) );
-    BOOST_REQUIRE_EQUAL( ctxFromLastBlock.gas(), randomGasLimit );
+    auto pendingCTXs = fixture.client->blockChain().pendingCTXsList();
+    BOOST_REQUIRE_EQUAL( pendingCTXs.size(), 1 );
+    auto pendingCTX = pendingCTXs[0];
+    BOOST_REQUIRE( pendingCTX.isCTX() );
+    BOOST_REQUIRE_EQUAL( pendingCTX.to(), dev::Address( contractAddress ) );
+    BOOST_REQUIRE_EQUAL( pendingCTX.gas(), randomGasLimit );
+    BOOST_REQUIRE_EQUAL( pendingCTX.sender(), expectedWalletAddress );
+    BOOST_REQUIRE_EQUAL( "0x" + pendingCTX.getCTXOrigin().hex(), txGenerateHash );
 
     dev::eth::mineTransaction( *( fixture.client ), 1 );
     bn = fixture.client->number();
