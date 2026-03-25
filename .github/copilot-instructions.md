@@ -117,17 +117,17 @@ cd ..
 
 ## Building
 
-### Standard Debug build (recommended for development)
+### Standard build (recommended for development)
 
 ```bash
-cmake -H. -Bbuild -DCMAKE_BUILD_TYPE=Debug
+cmake -H. -Bbuild -DCMAKE_BUILD_TYPE=RelWithDebInfo
 cmake --build build -- -j$(nproc)
 ```
 
 ### Build only the test suite
 
 ```bash
-cmake -H. -Bbuild -DCMAKE_BUILD_TYPE=Debug -DTESTS=1
+cmake -H. -Bbuild -DCMAKE_BUILD_TYPE=RelWithDebInfo -DTESTS=1
 cmake --build build --target testeth -- -j$(nproc)
 ```
 
@@ -135,18 +135,11 @@ cmake --build build --target testeth -- -j$(nproc)
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `-DCMAKE_BUILD_TYPE=Debug\|Release\|RelWithDebInfo\|MinSizeRel` | Debug | Build type |
+| `-DCMAKE_BUILD_TYPE=Debug\|Release\|RelWithDebInfo\|MinSizeRel` | RelWithDebInfo | Build type |
 | `-DHISTORIC_STATE=1` | off | Enable historic state tracking |
 | `-DBITE=1` | off | Enable BITE transaction variant |
 | `-DBITE2=1` | off | Enable BITE2 variant (implies BITE) |
 | `-DFAIR=1` | off | Enable FAIR consensus variant (implies BITE + BITE2) |
-| `-DCONSENSUS=1` | off | Build full consensus engine |
-| `-DTESTS=1` | off | Build test targets |
-| `-DTOOLS=1` | off | Build skale-key and skale-vm utilities |
-| `-DEVMJIT=1` | off | Enable JIT compiler |
-| `-DSKALED_PROFILING=1` | off | Enable profiling (`-pg` flags) |
-| `-DSANITIZE=address\|thread\|undefined` | off | Enable sanitizers |
-| `-DBUILD_LEVELDB=1` | off | Build LevelDB from source |
 
 ### Using ccache (automatically detected)
 
@@ -186,14 +179,6 @@ export NO_NTP_CHECK=1      # Disable NTP sync check (used in CI)
 - The suites `jsonrpc`, `customTestSuite`, and `BlockQueueSuite` are excluded from normal CI runs.
 - The CI runs testeth at **verbosity level 1** and **verbosity level 4**.
 - Historic state tests use Hardhat (TypeScript/Node.js) in `test/historicstate/`.
-
-### Integration / Hardhat Tests
-
-```bash
-cd test
-npm install
-npx hardhat test   # see test/package.json for specific scripts
-```
 
 ---
 
@@ -302,45 +287,6 @@ clog(VerbosityDebug, "mymodule") << "message";
 
 ---
 
-## Common Errors and Workarounds
-
-### Error: CMake fatal error about missing submodules
-**Cause:** Repository cloned without `--recurse-submodules`.  
-**Fix:** `git submodule update --init --recursive`
-
-### Error: CMake version too old
-**Cause:** System apt cmake is outdated.  
-**Fix:**
-```bash
-sudo apt-get purge cmake
-sudo snap install cmake --classic
-```
-
-### Error: Dependency build failures (bz2 / lz4 conflicts)
-**Cause:** System packages `libbz2-dev` or `liblz4-dev` conflict with deps builds.  
-**Fix:** `sudo apt-get remove -y libbz2-dev liblz4-dev`
-
-### Error: Compiler errors with wrong gcc version
-**Cause:** System defaulting to gcc other than 11.  
-**Fix:** Set gcc-11 as default using `update-alternatives` (see Environment Setup section).
-
-### Error: Build fails because deps not built
-**Cause:** `deps/build.sh` has not been run before the main CMake build.  
-**Fix:** `cd deps && ./build.sh DEBUG=1 PARALLEL_COUNT=$(nproc) && cd ..`
-
-### Error: `libv8-dev` not found
-**Cause:** V8 library not installed; required for binaryen/testeth.  
-**Fix:** `sudo apt install libv8-dev`
-
-### Test failures related to time/ulimits in CI-like environments
-**Fix:** Set these environment variables before running:
-```bash
-export NO_ULIMIT_CHECK=1
-export NO_NTP_CHECK=1
-```
-
----
-
 ## Feature Flags and Conditional Compilation
 
 Many features are gated by preprocessor defines set via CMake options:
@@ -393,8 +339,6 @@ SKALED extends the standard Ethereum precompile set with SKALE-specific contract
 | `0x08` | `alt_bn128_pairing_product` | EIP-197 |
 
 **SKALE File Storage precompiles (addresses 0x0A–0x11):**
-
-These provide on-chain file storage access. Enabled via `RevertableFSPatch`.
 
 | Address | Name | Description |
 |---------|------|-------------|
