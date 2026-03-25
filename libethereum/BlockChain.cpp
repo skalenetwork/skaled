@@ -790,7 +790,6 @@ void BlockChain::insertTransactionsDetailsToDb(
                 s.appendRaw( ctxEntry.out() );
             }
             dev::bytes ctxListRlp = s.out();
-            BOOST_LOG( m_loggerDebug ) << "Committing " << _block.createdCtxs->size() << " CTXs";
             _extrasWriteBatch.insert(
                 db::Slice( "pendingCTXs" ), ( db::Slice ) dev::ref( ctxListRlp ) );
         }

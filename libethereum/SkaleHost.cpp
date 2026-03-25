@@ -417,6 +417,10 @@ void SkaleHost::clearTempBITE2Transactions() {
 std::shared_ptr< std::deque< Transaction > > SkaleHost::pendingBITE2Transactions() const {
     return m_tq.pendingBITE2Transactions();
 }
+
+void SkaleHost::setBITE2QueueOnInit( std::deque< dev::eth::Transaction >&& _ctxs ) {
+    return m_tq.setBITE2QueueOnInit( std::move( _ctxs ) );
+}
 #endif
 
 h256 SkaleHost::receiveTransaction( const std::string& _rlp ) {

@@ -148,10 +148,7 @@ public:
     void clearTempBITE2Transactions();
     std::shared_ptr< std::deque< dev::eth::Transaction > > pendingBITE2Transactions() const;
 
-    template < LinearContainer C >
-    void setBITE2QueueOnInit( C&& _ctxs ) {
-        return m_tq.setBITE2QueueOnInit( std::move( _ctxs ) );
-    }
+    void setBITE2QueueOnInit( std::deque< dev::eth::Transaction >&& _ctxs );
 
     dev::u256 getReencryptionBlockRandom( unsigned _blockNumber, bool _isCalledFromTxn ) const;
 #endif
