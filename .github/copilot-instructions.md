@@ -653,3 +653,16 @@ When reviewing or writing code in this repository, apply these standards (aligne
 - Use GitHub Issues for bugs and feature requests
 - Community discussions: Discord at https://discord.gg/vvUtWJB
 - Issues labeled `help wanted` are newcomer-friendly
+
+### PR Requirements
+
+Every pull request **must** satisfy the following:
+
+1. **Linked Issue** — The PR description must reference a GitHub Issue (e.g. `Closes #123`). CI enforces this via `issue_check.yml`.
+2. **Description of changes** — A clear summary of what the PR does and why.
+3. **Bug fix details** *(for bug-fix PRs only)* — Two sub-sections:
+   - *What was the bug* — incorrect behaviour, when it occurred, and its impact.
+   - *How this PR fixes it* — root cause and the specific change that resolves it.
+4. **New patches** — List any new `SchainPatch` entries introduced or activated, or state "None".
+5. **Performance impact** — State whether the change affects CPU, memory, latency or throughput. Include benchmark results if relevant.
+6. **Testing** *(required for new features and bug fixes)* — Describe how the changes were tested, covering all that apply: unit tests added/modified (name the suite and test case), local environment testing (steps taken), integration or end-to-end tests run, and any manual verification performed.
