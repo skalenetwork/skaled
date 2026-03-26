@@ -331,7 +331,7 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
 
 #ifdef BITE
     if ( SingleStateCommitPerBlockPatch::isEnabledInWorkingBlock() )
-        m_tq.setBITE2QueueOnInit( bc().ctxListForPreviousBlock() );
+        m_tq.setBITE2QueueOnInit( bc().pendingCTXsList() );
 #endif
 
     if ( m_dbPath.size() )

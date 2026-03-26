@@ -335,9 +335,9 @@ public:
         return m_ctxHashesLists;
     }
 
-    const std::shared_ptr< std::vector< dev::eth::Transaction > >& createdCtxs() const {
-        CHECK_EXPRESSION( m_createdCtxs );
-        return m_createdCtxs;
+    const std::shared_ptr< std::deque< dev::eth::Transaction > >& pendingCtxs() const {
+        CHECK_EXPRESSION( m_pendingCtxs );
+        return m_pendingCtxs;
     }
 #endif  // BITE
 
@@ -430,11 +430,10 @@ private:
     // list of ctx hashes crafted by every txn in block
     // only filled for a working block
     std::vector< std::vector< dev::h256 > > m_ctxHashesLists;
-    // list of ctxs created by every txn in block
+    // list of pending ctxs
     // only filled for a working block
-    // safe, because it is filled with transactions from BITE queue
-    // which stay there until the block is committed
-    std::shared_ptr< Transactions > m_createdCtxs = std::make_shared< Transactions >();
+    std::shared_ptr< std::deque< Transaction > > m_pendingCtxs =
+        std::make_shared< std::deque< Transaction > >();
 #endif  // BITE
 
     Logger m_loggerDebug{ createLogger( VerbosityDebug, "block" ) };

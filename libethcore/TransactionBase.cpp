@@ -79,7 +79,7 @@ std::vector< bytes > validateAccessListRLP( const RLP& _data ) {
             BOOST_THROW_EXCEPTION(
                 InvalidTransactionFormat()
                 << errinfo_comment( "transaction accessList address must be exactly 20 bytes" ) );
-        for ( const auto& k : accessList[1].toList() ) {
+        for ( const auto& k : accessList[1] ) {
             if ( !k.isData() )
                 BOOST_THROW_EXCEPTION(
                     InvalidTransactionFormat() << errinfo_comment(

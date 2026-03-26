@@ -160,11 +160,11 @@ public:
 #ifdef BITE
     /// Get all pending BITE2 transactions. Returned transactions are not removed from the queue
     /// automatically. For internal logic.
-    const Transactions& pendingBITE2Transactions() const;
+    std::shared_ptr< std::deque< Transaction > > pendingBITE2Transactions() const;
 
     /// Get all pending BITE2 transactions. Returned transactions are not removed from the queue
     /// automatically. For Debug/RPC.
-    std::vector< Transaction > debug_pendingBITE2Transactions() const;
+    std::deque< Transaction > debug_pendingBITE2Transactions() const;
 
     /// Add BITE2 txn as temporary
     void addTempBITE2Transaction( dev::eth::Transaction&& _transaction );
@@ -174,13 +174,11 @@ public:
     void commitTempBITE2Transactions();
 
     void clearTempBITE2Transactions();
-    void clearAllBITE2Transactions();
 
-    /// finalizes BITE2 queue to be ready to start processing next block
-    std::shared_ptr< std::vector< dev::eth::Transaction > > finalizeBITE2QueueAndGetCtxs();
-
-    /// Set the queue on startup with CTXs that were created in the previous block
-    void setBITE2QueueOnInit( Transactions&& _ctxQueue );
+    template < LinearContainer C >
+    void setBITE2QueueOnInit( C&& _ctxQueue ) {
+        return m_bite2Queue.setQueueOnInit( std::move( _ctxQueue ) );
+    }
 #endif
 
     struct Status {
