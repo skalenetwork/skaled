@@ -3386,7 +3386,11 @@ BOOST_AUTO_TEST_CASE( estimate_gas_low_gas_txn ) {
     dev::eth::mineTransaction( *( fixture.client ), 1 );
     Json::Value clearReceipt = fixture.rpcClient->eth_getTransactionReceipt( clearHash );
     BOOST_REQUIRE_EQUAL( clearReceipt["status"], "0x1" );
+#ifndef FAIR
+    // Pre-London: large SSTORE refund (15000) brings effective gasUsed below base tx cost.
+    // With London (EIP-3529), refund reduced to 4800 so gasUsed exceeds 21000.
     BOOST_REQUIRE_LT( jsToInt( clearReceipt["gasUsed"].asString() ), 21000 );
+#endif
 
     // try to lower gas
     estimateGasCall["gas"] = toJS( jsToInt( estimatedGas ) - 1 );
@@ -4743,11 +4747,18 @@ BOOST_AUTO_TEST_CASE( eip1559RpcMethods ) {
 
     for ( Json::Value::ArrayIndex i = 0; i < blockCnt; ++i ) {
         BOOST_REQUIRE( feeHistory["baseFeePerGas"][i].isString() );
+#ifdef FAIR
+        // In FAIR, EIP1559TransactionsPatch is always active via preEnabledForFAIR, so
+        // isEnabledWhen() always returns true regardless of block timestamp. eth_feeHistory
+        // reads baseFeePerGas from the block header (always 1 after London activation).
+        std::string estimatedBaseFeePerGas = toJS( u256( 1 ) );
+#else
         std::string estimatedBaseFeePerGas =
             EIP1559TransactionsPatch::isEnabledWhen(
                 fixture.client->blockInfo( bn - i - 1 ).timestamp() ) ?
                 toJS( fixture.client->gasBidPrice( bn - i - 1 ) ) :
                 toJS( u256( 1 ) );
+#endif
         BOOST_REQUIRE( feeHistory["baseFeePerGas"][i].asString() == estimatedBaseFeePerGas );
         BOOST_REQUIRE_GT( feeHistory["gasUsedRatio"][i].asDouble(), 0 );
         BOOST_REQUIRE_GT( 1, feeHistory["gasUsedRatio"][i].asDouble() );
