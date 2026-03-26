@@ -181,6 +181,8 @@ CreateResult ExtVM::create( u256 _endowment, u256& io_gas, bytesConstRef _code, 
         true, m_txnIndex
 #endif
     };
+    e.setAccessSets( accessSets );
+
     bool result = false;
     if ( _op == Instruction::CREATE )
         result = e.createOpcode( myAddress, _endowment, gasPrice, io_gas, _code, origin );
@@ -189,8 +191,6 @@ CreateResult ExtVM::create( u256 _endowment, u256& io_gas, bytesConstRef _code, 
             BOOST_THROW_EXCEPTION( BadInstruction() );
         result = e.create2Opcode( myAddress, _endowment, gasPrice, io_gas, _code, origin, _salt );
     }
-
-    e.setAccessSets( accessSets );
     if ( !result ) {
         go( depth, e, _onOp );
         e.accrueSubState( sub );

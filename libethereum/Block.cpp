@@ -542,7 +542,7 @@ std::pair< TransactionReceipts, unsigned > Block::recoverFromReceipts(
 #ifdef BITE
     // set CTXs from previous block to BITE2 queue
     g_skaleHost->setBITE2QueueOnInit( std::move( savedData->ctxsCreatedInBlock ) );
-    m_createdCtxs = g_skaleHost->finalizeBITE2QueueAndGetCtxs();
+    m_pendingCtxs = g_skaleHost->pendingBITE2Transactions();
 #endif
 
     unsigned badCount = 0;
@@ -627,7 +627,7 @@ void Block::executeTransactions( BlockChain const& _bc, const Transactions& _tra
     }
 #ifdef BITE
     // finalize BITE2 queue after executing all txns from current block
-    m_createdCtxs = g_skaleHost->finalizeBITE2QueueAndGetCtxs();
+    m_pendingCtxs = g_skaleHost->pendingBITE2Transactions();
 #endif
 }
 
@@ -742,13 +742,13 @@ void Block::saveStateChanges(
 
     if ( progressLog && _context.singleCommitEnabled ) {
 #ifdef BITE
-        CHECK_EXPRESSION( m_createdCtxs );
+        CHECK_EXPRESSION( m_pendingCtxs );
 #endif
         progressLog->markBlockCommitCompleted(
             m_currentBlock.number(), _context.receipts, m_currentBlock.timestamp()
 #ifdef BITE
                                                             ,
-            *m_createdCtxs
+            *m_pendingCtxs
 #endif
         );
     }
@@ -1333,7 +1333,8 @@ void Block::commitToSeal(
         RLPStream k;
         k << i;
 
-        // EIP-2718: use typed receipt encoding for non-Legacy transactions.
+        // Since EIP-1559 API is enabled before Berlin fork,
+        // this part of EIP-2718 logic is activated depending on EIP1559TransactionsPatch
         bytes receiptBytes;
         if ( EIP1559TransactionsPatch::isEnabledInWorkingBlock() && receipt( i ).txType() > 0 ) {
             receiptBytes = receipt( i ).typedRlp();
@@ -1345,6 +1346,8 @@ void Block::commitToSeal(
         receiptsMap.insert( std::make_pair( k.out(), receiptBytes ) );
 
         dev::bytes txOutput = m_transactions[i].toBytes();
+        // Same as receiptBytes creation:
+        // this part of EIP-2718 logic is activated depending on EIP1559TransactionsPatch
         if ( EIP1559TransactionsPatch::isEnabledInWorkingBlock() &&
              m_transactions[i].txType() != dev::eth::TransactionType::Legacy ) {
             RLPStream s;
