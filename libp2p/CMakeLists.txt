@@ -1,7 +1,5 @@
 set( CMAKE_CXX_STANDARD 20 )
 
-
-
 file(GLOB sources "*.cpp" "*.h")
 
 add_library(p2p ${sources})
