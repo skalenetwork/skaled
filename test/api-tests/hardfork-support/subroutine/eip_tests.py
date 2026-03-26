@@ -611,6 +611,101 @@ def test_eip_2929_create_warms_address(
 
 
 # ---------------------------------------------------------------------------
+# EIP-2929 CREATE revert: created address stays warm, inner scope rolled back
+# ---------------------------------------------------------------------------
+
+def test_eip_2929_create_revert_preserves_address(
+    w3: Web3,
+    deployer: LocalAccount,
+    sol_dir: str,
+    gas_limit: int = 3_000_000,
+) -> EIPTestResult:
+    """
+    EIP-2929: failed CREATE must leave the created address warm,
+    but roll back any access-set additions from the inner scope.
+    """
+    logger.info("=== EIP-2929 CREATE revert preserves address test ===")
+    abi, bytecode = _load_artifact(sol_dir, "EIP2929CreateRevertTest")
+    addr = _deploy_contract(w3, deployer, abi, bytecode, gas_limit)
+    contract = w3.eth.contract(address=addr, abi=abi)
+
+    # Two addresses that are guaranteed cold (never touched on-chain).
+    inner_addr = w3.to_checksum_address("0x" + "ab" * 20)
+    cold_ref   = w3.to_checksum_address("0x" + "cd" * 20)
+
+    tx = contract.functions.measureCreateRevert(inner_addr, cold_ref).build_transaction({
+        "from": deployer.address,
+        "gas": gas_limit,
+        "gasPrice": w3.eth.gas_price,
+        "chainId": w3.eth.chain_id,
+    })
+    receipt = _send_tx(w3, deployer, tx)
+    if receipt["status"] != 1:
+        return EIPTestResult(
+            eip="2929-create-revert",
+            passed=False,
+            message="measureCreateRevert() transaction reverted",
+            details={"contract": addr},
+        )
+
+    logs = contract.events.CreateRevertGasMeasured().process_receipt(receipt)
+    if not logs:
+        return EIPTestResult(
+            eip="2929-create-revert",
+            passed=False,
+            message="CreateRevertGasMeasured event not found in receipt",
+            details={"contract": addr},
+        )
+
+    args = logs[0]["args"]
+    created_gas = args["createdAddrBalanceGas"]
+    inner_gas   = args["innerWarmedAddrBalanceGas"]
+    cold_gas    = args["coldRefAddrBalanceGas"]
+
+    logger.info(
+        "Gas: created=%d (expect warm), innerWarmed=%d (expect cold), coldRef=%d (expect cold)",
+        created_gas, inner_gas, cold_gas,
+    )
+
+    # The created address must be warm: its BALANCE gas should be much less
+    # than the cold reference.
+    if cold_gas <= created_gas or cold_gas / max(created_gas, 1) < MIN_COLD_WARM_RATIO:
+        return EIPTestResult(
+            eip="2929-create-revert",
+            passed=False,
+            message=(
+                f"Created address not warm after failed CREATE: "
+                f"created={created_gas}, coldRef={cold_gas}"
+            ),
+            details={"created_gas": created_gas, "inner_gas": inner_gas, "cold_gas": cold_gas},
+        )
+
+    # The inner-warmed address must be cold (rolled back).
+    # Its gas should be close to coldRef, not close to created_gas.
+    inner_cold_ratio = inner_gas / max(created_gas, 1)
+    if inner_cold_ratio < MIN_COLD_WARM_RATIO:
+        return EIPTestResult(
+            eip="2929-create-revert",
+            passed=False,
+            message=(
+                f"Inner-scope warming survived revert: "
+                f"innerWarmed={inner_gas}, created(warm)={created_gas}"
+            ),
+            details={"created_gas": created_gas, "inner_gas": inner_gas, "cold_gas": cold_gas},
+        )
+
+    return EIPTestResult(
+        eip="2929-create-revert",
+        passed=True,
+        message=(
+            f"Created address warm ({created_gas}), inner-scope rolled back "
+            f"({inner_gas}), cold ref ({cold_gas})"
+        ),
+        details={"created_gas": created_gas, "inner_gas": inner_gas, "cold_gas": cold_gas},
+    )
+
+
+# ---------------------------------------------------------------------------
 # EIP-2929 revert semantics: access sets restored on sub-call revert
 # ---------------------------------------------------------------------------
 
@@ -1144,7 +1239,8 @@ EIP_TEST_MAP = {
     "2929-revert":      test_eip_2929_revert,
     "2929-sstore":      test_eip_2929_sstore_cold_warm,
     "2929-extcode":     test_eip_2929_extcode_cold_warm,
-    "2929-create-warm": test_eip_2929_create_warms_address,
+    "2929-create-warm":   test_eip_2929_create_warms_address,
+    "2929-create-revert": test_eip_2929_create_revert_preserves_address,
     "2930":             test_eip_2930,
     "2930-gas-saving":  test_eip_2930_access_list_gas_saving,
     "2930-duplicates":  test_eip_2930_duplicate_items_charged,
@@ -1156,7 +1252,7 @@ EIP_TEST_MAP = {
 }
 
 ALL_EIPS = [
-    "2929", "2929-revert", "2929-sstore", "2929-extcode", "2929-create-warm",
+    "2929", "2929-revert", "2929-sstore", "2929-extcode", "2929-create-warm", "2929-create-revert",
     "2930", "2930-gas-saving", "2930-duplicates",
     "2718-type2",
     "2565", "2565-formula", "2565-zero-exp",
