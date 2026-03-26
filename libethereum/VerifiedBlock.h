@@ -45,7 +45,8 @@ struct VerifiedBlockRef {
 
     std::vector< std::vector< dev::h256 > > ctxHashesLists;
     std::shared_ptr< std::deque< Transaction > > pendingCtxs =
-        std::make_shared< std::deque< Transaction > >();  ///< List of pending ctxs for block
+        std::make_shared< std::deque< Transaction > >();  ///< List of pending ctxs for working
+                                                          ///< block
 #endif                                                    // BITE
 };
 

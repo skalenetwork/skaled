@@ -43,6 +43,7 @@ std::shared_ptr< std::deque< Transaction > > BITE2TransactionQueue::pendingBITE2
 void BITE2TransactionQueue::addTemp( Transaction&& _t ) {
     WriteGuard l( m_lock );
     CHECK_EXPRESSION( m_current );
+    CHECK_EXPRESSION( _t.isCTX() );
     BOOST_LOG( m_loggerTrace ) << "BITE2 txn arrived";
     m_current->push_back( std::move( _t ) );
 }
@@ -125,6 +126,18 @@ void BITE2TransactionQueue::setQueueOnInit( std::deque< Transaction >&& _ctxQueu
     m_currentHeadIndex = m_current->empty() ? 0 : m_current->size() - 1;
     m_empty = m_current->empty();
     BOOST_LOG( m_loggerInfo ) << "BITE2 queue initialized with " << m_current->size() << " CTXs";
+}
+
+std::vector< dev::h256 > BITE2TransactionQueue::getNCTXOrigins( size_t _n ) const {
+    CHECK_EXPRESSION( _n <= m_current->size() );
+    std::vector< dev::h256 > res;
+    res.reserve( _n );
+
+    for ( size_t i = 0; i < _n; ++i ) {
+        res.push_back( m_current->at( i ).getCTXOrigin() );
+    }
+
+    return res;
 }
 
 #endif  // BITE

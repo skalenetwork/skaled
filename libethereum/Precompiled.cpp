@@ -1029,7 +1029,10 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
         dev::bytes signedTxnRlp = rlpStream.out();
 
         // Construct transaction from RLP
-        Transaction signedTransaction( signedTxnRlp, CheckTransaction::None );
+        Transaction signedTransaction( signedTxnRlp, CheckTransaction::None, false,
+            EIP1559TransactionsPatch::isEnabledWhen( _ctx.latestBlockTimestamp ),
+            InvalidTransactionFormatPatch::isEnabledWhen( _ctx.latestBlockTimestamp ),
+            Bite2Patch::isEnabledWhen( _ctx.latestBlockTimestamp ) );
         signedTransaction.setBITE2EncryptedArgsSize( encryptedArgsCount );
 
         if ( signedTransaction.isInvalid() )
@@ -1046,6 +1049,7 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
             return { true, response };
         } else {
             // push txn to BITE2 queue
+            signedTransaction.setCTXOrigin( _ctx.currentTxnHash );
             g_skaleHost->addTempBITE2Transaction( std::move( signedTransaction ) );
         }
 
