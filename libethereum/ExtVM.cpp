@@ -157,7 +157,7 @@ void ExtVM::setStore( u256 _n, u256 _v ) {
 
 CreateResult ExtVM::create( u256 _endowment, u256& io_gas, bytesConstRef _code, Instruction _op,
     u256 _salt, OnOpFunc const& _onOp ) {
-        bool isReadOnly =
+    bool isReadOnly =
         ContractCreationReadOnlyPatch::isEnabledWhen( envInfo().committedBlockTimestamp() ) ?
             m_readOnly :
             true;
