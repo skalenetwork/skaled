@@ -165,3 +165,12 @@ across versions must be gated by a patch mechanism (`SchainPatch*`,
 Trust this file first. Only perform repository-wide searching when:
 1. information here is missing for the current task, or
 2. information here is contradicted by current files/CI logs.
+
+## 9) PR review protocol (default when asked to review)
+ 
+When reviewing a PR, prioritize findings over summary.
+ 
+1. Report findings first, sorted by severity: Critical, High, Medium, Low.
+3. Focus order: correctness -> consensus determinism -> security -> compatibility -> performance -> style.
+4. Do not spend time on style-only nits unless they are CI-gating.
+5. If no blocking findings exist, explicitly say so and list residual risks/testing gaps.
