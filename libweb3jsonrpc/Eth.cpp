@@ -1046,7 +1046,7 @@ Json::Value Eth::eth_feeHistory( dev::u256 _blockCount, const std::string& _newe
             else if ( p.isDouble() )
                 val = p.asDouble();
             else
-                throw std::runtime_error( "Percentiles must be numbers between 0 and 100" );
+                throw std::runtime_error( "Percentiles must be int or float numbers" );
             if ( val < 0.0 || val > 100.0 )
                 throw std::runtime_error( "Percentiles must be numbers between 0 and 100" );
         }
