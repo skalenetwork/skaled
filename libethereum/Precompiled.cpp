@@ -957,7 +957,8 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
 
         // Extract gas limit from first 32 bytes
         bigint const gas( parseBigEndianRightPadded( _in, 0, dev::h256::size ) );
-        if ( gas <= 0 )
+        if ( gas <= 0 ||
+            gas > dev::u256( 0.9 * g_skaleHost->client().chainParams().getGasLimit() ) )
             return { false, toBigEndian( dev::u256( SubmitCTXStatus::INVALID_GAS_LIMIT ) ) };
 
         // Read offset to data from second 32 bytes
@@ -1042,7 +1043,7 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
         dev::Address senderAddress = signedTransaction.sender();
 
         // state must not be changed as a result of executing external calls
-        // (e.g. eth_call, eth_estimateGasm, debug_traceBlock)
+        // (e.g. eth_call, eth_estimateGas, debug_traceBlock)
         // skip adding CTX to BITE2 queue for external calls
         bytes response = senderAddress.asBytes();
         if ( _ctx.isReadOnly ) {
