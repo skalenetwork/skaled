@@ -101,6 +101,7 @@ build/skaled/skaled --config test/historicstate/configs/basic_config.json
 clang-format --version
 clang-format -i <changed-cpp-files>
 ```
+- Do not lint `test/` directory
 
 ## 5) Coding and PR standards that frequently gate reviews
 Apply these by default to new/updated code:
