@@ -419,7 +419,12 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
 #endif
     if ( accessAsPrecompiled ) {
         MICROPROFILE_SCOPEI( "Executive", "call-precompiled", MP_CYAN );
-        bigint g = m_chainParams.costOfPrecompiled( _p.codeAddress, _p.data, m_envInfo.number() );
+        PrecompiledCallContext ctx{ m_envInfo.number(), m_envInfo.committedBlockTimestamp(),
+#ifdef BITE
+            m_txnIndex, _p.senderAddress,
+#endif
+            m_readOnly };
+        bigint g = m_chainParams.costOfPrecompiled( _p.codeAddress, _p.data, ctx );
         if ( _p.gas < g ) {
             m_excepted = TransactionException::OutOfGasBase;
             // Bail from exception.
@@ -439,11 +444,6 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
             m_gas = ( u256 )( _p.gas - g );
             bytes output;
             bool success;
-            PrecompiledCallContext ctx{ m_envInfo.number(),
-#ifdef BITE
-                m_txnIndex, m_envInfo.committedBlockTimestamp(), _p.senderAddress,
-#endif
-                m_readOnly };
 #ifdef FAIR
             tie( success, output ) =
                 m_chainParams.executePrecompiled( _p.codeAddress, _p.data, ctx );

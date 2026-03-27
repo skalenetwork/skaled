@@ -67,8 +67,8 @@ public:
         u256 const& _startingBlock = 0, h160Set const& _allowedAddresses = h160Set() );
 
     bigint cost( bytesConstRef _in, ChainOperationParams const& _chainParams,
-        u256 const& _blockNumber ) const {
-        return m_cost( _in, _chainParams, _blockNumber );
+        PrecompiledCallContext const& _ctx ) const {
+        return m_cost( _in, _chainParams, _ctx );
     }
 #ifdef FAIR
     std::pair< bool, bytes > execute(
@@ -329,8 +329,8 @@ public:
         return precompiled.count( _a ) != 0 && _blockNumber >= precompiled.at( _a ).startingBlock();
     }
     bigint costOfPrecompiled(
-        Address const& _a, bytesConstRef _in, u256 const& _blockNumber ) const {
-        return precompiled.at( _a ).cost( _in, *this, _blockNumber );
+        Address const& _a, bytesConstRef _in, PrecompiledCallContext const& _ctx ) const {
+        return precompiled.at( _a ).cost( _in, *this, _ctx );
     }
     bool precompiledExecutionAllowedFrom(
         Address const& _a, Address const& _from, bool _readOnly ) const {

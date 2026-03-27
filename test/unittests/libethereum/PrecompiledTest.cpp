@@ -77,9 +77,9 @@ BOOST_AUTO_TEST_CASE(
         "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e"
         "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f" );
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+                                                              0,
 #ifdef BITE
                                                               0,
-                                                              1,
                                                               dev::ZeroAddress,
 #endif
                                                                 true } );
@@ -101,9 +101,9 @@ BOOST_AUTO_TEST_CASE(
         "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e"
         "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f" );
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+                                                              0,
 #ifdef BITE
                                                               0,
-                                                              1,
                                                               dev::ZeroAddress,
 #endif
                                                                 true } );
@@ -127,9 +127,9 @@ BOOST_AUTO_TEST_CASE(
         "8000000000000000000000000000000000000000000000000000000000000000"
         "07" );
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+                                                              0,
 #ifdef BITE
                                                               0,
-                                                              1,
                                                               dev::ZeroAddress,
 #endif
                                                                 true } );
@@ -152,9 +152,9 @@ BOOST_AUTO_TEST_CASE(
         "ffff"
         "80" );
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+                                                              0,
 #ifdef BITE
                                                               0,
-                                                              1,
                                                               dev::ZeroAddress,
 #endif
                                                                 true } );
@@ -174,9 +174,9 @@ BOOST_AUTO_TEST_CASE( modexpMissingValues ) {
         "0000000000000000000000000000000000000000000000000000000000000020"
         "03" );
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+                                                              0,
 #ifdef BITE
                                                               0,
-                                                              1,
                                                               dev::ZeroAddress,
 #endif
                                                                 true } );
@@ -198,9 +198,9 @@ BOOST_AUTO_TEST_CASE(
         "03"
         "8000000000000000000000000000000000000000000000000000000000000000" );
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+                                                              0,
 #ifdef BITE
                                                               0,
-                                                              1,
                                                               dev::ZeroAddress,
 #endif
                                                                 true } );
@@ -223,9 +223,9 @@ BOOST_AUTO_TEST_CASE(
         "00"
         "80" );
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+                                                              0,
 #ifdef BITE
                                                               0,
-                                                              1,
                                                               dev::ZeroAddress,
 #endif
                                                                 true } );
@@ -248,9 +248,9 @@ BOOST_AUTO_TEST_CASE(
         "00"
         "00" );
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+                                                              0,
 #ifdef BITE
                                                               0,
-                                                              1,
                                                               dev::ZeroAddress,
 #endif
                                                                 true } );
@@ -272,9 +272,9 @@ BOOST_AUTO_TEST_CASE(
         "01"
         "01" );
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+                                                              0,
 #ifdef BITE
                                                               0,
-                                                              1,
                                                               dev::ZeroAddress,
 #endif
                                                                 true } );
@@ -318,15 +318,13 @@ BOOST_AUTO_TEST_CASE(
 
     PatchableChainParams disabledPatchParams;
     SchainPatch::init( disabledPatchParams );
-    SchainPatch::useLatestBlockTimestamp( 100 );
-    bigint oldFormulaCost = cost( ref( in ), disabledPatchParams, 0 );
+    bigint oldFormulaCost = cost( ref( in ), disabledPatchParams, PrecompiledCallContext{0, 0, false} );
     BOOST_REQUIRE_EQUAL( oldFormulaCost, bigint( 13056 ) );
 
     PatchableChainParams enabledPatchParams;
     enabledPatchParams.setPatchTimestamp( SchainPatchEnum::BerlinForkPatch, 1 );
     SchainPatch::init( enabledPatchParams );
-    SchainPatch::useLatestBlockTimestamp( 100 );
-    bigint eip2565Cost = cost( ref( in ), enabledPatchParams, 0 );
+    bigint eip2565Cost = cost( ref( in ), enabledPatchParams, PrecompiledCallContext{0, 100, false} );
     BOOST_REQUIRE_EQUAL( eip2565Cost, bigint( 1360 ) );
 
     SchainPatch::init( disabledPatchParams );
@@ -1016,7 +1014,6 @@ BOOST_AUTO_TEST_CASE( modexpCostEIP2565NagydaniVectors,
     PatchableChainParams enabledPatchParams;
     enabledPatchParams.setPatchTimestamp( SchainPatchEnum::BerlinForkPatch, 1 );
     SchainPatch::init( enabledPatchParams );
-    SchainPatch::useLatestBlockTimestamp( 100 );
 
     // EIP-2565 spec table expected gas costs.
     struct NagydaniGasVector {
@@ -1046,7 +1043,7 @@ BOOST_AUTO_TEST_CASE( modexpCostEIP2565NagydaniVectors,
         for ( auto const& test : modexpTests ) {
             if ( std::string( test.name ) == vec.name ) {
                 bytes in = fromHex( test.input );
-                bigint actualGas = cost( ref( in ), enabledPatchParams, 0 );
+                bigint actualGas = cost( ref( in ), enabledPatchParams, PrecompiledCallContext{0, 100, false} );
                 BOOST_CHECK_MESSAGE( actualGas == vec.eip2565Gas,
                     "EIP-2565 gas mismatch for " << vec.name << ": expected " << vec.eip2565Gas
                                                  << " got " << actualGas );
@@ -1616,9 +1613,9 @@ void benchmarkPrecompiled( char const name[], vector_ref< const PrecompiledTest 
         bytesConstRef inputRef = &input;
 
         auto res = exec( inputRef, { 1,
+                                     0,
 #ifdef BITE
                                      0,
-                                     1,
                                      dev::ZeroAddress,
 #endif
                                        true } );
@@ -1628,9 +1625,9 @@ void benchmarkPrecompiled( char const name[], vector_ref< const PrecompiledTest 
         timer.restart();
         for ( int i = 0; i < n; ++i )
             exec( inputRef, { 1,
+                              0,
 #ifdef BITE
                               0,
-                              1,
                               dev::ZeroAddress,
 #endif
                                 true } );
@@ -1686,7 +1683,7 @@ BOOST_AUTO_TEST_CASE(
 
     ChainParams chainParams{ genesisInfo( eth::Network::IstanbulTransitionTest ) };
 
-    auto res = cost( {}, chainParams, 1 );
+    auto res = cost( {}, chainParams, PrecompiledCallContext{1, 0, false} );
 
     BOOST_REQUIRE_EQUAL( static_cast< int >( res ), 500 );
 }
@@ -1697,7 +1694,7 @@ BOOST_AUTO_TEST_CASE(
 
     ChainParams chainParams{ genesisInfo( eth::Network::IstanbulTransitionTest ) };
 
-    auto res = cost( {}, chainParams, 2 );
+    auto res = cost( {}, chainParams, PrecompiledCallContext{2, 0, false} );
 
     BOOST_REQUIRE_EQUAL( static_cast< int >( res ), 150 );
 }
@@ -1708,7 +1705,7 @@ BOOST_AUTO_TEST_CASE(
 
     ChainParams chainParams{ genesisInfo( eth::Network::IstanbulTransitionTest ) };
 
-    auto res = cost( {}, chainParams, 1 );
+    auto res = cost( {}, chainParams, PrecompiledCallContext{1, 0, false} );
 
     BOOST_REQUIRE_EQUAL( static_cast< int >( res ), 40000 );
 }
@@ -1719,7 +1716,7 @@ BOOST_AUTO_TEST_CASE(
 
     ChainParams chainParams{ genesisInfo( eth::Network::IstanbulTransitionTest ) };
 
-    auto res = cost( {}, chainParams, 2 );
+    auto res = cost( {}, chainParams, PrecompiledCallContext{2, 0, false} );
 
     BOOST_REQUIRE_EQUAL( static_cast< int >( res ), 6000 );
 }
@@ -1740,10 +1737,10 @@ BOOST_AUTO_TEST_CASE( ecpairingCost ) {
         "bd5cd992f6ed090689d0585ff075ec9e99ad690c3395bc4b313370b38ef355acdadcd122975b12c85ea5db8c6d"
         "eb4aab71808dcb408fe3d1e7690c43d37b4ce6cc0166fa7daa" ) };
 
-    auto costBeforeIstanbul = cost( ref( in ), chainParams, 1 );
+    auto costBeforeIstanbul = cost( ref( in ), chainParams, PrecompiledCallContext{1, 0, false} );
     BOOST_CHECK_EQUAL( static_cast< int >( costBeforeIstanbul ), in.size() / 192 * 80000 + 100000 );
 
-    auto costIstanbul = cost( ref( in ), chainParams, 2 );
+    auto costIstanbul = cost( ref( in ), chainParams, PrecompiledCallContext{2, 0, false} );
     BOOST_CHECK_EQUAL( static_cast< int >( costIstanbul ), in.size() / 192 * 34000 + 45000 );
 }
 
@@ -1921,9 +1918,9 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
 
     bytes in = fromHex( numberToHex( 29 ) + input );
     auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+                                                              0,
 #ifdef BITE
                                                               { -1 },
-                                                              0,
                                                               dev::ZeroAddress,
 #endif
                                                                 true } );
@@ -1935,9 +1932,9 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     input = input.substr( 0, 76 );  // remove 0s in the end
     in = fromHex( numberToHex( 38 ) + input );
     res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+                                                         0,
 #ifdef BITE
                                                          { -1 },
-                                                         0,
                                                          dev::ZeroAddress,
 #endif
                                                            true } );
@@ -1949,9 +1946,9 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     input = input.substr( 0, 72 );  // remove 0s in the end
     in = fromHex( numberToHex( 36 ) + input );
     res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+                                                         0,
 #ifdef BITE
                                                          { -1 },
-                                                         0,
                                                          dev::ZeroAddress,
 #endif
                                                            true } );
@@ -1962,9 +1959,9 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     input = input.substr( 0, 78 );  // remove 0s in the end
     in = fromHex( numberToHex( 39 ) + input );
     res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+                                                         0,
 #ifdef BITE
                                                          { -1 },
-                                                         0,
                                                          dev::ZeroAddress,
 #endif
                                                            true } );
@@ -1975,9 +1972,9 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     input = input.substr( 0, 68 );  // remove 0s in the end
     in = fromHex( numberToHex( 34 ) + input );
     res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+                                                         0,
 #ifdef BITE
                                                          { -1 },
-                                                         0,
                                                          dev::ZeroAddress,
 #endif
                                                            true } );
@@ -1989,9 +1986,9 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     input = input.substr( 0, 68 );  // remove 0s in the end
     in = fromHex( numberToHex( 34 ) + input );
     res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+                                                         0,
 #ifdef BITE
                                                          { -1 },
-                                                         0,
                                                          dev::ZeroAddress,
 #endif
                                                            true } );
@@ -2004,9 +2001,9 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     input = input.substr( 0, 72 );  // remove 0s in the end
     in = fromHex( numberToHex( 36 ) + input );
     res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+                                                         0,
 #ifdef BITE
                                                          { -1 },
-                                                         0,
                                                          dev::ZeroAddress,
 #endif
                                                            true } );
@@ -2021,9 +2018,9 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
 
     in = fromHex( numberToHex( 29 ) + input );
     res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+                                                         0,
 #ifdef BITE
                                                          { -1 },
-                                                         0,
                                                          dev::ZeroAddress,
 #endif
                                                            true } );
@@ -2034,9 +2031,9 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     input = input.substr( 0, 76 );  // remove 0s in the end
     in = fromHex( numberToHex( 38 ) + input );
     res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+                                                         0,
 #ifdef BITE
                                                          { -1 },
-                                                         0,
                                                          dev::ZeroAddress,
 #endif
                                                            true } );
@@ -2047,9 +2044,9 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     input = input.substr( 0, 78 );  // remove 0s in the end
     in = fromHex( numberToHex( 39 ) + input );
     res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+                                                         0,
 #ifdef BITE
                                                          { -1 },
-                                                         0,
                                                          dev::ZeroAddress,
 #endif
                                                            true } );
@@ -2158,7 +2155,7 @@ BOOST_AUTO_TEST_CASE( submitCTX_validateBITECiphertext_Success ) {
     input += txnData;
 
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "submitCTX" );
-    PrecompiledCallContext ctx = { 2, u256( 0 ), 1, destination, true };
+    PrecompiledCallContext ctx = { 2, 1, u256( 0 ), destination, true };
     auto res = exec( bytesConstRef( input.data(), input.size() ), ctx );
 
     // Error 6 is ABI_TO_RLP_CONVERSION_FAILED which happens if validation fails.
@@ -2235,7 +2232,7 @@ BOOST_AUTO_TEST_CASE( submitCTX_validateBITECiphertext_Failure ) {
     input += txnData;
 
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "submitCTX" );
-    PrecompiledCallContext ctx = { 2, u256( 0 ), 1, destination, true };
+    PrecompiledCallContext ctx = { 2, 1, u256( 0 ), destination, true };
     auto res = exec( bytesConstRef( input.data(), input.size() ), ctx );
 
     BOOST_REQUIRE( !res.first );
@@ -2376,9 +2373,9 @@ BOOST_AUTO_TEST_CASE( createFile ) {
                         numberToHex( fileSize ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ),
         { 1,
+            0,
 #ifdef BITE
                                                               { -1 },
-                                                              0,
                                                               dev::ZeroAddress,
 #endif
             true },
@@ -2402,9 +2399,9 @@ BOOST_AUTO_TEST_CASE( fileWithHashExtension ) {
                         numberToHex( fileSize ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ),
         { 1,
+            0,
 #ifdef BITE
                                                               { -1 },
-                                                              0,
                                                               dev::ZeroAddress,
 #endif
             true },
@@ -2423,9 +2420,9 @@ BOOST_AUTO_TEST_CASE( uploadChunk ) {
                         numberToHex( 0 ) + numberToHex( data.length() ) + stringToHex( data ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ),
         { 1,
+            0,
 #ifdef BITE
                                                               { -1 },
-                                                              0,
                                                               dev::ZeroAddress,
 #endif
             true },
@@ -2447,9 +2444,9 @@ BOOST_AUTO_TEST_CASE( readChunk ) {
                         numberToHex( 0 ) + numberToHex( fileSize ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ),
         { 1,
+            0,
 #ifdef BITE
                                                               { -1 },
-                                                              0,
                                                               dev::ZeroAddress,
 #endif
             true },
@@ -2472,9 +2469,9 @@ BOOST_AUTO_TEST_CASE( readMaliciousChunk ) {
                         numberToHex( 0 ) + numberToHex( fileSize ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ),
         { 1,
+            0,
 #ifdef BITE
                                                               { -1 },
-                                                              0,
                                                               dev::ZeroAddress,
 #endif
             true },
@@ -2488,9 +2485,9 @@ BOOST_AUTO_TEST_CASE( getFileSize ) {
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ),
         { 1,
+            0,
 #ifdef BITE
                                                               { -1 },
-                                                              0,
                                                               dev::ZeroAddress,
 #endif
             true },
@@ -2507,9 +2504,9 @@ BOOST_AUTO_TEST_CASE( getMaliciousFileSize ) {
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ),
         { 1,
+            0,
 #ifdef BITE
                                                               { -1 },
-                                                              0,
                                                               dev::ZeroAddress,
 #endif
             true },
@@ -2523,9 +2520,9 @@ BOOST_AUTO_TEST_CASE( deleteFile ) {
                               stringToHex( fileName ) + numberToHex( fileSize ) );
     execCreate( bytesConstRef( inCreate.data(), inCreate.size() ),
         { 1,
+                                                                     0,
 #ifdef BITE
                                                                      { -1 },
-                                                                     0,
                                                                      dev::ZeroAddress,
 #endif
                                                                      true }, m_overlayFS.get() );
@@ -2536,9 +2533,9 @@ BOOST_AUTO_TEST_CASE( deleteFile ) {
                             stringToHex( fileName ) + numberToHex( fileSize ) );
     execHash( bytesConstRef( inHash.data(), inHash.size() ),
         { 1,
+                                                               0,
 #ifdef BITE
                                                                { -1 },
-                                                               0,
                                                                dev::ZeroAddress,
 #endif
                                                                true }, m_overlayFS.get() );
@@ -2550,9 +2547,9 @@ BOOST_AUTO_TEST_CASE( deleteFile ) {
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ),
         { 1,
+            0,
 #ifdef BITE
                                                               { -1 },
-                                                              0,
                                                               dev::ZeroAddress,
 #endif
             true },
@@ -2574,9 +2571,9 @@ BOOST_AUTO_TEST_CASE( createDirectory ) {
     bytes in = fromHex( hexAddress + numberToHex( dirName.length() ) + stringToHex( dirName ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ),
         { 1,
+            0,
 #ifdef BITE
                                                               { -1 },
-                                                              0,
                                                               dev::ZeroAddress,
 #endif
             true },
@@ -2599,9 +2596,9 @@ BOOST_AUTO_TEST_CASE( deleteDirectory ) {
     bytes in = fromHex( hexAddress + numberToHex( dirName.length() ) + stringToHex( dirName ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ),
         { 1,
+            0,
 #ifdef BITE
                                                               { -1 },
-                                                              0,
                                                               dev::ZeroAddress,
 #endif
             true },
@@ -2630,9 +2627,9 @@ BOOST_AUTO_TEST_CASE( calculateFileHash ) {
                         numberToHex( fileSize ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ),
         { 1,
+            0,
 #ifdef BITE
                                                               { -1 },
-                                                              0,
                                                               dev::ZeroAddress,
 #endif
             true },

@@ -5002,9 +5002,9 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
     PrecompiledExecutor blockRandomExecutor = PrecompiledRegistrar::executor( "getBlockRandom" );
     auto blockNumberEarly = fixture.client->number();
     dev::eth::PrecompiledCallContext ctx( blockNumberEarly,
+                                          0,
 #ifdef BITE
                                           0,
-                                          1,
                                           dev::ZeroAddress,
 #endif
                                           true );
@@ -5062,9 +5062,9 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
     dev::bytes blockRandomFromContract = dev::fromHex( fixture.rpcClient->eth_call( callGetLast, "latest" ) );
 
     ctx = PrecompiledCallContext( fixture.client->number(),
+                                0,
 #ifdef BITE
                                 0,
-                                1,
                                 dev::ZeroAddress,
 #endif
                                 true );
@@ -5083,9 +5083,9 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
 
     // ask for blockRandom for early block
     ctx = PrecompiledCallContext( blockNumberEarly,
+                                0,
 #ifdef BITE
                                 0,
-                                1,
                                 dev::ZeroAddress,
 #endif
                                 true );
