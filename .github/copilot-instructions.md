@@ -105,16 +105,10 @@ clang-format -i <changed-cpp-files>
 
 ## 5) Coding and PR standards that frequently gate reviews
 Apply these by default to new/updated code:
-- Max line length: 100.
-- Function length: <= 100 lines.
 - English only, correct spelling, professional comments.
 - Consistent naming style per file; descriptive searchable names.
-- Never ignore errors.
-- Avoid raw pointers; null-check immediately before dereference when used.
-- Protect concurrently accessed data structures.
 - Remove duplicate copy-paste logic.
 - No commented-out dead code.
-- Prefer logging library usage over raw `cout` in normal paths.
 - Breaking functional changes must be protected by timestamped chain patches
   to avoid mixed-version state discrepancies.
 
