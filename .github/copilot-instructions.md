@@ -20,7 +20,7 @@ Top-level files and folders most often needed:
 - `skaled/main.cpp` - main binary entrypoint.
 - `libweb3jsonrpc/` - Ethereum/JSON-RPC handlers.
 - `libethereum/`, `libevm/`, `libhistoric/`, `libskale/` - core
-  runtime subsystems.
+  runtime subsystems (state/execution and tx flow and historic-state).
 - `libconsensus/` - `skale-consensus` submodule used by `skaled` for consensus
   integration.
 - `test/` - unit/integration/historic tests, plus `testeth` usage.
@@ -59,7 +59,7 @@ Documentation pointers:
   - execution/RPC/state behavior in `skaled` (`libethereum/`, `libskale/`,
     `libweb3jsonrpc/`).
 
-## 3) CI and checks you should mirror
+## 3) CI and checks
 Primary workflows:
 - `.github/workflows/test.yml`
   - Build/test matrix for default + HISTORIC_STATE + FAIR + BITE + BITE2.
@@ -73,20 +73,7 @@ Primary workflows:
 - `.github/workflows/test-all.yml` and `nightly.yml`
   - broad suite + historic validations.
 
-## 4) Command sequences and observed behavior (validated here)
-### Always run first
-1. `git submodule update --init --recursive`
-   - Required by root `CMakeLists.txt`.
-   - Without this, configure fails fast with:
-     `Git submodules not initialized`.
-### Toolchain notes
-- CI expects `gcc-11`/`g++-11` alternatives.
-- Prefer explicit compilers when configuring:
-  - `CC=gcc CXX=g++ cmake ...`
-### Environment requirement and mismatch note
-- Use Ubuntu 22.04 whenever possible.
-
-## 5) Build / test / run / lint reference (use when task requires)
+## 4) Build / test / run / lint reference (use when task requires)
 ### Bootstrap
 ```bash
 git submodule update --init --recursive
@@ -96,7 +83,7 @@ cd ..
 ```
 ### Configure/build
 ```bash
-CC=gcc CXX=g++ cmake -H. -Bbuild -DCMAKE_BUILD_TYPE=Debug
+CC=gcc-11 CXX=g++-11 cmake -H. -Bbuild -DCMAKE_BUILD_TYPE=Debug
 cmake --build build --target testeth -- -j"$(nproc)"
 ```
 ### Test
@@ -115,7 +102,7 @@ clang-format --version
 clang-format -i <changed-cpp-files>
 ```
 
-## 6) Coding and PR standards that frequently gate reviews
+## 5) Coding and PR standards that frequently gate reviews
 Apply these by default to new/updated code:
 - Max line length: 100.
 - Function length: <= 100 lines.
@@ -147,26 +134,12 @@ Any breaking functional change that can alter block execution/state root
 across versions must be gated by a patch mechanism (`SchainPatch*`,
 `*PatchTimestamp` config).
 
-## 7) Fast navigation map (reduce search time)
-- RPC/API behavior: `libweb3jsonrpc/`
-- State/execution and tx flow: `libethereum/`, `libevm/`, `libskale/`
-- Historic-state: `libhistoric/`
-- Snapshot functionality:
-  - `libskale/SnapshotManager.cpp`
-  - `libskale/SnapshotHashAgent.cpp`
-  - `libweb3jsonrpc/Skale.cpp` (`skale_getSnapshot*` RPC methods)
-- Snapshot docs: `docs/features/snapshots.md`,
-  `docs/features/snapshots-functionality.md`
-- Entrypoint and process setup: `skaled/main.cpp`
-- Build logic and feature flags: root `CMakeLists.txt`
-- Test harnesses: `test/`, `.github/actions/testeth-run/action.yml`
-
-## 8) Agent behavior rule
+## 6) Agent behavior rule
 Trust this file first. Only perform repository-wide searching when:
 1. information here is missing for the current task, or
 2. information here is contradicted by current files/CI logs.
 
-## 9) PR review protocol (default when asked to review)
+## 7) PR review protocol (default when asked to review)
  
 When reviewing a PR, prioritize findings over summary.
  
