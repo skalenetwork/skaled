@@ -239,7 +239,7 @@ void helper_ws_peer::onPeerUnregister() {  // peer will no longer receive onMess
 void helper_ws_peer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode ) {
     if ( eOpCode != skutils::ws::opcv::text )
         throw std::runtime_error( "only ws text messages are supported" );
-    skutils::dispatch::async( strPeerQueueID_, [=]() -> void {
+    skutils::dispatch::async( strPeerQueueID_, [this, msg]() -> void {
         std::cout << ">>> " + std::string( get_helper_server().strSchemeUC_ ) + "-RX >>> " +
                        desc() + " >>> " + msg + "\n";
         std::string strResult = msg;
@@ -506,7 +506,7 @@ helper_client_ws_base::helper_client_ws_base( const char* strClientName, int nTa
     onClose_ = [this]( skutils::ws::client::basic_socket&, skutils::ws::hdl_t,
                    const std::string& reason, int local_close_code,
                    const std::string& local_close_code_as_str ) -> void {
-        ++cntClose_;
+        cntClose_.fetch_add( 1, std::memory_order::relaxed );
         nLocalCloseCode_ = local_close_code;
         strLocalCloseCode_ = local_close_code_as_str;
         strCloseReason_ = reason;
@@ -519,7 +519,7 @@ helper_client_ws_base::helper_client_ws_base( const char* strClientName, int nTa
                        ( reason.empty() ?  "empty text" :  reason ) + "\n";
     };
     onFail_ = [this]( skutils::ws::client::basic_socket&, skutils::ws::hdl_t ) -> void {
-        ++cntFail_;
+        cntFail_.fetch_add( 1, std::memory_order::relaxed );
         std::cerr << strClientName_ +  ": client got fail event\n";
     };
     std::cout << strClientName_ + ": " + "Will initalize client " + strClientName_ +

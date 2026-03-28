@@ -1131,6 +1131,47 @@ Object with the following fields:
 - Throws error if the transaction has not been successfully decrypted
 
 
+### `bite_getCraftedCtxs`
+#### Description
+Retrieves the list of hashes of CTXs crafted by given transaction.
+
+#### Parameters
+1. Transaction hash: "0x"-prefixed hex `String`, 32 bytes
+
+#### Return format
+A JSON array of transaction hashes, each "0x"-prefixed hex `String`, 32 bytes.
+
+#### Example
+```json
+[
+  "0xb217cdf70dd4691e53040030b8931807b02633d92052d8c74f38b20944788922"
+]
+```
+
+#### Exceptions
+- Throws error if the transaction hash does not exist
+
+
+### `bite_getCtxOrigin`
+#### Description
+Retrieves the transaction that created particular CTX.
+
+#### Parameters
+1. Transaction hash: "0x"-prefixed hex `String`, 32 bytes
+
+#### Return format
+Transaction hash: "0x"-prefixed hex `String`, 32 bytes
+
+#### Example
+```json
+  "0xb217cdf70dd4691e53040030b8931807b02633d92052d8c74f38b20944788922"
+```
+
+#### Exceptions
+- Throws error if the transaction hash does not exist
+- Throws error if given transaction is not CTX
+
+
 ## Non-standard Methods
 ### `oracle_submitRequest`
 ### `oracle_checkResult`

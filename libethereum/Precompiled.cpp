@@ -22,9 +22,14 @@
  */
 
 #include "Precompiled.h"
-#ifdef BITE2
-#include "BITEConstants.h"
+
+#ifdef BITE
+#include <libconsensus/libBLS/threshold_encryption/TEPublicKey.h>
+#include <libconsensus/libBLS/threshold_encryption/ThresholdEncryption.h>
+#include <libdevcore/RLP.h>
+#include <libethcore/BITECommon.h>
 #endif
+
 #include "PrecompiledHelpers.h"
 
 #include <cryptopp/files.h>
@@ -33,9 +38,6 @@
 #include <libdevcore/CommonJS.h>
 #include <libdevcore/FileSystem.h>
 #include <libdevcore/Log.h>
-#ifdef BITE2
-#include <libdevcore/RLP.h>
-#endif
 #include <libdevcore/SHA3.h>
 #include <libdevcore/microprofile.h>
 #include <libdevcrypto/Common.h>
@@ -62,7 +64,6 @@
 #include <sstream>
 #include <string>
 
-
 namespace dev {
 namespace eth {
 
@@ -75,6 +76,10 @@ std::shared_ptr< SkaleHost > g_skaleHost;
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
+
+#ifdef BITE
+using namespace dev::bite;
+#endif
 
 namespace fs = boost::filesystem;
 
@@ -935,83 +940,29 @@ ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef, const PrecompiledCall
     return { false, response };  // 1st false - means bad error occur
 }
 
-#ifdef BITE2
+#ifdef BITE
 
 ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallContext& _ctx ) {
     try {
-        // cannot be called from read-only context (e.g. eth_call, eth_estimateGas,
-        // debug_traceTransaction) simply return success here
-        if ( _ctx.isReadOnly )
-            return { true, toBigEndian( dev::u256( SubmitCTXStatus::SUCCESS ) ) };
+        // Parse ABI-encoded input: abi.encode(uint256 gasLimit, bytes data)
+        // Format: gasLimit(32) + offset_to_data(32) + data_length(32) + data_bytes
 
-        // Parse ABI-encoded input: abi.encode(bytes walletAndSignature, address destination,
-        // uint256 gasLimit, bytes data) walletAndSignature = wallet_address(20) + r(32) + s(32) +
-        // v(32) = 116 bytes Format: offset_to_walletAndSignature(32) + destination(32) +
-        // gasLimit(32) + offset_to_data(32) + walletAndSignature_data(116) + data_data
-
-        if ( _in.size() < BITE2_TRANSACTION_SUBMITION_INPUT_DATA_MIN_LEN )
+        if ( _in.size() < 3 * dev::h256::size )
             return { false, toBigEndian( dev::u256( SubmitCTXStatus::INPUT_TOO_SHORT ) ) };
 
-        // Read offset to walletAndSignature
-        bigint const walletAndSigOffset( parseBigEndianRightPadded( _in, 0, dev::h256::size ) );
-
-        // Extract destination address from second 32 bytes (skip first 12 bytes of padding)
-        dev::Address destination( _in.cropped( dev::h256::size + 12, dev::Address::size ) );
+        // Get destination address from context
+        dev::Address destination = _ctx.from;
         if ( destination == dev::ZeroAddress )
             return { false, toBigEndian( dev::u256( SubmitCTXStatus::INVALID_DESTINATION ) ) };
 
-        // Extract gas limit from third 32 bytes
-        bigint const gas( parseBigEndianRightPadded( _in, 2 * dev::h256::size, dev::h256::size ) );
+        // Extract gas limit from first 32 bytes
+        bigint const gas( parseBigEndianRightPadded( _in, 0, dev::h256::size ) );
         if ( gas <= 0 )
             return { false, toBigEndian( dev::u256( SubmitCTXStatus::INVALID_GAS_LIMIT ) ) };
 
-        // Read offset to data from fourth 32 bytes
+        // Read offset to data from second 32 bytes
         bigint const dataOffset(
-            parseBigEndianRightPadded( _in, 3 * dev::h256::size, dev::h256::size ) );
-
-        // Extract walletAndSignature data at the offset (has length prefix)
-        if ( _in.size() < walletAndSigOffset.convert_to< size_t >() + dev::h256::size )
-            return { false,
-                toBigEndian( dev::u256( SubmitCTXStatus::WALLET_AND_SIG_OFFSET_OUT_OF_BOUNDS ) ) };
-
-        bigint const walletAndSigLength(
-            parseBigEndianRightPadded( _in, walletAndSigOffset, dev::h256::size ) );
-        if ( walletAndSigLength != WALLET_AND_SIGNATURE_LENGTH )
-            return { false,
-                toBigEndian( dev::u256( SubmitCTXStatus::INVALID_WALLET_AND_SIG_LENGTH ) ) };
-
-        if ( _in.size() < walletAndSigOffset.convert_to< size_t >() + dev::h256::size +
-                              WALLET_AND_SIGNATURE_LENGTH )
-            return { false,
-                toBigEndian( dev::u256( SubmitCTXStatus::WALLET_AND_SIG_DATA_TOO_SHORT ) ) };
-
-        dev::bytes walletAndSigBytes =
-            _in.cropped( walletAndSigOffset.convert_to< size_t >() + dev::h256::size,
-                   WALLET_AND_SIGNATURE_LENGTH )
-                .toBytes();
-
-        // Extract wallet address (first 20 bytes)
-        dev::Address walletAddress( dev::bytes(
-            walletAndSigBytes.begin(), walletAndSigBytes.begin() + dev::Address::size ) );
-        if ( walletAddress == dev::ZeroAddress )
-            return { false, toBigEndian( dev::u256( SubmitCTXStatus::INVALID_WALLET_ADDRESS ) ) };
-        // verify account is not active
-        if ( g_skaleHost->client().countAt( walletAddress ) > 0 )
-            return { false, toBigEndian( dev::u256( SubmitCTXStatus::WALLET_ALREADY_ACTIVE ) ) };
-
-        // Parse signature from remaining bytes: r(32), s(32), v(32)
-        dev::h256 r( dev::bytes( walletAndSigBytes.begin() + dev::Address::size,
-            walletAndSigBytes.begin() + dev::Address::size + dev::h256::size ) );
-        dev::h256 s( dev::bytes( walletAndSigBytes.begin() + dev::Address::size + dev::h256::size,
-            walletAndSigBytes.begin() + dev::Address::size + 2 * dev::h256::size ) );
-        dev::h256 vBytes(
-            dev::bytes( walletAndSigBytes.begin() + dev::Address::size + 2 * dev::h256::size,
-                walletAndSigBytes.begin() + WALLET_AND_SIGNATURE_LENGTH ) );
-        _byte_ v = dev::h256::Arith( vBytes ).convert_to< _byte_ >();
-
-        SignatureStruct signature( r, s, v );
-        if ( !signature.isValid() )
-            return { false, toBigEndian( dev::u256( SubmitCTXStatus::INVALID_SIGNATURE ) ) };
+            parseBigEndianRightPadded( _in, dev::h256::size, dev::h256::size ) );
 
         // Extract transaction data at the offset (has length prefix)
         if ( _in.size() < dataOffset.convert_to< size_t >() + dev::h256::size )
@@ -1030,8 +981,12 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
         // Convert ABI-encoded data to RLP
         dev::bytes rlpEncodedData;
         size_t encryptedArgsCount = 0;
+        uint64_t epochId = _ctx.isReadOnly ? g_skaleHost->client().getGroupIndexForBlockNumber(
+                                                 _ctx.latestBlockTimestamp ) :
+                                             g_skaleHost->client().getCurrentEpochId();
         try {
-            auto [rlpData, count] = abiEncodedArraysToRlp( txnData );
+            dev::bite::BITEVerificationData verificationData{ epochId, destination.asBytes() };
+            auto [rlpData, count] = abiEncodedArraysToRlp( txnData, verificationData );
             rlpEncodedData = std::move( rlpData );
             encryptedArgsCount = count;
         } catch ( std::exception& ex ) {
@@ -1053,27 +1008,49 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
         rlpEncodedData.insert( rlpEncodedData.begin(), ON_DECRYPT_FUNCTION_SELECTOR.begin(),
             ON_DECRYPT_FUNCTION_SELECTOR.end() );
 
+        // Get block random to generate signature
+        PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getBlockRandom" );
+        auto rngPrecompiledResponse = exec( bytesConstRef(), _ctx );
+        // if call to getBlockRandom() fails, return error
+        if ( !rngPrecompiledResponse.first )
+            return { false, toBigEndian( dev::u256( SubmitCTXStatus::INVALID_SIGNATURE ) ) };
+
+        // generate a signature based on block random and txn index
+        SignatureStruct signature =
+            dev::makeSignature( rngPrecompiledResponse.second, _ctx.currentTxnIndex );
+
         // Construct signed transaction from RLP
         RLPStream rlpStream;
         rlpStream.appendList( 9 );  // nonce, gasPrice, gas, to, value, data, v, r, s
         rlpStream << 0 << g_skaleHost->getGasPrice() << gas.convert_to< dev::u256 >();
         rlpStream << destination << 0 << rlpEncodedData;
-        rlpStream << signature.v + 27 << signature.r << signature.s;
+        rlpStream << signature.v + 27 << dev::u256( signature.r ) << dev::u256( signature.s );
 
         dev::bytes signedTxnRlp = rlpStream.out();
 
         // Construct transaction from RLP
-        Transaction signedTransaction( signedTxnRlp, CheckTransaction::Everything );
+        Transaction signedTransaction( signedTxnRlp, CheckTransaction::None );
         signedTransaction.setBITE2EncryptedArgsSize( encryptedArgsCount );
 
         if ( signedTransaction.isInvalid() )
             return { false, toBigEndian( dev::u256( SubmitCTXStatus::INVALID_TRANSACTION ) ) };
 
-        // push txn to BITE2 queue
-        g_skaleHost->pushToBITE2Queue( std::move( signedTransaction ) );
+        // Get sender address before moving the transaction
+        dev::Address senderAddress = signedTransaction.sender();
 
-        // Return success
-        return { true, toBigEndian( dev::u256( SubmitCTXStatus::SUCCESS ) ) };
+        // state must not be changed as a result of executing external calls
+        // (e.g. eth_call, eth_estimateGasm, debug_traceBlock)
+        // skip adding CTX to BITE2 queue for external calls
+        bytes response = senderAddress.asBytes();
+        if ( _ctx.isReadOnly ) {
+            return { true, response };
+        } else {
+            // push txn to BITE2 queue
+            g_skaleHost->addTempBITE2Transaction( std::move( signedTransaction ) );
+        }
+
+        // Return sender address
+        return { true, response };
 
     } catch ( std::exception& ex ) {
         std::string strError = ex.what();
@@ -1141,7 +1118,8 @@ ETH_REGISTER_PRECOMPILED( getRandomWalletAndSignatureForCTX )
         dev::bytes rlpEncodedData;
         size_t encryptedArgsCount = 0;
         try {
-            auto [rlpData, count] = abiEncodedArraysToRlp( data );
+            dev::bite::BITEVerificationData verificationData{ 0, destination.asBytes() };
+            auto [rlpData, count] = abiEncodedArraysToRlp( data, verificationData );
             rlpEncodedData = std::move( rlpData );
             encryptedArgsCount = count;
         } catch ( std::exception& ex ) {
@@ -1223,6 +1201,266 @@ ETH_REGISTER_PRECOMPILED( getRandomWalletAndSignatureForCTX )
     bytes response = toBigEndian( code );
     return { false, response };  // 1st false - means bad error occur
 }
+
+ETH_REGISTER_PRECOMPILED( encryptTE )
+( bytesConstRef _in, const PrecompiledCallContext& _ctx ) {
+    try {
+        static constexpr size_t MAX_SIZE_BYTES = 64 * 1024;  // 64KB
+        if ( _in.size() > MAX_SIZE_BYTES ) {
+            return { false, toBigEndian( dev::u256( 1 ) ) };  // error 1: input too large
+        }
+
+        // Input format: abi.encode(bytes data)
+        // ABI encoding: [offset_to_data(32)] [data_length(32)] [data(N)]
+        // Minimum: 32 (offset) + 32 (length) = 64 bytes
+        if ( _in.size() < 64 ) {
+            return { false, toBigEndian( dev::u256( 2 ) ) };  // error 2: input too small
+        }
+
+        // ABI encoding requires input to be a multiple of 32 bytes
+        if ( _in.size() % 32 != 0 ) {
+            return { false, toBigEndian( dev::u256( 3 ) ) };  // error 3: input not 32-byte aligned
+        }
+
+        if ( !g_skaleHost ) {
+            throw std::runtime_error( "SkaleHost accessor was not initialized" );
+        }
+
+        size_t headFieldSizeBytes = 32;
+
+        // First 32 bytes: offset to data (should be 32)
+        bigint const dataOffset( parseBigEndianRightPadded( _in, 0, headFieldSizeBytes ) );
+        const size_t expectedDataOffset = 32;
+        if ( dataOffset != expectedDataOffset ) {
+            return { false, toBigEndian( dev::u256( 5 ) ) };  // error 5: invalid data offset
+        }
+
+        // Read data length at the data offset (position 32)
+        if ( _in.size() < expectedDataOffset + headFieldSizeBytes ) {
+            return { false, toBigEndian( dev::u256( 6 ) ) };  // error 6: data length mismatch
+        }
+        bigint const dataLength(
+            parseBigEndianRightPadded( _in, expectedDataOffset, headFieldSizeBytes ) );
+
+        // Validate dataLength is non-negative and fits within reasonable bounds
+        // Header is 64 bytes (offset + length field), so max data = MAX_SIZE_BYTES - 64
+        static constexpr size_t HEADER_SIZE_BYTES = 64;
+        if ( dataLength < 0 || dataLength > MAX_SIZE_BYTES - HEADER_SIZE_BYTES ) {
+            return { false, toBigEndian( dev::u256( 6 ) ) };  // error 6: data length mismatch
+        }
+        size_t dataLengthSafe = static_cast< size_t >( dataLength );
+
+        // Calculate data start position and validate bounds
+        size_t dataStart = expectedDataOffset + headFieldSizeBytes;
+        if ( dataStart + dataLengthSafe > _in.size() ) {
+            return { false, toBigEndian( dev::u256( 6 ) ) };  // error 6: data length mismatch
+        }
+
+        // Extract data bytes (empty data is allowed)
+        std::vector< uint8_t > dataToEncrypt = _in.cropped( dataStart, dataLengthSafe ).toBytes();
+
+        // Validate trailing padding bytes are all zeros (ABI compliance)
+        size_t dataEnd = dataStart + dataLengthSafe;
+        if ( !std::all_of( _in.data() + dataEnd, _in.data() + _in.size(),
+                 []( uint8_t b ) { return b == 0; } ) ) {
+            return { false, toBigEndian( dev::u256( 7 ) ) };  // error 7: trailing padding not zeros
+        }
+
+        std::vector< libBLS::TEPublicKey > publicKeys;
+
+        // get network public key
+        auto blsPublicKeyArray = g_skaleHost->getCurrentBLSPublicKey();
+
+        // convert BLS public key to TE public key
+        libBLS::algebra::G2Point publicKeyG2 =
+            libBLS::algebra::G2Point::fromString( blsPublicKeyArray, libBLS::Base::DEC );
+        publicKeys.emplace_back( publicKeyG2 );
+
+        // Check if committee rotation is soon
+        if ( g_skaleHost->client().isCommitteeRotationSoon() ) {
+            auto nextCommitteeInfo = g_skaleHost->client().getNextCommitteeBITEInfo();
+            // nextCommitteeInfo.first is the public key array
+            auto nextBlsPublicKeyArray = nextCommitteeInfo.first;
+            libBLS::algebra::G2Point nextPublicKeyG2 =
+                libBLS::algebra::G2Point::fromString( nextBlsPublicKeyArray, libBLS::Base::DEC );
+            publicKeys.emplace_back( nextPublicKeyG2 );
+        }
+
+        // Get deterministic random value for this encryption call
+        // SkaleHost handles: Hash(blockRandom || counter)
+        unsigned blockNumberToCall = _ctx.blockNumber.convert_to< unsigned >();
+        dev::u256 encryptionRandom =
+            g_skaleHost->getEncryptionCallRandom( blockNumberToCall, !_ctx.isReadOnly );
+        bytes encryptionRandomBytes = toBigEndian( encryptionRandom );
+
+        // Create seed from encryption random (32 bytes)
+        h256 seed( encryptionRandomBytes.data(), h256::ConstructFromPointer );
+
+        // Create seed array from encryption random (32 bytes)
+        std::array< uint8_t, libBLS::AES_256_KEY_SIZE_BYTES > seedArray;
+        std::copy_n( seed.begin(), libBLS::AES_256_KEY_SIZE_BYTES, seedArray.begin() );
+        // Use caller's address as the associated data for TE
+        auto scAddressBytes = _ctx.from.asBytes();
+
+        // Build EncryptMetaData with seed and SC address as TE AAD
+        libBLS::EncryptMetaData metaData;
+        metaData.seed = libBLS::Seed256{ seedArray };
+        metaData.associatedDataTE =
+            std::vector< uint8_t >( scAddressBytes.begin(), scAddressBytes.end() );
+
+        // encrypt using threshold encryption
+        libBLS::Ciphertext ciphertext =
+            libBLS::ThresholdEncryption::encrypt( dataToEncrypt, publicKeys, metaData );
+
+        // Return: RLP List [epochId, ciphertext]
+        uint64_t epochId = g_skaleHost->client().getCurrentEpochId();
+
+        RLPStream rlpStream;
+        rlpStream.appendList( 2 );
+        rlpStream.append( epochId );
+        rlpStream.append( ciphertext.toBytes() );
+
+        bytes response = rlpStream.out();
+        return { true, response };
+
+    } catch ( std::exception& ex ) {
+        std::string strError = ex.what();
+        if ( strError.empty() )
+            strError = "exception without description";
+        BOOST_LOG( getLogger( VerbosityError ) )
+            << "Exception in precompiled/encryptTE(): " << strError << "\n";
+    } catch ( ... ) {
+        BOOST_LOG( getLogger( VerbosityError ) )
+            << "Unknown exception in precompiled/encryptTE()\n";
+    }
+
+    dev::u256 code = 0;
+    bytes response = toBigEndian( code );
+    return { false, response };
+}
+
+
+ETH_REGISTER_PRECOMPILED( encryptECIES )
+( bytesConstRef _in, const PrecompiledCallContext& _ctx ) {
+    try {
+        static constexpr size_t MAX_SIZE_BYTES = 64 * 1024;  // 64KB
+
+        if ( _in.size() > MAX_SIZE_BYTES ) {
+            return { false, toBigEndian( dev::u256( 1 ) ) };  // error 1: input too large
+        }
+
+        // Minimum input: at least public key coordinates (64 bytes)
+        // Input format: abi.encode(bytes data, bytes32 x, bytes32 y)
+        // ABI encoding: [offset_to_data(32)] [x(32)] [y(32)] [data_length(32)] [data(N)]
+        // So minimum is: 32 + 32 + 32 + 32 = 128 bytes for empty data
+        if ( _in.size() < 128 ) {
+            return { false, toBigEndian( dev::u256( 2 ) ) };  // error 2: input too small
+        }
+
+        // ABI encoding requires input to be a multiple of 32 bytes
+        if ( _in.size() % 32 != 0 ) {
+            return { false, toBigEndian( dev::u256( 3 ) ) };  // error 3: input not 32-byte aligned
+        }
+
+        if ( !g_skaleHost ) {
+            throw std::runtime_error( "SkaleHost accessor was not initialized" );
+        }
+
+        size_t offset = 0;
+        size_t headFieldSizeBytes = 32;
+
+        // Parse ABI-encoded input
+        // First 32 bytes: offset to data
+        bigint const dataOffset( parseBigEndianRightPadded( _in, offset, headFieldSizeBytes ) );
+        // should be 3 * 32 = 96
+        const size_t expectedDataOffset = 3 * 32;
+        if ( dataOffset != expectedDataOffset ) {
+            return { false, toBigEndian( dev::u256( 4 ) ) };  // error 4: invalid data offset
+        }
+
+        // Next 32 bytes: public key x-coordinate
+        offset += headFieldSizeBytes;
+        bytes pubKeyX = _in.cropped( offset, headFieldSizeBytes ).toBytes();
+
+        // Next 32 bytes: public key y-coordinate
+        offset += headFieldSizeBytes;
+        bytes pubKeyY = _in.cropped( offset, headFieldSizeBytes ).toBytes();
+
+        // Next 32 bytes: data length
+        offset += headFieldSizeBytes;
+        bigint const dataLength( parseBigEndianRightPadded( _in, offset, headFieldSizeBytes ) );
+
+        // Validate dataLength is non-negative and fits within reasonable bounds
+        // Header is 128 bytes (offset + x + y + length field), so max data = MAX_SIZE_BYTES - 128
+        static constexpr size_t HEADER_SIZE_BYTES = 128;
+        if ( dataLength < 0 || dataLength > MAX_SIZE_BYTES - HEADER_SIZE_BYTES ) {
+            return { false, toBigEndian( dev::u256( 5 ) ) };  // error 5: data length mismatch
+        }
+        size_t dataLengthSafe = static_cast< size_t >( dataLength );
+
+        // 4 header fields (offset, x, y, length) = 128 bytes
+        size_t dataStart = 4 * headFieldSizeBytes;
+        if ( dataStart + dataLengthSafe > _in.size() ) {
+            return { false, toBigEndian( dev::u256( 5 ) ) };  // error 5: data length mismatch
+        }
+
+        // Extract data to encrypt
+        bytes dataToEncrypt;
+        if ( dataLengthSafe > 0 ) {
+            dataToEncrypt = _in.cropped( dataStart, dataLengthSafe ).toBytes();
+        }
+
+        // Validate trailing padding bytes are all zeros (ABI compliance)
+        size_t dataEnd = dataStart + dataLengthSafe;
+        if ( !std::all_of( _in.data() + dataEnd, _in.data() + _in.size(),
+                 []( uint8_t b ) { return b == 0; } ) ) {
+            return { false, toBigEndian( dev::u256( 6 ) ) };  // error 6: trailing padding not zeros
+        }
+
+        // Construct user public key from x,y bytes
+        dev::Public userPubKey;
+        memcpy( userPubKey.data(), pubKeyX.data(), 32 );
+        memcpy( userPubKey.data() + 32, pubKeyY.data(), 32 );
+
+        // Validate public key is on the secp256k1 curve
+        if ( !dev::isValidPublicKey( userPubKey ) ) {
+            return { false, toBigEndian( dev::u256( 7 ) ) };  // error 7: invalid public key
+        }
+
+        // Get deterministic random value for this encryption call
+        // SkaleHost handles: Hash(blockRandom || counter)
+        unsigned blockNumberToCall = _ctx.blockNumber.convert_to< unsigned >();
+        dev::u256 encryptionRandom =
+            g_skaleHost->getEncryptionCallRandom( blockNumberToCall, !_ctx.isReadOnly );
+        bytes encryptionRandomBytes = toBigEndian( encryptionRandom );
+
+        // Create seed from encryption random (32 bytes)
+        h256 seed( encryptionRandomBytes.data(), h256::ConstructFromPointer );
+
+        // Encrypt using ECIES-CBC with deterministic IV based on encryption random
+        bytes response =
+            dev::encryptECIES_CBC( userPubKey, bytesConstRef( &dataToEncrypt ), &seed );
+        if ( response.empty() ) {
+            return { false, toBigEndian( dev::u256( 8 ) ) };  // error 8: encryption failed
+        }
+
+        return { true, response };
+
+    } catch ( std::exception& ex ) {
+        std::string strError = ex.what();
+        if ( strError.empty() )
+            strError = "exception without description";
+        BOOST_LOG( getLogger( VerbosityError ) )
+            << "Exception in precompiled/encryptECIES(): " << strError << "\n";
+    } catch ( ... ) {
+        BOOST_LOG( getLogger( VerbosityError ) )
+            << "Unknown exception in precompiled/encryptECIES()\n";
+    }
+    dev::u256 code = 0;
+    bytes response = toBigEndian( code );
+    return { false, response };  // 1st false - means bad error occur
+}
+
 #endif
 
 #ifndef FAIR

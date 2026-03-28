@@ -1455,7 +1455,31 @@ Json::Value WebThreeStubClient::bite_getDecryptedTransactionData( const std::str
         throw jsonrpc::JsonRpcException(
             jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
 }
-#endif
+
+#ifdef BITE
+Json::Value WebThreeStubClient::bite_getCraftedCtxs( const std::string& param1 ) {
+    Json::Value p;
+    p.append( param1 );
+    Json::Value result = this->CallMethod( "bite_getCraftedCtxs", p );
+    if ( result.isArray() )
+        return result;
+    else
+        throw jsonrpc::JsonRpcException(
+            jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
+}
+
+std::string WebThreeStubClient::bite_getCtxOrigin( const std::string& param1 ) {
+    Json::Value p;
+    p.append( param1 );
+    Json::Value result = this->CallMethod( "bite_getCtxOrigin", p );
+    if ( result.isString() )
+        return result.asString();
+    else
+        throw jsonrpc::JsonRpcException(
+            jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
+}
+#endif   // BITE
+#endif   // BITE
 
 #ifdef FAIR
 Json::Value WebThreeStubClient::skale_getBLSPublicKey() {

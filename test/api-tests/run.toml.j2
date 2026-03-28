@@ -1,0 +1,189 @@
+# ==========================================================================
+# Functional Test Runner — Central Configuration
+# ==========================================================================
+#
+# Usage:  cd test/api-tests && python3 run.py [--config run.toml] [--suite bite-compat]
+#
+# Steps executed:
+#   1. Setup environment  (launch skaled(s) per config)
+#   2. Deploy contracts   (per-suite, e.g. hardhat deploy)
+#   3. Run tests          (per-suite, web3.py)
+#   4. Background block-hash comparison (two-node skaled mode)
+#
+# Infrastructure settings (skaled nodes, patches, etc.) live here.
+# Test-level parameters live in <suite-dir>/<suite-name>.toml and are
+# automatically merged on top of this file at runtime.
+
+# --------------------------------------------------------------------------
+# Test suite selection
+# --------------------------------------------------------------------------
+[suite]
+# Which test suite to run.  Must match a subdirectory name under api-tests/
+# that contains a suite.py with deploy() and run_tests() entry points.
+# Available: "bite-compat"
+name = "bite-compat"
+
+# --------------------------------------------------------------------------
+# Environment type (may be overridden by per-suite config)
+# --------------------------------------------------------------------------
+[type]
+# "single"    — one skaled node
+# "two"       — two skaled nodes (connected, block-hash comparison in background)
+# "delegated" — suite manages its own node lifecycle (e.g. bite-compat)
+env_type = "delegated"
+
+# Base account — must have balance on all nodes (genesis-funded).
+# Required for deploying contracts and sending test transactions.
+private_key = "{{ private_key }}"
+
+# Use btrfs loopback volumes for datadirs.
+# When true, creates sparse images, formats as btrfs, and mounts before launch.
+# When false, datadirs are plain directories (no btrfs features / snapshots).
+use_btrfs = false
+
+# --------------------------------------------------------------------------
+# skaled configuration
+# --------------------------------------------------------------------------
+[skaled]
+# Path to pre-built skaled binary.  Empty = build from source via cmake.
+binary = "{{ skaled_binary }}"
+
+# Whether run.py is allowed to build skaled when binary is missing or empty.
+build = {{ build_skaled }}
+
+# Branch to checkout before building (empty = skip checkout).
+branch = ""
+
+# Per-node configs.  Keys are node indices (0, 1, …).
+# For "single" mode only node 0 is used.
+# For "two" mode both 0 and 1 are needed.
+[skaled.nodes.0]
+config_template = ""
+config    = ""
+datadir   = "datadir-loop-0"
+http_port = 2234
+
+[skaled.nodes.1]
+config_template = ""
+config    = ""
+datadir   = "datadir-loop-1"
+http_port = 3234
+
+[skaled.template.context]
+deployer_permission_storage_key   = "0x9340a89d8d6b7a57800bc4eab13bbfcc9bd69ecb9eb2599fe4c37b55917a6323"
+deployer_permission_storage_value = "0x01"
+
+# Patch timestamps injected into sChain config before launch.
+# Applied to nodes listed in apply_to (empty list = all nodes).
+[skaled.patches]
+apply_to = []
+
+[skaled.patches.timestamps]
+# Supports absolute integers and relative expressions:
+#   "now", "now+300", "now+5m", "now-60"
+berlinForkPatchTimestamp                = 1
+pushZeroPatchTimestamp                  = 1
+EIP1559TransactionsPatchTimestamp       = 1
+singleStateCommitPerBlockPatchTimestamp = 1
+flexibleDeploymentPatchTimestamp        = 1
+
+# Snapshot settings (for restore before launch; requires use_btrfs = true).
+[skaled.snapshot]
+interval_sec = 600
+# Uncomment to restore from snapshot:
+# path   = "/root/17619-bin"
+# number = 17619
+
+# --------------------------------------------------------------------------
+# Block-hash comparison (Step 4 — background, "two" mode only)
+# --------------------------------------------------------------------------
+[hash_check]
+# Interval between comparison sweeps (seconds)
+interval_sec = 30
+
+# Abort if no new blocks for this many seconds
+no_blocks_timeout_sec = 300
+
+# --------------------------------------------------------------------------
+# SGX wallet (optional — set enabled = false to skip)
+# --------------------------------------------------------------------------
+[sgx]
+# Set to true to launch an SGX wallet container before starting skaled.
+# Required for BITE/BITE2 suites.  Other suites can leave this false.
+enabled = true
+
+# SGX wallet HTTP endpoint.
+url = "http://127.0.0.1:1029"
+
+# Docker image for the simulated SGX wallet.
+image   = "skalenetwork/sgxwallet_sim:1.10.1-develop.5"
+container_name = "skaled-api-tests-sgx"
+
+# SGX runtime artifacts directory (relative to repo root).
+artifacts_dir = "test/api-tests/sgx-artifacts"
+
+# Keys file written after each run for reference (relative to repo root).
+# Keys are always regenerated because the SGX wallet container is ephemeral.
+keys_file = "test/api-tests/sgx-artifacts/sgx-keys.json"
+
+# --------------------------------------------------------------------------
+# BITE/BITE2 compatibility tests — infrastructure settings
+# --------------------------------------------------------------------------
+[bite_compat]
+# Whether to launch the SGX wallet for this suite (overrides [sgx].enabled).
+use_sgx = false
+
+# ---------- BITE node (Phase 1) ----------
+
+# Path to the pre-built BITE binary (relative to repo root).
+bite_binary = "build_bite/skaled/skaled"
+
+# HTTP RPC port for the BITE node.
+bite_http_port = 4232
+
+# Datadir for the BITE node (relative to repo root).
+bite_datadir = "test/api-tests/bite-compat/datadir-bite"
+
+# Generated config file path for the BITE node (relative to repo root).
+bite_config = "test/api-tests/bite-compat/configs/config-bite.generated.json"
+
+# Config template for the BITE node (relative to test/api-tests/).
+bite_config_template = "bite-compat/config-templates/config-bite-template.json.j2"
+
+# ---------- BITE2 node (Phase 2a / 2b) ----------
+
+# Path to the pre-built BITE2 binary (relative to repo root).
+bite2_binary = "build_bite2/skaled/skaled"
+
+# HTTP RPC port for the BITE2 node.
+http_port = 4234
+
+# Datadir for the BITE2 node (relative to repo root).
+datadir = "test/api-tests/bite-compat/datadir"
+
+# Generated config file path (relative to repo root).
+bite2_config = "test/api-tests/bite-compat/configs/config-bite2.generated.json"
+
+# Config template (relative to test/api-tests/).
+bite2_config_template = "bite-compat/config-templates/config-bite2-template.json.j2"
+
+[bite_compat.template_context]
+deployer_permission_storage_key   = "0x9340a89d8d6b7a57800bc4eab13bbfcc9bd69ecb9eb2599fe4c37b55917a6323"
+deployer_permission_storage_value = "0x01"
+
+[bite_compat.timeouts]
+# Seconds to wait for a transaction to be mined.
+tx_mine       = 120
+# Seconds to wait for a new block to be produced.
+block_produce = 60
+# Seconds to wait for the RPC endpoint to come up.
+rpc_up        = 360
+
+[bite_compat.patches]
+# Keys listed here are injected into the sChain config after template rendering.
+# Supports absolute integers and relative expressions: "now", "now+300", "now+5m".
+pushZeroPatchTimestamp                  = 1
+EIP1559TransactionsPatchTimestamp       = 1
+singleStateCommitPerBlockPatchTimestamp = 1
+flexibleDeploymentPatchTimestamp        = 1
+snapshotIntervalSec                     = 0

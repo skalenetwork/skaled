@@ -37,6 +37,7 @@
 #include <libethcore/Common.h>
 #include <libethereum/InstanceMonitor.h>
 #include <libethereum/Transaction.h>
+#include <libethereum/TransactionQueue.h>
 #include <libskale/SkaleClient.h>
 
 #include <jsonrpccpp/client/client.h>
@@ -126,11 +127,34 @@ public:
     void noteNewBlocks();
     void onBlockImported( dev::eth::BlockHeader const& _info );
 
-    dev::h256 receiveTransaction( std::string );
+    dev::h256 receiveTransaction( const std::string& _rlp );
 
     void pushToBroadcastQueue( const dev::eth::Transaction& _transaction );
-#ifdef BITE2
-    void pushToBITE2Queue( dev::eth::Transaction&& _transaction );
+
+#ifdef BITE
+    // Get deterministic random value for encryption call
+    // Combines Hash(blockRandom || counter) where counter auto-increments for each call
+    // Counter resets at each new block - skaled calls resetEncryptionStateForBlock on
+    // every new commited block. For read-only calls, counter is not used and block
+    // random is computed for each call.
+    // Returns 32-byte random value suitable for use as encryption seed
+    dev::h256 getEncryptionCallRandom( unsigned _blockNumber, bool _isCalledFromTxn );
+
+    // Resets encryption counter & updates cached block random bytes for new block
+    void resetEncryptionStateForBlock( uint64_t _blockNumber );
+
+    void addTempBITE2Transaction( dev::eth::Transaction&& _transaction );
+    std::vector< dev::h256 > getBITE2HashesForCurrentTxn() const;
+    void commitTempBITE2Transactions();
+    void clearTempBITE2Transactions();
+    std::shared_ptr< std::deque< dev::eth::Transaction > > pendingBITE2Transactions() const;
+
+    template < LinearContainer C >
+    void setBITE2QueueOnInit( C&& _ctxs ) {
+        return m_tq.setBITE2QueueOnInit( std::move( _ctxs ) );
+    }
+
+    dev::u256 getReencryptionBlockRandom( unsigned _blockNumber, bool _isCalledFromTxn ) const;
 #endif
 
     dev::u256 getGasPrice( unsigned _blockNumber = dev::eth::LatestBlock ) const;
@@ -173,7 +197,7 @@ public:
 
     SkaleDebugInterface::handler getDebugHandler() const { return m_debugHandler; }
 
-#ifdef BITE2
+#ifdef BITE
     const dev::eth::Client& client() const { return m_client; }
 #endif
 
@@ -189,11 +213,10 @@ private:
     std::unique_ptr< Broadcaster > m_broadcaster;
 
 private:
-    virtual ConsensusExtFace::transactions_vector pendingTransactions(
-        size_t _limit, u256& _stateRoot );
-    virtual void createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
+    virtual ConsensusExtFace::Transactions pendingTransactions( size_t _limit, u256& _stateRoot );
+    virtual void createBlock( const ConsensusExtFace::Transactions& _approvedTransactions,
 #ifdef BITE
-        shared_ptr< DecryptedTransactionFieldsMap > _decryptedTransactions,
+        DecryptedTransactions _decryptedTransactions,
 #endif
         uint64_t _timeStamp, uint64_t _blockID, dev::u256 _gasPrice, u256 _stateRoot,
         uint64_t _winningNodeIndex );
@@ -210,9 +233,25 @@ private:
 
     void checkStateRoot( uint64_t _blockId, uint64_t _winningNodeIndex, u256 _stateRoot );
 
+    unsigned resolveRandomBlockNumber( unsigned _blockNumber, bool _isCalledFromTxn ) const;
+
     std::thread m_broadcastThread;
     void broadcastFunc();
 
+    std::vector< dev::eth::Transaction > processRegularTransactions(
+        const ConsensusExtFace::Transactions& _approvedTransactions,
+        const dev::eth::BlockHeader& latestInfo
+#ifdef BITE
+        ,
+        DecryptedTransactions _decryptedTransactions
+#endif
+    );
+#ifdef BITE
+    std::vector< dev::eth::Transaction > processCTXTransactions(
+        const ConsensusExtFace::Transactions& _approvedTransactions,
+        [[maybe_unused]] const dev::eth::BlockHeader& latestInfo,
+        DecryptedTransactions _decryptedTransactions );
+#endif
 
     list< dev::eth::Transaction > m_broadcastQueue;
     std::mutex m_broadcastQueueMutex;
@@ -272,6 +311,19 @@ private:
     std::atomic_int total_sent, total_arrived;
 
     boost::chrono::high_resolution_clock::time_point latestBlockTime;
+
+#ifdef BITE
+
+    // Per-block encryption counter for deterministic but unique encryption
+    // Counter resets when block number changes, increments for each encryption call
+    // No mutex needed since EVM execution is sequential
+    uint64_t m_encryptionCounter = 0;
+
+    // Cached block random bytes for current block to avoid recomputation
+    // updated at each new block
+    dev::bytes m_cachedBlockRandomBytes;
+
+#endif
 
     // reject old transactions that come through broadcast
     // if current ts is much bigger than currentBlock.ts

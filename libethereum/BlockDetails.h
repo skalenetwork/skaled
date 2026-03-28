@@ -179,7 +179,44 @@ struct DecryptedTransactionData {
     Address m_to;
     size_t size = -1;
 };
-#endif
+
+struct CtxOrigin {
+    CtxOrigin() {}
+    CtxOrigin( const std::vector< std::vector< dev::h256 > >& _ctxHashesLists )
+        : m_ctxHashesLists( _ctxHashesLists ) {
+        for ( const auto& ctxHashesList : _ctxHashesLists )
+            size += ctxHashesList.size() * dev::h256::size;
+    }
+    CtxOrigin( const CtxOrigin& other ) = default;
+    CtxOrigin& operator=( const CtxOrigin& other ) = default;
+    CtxOrigin( RLP const& _rlp ) {
+        m_ctxHashesLists = _rlp.toVector< std::vector< dev::h256 > >();
+        for ( const auto& ctxHashesList : m_ctxHashesLists )
+            size += ctxHashesList.size() * dev::h256::size;
+    }
+
+    bytes rlp() const {
+        RLPStream s;
+        s.append( m_ctxHashesLists );
+        return s.out();
+    }
+    explicit operator bool() const { return !m_ctxHashesLists.empty(); }
+    size_t count() const { return m_ctxHashesLists.size(); }
+    std::vector< dev::h256 > operator[]( size_t i ) const { return m_ctxHashesLists[i]; }
+    std::optional< size_t > find( const dev::h256& _ctxHash ) const {
+        for ( size_t i = 0; i < m_ctxHashesLists.size(); ++i ) {
+            auto it = std::find( m_ctxHashesLists[i].begin(), m_ctxHashesLists[i].end(), _ctxHash );
+            if ( it != m_ctxHashesLists[i].end() )
+                return i;
+        }
+        return std::nullopt;
+    }
+
+    std::vector< std::vector< dev::h256 > > m_ctxHashesLists;
+    size_t size = 0;
+};
+
+#endif  // BITE
 
 using BlockDetailsHash = std::unordered_map< h256, BlockDetails >;
 using BlockLogBloomsHash = std::unordered_map< h256, BlockLogBlooms >;
@@ -189,7 +226,8 @@ using BlockHashHash = std::map< uint64_t, BlockHash >;
 using BlocksBloomsHash = std::unordered_map< h256, BlocksBlooms >;
 #ifdef BITE
 using DecryptedTransactionDataHash = std::unordered_map< h256, DecryptedTransactionData >;
-#endif
+using CtxOriginHash = std::unordered_map< h256, CtxOrigin >;
+#endif  // BITE
 
 static const BlockDetails NullBlockDetails;
 static const BlockLogBlooms NullBlockLogBlooms;
@@ -199,7 +237,8 @@ static const BlockHash NullBlockHash;
 static const BlocksBlooms NullBlocksBlooms;
 #ifdef BITE
 static const DecryptedTransactionData NullDecryptedTransactionData;
-#endif
+static const CtxOrigin NullCtxOrigin;
+#endif  // BITE
 
 }  // namespace eth
 }  // namespace dev

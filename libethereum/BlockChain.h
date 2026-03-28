@@ -106,8 +106,9 @@ enum {
     ExtraBlocksBlooms
 #ifdef BITE
     ,
-    ExtraTransactionDecryptedData
-#endif
+    ExtraTransactionDecryptedData,
+    ExtraCtxOrigin
+#endif  // BITE
 };
 
 class VersionChecker {
@@ -341,7 +342,14 @@ public:
             _transactionHash, m_decryptedTransactionsData, x_decryptedTransactionsData,
             NullDecryptedTransactionData );
     }
-#endif
+
+    CtxOrigin ctxHashesForBlock( const dev::h256& _blockHash ) const {
+        return queryExtras< CtxOrigin, ExtraCtxOrigin >(
+            _blockHash, m_ctxOrigin, x_ctxOrigin, NullCtxOrigin );
+    }
+
+    std::deque< Transaction > pendingCTXsList() const;
+#endif  // BITE
 
     /// Get a number for the given hash (or the most recent mined if none given). Thread-safe.
     unsigned number( h256 const& _hash ) const { return details( _hash ).number; }
@@ -410,13 +418,14 @@ public:
         unsigned memBlockHashes = 0;
 #ifdef BITE
         unsigned memDecryptedTransactionsData = 0;
-#endif
+        unsigned memCtxOrigin = 0;
+#endif  // BITE
         unsigned memTotal() const {
             return memBlocks + memDetails + memLogBlooms + memReceipts + memTransactionAddresses +
                    memBlockHashes
 #ifdef BITE
-                   + memDecryptedTransactionsData
-#endif
+                   + memDecryptedTransactionsData + memCtxOrigin
+#endif  // BITE
                 ;
         }
     };
@@ -617,7 +626,9 @@ private:
 #ifdef BITE
     mutable SharedMutex x_decryptedTransactionsData;
     mutable DecryptedTransactionDataHash m_decryptedTransactionsData;
-#endif
+    mutable SharedMutex x_ctxOrigin;
+    mutable CtxOriginHash m_ctxOrigin;
+#endif  // BITE
 
     using CacheID = std::pair< h256, unsigned >;
     mutable Mutex x_cacheUsage;

@@ -387,7 +387,12 @@ Transaction ClientBase::transaction( h256 _transactionHash ) const {
     auto blockTimestamp = blockInfo( numberFromHash( tl.first ) - 1 ).timestamp();
     return Transaction( bc().transaction( _transactionHash ), CheckTransaction::Cheap, true,
         EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
-        InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp ) );
+        InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp )
+#ifdef BITE
+            ,
+        Bite2Patch::isEnabledWhen( blockTimestamp )
+#endif  // BITE
+    );
 }
 
 LocalisedTransaction ClientBase::localisedTransaction( h256 const& _transactionHash ) const {
@@ -403,7 +408,12 @@ Transaction ClientBase::transaction( h256 _blockHash, unsigned _i ) const {
         // allow invalid
         return Transaction( b[1][_i].data(), CheckTransaction::Cheap, true,
             EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
-            InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp ) );
+            InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp )
+#ifdef BITE
+                ,
+            Bite2Patch::isEnabledWhen( blockTimestamp )
+#endif  // BITE
+        );
     else
         return Transaction();
 }
@@ -413,7 +423,12 @@ LocalisedTransaction ClientBase::localisedTransaction( h256 const& _blockHash, u
     // allow invalid
     Transaction t = Transaction( bc().transaction( _blockHash, _i ), CheckTransaction::Cheap, true,
         EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
-        InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp ) );
+        InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp )
+#ifdef BITE
+            ,
+        Bite2Patch::isEnabledWhen( blockTimestamp )
+#endif  // BITE
+    );
     return LocalisedTransaction( t, _blockHash, _i, numberFromHash( _blockHash ) );
 }
 
@@ -432,7 +447,12 @@ LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(
         CheckTransaction::Cheap,                                                 // Check sig
         true,                                                                    // allow invalid
         EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
-        InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp ) );
+        InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp )
+#ifdef BITE
+            ,
+        Bite2Patch::isEnabledWhen( blockTimestamp )
+#endif  // BITE
+    );
 
     TransactionReceipt receipt = bc().transactionReceipt( blockHash, transactionIdx );
 
@@ -491,7 +511,12 @@ Transactions ClientBase::transactions( h256 _blockHash ) const {
         auto txRlp = b[1][i];
         res.emplace_back( bytesRefFromTransactionRlp( txRlp ), CheckTransaction::Cheap, true,
             EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
-            InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp ) );
+            InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp )
+#ifdef BITE
+                ,
+            Bite2Patch::isEnabledWhen( blockTimestamp )
+#endif  // BITE
+        );
     }
     return res;
 }
@@ -504,7 +529,32 @@ TransactionHashes ClientBase::transactionHashes( h256 _blockHash ) const {
 DecryptedTransactionData ClientBase::decryptedTransactionData( h256 _transactionHash ) const {
     return bc().decryptedTransactionData( _transactionHash );
 }
-#endif
+
+dev::h256 ClientBase::ctxOrigin( const dev::h256& _ctxHash ) const {
+    auto tx = transaction( _ctxHash );
+    if ( !tx.isCTX() )
+        throw std::logic_error( "Trying to get ctxOrigin for non-CTX" );
+    auto block = bc().transactionLocation( _ctxHash ).first;
+    auto prevBlock = bc().info( block ).parentHash();
+    CtxOrigin ctxHashesLists = bc().ctxHashesForBlock( prevBlock );
+    std::optional< size_t > originIndex = ctxHashesLists.find( _ctxHash );
+    if ( originIndex != std::nullopt ) {
+        auto prevBlockTxnHashes = bc().transactionHashes( prevBlock );
+        if ( *originIndex < prevBlockTxnHashes.size() ) {
+            return prevBlockTxnHashes[*originIndex];
+        }
+    }
+    return dev::h256();
+}
+
+std::vector< dev::h256 > ClientBase::craftedCTXs( const dev::h256& _transactionHash ) const {
+    auto tl = bc().transactionLocation( _transactionHash );
+    CtxOrigin ctxHashesLists = bc().ctxHashesForBlock( tl.first );
+    if ( ctxHashesLists.count() < tl.second + 1 )
+        return {};
+    return ctxHashesLists[tl.second];
+}
+#endif  // BITE
 
 BlockHeader ClientBase::uncle( h256 _blockHash, unsigned _i ) const {
     auto bl = bc().block( _blockHash );

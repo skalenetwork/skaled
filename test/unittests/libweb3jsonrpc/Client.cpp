@@ -79,6 +79,9 @@ BOOST_AUTO_TEST_CASE( Personal ) {
         getDataDir(), WithExisting::Kill, TransactionQueue::Limits{100000, 1024} );
 
     client.injectSkaleHost();
+#ifdef BITE
+    dev::eth::g_skaleHost = client.skaleHost();
+#endif
     client.startWorking();
     client.stopSealing();
 

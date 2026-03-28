@@ -97,7 +97,12 @@ ImportResult TransactionQueue::import(
     try {
         Transaction t = Transaction( _transactionRLP, CheckTransaction::Everything, false,
             EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
-            InvalidTransactionFormatPatch::isEnabledInWorkingBlock() );
+            InvalidTransactionFormatPatch::isEnabledInWorkingBlock()
+#ifdef BITE
+                ,
+            Bite2Patch::isEnabledInWorkingBlock()
+#endif  // BITE
+        );
         return import( t, _ik, _isFuture );
     } catch ( Exception const& ) {
         return ImportResult::Malformed;
@@ -467,6 +472,14 @@ void TransactionQueue::dropGood( Transaction const& _t ) {
     WriteGuard l( m_lock );
     MICROPROFILE_LEAVE();
 
+#ifdef BITE
+    // BITE transactions are stored separately
+    // they are also stored in the strict order
+    // delete and return
+    if ( m_bite2Queue.dropGood( _t ) )
+        return;
+#endif
+
     if ( !_t.isInvalid() )
         makeCurrent_WITH_LOCK( _t );
 
@@ -542,8 +555,12 @@ void TransactionQueue::verifierBody() {
         try {
             Transaction t( work.transaction, CheckTransaction::Cheap, false,
                 EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
-                InvalidTransactionFormatPatch::isEnabledInWorkingBlock() );  // Signature will be
-                                                                             // checked later
+                InvalidTransactionFormatPatch::isEnabledInWorkingBlock()
+#ifdef BITE
+                    ,
+                Bite2Patch::isEnabledInWorkingBlock()
+#endif          // BITE
+            );  // Signature will be checked later
             ImportResult ir = import( t );
             m_onImport( ir, t.sha3(), work.nodeId );
         } catch ( ... ) {
@@ -566,13 +583,28 @@ Transactions TransactionQueue::debugGetFutureTransactions() const {
     return res;
 }
 
-#ifdef BITE2
-void TransactionQueue::importBITE2Transaction( Transaction&& _t ) {
-    BOOST_LOG( m_loggerTrace ) << "BITE2 txn arrived";
-    m_bite2Current.push_back( std::move( _t ) );
+#ifdef BITE
+std::shared_ptr< std::deque< Transaction > > TransactionQueue::pendingBITE2Transactions() const {
+    return m_bite2Queue.pendingBITE2Transactions();
 }
 
-std::vector< Transaction > TransactionQueue::pendingBITE2Transactions() const {
-    return m_bite2Current;
+std::deque< Transaction > TransactionQueue::debug_pendingBITE2Transactions() const {
+    return m_bite2Queue.debug_pendingBITE2Transactions();
+}
+
+void TransactionQueue::addTempBITE2Transaction( dev::eth::Transaction&& _transaction ) {
+    m_bite2Queue.addTemp( std::move( _transaction ) );
+}
+
+std::vector< h256 > TransactionQueue::getTempBITE2Hashes() const {
+    return m_bite2Queue.getTempHashes();
+}
+
+void TransactionQueue::commitTempBITE2Transactions() {
+    m_bite2Queue.commitTemp();
+}
+
+void TransactionQueue::clearTempBITE2Transactions() {
+    m_bite2Queue.clearTemp();
 }
 #endif

@@ -45,6 +45,11 @@
 
 #include <skutils/console_colors.h>
 
+#ifdef BITE
+#include <libethereum/Precompiled.h>
+#include <libethereum/SkaleHost.h>
+#endif
+
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -534,6 +539,11 @@ std::pair< TransactionReceipts, unsigned > Block::recoverFromReceipts(
         m_transactionSet.insert( tx.sha3() );
     }
     m_receipts = std::move( savedData->receipts );
+#ifdef BITE
+    // set CTXs from previous block to BITE2 queue
+    g_skaleHost->setBITE2QueueOnInit( std::move( savedData->ctxsCreatedInBlock ) );
+    m_pendingCtxs = g_skaleHost->pendingBITE2Transactions();
+#endif
 
     unsigned badCount = 0;
     u256 cumulativeGas = 0;
@@ -585,6 +595,10 @@ void Block::executeTransactions( BlockChain const& _bc, const Transactions& _tra
 
     TransactionReceipts savedReceipts = m_receipts;
 
+#ifdef BITE
+    m_ctxHashesLists.resize( _transactions.size() );
+#endif
+
     for ( unsigned i = 0; i < _transactions.size(); ++i ) {
         Transaction const& tr = _transactions[i];
         try {
@@ -611,6 +625,10 @@ void Block::executeTransactions( BlockChain const& _bc, const Transactions& _tra
             BOOST_LOG( m_loggerError ) << "FAILED transaction after consensus! " << ex.what();
         }
     }
+#ifdef BITE
+    // finalize BITE2 queue after executing all txns from current block
+    m_pendingCtxs = g_skaleHost->pendingBITE2Transactions();
+#endif
 }
 
 std::optional< TransactionReceipt > Block::executeSingleTransaction( BlockChain const& _bc,
@@ -647,6 +665,19 @@ std::optional< TransactionReceipt > Block::executeSingleTransaction( BlockChain 
     }
 
     ExecutionResult res = execute( _bc.lastBlockHashes(), _tx, _permanence, OnOpFunc(), _txIndex );
+
+#ifdef BITE
+    if ( res.excepted != TransactionException::None ) {
+        // clear all CTXs that were added by last tx
+        // because it was reverted
+        g_skaleHost->clearTempBITE2Transactions();
+    } else {
+        // get list of CTX hashes created by current txn
+        m_ctxHashesLists[_txIndex] = g_skaleHost->getBITE2HashesForCurrentTxn();
+        // commit CTXs from temporary to permanent
+        g_skaleHost->commitTempBITE2Transactions();
+    }
+#endif
 
     if ( !_context.singleCommitEnabled && !m_receipts.empty() &&
          !ClearPartialReceiptsPatch::isEnabledWhen( m_previousBlock.timestamp() ) ) {
@@ -710,8 +741,16 @@ void Block::saveStateChanges(
     createBlockSnapshot();
 
     if ( progressLog && _context.singleCommitEnabled ) {
+#ifdef BITE
+        CHECK_EXPRESSION( m_pendingCtxs );
+#endif
         progressLog->markBlockCommitCompleted(
-            m_currentBlock.number(), _context.receipts, m_currentBlock.timestamp() );
+            m_currentBlock.number(), _context.receipts, m_currentBlock.timestamp()
+#ifdef BITE
+                                                            ,
+            *m_pendingCtxs
+#endif
+        );
     }
 
     if ( !_context.singleCommitEnabled ) {
@@ -1058,7 +1097,7 @@ ExecutionResult Block::executeHistoricCall( LastBlockHashesFace const& _lh, Tran
 
                 auto resultReceipt = m_state.mutableHistoricState().execute(
                     envInfo, m_sealEngine->chainParams(), _t, skale::Permanence::Uncommitted, onOp
-#ifdef BITE2
+#ifdef BITE
                     ,
                     _transactionIndex
 #endif
@@ -1078,7 +1117,7 @@ ExecutionResult Block::executeHistoricCall( LastBlockHashesFace const& _lh, Tran
         } else {
             auto resultReceipt = m_state.mutableHistoricState().execute(
                 envInfo, m_sealEngine->chainParams(), _t, skale::Permanence::Reverted, onOp
-#ifdef BITE2
+#ifdef BITE
                 ,
                 _transactionIndex
 #endif
