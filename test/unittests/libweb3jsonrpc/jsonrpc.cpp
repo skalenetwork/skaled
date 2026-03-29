@@ -6107,6 +6107,51 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
     for (size_t i = 0; i < plaintextLength1; ++i) {
         BOOST_REQUIRE_EQUAL( dev::toHex( rlpPlaintext1[i].toBytes() ), dev::toHex( args2[i] ) );
     }
+
+    // Test submitCTXWithInput with randomGasLimit >> lastBlockGasLimit
+    dev::u256 lastBlockGasLimit = fixture.client->blockInfo( fixture.client->number() ).gasLimit();
+    dev::u256 randomGasLimit2 = lastBlockGasLimit * 10;
+    dev::bytes randomGasLimitBytes2 = dev::toBigEndian( randomGasLimit2 );
+
+    std::vector< dev::bytes > originalValues2{ dev::h256::random().asBytes(), dev::h256::random().asBytes() };
+
+    dev::bytes encryptedArg1_2 = formEncryptedMessageMockup( originalValues2[0], dev::Address( contractAddress ) );
+    dev::bytes encryptedArg2_2 = formEncryptedMessageMockup( originalValues2[1], dev::Address( contractAddress ) );
+
+    std::vector<dev::bytes> args1_2 = {
+        encryptedArg1_2, encryptedArg2_2
+    };
+    std::vector<dev::bytes> args2_2 = {
+        dev::fromHex("706c61696e746578743122"),  // "plaintext1"
+        dev::fromHex("706c61696e746578743222")   // "plaintext2"
+    };
+
+    dev::bytes randomData2 = buildAbiEncodedArrays( args1_2, args2_2 );
+
+    dev::bytes resultData2;
+    // gasLimit value (32 bytes) - much greater than block gas limit
+    resultData2.insert( resultData2.end(), randomGasLimitBytes2.begin(), randomGasLimitBytes2.end() );
+
+    // offset to bytes data (points to position 64 = 2 * 32)
+    dev::bytes dataOffset2 = dev::toBigEndian( dev::u256( 64 ) );
+    resultData2.insert( resultData2.end(), dataOffset2.begin(), dataOffset2.end() );
+    // bytes data (length + content)
+    dev::bytes dataLength2 = dev::toBigEndian( dev::u256( randomData2.size() ) );
+    resultData2.insert( resultData2.end(), dataLength2.begin(), dataLength2.end() );
+    resultData2.insert( resultData2.end(), randomData2.begin(), randomData2.end() );
+
+    txGenerate["to"] = contractAddress;
+    txGenerate["data"] = "0x6040c1fb" + dev::toHex( dev::u256( 32 ) ) + dev::toHex( dev::u256( resultData2.size() ) ) + dev::toHex( resultData2 );
+    txGenerate["from"] = toJS( senderAddress );
+    txGenerate["nonce"] = 3;
+    std::string txGenerateHash2 = fixture.rpcClient->eth_sendTransaction( txGenerate );
+    BOOST_REQUIRE_EQUAL( fixture.client->pending().size(), 1 );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    auto bn2 = fixture.client->number();
+    BOOST_REQUIRE_EQUAL( fixture.client->transactions( bn2 ).size(), 1 );
+
+    BOOST_REQUIRE_EQUAL( fixture.client->debugGetTransactionQueue()->pendingBITE2Transactions()->size(), 0 );
 }
 
 BOOST_AUTO_TEST_CASE( submitCTXInContractConstructor ) {

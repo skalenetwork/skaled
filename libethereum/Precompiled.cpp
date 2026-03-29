@@ -957,8 +957,7 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
 
         // Extract gas limit from first 32 bytes
         bigint const gas( parseBigEndianRightPadded( _in, 0, dev::h256::size ) );
-        if ( gas <= 0 ||
-             gas > g_skaleHost->client().chainParams().getGasLimit() )
+        if ( gas <= 0 || gas > g_skaleHost->client().chainParams().getGasLimit() )
             return { false, toBigEndian( dev::u256( SubmitCTXStatus::INVALID_GAS_LIMIT ) ) };
 
         // Read offset to data from second 32 bytes
