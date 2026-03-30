@@ -1651,9 +1651,9 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
 
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getBlockRandom" );
     auto res = exec( bytesConstRef(), { 1,
+                                        1,
 #ifdef BITE
                                         { 0 },
-                                        1,
                                         dev::ZeroAddress,
 #endif
                                         true } );
@@ -1669,9 +1669,9 @@ BOOST_AUTO_TEST_CASE( getCurrentBLSPublicKey ) {
 
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getIMABLSPublicKey" );
     auto res = exec( bytesConstRef(), { 1,
+                                        0,
 #ifdef BITE
                                         { -1 },
-                                        0,
                                         dev::ZeroAddress,
 #endif
                                         true } );
