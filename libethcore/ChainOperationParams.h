@@ -342,13 +342,7 @@ public:
     }
 
     /// EIP-2929: return all precompiled contract addresses for warm-set initialization.
-    std::vector< Address > precompiledAddresses() const {
-        std::vector< Address > addrs;
-        addrs.reserve( precompiled.size() );
-        for ( auto const& p : precompiled )
-            addrs.push_back( p.first );
-        return addrs;
-    }
+    std::vector< Address > const& precompiledAddresses() const { return m_precompiledAddresses; }
 
 #ifdef FAIR
     std::pair< bool, bytes > executePrecompiled(
@@ -456,6 +450,16 @@ protected:
 
     /// Precompiled contracts as specified in the chain params.
     std::unordered_map< Address, PrecompiledContract > precompiled;
+
+    /// Cached address list built once after precompiled is fully populated.
+    std::vector< Address > m_precompiledAddresses;
+
+    void rebuildPrecompiledAddresses() {
+        m_precompiledAddresses.clear();
+        m_precompiledAddresses.reserve( precompiled.size() );
+        for ( auto const& p : precompiled )
+            m_precompiledAddresses.push_back( p.first );
+    }
 
     /// skale
     /// Skale additional config
