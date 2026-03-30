@@ -5,7 +5,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
-import requests as _requests
 
 from eth_account import Account
 from eth_account.signers.local import LocalAccount
@@ -95,9 +94,10 @@ def _send_tx(w3: Web3, deployer: LocalAccount, tx_dict: dict, pre_wait: float = 
     if tx_type != 2 and "maxFeePerGas" not in tx_dict:
         tx_dict.setdefault("gasPrice", w3.eth.gas_price)
     else:
-        # Type 2 tx: web3.py may compute maxFeePerGas=0 when baseFeePerGas=0 and
-        # eth_maxPriorityFeePerGas is unsupported. The node enforces a minimum floor
-        # equal to eth_gasPrice, so bump maxFeePerGas up if needed.
+        # Type 2 tx: web3.py may compute maxFeePerGas=0 when baseFeePerGas=1
+        # (SKALE post-London default) and eth_maxPriorityFeePerGas is unsupported.
+        # The node enforces a minimum floor equal to eth_gasPrice, so bump
+        # maxFeePerGas up if needed.
         min_price = int(w3.eth.gas_price)
         if min_price > 0 and tx_dict.get("maxFeePerGas", 0) < min_price:
             tx_dict["maxFeePerGas"] = min_price
@@ -1400,10 +1400,10 @@ def test_eip_3529_refund_cap(
     w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000
 ) -> EIPTestResult:
     """
-    EIP-3529: max refund is gasUsed / 5 (was gasUsed / 2).
+    EIP-3529 smoke test: clears storage slots and checks the transaction succeeds.
 
-    Strategy: Clear many storage slots in a single transaction to accumulate
-    large refunds, then verify actual gasUsed reflects the 1/5 cap.
+    Does not assert the 1/5 refund cap numerically; only verifies the node
+    accepts and executes the clearing transaction without reverting.
     """
     logger.info("=== EIP-3529 refund cap test ===")
     abi, bytecode = _load_artifact(sol_dir, "EIP3529Test")
@@ -1739,17 +1739,8 @@ def test_eip_1559_fee_history_float_percentiles(
 ) -> EIPTestResult:
     """eth_feeHistory must accept float reward percentiles (e.g. 25.5, 75.5)."""
     logger.info("=== EIP-1559 feeHistory float-percentile RPC test ===")
-    rpc_url = w3.provider.endpoint_uri  # type: ignore[attr-defined]
-    payload = {
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "eth_feeHistory",
-        "params": ["0x4", "latest", [25.5, 75.5]],
-    }
     try:
-        resp = _requests.post(rpc_url, json=payload, timeout=10)
-        resp.raise_for_status()
-        body = resp.json()
+        body = w3.provider.make_request("eth_feeHistory", ["0x4", "latest", [25.5, 75.5]])  # type: ignore[union-attr]
     except Exception as e:
         return EIPTestResult(
             eip="1559-fee-history-float",

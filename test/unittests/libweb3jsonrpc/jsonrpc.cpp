@@ -3386,9 +3386,11 @@ BOOST_AUTO_TEST_CASE( estimate_gas_low_gas_txn ) {
     dev::eth::mineTransaction( *( fixture.client ), 1 );
     Json::Value clearReceipt = fixture.rpcClient->eth_getTransactionReceipt( clearHash );
     BOOST_REQUIRE_EQUAL( clearReceipt["status"], "0x1" );
-#ifndef FAIR
+#ifdef FAIR
+    // London (EIP-3529): refund reduced to gasUsed/5, so gasUsed stays >= 21000.
+    BOOST_REQUIRE_GE( jsToInt( clearReceipt["gasUsed"].asString() ), 21000 );
+#else
     // Pre-London: large SSTORE refund (15000) brings effective gasUsed below base tx cost.
-    // With London (EIP-3529), refund reduced to 4800 so gasUsed exceeds 21000.
     BOOST_REQUIRE_LT( jsToInt( clearReceipt["gasUsed"].asString() ), 21000 );
 #endif
 
