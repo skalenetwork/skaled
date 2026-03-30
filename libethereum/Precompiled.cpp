@@ -1038,6 +1038,27 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
         if ( signedTransaction.isInvalid() )
             return { false, toBigEndian( dev::u256( SubmitCTXStatus::INVALID_TRANSACTION ) ) };
 
+        try {
+            // verify transaction signature and gas limit are valid
+            g_skaleHost->client().blockChain().sealEngine()->verifyTransaction(
+                g_skaleHost->client().chainParams(), ImportRequirements::Everything,
+                signedTransaction, _ctx.latestBlockTimestamp,
+                g_skaleHost->client().latestBlock().info(), 0 );
+        } catch ( std::exception& ex ) {
+            std::string strError = ex.what();
+            if ( strError.empty() )
+                strError = "exception without description";
+            BOOST_LOG( getLogger( VerbosityError ) )
+                << "Exception in precompiled/submitCTX/verifyTransaction(): " << strError << "\n";
+            return { false,
+                toBigEndian( dev::u256( SubmitCTXStatus::COULD_NOT_VERIFY_TRANSACTION ) ) };
+        } catch ( ... ) {
+            BOOST_LOG( getLogger( VerbosityError ) )
+                << "Unknown exception in precompiled/submitCTX/verifyTransaction()\n";
+            return { false,
+                toBigEndian( dev::u256( SubmitCTXStatus::COULD_NOT_VERIFY_TRANSACTION ) ) };
+        }
+
         // Get sender address before moving the transaction
         dev::Address senderAddress = signedTransaction.sender();
 

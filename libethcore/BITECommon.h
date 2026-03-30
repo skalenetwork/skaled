@@ -96,6 +96,7 @@ constexpr uint64_t ABI_TO_RLP_CONVERSION_FAILED = 6;
 constexpr uint64_t ABI_TO_RLP_UNKNOWN_ERROR = 7;
 constexpr uint64_t INVALID_SIGNATURE = 8;
 constexpr uint64_t INVALID_TRANSACTION = 9;
+constexpr uint64_t COULD_NOT_VERIFY_TRANSACTION = 10;
 }  // namespace SubmitCTXStatus
 
 // Error codes for getRandomWalletAndSignatureForCTX precompiled contract

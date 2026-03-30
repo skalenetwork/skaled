@@ -6108,7 +6108,7 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
         BOOST_REQUIRE_EQUAL( dev::toHex( rlpPlaintext1[i].toBytes() ), dev::toHex( args2[i] ) );
     }
 
-    // Test submitCTXWithInput with randomGasLimit >> lastBlockGasLimit
+    // test submitCTXWithInput with randomGasLimit >> lastBlockGasLimit
     dev::u256 lastBlockGasLimit = fixture.client->blockInfo( fixture.client->number() ).gasLimit();
     dev::u256 randomGasLimit2 = lastBlockGasLimit * 10;
     dev::bytes randomGasLimitBytes2 = dev::toBigEndian( randomGasLimit2 );
@@ -6147,6 +6147,9 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
     std::string txGenerateHash2 = fixture.rpcClient->eth_sendTransaction( txGenerate );
     BOOST_REQUIRE_EQUAL( fixture.client->pending().size(), 1 );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    txReceipt = fixture.rpcClient->eth_getTransactionReceipt( txGenerateHash2 );
+    BOOST_REQUIRE( txReceipt["status"] == "0x0" );
 
     auto bn2 = fixture.client->number();
     BOOST_REQUIRE_EQUAL( fixture.client->transactions( bn2 ).size(), 1 );

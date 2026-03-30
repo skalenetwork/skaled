@@ -1136,20 +1136,8 @@ std::vector< Transaction > SkaleHost::processCTXTransactions(
             ExitHandler::exitHandler( -1, ExitHandler::ec_state_root_mismatch );
         }
 
-#ifndef FAIR
-        t.checkOutExternalGas( m_client.chainParams(), latestInfo.timestamp(), m_client.number() );
+        // no POW for CTXs
 
-        if ( !ExternalGasPatch::isEnabledWhen( latestInfo.timestamp() ) ) {
-            auto hash = t.sha3();
-            if ( m_client.m_tq.isTransactionKnown( hash ) ) {
-                // if a transaction is in the pending queue
-                // do checkOutExternal gas twice to repeat incorrect behavior that
-                // existed before the patch
-                t.checkOutExternalGas(
-                    m_client.chainParams(), latestInfo.timestamp(), m_client.number() );
-            }
-        }
-#endif
         t.setCTXOrigin( ctxOrigins[i] );
         outTxns.push_back( t );
         m_debugTracer.tracepoint( "drop_good" );
