@@ -87,16 +87,16 @@ std::pair< dev::bytes, size_t > abiEncodedArraysToRlp(
 // Error codes for submitCTX precompiled contract
 namespace SubmitCTXStatus {
 constexpr uint64_t SUCCESS = 1;
-constexpr uint64_t INPUT_TOO_SHORT = 1;
-constexpr uint64_t INVALID_DESTINATION = 2;
-constexpr uint64_t INVALID_GAS_LIMIT = 3;
-constexpr uint64_t DATA_OFFSET_OUT_OF_BOUNDS = 4;
-constexpr uint64_t DATA_TOO_SHORT = 5;
-constexpr uint64_t ABI_TO_RLP_CONVERSION_FAILED = 6;
-constexpr uint64_t ABI_TO_RLP_UNKNOWN_ERROR = 7;
-constexpr uint64_t INVALID_SIGNATURE = 8;
-constexpr uint64_t INVALID_TRANSACTION = 9;
-constexpr uint64_t COULD_NOT_VERIFY_TRANSACTION = 10;
+constexpr uint64_t INPUT_TOO_SHORT = 2;
+constexpr uint64_t INVALID_DESTINATION = 3;
+constexpr uint64_t INVALID_GAS_LIMIT = 4;
+constexpr uint64_t DATA_OFFSET_OUT_OF_BOUNDS = 5;
+constexpr uint64_t DATA_TOO_SHORT = 6;
+constexpr uint64_t ABI_TO_RLP_CONVERSION_FAILED = 7;
+constexpr uint64_t ABI_TO_RLP_UNKNOWN_ERROR = 8;
+constexpr uint64_t INVALID_SIGNATURE = 9;
+constexpr uint64_t INVALID_TRANSACTION = 10;
+constexpr uint64_t COULD_NOT_VERIFY_TRANSACTION = 11;
 }  // namespace SubmitCTXStatus
 
 // Error codes for getRandomWalletAndSignatureForCTX precompiled contract

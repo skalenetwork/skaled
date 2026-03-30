@@ -1040,10 +1040,13 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
 
         try {
             // verify transaction signature and gas limit are valid
+            BlockNumber blockNumber = _ctx.blockNumber > g_skaleHost->client().number() ?
+                                          _ctx.blockNumber.convert_to< BlockNumber >() - 1 :
+                                          g_skaleHost->client().number();
             g_skaleHost->client().blockChain().sealEngine()->verifyTransaction(
                 g_skaleHost->client().chainParams(), ImportRequirements::Everything,
                 signedTransaction, _ctx.latestBlockTimestamp,
-                g_skaleHost->client().latestBlock().info(), 0 );
+                g_skaleHost->client().blockInfo( blockNumber ), 0 );
         } catch ( std::exception& ex ) {
             std::string strError = ex.what();
             if ( strError.empty() )
