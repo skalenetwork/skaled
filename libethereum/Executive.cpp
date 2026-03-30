@@ -326,6 +326,18 @@ bool Executive::execute() {
     Address receiverAddressToPassToEvm = m_t.receiveAddress();
 #endif
 
+    // EIP-2929 / EIP-2930: populate warm access sets before call()/create() so the snapshot
+    // taken inside call()/create() captures the initialized state.
+    EVMSchedule const& schedule =
+        m_chainParams.makeEvmSchedule( m_envInfo.committedBlockTimestamp(), m_envInfo.number() );
+    if ( schedule.eip2929Mode ) {
+        if ( m_t.isCreation() ) {
+            m_newAddress =
+                right160( sha3( rlpList( m_t.sender(), m_s.getNonce( m_t.sender() ) ) ) );
+        }
+        initAccessSets( schedule.eip2930Mode );
+    }
+
     bool result;
     if ( m_t.isCreation() )
         result = create( m_t.sender(), m_t.value(), m_t.gasPrice(),
@@ -334,21 +346,10 @@ bool Executive::execute() {
         result = call( receiverAddressToPassToEvm, m_t.sender(), m_t.value(), m_t.gasPrice(),
             bytesConstRef( &dataToPassToEvm ), m_t.gas() - ( u256 ) m_baseGasRequired );
 
-    if ( m_ext ) {
-        EVMSchedule const& schedule = m_ext->evmSchedule();
-        if ( schedule.eip2929Mode ) {
-            // EIP-2929 / EIP-2930: initialize warm access sets.
-            initAccessSets( schedule.eip2930Mode );
-        }
-    }
-
     return result;
 }
 
 void Executive::initAccessSets( bool _eip2930Mode ) {
-    if ( !m_ext )
-        return;
-
     m_accessSets->accessedAddresses.insert( m_t.sender() );
     if ( !m_t.isCreation() ) {
 #ifdef BITE
