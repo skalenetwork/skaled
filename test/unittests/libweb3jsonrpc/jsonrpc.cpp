@@ -4692,6 +4692,21 @@ BOOST_AUTO_TEST_CASE( eip1559RpcMethods ) {
         }
     }
 
+    Json::Value floatPercentiles = Json::Value( Json::arrayValue );
+    floatPercentiles.resize( 2 );
+    floatPercentiles[0] = 20.5;
+    floatPercentiles[1] = 80.0;
+
+    auto feeHistoryWithFloatPercentiles =
+        fixture.rpcClient->eth_feeHistory( toJS( blockCnt ), "latest", floatPercentiles );
+    BOOST_REQUIRE( feeHistoryWithFloatPercentiles.isMember( "reward" ) );
+    BOOST_REQUIRE( feeHistoryWithFloatPercentiles["reward"].isArray() );
+    for ( Json::Value::ArrayIndex i = 0; i < blockCnt; ++i ) {
+        BOOST_REQUIRE( feeHistoryWithFloatPercentiles["reward"][i].isArray() );
+        BOOST_REQUIRE_EQUAL(
+            feeHistoryWithFloatPercentiles["reward"][i].size(), floatPercentiles.size() );
+    }
+
     BOOST_REQUIRE_NO_THROW( fixture.rpcClient->eth_feeHistory( blockCnt, "latest", percentiles ) );
 }
 
