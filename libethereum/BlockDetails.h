@@ -61,7 +61,7 @@ struct BlockDetails {
     h256s children;
     size_t blockSizeBytes = 0;
 
-    unsigned size;
+    mutable unsigned size = 0;
 
     Counter< BlockDetails > c;
 

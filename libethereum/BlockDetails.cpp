@@ -39,7 +39,7 @@ BlockDetails::BlockDetails( RLP const& _r ) {
 
 bytes BlockDetails::rlp() const {
     auto ret = rlpList( number, totalDifficulty, parent, children, blockSizeBytes );
-    // size = ret.size();
+    size = ret.size();
     return ret;
 }
 
