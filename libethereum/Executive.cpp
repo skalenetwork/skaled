@@ -326,6 +326,18 @@ bool Executive::execute() {
     Address receiverAddressToPassToEvm = m_t.receiveAddress();
 #endif
 
+    // EIP-2929 / EIP-2930: populate warm access sets before call()/create() so the snapshot
+    // taken inside call()/create() captures the initialized state.
+    EVMSchedule const& schedule =
+        m_chainParams.makeEvmSchedule( m_envInfo.committedBlockTimestamp(), m_envInfo.number() );
+    if ( schedule.eip2929Mode ) {
+        if ( m_t.isCreation() ) {
+            m_newAddress =
+                right160( sha3( rlpList( m_t.sender(), m_s.getNonce( m_t.sender() ) ) ) );
+        }
+        initAccessSets( schedule.eip2930Mode );
+    }
+
     bool result;
     if ( m_t.isCreation() )
         result = create( m_t.sender(), m_t.value(), m_t.gasPrice(),
@@ -334,21 +346,10 @@ bool Executive::execute() {
         result = call( receiverAddressToPassToEvm, m_t.sender(), m_t.value(), m_t.gasPrice(),
             bytesConstRef( &dataToPassToEvm ), m_t.gas() - ( u256 ) m_baseGasRequired );
 
-    if ( m_ext ) {
-        EVMSchedule const& schedule = m_ext->evmSchedule();
-        if ( schedule.eip2929Mode ) {
-            // EIP-2929 / EIP-2930: initialize warm access sets.
-            initAccessSets( schedule.eip2930Mode );
-        }
-    }
-
     return result;
 }
 
 void Executive::initAccessSets( bool _eip2930Mode ) {
-    if ( !m_ext )
-        return;
-
     m_accessSets->accessedAddresses.insert( m_t.sender() );
     if ( !m_t.isCreation() ) {
 #ifdef BITE
@@ -419,7 +420,12 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
 #endif
     if ( accessAsPrecompiled ) {
         MICROPROFILE_SCOPEI( "Executive", "call-precompiled", MP_CYAN );
-        bigint g = m_chainParams.costOfPrecompiled( _p.codeAddress, _p.data, m_envInfo.number() );
+        PrecompiledCallContext ctx{ m_envInfo.number(), m_envInfo.committedBlockTimestamp(),
+#ifdef BITE
+            m_txnIndex, _p.senderAddress,
+#endif
+            m_readOnly };
+        bigint g = m_chainParams.costOfPrecompiled( _p.codeAddress, _p.data, ctx );
         if ( _p.gas < g ) {
             m_excepted = TransactionException::OutOfGasBase;
             // Bail from exception.
@@ -439,11 +445,6 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
             m_gas = ( u256 )( _p.gas - g );
             bytes output;
             bool success;
-            PrecompiledCallContext ctx{ m_envInfo.number(),
-#ifdef BITE
-                m_txnIndex, m_envInfo.committedBlockTimestamp(), _p.senderAddress,
-#endif
-                m_readOnly };
 #ifdef FAIR
             tie( success, output ) =
                 m_chainParams.executePrecompiled( _p.codeAddress, _p.data, ctx );

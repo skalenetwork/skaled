@@ -181,7 +181,12 @@ bool AlethExecutive::call(
         if ( _p.receiveAddress == c_RipemdPrecompiledAddress )
             m_s.unrevertableTouch( _p.codeAddress );
 
-        bigint g = m_chainParams.costOfPrecompiled( _p.codeAddress, _p.data, m_envInfo.number() );
+        PrecompiledCallContext ctx{ m_envInfo.number(), m_envInfo.committedBlockTimestamp(),
+#ifdef BITE
+            m_txnIndex, _p.senderAddress,
+#endif
+            true };
+        bigint g = m_chainParams.costOfPrecompiled( _p.codeAddress, _p.data, ctx );
         if ( _p.gas < g ) {
             m_excepted = TransactionException::OutOfGasBase;
             // Bail from exception.
@@ -191,11 +196,6 @@ bool AlethExecutive::call(
             m_gas = ( u256 )( _p.gas - g );
             bytes output;
             bool success;
-            PrecompiledCallContext ctx{ m_envInfo.number(),
-#ifdef BITE
-                m_txnIndex, m_envInfo.committedBlockTimestamp(), _p.senderAddress,
-#endif
-                true };
             tie( success, output ) =
                 m_chainParams.executePrecompiled( _p.codeAddress, _p.data, ctx );
             size_t outputSize = output.size();
