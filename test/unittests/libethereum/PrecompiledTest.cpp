@@ -2012,8 +2012,8 @@ BOOST_AUTO_TEST_CASE( submitCTX_validateBITECiphertext_Failure ) {
     auto res = exec( bytesConstRef( input.data(), input.size() ), ctx );
     
     BOOST_REQUIRE( !res.first );
-    // Check against SubmitCTXStatus::ABI_TO_RLP_CONVERSION_FAILED which is 6
-    BOOST_REQUIRE_EQUAL( dev::fromBigEndian< dev::u256 >( res.second ), dev::u256( 6 ) );
+    // Check against SubmitCTXStatus::ABI_TO_RLP_CONVERSION_FAILED
+    BOOST_REQUIRE_EQUAL( dev::fromBigEndian< dev::u256 >( res.second ), dev::bite::SubmitCTXStatus::ABI_TO_RLP_CONVERSION_FAILED );
 
     // Helpers for ABI encoding
     auto pad32 = []( bytes const& in ) -> bytes {
@@ -2061,7 +2061,7 @@ BOOST_AUTO_TEST_CASE( submitCTX_validateBITECiphertext_Failure ) {
     res = exec( bytesConstRef( input.data(), input.size() ), ctx );
     
     BOOST_REQUIRE( !res.first );
-    BOOST_REQUIRE_EQUAL( dev::fromBigEndian< dev::u256 >( res.second ), dev::u256( 6 ) );
+    BOOST_REQUIRE_EQUAL( dev::fromBigEndian< dev::u256 >( res.second ), dev::bite::SubmitCTXStatus::ABI_TO_RLP_CONVERSION_FAILED );
 
     // Create valid BITE ciphertext with wrong AAD TE
     metadata.associatedDataTE = Address( "0x2222222222222222222222222222222222222222" ).asBytes();
@@ -2092,7 +2092,7 @@ BOOST_AUTO_TEST_CASE( submitCTX_validateBITECiphertext_Failure ) {
     res = exec( bytesConstRef( input.data(), input.size() ), ctx );
     
     BOOST_REQUIRE( !res.first );
-    BOOST_REQUIRE_EQUAL( dev::fromBigEndian< dev::u256 >( res.second ), dev::u256( 6 ) );
+    BOOST_REQUIRE_EQUAL( dev::fromBigEndian< dev::u256 >( res.second ), dev::bite::SubmitCTXStatus::ABI_TO_RLP_CONVERSION_FAILED );
 }
 
 #endif
