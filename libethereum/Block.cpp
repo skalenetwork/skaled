@@ -686,9 +686,6 @@ std::optional< TransactionReceipt > Block::executeSingleTransaction( BlockChain 
     } else {
         // get list of CTX hashes created by current txn
         m_ctxHashesLists[_txIndex] = g_skaleHost->getBITE2HashesForCurrentTxn();
-        for ( const auto& hash : m_ctxHashesLists[_txIndex] ) {
-            BOOST_LOG( m_loggerError ) << hash.hex();
-        }
         // commit CTXs from temporary to permanent
         g_skaleHost->commitTempBITE2Transactions();
     }
