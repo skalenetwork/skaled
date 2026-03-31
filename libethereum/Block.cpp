@@ -128,7 +128,12 @@ Block::Block( Block const& _s )
       m_currentBlock( _s.m_currentBlock ),
       m_currentBytes( _s.m_currentBytes ),
       m_author( _s.m_author ),
-      m_sealEngine( _s.m_sealEngine ) {
+      m_sealEngine( _s.m_sealEngine )
+#ifdef BITE
+      ,
+      m_ctxHashesLists( _s.m_ctxHashesLists )
+#endif
+{
     m_committedToSeal = false;
 }
 
@@ -145,6 +150,10 @@ Block& Block::operator=( Block const& _s ) {
     m_currentBytes = _s.m_currentBytes;
     m_author = _s.m_author;
     m_sealEngine = _s.m_sealEngine;
+
+#ifdef BITE
+    m_ctxHashesLists = _s.m_ctxHashesLists;
+#endif
 
     m_precommit = m_state;
     m_committedToSeal = false;
@@ -173,6 +182,9 @@ void Block::resetCurrent( int64_t _timestamp ) {
     m_transactions.clear();
     m_receipts.clear();
     m_transactionSet.clear();
+#ifdef BITE
+    m_ctxHashesLists.clear();
+#endif
     m_currentBlock = BlockHeader();
     m_currentBlock.setAuthor( m_author );
     m_currentBlock.setTimestamp( _timestamp );  // max( m_previousBlock.timestamp() + 1, _timestamp
@@ -674,6 +686,9 @@ std::optional< TransactionReceipt > Block::executeSingleTransaction( BlockChain 
     } else {
         // get list of CTX hashes created by current txn
         m_ctxHashesLists[_txIndex] = g_skaleHost->getBITE2HashesForCurrentTxn();
+        for ( const auto& hash : m_ctxHashesLists[_txIndex] ) {
+            BOOST_LOG( m_loggerError ) << hash.hex();
+        }
         // commit CTXs from temporary to permanent
         g_skaleHost->commitTempBITE2Transactions();
     }

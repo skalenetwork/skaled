@@ -331,7 +331,7 @@ public:
 
     const DecryptedTransactions& decryptedTransactions() const { return m_decryptedTransactions; }
 
-    const std::vector< std::vector< dev::h256 > > ctxHashesLists() const {
+    const std::vector< std::vector< dev::h256 > >& ctxHashesLists() const {
         return m_ctxHashesLists;
     }
 
