@@ -258,6 +258,22 @@ public:
         se.reset( cp.createSealEngine() );
     }
 
+    void enableParisForkPatch() {
+        struct PatchableChainParams : public ChainParams {
+            using ChainParams::ChainParams;
+            void setPatchTimestamp( SchainPatchEnum _patch, time_t _timestamp ) {
+                sChain._patchTimestamps[static_cast< size_t >( _patch )] = _timestamp;
+            }
+        };
+
+        PatchableChainParams cp( genesisInfo( Network::ConstantinopleTest ) );
+#ifndef FAIR
+        cp.setPatchTimestamp( SchainPatchEnum::ParisForkPatch, 1 );
+#endif
+        SchainPatch::init( cp );
+        se.reset( cp.createSealEngine() );
+    }
+
     void resetSchainPatchToDefault() {
         ChainParams cp( genesisInfo( Network::ConstantinopleTest ) );
         SchainPatch::init( cp );
@@ -341,7 +357,7 @@ public:
 
         vm->exec( gas, extVm, onOp );
 
-        BOOST_REQUIRE_EQUAL( gasBefore - gasAfter, 
+        BOOST_REQUIRE_EQUAL( gasBefore - gasAfter,
 #ifdef FAIR
         2600  // EIP-2929: cold account access cost
 #else
@@ -808,7 +824,7 @@ public:
 
         vm->exec( gas, extVm, onOp );
 
-        BOOST_REQUIRE_EQUAL( gasBefore - gasAfter, 
+        BOOST_REQUIRE_EQUAL( gasBefore - gasAfter,
 #ifdef FAIR
         2600  // EIP-2929: cold account access cost
 #else
@@ -909,6 +925,11 @@ public:
 class SkaleInterpreterBalanceFixture : public BalanceFixture {
 public:
     SkaleInterpreterBalanceFixture() : BalanceFixture{new EVMC{evmc_create_interpreter()}} {}
+};
+
+class LegacyVMParisTestFixture : public Create2TestFixture {
+public:
+    LegacyVMParisTestFixture() : Create2TestFixture{new LegacyVM} {}
 };
 }  // namespace
 
@@ -1130,6 +1151,53 @@ BOOST_AUTO_TEST_CASE( Push0 ) {
 
 BOOST_AUTO_TEST_SUITE_END()
 
+BOOST_FIXTURE_TEST_SUITE( LegacyVMParisSuite, LegacyVMParisTestFixture )
+
+// EIP-4399: DIFFICULTY opcode must return 0 (prevRandao=0 in skaled) when ParisForkPatch is active.
+BOOST_AUTO_TEST_CASE( difficultyReturnsZeroAfterParisFork ) {
+    // Bytecode: DIFFICULTY PUSH1 0x00 MSTORE PUSH1 0x20 PUSH1 0x00 RETURN
+    bytes code = fromHex( "4460005260206000f3" );
+
+    enableParisForkPatch();
+    BlockHeader parisHeader = blockHeader;
+    parisHeader.setTimestamp( 1 );
+    parisHeader.setDifficulty( 42 );  // non-zero to prove the opcode ignores header.difficulty
+    EnvInfo parisEnvInfo{ parisHeader, lastBlockHashes, 1, 0, se->chainParams().getChainId() };
+
+    ExtVM extVm( state, parisEnvInfo, se->chainParams(), address, address, address,
+        value, gasPrice, ref( inputData ), ref( code ), sha3( code ), version, depth,
+        isCreate, staticCall );
+
+    owning_bytes_ref ret = vm->exec( gas, extVm, OnOpFunc{} );
+    BOOST_REQUIRE_EQUAL( ret.size(), 32 );
+    BOOST_REQUIRE_EQUAL( fromBigEndian< u256 >( ret.toVector() ), 0 );
+
+    resetSchainPatchToDefault();
+}
+
+// Pre-Paris: DIFFICULTY opcode must return the actual block difficulty.
+BOOST_AUTO_TEST_CASE( difficultyOpcodeUnchangedBeforeParisFork ) {
+    // Same bytecode, patch NOT enabled
+    bytes code = fromHex( "4460005260206000f3" );
+
+    BlockHeader preParisHeader = blockHeader;
+    preParisHeader.setTimestamp( 1 );
+    preParisHeader.setDifficulty( 12345 );
+    EnvInfo preParisEnvInfo{ preParisHeader, lastBlockHashes, 1, 0, se->chainParams().getChainId() };
+
+    ExtVM extVm( state, preParisEnvInfo, se->chainParams(), address, address, address,
+        value, gasPrice, ref( inputData ), ref( code ), sha3( code ), version, depth,
+        isCreate, staticCall );
+
+    owning_bytes_ref ret = vm->exec( gas, extVm, OnOpFunc{} );
+    BOOST_REQUIRE_EQUAL( ret.size(), 32 );
+#ifndef FAIR
+    BOOST_REQUIRE_EQUAL( fromBigEndian< u256 >( ret.toVector() ), 12345 );
+#endif
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_FIXTURE_TEST_SUITE( SkaleInterpreterSuite, TestOutputHelperFixture )
@@ -1166,6 +1234,7 @@ BOOST_AUTO_TEST_CASE( SkaleInterpreterCreate2collisionWithNonEmptyStorage,
 BOOST_AUTO_TEST_CASE( SkaleInterpreterCreate2collisionWithNonEmptyStorageEmptyInitCode ) {
     testCreate2collisionWithNonEmptyStorageEmptyInitCode();
 }
+
 
 BOOST_AUTO_TEST_SUITE_END()
 
