@@ -400,6 +400,7 @@ void TestBlock::recalcBlockHeaderBytes() {
 
     RLPStream blHeaderStream;
     m_blockHeader.streamRLP( blHeaderStream, WithSeal );
+    m_blockHeader = BlockHeader( blHeaderStream.out(), HeaderData );
 
     RLPStream ret( 3 );
     ret.appendRaw( blHeaderStream.out() );  // block header
