@@ -82,6 +82,7 @@ struct PrecompiledCallContext {
         : blockNumber( _bn ),
           latestBlockTimestamp( _latestBlockTimestamp ),
           currentTxnIndex( -1 ),
+          currentTxnHash( dev::h256( 0 ) ),
           from( dev::ZeroAddress ),
           isReadOnly( _readOnly ) {}
 #endif

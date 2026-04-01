@@ -80,6 +80,7 @@ BOOST_AUTO_TEST_CASE(
                                                               0,
 #ifdef BITE
                                                               0,
+                                                              dev::h256( 0 ),
                                                               dev::ZeroAddress,
 #endif
                                                                 true } );
@@ -103,6 +104,7 @@ BOOST_AUTO_TEST_CASE(
                                                               0,
 #ifdef BITE
                                                               0,
+                                                              dev::h256( 0 ),
                                                               dev::ZeroAddress,
 #endif
                                                                 true } );
@@ -129,8 +131,10 @@ BOOST_AUTO_TEST_CASE(
                                                               0,
 #ifdef BITE
                                                               0,
+                                                              dev::h256( 0 ),
                                                               dev::ZeroAddress,
 #endif
+                                                                true } );
 
     BOOST_REQUIRE( res.first );
     bytes expected = fromHex( "3b01b01ac41f2d6e917c6d6a221ce793802469026d9ab7578fa2e79e4da6aaab" );
@@ -153,8 +157,10 @@ BOOST_AUTO_TEST_CASE(
                                                               0,
 #ifdef BITE
                                                               0,
+                                                              dev::h256( 0 ),
                                                               dev::ZeroAddress,
 #endif
+                                                                true } );
 
     BOOST_REQUIRE( res.first );
     bytes expected = fromHex( "3b01b01ac41f2d6e917c6d6a221ce793802469026d9ab7578fa2e79e4da6aaab" );
@@ -174,6 +180,7 @@ BOOST_AUTO_TEST_CASE( modexpMissingValues ) {
                                                               0,
 #ifdef BITE
                                                               0,
+                                                              dev::h256( 0 ),
                                                               dev::ZeroAddress,
 #endif
                                                                 true } );
@@ -198,6 +205,7 @@ BOOST_AUTO_TEST_CASE(
                                                               0,
 #ifdef BITE
                                                               0,
+                                                              dev::h256( 0 ),
                                                               dev::ZeroAddress,
 #endif
                                                                 true } );
@@ -222,6 +230,7 @@ BOOST_AUTO_TEST_CASE(
                                                               0,
 #ifdef BITE
                                                               0,
+                                                              dev::h256( 0 ),
                                                               dev::ZeroAddress,
 #endif
                                                                 true } );
@@ -247,6 +256,7 @@ BOOST_AUTO_TEST_CASE(
                                                               0,
 #ifdef BITE
                                                               0,
+                                                              dev::h256( 0 ),
                                                               dev::ZeroAddress,
 #endif
                                                                 true } );
@@ -270,6 +280,7 @@ BOOST_AUTO_TEST_CASE(
                                                               0,
 #ifdef BITE
                                                               0,
+                                                              dev::h256( 0 ),
                                                               dev::ZeroAddress,
 #endif
                                                                 true } );
@@ -1611,6 +1622,7 @@ void benchmarkPrecompiled( char const name[], vector_ref< const PrecompiledTest 
                                      0,
 #ifdef BITE
                                      0,
+                                     dev::h256( 0 ),
                                      dev::ZeroAddress,
 #endif
                                        true } );
@@ -1623,6 +1635,7 @@ void benchmarkPrecompiled( char const name[], vector_ref< const PrecompiledTest 
                               0,
 #ifdef BITE
                               0,
+                              dev::h256( 0 ),
                               dev::ZeroAddress,
 #endif
                                 true } );
@@ -1916,6 +1929,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
                                                               0,
 #ifdef BITE
                                                               { -1 },
+                                                              dev::h256( 0 ),
                                                               dev::ZeroAddress,
 #endif
                                                                 true } );
@@ -1930,6 +1944,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
                                                          0,
 #ifdef BITE
                                                          { -1 },
+                                                         dev::h256( 0 ),
                                                          dev::ZeroAddress,
 #endif
                                                            true } );
@@ -1943,6 +1958,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
                                                          0,
 #ifdef BITE
                                                          { -1 },
+                                                         dev::h256( 0 ),
                                                          dev::ZeroAddress,
 #endif
                                                            true } );
@@ -1956,6 +1972,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
                                                          0,
 #ifdef BITE
                                                          { -1 },
+                                                         dev::h256( 0 ),
                                                          dev::ZeroAddress,
 #endif
                                                            true } );
@@ -1968,6 +1985,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
                                                          0,
 #ifdef BITE
                                                          { -1 },
+                                                         dev::h256( 0 ),
                                                          dev::ZeroAddress,
 #endif
                                                            true } );
@@ -1982,6 +2000,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
                                                          0,
 #ifdef BITE
                                                          { -1 },
+                                                         dev::h256( 0 ),
                                                          dev::ZeroAddress,
 #endif
                                                            true } );
@@ -1997,6 +2016,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
                                                          0,
 #ifdef BITE
                                                          { -1 },
+                                                         dev::h256( 0 ),
                                                          dev::ZeroAddress,
 #endif
                                                            true } );
@@ -2014,6 +2034,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
                                                          0,
 #ifdef BITE
                                                          { -1 },
+                                                         dev::h256( 0 ),
                                                          dev::ZeroAddress,
 #endif
                                                            true } );
@@ -2026,6 +2047,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
                                                          0,
 #ifdef BITE
                                                          { -1 },
+                                                         dev::h256( 0 ),
                                                          dev::ZeroAddress,
 #endif
                                                            true } );
@@ -2038,6 +2060,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
                                                          0,
 #ifdef BITE
                                                          { -1 },
+                                                         dev::h256( 0 ),
                                                          dev::ZeroAddress,
 #endif
                                                            true } );
