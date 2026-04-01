@@ -431,10 +431,6 @@ public:
     static int64_t accessListGasRequired(
         std::vector< bytes > const& _accessList, EVMSchedule const& _es );
 
-#ifdef BITE
-    void setBITE2EncryptedArgsSize( size_t _s ) { m_ctxEncryptedArgsSize = _s; }
-#endif
-
 protected:
     /// Type of transaction.
     enum Type {

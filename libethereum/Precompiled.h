@@ -57,7 +57,6 @@ struct PrecompiledCallContext {
 #ifdef BITE
           currentTxnIndex( -1 ),
           currentTxnHash( dev::h256( 0 ) ),
-          latestBlockTimestamp( 0 ),
           from( dev::ZeroAddress ),
 #endif
           isReadOnly( true ) {
@@ -65,7 +64,7 @@ struct PrecompiledCallContext {
     PrecompiledCallContext( const dev::u256& _bn, int64_t _latestBlockTimestamp,
 #ifdef BITE
         const dev::u256& _currentTxnIndex, const dev::h256& _currentTxnHash,
-        int64_t _latestBlockTimestamp, const dev::Address& _from,
+        const dev::Address& _from,
 #endif
         bool _readOnly )
         : blockNumber( _bn ),
@@ -73,7 +72,6 @@ struct PrecompiledCallContext {
 #ifdef BITE
           currentTxnIndex( _currentTxnIndex ),
           currentTxnHash( _currentTxnHash ),
-          latestBlockTimestamp( _latestBlockTimestamp ),
           from( _from ),
 #endif
           isReadOnly( _readOnly ) {
@@ -92,15 +90,14 @@ struct PrecompiledCallContext {
 #ifdef BITE
     dev::u256 currentTxnIndex;
     dev::h256 currentTxnHash;
-    int64_t latestBlockTimestamp;
     dev::Address from;
 #endif
     bool isReadOnly;
 };
 
-inline PrecompiledCallContext defaultPrecompiledContext = { 1,
+inline PrecompiledCallContext defaultPrecompiledContext = { 1, 0,
 #ifdef BITE
-    0, dev::h256( 0 ), 1, dev::ZeroAddress,
+    0, dev::h256( 0 ), dev::ZeroAddress,
 #endif
     true };
 
