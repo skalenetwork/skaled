@@ -108,7 +108,7 @@ public:
         const u256& _gasPrice, unsigned _level, bool _readOnly = true
 #ifdef BITE
         ,
-        const u256& _txnIndex = u256( -1 )
+        const u256& _txnIndex = u256( -1 ), const dev::h256& _txnHash = dev::h256( 0 )
 #endif
             )
         : m_s( _s ),
@@ -119,7 +119,8 @@ public:
           m_systemGasPrice( _gasPrice )
 #ifdef BITE
           ,
-          m_txnIndex( _txnIndex )
+          m_txnIndex( _txnIndex ),
+          m_txnHash( _txnHash )
 #endif
     {
     }
@@ -258,6 +259,7 @@ private:
 
 #ifdef BITE
     u256 m_txnIndex = u256( -1 );  ///< Index of transaction under execution. -1 for external calls
+    h256 m_txnHash = h256( 0 );    ///< hash of transaction under execution. 0 for external calls
 #endif
 
     Logger m_loggerDebug{ createLogger( VerbosityDebug, "Executive" ) };
