@@ -6014,7 +6014,7 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
     PrecompiledExecutor submitCTXExecutor = PrecompiledRegistrar::executor( "submitCTX" );
-    dev::eth::PrecompiledCallContext ctx( fixture.client->number(), 1, dev::h256::random(), 1,
+    dev::eth::PrecompiledCallContext ctx( fixture.client->number(), 1, 1, dev::h256::random(),
                                           dev::Address( contractAddress ), true );
 
     dev::bytesConstRef input( resultData.data(), resultData.size() );
@@ -8763,4 +8763,3 @@ BOOST_AUTO_TEST_CASE( test_exceptions ) {
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE_END()
-
