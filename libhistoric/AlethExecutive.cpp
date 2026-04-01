@@ -196,6 +196,11 @@ bool AlethExecutive::call(
             m_gas = ( u256 )( _p.gas - g );
             bytes output;
             bool success;
+            PrecompiledCallContext ctx{ m_envInfo.number(),
+#ifdef BITE
+                m_txnIndex, m_t.sha3(), m_envInfo.committedBlockTimestamp(), _p.senderAddress,
+#endif
+                true };
             tie( success, output ) =
                 m_chainParams.executePrecompiled( _p.codeAddress, _p.data, ctx );
             size_t outputSize = output.size();

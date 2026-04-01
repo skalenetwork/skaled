@@ -29,9 +29,8 @@
 #include <boost/thread.hpp>
 
 #include "LastBlockHashesFace.h"
-#ifdef FAIR
+
 #include "SchainPatch.h"
-#endif
 
 using namespace dev;
 using namespace dev::eth;
@@ -134,7 +133,7 @@ CallResult ExtVM::call( CallParameters& _p ) {
     Executive e{ m_s, envInfo(), m_chainParams, 0, depth + 1, m_readOnly
 #ifdef BITE
         ,
-        m_txnIndex
+        m_txnIndex, m_txnHash
 #endif
     };
     e.setAccessSets( accessSets );
@@ -175,13 +174,19 @@ CreateResult ExtVM::create( u256 _endowment, u256& io_gas, bytesConstRef _code, 
         accessAccount( createdAddress );
     }
 
+    bool isReadOnly =
+        ContractCreationReadOnlyPatch::isEnabledWhen( envInfo().committedBlockTimestamp() ) ?
+            m_readOnly :
+            true;
     Executive e{ m_s, envInfo(), m_chainParams, 0, depth + 1
 #ifdef BITE
         ,
-        true, m_txnIndex
+        isReadOnly, m_txnIndex, m_txnHash
 #endif
     };
     e.setAccessSets( accessSets );
+
+    ( void ) isReadOnly;
 
     bool result = false;
     if ( _op == Instruction::CREATE )

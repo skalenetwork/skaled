@@ -59,6 +59,8 @@ public:
     /// Set the queue on startup with CTXs that were created in the previous block
     void setQueueOnInit( std::deque< Transaction >&& _ctxQueue );
 
+    std::vector< dev::h256 > getNCTXOrigins( size_t _n ) const;
+
 private:
     std::shared_ptr< std::deque< Transaction > > m_current =
         std::make_shared< std::deque< Transaction > >();

@@ -968,7 +968,7 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
 
         // Extract gas limit from first 32 bytes
         bigint const gas( parseBigEndianRightPadded( _in, 0, dev::h256::size ) );
-        if ( gas <= 0 )
+        if ( gas <= 0 || gas > g_skaleHost->client().chainParams().getGasLimit() )
             return { false, toBigEndian( dev::u256( SubmitCTXStatus::INVALID_GAS_LIMIT ) ) };
 
         // Read offset to data from second 32 bytes
@@ -1040,23 +1040,51 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
         dev::bytes signedTxnRlp = rlpStream.out();
 
         // Construct transaction from RLP
-        Transaction signedTransaction( signedTxnRlp, CheckTransaction::None );
+        Transaction signedTransaction( signedTxnRlp, CheckTransaction::None, false,
+            EIP1559TransactionsPatch::isEnabledWhen( _ctx.latestBlockTimestamp ),
+            InvalidTransactionFormatPatch::isEnabledWhen( _ctx.latestBlockTimestamp ),
+            Bite2Patch::isEnabledWhen( _ctx.latestBlockTimestamp ) );
         signedTransaction.setBITE2EncryptedArgsSize( encryptedArgsCount );
 
         if ( signedTransaction.isInvalid() )
             return { false, toBigEndian( dev::u256( SubmitCTXStatus::INVALID_TRANSACTION ) ) };
 
+        try {
+            // verify transaction signature and gas limit are valid
+            BlockNumber blockNumber = _ctx.blockNumber > g_skaleHost->client().number() ?
+                                          _ctx.blockNumber.convert_to< BlockNumber >() - 1 :
+                                          g_skaleHost->client().number();
+            g_skaleHost->client().blockChain().sealEngine()->verifyTransaction(
+                g_skaleHost->client().chainParams(), ImportRequirements::Everything,
+                signedTransaction, _ctx.latestBlockTimestamp,
+                g_skaleHost->client().blockInfo( blockNumber ), 0 );
+        } catch ( std::exception& ex ) {
+            std::string strError = ex.what();
+            if ( strError.empty() )
+                strError = "exception without description";
+            BOOST_LOG( getLogger( VerbosityError ) )
+                << "Exception in precompiled/submitCTX/verifyTransaction(): " << strError << "\n";
+            return { false,
+                toBigEndian( dev::u256( SubmitCTXStatus::COULD_NOT_VERIFY_TRANSACTION ) ) };
+        } catch ( ... ) {
+            BOOST_LOG( getLogger( VerbosityError ) )
+                << "Unknown exception in precompiled/submitCTX/verifyTransaction()\n";
+            return { false,
+                toBigEndian( dev::u256( SubmitCTXStatus::COULD_NOT_VERIFY_TRANSACTION ) ) };
+        }
+
         // Get sender address before moving the transaction
         dev::Address senderAddress = signedTransaction.sender();
 
         // state must not be changed as a result of executing external calls
-        // (e.g. eth_call, eth_estimateGasm, debug_traceBlock)
+        // (e.g. eth_call, eth_estimateGas, debug_traceBlock)
         // skip adding CTX to BITE2 queue for external calls
         bytes response = senderAddress.asBytes();
         if ( _ctx.isReadOnly ) {
             return { true, response };
         } else {
             // push txn to BITE2 queue
+            signedTransaction.setCTXOrigin( _ctx.currentTxnHash );
             g_skaleHost->addTempBITE2Transaction( std::move( signedTransaction ) );
         }
 
