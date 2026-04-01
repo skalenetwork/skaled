@@ -278,8 +278,9 @@ BOOST_AUTO_TEST_CASE( updateStats ) {
     unsigned const memBlocksExpected = block.bytes().size() + 64;
     BOOST_CHECK_EQUAL( stat.memBlocks, memBlocksExpected );
 
-    BOOST_CHECK( stat.memDetails > 0 );
-    BOOST_CHECK( stat.memLogBlooms > 0 );
+    // At least one genesis block detail (BlockDetails::size ≈ 100+) plus cache overhead (64).
+    BOOST_CHECK_GE( stat.memDetails, 64u );
+    BOOST_CHECK_GE( stat.memLogBlooms, 64u );
     BOOST_CHECK_EQUAL( stat.memReceipts, 0 );
     BOOST_CHECK_EQUAL( stat.memTransactionAddresses, 0 );
 

@@ -645,7 +645,7 @@ Json::Value Eth::eth_getBlockByNumber( string const& _blockNumber, bool _include
     } catch ( const JsonRpcException& ) {
         throw;
 #else
-        // Post-London: read baseFeePerGas from the block header (always 0 on standard SKALE).
+        // Post-London: read baseFeePerGas from the block header (always 1 on standard SKALE).
         u256 baseFeePerGas = client()->blockInfo( h ).baseFeePerGas();
 
         if ( _includeTransactions )
@@ -1046,7 +1046,7 @@ Json::Value Eth::eth_feeHistory( dev::u256 _blockCount, const std::string& _newe
         for ( auto bn = newestBlock; bn > oldestBlock - 1; --bn ) {
             auto blockInfo = client()->blockInfo( bn - 1 );
 
-            // Post-London: read baseFeePerGas from the block header (always 0 on standard SKALE).
+            // Post-London: read baseFeePerGas from the block header (always 1 on standard SKALE).
             result["baseFeePerGas"].append( toJS( blockInfo.baseFeePerGas() ) );
 
             double gasUsedRatio = blockInfo.gasUsed().convert_to< double >() /

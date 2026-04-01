@@ -192,6 +192,7 @@ BOOST_AUTO_TEST_CASE( ethashEvalHeader ) {
     // Ethash test vectors use pre-London headers (13 RLP fields).
     // FAIR builds pre-enable LondonForkPatch, which adds baseFeePerGas as a 14th field
     // during re-encoding, making the hash diverge. Skip since ethash lib tests cover this.
+    BOOST_TEST_MESSAGE( "Skipped: FAIR build pre-enables London, Ethash vectors diverge" );
     return;
 #endif
 
