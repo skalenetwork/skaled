@@ -329,11 +329,6 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
 
     m_gp->update( bc() );
 
-#ifdef BITE
-    if ( SingleStateCommitPerBlockPatch::isEnabledInWorkingBlock() )
-        m_tq.setBITE2QueueOnInit( bc().pendingCTXsList() );
-#endif
-
     if ( m_dbPath.size() )
         Defaults::setDBPath( m_dbPath );
 
@@ -362,6 +357,11 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     AmsterdamFixPatch::isEnabled( *this );
 #ifdef FAIR
     BlockRewardsActivationPatch::init( this );
+#endif
+
+#ifdef BITE
+    if ( SingleStateCommitPerBlockPatch::isEnabledInWorkingBlock() )
+        m_tq.setBITE2QueueOnInit( bc().pendingCTXsList() );
 #endif
 
     initCPUUSage();
