@@ -60,11 +60,11 @@ std::vector< h256 > BITE2TransactionQueue::getTempHashes() const {
         return res;
     }
 
-    if ( m_currentHeadIndex == m_current->size() )
+    if ( m_currentHeadIndex == m_current->size() - 1 )
         return {};
 
     std::vector< h256 > res;
-    res.reserve( m_current->size() - m_currentHeadIndex );
+    res.reserve( m_current->size() - 1 - m_currentHeadIndex );
     // m_currentHeadIndex always points to the last committed CTX,
     // so we return hashes of all CTXs starting after m_currentHeadIndex
     for ( size_t i = m_currentHeadIndex + 1; i < m_current->size(); ++i ) {

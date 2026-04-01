@@ -591,7 +591,7 @@ int64_t TransactionBase::baseGasRequired(
 #endif
 
 #ifdef BITE
-    // BITE transaction - charge for every encrypted payload
+    // BITE2 transaction - charge for every encrypted payload
     if ( _bite2EncryptedArgsSize.has_value() ) {
         // Check for multiplication overflow
         if ( _bite2EncryptedArgsSize.value() > 0 &&
