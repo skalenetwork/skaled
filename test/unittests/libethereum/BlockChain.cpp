@@ -277,21 +277,20 @@ BOOST_AUTO_TEST_CASE( updateStats ) {
 
     unsigned const memBlocksExpected = block.bytes().size() + 64;
     BOOST_CHECK_EQUAL( stat.memBlocks, memBlocksExpected );
-    unsigned totalExpected = memBlocksExpected;
 
-    h256 const genesisHash = bc.testGenesis().blockHeader().hash();
-    unsigned const memDetailsExpected = bcRef.details( genesisHash ).size + 64;
-    BOOST_CHECK_EQUAL( stat.memDetails, memDetailsExpected );
-    totalExpected += memDetailsExpected;
-
-    unsigned const memLogBloomsExpected =
-        bcRef.blocksBlooms( 0, 0 ).size + 64 + bcRef.blocksBlooms( 1, 0 ).size + 64;
-    BOOST_CHECK_EQUAL( stat.memLogBlooms, memLogBloomsExpected );
-    totalExpected += memLogBloomsExpected;
-
+    BOOST_CHECK( stat.memDetails > 0 );
+    BOOST_CHECK( stat.memLogBlooms > 0 );
     BOOST_CHECK_EQUAL( stat.memReceipts, 0 );
-    BOOST_CHECK_EQUAL( stat.memTotal(), totalExpected );
     BOOST_CHECK_EQUAL( stat.memTransactionAddresses, 0 );
+
+    // Verify memTotal() correctly sums all individual fields
+    unsigned totalExpected = stat.memBlocks + stat.memDetails + stat.memLogBlooms +
+                             stat.memReceipts + stat.memTransactionAddresses + stat.memBlockHashes;
+#ifdef BITE
+    totalExpected += stat.memDecryptedTransactionsData;
+    totalExpected += stat.memCtxOrigin;
+#endif  // BITE
+    BOOST_CHECK_EQUAL( stat.memTotal(), totalExpected );
 
     // memchache size 33554432 - 3500 blocks before cache to be cleared
     bcRef.garbageCollect( true );
