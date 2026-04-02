@@ -2004,6 +2004,67 @@ def test_eip_1559_block_hash_integrity(
 
 
 # ---------------------------------------------------------------------------
+# EIP-3675 / EIP-4399: Paris fork (difficulty=0, PREVRANDAO opcode)
+# ---------------------------------------------------------------------------
+
+def test_eip_3675(
+    w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000
+) -> EIPTestResult:
+    """EIP-3675: eth_getBlockByNumber must return difficulty=0x0 post-Paris."""
+    logger.info("=== EIP-3675 difficulty=0 header test ===")
+    block = w3.eth.get_block("latest")
+    difficulty = _as_int(block.get("difficulty"))
+
+    details = {
+        "difficulty": difficulty,
+        "block_number": block["number"],
+    }
+    if difficulty != 0:
+        return EIPTestResult(
+            eip="3675",
+            passed=False,
+            message=f"Expected difficulty=0, got {difficulty}",
+            details=details,
+        )
+    return EIPTestResult(
+        eip="3675",
+        passed=True,
+        message="difficulty=0x0 in latest block header",
+        details=details,
+    )
+
+
+def test_eip_4399(
+    w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000
+) -> EIPTestResult:
+    """EIP-4399: PREVRANDAO opcode returns 0 (skaled has no beacon RANDAO)."""
+    logger.info("=== EIP-4399 PREVRANDAO opcode test ===")
+    abi, bytecode = _load_artifact(sol_dir, "EIP4399Test")
+    addr = _deploy_contract(w3, deployer, abi, bytecode, gas_limit)
+    contract = w3.eth.contract(address=addr, abi=abi)
+
+    prevrandao = _as_int(contract.functions.getPrevRandao().call())
+
+    details = {
+        "prevrandao": prevrandao,
+        "contract": addr,
+    }
+    if prevrandao != 0:
+        return EIPTestResult(
+            eip="4399",
+            passed=False,
+            message=f"Expected PREVRANDAO=0 (no beacon RANDAO in skaled), got {prevrandao}",
+            details=details,
+        )
+    return EIPTestResult(
+        eip="4399",
+        passed=True,
+        message="PREVRANDAO opcode returned 0 (correct for skaled post-Paris)",
+        details=details,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Orchestrator
 # ---------------------------------------------------------------------------
 
@@ -2032,6 +2093,8 @@ EIP_TEST_MAP = {
     "1559-fee-history": test_eip_1559_fee_history,
     "1559-max-priority-fee": test_eip_1559_max_priority_fee,
     "1559-block-hash-integrity": test_eip_1559_block_hash_integrity,
+    "3675":                    test_eip_3675,
+    "4399":                    test_eip_4399,
 }
 
 ALL_EIPS = [
@@ -2043,6 +2106,7 @@ ALL_EIPS = [
     "1559-effective-price", "1559-basefee-header",
     "1559-fee-history", "1559-max-priority-fee",
     "1559-block-hash-integrity",
+    "3675", "4399",
 ]
 
 

@@ -41,7 +41,8 @@ void SealEngineFace::verify( Strictness _s, BlockHeader const& _bi, BlockHeader 
     _bi.verify( _s, _parent, _block );
 
     if ( _s != CheckNothingNew ) {
-        if ( _bi.difficulty() < chainParams().getMinimumDifficulty() )
+        if ( !ParisForkPatch::isEnabledInWorkingBlock() &&
+             _bi.difficulty() < chainParams().getMinimumDifficulty() )
             BOOST_THROW_EXCEPTION(
                 InvalidDifficulty() << RequirementError(
                     bigint( chainParams().getMinimumDifficulty() ), bigint( _bi.difficulty() ) ) );

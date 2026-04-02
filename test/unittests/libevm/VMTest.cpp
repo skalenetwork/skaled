@@ -271,12 +271,14 @@ public:
         cp.setPatchTimestamp( SchainPatchEnum::ParisForkPatch, 1 );
 #endif
         SchainPatch::init( cp );
+        SchainPatch::useLatestBlockTimestamp( 1 );
         se.reset( cp.createSealEngine() );
     }
 
     void resetSchainPatchToDefault() {
         ChainParams cp( genesisInfo( Network::ConstantinopleTest ) );
         SchainPatch::init( cp );
+        SchainPatch::useLatestBlockTimestamp( 0 );
     }
 
 

@@ -1355,7 +1355,11 @@ void LegacyVM::interpretCases() {
             ON_OP();
             updateIOGas();
 
-            m_SPP[0] = m_ext->envInfo().difficulty();
+            // EIP-4399: post-Paris, DIFFICULTY returns prevRandao (0 in skaled/BFT)
+            if ( ParisForkPatch::isEnabledInWorkingBlock() )
+                m_SPP[0] = 0;
+            else
+                m_SPP[0] = m_ext->envInfo().difficulty();
         }
         NEXT
 

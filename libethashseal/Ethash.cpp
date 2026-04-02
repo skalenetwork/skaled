@@ -23,6 +23,7 @@
 #include <libethcore/ChainOperationParams.h>
 #include <libethcore/CommonJS.h>
 #include <libethereum/Interface.h>
+#include <libethereum/SchainPatch.h>
 
 #include <ethash/ethash.hpp>
 
@@ -91,7 +92,7 @@ void Ethash::verify( Strictness _s, BlockHeader const& _bi, BlockHeader const& _
     bytesConstRef _block ) const {
     SealEngineFace::verify( _s, _bi, _parent, _block );
 
-    if ( _parent ) {
+    if ( _parent && !ParisForkPatch::isEnabledInWorkingBlock() ) {
         // Check difficulty is correct given the two timestamps.
         auto expected = calculateDifficulty( _bi, _parent );
         auto difficulty = _bi.difficulty();
@@ -201,7 +202,12 @@ u256 Ethash::calculateDifficulty( BlockHeader const& _bi, BlockHeader const& _pa
 
 void Ethash::populateFromParent( BlockHeader& _bi, BlockHeader const& _parent ) const {
     SealEngineFace::populateFromParent( _bi, _parent );
-    _bi.setDifficulty( calculateDifficulty( _bi, _parent ) );
+    if ( ParisForkPatch::isEnabledInWorkingBlock() ) {
+        _bi.setDifficulty( 0 );
+        setMixHash( _bi, h256( 0 ) );
+    } else {
+        _bi.setDifficulty( calculateDifficulty( _bi, _parent ) );
+    }
     _bi.setGasLimit( childGasLimit( _parent, chainParams().getMinGasLimit() ) );
 }
 

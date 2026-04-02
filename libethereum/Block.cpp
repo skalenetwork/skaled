@@ -28,6 +28,7 @@
 #include "Executive.h"
 #include "ExtVM.h"
 #include "GenesisInfo.h"
+#include "SchainPatch.h"
 #include "TransactionQueue.h"
 #include <libdevcore/Assertions.h>
 #include <libdevcore/CommonIO.h>
@@ -951,7 +952,14 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
     u256 tdIncrease = m_currentBlock.difficulty();
 
     // Check uncles & apply their rewards to state.
-    if ( rlp[2].itemCount() > 2 ) {
+    if ( ParisForkPatch::isEnabledInWorkingBlock() ) {
+        if ( rlp[2].itemCount() > 0 ) {
+            TooManyUncles ex;
+            ex << errinfo_max( 0 );
+            ex << errinfo_got( rlp[2].itemCount() );
+            BOOST_THROW_EXCEPTION( ex );
+        }
+    } else if ( rlp[2].itemCount() > 2 ) {
         TooManyUncles ex;
         ex << errinfo_max( 2 );
         ex << errinfo_got( rlp[2].itemCount() );

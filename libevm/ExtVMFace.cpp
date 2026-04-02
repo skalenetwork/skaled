@@ -18,6 +18,7 @@
 #include "ExtVMFace.h"
 
 #include <evmc/helpers.h>
+#include <libethereum/SchainPatch.h>
 
 namespace dev {
 namespace eth {
@@ -132,7 +133,12 @@ evmc_tx_context EvmCHost::get_tx_context() noexcept {
     result.block_number = envInfo.number();
     result.block_timestamp = envInfo.timestamp();
     result.block_gas_limit = static_cast< int64_t >( envInfo.gasLimit() );
-    result.block_difficulty = toEvmC( envInfo.difficulty() );
+    if ( ParisForkPatch::isEnabledInWorkingBlock() ) {
+        // EIP-4399: DIFFICULTY opcode returns prevRandao. In skaled (BFT, no beacon), prevRandao=0.
+        result.block_difficulty = toEvmC( u256( 0 ) );
+    } else {
+        result.block_difficulty = toEvmC( envInfo.difficulty() );
+    }
     result.chain_id = toEvmC( envInfo.chainID() );
     return result;
 }
