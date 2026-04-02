@@ -183,7 +183,7 @@ bool AlethExecutive::call(
 
         PrecompiledCallContext ctx{ m_envInfo.number(), m_envInfo.committedBlockTimestamp(),
 #ifdef BITE
-            m_txnIndex, _p.senderAddress,
+            m_txnIndex, m_t.sha3(), _p.senderAddress,
 #endif
             true };
         bigint g = m_chainParams.costOfPrecompiled( _p.codeAddress, _p.data, ctx );
@@ -196,9 +196,9 @@ bool AlethExecutive::call(
             m_gas = ( u256 )( _p.gas - g );
             bytes output;
             bool success;
-            PrecompiledCallContext ctx{ m_envInfo.number(),
+            PrecompiledCallContext ctx{ m_envInfo.number(), m_envInfo.committedBlockTimestamp(),
 #ifdef BITE
-                m_txnIndex, m_t.sha3(), m_envInfo.committedBlockTimestamp(), _p.senderAddress,
+                m_txnIndex, m_t.sha3(), _p.senderAddress,
 #endif
                 true };
             tie( success, output ) =
