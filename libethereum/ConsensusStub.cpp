@@ -100,9 +100,6 @@ void ConsensusStub::doWork() {
         ++it;
     }
 
-    //    this_thread::sleep_for( std::chrono::milliseconds(
-    //        static_cast< unsigned int >( rand() ) % ( max_sleep - 1000 ) + 1000 ) );
-
     try {
         ++blockCounter;
         m_extFace.createBlock( out_vector,

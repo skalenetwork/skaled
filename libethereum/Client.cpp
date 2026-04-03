@@ -758,7 +758,6 @@ void Client::restartMining() {
         if ( !m_postSeal.isSealed() || m_postSeal.info().hash() != newPreMine.info().parentHash() )
             for ( auto const& t : m_postSeal.pending() ) {
                 BOOST_LOG( m_loggerTrace ) << "Resubmitting post-seal transaction " << t;
-                //                      ctrace << "Resubmitting post-seal transaction " << t;
                 auto ir = m_tq.import( t, IfDropped::Retry );
                 if ( ir != ImportResult::Success )
                     onTransactionQueueReady();
@@ -1015,13 +1014,6 @@ void Client::doWork( bool _doWait ) {
     bool isSealed = false;
     DEV_READ_GUARDED( x_working )
     isSealed = m_working.isSealed();
-    //    if (!isSealed && !isMajorSyncing() && !m_remoteWorking &&
-    //    m_syncTransactionQueue.compare_exchange_strong(t, false))
-    //        syncTransactionQueue();
-
-    // TEMPRORARY FIX!
-    // TODO: REVIEW
-    // tick();
 
     // SKALE Mine only empty blocks! (for tests passing/account balancing)
     rejigSealing();
@@ -1371,7 +1363,7 @@ Json::Value Client::traceBlock( BlockNumber _blockNumber, Json::Value const& _js
 
         auto traceOptions = TraceOptions::make( _jsonTraceConfig );
 
-        // cache results for better peformance
+        // cache results for better performance
         string key = to_string( _blockNumber ) + traceOptions.toString();
 
         auto cachedResult = m_blockTraceCache.getIfExists( key );

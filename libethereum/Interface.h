@@ -127,23 +127,23 @@ public:
         throw std::logic_error( "setDefault is not supported" );
     }
 
-    virtual u256 balanceAt( Address _a ) const = 0;
-    virtual u256 countAt( Address _a ) const = 0;
-    virtual u256 stateAt( Address _a, u256 _l ) const = 0;
-    virtual bytes codeAt( Address _a ) const = 0;
-    virtual h256 codeHashAt( Address _a ) const = 0;
+    virtual u256 balanceAt( const Address& _a ) const = 0;
+    virtual u256 countAt( const Address& _a ) const = 0;
+    virtual u256 stateAt( const Address& _a, u256 _l ) const = 0;
+    virtual bytes codeAt( const Address& _a ) const = 0;
+    virtual h256 codeHashAt( const Address& _a ) const = 0;
 
 
 #ifdef HISTORIC_STATE
-    virtual u256 historicStateBalanceAt( Address _a, BlockNumber _block ) const = 0;
-    virtual u256 historicStateCountAt( Address _a, BlockNumber _block ) const = 0;
-    virtual u256 historicStateAt( Address _a, u256 _l, BlockNumber _block ) const = 0;
-    virtual h256 historicStateRootAt( Address _a, BlockNumber _block ) const = 0;
-    virtual bytes historicStateCodeAt( Address _a, BlockNumber _block ) const = 0;
+    virtual u256 historicStateBalanceAt( const Address& _a, BlockNumber _block ) const = 0;
+    virtual u256 historicStateCountAt( const Address& _a, BlockNumber _block ) const = 0;
+    virtual u256 historicStateAt( const Address& _a, u256 _l, BlockNumber _block ) const = 0;
+    virtual h256 historicStateRootAt( const Address& _a, BlockNumber _block ) const = 0;
+    virtual bytes historicStateCodeAt( const Address& _a, BlockNumber _block ) const = 0;
 #endif
 
 
-    virtual std::map< h256, std::pair< u256, u256 > > storageAt( Address _a ) const = 0;
+    virtual std::map< h256, std::pair< u256, u256 > > storageAt( const Address& _a ) const = 0;
 
     // [LOGS API]
 
@@ -171,7 +171,7 @@ public:
 
     virtual bool isKnownTransaction( h256 const& _transactionHash ) const = 0;
     virtual bool isKnownTransaction( h256 const& _blockHash, unsigned _i ) const = 0;
-    virtual Transaction transaction( h256 _transactionHash ) const = 0;
+    virtual Transaction transaction( h256 const& _transactionHash ) const = 0;
     virtual LocalisedTransaction localisedTransaction( h256 const& _transactionHash ) const = 0;
     virtual TransactionReceipt transactionReceipt( h256 const& _transactionHash ) const = 0;
     virtual LocalisedTransactionReceipt localisedTransactionReceipt(
@@ -184,17 +184,17 @@ public:
 
     virtual bool isKnown( BlockNumber _block ) const = 0;
     virtual bool isKnown( h256 const& _hash ) const = 0;
-    virtual BlockHeader blockInfo( h256 _hash ) const = 0;
-    virtual BlockDetails blockDetails( h256 _hash ) const = 0;
-    virtual Transaction transaction( h256 _blockHash, unsigned _i ) const = 0;
+    virtual BlockHeader blockInfo( h256 const& _hash ) const = 0;
+    virtual BlockDetails blockDetails( h256 const& _hash ) const = 0;
+    virtual Transaction transaction( h256 const& _blockHash, unsigned _i ) const = 0;
     virtual LocalisedTransaction localisedTransaction(
         h256 const& _blockHash, unsigned _i ) const = 0;
-    virtual BlockHeader uncle( h256 _blockHash, unsigned _i ) const = 0;
-    virtual UncleHashes uncleHashes( h256 _blockHash ) const = 0;
-    virtual unsigned transactionCount( h256 _blockHash ) const = 0;
+    virtual BlockHeader uncle( h256 const& _blockHash, unsigned _i ) const = 0;
+    virtual UncleHashes uncleHashes( h256 const& _blockHash ) const = 0;
+    virtual unsigned transactionCount( h256 const& _blockHash ) const = 0;
     virtual unsigned transactionCount( BlockNumber _block ) const = 0;
-    virtual unsigned uncleCount( h256 _blockHash ) const = 0;
-    virtual Transactions transactions( h256 _blockHash ) const = 0;
+    virtual unsigned uncleCount( h256 const& _blockHash ) const = 0;
+    virtual Transactions transactions( h256 const& _blockHash ) const = 0;
     virtual Transactions transactions( BlockNumber _block ) const = 0;
     virtual TransactionHashes transactionHashes( h256 _blockHash ) const = 0;
 

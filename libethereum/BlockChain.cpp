@@ -266,8 +266,6 @@ void BlockChain::open( fs::path const& _path, bool _applyPatches, WithExisting _
         m_db_splitter = std::make_unique< batched_io::db_splitter >( m_db );
         m_blocksDB = m_db_splitter->new_interface();
         m_extrasDB = m_db_splitter->new_interface();
-        // m_blocksDB.reset( new db::DBImpl( chainPath / fs::path( "blocks" ) ) );
-        // m_extrasDB.reset( new db::DBImpl( extrasPath / fs::path( "extras" ) ) );
     } catch ( db::DatabaseError const& ex ) {
         // Check the exact reason of errror, in case of IOError we can display user-friendly message
         if ( *boost::get_error_info< db::errinfo_dbStatusCode >( ex ) !=
@@ -332,8 +330,6 @@ void BlockChain::open( fs::path const& _path, bool _applyPatches, WithExisting _
 
     BOOST_LOG( m_loggerDebug ) << "Opened blockchain DB. Latest: " << currentHash() << ' '
                                << m_lastBlockNumber;
-
-    //    dump_blocks_and_extras_db( *this, 0 );
 
     if ( _applyPatches && TotalStorageUsedPatch::isInitOnChainNeeded( *m_db ) )
         TotalStorageUsedPatch::initOnChain( *this );
@@ -424,8 +420,6 @@ tuple< ImportRoute, bool, unsigned > BlockChain::sync(
     BlockQueue& _bq, State& _state, unsigned _max ) {
     MICROPROFILE_SCOPEI( "BlockChain", "sync many blocks", MP_LIGHTGOLDENROD );
 
-    //  _bq.tick(*this);
-
     VerifiedBlocks blocks;
     _bq.drain( blocks, _max );
 
@@ -454,10 +448,7 @@ tuple< ImportRoute, bool, unsigned > BlockChain::sync(
                 continue;
             } catch ( dev::eth::UnknownParent const& ) {
                 BOOST_LOG( m_loggerWarning )
-                    << "ODD: Import queue contains block with unknown parent.";  // <<
-                                                                                 // LogTag::Error
-                // <<
-                // boost::current_exception_diagnostic_information();
+                    << "ODD: Import queue contains block with unknown parent.";
                 // NOTE: don't reimport since the queue should guarantee everything in the right
                 // order. Can't continue - chain bad.
                 badBlocks.push_back( block.verified.info.hash() );
@@ -626,7 +617,6 @@ ImportRoute BlockChain::import( const Block& _block ) {
     verifiedBlock.decryptedTransactionDataFields = _block.decryptedTransactionDataFields();
     CHECK_EXPRESSION( verifiedBlock.decryptedTransactionDataFields );
 #endif
-    //    verifyBlock( ref( _block.blockData() ), m_onBad, ImportRequirements::OutOfOrderChecks );
 
     BlockReceipts blockReceipts;
     for ( unsigned i = 0; i < _block.pending().size(); ++i )
@@ -811,7 +801,7 @@ void BlockChain::insertBloomsDetailsToDb(
         //
         // We need to compute log blooms directly here without using Block::logBloom()
         // method because _receipts may contain extra receipt items corresponding to
-        // partially cought-up transactions
+        // partially caught-up transactions
         //
         // old code was: // LogBloom blockBloom = tbi.logBloom();
         //
@@ -840,7 +830,6 @@ void BlockChain::insertBloomsDetailsToDb(
         noteUsed( h, ExtraBlocksBlooms );
 
     // Update database with them.
-    // ReadGuard l1( x_blocksBlooms );
     WriteGuard l1( x_blocksBlooms );
     {
         MICROPROFILE_SCOPEI( "insertBlockAndExtras", "insert_to_extras", MP_LIGHTSKYBLUE );
@@ -853,7 +842,7 @@ void BlockChain::insertBloomsDetailsToDb(
     }
 }
 
-// TOOD ACHTUNG This function must be kept in sync with the next one!
+// TODO ACHTUNG This function must be kept in sync with the next one!
 size_t BlockChain::prepareDbDataAndReturnSize( VerifiedBlockRef const& _block,
     bytesConstRef _receipts, u256 const& _totalDifficulty, const LogBloom* pLogBloomFull,
     ImportPerformanceLogger& _performanceLogger ) {
@@ -878,7 +867,7 @@ size_t BlockChain::prepareDbDataAndReturnSize( VerifiedBlockRef const& _block,
     return writeSize;
 }
 
-// TOOD ACHTUNG This function must be kept in sync with prepareDbDataAndReturnSize defined above!!
+// TODO ACHTUNG This function must be kept in sync with prepareDbDataAndReturnSize defined above!!
 // TODO move it to TotalStorageUsedPatch!
 void BlockChain::recomputeExistingOccupiedSpaceForBlockRotation() try {
     unsigned number = this->number();
@@ -977,11 +966,6 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     bytesConstRef _receipts, LogBloom* pLogBloomFull, u256 const& _totalDifficulty,
     ImportPerformanceLogger& _performanceLogger ) {
     MICROPROFILE_SCOPEI( "BlockChain", "insertBlockAndExtras", MP_YELLOWGREEN );
-
-    // get "safeLastExecutedTransactionHash" value from state, for debug reasons only
-    // dev::h256 shaLastTx = skale::OverlayDB::stat_safeLastExecutedTransactionHash( m_stateDB.get()
-    // ); std::cout << "--- got \"safeLastExecutedTransactionHash\" = " << shaLastTx.hex() << "\n";
-    // std::cout.flush();
 
     h256 newLastBlockHash = currentHash();
     unsigned newLastBlockNumber = number();
@@ -1177,8 +1161,6 @@ void BlockChain::rescue( State const& /*_state*/ ) {
             details( h );
             BOOST_LOG( m_loggerInfo ) << "state..." << flush;
             BOOST_LOG( m_loggerInfo ) << "STATE VALIDITY CHECK IS NOT SUPPORTED" << flush;
-            //            if (_db.exists(bi.stateRoot()))
-            //                break;
         } catch ( ... ) {
         }
     }
@@ -1368,10 +1350,9 @@ void BlockChain::garbageCollect( bool _force ) {
     if ( m_lastStats.memTotal() < c_minCacheSize )
         return;
 
-
     m_lastCollection = chrono::system_clock::now();
 
-    // We subtract memory that blockhashes occupy because it is treated sepaparately
+    // We subtract memory that blockhashes occupy because it is treated separately
     while ( m_lastStats.memTotal() - m_lastStats.memBlockHashes >= c_maxCacheSize ) {
         Guard l( x_cacheUsage );
         for ( CacheID const& id : m_cacheUsage.back() ) {
@@ -1552,9 +1533,6 @@ static inline unsigned upow( unsigned a, unsigned b ) {
 static inline unsigned ceilDiv( unsigned n, unsigned d ) {
     return ( n + d - 1 ) / d;
 }
-// static inline unsigned floorDivPow(unsigned n, unsigned a, unsigned b) { return n / upow(a,
-// b); } static inline unsigned ceilDivPow(unsigned n, unsigned a, unsigned b) { return
-// ceilDiv(n, upow(a, b)); }
 
 // Level 1
 // [xxx.            ]
