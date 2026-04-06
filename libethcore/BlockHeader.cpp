@@ -194,15 +194,9 @@ void BlockHeader::populate( RLP const& _header ) {
         m_extraData = _header[field = 12].toBytes();
         m_seal.clear();
         unsigned sealStart = 13;
-        m_baseFeePerGas = 0;  // default for RLP without baseFeePerGas field
-        // Detect London's baseFeePerGas at field 13.  Ethash genesis blocks have
-        // mixHash (exactly 32 bytes) at the same position.  In RLP both look like
-        // "int" to isInt(), so we additionally require the payload to be shorter than
-        // 32 bytes — no realistic baseFeePerGas can be that large, while mixHash is
-        // always exactly 32 bytes.
+        m_baseFeePerGas = 0;
         if ( LondonForkPatch::isEnabledWhen( static_cast< time_t >( m_timestamp ) ) &&
-             _header.itemCount() > 13 && _header[13].isInt() &&
-             _header[13].payload().size() < h256::size ) {
+             _header.itemCount() > 13 && _header[13].isInt() ) {
             m_baseFeePerGas = _header[field = 13].toInt< u256 >();
             sealStart = 14;
         }
