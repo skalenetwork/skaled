@@ -115,9 +115,9 @@ std::pair< bool, ExecutionResult > ClientBase::estimateGasStep( int64_t _gas, Bl
     }
 }
 
-std::pair< u256, ExecutionResult > ClientBase::estimateGas( Address const& _from, u256 _value,
-    Address const& _dest, bytes const& _data, int64_t _maxGas, u256 _gasPrice,
-    GasEstimationCallback const& _callback ) {
+std::pair< u256, ExecutionResult > ClientBase::estimateGas( Address const& _from,
+    u256 const& _value, Address const& _dest, bytes const& _data, int64_t _maxGas,
+    u256 const& _gasPrice, GasEstimationCallback const& _callback ) {
     try {
         int64_t upperBound = _maxGas;
         if ( upperBound == Invalid256 || upperBound > c_maxGasEstimate )
@@ -501,7 +501,8 @@ TransactionHashes ClientBase::transactionHashes( h256 const& _blockHash ) const 
 }
 
 #ifdef BITE
-DecryptedTransactionData ClientBase::decryptedTransactionData( h256 const& _transactionHash ) const {
+DecryptedTransactionData ClientBase::decryptedTransactionData(
+    h256 const& _transactionHash ) const {
     return bc().decryptedTransactionData( _transactionHash );
 }
 #endif

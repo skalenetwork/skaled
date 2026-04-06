@@ -116,8 +116,9 @@ public:
     /// @param _maxGas An upper bound value for estimation, if not provided default value of
     /// c_maxGasEstimate will be used.
     /// @param _callback Optional callback function for progress reporting
-    virtual std::pair< u256, ExecutionResult > estimateGas( Address const& _from, u256 _value,
-        Address _dest, bytes const& _data, int64_t _maxGas, u256 _gasPrice,
+    virtual std::pair< u256, ExecutionResult > estimateGas( Address const& _from,
+        u256 const& _value, Address const& _dest, bytes const& _data, int64_t _maxGas,
+        u256 const& _gasPrice,
         GasEstimationCallback const& _callback = GasEstimationCallback() ) = 0;
 
     // [STATE-QUERY API]
@@ -129,7 +130,7 @@ public:
 
     virtual u256 balanceAt( const Address& _a ) const = 0;
     virtual u256 countAt( const Address& _a ) const = 0;
-    virtual u256 stateAt( const Address& _a, u256 _l ) const = 0;
+    virtual u256 stateAt( const Address& _a, const u256& _l ) const = 0;
     virtual bytes codeAt( const Address& _a ) const = 0;
     virtual h256 codeHashAt( const Address& _a ) const = 0;
 
@@ -179,8 +180,8 @@ public:
     virtual std::pair< h256, unsigned > transactionLocation(
         h256 const& _transactionHash ) const = 0;
     virtual h256 hashFromNumber( BlockNumber _number ) const = 0;
-    virtual BlockNumber numberFromHash( h256 _blockHash ) const = 0;
-    virtual int compareBlockHashes( h256 _h1, h256 _h2 ) const = 0;
+    virtual BlockNumber numberFromHash( h256 const& _blockHash ) const = 0;
+    virtual int compareBlockHashes( h256 const& _h1, h256 const& _h2 ) const = 0;
 
     virtual bool isKnown( BlockNumber _block ) const = 0;
     virtual bool isKnown( h256 const& _hash ) const = 0;
@@ -196,7 +197,7 @@ public:
     virtual unsigned uncleCount( h256 const& _blockHash ) const = 0;
     virtual Transactions transactions( h256 const& _blockHash ) const = 0;
     virtual Transactions transactions( BlockNumber _block ) const = 0;
-    virtual TransactionHashes transactionHashes( h256 _blockHash ) const = 0;
+    virtual TransactionHashes transactionHashes( h256 const& _blockHash ) const = 0;
 
     virtual BlockHeader pendingInfo() const { return BlockHeader(); }
     virtual BlockDetails pendingDetails() const { return BlockDetails(); }
