@@ -154,7 +154,7 @@ public:
     virtual unsigned installWatch( LogFilter const& _filter, Reaping _r = Reaping::Automatic,
         fnClientWatchHandlerMulti_t fnOnNewChanges = fnClientWatchHandlerMulti_t(),
         bool isWS = false ) = 0;
-    virtual unsigned installWatch( h256 _filterId, Reaping _r = Reaping::Automatic,
+    virtual unsigned installWatch( h256 const& _filterId, Reaping _r = Reaping::Automatic,
         fnClientWatchHandlerMulti_t fnOnNewChanges = fnClientWatchHandlerMulti_t(),
         bool isWS = false ) = 0;
     virtual bool uninstallWatch( unsigned _watchId ) = 0;
@@ -316,7 +316,7 @@ class Watch : public boost::noncopyable {
 
 public:
     Watch() {}
-    Watch( Interface& _c, h256 _f ) : m_c( &_c ), m_id( _c.installWatch( _f ) ) {}
+    Watch( Interface& _c, h256 const& _f ) : m_c( &_c ), m_id( _c.installWatch( _f ) ) {}
     Watch( Interface& _c, LogFilter const& _tf ) : m_c( &_c ), m_id( _c.installWatch( _tf ) ) {}
     ~Watch() {
         if ( m_c )
