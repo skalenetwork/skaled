@@ -2034,10 +2034,21 @@ def test_eip_3675(
     )
 
 
+def _is_anvil(w3: Web3) -> bool:
+    try:
+        return "anvil" in w3.client_version.lower()
+    except Exception:
+        return False
+
+
 def test_eip_4399(
     w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000
 ) -> EIPTestResult:
-    """EIP-4399: PREVRANDAO opcode returns 0 (skaled has no beacon RANDAO)."""
+    """EIP-4399: PREVRANDAO opcode is accessible post-Paris.
+
+    skaled (BFT, no beacon chain): returns 0.
+    Anvil: returns a non-zero simulated value — any non-zero value is accepted.
+    """
     logger.info("=== EIP-4399 PREVRANDAO opcode test ===")
     abi, bytecode = _load_artifact(sol_dir, "EIP4399Test")
     addr = _deploy_contract(w3, deployer, abi, bytecode, gas_limit)
@@ -2049,6 +2060,24 @@ def test_eip_4399(
         "prevrandao": prevrandao,
         "contract": addr,
     }
+
+    if _is_anvil(w3):
+        # Anvil simulates PREVRANDAO as a non-zero random value — just verify the opcode works.
+        if prevrandao == 0:
+            return EIPTestResult(
+                eip="4399",
+                passed=False,
+                message="PREVRANDAO=0 on Anvil — opcode not active or returning wrong value",
+                details=details,
+            )
+        return EIPTestResult(
+            eip="4399",
+            passed=True,
+            message=f"PREVRANDAO opcode returned non-zero value (Anvil simulation: {prevrandao})",
+            details=details,
+        )
+
+    # skaled: BFT consensus, no beacon chain — PREVRANDAO is always 0.
     if prevrandao != 0:
         return EIPTestResult(
             eip="4399",
