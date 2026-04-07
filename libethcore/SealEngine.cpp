@@ -194,7 +194,7 @@ void SealEngineFace::verifyTransaction( ChainOperationParams const& _chainParams
     // baseFee in SKALE always constant (1), but
     // keeping for additional obscurity layer.
     // maxPriorityFeePerGas <= maxFeePerGas is already enforced in TransactionBase parsing
-    if ( _t.txType() == 2 ) {
+    if ( _t.txType() == 2 && LondonForkPatch::isEnabledWhen( _committedBlockTimestamp ) ) {
         u256 baseFee = _header.baseFeePerGas();
         if ( _t.maxFeePerGas() < baseFee )
             BOOST_THROW_EXCEPTION(

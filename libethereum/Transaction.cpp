@@ -62,6 +62,8 @@ TransactionException dev::eth::toTransactionException( Exception const& _e ) {
     if ( !!dynamic_cast< AddressAlreadyUsed const* >( &_e ) )
         return TransactionException::AddressAlreadyUsed;
     // VM execution exceptions
+    if ( !!dynamic_cast< CodeStartsWith0xEF const* >( &_e ) )
+        return TransactionException::CodeStartsWith0xEF;
     if ( !!dynamic_cast< BadInstruction const* >( &_e ) )
         return TransactionException::BadInstruction;
     if ( !!dynamic_cast< BadJumpDestination const* >( &_e ) )
@@ -136,6 +138,9 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, TransactionException con
         break;
     case TransactionException::AddressAlreadyUsed:
         _out << "AddressAlreadyUsed";
+        break;
+    case TransactionException::CodeStartsWith0xEF:
+        _out << "CodeStartsWith0xEF";
         break;
     case TransactionException::WouldNotBeInBlock:
         _out << "WouldNotBeInBlock";

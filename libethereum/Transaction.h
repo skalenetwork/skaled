@@ -54,7 +54,8 @@ enum class TransactionException {
     InvalidZeroSignatureFormat,
     AddressAlreadyUsed,
     InvalidContractDeployer,
-    WouldNotBeInBlock  ///< In original Ethereum this tx should not be included in block
+    CodeStartsWith0xEF,  ///< EIP-3541: deployed bytecode begins with 0xEF
+    WouldNotBeInBlock    ///< In original Ethereum this tx should not be included in block
 #ifdef BITE
     ,
     InvalidBITEAESData

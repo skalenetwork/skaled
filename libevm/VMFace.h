@@ -38,6 +38,7 @@ ETH_SIMPLE_EXCEPTION_VM( DisallowedStateChange );
 ETH_SIMPLE_EXCEPTION_VM( BufferOverrun );
 ETH_SIMPLE_EXCEPTION_VM( StorageOverflow );
 ETH_SIMPLE_EXCEPTION_VM( InvalidContractDeployer );
+ETH_SIMPLE_EXCEPTION_VM( CodeStartsWith0xEF );  ///< EIP-3541: deployed bytecode begins with 0xEF
 
 #ifdef FAIR
 ETH_SIMPLE_EXCEPTION_VM( UnsupportedDencunOpcode );
