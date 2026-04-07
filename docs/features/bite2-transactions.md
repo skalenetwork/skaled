@@ -1,4 +1,4 @@
-# BITE2 Transactions
+# BITE2 Functionality
 
 This document describes BITE2 (CTX) behavior as implemented in `skaled` and `skale-consensus` integration.
 
@@ -78,17 +78,19 @@ Notes:
 
 Defined in `libethcore/BITECommon.h`:
 
-- `SUCCESS = 1`
-- `INPUT_TOO_SHORT = 2`
-- `INVALID_DESTINATION = 3`
-- `INVALID_GAS_LIMIT = 4`
-- `DATA_OFFSET_OUT_OF_BOUNDS = 5`
-- `DATA_TOO_SHORT = 6`
-- `ABI_TO_RLP_CONVERSION_FAILED = 7`
-- `ABI_TO_RLP_UNKNOWN_ERROR = 8`
-- `INVALID_SIGNATURE = 9`
-- `INVALID_TRANSACTION = 10`
-- `COULD_NOT_VERIFY_TRANSACTION = 11`
+| Code | Name | Description |
+|------|------|-------------|
+| 1 | `SUCCESS` | CTX was created and queued successfully. |
+| 2 | `INPUT_TOO_SHORT` | Input is shorter than the minimum 96 bytes (`gasLimit` + `offset` + `dataLength`). |
+| 3 | `INVALID_DESTINATION` | Caller address (`msg.sender`) is the zero address. |
+| 4 | `INVALID_GAS_LIMIT` | Gas limit is zero or exceeds the block gas limit. |
+| 5 | `DATA_OFFSET_OUT_OF_BOUNDS` | ABI data offset points beyond input bounds. |
+| 6 | `DATA_TOO_SHORT` | Input is too short to contain the declared data length at the given offset. |
+| 7 | `ABI_TO_RLP_CONVERSION_FAILED` | `abiEncodedArraysToRlp` threw an exception converting encrypted/plaintext argument arrays to RLP. |
+| 8 | `ABI_TO_RLP_UNKNOWN_ERROR` | `abiEncodedArraysToRlp` threw an unknown (non-std) exception. |
+| 9 | `INVALID_SIGNATURE` | `getBlockRandom` precompile call failed; could not derive CTX signature. |
+| 10 | `INVALID_TRANSACTION` | Constructed CTX transaction failed internal validity checks. |
+| 11 | `COULD_NOT_VERIFY_TRANSACTION` | Seal engine `verifyTransaction` rejected the CTX (e.g., signature or gas validation failure). |
 
 ## Additional BITE2-Related Precompiles
 
@@ -96,9 +98,60 @@ Defined in `libethcore/BITECommon.h`:
 
 Threshold-encrypts input using network TE context and uses the calling contract address as AAD for threshold encryption.
 
+Input ABI:
+- `abi.encode(bytes data)`
+- Layout: `[offset(32)] [dataLength(32)] [data(N padded to 32)]`
+- Offset must equal `32`.
+
+Output:
+- On success: RLP-encoded list `[epochId, ciphertextBytes]`.
+- On failure: error code encoded as `uint256`.
+
+Read-only behavior (`eth_call`, tracing, estimate):
+- Encryption counter is not advanced; repeated calls in the same block context return the same
+  ciphertext.
+
+Error codes:
+
+| Code | Meaning |
+|------|---------|
+| 1 | Input too large (`> 64 KB`) |
+| 2 | Input too short (`< 64 bytes`) |
+| 3 | Input size not 32-byte aligned |
+| 4 | Invalid ABI offset (`!= 32`) |
+| 5 | Data length out of bounds |
+| 6 | Trailing padding contains non-zero bytes |
+
 ### `encryptECIES`
 
-Encrypts input using user secp256k1 public key material.
+Encrypts input using a user-supplied secp256k1 public key via ECIES-CBC.
+
+Input ABI:
+- `abi.encode(bytes data, bytes32 x, bytes32 y)`
+- Layout: `[offset(32)] [pubKeyX(32)] [pubKeyY(32)] [dataLength(32)] [data(N padded to 32)]`
+- Offset must equal `96`.
+- `x` and `y` are the uncompressed secp256k1 public key coordinates of the recipient.
+
+Output:
+- On success: raw ciphertext bytes laid out as `[IV(16)] [compressedEphemeralPubKey(33)] [ciphertext]`.
+- On failure: error code encoded as `uint256`.
+
+Read-only behavior (`eth_call`, tracing, estimate):
+- Encryption counter is not advanced; repeated calls in the same block context return the same
+  ciphertext.
+
+Error codes:
+
+| Code | Meaning |
+|------|---------|
+| 1 | Input too large (`> 64 KB`) |
+| 2 | Input too short (`< 128 bytes`) |
+| 3 | Input size not 32-byte aligned |
+| 4 | Invalid ABI offset (`!= 96`) |
+| 5 | Data length out of bounds |
+| 6 | Trailing padding contains non-zero bytes |
+| 7 | Invalid secp256k1 public key |
+| 8 | Encryption failed / empty result |
 
 ## Ordering Constraints in Consensus
 
