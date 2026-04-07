@@ -325,7 +325,9 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
         m_extFace.reset( new ConsensusExtImpl( *this ) );
 
 #ifdef BITE
-        dev::bite::isCiphertextValidationEnabled = !_client.chainParams().getSgxServerUrl().empty();
+        dev::bite::isCiphertextValidationEnabled =
+            _client.chainParams().isSyncNode() ? !_client.chainParams().isTestSignaturesEnabled() :
+                                                 !_client.chainParams().getSgxServerUrl().empty();
 #endif
 
     } catch ( const std::exception& e ) {
