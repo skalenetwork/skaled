@@ -135,8 +135,6 @@ void BlockHeader::streamRLPFields( RLPStream& _s ) const {
     _s << m_parentHash << m_sha3Uncles << m_author << m_stateRoot << m_transactionsRoot
        << m_receiptsRoot << m_logBloom << m_difficulty << m_number << m_gasLimit << m_gasUsed
        << ( useTimestampHack ? ( m_number + 1 ) : m_timestamp ) << m_extraData;
-    if ( LondonForkPatch::isEnabledWhen( static_cast< time_t >( timestamp() ) ) )
-        _s << m_baseFeePerGas;
 }
 
 void BlockHeader::streamRLP( RLPStream& _s, IncludeSeal _i ) const {
@@ -149,6 +147,10 @@ void BlockHeader::streamRLP( RLPStream& _s, IncludeSeal _i ) const {
     if ( _i != WithoutSeal )
         for ( unsigned i = 0; i < m_seal.size(); ++i )
             _s.appendRaw( m_seal[i] );
+    if ( _i != OnlySeal ) {
+        if ( LondonForkPatch::isEnabledWhen( static_cast< time_t >( timestamp() ) ) )
+            _s << m_baseFeePerGas;
+    }
 }
 
 h256 BlockHeader::headerHashFromBlock( bytesConstRef _block ) {
@@ -193,15 +195,17 @@ void BlockHeader::populate( RLP const& _header ) {
         m_timestamp = _header[field = 11].toPositiveInt64();
         m_extraData = _header[field = 12].toBytes();
         m_seal.clear();
-        unsigned sealStart = 13;
         m_baseFeePerGas = 0;
-        if ( LondonForkPatch::isEnabledWhen( static_cast< time_t >( m_timestamp ) ) &&
-             _header.itemCount() > 13 && _header[13].isInt() ) {
-            m_baseFeePerGas = _header[field = 13].toInt< u256 >();
-            sealStart = 14;
-        }
-        for ( unsigned i = sealStart; i < _header.itemCount(); ++i )
+        const bool london =
+            LondonForkPatch::isEnabledWhen( static_cast< time_t >( m_timestamp ) );
+        // Seal fields start at index 13; baseFeePerGas (if London) is the last field.
+        const unsigned totalItems = _header.itemCount();
+        const unsigned sealEnd = london ? totalItems - 1 : totalItems;
+        for ( unsigned i = 13; i < sealEnd; ++i )
             m_seal.push_back( _header[i].data().toBytes() );
+        if ( london && totalItems > 13 ) {
+            m_baseFeePerGas = _header[field = sealEnd].toInt< u256 >();
+        }
     } catch ( Exception const& _e ) {
         _e << errinfo_name( "invalid block header format" )
            << BadFieldError( field, toHex( _header[field].data().toBytes() ) );
