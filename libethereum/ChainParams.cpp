@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include <cctype>
 
+#include "SchainPatch.h"
 #include <json_spirit/JsonSpiritHeaders.h>
 #include <libdevcore/JsonUtils.h>
 #include <libdevcore/Log.h>
@@ -37,7 +38,6 @@
 #include <libethcore/CommonJS.h>
 #include <libethcore/SealEngine.h>
 #include <libethereum/Precompiled.h>
-#include "SchainPatch.h"
 
 #include "Account.h"
 #include "ValidationSchemes.h"
@@ -649,8 +649,7 @@ void ChainParams::populateFromGenesis( bytes const& _genesisRLP, AccountMap cons
     extraData = bi.extraData();
     genesisState = _state;
     RLP r( _genesisRLP );
-    const bool london =
-        LondonForkPatch::isEnabledWhen( static_cast< time_t >( bi.timestamp() ) );
+    const bool london = LondonForkPatch::isEnabledWhen( static_cast< time_t >( bi.timestamp() ) );
     sealFields = r[0].itemCount() - BlockHeader::BasicFields - ( london ? 1 : 0 );
     sealRLP.clear();
     const unsigned sealEnd = r[0].itemCount() - ( london ? 1 : 0 );
@@ -672,8 +671,7 @@ void ChainParams::populateFromGenesis( bytes const& _genesisRLP, AccountMap cons
 bytes ChainParams::genesisBlock() const {
     RLPStream block( 3 );
 
-    const bool london =
-        LondonForkPatch::isEnabledWhen( static_cast< time_t >( timestamp ) );
+    const bool london = LondonForkPatch::isEnabledWhen( static_cast< time_t >( timestamp ) );
     block.appendList( BlockHeader::BasicFields + sealFields + ( london ? 1 : 0 ) )
         << parentHash << EmptyListSHA3       // sha3(uncles)
         << author << stateRoot << EmptyTrie  // transactions

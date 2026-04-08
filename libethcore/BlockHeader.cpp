@@ -196,8 +196,7 @@ void BlockHeader::populate( RLP const& _header ) {
         m_extraData = _header[field = 12].toBytes();
         m_seal.clear();
         m_baseFeePerGas = 0;
-        const bool london =
-            LondonForkPatch::isEnabledWhen( static_cast< time_t >( m_timestamp ) );
+        const bool london = LondonForkPatch::isEnabledWhen( static_cast< time_t >( m_timestamp ) );
         // Seal fields start at index 13; baseFeePerGas (if London) is the last field.
         const unsigned totalItems = _header.itemCount();
         const unsigned sealEnd = london ? totalItems - 1 : totalItems;
