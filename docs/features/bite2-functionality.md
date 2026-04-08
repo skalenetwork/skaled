@@ -74,7 +74,7 @@ Notes:
 - In read-only mode (`eth_call`, tracing, estimate): precompile returns the computed sender address
   but does not enqueue CTX.
 
-### `submitCTX` Error Codes
+### `submitCTX` Status Codes
 
 Defined in `libethcore/BITECommon.h`:
 
