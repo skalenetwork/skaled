@@ -225,7 +225,7 @@ public:
         const bool _allowFuture = false );
 
 private:
-    void initAccessSets( bool _eip2930Mode );
+    void initAccessSets();
 
     /// @returns false iff go() must be called (and thus a VM execution in required).
     bool executeCreate( Address const& _txSender, u256 const& _endowment, u256 const& _gasPrice,

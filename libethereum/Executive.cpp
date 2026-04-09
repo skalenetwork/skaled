@@ -335,7 +335,7 @@ bool Executive::execute() {
             m_newAddress =
                 right160( sha3( rlpList( m_t.sender(), m_s.getNonce( m_t.sender() ) ) ) );
         }
-        initAccessSets( schedule.eip2930Mode );
+        initAccessSets();
     }
 
     bool result;
@@ -349,7 +349,7 @@ bool Executive::execute() {
     return result;
 }
 
-void Executive::initAccessSets( bool _eip2930Mode ) {
+void Executive::initAccessSets() {
     m_accessSets->accessedAddresses.insert( m_t.sender() );
     if ( !m_t.isCreation() ) {
 #ifdef BITE
@@ -365,7 +365,7 @@ void Executive::initAccessSets( bool _eip2930Mode ) {
         m_accessSets->accessedAddresses.insert( addr );
     }
 
-    if ( _eip2930Mode && m_t.txType() != TransactionType::Legacy ) {
+    if ( m_t.txType() != TransactionType::Legacy ) {
         for ( auto const& entryRaw : m_t.accessList() ) {
             RLP const entry( entryRaw );
             if ( !entry.isList() || entry.itemCount() != 2 )

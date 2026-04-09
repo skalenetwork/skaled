@@ -272,11 +272,16 @@ void TransactionBase::fillFromBytesType1( bytesConstRef _rlpData, CheckTransacti
         m_accessList = validateAccessListRLP( rlp[7] );
 
         bool const yParity = rlp[8].toInt< uint8_t >();
-        // EIP-2930: r and s may be encoded as fixed-width 32-byte values with
-        // leading zeros (not valid as strict RLP integers), or as compact values
-        // shorter than 32 bytes. Decode as h256 with Strict (allows short, rejects long).
-        h256 const r = rlp[9].toHash< h256 >( RLP::Strict );
-        h256 const s = rlp[10].toHash< h256 >( RLP::Strict );
+        // EIP-2930: r and s may be encoded as fixed-width 32-byte values with leading zeros
+        // (not valid as strict RLP integers), or as compact values shorter than 32 bytes.
+        // When InvalidTransactionFormatPatch is active, decode as h256 (handles leading zeros);
+        // otherwise fall back to the old toInt path for backward compatibility.
+        h256 const r = _invalidTransactionFormatPatchEnabled ?
+                           rlp[9].toHash< h256 >( RLP::Strict ) :
+                           h256( rlp[9].toInt< u256 >() );
+        h256 const s = _invalidTransactionFormatPatchEnabled ?
+                           rlp[10].toHash< h256 >( RLP::Strict ) :
+                           h256( rlp[10].toInt< u256 >() );
 
         m_vrs = SignatureStruct{ r, s, yParity };
 
@@ -351,11 +356,16 @@ void TransactionBase::fillFromBytesType2( bytesConstRef _rlpData, CheckTransacti
         m_accessList = validateAccessListRLP( rlp[8] );
 
         bool const yParity = rlp[9].toInt< uint8_t >();
-        // EIP-1559: r and s may be encoded as fixed-width 32-byte values with
-        // leading zeros (not valid as strict RLP integers), or as compact values
-        // shorter than 32 bytes. Decode as h256 with Strict (allows short, rejects long).
-        h256 const r = rlp[10].toHash< h256 >( RLP::Strict );
-        h256 const s = rlp[11].toHash< h256 >( RLP::Strict );
+        // EIP-1559: r and s may be encoded as fixed-width 32-byte values with leading zeros
+        // (not valid as strict RLP integers), or as compact values shorter than 32 bytes.
+        // When InvalidTransactionFormatPatch is active, decode as h256 (handles leading zeros);
+        // otherwise fall back to the old toInt path for backward compatibility.
+        h256 const r = _invalidTransactionFormatPatchEnabled ?
+                           rlp[10].toHash< h256 >( RLP::Strict ) :
+                           h256( rlp[10].toInt< u256 >() );
+        h256 const s = _invalidTransactionFormatPatchEnabled ?
+                           rlp[11].toHash< h256 >( RLP::Strict ) :
+                           h256( rlp[11].toInt< u256 >() );
 
         m_vrs = SignatureStruct{ r, s, yParity };
 

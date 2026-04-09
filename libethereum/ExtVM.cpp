@@ -192,7 +192,9 @@ CreateResult ExtVM::create( u256 _endowment, u256& io_gas, bytesConstRef _code, 
     if ( _op == Instruction::CREATE )
         result = e.createOpcode( myAddress, _endowment, gasPrice, io_gas, _code, origin );
     else {
-        if ( _op != Instruction::CREATE2 )
+        // Before BerlinForkPatch, the guard was an assert (disabled in release) — preserve that
+        // silent behavior for pre-Berlin blocks so we don't change consensus for old transactions.
+        if ( BerlinForkPatch::isEnabledInWorkingBlock() && _op != Instruction::CREATE2 )
             BOOST_THROW_EXCEPTION( BadInstruction() );
         result = e.create2Opcode( myAddress, _endowment, gasPrice, io_gas, _code, origin, _salt );
     }
