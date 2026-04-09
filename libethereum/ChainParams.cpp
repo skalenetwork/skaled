@@ -623,7 +623,6 @@ void ChainParams::loadGenesis( string const& _json ) {
         sealFields = 2;
         sealRLP = rlp( mixHash ) + rlp( nonce );
     }
-
 }
 
 SealEngineFace* ChainParams::createSealEngine() {
