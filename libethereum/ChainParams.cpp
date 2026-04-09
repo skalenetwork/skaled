@@ -623,6 +623,7 @@ void ChainParams::loadGenesis( string const& _json ) {
         sealFields = 2;
         sealRLP = rlp( mixHash ) + rlp( nonce );
     }
+
 }
 
 SealEngineFace* ChainParams::createSealEngine() {
@@ -649,11 +650,9 @@ void ChainParams::populateFromGenesis( bytes const& _genesisRLP, AccountMap cons
     extraData = bi.extraData();
     genesisState = _state;
     RLP r( _genesisRLP );
-    const bool london = LondonForkPatch::isEnabledWhen( static_cast< time_t >( bi.timestamp() ) );
-    sealFields = r[0].itemCount() - BlockHeader::BasicFields - ( london ? 1 : 0 );
+    sealFields = r[0].itemCount() - BlockHeader::BasicFields;
     sealRLP.clear();
-    const unsigned sealEnd = r[0].itemCount() - ( london ? 1 : 0 );
-    for ( unsigned i = BlockHeader::BasicFields; i < sealEnd; ++i )
+    for ( unsigned i = BlockHeader::BasicFields; i < r[0].itemCount(); ++i )
         sealRLP += r[0][i].data();
 
     this->stateRoot = bi.stateRoot();
@@ -671,8 +670,7 @@ void ChainParams::populateFromGenesis( bytes const& _genesisRLP, AccountMap cons
 bytes ChainParams::genesisBlock() const {
     RLPStream block( 3 );
 
-    const bool london = LondonForkPatch::isEnabledWhen( static_cast< time_t >( timestamp ) );
-    block.appendList( BlockHeader::BasicFields + sealFields + ( london ? 1 : 0 ) )
+    block.appendList( BlockHeader::BasicFields + sealFields )
         << parentHash << EmptyListSHA3       // sha3(uncles)
         << author << stateRoot << EmptyTrie  // transactions
         << EmptyTrie                         // receipts
@@ -680,8 +678,6 @@ bytes ChainParams::genesisBlock() const {
         << gasLimit << gasUsed               // gasUsed
         << timestamp << extraData;
     block.appendRaw( sealRLP, sealFields );
-    if ( london )
-        block << u256( 1 );  // default baseFeePerGas for genesis
     block.appendRaw( RLPEmptyList );
     block.appendRaw( RLPEmptyList );
     return block.out();
