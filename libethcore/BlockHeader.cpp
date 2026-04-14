@@ -197,12 +197,14 @@ void BlockHeader::populate( RLP const& _header ) {
         m_seal.clear();
         m_baseFeePerGas = 0;
         const bool london = LondonForkPatch::isEnabledWhen( static_cast< time_t >( m_timestamp ) );
-        // Seal fields start at index 13; baseFeePerGas (if London) is the last field.
+        // Genesis (block 0) never carries baseFeePerGas in its RLP regardless of London status.
+        // All subsequent London blocks written by streamRLP() always include it as the last field.
+        const bool hasBaseFee = london && m_number > 0;
         const unsigned totalItems = _header.itemCount();
-        const unsigned sealEnd = london ? totalItems - 1 : totalItems;
+        const unsigned sealEnd = hasBaseFee ? totalItems - 1 : totalItems;
         for ( unsigned i = 13; i < sealEnd; ++i )
             m_seal.push_back( _header[i].data().toBytes() );
-        if ( london && totalItems > 13 ) {
+        if ( hasBaseFee && totalItems > 13 ) {
             m_baseFeePerGas = _header[field = sealEnd].toInt< u256 >();
         }
     } catch ( Exception const& _e ) {
