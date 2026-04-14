@@ -272,8 +272,8 @@ void TransactionBase::fillFromBytesType1( bytesConstRef _rlpData, CheckTransacti
         m_accessList = validateAccessListRLP( rlp[7] );
 
         bool const yParity = rlp[8].toInt< uint8_t >();
-        h256 const r = h256( rlp[9].toInt< u256 >() );
-        h256 const s = h256( rlp[10].toInt< u256 >() );
+        h256 const r = rlp[9].toInt< u256 >();
+        h256 const s = rlp[10].toInt< u256 >();
 
         m_vrs = SignatureStruct{ r, s, yParity };
 
@@ -348,8 +348,8 @@ void TransactionBase::fillFromBytesType2( bytesConstRef _rlpData, CheckTransacti
         m_accessList = validateAccessListRLP( rlp[8] );
 
         bool const yParity = rlp[9].toInt< uint8_t >();
-        h256 const r = h256( rlp[10].toInt< u256 >() );
-        h256 const s = h256( rlp[11].toInt< u256 >() );
+        h256 const r = rlp[10].toInt< u256 >();
+        h256 const s = rlp[11].toInt< u256 >();
 
         m_vrs = SignatureStruct{ r, s, yParity };
 
