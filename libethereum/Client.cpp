@@ -688,6 +688,18 @@ size_t Client::syncTransactions(
 #endif
         // assert(m_state.m_db_write_lock.has_value());
 
+        if ( LondonForkPatch::isEnabledWhen( static_cast< time_t >( _timestamp ) ) ) {
+            int64_t bn = m_working.info().number();
+            u256 baseFee = max( u256( 1 ),
+                ( bn > 0 ) ? gasBidPrice( static_cast< unsigned >( bn ) ) : u256( 1 ) );
+            m_working.setBaseFeePerGas( baseFee );
+            // Align the in-block tx validation floor with the header's baseFee so
+            // mining and post-commit admission (gasBidPrice(LatestBlock) returns
+            // PriceDB[bn] once block bn is committed) all agree with what
+            // eth_getBlockByNumber("latest") reports.
+            _gasPrice = baseFee;
+        }
+
         tie( newPendingReceipts, goodReceipts ) =
             m_working.syncEveryone( bc(), _transactions, _timestamp, _gasPrice );
         m_state = m_state.createStateCopyAndClearCaches();

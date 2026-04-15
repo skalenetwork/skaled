@@ -4522,6 +4522,21 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     BOOST_REQUIRE( receipt["type"] == "0x0" );
     BOOST_REQUIRE( receipt["effectiveGasPrice"] == "0x4a817c800" );
 
+    // Type 0 tx with a low gasPrice (legacy effectiveGasPrice == gasPrice, baseFee is not
+    // checked against gasPrice for type 0).
+    Json::Value txBaseFee;
+    txBaseFee["to"] = "0xc868AF52a6549c773082A334E5AE232e0Ea3B513";
+    txBaseFee["from"] = senderAddress;
+    txBaseFee["gas"] = "100000";
+    txBaseFee["gasPrice"] = "0x1";
+    txBaseFee["value"] = 0;
+    txHash = fixture.rpcClient->eth_sendTransaction( txBaseFee );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE( receipt["status"] == string( "0x1" ) );
+    BOOST_REQUIRE( receipt["type"] == "0x0" );
+    // For legacy txs, effectiveGasPrice == gasPrice regardless of baseFee.
+    BOOST_REQUIRE( receipt["effectiveGasPrice"] == "0x1" );
 
     // send 1 WEI from 0x5EdF1e852fdD1B0Bc47C0307EF755C76f4B9c251 to
     // 0x7D36aF85A184E220A656525fcBb9A63B9ab3C12b encoded type 2 txn
@@ -4560,8 +4575,8 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
 
     block = fixture.rpcClient->eth_getBlockByNumber( "4", true );
     BOOST_REQUIRE( !block["baseFeePerGas"].asString().empty() );
-    // On SKALE, baseFeePerGas is always 1 (no dynamic fee market)
-    BOOST_REQUIRE( block["baseFeePerGas"].asString() == "0x1" );
+    // Post-London baseFeePerGas is gasBidPrice(bn-1); ConsensusStub returns 1000.
+    BOOST_REQUIRE( block["baseFeePerGas"].asString() == toJS( u256( 1000 ) ) );
     BOOST_REQUIRE( block["transactions"].size() == 1 );
     BOOST_REQUIRE( block["transactions"][0]["hash"].asString() == txHash );
     BOOST_REQUIRE( block["transactions"][0]["type"] == "0x2" );
@@ -4579,8 +4594,8 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     BOOST_REQUIRE( receipt["status"] == string( "0x1" ) );
     BOOST_REQUIRE( receipt["type"] == "0x2" );
     // EIP-1559: effectiveGasPrice = min(maxFeePerGas, baseFeePerGas + maxPriorityFeePerGas)
-    // baseFee=1 on SKALE, maxFeePerGas=0x4a817c801, maxPriorityFeePerGas=0x4a817c800
-    // => min(0x4a817c801, 1 + 0x4a817c800) = 0x4a817c801
+    // baseFee=1000 (ConsensusStub), maxFeePerGas=0x4a817c801, maxPriorityFeePerGas=0x4a817c800
+    // => min(0x4a817c801, 1000 + 0x4a817c800) = 0x4a817c801
     BOOST_REQUIRE( receipt["effectiveGasPrice"] == "0x4a817c801" );
 
     result = fixture.rpcClient->eth_getTransactionByHash( txHash );
@@ -4749,18 +4764,21 @@ BOOST_AUTO_TEST_CASE( eip1559RpcMethods ) {
 
     for ( Json::Value::ArrayIndex i = 0; i < blockCnt; ++i ) {
         BOOST_REQUIRE( feeHistory["baseFeePerGas"][i].isString() );
-#ifdef FAIR
-        // In FAIR, EIP1559TransactionsPatch is always active via preEnabledForFAIR, so
-        // isEnabledWhen() always returns true regardless of block timestamp. eth_feeHistory
-        // reads baseFeePerGas from the block header (always 1 after London activation).
-        std::string estimatedBaseFeePerGas = toJS( u256( 1 ) );
-#else
-        std::string estimatedBaseFeePerGas =
-            EIP1559TransactionsPatch::isEnabledWhen(
-                fixture.client->blockInfo( bn - i - 1 ).timestamp() ) ?
-                toJS( fixture.client->gasBidPrice( bn - i - 1 ) ) :
-                toJS( u256( 1 ) );
-#endif
+        // Post-London the header carries gasBidPrice(bn-1) clamped to >= 1; pre-London it
+        // stays at the BlockHeader::clear() default of 1.
+        int64_t queriedBlock = static_cast< int64_t >( bn ) - static_cast< int64_t >( i ) - 1;
+        std::string estimatedBaseFeePerGas;
+        if ( queriedBlock > 0 &&
+             LondonForkPatch::isEnabledWhen(
+                 fixture.client->blockInfo( queriedBlock ).timestamp() ) ) {
+            u256 bf = fixture.client->gasBidPrice(
+                static_cast< unsigned >( queriedBlock - 1 ) );
+            if ( bf == 0 )
+                bf = 1;
+            estimatedBaseFeePerGas = toJS( bf );
+        } else {
+            estimatedBaseFeePerGas = toJS( u256( 1 ) );
+        }
         BOOST_REQUIRE( feeHistory["baseFeePerGas"][i].asString() == estimatedBaseFeePerGas );
         BOOST_REQUIRE_GT( feeHistory["gasUsedRatio"][i].asDouble(), 0 );
         BOOST_REQUIRE_GT( 1, feeHistory["gasUsedRatio"][i].asDouble() );

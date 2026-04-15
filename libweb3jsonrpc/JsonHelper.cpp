@@ -142,7 +142,7 @@ Json::Value toJson( dev::eth::BlockHeader const& _bi, BlockDetails const& _bd,
         res["totalDifficulty"] = toJS( _bd.totalDifficulty );
         res["size"] = toJS( _bd.blockSizeBytes );
         res["uncles"] = Json::Value( Json::arrayValue );
-        if ( _gasPrice > 0 ||
+        if ( _bi.number() == 0 || _gasPrice > 0 ||
              LondonForkPatch::isEnabledWhen( static_cast< time_t >( _bi.timestamp() ) ) )
             res["baseFeePerGas"] = toJS( _gasPrice );
         for ( h256 h : _us )
@@ -162,7 +162,7 @@ Json::Value toJson( dev::eth::BlockHeader const& _bi, BlockDetails const& _bd,
         res["totalDifficulty"] = toJS( _bd.totalDifficulty );
         res["size"] = toJS( _bd.blockSizeBytes );
         res["uncles"] = Json::Value( Json::arrayValue );
-        if ( _gasPrice > 0 ||
+        if ( _bi.number() == 0 || _gasPrice > 0 ||
              LondonForkPatch::isEnabledWhen( static_cast< time_t >( _bi.timestamp() ) ) )
             res["baseFeePerGas"] = toJS( _gasPrice );
         for ( h256 h : _us )

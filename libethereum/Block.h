@@ -320,6 +320,8 @@ public:
     BlockHeader const& info() const { return m_currentBlock; }
     BlockHeader const& previousInfo() const { return m_previousBlock; }
 
+    void setBaseFeePerGas( u256 const& _v ) { m_currentBlock.setBaseFeePerGas( _v ); }
+
     void startReadState();
 
 #ifdef BITE
