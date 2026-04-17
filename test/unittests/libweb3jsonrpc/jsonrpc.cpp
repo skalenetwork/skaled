@@ -3491,6 +3491,7 @@ BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
         "0xc67cd8840000000000000000000000000000000000000000000000000000000000000001";
     txPushValueAndCall["from"] = toJS( senderAddress );
     txPushValueAndCall["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txPushValueAndCall["gas"] = "200000";
     txHash = fixture.rpcClient->eth_sendTransaction( txPushValueAndCall );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 #ifndef FAIR
@@ -3505,6 +3506,7 @@ BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
         "0x6057361d0000000000000000000000000000000000000000000000000000000000000002";
     txPushValue["from"] = toJS( senderAddress );
     txPushValue["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txPushValue["gas"] = "200000";
     txHash = fixture.rpcClient->eth_sendTransaction( txPushValue );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 #ifndef FAIR
@@ -3518,6 +3520,7 @@ BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
     txThrow["data"] = "0x6057361d0000000000000000000000000000000000000000000000000000000000000003";
     txThrow["from"] = toJS( senderAddress );
     txThrow["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txThrow["gas"] = "200000";
     txHash = fixture.rpcClient->eth_sendTransaction( txThrow );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 #ifndef FAIR
@@ -3534,6 +3537,7 @@ BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
         "0x1007f7530000000000000000000000000000000000000000000000000000000000000002";
     txEraseValue["from"] = toJS( senderAddress );
     txEraseValue["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txEraseValue["gas"] = "200000";
     txHash = fixture.rpcClient->eth_sendTransaction( txEraseValue );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 #ifndef FAIR
@@ -3549,6 +3553,7 @@ BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
         "0xe0353e590000000000000000000000000000000000000000000000000000000000000001";
     txZeroValue["from"] = toJS( senderAddress );
     txZeroValue["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txZeroValue["gas"] = "200000";
     txHash = fixture.rpcClient->eth_sendTransaction( txZeroValue );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 #ifndef FAIR
@@ -3563,6 +3568,7 @@ BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
         "0xe0353e590000000000000000000000000000000000000000000000000000000000000001";
     txZeroValue1["from"] = toJS( senderAddress );
     txZeroValue1["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txZeroValue1["gas"] = "200000";
     txHash = fixture.rpcClient->eth_sendTransaction( txZeroValue1 );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 #ifndef FAIR
@@ -3577,6 +3583,7 @@ BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
         "0xd269ad4e0000000000000000000000000000000000000000000000000000000000000001";
     txValueChanged["from"] = toJS( senderAddress );
     txValueChanged["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txValueChanged["gas"] = "200000";
     txHash = fixture.rpcClient->eth_sendTransaction( txValueChanged );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 #ifndef FAIR
@@ -3591,6 +3598,7 @@ BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
         "0xd269ad4e0000000000000000000000000000000000000000000000000000000000000000";
     txValueChanged1["from"] = toJS( senderAddress );
     txValueChanged1["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txValueChanged1["gas"] = "200000";
     txHash = fixture.rpcClient->eth_sendTransaction( txValueChanged1 );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 #ifndef FAIR
@@ -3605,6 +3613,7 @@ BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
         "0xd269ad4e0000000000000000000000000000000000000000000000000000000000000002";
     txValueChanged2["from"] = toJS( senderAddress );
     txValueChanged2["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txValueChanged2["gas"] = "200000";
     txHash = fixture.rpcClient->eth_sendTransaction( txValueChanged2 );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 #ifndef FAIR
@@ -3619,6 +3628,7 @@ BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
         "0xd269ad4e0000000000000000000000000000000000000000000000000000000000000003";
     txValueChanged3["from"] = toJS( senderAddress );
     txValueChanged3["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txValueChanged3["gas"] = "200000";
     txHash = fixture.rpcClient->eth_sendTransaction( txValueChanged3 );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 #ifndef FAIR
@@ -5007,10 +5017,10 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
     PrecompiledExecutor blockRandomExecutor = PrecompiledRegistrar::executor( "getBlockRandom" );
     auto blockNumberEarly = fixture.client->number();
     dev::eth::PrecompiledCallContext ctx( blockNumberEarly,
+                                          0,
 #ifdef BITE
                                           0,
                                           dev::h256::random(),
-                                          1,
                                           dev::ZeroAddress,
 #endif
                                           true );
@@ -5068,10 +5078,10 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
     dev::bytes blockRandomFromContract = dev::fromHex( fixture.rpcClient->eth_call( callGetLast, "latest" ) );
 
     ctx = PrecompiledCallContext( fixture.client->number(),
+                                0,
 #ifdef BITE
                                 0,
                                 dev::h256::random(),
-                                1,
                                 dev::ZeroAddress,
 #endif
                                 true );
@@ -5090,10 +5100,10 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
 
     // ask for blockRandom for early block
     ctx = PrecompiledCallContext( blockNumberEarly,
+                                0,
 #ifdef BITE
                                 0,
                                 dev::h256::random(),
-                                1,
                                 dev::ZeroAddress,
 #endif
                                 true );
@@ -6004,7 +6014,7 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
     PrecompiledExecutor submitCTXExecutor = PrecompiledRegistrar::executor( "submitCTX" );
-    dev::eth::PrecompiledCallContext ctx( fixture.client->number(), 1, dev::h256::random(), 1,
+    dev::eth::PrecompiledCallContext ctx( fixture.client->number(), 1, 1, dev::h256::random(),
                                           dev::Address( contractAddress ), true );
 
     dev::bytesConstRef input( resultData.data(), resultData.size() );
@@ -7176,7 +7186,11 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     store1["data"] = dev::toHexPrefixed( formEncryptedMessageMockup( dev::fromHex( dataStore1 ), dev::Address( contractAddressWithout0x ) ) );
     store1["from"] = toJS( senderAddress );
     store1["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+#ifdef FAIR
+    store1["gas"] = "200000";  // EIP-2929: need more gas for cold access costs
+#else
     store1["gas"] = "111000";
+#endif
     txHash = fixture.rpcClient->eth_sendTransaction( store1 );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
@@ -8749,4 +8763,3 @@ BOOST_AUTO_TEST_CASE( test_exceptions ) {
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE_END()
-

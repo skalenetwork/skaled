@@ -1,7 +1,7 @@
 [project]
 name = "skaled-api-tests"
 version = "0.1.0"
-description = "API test framework for skaled"
+description = "API and functional test framework for skaled"
 requires-python = ">=3.11"
 license = "AGPL-3.0"
 

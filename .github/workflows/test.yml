@@ -9,7 +9,7 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-  
+
 defaults:
   run:
     shell: bash
@@ -58,7 +58,6 @@ jobs:
             build_dir: build
             cmake_args: "-DBITE=1 -DHISTORIC_STATE=1"
             mode: historic
-            
     steps:
       - uses: actions/checkout@v6
         with:
@@ -69,7 +68,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libunwind-dev autoconf build-essential cmake libprocps-dev libtool texinfo wget yasm flex bison btrfs-progs python3 python3-pip gawk git vim doxygen
           sudo apt-get install -y make pkg-config libgnutls28-dev libssl-dev unzip zlib1g-dev libgcrypt20-dev gcc-11 g++-11 gperf clang-format-11 gnutls-dev
-          sudo apt-get install -y nettle-dev libhiredis-dev redis-server google-perftools libgoogle-perftools-dev lcov libv8-dev 
+          sudo apt-get install -y nettle-dev libhiredis-dev redis-server google-perftools libgoogle-perftools-dev lcov libv8-dev
           sudo apt-get install -y gettext
 
           # Remove deps installed in the next steps

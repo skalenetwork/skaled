@@ -177,26 +177,34 @@ bigint expLengthAdjust( bigint const& _expOffset, bigint const& _expLength, byte
     }
 }
 
-bigint multComplexity( bigint const& _x ) {
-    if ( _x <= 64 )
-        return _x * _x;
-    if ( _x <= 1024 )
-        return ( _x * _x ) / 4 + 96 * _x - 3072;
+bigint modexpGasLegacy( bigint const& _maxLength, bigint const& _iterationCount ) {
+    bigint complexity;
+    if ( _maxLength <= 64 )
+        complexity = _maxLength * _maxLength;
+    else if ( _maxLength <= 1024 )
+        complexity = ( _maxLength * _maxLength ) / 4 + 96 * _maxLength - 3072;
     else
-        return ( _x * _x ) / 16 + 480 * _x - 199680;
+        complexity = ( _maxLength * _maxLength ) / 16 + 480 * _maxLength - 199680;
+    return complexity * _iterationCount / 20;
+}
+
+bigint modexpGasBerlin( bigint const& _maxLength, bigint const& _iterationCount ) {
+    bigint const words = ( _maxLength + 7 ) / 8;
+    return max< bigint >( words * words * _iterationCount / 3, 200 );
 }
 }  // namespace
 
 ETH_REGISTER_PRECOMPILED_PRICER( modexp )
-( bytesConstRef _in, ChainOperationParams const&, u256 const& ) {
+( bytesConstRef _in, ChainOperationParams const&, PrecompiledCallContext const& _ctx ) {
     bigint const baseLength( parseBigEndianRightPadded( _in, 0, 32 ) );
     bigint const expLength( parseBigEndianRightPadded( _in, 32, 32 ) );
     bigint const modLength( parseBigEndianRightPadded( _in, 64, 32 ) );
-
     bigint const maxLength( max( modLength, baseLength ) );
     bigint const adjustedExpLength( expLengthAdjust( baseLength + 96, expLength, _in ) );
-
-    return multComplexity( maxLength ) * max< bigint >( adjustedExpLength, 1 ) / 20;
+    bigint const iterationCount = max< bigint >( adjustedExpLength, 1 );
+    if ( BerlinForkPatch::isEnabledWhen( _ctx.latestBlockTimestamp ) )
+        return modexpGasBerlin( maxLength, iterationCount );
+    return modexpGasLegacy( maxLength, iterationCount );
 }
 
 ETH_REGISTER_PRECOMPILED( alt_bn128_G1_add )( bytesConstRef _in, const PrecompiledCallContext& ) {
@@ -204,8 +212,9 @@ ETH_REGISTER_PRECOMPILED( alt_bn128_G1_add )( bytesConstRef _in, const Precompil
 }
 
 ETH_REGISTER_PRECOMPILED_PRICER( alt_bn128_G1_add )
-( bytesConstRef /*_in*/, ChainOperationParams const& _chainParams, u256 const& _blockNumber ) {
-    return _blockNumber < _chainParams.getIstanbulForkBlock() ? 500 : 150;
+( bytesConstRef /*_in*/, ChainOperationParams const& _chainParams,
+    PrecompiledCallContext const& _ctx ) {
+    return _ctx.blockNumber < _chainParams.getIstanbulForkBlock() ? 500 : 150;
 }
 
 ETH_REGISTER_PRECOMPILED( alt_bn128_G1_mul )( bytesConstRef _in, const PrecompiledCallContext& ) {
@@ -213,8 +222,9 @@ ETH_REGISTER_PRECOMPILED( alt_bn128_G1_mul )( bytesConstRef _in, const Precompil
 }
 
 ETH_REGISTER_PRECOMPILED_PRICER( alt_bn128_G1_mul )
-( bytesConstRef /*_in*/, ChainOperationParams const& _chainParams, u256 const& _blockNumber ) {
-    return _blockNumber < _chainParams.getIstanbulForkBlock() ? 40000 : 6000;
+( bytesConstRef /*_in*/, ChainOperationParams const& _chainParams,
+    PrecompiledCallContext const& _ctx ) {
+    return _ctx.blockNumber < _chainParams.getIstanbulForkBlock() ? 40000 : 6000;
 }
 
 ETH_REGISTER_PRECOMPILED( alt_bn128_pairing_product )
@@ -223,10 +233,11 @@ ETH_REGISTER_PRECOMPILED( alt_bn128_pairing_product )
 }
 
 ETH_REGISTER_PRECOMPILED_PRICER( alt_bn128_pairing_product )
-( bytesConstRef _in, ChainOperationParams const& _chainParams, u256 const& _blockNumber ) {
+( bytesConstRef _in, ChainOperationParams const& _chainParams,
+    PrecompiledCallContext const& _ctx ) {
     auto const k = _in.size() / 192;
-    return _blockNumber < _chainParams.getIstanbulForkBlock() ? 100000 + k * 80000 :
-                                                                45000 + k * 34000;
+    return _ctx.blockNumber < _chainParams.getIstanbulForkBlock() ? 100000 + k * 80000 :
+                                                                    45000 + k * 34000;
 }
 
 #ifndef FAIR

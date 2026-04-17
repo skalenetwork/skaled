@@ -53,7 +53,7 @@ class Create2TestFixture : public TestOutputHelperFixture {
 public:
     explicit Create2TestFixture( VMFace* _vm ) : vm{_vm} { state.addBalance( address, 1 * ether ); }
 
-    virtual ~Create2TestFixture() {  }
+    virtual ~Create2TestFixture() { resetSchainPatchToDefault(); }
 
     void testCreate2worksInConstantinople() {
         ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice,
@@ -167,6 +167,102 @@ public:
         BOOST_REQUIRE_EQUAL( gasAfter, expectedGasAfter );
     }
 
+    void testFailedCreate2LeavesAddressWarmInBerlin() {
+        enableBerlinForkPatch();
+        state.setCode( expectedAddress, bytes{ 0x00 }, 0 );
+        BlockHeader berlinHeader = blockHeader;
+        berlinHeader.setTimestamp( 1 );
+        EnvInfo berlinEnvInfo{
+            berlinHeader, lastBlockHashes, 1, 0, se->chainParams().getChainId() };
+
+        bytes create2ThenBalance = fromHex( "368060006000376101238160006000f55050" );
+        create2ThenBalance.push_back( 0x73 );  // PUSH20
+        bytes expectedAddressBytes = expectedAddress.asBytes();
+        create2ThenBalance.insert(
+            create2ThenBalance.end(), expectedAddressBytes.begin(), expectedAddressBytes.end() );
+        create2ThenBalance.push_back( 0x31 );  // BALANCE
+        create2ThenBalance.push_back( 0x50 );  // POP
+        create2ThenBalance.push_back( 0x00 );  // STOP
+
+        ExtVM extVm( state, berlinEnvInfo, se->chainParams(), address, address, address, value,
+            gasPrice, ref( inputData ), ref( create2ThenBalance ), sha3( create2ThenBalance ),
+            version, depth, isCreate, staticCall );
+
+        bigint gasBeforeBalance = 0;
+        bigint gasAfterBalance = 0;
+        auto onOp = [&gasBeforeBalance, &gasAfterBalance]( uint64_t /*steps*/, uint64_t /* PC */,
+                        Instruction _instr, bigint /*newMemSize*/, bigint /*gasCost*/, bigint _gas,
+                        VMFace const*, ExtVMFace const* ) {
+            if ( _instr == Instruction::BALANCE )
+                gasBeforeBalance = _gas;
+            else if ( gasBeforeBalance != 0 && gasAfterBalance == 0 )
+                gasAfterBalance = _gas;
+        };
+
+        vm->exec( gas, extVm, onOp );
+        BOOST_REQUIRE_EQUAL( gasBeforeBalance - gasAfterBalance, 100 );
+    }
+
+    void testFailedCreateLeavesAddressWarmInBerlin() {
+        enableBerlinForkPatch();
+        BlockHeader berlinHeader = blockHeader;
+        berlinHeader.setTimestamp( 1 );
+        EnvInfo berlinEnvInfo{
+            berlinHeader, lastBlockHashes, 1, 0, se->chainParams().getChainId() };
+
+        u256 senderNonce = state.getNonce( address );
+        Address expectedCreateAddress = right160( sha3( rlpList( address, senderNonce ) ) );
+        state.setCode( expectedCreateAddress, bytes{ 0x00 }, 0 );
+
+        bytes createThenBalance = fromHex( "368060006000378060006000f05050" );
+        createThenBalance.push_back( 0x73 );  // PUSH20
+        bytes expectedAddressBytes = expectedCreateAddress.asBytes();
+        createThenBalance.insert(
+            createThenBalance.end(), expectedAddressBytes.begin(), expectedAddressBytes.end() );
+        createThenBalance.push_back( 0x31 );  // BALANCE
+        createThenBalance.push_back( 0x50 );  // POP
+        createThenBalance.push_back( 0x00 );  // STOP
+
+        ExtVM extVm( state, berlinEnvInfo, se->chainParams(), address, address, address, value,
+            gasPrice, ref( inputData ), ref( createThenBalance ), sha3( createThenBalance ),
+            version, depth, isCreate, staticCall );
+
+        bigint gasBeforeBalance = 0;
+        bigint gasAfterBalance = 0;
+        auto onOp = [&gasBeforeBalance, &gasAfterBalance]( uint64_t /*steps*/, uint64_t /* PC */,
+                        Instruction _instr, bigint /*newMemSize*/, bigint /*gasCost*/, bigint _gas,
+                        VMFace const*, ExtVMFace const* ) {
+            if ( _instr == Instruction::BALANCE )
+                gasBeforeBalance = _gas;
+            else if ( gasBeforeBalance != 0 && gasAfterBalance == 0 )
+                gasAfterBalance = _gas;
+        };
+
+        vm->exec( gas, extVm, onOp );
+        BOOST_REQUIRE_EQUAL( gasBeforeBalance - gasAfterBalance, 100 );
+    }
+
+    void enableBerlinForkPatch() {
+        struct PatchableChainParams : public ChainParams {
+            using ChainParams::ChainParams;
+            void setPatchTimestamp( SchainPatchEnum _patch, time_t _timestamp ) {
+                sChain._patchTimestamps[static_cast< size_t >( _patch )] = _timestamp;
+            }
+        };
+
+        PatchableChainParams cp( genesisInfo( Network::ConstantinopleTest ) );
+#ifndef FAIR
+        cp.setPatchTimestamp( SchainPatchEnum::BerlinForkPatch, 1 );
+#endif
+        SchainPatch::init( cp );
+        se.reset( cp.createSealEngine() );
+    }
+
+    void resetSchainPatchToDefault() {
+        ChainParams cp( genesisInfo( Network::ConstantinopleTest ) );
+        SchainPatch::init( cp );
+    }
+
 
     BlockHeader blockHeader{initBlockHeader()};
     LastBlockHashes lastBlockHashes;
@@ -245,7 +341,13 @@ public:
 
         vm->exec( gas, extVm, onOp );
 
-        BOOST_REQUIRE_EQUAL( gasBefore - gasAfter, 400 );
+        BOOST_REQUIRE_EQUAL( gasBefore - gasAfter, 
+#ifdef FAIR
+        2600  // EIP-2929: cold account access cost
+#else
+        400
+#endif
+         );
     }
 
     void testExtCodeHashisInvalidBeforeConstantinople() {
@@ -381,42 +483,140 @@ public:
 
     virtual ~SstoreTestFixture() {  }
 
-    void testEip1283Case1() { testGasConsumed( "0x60006000556000600055", 0, 412, 0 ); }
+    void testEip1283Case1() {
+#ifdef FAIR
+        testGasConsumed( "0x60006000556000600055", 0, 2312, 0 );
+#else
+        testGasConsumed( "0x60006000556000600055", 0, 412, 0 );
+#endif
+    }
 
-    void testEip1283Case2() { testGasConsumed( "0x60006000556001600055", 0, 20212, 0 ); }
+    void testEip1283Case2() {
+#ifdef FAIR
+        testGasConsumed( "0x60006000556001600055", 0, 22212, 0 );
+#else
+        testGasConsumed( "0x60006000556001600055", 0, 20212, 0 );
+#endif
+    }
 
-    void testEip1283Case3() { testGasConsumed( "0x60016000556000600055", 0, 20212, 19800 ); }
+    void testEip1283Case3() {
+#ifdef FAIR
+        testGasConsumed( "0x60016000556000600055", 0, 22212, 19800 );
+#else
+        testGasConsumed( "0x60016000556000600055", 0, 20212, 19800 );
+#endif
+    }
 
-    void testEip1283Case4() { testGasConsumed( "0x60016000556002600055", 0, 20212, 0 ); }
+    void testEip1283Case4() {
+#ifdef FAIR
+        testGasConsumed( "0x60016000556002600055", 0, 22212, 0 );
+#else
+        testGasConsumed( "0x60016000556002600055", 0, 20212, 0 );
+#endif
+    }
 
-    void testEip1283Case5() { testGasConsumed( "0x60016000556001600055", 0, 20212, 0 ); }
+    void testEip1283Case5() {
+#ifdef FAIR
+        testGasConsumed( "0x60016000556001600055", 0, 22212, 0 );
+#else
+        testGasConsumed( "0x60016000556001600055", 0, 20212, 0 );
+#endif
+    }
 
-    void testEip1283Case6() { testGasConsumed( "0x60006000556000600055", 1, 5212, 15000 ); }
+    void testEip1283Case6() {
+#ifdef FAIR
+        testGasConsumed( "0x60006000556000600055", 1, 5112, 15000 );
+#else
+        testGasConsumed( "0x60006000556000600055", 1, 5212, 15000 );
+#endif
+    }
 
-    void testEip1283Case7() { testGasConsumed( "0x60006000556001600055", 1, 5212, 4800 ); }
+    void testEip1283Case7() {
+#ifdef FAIR
+        testGasConsumed( "0x60006000556001600055", 1, 5112, 4800 );
+#else
+        testGasConsumed( "0x60006000556001600055", 1, 5212, 4800 );
+#endif
+    }
 
-    void testEip1283Case8() { testGasConsumed( "0x60006000556002600055", 1, 5212, 0 ); }
+    void testEip1283Case8() {
+#ifdef FAIR
+        testGasConsumed( "0x60006000556002600055", 1, 5112, 0 );
+#else
+        testGasConsumed( "0x60006000556002600055", 1, 5212, 0 );
+#endif
+    }
 
-    void testEip1283Case9() { testGasConsumed( "0x60026000556000600055", 1, 5212, 15000 ); }
+    void testEip1283Case9() {
+#ifdef FAIR
+        testGasConsumed( "0x60026000556000600055", 1, 5112, 15000 );
+#else
+        testGasConsumed( "0x60026000556000600055", 1, 5212, 15000 );
+#endif
+    }
 
-    void testEip1283Case10() { testGasConsumed( "0x60026000556003600055", 1, 5212, 0 ); }
+    void testEip1283Case10() {
+#ifdef FAIR
+        testGasConsumed( "0x60026000556003600055", 1, 5112, 0 );
+#else
+        testGasConsumed( "0x60026000556003600055", 1, 5212, 0 );
+#endif
+    }
 
-    void testEip1283Case11() { testGasConsumed( "0x60026000556001600055", 1, 5212, 4800 ); }
+    void testEip1283Case11() {
+#ifdef FAIR
+        testGasConsumed( "0x60026000556001600055", 1, 5112, 4800 );
+#else
+        testGasConsumed( "0x60026000556001600055", 1, 5212, 4800 );
+#endif
+    }
 
-    void testEip1283Case12() { testGasConsumed( "0x60026000556002600055", 1, 5212, 0 ); }
+    void testEip1283Case12() {
+#ifdef FAIR
+        testGasConsumed( "0x60026000556002600055", 1, 5112, 0 );
+#else
+        testGasConsumed( "0x60026000556002600055", 1, 5212, 0 );
+#endif
+    }
 
-    void testEip1283Case13() { testGasConsumed( "0x60016000556000600055", 1, 5212, 15000 ); }
+    void testEip1283Case13() {
+#ifdef FAIR
+        testGasConsumed( "0x60016000556000600055", 1, 5112, 15000 );
+#else
+        testGasConsumed( "0x60016000556000600055", 1, 5212, 15000 );
+#endif
+    }
 
-    void testEip1283Case14() { testGasConsumed( "0x60016000556002600055", 1, 5212, 0 ); }
+    void testEip1283Case14() {
+#ifdef FAIR
+        testGasConsumed( "0x60016000556002600055", 1, 5112, 0 );
+#else
+        testGasConsumed( "0x60016000556002600055", 1, 5212, 0 );
+#endif
+    }
 
-    void testEip1283Case15() { testGasConsumed( "0x60016000556001600055", 1, 412, 0 ); }
+    void testEip1283Case15() {
+#ifdef FAIR
+        testGasConsumed( "0x60016000556001600055", 1, 2312, 0 );
+#else
+        testGasConsumed( "0x60016000556001600055", 1, 412, 0 );
+#endif
+    }
 
     void testEip1283Case16() {
+#ifdef FAIR
+        testGasConsumed( "0x600160005560006000556001600055", 0, 42218, 19800 );
+#else
         testGasConsumed( "0x600160005560006000556001600055", 0, 40218, 19800 );
+#endif
     }
 
     void testEip1283Case17() {
+#ifdef FAIR
+        testGasConsumed( "0x600060005560016000556000600055", 1, 8018, 19800 );
+#else
         testGasConsumed( "0x600060005560016000556000600055", 1, 10218, 19800 );
+#endif
     }
 
     void testGasConsumed( std::string const& _codeStr, u256 const& _originalValue,
@@ -604,7 +804,13 @@ public:
 
         vm->exec( gas, extVm, onOp );
 
-        BOOST_REQUIRE_EQUAL( gasBefore - gasAfter, 700 );
+        BOOST_REQUIRE_EQUAL( gasBefore - gasAfter, 
+#ifdef FAIR
+        2600  // EIP-2929: cold account access cost
+#else
+        700
+#endif
+         );
     }
 
     void testSelfBalanceisInvalidBeforeIstanbul() {
@@ -745,6 +951,14 @@ BOOST_AUTO_TEST_CASE( LegacyVMCreate2collisionWithNonEmptyStorageEmptyInitCode )
 
 BOOST_AUTO_TEST_CASE( LegacyVMCreate2costIncludesInitCodeHashing ) {
     testCreate2costIncludesInitCodeHashing();
+}
+
+BOOST_AUTO_TEST_CASE( LegacyVMCreate2failedCreateLeavesAddressWarmInBerlin ) {
+    testFailedCreate2LeavesAddressWarmInBerlin();
+}
+
+BOOST_AUTO_TEST_CASE( LegacyVMCreatefailedCreateLeavesAddressWarmInBerlin ) {
+    testFailedCreateLeavesAddressWarmInBerlin();
 }
 
 BOOST_AUTO_TEST_SUITE_END()

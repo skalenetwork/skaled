@@ -19,6 +19,7 @@ docs-dictionary-*
 deps/*
 !deps/build.sh
 !deps/clean.sh
+build*
 
 # Compiled Object files
 *.slo

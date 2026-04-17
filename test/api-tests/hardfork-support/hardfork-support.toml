@@ -1,0 +1,81 @@
+# ==========================================================================
+# hardfork-support suite — configuration
+# ==========================================================================
+# Merged on top of run.toml at runtime by the test runner.
+# Infrastructure settings (binary, patches) live in run.toml.
+
+# --------------------------------------------------------------------------
+# Environment type override
+# --------------------------------------------------------------------------
+[type]
+# "anvil" runs skaled + anvil side-by-side with output comparison.
+# "single" runs only skaled. "two" runs two connected skaled nodes.
+env_type = "anvil"
+
+# Private key for deployer account (must have genesis balance).
+private_key = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+
+# --------------------------------------------------------------------------
+# SGX override
+# --------------------------------------------------------------------------
+[hardfork_support]
+use_sgx = false
+
+# --------------------------------------------------------------------------
+# skaled node configs (overrides run.toml defaults)
+# --------------------------------------------------------------------------
+[skaled.nodes.0]
+config_template = "test/api-tests/hardfork-support/configs/config-template.json.j2"
+config          = "test/api-tests/hardfork-support/configs/config-loop-0.generated.json"
+datadir         = "test/api-tests/hardfork-support/datadir-loop-0"
+http_port       = 2234
+
+[skaled.nodes.1]
+config_template = "test/api-tests/hardfork-support/configs/config-template.json.j2"
+config          = "test/api-tests/hardfork-support/configs/config-loop-1.generated.json"
+datadir         = "test/api-tests/hardfork-support/datadir-loop-1"
+http_port       = 3234
+
+# --------------------------------------------------------------------------
+# Patch timestamps
+# --------------------------------------------------------------------------
+[skaled.patches.timestamps]
+berlinForkPatchTimestamp                = 1
+pushZeroPatchTimestamp                  = 1
+EIP1559TransactionsPatchTimestamp       = 1
+singleStateCommitPerBlockPatchTimestamp = 1
+flexibleDeploymentPatchTimestamp        = 1
+
+# --------------------------------------------------------------------------
+# Anvil (used when env_type = "anvil")
+# --------------------------------------------------------------------------
+[anvil]
+image      = "ghcr.io/foundry-rs/foundry:rc-3"
+extra_args = []
+
+# --------------------------------------------------------------------------
+# Contract deployment (Step 2)
+# --------------------------------------------------------------------------
+[deploy]
+# Run from the suite's sol/ directory; ENDPOINT and PRIVATE_KEY are set automatically.
+command = "bun hardhat run scripts/deploy_eip_tests.ts --network custom"
+
+# --------------------------------------------------------------------------
+# EIP compliance tests (Step 3)
+# --------------------------------------------------------------------------
+[eip_tests]
+# Number of iterations (0 = infinite loop until Ctrl-C).
+iterations = 1
+
+# EIPs to test (empty = all: 2929, 2930, 2718, 2565).
+eips = []
+
+# Gas limit for deployment and test transactions.
+gas_limit = 3000000
+
+# --------------------------------------------------------------------------
+# Block-hash comparison (Step 4 — background, "two" mode only)
+# --------------------------------------------------------------------------
+[hash_check]
+interval_sec        = 30
+no_blocks_timeout_sec = 300
