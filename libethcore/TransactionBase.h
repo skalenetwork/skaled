@@ -255,6 +255,12 @@ public:
 
     void setDecryptedArgsCTX( const DecryptedCTXArgs& _decryptedCTXArgs );
 
+    void setBITE2EncryptedArgsSize( size_t _s ) { m_ctxEncryptedArgsSize = _s; }
+
+    void setCTXOrigin( const dev::h256& _txHash ) { m_ctxOrigin = _txHash; }
+
+    dev::h256 getCTXOrigin() const { return m_ctxOrigin; }
+
 #endif  // BITE
 
     /// @throws TransactionIsUnsigned if signature was not initialized
@@ -425,10 +431,6 @@ public:
     static int64_t accessListGasRequired(
         std::vector< bytes > const& _accessList, EVMSchedule const& _es );
 
-#ifdef BITE
-    void setBITE2EncryptedArgsSize( size_t _s ) { m_ctxEncryptedArgsSize = _s; }
-#endif
-
 protected:
     /// Type of transaction.
     enum Type {
@@ -481,9 +483,9 @@ protected:
     bool m_isBITETxn = false;  ///< Is this a BITE transaction
 
     static const Address BITE_ADDRESS;
-#endif
 
-#ifdef BITE
+    dev::h256 m_ctxOrigin = dev::h256( 0 );  ///< Txn that initiated submitCTX call
+
     std::optional< size_t > m_ctxEncryptedArgsSize = std::nullopt;
     bool m_isCTX = false;
 #endif

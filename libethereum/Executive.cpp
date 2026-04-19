@@ -335,7 +335,7 @@ bool Executive::execute() {
             m_newAddress =
                 right160( sha3( rlpList( m_t.sender(), m_s.getNonce( m_t.sender() ) ) ) );
         }
-        initAccessSets( schedule.eip2930Mode );
+        initAccessSets();
     }
 
     bool result;
@@ -349,7 +349,7 @@ bool Executive::execute() {
     return result;
 }
 
-void Executive::initAccessSets( bool _eip2930Mode ) {
+void Executive::initAccessSets() {
     m_accessSets->accessedAddresses.insert( m_t.sender() );
     if ( !m_t.isCreation() ) {
 #ifdef BITE
@@ -365,7 +365,7 @@ void Executive::initAccessSets( bool _eip2930Mode ) {
         m_accessSets->accessedAddresses.insert( addr );
     }
 
-    if ( _eip2930Mode && m_t.txType() != TransactionType::Legacy ) {
+    if ( m_t.txType() != TransactionType::Legacy ) {
         for ( auto const& entryRaw : m_t.accessList() ) {
             RLP const entry( entryRaw );
             if ( !entry.isList() || entry.itemCount() != 2 )
@@ -422,7 +422,7 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
         MICROPROFILE_SCOPEI( "Executive", "call-precompiled", MP_CYAN );
         PrecompiledCallContext ctx{ m_envInfo.number(), m_envInfo.committedBlockTimestamp(),
 #ifdef BITE
-            m_txnIndex, _p.senderAddress,
+            m_txnIndex, m_txnHash, _p.senderAddress,
 #endif
             m_readOnly };
         bigint g = m_chainParams.costOfPrecompiled( _p.codeAddress, _p.data, ctx );
@@ -445,6 +445,11 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
             m_gas = ( u256 )( _p.gas - g );
             bytes output;
             bool success;
+            PrecompiledCallContext ctx{ m_envInfo.number(), m_envInfo.committedBlockTimestamp(),
+#ifdef BITE
+                m_txnIndex, m_txnHash, _p.senderAddress,
+#endif
+                m_readOnly };
 #ifdef FAIR
             tie( success, output ) =
                 m_chainParams.executePrecompiled( _p.codeAddress, _p.data, ctx );
@@ -474,7 +479,7 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
                 version, m_depth, false, _p.staticCall, m_readOnly
 #ifdef BITE
                 ,
-                m_txnIndex
+                m_txnIndex, m_txnHash
 #endif
             );
             m_ext->accessSets = m_accessSets;
@@ -562,7 +567,7 @@ bool Executive::executeCreate( Address const& _sender, u256 const& _endowment,
             bytesConstRef(), _init, sha3( _init ), _version, m_depth, true, false
 #ifdef BITE
             ,
-            isReadOnly, m_txnIndex
+            isReadOnly, m_txnIndex, m_txnHash
 #endif
         );
         m_ext->accessSets = m_accessSets;

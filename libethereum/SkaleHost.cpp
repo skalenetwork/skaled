@@ -417,6 +417,10 @@ void SkaleHost::clearTempBITE2Transactions() {
 std::shared_ptr< std::deque< Transaction > > SkaleHost::pendingBITE2Transactions() const {
     return m_tq.pendingBITE2Transactions();
 }
+
+void SkaleHost::setBITE2QueueOnInit( std::deque< dev::eth::Transaction >&& _ctxs ) {
+    return m_tq.setBITE2QueueOnInit( std::move( _ctxs ) );
+}
 #endif
 
 h256 SkaleHost::receiveTransaction( const std::string& _rlp ) {
@@ -502,13 +506,18 @@ ConsensusExtFace::Transactions SkaleHost::pendingTransactions( size_t _limit, u2
 
     int counter = 0;
     BlockHeader latestInfo = static_cast< const Interface& >( m_client ).blockInfo( LatestBlock );
+    u256 blockGasLimit = this->m_client.chainParams().getGasLimit();
 
 #ifdef BITE
     auto bite2Transactions = m_tq.pendingBITE2Transactions();
     u256 gasAccByCTXs = 0;
-    // CTXs are not the subject for block gas limit
+    // limit CTXs by block gas limit
     for ( const auto& ctx : *bite2Transactions ) {
         gasAccByCTXs += ctx.gas();
+        if ( gasAccByCTXs > blockGasLimit ) {
+            // we should skip regular txns until we process all CTXs in queue
+            break;
+        }
         out_vector.pushBackCTX( ctx.toBytes() );
         m_debugTracer.tracepoint( "sent_txn" );
         BOOST_LOG( m_loggerTrace ) << "Sent CTX";
@@ -545,7 +554,6 @@ ConsensusExtFace::Transactions SkaleHost::pendingTransactions( size_t _limit, u2
     std::lock_guard< std::recursive_mutex > lock( m_pending_createMutex, std::adopt_lock );
 
     // drop by block gas limit
-    u256 blockGasLimit = this->m_client.chainParams().getGasLimit();
     u256 gasAcc = 0;
 #ifdef BITE
     gasAcc = gasAccByCTXs;
@@ -1101,6 +1109,7 @@ std::vector< Transaction > SkaleHost::processCTXTransactions(
     const ConsensusExtFace::Transactions& _approvedTransactions,
     [[maybe_unused]] const dev::eth::BlockHeader& latestInfo,
     DecryptedTransactions _decryptedTransactions ) {
+    std::vector< dev::h256 > ctxOrigins = m_tq.getNCTXOrigins( _approvedTransactions.sizeCTX() );
     std::vector< Transaction > outTxns;
     auto ctxIterator = _decryptedTransactions.ctxTxsMap->begin();
     for ( size_t i = 0; i < _approvedTransactions.sizeCTX(); ++i ) {
@@ -1127,21 +1136,9 @@ std::vector< Transaction > SkaleHost::processCTXTransactions(
             ExitHandler::exitHandler( -1, ExitHandler::ec_state_root_mismatch );
         }
 
-#ifndef FAIR
-        t.checkOutExternalGas( m_client.chainParams(), latestInfo.timestamp(), m_client.number() );
+        // no POW for CTXs
 
-        if ( !ExternalGasPatch::isEnabledWhen( latestInfo.timestamp() ) ) {
-            auto hash = t.sha3();
-            if ( m_client.m_tq.isTransactionKnown( hash ) ) {
-                // if a transaction is in the pending queue
-                // do checkOutExternal gas twice to repeat incorrect behavior that
-                // existed before the patch
-                t.checkOutExternalGas(
-                    m_client.chainParams(), latestInfo.timestamp(), m_client.number() );
-            }
-        }
-#endif
-
+        t.setCTXOrigin( ctxOrigins[i] );
         outTxns.push_back( t );
         m_debugTracer.tracepoint( "drop_good" );
         m_tq.dropGood( t );

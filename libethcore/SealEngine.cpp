@@ -176,20 +176,12 @@ void SealEngineFace::verifyTransaction( ChainOperationParams const& _chainParams
                                    static_cast< bigint >( _t.baseGasRequired( schedule ) ),
                                    static_cast< bigint >( gas ) ) );
 
-        // Avoid transactions that would take us beyond the block gas limit.
-        // Skip this check for CTX - they are not a subject for block gas limit
-#ifdef BITE
-    if ( !_t.isCTX() ) {
-#endif
-        if ( _gasUsed + static_cast< bigint >( gas ) > _header.gasLimit() )
-            BOOST_THROW_EXCEPTION(
-                BlockGasLimitReached()
-                << RequirementErrorComment( static_cast< bigint >( _header.gasLimit() - _gasUsed ),
-                       static_cast< bigint >( gas ),
-                       string( "_gasUsed + (bigint)_t.gas() > _header.gasLimit()" ) ) );
-#ifdef BITE
-    }
-#endif
+    // Avoid transactions that would take us beyond the block gas limit.
+    if ( _gasUsed + static_cast< bigint >( gas ) > _header.gasLimit() )
+        BOOST_THROW_EXCEPTION( BlockGasLimitReached() << RequirementErrorComment(
+                                   static_cast< bigint >( _header.gasLimit() - _gasUsed ),
+                                   static_cast< bigint >( gas ),
+                                   string( "_gasUsed + (bigint)_t.gas() > _header.gasLimit()" ) ) );
 
     // maxPriorityFeePerGas <= maxFeePerGas is already enforced in TransactionBase parsing
     if ( _t.txType() == 2 && LondonForkPatch::isEnabledWhen( _committedBlockTimestamp ) ) {

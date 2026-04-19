@@ -1654,6 +1654,7 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
                                         1,
 #ifdef BITE
                                         { 0 },
+                                        dev::h256::random(),
                                         dev::ZeroAddress,
 #endif
                                         true } );
@@ -1672,6 +1673,7 @@ BOOST_AUTO_TEST_CASE( getCurrentBLSPublicKey ) {
                                         0,
 #ifdef BITE
                                         { -1 },
+                                        dev::h256::random(),
                                         dev::ZeroAddress,
 #endif
                                         true } );
@@ -1781,7 +1783,7 @@ BOOST_AUTO_TEST_CASE( encryptTE_success ) {
 
     // Call the precompiled contract
     auto res = exec( bytesConstRef( input.data(), input.size() ),
-        PrecompiledCallContext( 1, 0, 0, testScAddress, true ) );
+        PrecompiledCallContext( 1, 0, 0, dev::h256::random(), testScAddress, true ) );
 
     // Verify success
     BOOST_REQUIRE( res.first );
@@ -1861,9 +1863,9 @@ BOOST_AUTO_TEST_CASE( encryptTE_same_data ) {
     bool isReadOnly = true;
     // Call the precompiled contract twice - read only
     auto res1_ro = exec( bytesConstRef( input.data(), input.size() ),
-        PrecompiledCallContext( 1, 0, 0, dev::Address(), isReadOnly ) );
+        PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::Address(), isReadOnly ) );
     auto res2_ro = exec( bytesConstRef( input.data(), input.size() ),
-        PrecompiledCallContext( 1, 0, 0, dev::Address(), isReadOnly ) );
+        PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::Address(), isReadOnly ) );
 
     // Verify success
     BOOST_REQUIRE( res1_ro.first );
@@ -1878,9 +1880,9 @@ BOOST_AUTO_TEST_CASE( encryptTE_same_data ) {
     // simulate block commit -> resets counter before any tx in block is executed
     fixture.skaleHost->resetEncryptionStateForBlock( 1 );
     auto res1 = exec( bytesConstRef( input.data(), input.size() ),
-        PrecompiledCallContext( 1, 0, 0, dev::Address(), isReadOnly ) );
+        PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::Address(), isReadOnly ) );
     auto res2 = exec( bytesConstRef( input.data(), input.size() ),
-        PrecompiledCallContext( 1, 0, 0, dev::Address(), isReadOnly ) );
+        PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::Address(), isReadOnly ) );
 
     // Verify success
     BOOST_REQUIRE( res1.first );
@@ -1954,7 +1956,7 @@ BOOST_AUTO_TEST_CASE( encryptTE_rotation_soon ) {
 
     // Call the precompiled contract
     auto res = exec( bytesConstRef( input.data(), input.size() ),
-        PrecompiledCallContext( 1, 0, 0, dev::Address(), true ) );
+        PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::Address(), true ) );
 
     // Verify success
     BOOST_REQUIRE( res.first );
@@ -2028,7 +2030,7 @@ BOOST_AUTO_TEST_CASE( encryptTE_inputTooLarge ) {
     // Create input larger than 64KB
     bytes largeInput( 65 * 1024, 0x42 );  // 65KB of 'B's
     auto res = exec( bytesConstRef( largeInput.data(), largeInput.size() ),
-        PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+        PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::ZeroAddress, true ) );
 
     // Verify failure with error code 1 (input too large)
     BOOST_REQUIRE( !res.first );
@@ -2043,7 +2045,7 @@ BOOST_AUTO_TEST_CASE( encryptTE_inputTooSmall ) {
     // Call with input smaller than minimum (64 bytes for ABI format)
     bytes smallInput( 63, 0x42 );
     auto res = exec( bytesConstRef( smallInput.data(), smallInput.size() ),
-        PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+        PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::ZeroAddress, true ) );
 
     // Verify failure with error code 2 (input too small)
     BOOST_REQUIRE( !res.first );
@@ -2058,7 +2060,7 @@ BOOST_AUTO_TEST_CASE( encryptTE_inputNotAligned ) {
     // Build input that is not a multiple of 32 bytes (65 bytes)
     bytes input( 65, 0 );
 
-    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::ZeroAddress, true ) );
 
     // Verify failure with error code 3 (input not 32-byte aligned)
     BOOST_REQUIRE( !res.first );
@@ -2074,7 +2076,7 @@ BOOST_AUTO_TEST_CASE( encryptTE_invalidABIEncoding ) {
     bytes input( 64, 0 );
     input[31] = 64;  // Wrong data offset (should be 32)
 
-    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::ZeroAddress, true ) );
 
     // Verify failure with error code 5 (invalid data offset)
     BOOST_REQUIRE( !res.first );
@@ -2094,7 +2096,7 @@ BOOST_AUTO_TEST_CASE( encryptTE_dataLengthMismatch ) {
     input[63] = 100;
     // actual data (64-95): only 32 bytes of zeros
 
-    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::ZeroAddress, true ) );
 
     // Verify failure with error code 6 (data length mismatch)
     BOOST_REQUIRE( !res.first );
@@ -2117,7 +2119,7 @@ BOOST_AUTO_TEST_CASE( encryptTE_trailingPaddingNotZeros ) {
     // trailing padding (65-95): should be zeros but we set one to non-zero
     input[95] = 0xFF;
 
-    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::ZeroAddress, true ) );
 
     // Verify failure with error code 7 (trailing padding not zeros)
     BOOST_REQUIRE( !res.first );
@@ -2156,14 +2158,14 @@ BOOST_AUTO_TEST_CASE( encryptTE_counter_reset_on_new_block ) {
     // simulate block 1 has been comitted
     fixture.skaleHost->resetEncryptionStateForBlock( 1 );
     auto res1 = exec( bytesConstRef( input.data(), input.size() ),
-        PrecompiledCallContext( 1, 0, 0, dev::Address(), false ) );
+        PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::Address(), false ) );
 
     BOOST_REQUIRE( res1.first );
 
     // Call the precompiled contract in block 2 context (simulating transaction execution)
     fixture.skaleHost->resetEncryptionStateForBlock( 2 );
     auto res2 = exec( bytesConstRef( input.data(), input.size() ),
-        PrecompiledCallContext( 2, 0, 0, dev::Address(), false ) );
+        PrecompiledCallContext( 2, 0, 0, dev::h256::random(), dev::Address(), false ) );
 
     BOOST_REQUIRE( res2.first );
 
@@ -2232,7 +2234,7 @@ BOOST_AUTO_TEST_CASE( encryptECIES_success ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptECIES" );
 
     // Call the precompiled contract
-    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::ZeroAddress, true ) );
 
     // Verify success
     BOOST_REQUIRE( res.first );
@@ -2288,9 +2290,9 @@ BOOST_AUTO_TEST_CASE( encryptECIES_deterministic ) {
     // not read only -> will increase counter
     bool isReadOnly = false;
     auto res1 = exec( bytesConstRef( input.data(), input.size() ),
-        PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, isReadOnly ) );
+        PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::ZeroAddress, isReadOnly ) );
     auto res2 = exec( bytesConstRef( input.data(), input.size() ),
-        PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, isReadOnly ) );
+        PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::ZeroAddress, isReadOnly ) );
     BOOST_REQUIRE( res1.first );
     BOOST_REQUIRE( res2.first );
 
@@ -2327,7 +2329,7 @@ BOOST_AUTO_TEST_CASE( encryptECIES_inputTooLarge ) {
 
     // Input larger than 64KB
     bytes largeInput( 65 * 1024, 0x42 );
-    auto res = exec( bytesConstRef( largeInput.data(), largeInput.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+    auto res = exec( bytesConstRef( largeInput.data(), largeInput.size() ), PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::ZeroAddress, true ) );
 
     // Verify failure with error code 1 (input too large)
     BOOST_REQUIRE( !res.first );
@@ -2341,7 +2343,7 @@ BOOST_AUTO_TEST_CASE( encryptECIES_inputTooSmall ) {
 
     // Input smaller than 128 bytes
     bytes smallInput( 64, 0x42 );
-    auto res = exec( bytesConstRef( smallInput.data(), smallInput.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+    auto res = exec( bytesConstRef( smallInput.data(), smallInput.size() ), PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::ZeroAddress, true ) );
 
     // Verify failure with error code 2 (input too small)
     BOOST_REQUIRE( !res.first );
@@ -2356,7 +2358,7 @@ BOOST_AUTO_TEST_CASE( encryptECIES_inputNotAligned ) {
     // Build input that is not a multiple of 32 bytes (129 bytes)
     bytes input( 129, 0 );
 
-    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::ZeroAddress, true ) );
 
     // Verify failure with error code 3 (input not 32-byte aligned)
     BOOST_REQUIRE( !res.first );
@@ -2372,7 +2374,7 @@ BOOST_AUTO_TEST_CASE( encryptECIES_invalidABIOffset ) {
     bytes input( 128, 0 );
     input[31] = 64;  // Wrong offset (should be 96)
 
-    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::ZeroAddress, true ) );
 
     // Verify failure with error code 4 (invalid data offset)
     BOOST_REQUIRE( !res.first );
@@ -2389,7 +2391,7 @@ BOOST_AUTO_TEST_CASE( encryptECIES_dataLengthMismatch ) {
     input[31] = 96;   // Correct offset
     input[127] = 100; // Claim 100 bytes of data, but none actually present
 
-    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::ZeroAddress, true ) );
 
     // Verify failure with error code 5 (data length mismatch)
     BOOST_REQUIRE( !res.first );
@@ -2424,7 +2426,7 @@ BOOST_AUTO_TEST_CASE( encryptECIES_emptyData ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptECIES" );
 
     // Call the precompiled contract
-    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::ZeroAddress, true ) );
 
     // Verify success - empty data encryption should succeed
     BOOST_REQUIRE( res.first );
@@ -2453,7 +2455,7 @@ BOOST_AUTO_TEST_CASE( encryptECIES_trailingPaddingNotZeros ) {
     // trailing padding (129-191): should be zeros but we set one to non-zero
     input[150] = 0xFF;
 
-    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::ZeroAddress, true ) );
 
     // Verify failure with error code 6 (trailing padding not zeros)
     BOOST_REQUIRE( !res.first );
@@ -2485,7 +2487,7 @@ BOOST_AUTO_TEST_CASE( encryptECIES_invalidPublicKey ) {
     input.insert( input.end(), paddingNeeded, 0 );
 
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptECIES" );
-    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::ZeroAddress, true ) );
 
     // Verify failure with error code 7 (invalid public key)
     BOOST_REQUIRE( !res.first );

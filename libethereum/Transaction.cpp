@@ -233,6 +233,12 @@ Transaction::Transaction( const bytes& _rlp, CheckTransaction _checkSig, bool _a
 
 #ifndef FAIR
 bool Transaction::hasExternalGas() const {
+#ifdef BITE
+    // POW is disabled for CTXs
+    if ( isCTX() ) {
+        return false;
+    }
+#endif
     if ( !m_externalGasIsChecked ) {
         throw ExternalGasException();
     }
@@ -266,6 +272,12 @@ void Transaction::checkOutExternalGas(
     u256 const& difficulty = _cp.getExternalGasDifficulty();
     assert( difficulty > 0 );
     if ( !isInvalid() ) {
+#ifdef BITE
+        // POW is disabled for CTXs
+        if ( isCTX() ) {
+            return;
+        }
+#endif
         h256 hash;
         if ( !ExternalGasPatch::isEnabledWhen( _committedBlockTimestamp ) ) {
             hash = dev::sha3( sender().ref() ) ^ dev::sha3( nonce() ) ^ dev::sha3( gasPrice() );
