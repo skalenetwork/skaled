@@ -48,6 +48,8 @@ SchainPatchEnum getEnumForPatchName( const std::string& _patchName ) {
         return SchainPatchEnum::CurrentBlockRandomPatch;
     else if ( _patchName == "GroupIndexInitPatch" )
         return SchainPatchEnum::GroupIndexInitPatch;
+    else if ( _patchName == "ContractCreationReadOnlyPatch" )
+        return SchainPatchEnum::ContractCreationReadOnlyPatch;
 #ifdef FAIR
     else if ( _patchName == "DisableSelfDestructPatch" )
         return SchainPatchEnum::DisableSelfDestructPatch;
@@ -98,6 +100,8 @@ std::string getPatchNameForEnum( SchainPatchEnum _enumValue ) {
         return "CurrentBlockRandomPatch";
     case SchainPatchEnum::GroupIndexInitPatch:
         return "GroupIndexInitPatch";
+    case SchainPatchEnum::ContractCreationReadOnlyPatch:
+        return "ContractCreationReadOnlyPatch";
 #ifdef FAIR
     case SchainPatchEnum::DisableSelfDestructPatch:
         return "DisableSelfDestructPatch";

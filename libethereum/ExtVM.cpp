@@ -28,9 +28,7 @@
 #include <boost/thread.hpp>
 
 #include "LastBlockHashesFace.h"
-#ifdef FAIR
 #include "SchainPatch.h"
-#endif
 
 using namespace dev;
 using namespace dev::eth;
@@ -159,10 +157,14 @@ void ExtVM::setStore( u256 _n, u256 _v ) {
 
 CreateResult ExtVM::create( u256 _endowment, u256& io_gas, bytesConstRef _code, Instruction _op,
     u256 _salt, OnOpFunc const& _onOp ) {
-    Executive e{ m_s, envInfo(), m_chainParams, 0, depth + 1
+    bool isReadOnly =
+        ContractCreationReadOnlyPatch::isEnabledWhen( envInfo().committedBlockTimestamp() ) ?
+            m_readOnly :
+            true;
+    Executive e{ m_s, envInfo(), m_chainParams, 0, depth + 1, isReadOnly
 #ifdef BITE2
         ,
-        true, m_txnIndex
+        m_txnIndex
 #endif
     };
     bool result = false;
