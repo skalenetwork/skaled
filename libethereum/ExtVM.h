@@ -119,9 +119,6 @@ private:
         // Otherwise run with the latest schedule known to correspond to the _version.
         EVMSchedule currentBlockSchedule = m_chainParams.makeEvmSchedule(
             envInfo().committedBlockTimestamp(), envInfo().number() );
-        std::cout << "ACCOUNT VERSION: " << currentBlockSchedule.accountVersion
-                  << " : INCOMING VERSION: " << _version << '\n';
-        std::cout << "PUSH0 FROM BASE: " << currentBlockSchedule.havePush0 << '\n';
         if ( currentBlockSchedule.accountVersion == _version )
             return currentBlockSchedule;
         else
