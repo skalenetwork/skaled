@@ -84,15 +84,15 @@ public:
     };
 
 #ifdef HISTORIC_STATE
-        u256 historicStateBalanceAt(Address, BlockNumber) const override
+        u256 historicStateBalanceAt(Address const&, BlockNumber) const override
            {return 0;}
-        u256 historicStateCountAt(Address, BlockNumber) const override
+        u256 historicStateCountAt(Address const&, BlockNumber) const override
            {return 0;}
-        u256 historicStateAt(Address, u256, BlockNumber) const override
+        u256 historicStateAt(Address const&, u256 const&, BlockNumber) const override
             {return 0;}
-        h256 historicStateRootAt(Address, BlockNumber) const override
+        h256 historicStateRootAt(Address const&, BlockNumber) const override
             {return h256();}
-        bytes historicStateCodeAt(Address, BlockNumber) const override
+        bytes historicStateCodeAt(Address const&, BlockNumber) const override
             {return bytes();};
 #endif
 

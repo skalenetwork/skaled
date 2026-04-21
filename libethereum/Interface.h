@@ -138,7 +138,7 @@ public:
 #ifdef HISTORIC_STATE
     virtual u256 historicStateBalanceAt( const Address& _a, BlockNumber _block ) const = 0;
     virtual u256 historicStateCountAt( const Address& _a, BlockNumber _block ) const = 0;
-    virtual u256 historicStateAt( const Address& _a, u256 _l, BlockNumber _block ) const = 0;
+    virtual u256 historicStateAt( const Address& _a, u256 const& _l, BlockNumber _block ) const = 0;
     virtual h256 historicStateRootAt( const Address& _a, BlockNumber _block ) const = 0;
     virtual bytes historicStateCodeAt( const Address& _a, BlockNumber _block ) const = 0;
 #endif

@@ -1542,7 +1542,7 @@ const dev::h256 Client::empty_str_hash =
 
 
 #ifdef HISTORIC_STATE
-u256 Client::historicStateBalanceAt( Address _a, BlockNumber _block ) const {
+u256 Client::historicStateBalanceAt( Address const& _a, BlockNumber _block ) const {
     auto block = blockByNumber( _block );
 
     auto aState = block.mutableState().mutableHistoricState();
@@ -1550,19 +1550,19 @@ u256 Client::historicStateBalanceAt( Address _a, BlockNumber _block ) const {
     return aState.balance( _a );
 }
 
-u256 Client::historicStateCountAt( Address _a, BlockNumber _block ) const {
+u256 Client::historicStateCountAt( Address const& _a, BlockNumber _block ) const {
     return blockByNumber( _block ).mutableState().mutableHistoricState().getNonce( _a );
 }
 
-u256 Client::historicStateAt( Address _a, u256 _l, BlockNumber _block ) const {
+u256 Client::historicStateAt( Address const& _a, u256 const& _l, BlockNumber _block ) const {
     return blockByNumber( _block ).mutableState().mutableHistoricState().storage( _a, _l );
 }
 
-h256 Client::historicStateRootAt( Address _a, BlockNumber _block ) const {
+h256 Client::historicStateRootAt( Address const& _a, BlockNumber _block ) const {
     return blockByNumber( _block ).mutableState().mutableHistoricState().storageRoot( _a );
 }
 
-bytes Client::historicStateCodeAt( Address _a, BlockNumber _block ) const {
+bytes Client::historicStateCodeAt( Address const& _a, BlockNumber _block ) const {
     return blockByNumber( _block ).mutableState().mutableHistoricState().code( _a );
 }
 #endif
