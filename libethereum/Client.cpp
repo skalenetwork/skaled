@@ -690,8 +690,10 @@ size_t Client::syncTransactions(
 
         if ( LondonForkPatch::isEnabledWhen( static_cast< time_t >( _timestamp ) ) ) {
             int64_t bn = m_working.info().number();
-            u256 baseFee = max( u256( 1 ),
-                ( bn > 0 ) ? gasBidPrice( static_cast< unsigned >( bn ) ) : u256( 1 ) );
+            BOOST_LOG( m_loggerWarning ) << gasBidPrice( static_cast< unsigned >( bn ) );
+            u256 baseFee = ( bn > 0 ) ? gasBidPrice( static_cast< unsigned >( bn ) ) : u256( 1 );
+            if ( baseFee < 1 ) baseFee = 1;
+
             m_working.setBaseFeePerGas( baseFee );
             // Align the in-block tx validation floor with the header's baseFee so
             // mining and post-commit admission (gasBidPrice(LatestBlock) returns
