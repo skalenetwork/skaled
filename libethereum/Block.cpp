@@ -116,7 +116,14 @@ Block::Block( const BlockChain& _bc, h256 const& _hash, const State& _state, Bas
         //            BaseState::Empty);  // TODO: try with PreExisting.
         sync( _bc, _hash, bi );
     } else {
-        auto pb = _bc.block( bi.parentHash() );
+        auto parentHash = bi.parentHash();
+        if ( !_bc.isKnown( parentHash ) ) {
+            // Might be worth throwing here.
+            BOOST_LOG( m_loggerWarning )
+                << "Invalid parent hash given for population " << parentHash;
+            BOOST_THROW_EXCEPTION( BlockNotFound() << errinfo_target( parentHash ) );
+        }
+        auto pb = _bc.block( parentHash );
         m_previousBlock = BlockHeader( pb );
     }
 }
