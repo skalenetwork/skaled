@@ -60,7 +60,7 @@ static size_t rand_port = 1024 + rand() % 64000;
 class MockRotationSkaleHost : public SkaleHost {
 public:
     MockRotationSkaleHost( Client& _client, ConsensusFactory* _factory )
-        : SkaleHost( _client, _factory ) {}
+        : SkaleHost( _client, _factory, nullptr, false ) {}
 
     void runCommitteeRotationForConsensus() override { ++rotationCallCount; }
 
@@ -97,19 +97,30 @@ public:
 #ifdef BITE
         DecryptedTransactions _decryptedTransactions,
 #endif
-        uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice = 0, u256 _stateRoot = 0,
+        uint64_t _timeStamp, uint64_t _blockID,
+#ifdef FAIR
+        u256 _gasPrice = 1000,
+#else
+        u256 _gasPrice = 0,
+#endif
+        u256 _stateRoot = 0,
 #ifdef FAIR
         uint64_t _winningNodeIndex = 1
 #else
         uint64_t _winningNodeIndex = -1
 #endif
     ) {
+#ifdef FAIR
+        setPriceForBlockId( _blockID, _gasPrice );
+#endif
         m_extFace.createBlock( _approvedTransactions,
 #ifdef BITE
             _decryptedTransactions,
 #endif
             _timeStamp, 0, _blockID, _gasPrice, _stateRoot, _winningNodeIndex );
+#ifndef FAIR
         setPriceForBlockId( _blockID, _gasPrice );
+#endif
     }
 
     u256 getPriceForBlockId( uint64_t _blockId ) const override {
@@ -239,11 +250,18 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
             skaleHost = mockHost;
             mockRotationHost = mockHost;
         } else
-#endif
+        {
+            skaleHost = make_shared< SkaleHost >( *client, &test_stub_factory, nullptr, false );
+        }
+#else
         {
             skaleHost = make_shared< SkaleHost >( *client, &test_stub_factory );
         }
+#endif
         stub = test_stub_factory.result;
+#ifdef FAIR
+        stub->setPriceForBlockId( 0, 1000 );
+#endif
 
         client->injectSkaleHost( skaleHost );
         client->setGasPricer( make_shared< ConsensusGasPricer >( *skaleHost ) );
@@ -1083,7 +1101,11 @@ BOOST_DATA_TEST_CASE(
     json["to"] = toJS( receiver.address() );
     json["value"] = jsToDecimal( toJS( 10000 * dev::eth::szabo ) );
     json["nonce"] = 0;
+#ifdef FAIR
+    json["gasPrice"] = jsToDecimal( toJS( 1000 ) );
+#else
     json["gasPrice"] = 0;
+#endif
 
     Transaction tx1 = fixture.tx_from_json( json );
 
@@ -1133,7 +1155,11 @@ BOOST_DATA_TEST_CASE(
     }
 
     REQUIRE_NONCE_INCREASE( senderAddress, 1 );
+#ifdef FAIR
+    REQUIRE_BALANCE_DECREASE_GE( senderAddress, 10000 * dev::eth::szabo );
+#else
     REQUIRE_BALANCE_DECREASE( senderAddress, 10000 * dev::eth::szabo );  // only 1st!
+#endif
 }
 
 // Last transaction should be dropped from block proposal
@@ -1298,6 +1324,9 @@ BOOST_AUTO_TEST_CASE(
     u256 value2 = 8000 * dev::eth::szabo;
     json["value"] = jsToDecimal( toJS( value2 ) );
     json["nonce"] = 0;
+#ifdef FAIR
+    json["gasPrice"] = jsToDecimal( toJS( 1000 ) );
+#endif
 
     Transaction tx2 = fixture.tx_from_json( json );
 
@@ -1328,7 +1357,11 @@ BOOST_AUTO_TEST_CASE(
     REQUIRE_BLOCK_TRANSACTION( 1, 0, txHash2 );
 
     REQUIRE_NONCE_INCREASE( senderAddress, 1 );
+#ifdef FAIR
+    REQUIRE_BALANCE_DECREASE_GE( senderAddress, value2 );
+#else
     REQUIRE_BALANCE_DECREASE( senderAddress, value2 );
+#endif
 
     // should not be accessible from queue
     ConsensusExtFace::Transactions pendingTxns = stub->pendingTransactions( 1 );
@@ -2636,6 +2669,7 @@ struct dummy {};
 // Test behavior of MTM if tx with big nonce was already mined as erroneous
 BOOST_FIXTURE_TEST_CASE(
     mtmAfterBigNonceMined, dummy, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+
     SkaleHostFixture fixture(
         std::map< std::string, std::string >( { { "multiTransactionMode", "1" } } ) );
 
