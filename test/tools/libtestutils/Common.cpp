@@ -92,6 +92,7 @@ boost::unit_test::assertion_result dev::test::run_not_express( boost::unit_test:
         ( !!dev::test::Options::get().all ) || ( !dev::test::Options::get().express ) );
 }
 
-boost::unit_test::assertion_result dev::test::manuallyRunningTest( boost::unit_test::test_unit_id ) {
+boost::unit_test::assertion_result dev::test::manuallyRunningTest(
+    boost::unit_test::test_unit_id ) {
     return boost::unit_test::assertion_result( dev::test::Options::get().manual );
 }

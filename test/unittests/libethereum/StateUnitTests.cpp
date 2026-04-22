@@ -25,10 +25,10 @@
 #include <libethereum/Block.h>
 #include <libethereum/BlockChain.h>
 #include <libethereum/Defaults.h>
-#include <boost/filesystem.hpp>
-#include <boost/test/unit_test.hpp>
 #include <test/tools/libtesteth/BlockChainHelper.h>
 #include <test/tools/libtesteth/TestHelper.h>
+#include <boost/filesystem.hpp>
+#include <boost/test/unit_test.hpp>
 
 #include <filesystem>
 
@@ -226,9 +226,9 @@ public:
     TransientDirectory m_tempDirState;
     State state = State( 0, m_tempDirState.path(), h256{}, BaseState::Empty, 0,
 #ifndef FAIR
-                         32,
+        32,
 #endif
-                         1 );
+        1 );
     Address address1{ 1 }, address2{ 2 };
 
     size_t countStateDbPieces() {

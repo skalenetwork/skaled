@@ -72,11 +72,11 @@ BOOST_AUTO_TEST_CASE( Personal ) {
     //    dev::WebThreeDirect web3( WebThreeDirect::composeClientVersion( "eth" ), getDataDir(),
     //    string(),
     //        chainParams, WithExisting::Kill, set< string >{"eth"} );
-    auto monitor = make_shared< InstanceMonitor >("test");
+    auto monitor = make_shared< InstanceMonitor >( "test" );
 
-    setenv("DATA_DIR", getDataDir().c_str(), 1);
-    Client client( chainParams, ( int ) chainParams->getNetworkId(), shared_ptr< GasPricer >(), NULL, monitor,
-        getDataDir(), WithExisting::Kill, TransactionQueue::Limits{100000, 1024} );
+    setenv( "DATA_DIR", getDataDir().c_str(), 1 );
+    Client client( chainParams, ( int ) chainParams->getNetworkId(), shared_ptr< GasPricer >(),
+        NULL, monitor, getDataDir(), WithExisting::Kill, TransactionQueue::Limits{ 100000, 1024 } );
 
     client.injectSkaleHost();
     client.startWorking();
@@ -96,7 +96,7 @@ BOOST_AUTO_TEST_CASE( Personal ) {
             return false;  // user input goes here
         } );
     rpc::Personal personal( keyManager, accountHolder, client );
-    rpc::Eth eth( std::string(""), client, accountHolder );
+    rpc::Eth eth( std::string( "" ), client, accountHolder );
 
     // Create account
 

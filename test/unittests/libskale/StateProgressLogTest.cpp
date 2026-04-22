@@ -163,8 +163,7 @@ BOOST_AUTO_TEST_CASE( persistence_started_status ) {
 BOOST_AUTO_TEST_CASE( corrupted_file_content ) {
     dev::TransientDirectory tempDir;
 
-    fs::path progressLogDir =
-        fs::path( tempDir.path() ) / StateProgressLog::PROGRESS_LOG_DIR;
+    fs::path progressLogDir = fs::path( tempDir.path() ) / StateProgressLog::PROGRESS_LOG_DIR;
     fs::create_directories( progressLogDir );
 
     fs::path logFile = progressLogDir / StateProgressLog::PROGRESS_LOG_FILE;
@@ -181,14 +180,11 @@ BOOST_AUTO_TEST_CASE( corrupted_file_content ) {
 BOOST_AUTO_TEST_CASE( empty_file ) {
     dev::TransientDirectory tempDir;
 
-    fs::path progressLogDir =
-        fs::path( tempDir.path() ) / StateProgressLog::PROGRESS_LOG_DIR;
+    fs::path progressLogDir = fs::path( tempDir.path() ) / StateProgressLog::PROGRESS_LOG_DIR;
     fs::create_directories( progressLogDir );
 
     fs::path logFile = progressLogDir / StateProgressLog::PROGRESS_LOG_FILE;
-    {
-        std::ofstream file( logFile.string() );
-    }
+    { std::ofstream file( logFile.string() ); }
 
     StateProgressLog log( tempDir.path() );
     BOOST_CHECK( !log.isBlockCommitCompleted( 0 ) );

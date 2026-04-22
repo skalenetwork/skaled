@@ -65,8 +65,9 @@ void mine( Client& c, int numBlocks );
  * @brief simulateMining gives money to miner but do not create block. Use it only for testing
  * instead of mine( Client& c, int numBlocks )
  */
-void simulateMining( Client& client, size_t numBlocks, const dev::Address &address );
-void simulateMining( Client& client, size_t numBlocks, [[ maybe_unused ]] const bool handleConsensusUpdate = false );
+void simulateMining( Client& client, size_t numBlocks, const dev::Address& address );
+void simulateMining(
+    Client& client, size_t numBlocks, [[maybe_unused]] const bool handleConsensusUpdate = false );
 void mineMoney( Client& c, int numBlocks );
 void mineTransaction( Client& c, int numBlocks );
 void connectClients( Client& c1, Client& c2 );
@@ -83,7 +84,8 @@ typedef json_spirit::Value_type jsonVType;
 class ZeroGasPricer : public eth::GasPricer {
 protected:
     u256 ask( eth::Block const& ) const override { return 0; }
-    u256 bid( unsigned = dev::eth::LatestBlock, eth::TransactionPriority = eth::TransactionPriority::Medium ) const override {
+    u256 bid( unsigned = dev::eth::LatestBlock,
+        eth::TransactionPriority = eth::TransactionPriority::Medium ) const override {
         return 0;
     }
 };
