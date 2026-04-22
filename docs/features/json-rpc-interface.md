@@ -1062,6 +1062,75 @@ None
 Returns the timestamp of each defined patch. Returns `0` for any undefined patch timestamp.
 
 
+## BITE Methods
+
+### `bite_getCommitteesInfo`
+#### Description
+Returns the current common BLS public key(s) and epoch id(s) for threshold encryption. During committee rotation periods, this method may return two sets of data to support seamless transition between epochs.
+
+#### Parameters
+None
+
+#### Return format
+A JSON array of 1 or 2 objects. Each object contains:
+- `epochId` - decimal number representing the epoch identifier
+- `commonBLSPublicKey` - 128-byte hexadecimal string representing the BLS public key for threshold encryption
+
+#### Examples
+**Single epoch (normal operation):**
+```json
+[
+  {
+    "epochId": 42,
+    "commonBLSPublicKey": "1a2b3c4d5e6f7890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef12"
+  }
+]
+```
+
+**During committee rotation (starting from 3 minutes before):**
+```json
+[
+  {
+    "epochId": 42,
+    "commonBLSPublicKey": "1a2b3c4d5e6f7890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef12"
+  },
+  {
+    "epochId": 43,
+    "commonBLSPublicKey": "9876543210fedcba0987654321fedcba0987654321fedcba0987654321fedcba0987654321fedcba0987654321fedcba0987654321fedcba0987654321fedcba0987654321fedcba0987654321fedcba0987654321fedcba"
+  }
+]
+```
+
+#### Notes
+- If the node is in a catch-up state, it may return outdated information
+- During committee rotation (scheduled for the next 3 minutes), two epoch keys are returned
+
+### `bite_getDecryptedTransactionData`
+#### Description
+Retrieves the decrypted data and destination address for a BITE transaction. This method returns the original plaintext data that was encrypted in the transaction.
+
+#### Parameters
+1. Transaction hash: "0x"-prefixed hex `String`, 32 bytes
+
+#### Return format
+Object with the following fields:
+- `data` - "0x"-prefixed hex `String` representing the decrypted transaction data
+- `to` - "0x"-prefixed hex `String`, 20 bytes representing the original destination address
+
+#### Example
+```json
+{
+  "data": "0xa9059cbb000000000000000000000000742d35cc6634c0532925a3b8d4f25d00000000000000000000000000000000000000000000000000000de0b6b3a7640000",
+  "to": "0x742d35cc6634c0532925a3b8d4025d00000000"
+}
+```
+
+#### Exceptions
+- Throws error if the transaction hash does not exist
+- Throws error if the transaction is not a BITE transaction
+- Throws error if the transaction has not been successfully decrypted
+
+
 ## Non-standard Methods
 ### `oracle_submitRequest`
 ### `oracle_checkResult`

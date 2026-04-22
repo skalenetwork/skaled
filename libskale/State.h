@@ -42,7 +42,10 @@
 
 #include "BaseState.h"
 #include "OverlayDB.h"
+#include "StateProgressLog.h"
+#ifndef FAIR
 #include "OverlayFS.h"
+#endif
 #include "Permanence.h"
 #include <libdevcore/DBImpl.h>
 
@@ -209,7 +212,11 @@ public:
     // This is called once in the client during the client creation
     explicit State( dev::u256 const& _accountStartNonce, boost::filesystem::path const& _dbPath,
         dev::h256 const& _genesis, BaseState _bs = BaseState::PreExisting,
-        dev::u256 _initialFunds = 0, dev::s256 _contractStorageLimit = 32
+        dev::u256 _initialFunds = 0
+#ifndef FAIR
+        ,
+        dev::s256 _contractStorageLimit = 32
+#endif
 #ifdef HISTORIC_STATE
         ,
         dev::s256 _maxHistoricStateDbSize = -1
@@ -255,6 +262,14 @@ public:
 
     void safeSetAndCommitPartialTransactionReceipt( const dev::bytes& _receipt,
         dev::eth::BlockNumber _blockNumber, uint64_t _transactionIndex );
+    void safeSetLastExecutedTransactionHash( const dev::h256& _hash );
+
+#ifdef FAIR
+    /// Save last block for which rewards has been applied
+    void safeSetLastRewardedBlockNumber( dev::eth::BlockNumber _blockNumber );
+    /// Get last block for which rewards has been applied
+    dev::eth::BlockNumber getLastRewardedBlockNumber();
+#endif
 
     /// Populate the state from the given AccountMap. Just uses dev::eth::commit().
     void populateFrom( dev::eth::AccountMap const& _map );
@@ -409,7 +424,7 @@ public:
 
     ChangeLog const& changeLog() const { return m_changeLog; }
 
-    /// Create State copy to modify data.
+    /// Create State copy with cleared cache to modify data.
     State createStateCopyAndClearCaches() const;
 
     /// Create State copy based on LevedlDB snaps that does not use any locking
@@ -423,8 +438,15 @@ public:
     /// Check if state is empty
     bool empty() const;
 
+    bool isReadOnlySnapBasedState() const { return m_isReadOnlySnapBasedState; }
+
     dev::db::DBImpl* getOriginalDb() const { return m_orig_db.get(); }
 
+    const boost::filesystem::path& getDataDir() const { return m_dataDir; }
+
+    std::shared_ptr< StateProgressLog > getProgressLog() const { return m_progressLog; }
+
+#ifndef FAIR
     void resetStorageChanges() {
         storageUsage.clear();
         currentStorageUsed_ = 0;
@@ -440,7 +462,7 @@ public:
     void setStorageLimit( const dev::s256& _contractStorageLimit ) {
         contractStorageLimit_ = _contractStorageLimit;
     };  // only for tests
-
+#endif
 
     void createReadOnlyStateDBSnap( uint64_t _blockNumber );
 
@@ -454,8 +476,11 @@ private:
         std::pair< dev::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > > const&
             _historicBlockToStateRootDb,
 #endif
-        BaseState _bs = BaseState::PreExisting, dev::u256 _initialFunds = 0,
+        BaseState _bs = BaseState::PreExisting, dev::u256 _initialFunds = 0
+#ifndef FAIR
+        ,
         dev::s256 _contractStorageLimit = 32
+#endif
 #ifdef HISTORIC_STATE
         ,
         dev::s256 _maxHistoricStateDbSize = -1
@@ -488,23 +513,27 @@ private:
     bool executeTransaction(
         dev::eth::Executive& _e, dev::eth::Transaction const& _t, dev::eth::OnOpFunc const& _onOp );
 
+#ifndef FAIR
     void rollbackStorageChange( const Change& _change, dev::eth::Account& _acc );
 
     void updateStorageUsage();
 
-    void resetOverlayFS( bool _enableCache ) {
-        m_fs_ptr = std::make_shared< OverlayFS >( _enableCache );
-    };
 
     void clearFileStorageCache() {
         if ( m_fs_ptr ) {
             m_fs_ptr->reset();
         }
     };
+#endif
 
     static bool ifShouldSkipExecution( uint64_t _chainId, const dev::h256& _hash );
 
     static uint64_t getGasUsedForSkippedTransaction( uint64_t _chainId, const dev::h256& _hash );
+
+    dev::eth::TransactionReceipt makeReceipt( bool _statusCode, dev::u256 const& _startGasUsed,
+        dev::eth::Executive const& _executive, dev::eth::EnvInfo const& _envInfo,
+        dev::eth::ChainOperationParams const& _chainParams, dev::eth::Transaction const& _t,
+        Permanence _p, std::string const& _revertReason ) const;
 
 public:
 #ifdef HISTORIC_STATE
@@ -519,7 +548,9 @@ private:
 
     std::shared_ptr< boost::shared_mutex > x_db_ptr;
     std::shared_ptr< OverlayDB > m_db_ptr;  ///< Our overlay for the state.
+#ifndef FAIR
     std::shared_ptr< OverlayFS > m_fs_ptr;  ///< Our overlay for the file system operations.
+#endif
     std::shared_ptr< dev::db::DBImpl > m_orig_db;
     mutable std::unordered_map< dev::Address, dev::eth::Account > m_cache;  ///< Our address cache.
                                                                             ///< This stores the
@@ -539,13 +570,18 @@ private:
 
     dev::u256 m_initial_funds = 0;
 
+#ifndef FAIR
     dev::s256 contractStorageLimit_ = 0;
     std::map< dev::Address, dev::s256 > storageUsage;
     dev::s256 totalStorageUsed_ = 0;
     dev::s256 currentStorageUsed_ = 0;
+#endif
     // if the state is based on a LevelDB snap, the instance of the snap goes here
     std::shared_ptr< dev::db::LevelDBSnap > m_snap = nullptr;
     bool m_isReadOnlySnapBasedState = false;
+
+    boost::filesystem::path m_dataDir;
+    std::shared_ptr< StateProgressLog > m_progressLog;
 
     /// Loggers
     mutable dev::Logger m_loggerDebug{ dev::createLogger( dev::VerbosityDebug, "State" ) };
@@ -574,7 +610,12 @@ public:
             pDB = m_db_ptr->db();
         return pDB;
     }
+#ifndef FAIR
     std::shared_ptr< OverlayFS > fs() { return m_fs_ptr; }
+    void resetOverlayFS( bool _enableCache ) {
+        m_fs_ptr = std::make_shared< OverlayFS >( _enableCache );
+    }
+#endif
 
     void clearAllCaches();
 };

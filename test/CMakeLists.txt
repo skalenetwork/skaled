@@ -72,31 +72,53 @@ if( APPLE )
 	target_compile_definitions( testeth PRIVATE __BUILDING_4_MAC_OS_X__=1 )
 endif()
 target_include_directories(testeth PRIVATE ${UTILS_INCLUDE_DIR} ../libconsensus/spdlog/include)
+
 target_link_libraries(testeth PRIVATE
-    ethereum ethashseal web3jsonrpc devcrypto devcore skale-buildinfo ${LIB_NAME_cryptopp} yaml-cpp binaryen::binaryen
-    skutils
-    Boost::system Boost::program_options
-    jsonrpccpp-client # ${CMAKE_SOURCE_DIR}/libconsensus/libjson-rpc-cpp/build/lib/libjsonrpccpp-client.a
-    jsonrpccpp-server # ${CMAKE_SOURCE_DIR}/libconsensus/libjson-rpc-cpp/build/lib/libjsonrpccpp-server.a
-    jsonrpccpp-common # ${CMAKE_SOURCE_DIR}/libconsensus/libjson-rpc-cpp/build/lib/libjsonrpccpp-common.a
-    jsoncpp           # ${CMAKE_SOURCE_DIR}/libconsensus/jsoncpp/build/src/lib_json/libjsoncpp.a
-    ${DEPS_INSTALL_ROOT}/lib/libff.a
-    ${DEPS_INSTALL_ROOT}/lib/libgmp.a
-    ${DEPS_INSTALL_ROOT}/lib/libcurl.a
-    ${DEPS_INSTALL_ROOT}/lib/libssl.a
-    ${DEPS_INSTALL_ROOT}/lib/libcrypto.a
-    ${DEPS_INSTALL_ROOT}/lib/libz.a
-    idn2
-    ${DEPS_INSTALL_ROOT}/lib/libunwind.a
-    ${DEPS_INSTALL_ROOT}/lib/liblzma.a
-    batched-io
-    )
-if (HISTORIC_STATE)
-    target_link_libraries(testeth PRIVATE historic)
-endif()
-if (CONSENSUS)
-    target_link_libraries(testeth PRIVATE consensus)
-endif()
+  -Wl,--no-as-needed
+  -Wl,--start-group
+
+  ethereum
+  ethashseal
+  web3jsonrpc
+  devcrypto
+  devcore
+  skale-buildinfo
+  ${LIB_NAME_cryptopp}
+  yaml-cpp
+  binaryen::binaryen
+  skutils
+  Boost::system
+  Boost::program_options
+  jsonrpccpp-client
+  jsonrpccpp-server
+  jsonrpccpp-common
+  jsoncpp
+  ${DEPS_INSTALL_ROOT}/lib/libff.a
+  ${DEPS_INSTALL_ROOT}/lib/libgmp.a
+  ${DEPS_INSTALL_ROOT}/lib/libcurl.a
+  ${DEPS_INSTALL_ROOT}/lib/libssl.a
+  ${DEPS_INSTALL_ROOT}/lib/libcrypto.a
+  idn2
+  batched-io
+
+  # conditional libs
+  $<$<BOOL:${HISTORIC_STATE}>:historic>
+  $<$<BOOL:${CONSENSUS}>:consensus>
+  $<$<BOOL:${BITE}>:te>
+
+  "${DEPS_INSTALL_ROOT}/lib/libunwind.a"
+
+  # Force extraction for compression codec providers discovered via static init
+  -Wl,--whole-archive
+  "${DEPS_INSTALL_ROOT}/lib/libzstd.a"
+  "${DEPS_INSTALL_ROOT}/lib/liblzma.a"
+  -Wl,--no-whole-archive
+
+  dl
+  pthread
+  -Wl,--end-group
+)
+
 
 if( NOT SKALE_SKIP_INSTALLING_DIRECTIVES )
 	install( TARGETS testeth DESTINATION ${CMAKE_INSTALL_BINDIR} )

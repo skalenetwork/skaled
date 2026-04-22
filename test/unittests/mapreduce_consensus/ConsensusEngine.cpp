@@ -1,3 +1,4 @@
+
 /*
     Copyright (C) 2018-present, SKALE Labs
 
@@ -104,8 +105,8 @@ public:
         ChainParams chainParams;
         chainParams.sealEngineName = NoProof::name();
         chainParams.allowFutureBlocks = true;
-        chainParams.difficulty = chainParams.minimumDifficulty;
-        chainParams.gasLimit = chainParams.maxGasLimit;
+        chainParams.difficulty = chainParams.getMinimumDifficulty();
+        chainParams.gasLimit = chainParams.getMaxGasLimit();
         chainParams.extraData = h256::random().asBytes();
         chainParams.nodeInfo.port = chainParams.nodeInfo.port6 = rand_port;
         chainParams.sChain.nodes[0].port = chainParams.sChain.nodes[0].port6 = rand_port;
@@ -117,8 +118,11 @@ public:
         m_consensus.reset( new ConsensusEngine(
             *this, 0, BlockHeader( chainParams.genesisBlock() ).timestamp(),
             0,  std::map<std::string, std::uint64_t>() ) );
+#ifdef FAIR
+        m_consensus->parseFullConfigAndCreateNode( chainParams.getConfigForConsensus(), "" );
+#else
         m_consensus->parseFullConfigAndCreateNode( chainParams.getOriginalJson(), "" );
-
+#endif
         m_consensusThread = std::thread( [this]() {
             sleep(1);
             m_consensus->startAll();
@@ -135,7 +139,11 @@ public:
         return buffer;
     }
 
-    virtual void createBlock( const transactions_vector& _approvedTransactions, uint64_t _timeStamp,
+    virtual void createBlock( const transactions_vector& _approvedTransactions,
+#ifdef BITE
+  shared_ptr< DecryptedTransactionFieldsMap > /*_decryptedTransactions*/,
+#endif
+        uint64_t _timeStamp,
         uint32_t _timeStampMs, uint64_t _blockID, u256 _gasPrice, u256 /*_stateRoot*/, uint64_t /*_winningNodeIndex*/ ) override {
         transaction_promise = decltype( transaction_promise )();
 
@@ -195,6 +203,7 @@ protected:
     TransientDirectory m_tempDir;
 
 protected:  // remote peer
+    std::shared_ptr< ChainParams > chainParams;
     unique_ptr< Client > client;
     unique_ptr< ModularServer<> > rpcServer;
     unique_ptr< WebThreeStubClient > rpcClient;
@@ -205,24 +214,33 @@ protected:  // remote peer
 public:
     ConsensusExtFaceFixture() {
 
-        ChainParams chainParams;
-        chainParams.sealEngineName = NoProof::name();
-        chainParams.allowFutureBlocks = true;
-        chainParams.difficulty = chainParams.minimumDifficulty;
-        chainParams.gasLimit = chainParams.maxGasLimit;
-        chainParams.extraData = h256::random().asBytes();
-        chainParams.nodeInfo.port = chainParams.nodeInfo.port6 = rand_port;
-        chainParams.sChain.nodes[0].port = chainParams.sChain.nodes[0].port6 = rand_port;
+        chainParams = std::make_shared< ChainParams >();
+        chainParams->sealEngineName = NoProof::name();
+        chainParams->allowFutureBlocks = true;
+        chainParams->difficulty = chainParams->getMinimumDifficulty();
+        chainParams->gasLimit = chainParams->getMaxGasLimit();
+        chainParams->extraData = h256::random().asBytes();
+        chainParams->nodeInfo.port = chainParams->nodeInfo.port6 = rand_port;
+        chainParams->sChain.nodes[0].port = chainParams->sChain.nodes[0].port6 = rand_port;
 
+
+#ifdef FAIR
+        sChainNode node2{u256( 2 ), jsToAddress( "0x0000000000000000000000000000000000000000" ), jsToAddress( "0x0000000000000000000000000000000000000000" ), "127.0.0.12", u256( 11111 ), "::1", u256( 11111 ), u256( 1 ), "0xfa", {"0", "1", "0", "1"}};
+#else
         sChainNode node2{u256( 2 ), "127.0.0.12", u256( 11111 ), "::1", u256( 11111 ), u256( 1 ), "0xfa", {"0", "1", "0", "1"}};
-        chainParams.sChain.nodes.push_back( node2 );
+#endif
+        chainParams->sChain.nodes.push_back( node2 );
         //////////////////////////////////////////////
 
 
         m_consensus.reset( new ConsensusEngine(
-            *this, 0, BlockHeader( chainParams.genesisBlock() ).timestamp(), 0 ,
+            *this, 0, BlockHeader( chainParams->genesisBlock() ).timestamp(), 0 ,
             std::map<std::string, std::uint64_t>()));
-        m_consensus->parseFullConfigAndCreateNode( chainParams.getOriginalJson(), "" );
+#ifdef FAIR
+        m_consensus->parseFullConfigAndCreateNode( chainParams->getConfigForConsensus(), "" );
+#else
+        m_consensus->parseFullConfigAndCreateNode( chainParams->getOriginalJson(), "" );
+#endif
 
         m_consensusThread = std::thread( [this]() {
             m_consensus->startAll();
@@ -230,10 +248,10 @@ public:
         } );
 
         //////////////////////////////////////////////
-        chainParams.nodeInfo.ip = "127.0.0.12";
-        chainParams.nodeInfo.id = 2;
-        chainParams.nodeInfo.name = "Node2";
-        chainParams.resetJson();
+        chainParams->nodeInfo.ip = "127.0.0.12";
+        chainParams->nodeInfo.id = 2;
+        chainParams->nodeInfo.name = "Node2";
+        chainParams->resetJson();
 
         //        web3.reset( new WebThreeDirect(
         //            "eth tests", "", "", chainParams, WithExisting::Kill, {"eth"}, true ) );
@@ -242,7 +260,7 @@ public:
 
         setenv("DATA_DIR", m_tempDir.path().c_str(), 1);
         client.reset(
-            new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr< GasPricer >(),
+            new eth::Client( chainParams, ( int ) chainParams->getNetworkId(), shared_ptr< GasPricer >(),
                 NULL, monitor, m_tempDir.path().c_str(), WithExisting::Kill, TransactionQueue::Limits{100000, 1024} ) );
 
         client->injectSkaleHost();
@@ -285,7 +303,11 @@ public:
         return tmp;
     }
 
-    virtual void createBlock( const transactions_vector& _approvedTransactions, uint64_t _timeStamp,
+    virtual void createBlock( const transactions_vector& _approvedTransactions,
+#ifdef BITE
+  shared_ptr< DecryptedTransactionFieldsMap > _decryptedTransactions,
+#endif
+                              uint64_t _timeStamp,
         uint32_t /* timeStampMs */, uint64_t _blockID, u256 /*_gasPrice */,
         u256 /*_stateRoot*/, uint64_t /*_winningNodeIndex*/ ) override {
         ( void ) _timeStamp;
@@ -396,11 +418,8 @@ BOOST_AUTO_TEST_CASE( gasPriceIncrease ) {
     // block 2
 
     v = transactions_vector( 9000 );
-    size_t i = 0;
     for ( auto& tx : v ) {
-        for(size_t j=0; j<sizeof(i); ++j)
-            tx.push_back( ((unsigned char*)&i)[j] );
-        ++i;
+        tx = dev::eth::Transaction(0, 0, 0, dev::Address(), dev::bytes(), 0, dev::Secret::random() ).toBytes();
     }  // for
 
     std::tie( approvedTransactions, timeStamp, timeStampMs, blockID, gasPrice ) = singleRun( v );
@@ -409,7 +428,11 @@ BOOST_AUTO_TEST_CASE( gasPriceIncrease ) {
     u256 price2 = m_consensus->getPriceForBlockId( 2 );
 
     BOOST_REQUIRE_EQUAL( price0, price1 );
+#ifndef FAIR
     BOOST_REQUIRE_GT( price2, price1 );
+#else
+    BOOST_REQUIRE_EQUAL( price2, price1 );
+#endif
 
     // block 3
 
@@ -419,7 +442,11 @@ BOOST_AUTO_TEST_CASE( gasPriceIncrease ) {
     BOOST_REQUIRE_EQUAL( gasPrice, price2 );
     u256 price3 = m_consensus->getPriceForBlockId( 3 );
 
+#ifndef FAIR
     BOOST_REQUIRE_LT( price3, price2 );
+#else
+    BOOST_REQUIRE_EQUAL( price3, price2 );
+#endif
 }
 
 BOOST_AUTO_TEST_SUITE_END()

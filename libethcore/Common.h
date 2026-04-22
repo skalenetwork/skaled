@@ -55,8 +55,10 @@ extern const Address c_blockhashContractAddress;
 /// Code of the special contract for block hash storage defined in EIP96
 extern const bytes c_blockhashContractCode;
 
+#ifndef FAIR
 /// Address of the special contract for deployment control
 extern const Address c_configControllerContractAddress;
+#endif
 
 /// Generating call data for deployment control contract
 bytes isAddressWhitelistedCallData( Address const& _deployer );

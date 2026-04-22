@@ -15,28 +15,26 @@ if( APPLE )
 	target_compile_definitions( ${EXECUTABLE_NAME} PRIVATE __BUILDING_4_MAC_OS_X__=1 )
 endif()
 
-target_link_libraries(
-    ${EXECUTABLE_NAME}
-    PRIVATE
-        ethereum
-        ethashseal
-        evm
-        web3jsonrpc
-        devcore
-        Boost::program_options
-        skutils
-        "${DEPS_INSTALL_ROOT}/lib/libunwind.a"
-        "${DEPS_INSTALL_ROOT}/lib/liblzma.a"
-        pthread
-        idn2
-        batched-io
-    )
-if (HISTORIC_STATE)
-    target_link_libraries(${EXECUTABLE_NAME} PRIVATE historic)
-endif()
-if (CONSENSUS)
-    target_link_libraries(${EXECUTABLE_NAME} PRIVATE consensus)
-endif()
+target_link_libraries(${EXECUTABLE_NAME} PRIVATE
+  -Wl,--no-as-needed
+  -Wl,--start-group
+
+  ethereum ethashseal evm web3jsonrpc devcore skutils batched-io Boost::program_options
+  $<$<BOOL:${HISTORIC_STATE}>:historic>
+  $<$<BOOL:${CONSENSUS}>:consensus>
+  "${DEPS_INSTALL_ROOT}/lib/libunwind.a"
+
+  # Force archive extraction for providers:
+  -Wl,--whole-archive
+  "${DEPS_INSTALL_ROOT}/lib/libzstd.a"
+  "${DEPS_INSTALL_ROOT}/lib/liblzma.a"
+  -Wl,--no-whole-archive
+
+  dl pthread
+  -Wl,--end-group
+)
+
+
 
 target_include_directories(${EXECUTABLE_NAME} PRIVATE ../utils ${SKUTILS_INCLUDE_DIRS})
 

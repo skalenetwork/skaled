@@ -18,6 +18,7 @@
 */
 
 #include "SealEngine.h"
+#include "Exceptions.h"
 #include "TransactionBase.h"
 
 #include <libethereum/SchainPatch.h>
@@ -40,29 +41,30 @@ void SealEngineFace::verify( Strictness _s, BlockHeader const& _bi, BlockHeader 
     _bi.verify( _s, _parent, _block );
 
     if ( _s != CheckNothingNew ) {
-        if ( _bi.difficulty() < chainParams().minimumDifficulty )
+        if ( _bi.difficulty() < chainParams().getMinimumDifficulty() )
             BOOST_THROW_EXCEPTION(
                 InvalidDifficulty() << RequirementError(
-                    bigint( chainParams().minimumDifficulty ), bigint( _bi.difficulty() ) ) );
+                    bigint( chainParams().getMinimumDifficulty() ), bigint( _bi.difficulty() ) ) );
 
-        if ( _bi.gasLimit() < chainParams().minGasLimit )
+        if ( _bi.gasLimit() < chainParams().getMinGasLimit() )
             BOOST_THROW_EXCEPTION(
                 InvalidGasLimit() << RequirementError(
-                    bigint( chainParams().minGasLimit ), bigint( _bi.gasLimit() ) ) );
+                    bigint( chainParams().getMinGasLimit() ), bigint( _bi.gasLimit() ) ) );
 
-        if ( _bi.gasLimit() > chainParams().maxGasLimit )
+        if ( _bi.gasLimit() > chainParams().getMaxGasLimit() )
             BOOST_THROW_EXCEPTION(
                 InvalidGasLimit() << RequirementError(
-                    bigint( chainParams().maxGasLimit ), bigint( _bi.gasLimit() ) ) );
+                    bigint( chainParams().getMaxGasLimit() ), bigint( _bi.gasLimit() ) ) );
 
-        if ( _bi.number() && _bi.extraData().size() > chainParams().maximumExtraDataSize ) {
-            BOOST_THROW_EXCEPTION(
-                ExtraDataTooBig() << RequirementError( bigint( chainParams().maximumExtraDataSize ),
-                                         bigint( _bi.extraData().size() ) )
-                                  << errinfo_extraData( _bi.extraData() ) );
+        if ( _bi.number() && _bi.extraData().size() > chainParams().getMaximumExtraDataSize() ) {
+            BOOST_THROW_EXCEPTION( ExtraDataTooBig()
+                                   << RequirementError(
+                                          bigint( chainParams().getMaximumExtraDataSize() ),
+                                          bigint( _bi.extraData().size() ) )
+                                   << errinfo_extraData( _bi.extraData() ) );
         }
 
-        u256 const& daoHardfork = chainParams().daoHardforkBlock;
+        u256 const& daoHardfork = chainParams().getDaoHardforkBlock();
         if ( daoHardfork != 0 && daoHardfork + 9 >= daoHardfork && _bi.number() >= daoHardfork &&
              _bi.number() <= daoHardfork + 9 )
             if ( _bi.extraData() != fromHex( "0x64616f2d686172642d666f726b" ) )
@@ -74,18 +76,21 @@ void SealEngineFace::verify( Strictness _s, BlockHeader const& _bi, BlockHeader 
     if ( _parent ) {
         auto gasLimit = _bi.gasLimit();
         auto parentGasLimit = _parent.gasLimit();
-        if ( gasLimit < chainParams().minGasLimit || gasLimit > chainParams().maxGasLimit ||
-             gasLimit <= parentGasLimit - parentGasLimit / chainParams().gasLimitBoundDivisor ||
-             gasLimit >= parentGasLimit + parentGasLimit / chainParams().gasLimitBoundDivisor )
+        if ( gasLimit < chainParams().getMinGasLimit() ||
+             gasLimit > chainParams().getMaxGasLimit() ||
+             gasLimit <=
+                 parentGasLimit - parentGasLimit / chainParams().getGasLimitBoundDivisor() ||
+             gasLimit >= parentGasLimit + parentGasLimit / chainParams().getGasLimitBoundDivisor() )
             BOOST_THROW_EXCEPTION(
                 InvalidGasLimit()
                 << errinfo_min( static_cast< bigint >(
                        static_cast< bigint >( parentGasLimit ) -
                        static_cast< bigint >(
-                           parentGasLimit / chainParams().gasLimitBoundDivisor ) ) )
+                           parentGasLimit / chainParams().getGasLimitBoundDivisor() ) ) )
                 << errinfo_got( static_cast< bigint >( gasLimit ) )
                 << errinfo_max( static_cast< bigint >( static_cast< bigint >(
-                       parentGasLimit + parentGasLimit / chainParams().gasLimitBoundDivisor ) ) ) );
+                       parentGasLimit +
+                       parentGasLimit / chainParams().getGasLimitBoundDivisor() ) ) ) );
     }
     MICROPROFILE_LEAVE();
 }
@@ -99,32 +104,66 @@ void SealEngineFace::verifyTransaction( ChainOperationParams const& _chainParams
     BlockHeader const& _header, u256 const& _gasUsed ) {
     // verifyTransaction is the only place where TransactionBase is used instead of Transaction.
     u256 gas;
+#ifdef FAIR
+    gas = _t.gas();
+#else
     if ( PowCheckPatch::isEnabledWhen( _committedBlockTimestamp ) ) {
         // new behavior is to use pow-enabled gas
         gas = _t.gas();
-    } else {
+    }
+
+    else {
         // old behavior is to use non-POW gas
         gas = _t.nonPowGas();
     }
+#endif
 
     MICROPROFILE_SCOPEI( "SealEngineFace", "verifyTransaction", MP_ORCHID );
-    if ( ( _ir & ImportRequirements::TransactionSignatures ) &&
-         _header.number() < _chainParams.EIP158ForkBlock && _t.isReplayProtected() )
-        BOOST_THROW_EXCEPTION( InvalidSignature() );
 
-    if ( ( _ir & ImportRequirements::TransactionSignatures ) &&
-         _header.number() < _chainParams.experimentalForkBlock && _t.hasZeroSignature() )
-        BOOST_THROW_EXCEPTION( InvalidSignature() );
+    if ( _ir & ImportRequirements::TransactionSignatures ) {
+        const bool isPreEIP155 = !_t.isReplayProtected();
+        const bool beforeEIP155 = _header.number() < _chainParams.getEIP158ForkBlock();
+        const bool needToEnforceChainId = !_chainParams.isChainIdCheckDisabled();
+        const bool hasZeroSignature = _t.hasZeroSignature();
+        const bool beforeExperimentalFork =
+            _header.number() < _chainParams.getExperimentalForkBlock();
+
+#ifdef FAIR
+        const bool allowPreEIP155Txns = _chainParams.getAllowPreEIP155Txns();
+
+        // Pre-EIP-155 tx not allowed
+        if ( !allowPreEIP155Txns && isPreEIP155 ) {
+            BOOST_THROW_EXCEPTION( PreEIP155LegacyTransactionNotAllowed()
+                                   << errinfo_blockNumber( _header.number() )
+                                   << errinfo_txHash( _t.sha3() ) );
+        }
+#endif
+        if ( beforeEIP155 && !isPreEIP155 ) {
+            BOOST_THROW_EXCEPTION( PreEIP155ReplayProtectionViolation()
+                                   << errinfo_blockNumber( _header.number() )
+                                   << errinfo_txHash( _t.sha3() ) );
+        }
+
+        if ( beforeExperimentalFork && hasZeroSignature ) {
+            BOOST_THROW_EXCEPTION( InvalidSignature() );
+        }
+
+        if ( ( !beforeEIP155 && needToEnforceChainId ) ||
+             ( !beforeEIP155 && !needToEnforceChainId && !isPreEIP155 ) ) {  // !isPreEIP155 = has
+                                                                             // chainId
+            _t.checkChainId( _chainParams.getChainId() );
+        }
+    }
 
     if ( ( _ir & ImportRequirements::TransactionBasic ) &&
-         _header.number() >= _chainParams.experimentalForkBlock && _t.hasZeroSignature() &&
+         _header.number() >= _chainParams.getExperimentalForkBlock() && _t.hasZeroSignature() &&
          ( _t.value() != 0 || _t.gasPrice() != 0 || _t.nonce() != 0 ) )
         BOOST_THROW_EXCEPTION( InvalidZeroSignatureTransaction()
                                << errinfo_got( static_cast< bigint >( _t.gasPrice() ) )
                                << errinfo_got( static_cast< bigint >( _t.value() ) )
                                << errinfo_got( static_cast< bigint >( _t.nonce() ) ) );
 
-    if ( _header.number() >= _chainParams.homesteadForkBlock &&
+    if ( _header.number() >= _chainParams.getHomesteadForkBlock() &&
          ( _ir & ImportRequirements::TransactionSignatures ) && _t.hasSignature() )
         _t.checkLowS();
 
@@ -143,17 +182,10 @@ void SealEngineFace::verifyTransaction( ChainOperationParams const& _chainParams
                                    static_cast< bigint >( _header.gasLimit() - _gasUsed ),
                                    static_cast< bigint >( gas ),
                                    string( "_gasUsed + (bigint)_t.gas() > _header.gasLimit()" ) ) );
-
-    if ( _ir & ImportRequirements::TransactionSignatures ) {
-        if ( _header.number() >= _chainParams.EIP158ForkBlock ) {
-            uint64_t chainID = _chainParams.chainID;
-            _t.checkChainId( chainID, _chainParams.skaleDisableChainIdCheck );
-        }  // if
-    }
 }
 
 SealEngineFace* SealEngineRegistrar::create( ChainOperationParams const& _params ) {
-    SealEngineFace* ret = create( _params.sealEngineName );
+    SealEngineFace* ret = create( _params.getSealEngineName() );
     assert( ret && "Seal engine not found." );
     if ( ret )
         ret->setChainParams( _params );

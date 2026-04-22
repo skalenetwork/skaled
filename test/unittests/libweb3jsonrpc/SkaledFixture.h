@@ -303,8 +303,9 @@ public:
 
     unique_ptr< WebThreeStubClient > rpcClient() const;
 
-
+#ifndef FAIR
     void calculateAndSetPowGas( Transaction& _t ) const;
+#endif
 
     string skaledEndpoint;
     string ownerAddressStr;
@@ -320,8 +321,10 @@ public:
 
     const string HARDHAT_CONFIG_FILE_NAME = "../../test/historicstate/hardhat/hardhat.config.js";
     uint64_t transactionTimeoutMs = 60000;
+#ifndef FAIR
     bool usePow = false;
     u256 powDiffuculty = 1;
+#endif
     bool verifyTransactions = false;
     bool useThreadsForTestKeyCreation = false;
     uint64_t mtmBatchSize = 1;

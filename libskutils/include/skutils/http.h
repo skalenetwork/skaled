@@ -82,6 +82,16 @@ typedef int socket_t;
 #include <skutils/url.h>
 #include <skutils/utils.h>
 
+#ifndef RAPIDJSON_ASSERT
+#define RAPIDJSON_ASSERT( x )                                       \
+    if ( !( x ) ) {                                                 \
+        throw std::out_of_range( #x " failed with provided JSON" ); \
+    }
+#endif
+
+#define RAPIDJSON_ASSERT_THROWS
+
+#include <rapidjson/document.h>
 #include <json.hpp>
 
 /// configuration
@@ -731,10 +741,20 @@ struct result_of_http_request {
     std::vector< uint8_t > vecBytes_;
 };  /// struct result_of_http_request
 
+struct result_of_http_request_rapid {
+    bool isBinary_ = false;
+    rapidjson::Document out_;
+    std::vector< uint8_t > vecBytes_;
+};  /// struct result_of_http_request_rapid
+
 namespace http_pg {
 typedef std::function< skutils::result_of_http_request( const nlohmann::json&,
     const std::string& strOrigin, int ipVer, const std::string& strDstAddress, int nDstPort ) >
     pg_on_request_handler_t;
+
+typedef std::function< skutils::result_of_http_request_rapid( const rapidjson::Document&,
+    const std::string& strOrigin, int ipVer, const std::string& strDstAddress, int nDstPort ) >
+    pg_on_request_eth_getLogs_handler_t;
 
 typedef void* wrapped_proxygen_server_handle;
 
@@ -752,9 +772,11 @@ typedef std::vector< pg_accumulate_entry > pg_accumulate_entries;
 bool pg_logging_get();
 void pg_logging_set( bool _bIsLoggingMode );
 wrapped_proxygen_server_handle pg_start( pg_on_request_handler_t _h,
-    const pg_accumulate_entry& _pge, int32_t _threads = 0, int32_t _threadsLimit = 0 );
+    pg_on_request_eth_getLogs_handler_t _h_getLogs, const pg_accumulate_entry& _pge,
+    int32_t _threads = 0, int32_t _threadsLimit = 0 );
 wrapped_proxygen_server_handle pg_start( pg_on_request_handler_t _h,
-    const pg_accumulate_entries& _entries, int32_t _threads = 0, int32_t _threadsLimit = 0 );
+    pg_on_request_eth_getLogs_handler_t _h_getLogs, const pg_accumulate_entries& _entries,
+    int32_t _threads = 0, int32_t _threadsLimit = 0 );
 void pg_stop( wrapped_proxygen_server_handle _hServer );
 
 void pg_accumulate_clear();
@@ -762,8 +784,8 @@ size_t pg_accumulate_size();
 void pg_accumulate_add( int ipVer, std::string strBindAddr, int nPort, const char* cert_path,
     const char* private_key_path, const char* ca_path );
 void pg_accumulate_add( const pg_accumulate_entry& pge );
-wrapped_proxygen_server_handle pg_accumulate_start(
-    pg_on_request_handler_t h, int32_t threads = 0, int32_t threads_limit = 0 );
+wrapped_proxygen_server_handle pg_accumulate_start( pg_on_request_handler_t h,
+    pg_on_request_eth_getLogs_handler_t h_getLogs, int32_t threads = 0, int32_t threads_limit = 0 );
 
 typedef void ( *logging_fail_func_t )();
 

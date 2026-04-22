@@ -41,7 +41,7 @@ Ethash::Ethash() {
             return new EthashCPUMiner( ci );
         } };
     m_farm.setSealers( sealers );
-    m_farm.onSolutionFound( [=]( EthashProofOfWork::Solution const& sol ) {
+    m_farm.onSolutionFound( [this]( EthashProofOfWork::Solution const& sol ) {
         std::unique_lock< Mutex > l( m_submitLock );
         //        cdebug << m_farm.work().seedHash << m_farm.work().headerHash << sol.nonce <<
         //        EthashAux::eval(m_farm.work().seedHash, m_farm.work().headerHash,
@@ -133,7 +133,7 @@ void Ethash::verify( Strictness _s, BlockHeader const& _bi, BlockHeader const& _
 u256 Ethash::childGasLimit( BlockHeader const& _bi, u256 const& _gasFloorTarget ) const {
     u256 gasFloorTarget = _gasFloorTarget == Invalid256 ? 3141562 : _gasFloorTarget;
     u256 gasLimit = _bi.gasLimit();
-    u256 boundDivisor = chainParams().gasLimitBoundDivisor;
+    u256 boundDivisor = chainParams().getGasLimitBoundDivisor();
     if ( gasLimit < gasFloorTarget )
         return min< u256 >( gasFloorTarget, gasLimit + gasLimit / boundDivisor - 1 );
     else
@@ -150,12 +150,12 @@ u256 Ethash::calculateDifficulty( BlockHeader const& _bi, BlockHeader const& _pa
 
     if ( !_bi.number() )
         throw GenesisBlockCannotBeCalculated();
-    auto const& minimumDifficulty = chainParams().minimumDifficulty;
-    auto const& difficultyBoundDivisor = chainParams().difficultyBoundDivisor;
-    auto const& durationLimit = chainParams().durationLimit;
+    auto const& minimumDifficulty = chainParams().getMinimumDifficulty();
+    auto const& difficultyBoundDivisor = chainParams().getDifficultyBoundDivisor();
+    auto const& durationLimit = chainParams().getDurationLimit();
 
     bigint target;  // stick to a bigint for the target. Don't want to risk going negative.
-    if ( _bi.number() < chainParams().homesteadForkBlock )
+    if ( _bi.number() < chainParams().getHomesteadForkBlock() )
         // Frontier-era difficulty adjustment
         target = _bi.timestamp() >= _parent.timestamp() + durationLimit ?
                      _parent.difficulty() - ( _parent.difficulty() / difficultyBoundDivisor ) :
@@ -163,7 +163,7 @@ u256 Ethash::calculateDifficulty( BlockHeader const& _bi, BlockHeader const& _pa
     else {
         bigint const timestampDiff = bigint( _bi.timestamp() ) - _parent.timestamp();
         bigint const adjFactor =
-            _bi.number() < chainParams().byzantiumForkBlock ?
+            _bi.number() < chainParams().getByzantiumForkBlock() ?
                 max< bigint >( 1 - timestampDiff / 10, -99 ) :  // Homestead-era difficulty
                                                                   // adjustment
                 max< bigint >( ( _parent.hasUncles() ? 2 : 1 ) - timestampDiff / 9,
@@ -176,14 +176,14 @@ u256 Ethash::calculateDifficulty( BlockHeader const& _bi, BlockHeader const& _pa
     unsigned exponentialIceAgeBlockNumber = unsigned( _parent.number() + 1 );
 
     // EIP-1234 Constantinople Ice Age delay
-    if ( _bi.number() >= chainParams().constantinopleForkBlock ) {
+    if ( _bi.number() >= chainParams().getConstantinopleForkBlock() ) {
         if ( exponentialIceAgeBlockNumber >= 5000000 )
             exponentialIceAgeBlockNumber -= 5000000;
         else
             exponentialIceAgeBlockNumber = 0;
     }
     // EIP-649 Byzantium Ice Age delay
-    else if ( _bi.number() >= chainParams().byzantiumForkBlock ) {
+    else if ( _bi.number() >= chainParams().getByzantiumForkBlock() ) {
         if ( exponentialIceAgeBlockNumber >= 3000000 )
             exponentialIceAgeBlockNumber -= 3000000;
         else
@@ -202,7 +202,7 @@ u256 Ethash::calculateDifficulty( BlockHeader const& _bi, BlockHeader const& _pa
 void Ethash::populateFromParent( BlockHeader& _bi, BlockHeader const& _parent ) const {
     SealEngineFace::populateFromParent( _bi, _parent );
     _bi.setDifficulty( calculateDifficulty( _bi, _parent ) );
-    _bi.setGasLimit( childGasLimit( _parent, chainParams().minGasLimit ) );
+    _bi.setGasLimit( childGasLimit( _parent, chainParams().getMinGasLimit() ) );
 }
 
 bool Ethash::quickVerifySeal( BlockHeader const& _blockHeader ) const {

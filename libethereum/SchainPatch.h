@@ -9,6 +9,10 @@
 
 #include <string>
 
+#ifdef FAIR
+#include <unordered_set>
+#endif
+
 namespace dev {
 namespace eth {
 struct EVMSchedule;
@@ -21,11 +25,15 @@ public:
     static void init( const dev::eth::ChainOperationParams& _cp );
     static void useLatestBlockTimestamp( time_t _timestamp );
 
-    static SchainPatchEnum getEnumForPatchName( const std::string& _patchName );
-
 protected:
     static void printInfo( const std::string& _patchName, time_t _timeStamp );
     static bool isPatchEnabledInWorkingBlock( SchainPatchEnum _patchEnum ) {
+#ifdef FAIR
+        if ( preEnabledForFAIR.count( _patchEnum ) > 0 )
+            return true;
+        if ( preDisabledForFAIR.count( _patchEnum ) > 0 )
+            return false;
+#endif
         time_t activationTimestamp = chainParams.getPatchTimestamp( _patchEnum );
         return activationTimestamp != 0 && committedBlockTimestamp >= activationTimestamp;
     }
@@ -34,6 +42,10 @@ protected:
 protected:
     static dev::eth::ChainOperationParams chainParams;
     static std::atomic< time_t > committedBlockTimestamp;
+#ifdef FAIR
+    static const std::unordered_set< SchainPatchEnum > preEnabledForFAIR;
+    static const std::unordered_set< SchainPatchEnum > preDisabledForFAIR;
+#endif
 };
 
 
@@ -159,4 +171,28 @@ DEFINE_SIMPLE_PATCH( ClearPartialReceiptsPatch );
  */
 DEFINE_SIMPLE_PATCH( InvalidTransactionFormatPatch );
 
+/*
+ * Purpose: using current block in getBlockRandom
+ * Version introduced: 4.1.0
+ */
+DEFINE_SIMPLE_PATCH( CurrentBlockRandomPatch );
+
+/*
+ * Context: fix group index initialization on startup
+ * if skaled exits after the first block after rotation timestamp
+ * then it starts again and initializes with wrong group index
+ * Version introduced: 4.1.0
+ */
+DEFINE_AMNESIC_PATCH( GroupIndexInitPatch );
+
+/*
+ * Purpose: enable state mode so the database commit is executed only once per block.
+ */
+DEFINE_SIMPLE_PATCH( SingleStateCommitPerBlockPatch );
+
+DEFINE_SIMPLE_PATCH( ContractCreationReadOnlyPatch );
+
+#ifdef FAIR
+DEFINE_SIMPLE_PATCH( DisableSelfDestructPatch );
+#endif
 #endif  // SCHAINPATCH_H

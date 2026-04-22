@@ -25,12 +25,13 @@
 #include <libethashseal/GenesisInfo.h>
 #include <libethereum/ChainParams.h>
 #include <libethereum/ClientTest.h>
+#include <libethereum/SchainPatch.h>
 #include <libp2p/Network.h>
-#include <test/tools/libtesteth/TestOutputHelper.h>
-#include <test/tools/libtesteth/TestHelper.h>
+#include <libskale/SnapshotManager.h>
 #include <libweb3jsonrpc/AccountHolder.h>
 #include <libweb3jsonrpc/JsonHelper.h>
-#include <libskale/SnapshotManager.h>
+#include <test/tools/libtesteth/TestHelper.h>
+#include <test/tools/libtesteth/TestOutputHelper.h>
 
 using namespace std;
 using namespace dev;
@@ -39,7 +40,7 @@ using namespace dev::test;
 using namespace dev::p2p;
 namespace fs = boost::filesystem;
 
-static size_t rand_port = ( srand(time(nullptr)), 1024 + rand() % 64000 );
+static size_t rand_port = ( srand( time( nullptr ) ), 1024 + rand() % 64000 );
 
 struct FixtureCommon {
     const string BTRFS_FILE_PATH = "btrfs.file";
@@ -108,17 +109,24 @@ class TestClientFixture : public TestOutputHelperFixture {
 public:
     TestClientFixture( const std::string& _config = "" ) try {
 
-        ChainParams chainParams;
+        std::shared_ptr< ChainParams > chainParams = std::make_shared< ChainParams >();
         if ( _config != "" ) {
-            chainParams = chainParams.loadConfig( _config );
+            Json::Value ret;
+            Json::Reader().parse( _config, ret );
+#ifndef FAIR
+            ret["skaleConfig"]["sChain"]["contractStorageLimit"] = 32000;
+#endif
+            Json::FastWriter fastWriter;
+            std::string config = fastWriter.write( ret );
+            chainParams->loadConfig( config );
         }
         else {
-            chainParams.nodeInfo.port = chainParams.nodeInfo.port6 = rand_port;
-            chainParams.sChain.nodes[0].port = chainParams.sChain.nodes[0].port6 = rand_port;
+            chainParams->nodeInfo.port = chainParams->nodeInfo.port6 = rand_port;
+            chainParams->sChain.nodes[0].port = chainParams->sChain.nodes[0].port6 = rand_port;
         }
 
-        chainParams.sealEngineName = NoProof::name();
-        chainParams.allowFutureBlocks = true;
+        chainParams->sealEngineName = NoProof::name();
+        chainParams->allowFutureBlocks = true;
 
         string listenIP = "127.0.0.1";
         unsigned short listenPort = 30303;
@@ -133,11 +141,13 @@ public:
         //        ), dir,
         //            dir, chainParams, WithExisting::Kill, {"eth"}, testingMode ) );
 
-        auto monitor = make_shared< InstanceMonitor >("test");
+        auto monitor = make_shared< InstanceMonitor >( "test" );
 
         setenv("DATA_DIR", m_tmpDir.path().c_str(), 1);
-        m_ethereum.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
+        m_ethereum.reset( new eth::ClientTest( chainParams, ( int ) chainParams->getNetworkId(),
             shared_ptr< GasPricer >(), NULL, monitor, m_tmpDir.path(), WithExisting::Kill ) );
+
+        m_ethereum->setAuthor( coinbase.address() );
 
         //        m_ethereum.reset(
         //            new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr<
@@ -147,19 +157,15 @@ public:
         // wait for 1st block - because it's always empty
         std::promise< void > block_promise;
         auto importHandler = m_ethereum->setOnBlockImport(
-            [&block_promise]( BlockHeader const& ) {
-                    block_promise.set_value();
-        } );
+            [&block_promise]( BlockHeader const& ) { block_promise.set_value(); } );
 
         m_ethereum->injectSkaleHost();
         m_ethereum->startWorking();
 
         block_promise.get_future().wait();
 
-        m_ethereum->setAuthor( coinbase.address() );
-
         accountHolder.reset( new FixedAccountHolder( [&]() { return m_ethereum.get(); }, {} ) );
-        accountHolder->setAccounts( {coinbase} );
+        accountHolder->setAccounts( { coinbase } );
     } catch ( const std::exception& ex ) {
         clog( VerbosityError, "TestClientFixture" )
             << "CRITICAL " << dev::nested_exception_what( ex );
@@ -170,44 +176,45 @@ public:
     }
 
     dev::eth::Client* ethereum() { return m_ethereum.get(); }
-    dev::KeyPair coinbase{KeyPair::create()};
+    dev::KeyPair coinbase{ KeyPair::create() };
 
-    bool importTransactionAndGetStatus(const Json::Value& json) {
+    bool importTransactionAndGetStatus( const Json::Value& json ) {
         try {
-            { // block
+            {  // block
                 Json::FastWriter fastWriter;
                 std::string s = fastWriter.write( json );
                 nlohmann::json jo = nlohmann::json::parse( s );
-                clog( VerbosityInfo, "TestClientFixture::getTransactionStatus()" ) <<
-                    "Will compute status of transaction: " + jo.dump() + " ...";
-            } // block
-            Transaction tx = tx_from_json(json);
-            auto txHash = m_ethereum->importTransaction(tx);
-            clog( VerbosityInfo, "TestClientFixture::getTransactionStatus()" ) <<
-                    "Mining transaction...";
-            dev::eth::mineTransaction(*(m_ethereum), 1);
-            sleep(1);
-            clog( VerbosityInfo, "TestClientFixture::getTransactionStatus()" ) <<
-                    "Getting transaction receipt...";
-            Json::Value receipt = toJson(m_ethereum->localisedTransactionReceipt(txHash));
-            { // block
+                clog( VerbosityInfo, "TestClientFixture::getTransactionStatus()" )
+                    << "Will compute status of transaction: " + jo.dump() + " ...";
+            }  // block
+            Transaction tx = tx_from_json( json );
+            auto txHash = m_ethereum->importTransaction( tx );
+            clog( VerbosityInfo, "TestClientFixture::getTransactionStatus()" )
+                << "Mining transaction...";
+            dev::eth::mineTransaction( *( m_ethereum ), 1 );
+            sleep( 1 );
+            clog( VerbosityInfo, "TestClientFixture::getTransactionStatus()" )
+                << "Getting transaction receipt...";
+            Json::Value receipt = toJson( m_ethereum->localisedTransactionReceipt( txHash ) );
+            {  // block
                 Json::FastWriter fastWriter;
                 std::string s = fastWriter.write( receipt );
                 nlohmann::json jo = nlohmann::json::parse( s );
-                clog( VerbosityInfo, "TestClientFixture::getTransactionStatus()" ) <<
-                    "Got transaction receipt: " + jo.dump() + " ...";
-            } // block
+                clog( VerbosityInfo, "TestClientFixture::getTransactionStatus()" )
+                    << "Got transaction receipt: " + jo.dump() + " ...";
+            }  // block
             bool bStatusFlag = ( receipt["status"] == "0x1" ) ? true : false;
-            if( bStatusFlag )
-                clog( VerbosityInfo, "TestClientFixture::getTransactionStatus()" ) <<
-                    "SUCCESS: Got positive transaction status";
+            if ( bStatusFlag )
+                clog( VerbosityInfo, "TestClientFixture::getTransactionStatus()" )
+                    << "SUCCESS: Got positive transaction status";
             else
-            cerr << "TestClientFixture::getTransactionStatus() ERROR:" << receipt["status"] << '\n';
+                cerr << "TestClientFixture::getTransactionStatus() ERROR:" << receipt["status"]
+                     << '\n';
             return bStatusFlag;
-        } catch ( std::exception & ex ) {
+        } catch ( std::exception& ex ) {
             cerr << "TestClientFixture::getTransactionStatus() ERROR:" << ex.what() << '\n';
             return false;
-        } catch (...) {
+        } catch ( ... ) {
             cerr << "TestClientFixture::getTransactionStatus() Unknown exception" << '\n';
             return false;
         }
@@ -219,6 +226,19 @@ public:
         pair< bool, Secret > ar = accountHolder->authenticate( ts );
         return Transaction( ts, ar.second );
     }
+
+#ifdef FAIR
+    ~TestClientFixture() {
+        const auto deadline = chrono::steady_clock::now() + chrono::seconds( 10 );
+        while ( m_ethereum->skaleHost()->ignoreNewBlocksEnabled() && chrono::steady_clock::now() < deadline ) {
+            usleep( 10 );
+        }
+        if ( m_ethereum->skaleHost()->isConsesusUpdateHappened() )
+            m_ethereum->skaleHost()->handleConsensusUpdate();
+        accountHolder.reset();
+        m_ethereum.reset();
+    }
+#endif
 
 private:
     TransientDirectory m_tmpDir;
@@ -238,10 +258,11 @@ public:
         rv = system( ( "mkdir " + m_tmpDir.path() ).c_str() );
 
         gainRoot();
-        rv = system( ( "mount -o user_subvol_rm_allowed " + BTRFS_FILE_PATH + " " + m_tmpDir.path() )
-                    .c_str() );
+        rv =
+            system( ( "mount -o user_subvol_rm_allowed " + BTRFS_FILE_PATH + " " + m_tmpDir.path() )
+                        .c_str() );
         rv = chown( m_tmpDir.path().c_str(), sudo_uid, sudo_gid );
-        ( void )rv;
+        ( void ) rv;
         dropRoot();
 
         //        btrfs.subvolume.create( ( BTRFS_DIR_PATH + "/vol1" ).c_str() );
@@ -250,8 +271,16 @@ public:
 
         gainRoot();
 
-        ChainParams chainParams;
-        chainParams = chainParams.loadConfig( _config );
+        chainParams = std::make_shared< ChainParams >();
+
+        Json::Value ret;
+        Json::Reader().parse( _config, ret );
+#ifndef FAIR
+        ret["skaleConfig"]["sChain"]["contractStorageLimit"] = 32000;
+#endif
+        Json::FastWriter fastWriter;
+        std::string config = fastWriter.write( ret );
+        chainParams->loadConfig( config );
 
         auto nodesState = contents( m_tmpDir.path() / fs::path( "network.rlp" ) );
 
@@ -265,15 +294,16 @@ public:
         //     m_tmpDir.path() / "vol1" / "12041" );
         // boost::filesystem::create_directory(
         //     m_tmpDir.path() / "vol1" / "12041" / "state" );
-        // std::unique_ptr< dev::db::DatabaseFace > db_state( new dev::db::LevelDB( m_tmpDir.path() / "vol1" / "12041" / "state" ) );
-        // boost::filesystem::create_directory(
+        // std::unique_ptr< dev::db::DatabaseFace > db_state( new dev::db::LevelDB( m_tmpDir.path()
+        // / "vol1" / "12041" / "state" ) ); boost::filesystem::create_directory(
         //     m_tmpDir.path() / "vol1" / "blocks_and_extras" );
-        // std::unique_ptr< dev::db::DatabaseFace > db_blocks_and_extras( new dev::db::LevelDB( m_tmpDir.path() / "vol1" / "12041" / "blocks_and_extras" ) );
+        // std::unique_ptr< dev::db::DatabaseFace > db_blocks_and_extras( new dev::db::LevelDB(
+        // m_tmpDir.path() / "vol1" / "12041" / "blocks_and_extras" ) );
 
-        auto monitor = make_shared< InstanceMonitor >("test");
+        auto monitor = make_shared< InstanceMonitor >( "test" );
 
         setenv("DATA_DIR", m_tmpDir.path().c_str(), 1);
-        m_ethereum.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
+        m_ethereum.reset( new eth::ClientTest( chainParams, ( int ) chainParams->getNetworkId(),
             shared_ptr< GasPricer >(), mgr, monitor, m_tmpDir.path(), WithExisting::Kill ) );
 
         //        m_ethereum.reset(
@@ -284,9 +314,7 @@ public:
         // wait for 1st block - because it's always empty
         std::promise< void > block_promise;
         auto importHandler = m_ethereum->setOnBlockImport(
-            [&block_promise]( BlockHeader const& ) {
-                    block_promise.set_value();
-        } );
+            [&block_promise]( BlockHeader const& ) { block_promise.set_value(); } );
 
         m_ethereum->injectSkaleHost();
         m_ethereum->startWorking();
@@ -309,7 +337,7 @@ public:
     fs::path getTmpDataDir() { return m_tmpDir.path(); }
 
     ~TestClientSnapshotsFixture() {
-        m_ethereum.reset(0);
+        m_ethereum.reset( 0 );
         const char* NC = getenv( "NC" );
         if ( NC )
             return;
@@ -321,9 +349,10 @@ public:
     }
 
 private:
+    std::shared_ptr< ChainParams > chainParams;
     std::unique_ptr< dev::eth::Client > m_ethereum;
     TransientDirectory m_tmpDir;
-    dev::KeyPair coinbase{KeyPair::create()};
+    dev::KeyPair coinbase{ KeyPair::create() };
 };
 
 // genesis config string from solidity
@@ -365,6 +394,7 @@ static std::string const c_configString = R"(
 }
 )";
 
+#ifndef FAIR
 static std::string const c_genesisInfoSkaleTest = std::string() +
                                                   R"E(
 {
@@ -406,7 +436,7 @@ static std::string const c_genesisInfoSkaleTest = std::string() +
       "nodeName": "Node1",
       "nodeID": 1112,
       "bindIP": "127.0.0.1",
-      "basePort": )E"+std::to_string( rand_port ) + R"E(,
+      "basePort": )E" + std::to_string( rand_port ) + R"E(,
       "logLevel": "trace",
       "logLevelProposal": "trace",
       "testSignatures": true
@@ -418,7 +448,7 @@ static std::string const c_genesisInfoSkaleTest = std::string() +
         "emptyBlockIntervalMs": -1,
         "correctForkInPowPatchTimestamp": 1,
         "nodes": [
-          { "nodeID": 1112, "ip": "127.0.0.1", "basePort": )E"+std::to_string( rand_port ) + R"E(, "schainIndex" : 1, "publicKey": "0xfa"}
+          { "nodeID": 1112, "ip": "127.0.0.1", "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "basePort": )E"+std::to_string( rand_port ) + R"E(, "schainIndex" : 1, "publicKey": "0xfa"}
         ]
     }
   },
@@ -440,6 +470,129 @@ static std::string const c_genesisInfoSkaleTest = std::string() +
     }
 }
 )E";
+#else
+static std::string const c_genesisInfoSkaleTest = std::string() +
+                                                  R"E(
+{
+    "sealEngine": "Ethash",
+    "params": {
+        "accountStartNonce": "0x00",
+        "homesteadForkBlock": "0x00",
+        "EIP150ForkBlock": "0x00",
+        "EIP158ForkBlock": "0x00",
+        "byzantiumForkBlock": "0x00",
+        "constantinopleForkBlock": "0x00",
+        "constantinopleFixForkBlock": "0x00",
+        "istanbulForkBlock": "0x00",
+        "networkID" : "12313219",
+        "chainID": "0x01",
+        "maximumExtraDataSize": "0x20",
+        "tieBreakingGas": false,
+        "minGasLimit": "0x1388",
+        "maxGasLimit": "7fffffffffffffff",
+        "gasLimitBoundDivisor": "0x0400",
+        "minimumDifficulty": "0x020000",
+        "difficultyBoundDivisor": "0x0800",
+        "durationLimit": "0x0d",
+        "blockReward": "0x4563918244F40000",
+        "skaleDisableChainIdCheck": true
+    },
+    "genesis": {
+        "nonce": "0x0000000000000042",
+        "difficulty": "0x020000",
+        "mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "author": "0x0000000000000000000000000000000000000000",
+        "timestamp": "0x00",
+        "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "extraData": "0x11bbe8db4e347b4e8c937c1c8370e4b5ed33adb3db69cbdb7a38e1e50b1b82fa",
+        "gasLimit": "0x47E7C4"
+    },
+   "skaleConfig": {
+    "nodeInfo": {
+      "nodeName": "Node1",
+      "nodeID": 1112,
+      "bindIP": "127.0.0.1",
+      "basePort": )E" + std::to_string( rand_port ) +
+                                                  R"E(,
+      "logLevel": "trace",
+      "logLevelProposal": "trace",
+      "testSignatures": true
+    },
+    "sChain": {
+        "schainName": "TestChain",
+        "schainID": 1,
+        "emptyBlockIntervalMs": -1,
+        "nodeGroups": {
+            "0": {
+                "nodes": {
+                    "8": [
+                        1,
+                        8,
+                        "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea105a3d21845e5660bc3d4e7c82e7af1daa3baad393b1521467"
+                    ]
+                },
+                "finish_ts": 1,
+                "bls_public_key": {
+                    "blsPublicKey0": "15959969554621958245201075983340071881770733084910870228938077786643587385029",
+                    "blsPublicKey1": "7970122607051572307517094692346020360016825923464107614135327251488152616550",
+                    "blsPublicKey2": "3371162264373897025322009434717052197952692496405149486989861571246537813591",
+                    "blsPublicKey3": "13678625751515504401110635369790787716744686498431213713911601759809559919693"
+                }
+            },
+            "1": {
+                "nodes": {
+                    "8": [
+                        1,
+                        8,
+                        "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea105a3d21845e5660bc3d4e7c82e7af1daa3baad393b1521467"
+                    ]
+                },
+                "finish_ts": null,
+                "bls_public_key": {
+                    "blsPublicKey0": "3842742177969966091367527274107524613106077736353521259727282251005583743182",
+                    "blsPublicKey1": "3497912824016228906558906422247670474553186446469877598411863912329082553081",
+                    "blsPublicKey2": "8173996886448941320370434854289578123609627835954133538412363037981850950343",
+                    "blsPublicKey3": "20979370720689475348670582375026949105497642726992863932315517524004804784155"
+                }
+            }
+        },
+        "nodes": {
+            "1": {
+                "group": [
+              { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )E" +
+    std::to_string( rand_port ) +
+    R"E(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
+                ]
+            },
+            "2": {
+                "group": [
+              { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )E" +
+                                                  std::to_string( rand_port ) +
+                                                  R"E(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
+                ]
+            }
+        }
+    }
+  },
+    "accounts": {
+        "0000000000000000000000000000000000000001": { "precompiled": { "name": "ecrecover", "linear": { "base": 3000, "word": 0 } } },
+        "0000000000000000000000000000000000000002": { "precompiled": { "name": "sha256", "linear": { "base": 60, "word": 12 } } },
+        "0000000000000000000000000000000000000003": { "precompiled": { "name": "ripemd160", "linear": { "base": 600, "word": 120 } } },
+        "0000000000000000000000000000000000000004": { "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } } },
+        "0000000000000000000000000000000000000005": { "precompiled": { "name": "modexp", "startingBlock" : "0x2dc6c0" } },
+        "0000000000000000000000000000000000000006": { "precompiled": { "name": "alt_bn128_G1_add", "startingBlock" : "0x2dc6c0", "linear": { "base": 500, "word": 0 } } },
+        "0000000000000000000000000000000000000007": { "precompiled": { "name": "alt_bn128_G1_mul", "startingBlock" : "0x2dc6c0", "linear": { "base": 40000, "word": 0 } } },
+        "0000000000000000000000000000000000000008": { "precompiled": { "name": "alt_bn128_pairing_product", "startingBlock" : "0x2dc6c0" } },
+        "0xca4409573a5129a72edf85d6c51e26760fc9c903": { "balance": "100000000000000000000000" },
+        "0xD2001300000000000000000000000000000000D2": { "balance": "0", "nonce": "0", "storage": {}, "code":"0x6080604052348015600f57600080fd5b506004361060325760003560e01c8063815b8ab41460375780638273f754146062575b600080fd5b606060048036036020811015604b57600080fd5b8101908080359060200190929190505050606a565b005b60686081565b005b60005a90505b815a82031015607d576070565b5050565b60005a9050609660028281609157fe5b04606a565b5056fea165627a7a72305820f5fb5a65e97cbda96c32b3a2e1497cd6b7989179b5dc29e9875bcbea5a96c4520029"},
+        "0xD2001300000000000000000000000000000000D4": { "balance": "0", "nonce": "0", "storage": {}, "code":"0x608060405234801561001057600080fd5b506004361061004c5760003560e01c80632098776714610051578063b8bd717f1461007f578063d37165fa146100ad578063fdde8d66146100db575b600080fd5b61007d6004803603602081101561006757600080fd5b8101908080359060200190929190505050610109565b005b6100ab6004803603602081101561009557600080fd5b8101908080359060200190929190505050610136565b005b6100d9600480360360208110156100c357600080fd5b8101908080359060200190929190505050610170565b005b610107600480360360208110156100f157600080fd5b8101908080359060200190929190505050610191565b005b60005a90505b815a8203101561011e5761010f565b600080fd5b815a8203101561013257610123565b5050565b60005a90505b815a8203101561014b5761013c565b600060011461015957600080fd5b5a90505b815a8203101561016c5761015d565b5050565b60005a9050600081830390505b805a8303101561018c5761017d565b505050565b60005a90505b815a820310156101a657610197565b60016101b157600080fd5b5a90505b815a820310156101c4576101b5565b505056fea264697066735822122089b72532621e7d1849e444ee6efaad4fb8771258e6f79755083dce434e5ac94c64736f6c63430006000033"},
+        "0xd40B3c51D0ECED279b1697DbdF45d4D19b872164": { "balance": "0", "nonce": "0", "storage": {}, "code":"0x6080604052348015600f57600080fd5b506004361060325760003560e01c80636057361d146037578063b05784b8146062575b600080fd5b606060048036036020811015604b57600080fd5b8101908080359060200190929190505050607e565b005b60686088565b6040518082815260200191505060405180910390f35b8060008190555050565b6000805490509056fea2646970667358221220e5ff9593bfa9540a34cad5ecbe137dcafcfe1f93e3c4832610438d6f0ece37db64736f6c63430006060033"},
+        "0xD2001300000000000000000000000000000000D3": { "balance": "0", "nonce": "0", "storage": {}, "code":"0x608060405234801561001057600080fd5b50600436106100365760003560e01c8063ee919d501461003b578063f0fdf83414610069575b600080fd5b6100676004803603602081101561005157600080fd5b81019080803590602001909291905050506100af565b005b6100956004803603602081101561007f57600080fd5b8101908080359060200190929190505050610108565b604051808215151515815260200191505060405180910390f35b600160008083815260200190815260200160002060006101000a81548160ff021916908315150217905550600080600083815260200190815260200160002060006101000a81548160ff02191690831515021790555050565b60006020528060005260406000206000915054906101000a900460ff168156fea2646970667358221220cf479cb746c4b897c88be4ad8e2612a14e27478f91928c49619c98da374a3bf864736f6c63430006000033"},
+        "0xD40b89C063a23eb85d739f6fA9B14341838eeB2b": { "balance": "0", "nonce": "0", "storage": {"0x101e368776582e57ab3d116ffe2517c0a585cd5b23174b01e275c2d8329c3d83": "0x0000000000000000000000000000000000000000000000000000000000000001"}, "code":"0x608060405234801561001057600080fd5b506004361061004c5760003560e01c80634df7e3d014610051578063d82cf7901461006f578063ee919d501461009d578063f0fdf834146100cb575b600080fd5b610059610111565b6040518082815260200191505060405180910390f35b61009b6004803603602081101561008557600080fd5b8101908080359060200190929190505050610117565b005b6100c9600480360360208110156100b357600080fd5b810190808035906020019092919050505061017d565b005b6100f7600480360360208110156100e157600080fd5b81019080803590602001909291905050506101ab565b604051808215151515815260200191505060405180910390f35b60015481565b60008082815260200190815260200160002060009054906101000a900460ff16151560011515141561017a57600080600083815260200190815260200160002060006101000a81548160ff02191690831515021790555060018054016001819055505b50565b600160008083815260200190815260200160002060006101000a81548160ff02191690831515021790555050565b60006020528060005260406000206000915054906101000a900460ff168156fea264697066735822122000af6f9a0d5c9b8b642648557291c9eb0f9732d60094cf75e14bb192abd97bcc64736f6c63430006000033"}
+    }
+}
+)E";
+#endif
 
 
 BOOST_AUTO_TEST_SUITE( EstimateGas )
@@ -447,20 +600,18 @@ BOOST_AUTO_TEST_SUITE( EstimateGas )
 BOOST_AUTO_TEST_CASE( transactionWithData ) {
     TestClientFixture fixture( c_genesisInfoSkaleTest );
     ClientTest* testClient = asClientTest( fixture.ethereum() );
-
     dev::eth::simulateMining( *( fixture.ethereum() ), 10 );
 
     Address addr( "0xca4409573a5129a72edf85d6c51e26760fc9c903" );
 
-    bytes data =
-        jsToBytes( "0x11223344556600770000" );
+    bytes data = jsToBytes( "0x11223344556600770000" );
 
-    u256 estimate = testClient
-                        ->estimateGas( addr, 0, addr, data, 10000000, 1000000,
-                            GasEstimationCallback() )
-                        .first;
-
-    BOOST_CHECK_EQUAL( estimate, u256( 21000+7*16+3*4 ) );
+    while ( !CorrectForkInPowPatch::isEnabledInWorkingBlock() )
+        usleep( 100 );
+    u256 estimate =
+        testClient->estimateGas( addr, 0, addr, data, 10000000, 1000000, GasEstimationCallback() )
+            .first;
+    BOOST_CHECK_EQUAL( estimate, u256( 21000 + 7 * 16 + 3 * 4 ) );
 }
 
 BOOST_AUTO_TEST_CASE( constantConsumption ) {
@@ -493,6 +644,9 @@ BOOST_AUTO_TEST_CASE( constantConsumption ) {
     // data to call method spendGas(50000)
     bytes data =
         jsToBytes( "0x815b8ab4000000000000000000000000000000000000000000000000000000000000c350" );
+
+    while ( !CorrectForkInPowPatch::isEnabledInWorkingBlock() )
+        usleep( 100 );
 
     u256 estimate = testClient
                         ->estimateGas( from, 0, contractAddress, data, 10000000, 1000000,
@@ -532,6 +686,9 @@ BOOST_AUTO_TEST_CASE( linearConsumption ) {
 
     // data to call method spendHalfOfGas()
     bytes data = jsToBytes( "0x8273f754" );
+
+    while ( !CorrectForkInPowPatch::isEnabledInWorkingBlock() )
+        usleep( 100 );
 
     u256 estimate = testClient
                         ->estimateGas( from, 0, contractAddress, data, 10000000, 1000000,
@@ -573,6 +730,10 @@ BOOST_AUTO_TEST_CASE( exceedsGasLimit ) {
         jsToBytes( "0x815b8ab4000000000000000000000000000000000000000000000000000000000000c350" );
 
     int64_t maxGas = 50000;
+
+    while ( !CorrectForkInPowPatch::isEnabledInWorkingBlock() )
+        usleep( 100 );
+
     u256 estimate = testClient
                         ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
                             GasEstimationCallback() )
@@ -609,6 +770,10 @@ BOOST_AUTO_TEST_CASE( runsInterference ) {
         jsToBytes( "0x6057361d0000000000000000000000000000000000000000000000000000000000000016" );
 
     int64_t maxGas = 50000;
+
+    while ( !CorrectForkInPowPatch::isEnabledInWorkingBlock() )
+        usleep( 100 );
+
     u256 estimate = testClient
                         ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
                             GasEstimationCallback() )
@@ -620,6 +785,8 @@ BOOST_AUTO_TEST_CASE( runsInterference ) {
 BOOST_AUTO_TEST_CASE( consumptionWithRefunds ) {
     TestClientFixture fixture( c_genesisInfoSkaleTest );
     ClientTest* testClient = asClientTest( fixture.ethereum() );
+
+    sleep( 3 );
 
     dev::eth::simulateMining( *( fixture.ethereum() ), 10 );
 
@@ -641,31 +808,32 @@ BOOST_AUTO_TEST_CASE( consumptionWithRefunds ) {
 
     // data to call method setA(0)
     bytes data =
-            jsToBytes( "0xee919d500000000000000000000000000000000000000000000000000000000000000000" );
+        jsToBytes( "0xee919d500000000000000000000000000000000000000000000000000000000000000000" );
 
     int64_t maxGas = 100000;
 
     u256 balance = testClient->balanceAt( from );
     BOOST_CHECK( balance > 0 );
 
+    while ( !CorrectForkInPowPatch::isEnabledInWorkingBlock() )
+        usleep( 100 );
+
     u256 estimate = testClient
-            ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
-                           GasEstimationCallback() )
-            .first;
-
-
+                        ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
+                            GasEstimationCallback() )
+                        .first;
 
     Json::Value estimateTransaction;
-    estimateTransaction["from"] = toJS(from );
-    estimateTransaction["to"] = toJS (contractAddress);
-    estimateTransaction["data"] = toJS (data);
+    estimateTransaction["from"] = toJS( from );
+    estimateTransaction["to"] = toJS( contractAddress );
+    estimateTransaction["data"] = toJS( data );
 
-    estimateTransaction["gas"] = toJS(estimate - 1);
-    BOOST_CHECK( !fixture.importTransactionAndGetStatus(estimateTransaction) );
+    estimateTransaction["gas"] = toJS( estimate - 1 );
+    BOOST_CHECK( !fixture.importTransactionAndGetStatus( estimateTransaction ) );
     fixture.ethereum()->state().getOriginalDb()->createBlockSnap( 2 );
 
-    estimateTransaction["gas"] = toJS(estimate);
-    BOOST_CHECK( fixture.importTransactionAndGetStatus(estimateTransaction) );
+    estimateTransaction["gas"] = toJS( estimate );
+    BOOST_CHECK( fixture.importTransactionAndGetStatus( estimateTransaction ) );
 }
 
 BOOST_AUTO_TEST_CASE( consumptionWithRefunds2 ) {
@@ -705,25 +873,29 @@ BOOST_AUTO_TEST_CASE( consumptionWithRefunds2 ) {
     // setA(3) already "called" (see "storage" in c_genesisInfoSkaleTest)
     // data to call getA(3)
     bytes data =
-            jsToBytes( "0xd82cf7900000000000000000000000000000000000000000000000000000000000000003" );
+        jsToBytes( "0xd82cf7900000000000000000000000000000000000000000000000000000000000000003" );
 
     int64_t maxGas = 100000;
+
+    while ( !CorrectForkInPowPatch::isEnabledInWorkingBlock() )
+        usleep( 100 );
+
     u256 estimate = testClient
-            ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
-                           GasEstimationCallback() )
-            .first;
+                        ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
+                            GasEstimationCallback() )
+                        .first;
 
     Json::Value estimateTransaction;
-    estimateTransaction["from"] = toJS(from);
-    estimateTransaction["to"] = toJS(contractAddress);
-    estimateTransaction["data"] = toJS (data);
+    estimateTransaction["from"] = toJS( from );
+    estimateTransaction["to"] = toJS( contractAddress );
+    estimateTransaction["data"] = toJS( data );
 
-    estimateTransaction["gas"] = toJS(estimate - 1);
-    BOOST_CHECK( !fixture.importTransactionAndGetStatus(estimateTransaction) );
+    estimateTransaction["gas"] = toJS( estimate - 1 );
+    BOOST_CHECK( !fixture.importTransactionAndGetStatus( estimateTransaction ) );
     fixture.ethereum()->state().getOriginalDb()->createBlockSnap( 2 );
 
-    estimateTransaction["gas"] = toJS(estimate);
-    BOOST_CHECK( fixture.importTransactionAndGetStatus(estimateTransaction) );
+    estimateTransaction["gas"] = toJS( estimate );
+    BOOST_CHECK( fixture.importTransactionAndGetStatus( estimateTransaction ) );
 }
 
 BOOST_AUTO_TEST_CASE( nonLinearConsumption ) {
@@ -751,29 +923,32 @@ BOOST_AUTO_TEST_CASE( nonLinearConsumption ) {
 
     // data to call method test(100000)
     bytes data =
-            jsToBytes( "0xd37165fa00000000000000000000000000000000000000000000000000000000000186a0" );
+        jsToBytes( "0xd37165fa00000000000000000000000000000000000000000000000000000000000186a0" );
 
     int64_t maxGas = 100000;
+
+    while ( !CorrectForkInPowPatch::isEnabledInWorkingBlock() )
+        usleep( 100 );
     u256 estimate = testClient
-            ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
-                           GasEstimationCallback() )
-            .first;
+                        ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
+                            GasEstimationCallback() )
+                        .first;
 
     BOOST_CHECK( estimate < u256( maxGas ) );
 
     maxGas = 50000;
     estimate = testClient
-            ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
-                           GasEstimationCallback() )
-            .first;
+                   ->estimateGas(
+                       from, 0, contractAddress, data, maxGas, 1000000, GasEstimationCallback() )
+                   .first;
 
     BOOST_CHECK_EQUAL( estimate, u256( maxGas ) );
 
     maxGas = 200000;
     estimate = testClient
-            ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
-                           GasEstimationCallback() )
-            .first;
+                   ->estimateGas(
+                       from, 0, contractAddress, data, maxGas, 1000000, GasEstimationCallback() )
+                   .first;
 
     BOOST_CHECK_EQUAL( estimate, u256( maxGas ) );
 }
@@ -821,31 +996,37 @@ BOOST_AUTO_TEST_CASE( consumptionWithReverts ) {
 
     // data to call method testRequire(50000)
     bytes data =
-            jsToBytes( "0xb8bd717f000000000000000000000000000000000000000000000000000000000000c350" );
+        jsToBytes( "0xb8bd717f000000000000000000000000000000000000000000000000000000000000c350" );
+
+    while ( !CorrectForkInPowPatch::isEnabledInWorkingBlock() )
+        usleep( 100 );
+
     u256 estimate = testClient
-            ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
-                           GasEstimationCallback() )
-            .first;
+                        ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
+                            GasEstimationCallback() )
+                        .first;
 
     BOOST_CHECK_EQUAL( estimate, u256( maxGas ) );
 
     // data to call method testRevert(50000)
-    data = jsToBytes( "0x20987767000000000000000000000000000000000000000000000000000000000000c350" );
+    data =
+        jsToBytes( "0x20987767000000000000000000000000000000000000000000000000000000000000c350" );
 
     estimate = testClient
-            ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
-                           GasEstimationCallback() )
-            .first;
+                   ->estimateGas(
+                       from, 0, contractAddress, data, maxGas, 1000000, GasEstimationCallback() )
+                   .first;
 
     BOOST_CHECK_EQUAL( estimate, u256( maxGas ) );
 
     // data to call method testRequireOff(50000)
-    data = jsToBytes( "0xfdde8d66000000000000000000000000000000000000000000000000000000000000c350" );
+    data =
+        jsToBytes( "0xfdde8d66000000000000000000000000000000000000000000000000000000000000c350" );
 
     estimate = testClient
-            ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
-                           GasEstimationCallback() )
-            .first;
+                   ->estimateGas(
+                       from, 0, contractAddress, data, maxGas, 1000000, GasEstimationCallback() )
+                   .first;
 
     BOOST_CHECK_EQUAL( estimate, u256( 121632 ) );
 }
@@ -854,8 +1035,8 @@ BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE( getHistoricNodesData )
 
-static std::string const c_genesisInfoSkaleIMABLSPublicKeyTest = std::string() +
-                                                  R"E(
+#ifndef FAIR
+static std::string const c_genesisInfoSkaleIMABLSPublicKeyTest = std::string() + R"E(
 {
     "sealEngine": "Ethash",
     "params": {
@@ -894,7 +1075,7 @@ static std::string const c_genesisInfoSkaleIMABLSPublicKeyTest = std::string() +
       "nodeName": "Node1",
       "nodeID": 1112,
       "bindIP": "127.0.0.1",
-      "basePort": )E"+std::to_string( rand_port ) + R"E(,
+      "basePort": )E" + std::to_string( rand_port ) + R"E(,
       "logLevel": "trace",
       "logLevelProposal": "trace",
       "testSignatures": true
@@ -903,7 +1084,6 @@ static std::string const c_genesisInfoSkaleIMABLSPublicKeyTest = std::string() +
         "schainName": "TestChain",
         "schainID": 1,
         "emptyBlockIntervalMs": -1,
-        "precompiledConfigPatchTimestamp": 1,
         "nodeGroups": {
             "1": {
                 "nodes": {
@@ -939,7 +1119,7 @@ static std::string const c_genesisInfoSkaleIMABLSPublicKeyTest = std::string() +
             }
         },
         "nodes": [
-          { "nodeID": 1112, "ip": "127.0.0.1", "basePort": )E"+std::to_string( rand_port ) + R"E(, "schainIndex" : 1, "publicKey": "0xfa"}
+          { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )E"+std::to_string( rand_port ) + R"E(, "schainIndex" : 1, "publicKey": "0xfa"}
         ]
     }
   },
@@ -955,41 +1135,181 @@ static std::string const c_genesisInfoSkaleIMABLSPublicKeyTest = std::string() +
     }
 }
 )E";
+#else
+static std::string const c_genesisInfoSkaleIMABLSPublicKeyTest =
+    std::string() +
+    R"E(
+{
+    "sealEngine": "Ethash",
+    "params": {
+        "accountStartNonce": "0x00",
+        "homesteadForkBlock": "0x00",
+        "EIP150ForkBlock": "0x00",
+        "EIP158ForkBlock": "0x00",
+        "byzantiumForkBlock": "0x00",
+        "constantinopleForkBlock": "0x00",
+        "constantinopleFixForkBlock": "0x00",
+        "istanbulForkBlock": "0x00",
+        "networkID" : "12313219",
+        "chainID": "0x01",
+        "maximumExtraDataSize": "0x20",
+        "tieBreakingGas": false,
+        "minGasLimit": "0x1388",
+        "maxGasLimit": "7fffffffffffffff",
+        "gasLimitBoundDivisor": "0x0400",
+        "minimumDifficulty": "0x020000",
+        "difficultyBoundDivisor": "0x0800",
+        "durationLimit": "0x0d",
+        "blockReward": "0x4563918244F40000"
+    },
+    "genesis": {
+        "nonce": "0x0000000000000042",
+        "difficulty": "0x020000",
+        "mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "author": "0x0000000000000000000000000000000000000000",
+        "timestamp": "0x00",
+        "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "extraData": "0x11bbe8db4e347b4e8c937c1c8370e4b5ed33adb3db69cbdb7a38e1e50b1b82fa",
+        "gasLimit": "0x47E7C4"
+    },
+   "skaleConfig": {
+    "nodeInfo": {
+      "nodeName": "Node1",
+      "nodeID": 1112,
+      "bindIP": "127.0.0.1",
+      "basePort": )E" +
+    std::to_string( rand_port ) + R"E(,
+      "logLevel": "trace",
+      "logLevelProposal": "trace",
+      "testSignatures": true
+    },
+    "sChain": {
+        "schainName": "TestChain",
+        "schainID": 1,
+        "emptyBlockIntervalMs": -1,
+        "nodeGroups": {
+            "1": {
+                "nodes": {
+                    "30": [
+                        0,
+                        30,
+                        "0x6180cde2cbbcc6b6a17efec4503a7d4316f8612f411ee171587089f770335f484003ad236c534b9afa82befc1f69533723abdb6ec2601e582b72dcfd7919338b"
+                    ]
+                },
+                "finish_ts": null,
+                "bls_public_key": {
+                    "blsPublicKey0": "10860211539819517237363395256510340030868592687836950245163587507107792195621",
+                    "blsPublicKey1": "2419969454136313127863904023626922181546178935031521540751337209075607503568",
+                    "blsPublicKey2": "3399776985251727272800732947224655319335094876742988846345707000254666193993",
+                    "blsPublicKey3": "16982202412630419037827505223148517434545454619191931299977913428346639096984"
+                }
+            },
+            "0": {
+                "nodes": {
+                    "26": [
+                        3,
+                        26,
+                        "0x3a581d62b12232dade30c3710215a271984841657449d1f474295a13737b778266f57e298f123ae80cbab7cc35ead1b62a387556f94b326d5c65d4a7aa2abcba"
+                    ]
+                },
+                "finish_ts": 4294967290,
+                "bls_public_key": {
+                    "blsPublicKey0": "12457351342169393659284905310882617316356538373005664536506840512800919345414",
+                    "blsPublicKey1": "11573096151310346982175966190385407867176668720531590318594794283907348596326",
+                    "blsPublicKey2": "13929944172721019694880576097738949215943314024940461401664534665129747139387",
+                    "blsPublicKey3": "7375214420811287025501422512322868338311819657776589198925786170409964211914"
+                }
+            }
+        },
+        "nodes": {
+            "1": {
+                "group": [
+              { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )E" +
+    std::to_string( rand_port ) +
+    R"E(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
+                ]
+            },
+            "-1": {}
+        }
+    }
+  },
+    "accounts": {
+        "0000000000000000000000000000000000000001": { "precompiled": { "name": "ecrecover", "linear": { "base": 3000, "word": 0 } } },
+        "0000000000000000000000000000000000000002": { "precompiled": { "name": "sha256", "linear": { "base": 60, "word": 12 } } },
+        "0000000000000000000000000000000000000003": { "precompiled": { "name": "ripemd160", "linear": { "base": 600, "word": 120 } } },
+        "0000000000000000000000000000000000000004": { "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } } },
+        "0000000000000000000000000000000000000005": { "precompiled": { "name": "modexp", "startingBlock" : "0x2dc6c0" } },
+        "0000000000000000000000000000000000000006": { "precompiled": { "name": "alt_bn128_G1_add", "startingBlock" : "0x2dc6c0", "linear": { "base": 500, "word": 0 } } },
+        "0000000000000000000000000000000000000007": { "precompiled": { "name": "alt_bn128_G1_mul", "startingBlock" : "0x2dc6c0", "linear": { "base": 40000, "word": 0 } } },
+        "0000000000000000000000000000000000000008": { "precompiled": { "name": "alt_bn128_pairing_product", "startingBlock" : "0x2dc6c0" } }
+    }
+}
+)E";
+#endif
 
 BOOST_AUTO_TEST_CASE( initAndUpdateHistoricConfigFields ) {
     TestClientFixture fixture( c_genesisInfoSkaleIMABLSPublicKeyTest );
 
-
-    sleep(3);
+    sleep( 3 );
 
     ClientTest* testClient = asClientTest( fixture.ethereum() );
 
+    BOOST_REQUIRE( testClient );
 
-    BOOST_REQUIRE(testClient);
+    std::array< std::string, 4 > imaBLSPublicKeyOnStartUp = {
+        "12457351342169393659284905310882617316356538373005664536506840512800919345414",
+        "11573096151310346982175966190385407867176668720531590318594794283907348596326",
+        "13929944172721019694880576097738949215943314024940461401664534665129747139387",
+        "7375214420811287025501422512322868338311819657776589198925786170409964211914"
+    };
 
+    std::array< std::string, 4 > imaBLSPublicKeyAfterBlock = {
+        "10860211539819517237363395256510340030868592687836950245163587507107792195621",
+        "2419969454136313127863904023626922181546178935031521540751337209075607503568",
+        "3399776985251727272800732947224655319335094876742988846345707000254666193993",
+        "16982202412630419037827505223148517434545454619191931299977913428346639096984"
+    };
 
-    std::array< std::string, 4 > imaBLSPublicKeyOnStartUp = { "12457351342169393659284905310882617316356538373005664536506840512800919345414", "11573096151310346982175966190385407867176668720531590318594794283907348596326", "13929944172721019694880576097738949215943314024940461401664534665129747139387", "7375214420811287025501422512322868338311819657776589198925786170409964211914" };
+    BOOST_REQUIRE( testClient->getCurrentBLSPublicKey() == imaBLSPublicKeyOnStartUp );
+    BOOST_REQUIRE_EQUAL( testClient->getHistoricNodePublicKey( 0 ) , "0x3a581d62b12232dade30c3710215a271984841657449d1f474295a13737b778266f57e298f123ae80cbab7cc35ead1b62a387556f94b326d5c65d4a7aa2abcba" );
+    BOOST_REQUIRE_EQUAL( testClient->getHistoricNodeId( 0 ), "26" );
+    BOOST_REQUIRE_EQUAL( testClient->getHistoricNodeIndex( 0 ), "3" );
 
-    BOOST_REQUIRE( testClient->getIMABLSPublicKey() == imaBLSPublicKeyOnStartUp );
-    BOOST_REQUIRE( testClient->getHistoricNodePublicKey( 0 ) == "0x3a581d62b12232dade30c3710215a271984841657449d1f474295a13737b778266f57e298f123ae80cbab7cc35ead1b62a387556f94b326d5c65d4a7aa2abcba" );
-    BOOST_REQUIRE( testClient->getHistoricNodeId( 0 ) == "26" );
-    BOOST_REQUIRE( testClient->getHistoricNodeIndex( 0 ) == "3" );
+#ifdef FAIR
+    BOOST_REQUIRE_EQUAL( testClient->getCurrentEpochId(), 0 );
+    auto nextCommitteeBITEInfo = testClient->getNextCommitteeBITEInfo();
+    BOOST_REQUIRE( nextCommitteeBITEInfo.first == imaBLSPublicKeyAfterBlock );
+    BOOST_REQUIRE_EQUAL( nextCommitteeBITEInfo.second, 1 );
+#endif
 
-    testClient->importTransactionsAsBlock( Transactions(), 1000, 4294967294 );
+    testClient->importTransactionsAsBlock( Transactions(),
+#ifdef BITE
+    make_shared< DecryptedTransactionFieldsMap >(),
+#endif
+        1000,
+#ifdef FAIR
+        1,
+#endif
+        4294967294 );
 
-    sleep(3);
+#ifdef FAIR
+    if ( !testClient->updateGroupIfNeeded() )
+        testClient->updateHistoricGroupIndex();
+#endif
 
-    std::array< std::string, 4 > imaBLSPublicKeyAfterBlock = { "10860211539819517237363395256510340030868592687836950245163587507107792195621", "2419969454136313127863904023626922181546178935031521540751337209075607503568", "3399776985251727272800732947224655319335094876742988846345707000254666193993", "16982202412630419037827505223148517434545454619191931299977913428346639096984" };
+    sleep( 3 );
 
-    BOOST_REQUIRE( testClient->getIMABLSPublicKey() == imaBLSPublicKeyAfterBlock );
-    BOOST_REQUIRE( testClient->getHistoricNodePublicKey( 0 ) == "0x6180cde2cbbcc6b6a17efec4503a7d4316f8612f411ee171587089f770335f484003ad236c534b9afa82befc1f69533723abdb6ec2601e582b72dcfd7919338b" );
-    BOOST_REQUIRE( testClient->getHistoricNodeId( 0 ) == "30" );
-    BOOST_REQUIRE( testClient->getHistoricNodeIndex( 0 ) == "0" );
+    BOOST_REQUIRE( testClient->getCurrentBLSPublicKey() == imaBLSPublicKeyAfterBlock );
+    BOOST_REQUIRE_EQUAL( testClient->getHistoricNodePublicKey( 0 ), "0x6180cde2cbbcc6b6a17efec4503a7d4316f8612f411ee171587089f770335f484003ad236c534b9afa82befc1f69533723abdb6ec2601e582b72dcfd7919338b" );
+    BOOST_REQUIRE_EQUAL( testClient->getHistoricNodeId( 0 ), "30" );
+    BOOST_REQUIRE_EQUAL( testClient->getHistoricNodeIndex( 0 ), "0" );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
 
-static std::string const c_skaleConfigString = R"E(
+#ifndef FAIR
+static std::string const c_skaleConfigString =
+    R"E(
 {
     "sealEngine": "NoProof",
     "params": {
@@ -1019,7 +1339,7 @@ static std::string const c_skaleConfigString = R"E(
             "nodeName": "TestNode",
             "nodeID": 1112,
             "bindIP": "127.0.0.1",
-            "basePort": )E"+std::to_string( rand_port ) + R"E(,
+            "basePort": )E" + std::to_string( rand_port ) + R"E(,
             "testSignatures": true
         },
         "sChain": {
@@ -1028,7 +1348,7 @@ static std::string const c_skaleConfigString = R"E(
             "snapshotIntervalSec": 5,
             "emptyBlockIntervalMs": 4000,
             "nodes": [
-              { "nodeID": 1112, "ip": "127.0.0.1", "basePort": )E"+std::to_string( rand_port ) + R"E(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
+              { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )E"+std::to_string( rand_port ) + R"E(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
             ]
         }
     },
@@ -1044,6 +1364,72 @@ static std::string const c_skaleConfigString = R"E(
     }
 }
 )E";
+#else
+static std::string const c_skaleConfigString =
+    R"E(
+{
+    "sealEngine": "NoProof",
+    "params": {
+        "accountStartNonce": "0x00",
+        "maximumExtraDataSize": "0x1000000",
+        "blockReward": "0x",
+        "allowFutureBlocks": true,
+        "homesteadForkBlock": "0x00",
+        "EIP150ForkBlock": "0x00",
+        "EIP158ForkBlock": "0x00",
+        "byzantiumForkBlock": "0x00",
+        "constantinopleForkBlock": "0x00",
+        "constantinopleFixForkBlock": "0x00",
+        "istanbulForkBlock": "0x00"
+    },
+    "genesis": {
+        "nonce": "0x0000000000000042",
+        "author": "0000000000000010000000000000000000000000",
+        "timestamp": "0x00",
+        "extraData": "0x",
+        "gasLimit": "0x1000000000000",
+        "difficulty": "0x020000",
+        "mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "skaleConfig": {
+        "nodeInfo": {
+            "nodeName": "TestNode",
+            "nodeID": 1112,
+            "bindIP": "127.0.0.1",
+            "basePort": )E" +
+    std::to_string( rand_port ) + R"E(,
+            "testSignatures": true
+        },
+        "sChain": {
+            "schainName": "TestChain",
+            "schainID": 1,
+            "snapshotIntervalSec": 5,
+            "emptyBlockIntervalMs": 4000,
+            "nodes": {
+                "1": {
+                    "group": [
+                  { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )E" +
+        std::to_string( rand_port ) +
+        R"E(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
+                    ]
+                },
+                "-1": {}
+            }
+        }
+    },
+    "accounts": {
+        "0000000000000000000000000000000000000001": { "wei": "1", "precompiled": { "name": "ecrecover", "linear": { "base": 3000, "word": 0 } } },
+        "0000000000000000000000000000000000000002": { "wei": "1", "precompiled": { "name": "sha256", "linear": { "base": 60, "word": 12 } } },
+        "0000000000000000000000000000000000000003": { "wei": "1", "precompiled": { "name": "ripemd160", "linear": { "base": 600, "word": 120 } } },
+        "0000000000000000000000000000000000000004": { "wei": "1", "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } } },
+        "0000000000000000000000000000000000000005": { "wei": "1", "precompiled": { "name": "modexp" } },
+        "0000000000000000000000000000000000000006": { "wei": "1", "precompiled": { "name": "alt_bn128_G1_add", "linear": { "base": 500, "word": 0 } } },
+        "0000000000000000000000000000000000000007": { "wei": "1", "precompiled": { "name": "alt_bn128_G1_mul", "linear": { "base": 40000, "word": 0 } } },
+        "0000000000000000000000000000000000000008": { "wei": "1", "precompiled": { "name": "alt_bn128_pairing_product" } }
+    }
+}
+)E";
+#endif
 
 
 BOOST_AUTO_TEST_SUITE( ClientSnapshotsSuite, *boost::unit_test::precondition( option_all_tests ) )
@@ -1056,29 +1442,34 @@ BOOST_AUTO_TEST_CASE( ClientSnapshotsTest, *boost::unit_test::disabled() ) {
 
     BOOST_REQUIRE( testClient->getSnapshotHash( 0 ) != dev::h256() );
 
-    std::this_thread::sleep_for( 5000ms );
+    // Wait until a snapshot with computed hash appears (block number depends on timing)
+    int64_t snapshotBlockNumber = -1;
+    for ( int i = 0; i < 30; ++i ) {
+        std::this_thread::sleep_for( 1000ms );
+        snapshotBlockNumber = testClient->getLatestSnapshotBlockNumer();
+        if ( snapshotBlockNumber > 0 )
+            break;
+    }
+    BOOST_REQUIRE( snapshotBlockNumber > 0 );
 
-    BOOST_REQUIRE( fs::exists( fs::path( fixture.getTmpDataDir() ) / "snapshots" / "2" ) );
+    std::string snapshotBlockStr = std::to_string( snapshotBlockNumber );
 
-    secp256k1_sha256_t ctx;
-    secp256k1_sha256_initialize( &ctx );
+    BOOST_REQUIRE(
+        fs::exists( fs::path( fixture.getTmpDataDir() ) / "snapshots" / snapshotBlockStr ) );
 
-    dev::h256 empty_str = dev::h256( "" );
-    secp256k1_sha256_write( &ctx, empty_str.data(), empty_str.size );
+    BOOST_REQUIRE( fs::exists( fs::path( fixture.getTmpDataDir() ) / "snapshots" /
+                               snapshotBlockStr / "snapshot_hash.txt" ) );
 
-    dev::h256 empty_state_root_hash;
-    secp256k1_sha256_finalize( &ctx, empty_state_root_hash.data() );
+    // Verify that the snapshot hash was propagated as the state root
+    dev::h256 snapshotHash = testClient->getSnapshotHash( snapshotBlockNumber );
+    BOOST_REQUIRE( snapshotHash != dev::h256() );
+    BOOST_REQUIRE( testClient->latestBlock().info().stateRoot() == snapshotHash );
 
-    BOOST_REQUIRE( testClient->latestBlock().info().stateRoot() == empty_state_root_hash );
-
-    std::this_thread::sleep_for( 3000ms );
-
-    BOOST_REQUIRE( fs::exists( fs::path( fixture.getTmpDataDir() ) / "snapshots" / "2" / "snapshot_hash.txt" ) );
-
-    dev::h256 hash = testClient->hashFromNumber( 2 );
+    dev::h256 hash = testClient->hashFromNumber( snapshotBlockNumber );
     uint64_t timestampFromBlockchain = testClient->blockInfo( hash ).timestamp();
 
-    BOOST_REQUIRE_EQUAL( timestampFromBlockchain, testClient->getBlockTimestampFromSnapshot( 2 ) );
+    BOOST_REQUIRE_EQUAL(
+        timestampFromBlockchain, testClient->getBlockTimestampFromSnapshot( snapshotBlockNumber ) );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

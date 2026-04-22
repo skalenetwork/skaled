@@ -66,13 +66,8 @@ BOOST_AUTO_TEST_CASE( Personal ) {
 
     // 'allowFutureBlocks = true' is required to mine multiple blocks,
     // otherwise mining will hang after the first block
-    ChainParams chainParams;
-    chainParams.sealEngineName = NoProof::name();
-    chainParams.allowFutureBlocks = true;
-    chainParams.difficulty = chainParams.minimumDifficulty;
-    chainParams.gasLimit = chainParams.maxGasLimit;
-    chainParams.nodeInfo.port = chainParams.nodeInfo.port6 = rand_port;
-    chainParams.sChain.nodes[0].port = chainParams.sChain.nodes[0].port6 = rand_port;
+    std::shared_ptr< ChainParams > chainParams = std::make_shared< ChainParams >();
+    chainParams->fillDefaultTestsParameters( rand_port );
 
     //    dev::WebThreeDirect web3( WebThreeDirect::composeClientVersion( "eth" ), getDataDir(),
     //    string(),
@@ -80,7 +75,7 @@ BOOST_AUTO_TEST_CASE( Personal ) {
     auto monitor = make_shared< InstanceMonitor >("test");
 
     setenv("DATA_DIR", getDataDir().c_str(), 1);
-    Client client( chainParams, ( int ) chainParams.networkID, shared_ptr< GasPricer >(), NULL, monitor,
+    Client client( chainParams, ( int ) chainParams->getNetworkId(), shared_ptr< GasPricer >(), NULL, monitor,
         getDataDir(), WithExisting::Kill, TransactionQueue::Limits{100000, 1024} );
 
     client.injectSkaleHost();
@@ -123,7 +118,6 @@ BOOST_AUTO_TEST_CASE( Personal ) {
         }
         return string();
     };
-    auto sendingShouldSucceed = [&]() { BOOST_CHECK( !eth.eth_sendTransaction( tx ).empty() ); };
 
     BOOST_TEST_CHECKPOINT( "Account is locked at the start." );
     BOOST_CHECK_EQUAL( sendingShouldFail(), "Transaction rejected by user." );
@@ -138,6 +132,9 @@ BOOST_AUTO_TEST_CASE( Personal ) {
 
     BOOST_TEST_CHECKPOINT( "Unlocking with correct password should work." );
     BOOST_CHECK( personal.personal_unlockAccount( address, password, 2 ) );
+    // For FAIR reward goes to reward wallet address, so this condtion is not applicable
+#ifndef FAIR
+    auto sendingShouldSucceed = [&]() { BOOST_CHECK( !eth.eth_sendTransaction( tx ).empty() ); };
     // Mine 1 block so the account will have a non-zero balance
     // and transactions can be sent successfully
     client.setAuthor( jsToAddress( address ) );
@@ -157,6 +154,7 @@ BOOST_AUTO_TEST_CASE( Personal ) {
     BOOST_TEST_CHECKPOINT( "Unlocking again with empty password should not work." );
     BOOST_CHECK( !personal.personal_unlockAccount( address, string(), 2 ) );
     BOOST_CHECK_EQUAL( sendingShouldFail(), "Transaction rejected by user." );
+#endif
 }
 
 BOOST_AUTO_TEST_SUITE_END()

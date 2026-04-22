@@ -36,7 +36,7 @@ DEV_SIMPLE_EXCEPTION( ImportBlockFailed );
 class ClientTest : public Client {
 public:
     /// Trivial forwarding constructor.
-    ClientTest( ChainParams const& _params, int _networkID,
+    ClientTest( std::shared_ptr< const ChainParams > _params, int _networkID,
         std::shared_ptr< GasPricer > _gpForAdoption,
         std::shared_ptr< SnapshotManager > _snapshotManager,
         std::shared_ptr< InstanceMonitor > _instanceMonitor,

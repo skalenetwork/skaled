@@ -40,8 +40,8 @@ BOOST_FIXTURE_TEST_SUITE( EthashTests, TestOutputHelperFixture )
 BOOST_AUTO_TEST_CASE( calculateDifficultyByzantiumWithoutUncles,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     ChainOperationParams params;
-    params.homesteadForkBlock = 0;
-    params.byzantiumForkBlock = u256( 0x1000 );
+    params.setHomesteadForkBlock( 0 );
+    params.setByzantiumForkBlock( u256( 0x1000 ) );
 
     Ethash ethash;
     ethash.setChainParams( params );
@@ -63,8 +63,8 @@ BOOST_AUTO_TEST_CASE( calculateDifficultyByzantiumWithoutUncles,
 BOOST_AUTO_TEST_CASE( calculateDifficultyByzantiumWithUncles,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     ChainOperationParams params;
-    params.homesteadForkBlock = 0;
-    params.byzantiumForkBlock = u256( 0x1000 );
+    params.setHomesteadForkBlock( 0 );
+    params.setByzantiumForkBlock( u256( 0x1000 ) );
 
     Ethash ethash;
     ethash.setChainParams( params );
@@ -88,8 +88,8 @@ BOOST_AUTO_TEST_CASE( calculateDifficultyByzantiumWithUncles,
 BOOST_AUTO_TEST_CASE( calculateDifficultyByzantiumMaxAdjustment,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     ChainOperationParams params;
-    params.homesteadForkBlock = 0;
-    params.byzantiumForkBlock = u256( 0x1000 );
+    params.setHomesteadForkBlock( 0 );
+    params.setByzantiumForkBlock( u256( 0x1000 ) );
 
     Ethash ethash;
     ethash.setChainParams( params );

@@ -71,17 +71,6 @@ then
 	export SO_EXT=dylib
 fi
 
-# detect working directories, change if needed
-WORKING_DIR_OLD=$(pwd)
-WORKING_DIR_NEW="$(dirname "$0")"
-WORKING_DIR_OLD=$("$READLINK" -f "$WORKING_DIR_OLD")
-WORKING_DIR_NEW=$("$READLINK" -f "$WORKING_DIR_NEW")
-cd "$WORKING_DIR_NEW"
-
-cd "$WORKING_DIR_NEW/../libconsensus/deps"
-eval bash ./build.sh
-cd ../../deps
-
 #
 # MUST HAVE: make, git, svn, nasm, yasm, wget, cmake, ccmake, libtool, libtool_bin, autogen, automake, autopoint, gperf, awk (mawk or gawk), sed, shtool, texinfo, pkg-config
 #
@@ -103,6 +92,14 @@ done
 #
 #
 #
+
+# detect working directories, change if needed
+WORKING_DIR_OLD=$(pwd)
+WORKING_DIR_NEW="$(dirname "$0")"
+WORKING_DIR_OLD=$("$READLINK" -f "$WORKING_DIR_OLD")
+WORKING_DIR_NEW=$("$READLINK" -f "$WORKING_DIR_NEW")
+cd "$WORKING_DIR_NEW"
+
 
 simple_find_tool_program () { # program_name, var_name_to_export_full_path, is_optional("yes" or "no")
 	echo -e "checking for tool program: $1"
@@ -195,19 +192,20 @@ fi
 TOP_CMAKE_BUILD_TYPE="Release"
 if [ "$DEBUG" = "1" ];
 then
-	DEBUG=1
-	TOP_CMAKE_BUILD_TYPE="Debug"
-	DEBUG_D="d"
-	# DEBUG_DEBUG="_debug"
-	DEBUG__DEBUG="_debug"
-	CONF_DEBUG_OPTIONS="--enable-debug"
+        DEBUG=1
+        TOP_CMAKE_BUILD_TYPE="Debug"
+        DEBUG_D="d"
+        # DEBUG_DEBUG="_debug"
+        DEBUG__DEBUG="_debug"
+        CONF_DEBUG_OPTIONS="--enable-debug"
 else
-	DEBUG=0
-	DEBUG_D=""
-	# DEBUG_DEBUG=""
-	DEBUG__DEBUG=""
-	CONF_DEBUG_OPTIONS=""
+        DEBUG=0
+        DEBUG_D=""
+        # DEBUG_DEBUG=""
+        DEBUG__DEBUG=""
+        CONF_DEBUG_OPTIONS=""
 fi
+
 #
 if [ -z "${USE_LLVM}" ];
 then
@@ -247,7 +245,7 @@ setup_variable() {
 setup_variable WITH_ZLIB "no"
 setup_variable WITH_OPENSSL "no"
 setup_variable WITH_CURL "no"
-setup_variable WITH_LZMA "yes"
+setup_variable WITH_LZMA "no" # built in skale-consensus
 setup_variable WITH_SSH "no"
 setup_variable WITH_UNWIND "yes"
 
@@ -256,7 +254,7 @@ setup_variable WITH_SDL_TTF "no"
 
 # notice: WITH_EV and WITH_EVENT should not be used at a same time
 setup_variable WITH_EV "no"
-setup_variable WITH_EVENT "yes"
+setup_variable WITH_EVENT "no" # built in skale-consensus
 setup_variable WITH_UV "yes"
 setup_variable WITH_LWS "yes"
 
@@ -286,17 +284,17 @@ setup_variable WITH_FF "no"
 setup_variable WITH_GMP "no"
 setup_variable WITH_PBC "no"
 
-setup_variable WITH_FMT "yes"
-setup_variable WITH_ZSTD "yes"
-setup_variable WITH_DOUBLE_CONVERSION "yes"
-setup_variable WITH_GOOGLE_LOG "yes"
-setup_variable WITH_GFLAGS "yes"
-setup_variable WITH_FOLLY "yes"
+setup_variable WITH_FMT "no" # built in skale-consensus
+setup_variable WITH_ZSTD "no" # built in skale-consensus
+setup_variable WITH_DOUBLE_CONVERSION "no" # built in skale-consensus
+setup_variable WITH_GOOGLE_LOG "no" # built in skale-consensus
+setup_variable WITH_GFLAGS "no" # built in skale-consensus
+setup_variable WITH_FOLLY "no" # built in skale-consensus
 setup_variable WITH_SODIUM "no"
-setup_variable WITH_WANGLE "yes"
+setup_variable WITH_WANGLE "no" # built in skale-consensus
 setup_variable WITH_GTEST "yes"
-setup_variable WITH_FIZZ "yes"
-setup_variable WITH_PROXYGEN "yes"
+setup_variable WITH_FIZZ "no" # built in skale-consensus
+setup_variable WITH_PROXYGEN "no" # built in skale-consensus
 setup_variable WITH_SNAPPY "yes"
 setup_variable WITH_LIBSCRYPT "yes"
 setup_variable WITH_ETHASH "yes"
@@ -362,6 +360,21 @@ then
 	export CONF_CROSSCOMPILING_OPTS_VPX=""
 	export CONF_CROSSCOMPILING_OPTS_X264=""
 	export CONF_CROSSCOMPILING_OPTS_FFMPEG=""
+
+	# disable FMA, ADX, AVX512 for better compatibility
+	if [ -z "$ISA_CEILING" ];
+	then
+		ISA_CEILING="-march=x86-64 -mtune=generic"
+	fi
+
+	if [ -z "$ISA_NO" ];
+	then 
+		ISA_NO="-mno-avx512f -mno-adx -mno-fma"
+	fi
+
+	export CFLAGS="$CFLAGS $ISA_CEILING $ISA_NO"
+	export CXXFLAGS="$CXXFLAGS $ISA_CEILING $ISA_NO"
+
 	#export CC=$(which gcc)
 	#export CXX=$(which g++)
 	if [ "$USE_LLVM" = "1" ];
@@ -523,6 +536,23 @@ then
 	exit 255
 fi
 export CMAKE="$CMAKE -DUSE_LLVM=$USE_LLVM -DCMAKE_C_COMPILER=$CC -DCMAKE_CXX_COMPILER=$CXX -DCMAKE_LINKER=$LD -DCMAKE_AR=$AR -DCMAKE_OBJCOPY=$OBJCOPY -DCMAKE_OBJDUMP=$OBJDUMP -DCMAKE_RANLIB=$RANLIB -DCMAKE_NM=$NM"
+
+
+echo -e "${COLOR_SEPARATOR}===================================================================${COLOR_RESET}"
+echo -e "${COLOR_YELLOW}SKALED building consensus...${COLOR_RESET}"
+echo -e "${COLOR_SEPARATOR}===================================================================${COLOR_RESET}"
+
+
+sed -i 's|https://mirrors.kernel.org/gnu/gmp/|https://ftp.gnu.org/gnu/gmp/|g' "$WORKING_DIR_NEW/../libconsensus/libBLS/deps/build.sh"
+
+cd "$WORKING_DIR_NEW/../libconsensus/deps"
+bash ./build.sh DEBUG=$DEBUG
+cd ../../deps
+
+echo -e "${COLOR_SEPARATOR}===================================================================${COLOR_RESET}"
+echo -e "${COLOR_YELLOW}SKALED building dependencies...${COLOR_RESET}"
+echo -e "${COLOR_SEPARATOR}===================================================================${COLOR_RESET}"
+
 #
 echo -e "${COLOR_VAR_NAME}WORKING_DIR_OLD${COLOR_DOTS}........${COLOR_VAR_DESC}Started in directory${COLOR_DOTS}...................${COLOR_VAR_VAL}$WORKING_DIR_OLD${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}WORKING_DIR_NEW${COLOR_DOTS}........${COLOR_VAR_DESC}Switched to directory${COLOR_DOTS}..................${COLOR_VAR_VAL}$WORKING_DIR_NEW${COLOR_RESET}"
@@ -922,35 +952,6 @@ then
 	else
 		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
 	fi
-fi
-
-echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}ICONV${COLOR_SEPARATOR} ========================================${COLOR_RESET}"
-if [ ! -f "$INSTALL_ROOT/lib/libiconv.a" ];
-then
-	if [ "$UNIX_SYSTEM_NAME" = "Darwin" ];
-	then
-		echo -e "${COLOR_SUCCESS}skipping iconv on $UNIX_SYSTEM_NAME )))${COLOR_RESET}"
-	else
-		env_restore
-		cd "$SOURCES_ROOT"
-		if [ ! -d "libiconv-1.15" ];
-		then
-			echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
-			eval tar -xzf "$PREDOWNLOADED_ROOT/libiconv-1.15.tar.gz"
-			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
-			cd libiconv-1.15
-			eval ./configure "${CONF_CROSSCOMPILING_OPTS_GENERIC}" --enable-static --disable-shared --prefix="$INSTALL_ROOT" "${CONF_DEBUG_OPTIONS}"
-			cd ..
-		fi
-		echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
-		cd libiconv-1.15
-		eval "$MAKE" "${PARALLEL_MAKE_OPTIONS}"
-		eval "$MAKE" "${PARALLEL_MAKE_OPTIONS}" install
-		cd ..
-		cd "$SOURCES_ROOT"
-	fi
-else
-	echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
 fi
 
 if [ "$WITH_SDL" = "yes" ];
@@ -1930,6 +1931,7 @@ then
 			fi
 			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
 			cd double-conversion
+			git checkout 6e6631767c37431dd62586b5835721e334f65339
 			eval mkdir -p build
 			cd build
 			eval "$CMAKE" "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" ..
@@ -2044,7 +2046,7 @@ then
 				echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
 				eval git clone https://github.com/facebook/folly.git --recursive
                                 cd folly
-                                eval git checkout 5c8fc1b622422a1c73f46d6fb51ac1164d8efb0f
+                                eval git checkout 5d415b5
                                 cd ..
                                 echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
                                 eval tar -czf folly-from-git.tar.gz ./folly

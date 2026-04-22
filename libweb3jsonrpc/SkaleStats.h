@@ -102,13 +102,10 @@ class SkaleStats : public dev::rpc::SkaleStatsFace,
     int nThisNodeIndex_ = -1;  // 1-based "schainIndex"
     int findThisNodeIndex();
 
-    const dev::eth::ChainParams& chainParams_;
-
 public:
     bool isExposeAllDebugInfo_ = false;
 
-    SkaleStats( const std::string& configPath, eth::Interface& _eth,
-        const dev::eth::ChainParams& chainParams );
+    SkaleStats( const std::string& configPath, eth::Interface& _eth );
 
     virtual RPCModules implementedModules() const override {
         return RPCModules{ RPCModule{ "skaleStats", "1.0" } };
@@ -117,7 +114,9 @@ public:
 
     Json::Value skale_stats() override;
     Json::Value skale_nodesRpcInfo() override;
+#ifndef FAIR
     Json::Value skale_imaInfo() override;
+#endif
 
     static void countCall( const std::string& _origin, const std::string& _method ) {
         auto iterator = statsCounters.find( getProtocol( _origin ) + _method );

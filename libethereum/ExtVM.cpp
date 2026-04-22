@@ -28,6 +28,7 @@
 #include <boost/thread.hpp>
 
 #include "LastBlockHashesFace.h"
+#include "SchainPatch.h"
 
 using namespace dev;
 using namespace dev::eth;
@@ -127,7 +128,12 @@ evmc_status_code transactionExceptionToEvmcStatusCode( TransactionException ex )
 
 
 CallResult ExtVM::call( CallParameters& _p ) {
-    Executive e{ m_s, envInfo(), m_chainParams, 0, depth + 1, m_readOnly };
+    Executive e{ m_s, envInfo(), m_chainParams, 0, depth + 1, m_readOnly
+#ifdef BITE2
+        ,
+        m_txnIndex
+#endif
+    };
     if ( !e.call( _p, gasPrice, origin ) ) {
         go( depth, e, _p.onOp );
         e.accrueSubState( sub );
@@ -151,7 +157,16 @@ void ExtVM::setStore( u256 _n, u256 _v ) {
 
 CreateResult ExtVM::create( u256 _endowment, u256& io_gas, bytesConstRef _code, Instruction _op,
     u256 _salt, OnOpFunc const& _onOp ) {
-    Executive e{ m_s, envInfo(), m_chainParams, 0, depth + 1 };
+    bool isReadOnly =
+        ContractCreationReadOnlyPatch::isEnabledWhen( envInfo().committedBlockTimestamp() ) ?
+            m_readOnly :
+            true;
+    Executive e{ m_s, envInfo(), m_chainParams, 0, depth + 1, isReadOnly
+#ifdef BITE2
+        ,
+        m_txnIndex
+#endif
+    };
     bool result = false;
     if ( _op == Instruction::CREATE )
         result = e.createOpcode( myAddress, _endowment, gasPrice, io_gas, _code, origin );
@@ -169,11 +184,16 @@ CreateResult ExtVM::create( u256 _endowment, u256& io_gas, bytesConstRef _code, 
         e.newAddress() };
 }
 
-void ExtVM::suicide( Address _a ) {
+void ExtVM::suicide( [[maybe_unused]] Address _a ) {
     // Why transfer is not used here? That caused a consensus issue before (see Quirk #2 in
     // http://martin.swende.se/blog/Ethereum_quirks_and_vulns.html). There is one test case
     // witnessing the current consensus
     // 'GeneralStateTests/stSystemOperationsTest/suicideSendEtherPostDeath.json'.
+#ifdef FAIR
+    if ( DisableSelfDestructPatch::isEnabledWhen( envInfo().committedBlockTimestamp() ) ) {
+        return;
+    }
+#endif
     m_s.addBalance( _a, m_s.balance( myAddress ) );
     m_s.setBalance( myAddress, 0 );
     ExtVMFace::suicide( _a );
@@ -185,7 +205,7 @@ h256 ExtVM::blockHash( u256 _number ) {
     if ( _number >= currentNumber || _number < ( std::max< u256 >( 256, currentNumber ) - 256 ) )
         return h256();
 
-    if ( currentNumber < m_chainParams.experimentalForkBlock + 256 ) {
+    if ( currentNumber < m_chainParams.getExperimentalForkBlock() + 256 ) {
         h256 const parentHash = envInfo().header().parentHash();
         h256s const lastHashes = envInfo().lastHashes().precedingHashes( parentHash );
 

@@ -2,6 +2,7 @@
 
 set(sources
     State.cpp
+    StateProgressLog.cpp
     OverlayDB.cpp
     httpserveroverride.cpp
     broadcaster.cpp
@@ -13,12 +14,16 @@ set(sources
     UnsafeRegion.cpp
     TotalStorageUsedPatch.cpp
     AmsterdamFixPatch.cpp
-    OverlayFS.cpp
     SkipInvalidTransactionsPatch.cpp
 )
 
+if (NOT DEFINED FAIR)
+    list(APPEND sources OverlayFS.cpp)
+endif()
+
 set(headers
-    State.h    
+    State.h
+    StateProgressLog.h
     OverlayDB.h
     httpserveroverride.h
     broadcaster.h
@@ -30,9 +35,15 @@ set(headers
     UnsafeRegion.h
     TotalStorageUsedPatch.h
     AmsterdamFixPatch.h
-    OverlayFS.h
     SkipInvalidTransactionsPatch.h
 )
+
+if (NOT DEFINED FAIR)
+    list(APPEND headers OverlayFS.h)
+else()
+    list(APPEND sources BlockRewardsActivationPatch.cpp)
+    list(APPEND headers BlockRewardsActivationPatch.h)
+endif()
 
 add_library(skale ${sources} ${headers})
 target_compile_options( skale PRIVATE -Wno-error=unused-variable )

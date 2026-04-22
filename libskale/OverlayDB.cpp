@@ -52,6 +52,12 @@ using dev::db::Slice;
 
 namespace skale {
 
+// namespace used only in tests to count commits
+namespace state_commit_counter {
+std::atomic< bool > enabled{ false };
+std::atomic< uint64_t > counter{ 0 };
+}  // namespace state_commit_counter
+
 namespace slicing {
 
 dev::db::Slice toSlice( dev::h256 const& _h ) {
@@ -152,25 +158,31 @@ void OverlayDB::cleanupLegacyTransactionReceipts() {
     }
 }
 
-void OverlayDB::removeAllPartialTransactionReceipts() {
-    // first we get all keys
-
-    string prefix( "safeLastTransactionReceipts." );
+void OverlayDB::removePartialTransactionReceiptsByPrefix(
+    std::string& prefix, const string& commitLabel ) {
+    if ( !m_db_face )
+        return;
     vector< string > keys;
-    if ( m_db_face ) {
-        m_db_face->forEachWithPrefix( prefix, [&keys]( Slice key, Slice ) {
-            const std::string keyStr( key.begin(), key.end() );
-            keys.push_back( keyStr );
-            return true;
-        } );
-
-        for ( auto&& key : keys ) {
-            // now remove all of them
-            m_db_face->kill( key );
-        }
+    m_db_face->forEachWithPrefix( prefix, [&keys]( Slice key, Slice ) {
+        const std::string keyStr( key.begin(), key.end() );
+        keys.push_back( keyStr );
+        return true;
+    } );
+    for ( const auto& key : keys ) {
+        m_db_face->kill( key );
     }
+    m_db_face->commit( commitLabel );
+}
 
-    m_db_face->commit( "Clean partial keys" );
+void OverlayDB::removeAllPartialTransactionReceipts() {
+    std::string prefix = "safeLastTransactionReceipts.";
+    removePartialTransactionReceiptsByPrefix( prefix, "Clean partial keys" );
+}
+
+void OverlayDB::removePartialTransactionReceiptsForBlock( dev::eth::BlockNumber _blockNumber ) {
+    std::string blockPrefix =
+        "safeLastTransactionReceipts." + uint64ToFixedLengthHex( ( uint64_t ) _blockNumber ) + ".";
+    removePartialTransactionReceiptsByPrefix( blockPrefix, "Clean partial keys for block" );
 }
 
 void OverlayDB::setLastExecutedTransactionHash( const dev::h256& _newHash ) {
@@ -191,6 +203,7 @@ std::string OverlayDB::uint64ToFixedLengthHex( uint64_t value ) {
     return res.str();
 }
 
+
 void OverlayDB::setPartialTransactionReceipt( const dev::bytes& _newReceipt,
     dev::eth::BlockNumber _blockNumber, uint64_t _transactionIndex ) {
     string key = "safeLastTransactionReceipts." + uint64ToFixedLengthHex( _blockNumber ) + "." +
@@ -200,6 +213,37 @@ void OverlayDB::setPartialTransactionReceipt( const dev::bytes& _newReceipt,
     m_db_face->insert( skale::slicing::toSlice( key ), skale::slicing::toSlice( _newReceipt ) );
 }
 
+
+#ifdef FAIR
+// Converts a hexadecimal string to a uint64_t value.
+std::uint64_t OverlayDB::hexToUint64( const std::string& hexValue ) {
+    std::stringstream valueStream( hexValue );
+    std::uint64_t result;
+    valueStream >> std::hex >> result;
+    return result;
+}
+
+void OverlayDB::setLastRewardedBlockNumber( const dev::eth::BlockNumber _blockNumber ) {
+    this->lastRewardedBlockNumber_ = _blockNumber;
+}
+
+dev::eth::BlockNumber OverlayDB::getLastRewardedBlockNumber() {
+    if ( lastRewardedBlockNumber_.has_value() )
+        return lastRewardedBlockNumber_.value();
+
+    dev::eth::BlockNumber number = 0;
+    if ( m_db_face ) {
+        string key = "lastRewardedBlockNumber";
+        auto lookupResult = m_db_face->lookup( skale::slicing::toSlice( key ) );
+        if ( !lookupResult.empty() ) {
+            number = static_cast< dev::eth::BlockNumber >( hexToUint64( lookupResult ) );
+        }
+    }
+
+    lastRewardedBlockNumber_ = number;
+    return number;
+}
+#endif
 
 void OverlayDB::commitStorageValues() {
     for ( auto const& addressStoragePair : m_storageCache ) {
@@ -229,6 +273,9 @@ void OverlayDB::commitStorageValues() {
 
 
 void OverlayDB::commit() {
+    if ( state_commit_counter::enabled.load( std::memory_order_relaxed ) )
+        state_commit_counter::counter.fetch_add( 1, std::memory_order_relaxed );
+
     if ( m_db_face ) {
         for ( unsigned commitTry = 0; commitTry < 10; ++commitTry ) {
 //      cnote << "Committing nodes to disk DB:";
@@ -262,32 +309,39 @@ void OverlayDB::commit() {
             m_db_face->insert( skale::slicing::toSlice( "safeLastExecutedTransactionHash" ),
                 skale::slicing::toSlice( getLastExecutedTransactionHash() ) );
 
+#ifdef FAIR
+            m_db_face->insert( skale::slicing::toSlice( "lastRewardedBlockNumber" ),
+                uint64ToFixedLengthHex( static_cast< uint64_t >( getLastRewardedBlockNumber() ) ) );
+#endif
+
             try {
                 m_db_face->commit( "OverlayDB_commit" );
                 break;
             } catch ( boost::exception const& ex ) {
                 if ( commitTry == 9 ) {
-                    LOG( m_loggerWarning ) << "Fail(1) writing to state database. Bombing out. ";
-                    LOG( m_loggerWarning ) << DETAILED_ERROR;
+                    BOOST_LOG( m_loggerWarning )
+                        << "Fail(1) writing to state database. Bombing out. ";
+                    BOOST_LOG( m_loggerWarning ) << DETAILED_ERROR;
                     exit( -1 );
                 }
                 cerror << "Error(2) writing to state database (during DB commit): "
                        << boost::diagnostic_information( ex );
-                LOG( m_loggerWarning )
+                BOOST_LOG( m_loggerWarning )
                     << "Error writing to state database: " << boost::diagnostic_information( ex );
-                LOG( m_loggerWarning )
+                BOOST_LOG( m_loggerWarning )
                     << "Sleeping for" << ( commitTry + 1 ) << "seconds, then retrying.";
                 std::this_thread::sleep_for( std::chrono::seconds( commitTry + 1 ) );
             } catch ( std::exception const& ex ) {
                 if ( commitTry == 9 ) {
-                    LOG( m_loggerWarning ) << "Fail(2) writing to state database. Bombing out. ";
-                    LOG( m_loggerWarning ) << DETAILED_ERROR;
+                    BOOST_LOG( m_loggerWarning )
+                        << "Fail(2) writing to state database. Bombing out. ";
+                    BOOST_LOG( m_loggerWarning ) << DETAILED_ERROR;
                     exit( -1 );
                 }
-                LOG( m_loggerError )
+                BOOST_LOG( m_loggerError )
                     << "Error(2) writing to state database (during DB commit): " << ex.what();
-                LOG( m_loggerWarning ) << "Error(2) writing to state database: " << ex.what();
-                LOG( m_loggerWarning )
+                BOOST_LOG( m_loggerWarning ) << "Error(2) writing to state database: " << ex.what();
+                BOOST_LOG( m_loggerWarning )
                     << "Sleeping for" << ( commitTry + 1 ) << "seconds, then retrying.";
                 std::this_thread::sleep_for( std::chrono::seconds( commitTry + 1 ) );
             }
@@ -302,7 +356,7 @@ void OverlayDB::commit() {
             m_db_face->revert();
         }
     } else {
-        LOG( m_loggerInfo ) << "Try to commit into closed or not initialized DB";
+        BOOST_LOG( m_loggerInfo ) << "Try to commit into closed or not initialized DB";
     }
 }
 
@@ -321,7 +375,7 @@ string OverlayDB::lookupAuxiliary( h160 const& _address, _byte_ _space ) const {
     std::string const loadedValue =
         m_db_face->lookup( skale::slicing::toSlice( getAuxiliaryKey( _address, _space ) ) );
     if ( loadedValue.empty() )
-        LOG( m_loggerWarning ) << "Aux not found: " << _address;
+        BOOST_LOG( m_loggerWarning ) << "Aux not found: " << _address;
 
     return loadedValue;
 }
@@ -346,7 +400,7 @@ void OverlayDB::killAuxiliary( const dev::h160& _address, _byte_ _space ) {
                 // NB! This is not committed! So, this can be reverted
                 m_db_face->kill( skale::slicing::toSlice( key ) );
             } else {
-                LOG( m_loggerTrace )
+                BOOST_LOG( m_loggerTrace )
                     << "Try to delete non existing key " << _address << "(" << _space << ")";
             }
         }
@@ -369,7 +423,7 @@ void OverlayDB::insertAuxiliary(
 }
 
 std::unordered_map< h160, string > OverlayDB::accounts() const {
-    LOG( m_loggerInfo ) << "Iterating over all accounts in state";
+    BOOST_LOG( m_loggerInfo ) << "Iterating over all accounts in state";
     unordered_map< h160, string > accounts;
     if ( m_db_face ) {
         m_db_face->forEach( [&accounts]( Slice key, Slice value ) {
@@ -394,7 +448,7 @@ std::unordered_map< u256, u256 > OverlayDB::storage( const dev::h160& _address )
         string prefix( ( const char* ) _address.data(), _address.size );
         m_db_face->forEachWithPrefix(
             prefix, [this, &storage, &_address]( Slice key, Slice value ) {
-                if ( key.size() == h160::size + h256::size ) {
+                if ( key.size() == size_t( h160::size ) + size_t( h256::size ) ) {
                     // key is storage address
                     string keyString( key.begin(), key.end() );
                     h160 address = h160( keyString.substr( 0, h160::size ),
@@ -406,7 +460,7 @@ std::unordered_map< u256, u256 > OverlayDB::storage( const dev::h160& _address )
                             h256::ConstructFromStringType::FromBinary );
                         storage[memoryAddress] = memoryValue;
                     } else {
-                        LOG( m_loggerError ) << "Address mismatch in:" << __FUNCTION__;
+                        BOOST_LOG( m_loggerError ) << "Address mismatch in:" << __FUNCTION__;
                     }
                 }
                 return true;
@@ -422,7 +476,7 @@ void OverlayDB::copyStorageIntoAccountMap( dev::eth::AccountMap& _map ) const {
 
     if ( m_db_face ) {
         m_db_face->forEach( [this, &_map]( Slice key, Slice value ) {
-            if ( key.size() == h160::size + h256::size ) {
+            if ( key.size() == size_t( h160::size ) + size_t( h256::size ) ) {
                 // key is storage address
                 string keyString( key.begin(), key.end() );
                 [[maybe_unused]] h160 address = h160(
@@ -439,14 +493,14 @@ void OverlayDB::copyStorageIntoAccountMap( dev::eth::AccountMap& _map ) const {
                 _map.at( address ).setStorage( memoryAddress, memoryValue );
                 counter++;
                 if ( counter % 1000000 == 0 ) {
-                    LOG( m_loggerDebug ) << ".";
-                    LOG( m_loggerDebug ).flush();
+                    BOOST_LOG( m_loggerDebug ) << ".";
+                    BOOST_LOG( m_loggerDebug ).flush();
                 }
             }
             return true;
         } );
 
-        LOG( m_loggerInfo ) << "\n";
+        BOOST_LOG( m_loggerInfo ) << "\n";
     } else {
         cerror << "Try to load account's storage but connection to database is not established";
     }
@@ -535,7 +589,7 @@ void OverlayDB::kill( h160 const& _h ) {
                 // NB! This is not committed! So, this can be reverted
                 m_db_face->kill( skale::slicing::toSlice( _h ) );
             } else {
-                LOG( m_loggerTrace ) << "Try to delete non existing key " << _h;
+                BOOST_LOG( m_loggerTrace ) << "Try to delete non existing key " << _h;
             }
         }
     }
@@ -593,4 +647,17 @@ void OverlayDB::updateStorageUsage( dev::s256 const& _storageUsed ) {
     storageUsed_ = _storageUsed;
 }
 
+namespace state_commit_counter {
+void enable( bool value ) {
+    enabled.store( value, std::memory_order_relaxed );
+}
+
+void reset() {
+    counter.store( 0, std::memory_order_relaxed );
+}
+
+uint64_t count() {
+    return counter.load( std::memory_order_relaxed );
+}
+}  // namespace state_commit_counter
 }  // namespace skale

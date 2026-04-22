@@ -83,6 +83,18 @@ TransactionReceipt::TransactionReceipt(
       m_bloom( eth::bloom( _log ) ),
       m_log( _log ) {}
 
+TransactionReceipt::TransactionReceipt( h256 const& _root, u256 const& _gasUsed,
+    LogEntries const& _log, std::string const& _revertReason )
+    : TransactionReceipt( _root, _gasUsed, _log ) {
+    setRevertReason( _revertReason );
+}
+
+TransactionReceipt::TransactionReceipt( uint8_t _status, u256 const& _gasUsed,
+    LogEntries const& _log, std::string const& _revertReason )
+    : TransactionReceipt( _status, _gasUsed, _log ) {
+    setRevertReason( _revertReason );
+}
+
 void TransactionReceipt::streamRLP( RLPStream& _s ) const {
     std::string const& strRevertReason = getRevertReason();
     _s.appendList( ( g_bEnableRevertReasonPersistence && ( !strRevertReason.empty() ) ) ? 5 : 4 );

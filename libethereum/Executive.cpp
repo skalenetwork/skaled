@@ -21,8 +21,6 @@
 
 #include <numeric>
 
-#include <boost/timer.hpp>
-
 #include <json/json.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/microprofile.h>
@@ -62,7 +60,6 @@ std::string dumpStorage( ExtVM const& _ext ) {
         o << showbase << hex << i.second.first << ": " << i.second.second << "\n";
     return o.str();
 }
-
 
 }  // namespace
 
@@ -116,9 +113,9 @@ void StandardTrace::operator()( uint64_t _steps, uint64_t PC, Instruction inst, 
         lastInst = m_lastInst.back();
         m_lastInst.back() = inst;
     } else {
-        LOG( m_loggerWarning )
+        BOOST_LOG( m_loggerWarning )
             << "Tracing VM and more than one new/deleted stack frame between steps!";
-        LOG( m_loggerWarning ) << "Attmepting naive recovery...";
+        BOOST_LOG( m_loggerWarning ) << "Attmepting naive recovery...";
         m_lastInst.resize( ext.depth + 1 );
     }
 
@@ -178,7 +175,7 @@ Executive::Executive( Block& _s, LastBlockHashesFace const& _lh, const u256& _ga
     unsigned _level, bool _readOnly )
     : m_s( _s.mutableState() ),
       m_envInfo( _s.info(), _lh, _s.previousInfo().timestamp(), 0,
-          _s.sealEngine()->chainParams().chainID ),
+          _s.sealEngine()->chainParams().getChainId() ),
       m_depth( _level ),
       m_readOnly( _readOnly ),
       m_chainParams( _s.sealEngine()->chainParams() ),
@@ -199,7 +196,11 @@ void Executive::verifyTransaction( Transaction const& _transaction, time_t _comm
     const bool _allowFuture ) {
     MICROPROFILE_SCOPEI( "Executive", "verifyTransaction", MP_GAINSBORO );
 
-    if ( !_transaction.hasExternalGas() && _transaction.gasPrice() < _gasPrice ) {
+    if (
+#ifndef FAIR
+        !_transaction.hasExternalGas() &&
+#endif
+        _transaction.gasPrice() < _gasPrice ) {
         BOOST_THROW_EXCEPTION(
             GasPriceTooLow() << RequirementError( static_cast< bigint >( _gasPrice ),
                 static_cast< bigint >( _transaction.gasPrice() ) ) );
@@ -227,9 +228,11 @@ void Executive::verifyTransaction( Transaction const& _transaction, time_t _comm
 
         // Avoid unaffordable transactions.
         bigint gasCost = static_cast< bigint >( _transaction.gas() * _transaction.gasPrice() );
+#ifndef FAIR
         if ( _transaction.hasExternalGas() ) {
             gasCost = 0;
         }
+#endif
         bigint totalCost = _transaction.value() + gasCost;
         auto sender_ballance = _state.balance( _transaction.sender() );
         if ( sender_ballance < totalCost ) {
@@ -268,20 +271,52 @@ void Executive::initialize( Transaction const& _transaction ) {
 bool Executive::execute() {
     // Entry point for a user-executed transaction.
 
+#ifdef FAIR
+    // Pay...
+    BOOST_LOG( m_loggerTrace ) << "Paying " << formatBalance( m_gasCost )
+                               << " from sender for gas (" << m_t.gas() << " gas at "
+                               << formatBalance( m_t.gasPrice() ) << ")";
+    m_s.subBalance( m_t.sender(), m_gasCost );
+#else
     if ( !m_t.hasExternalGas() ) {
         // Pay...
-        LOG( m_loggerTrace ) << "Paying " << formatBalance( m_gasCost ) << " from sender for gas ("
-                             << m_t.gas() << " gas at " << formatBalance( m_t.gasPrice() ) << ")";
+        BOOST_LOG( m_loggerTrace )
+            << "Paying " << formatBalance( m_gasCost ) << " from sender for gas (" << m_t.gas()
+            << " gas at " << formatBalance( m_t.gasPrice() ) << ")";
         m_s.subBalance( m_t.sender(), m_gasCost );
     }
+#endif
 
     assert( m_t.gas() >= ( u256 ) m_baseGasRequired );
+
+#ifdef BITE
+    // don't execute invalid BITE transaction
+    // this could only happen if a user submitted it on purpose
+    // charge user with minimum gas required for this transaction
+    // increment nonce and finalize execution
+    if ( m_t.isInvalidBiteTransaction() ) {
+        m_s.incNonce( m_t.sender() );
+        m_gas = m_t.gas() - m_baseGasRequired;
+        m_excepted = TransactionException::InvalidBITEAESData;
+        return true;
+    }
+
+    // load data to be executed inside EVM
+    // for BITE transactions returns decrypted data
+    // for regular transactions returns regular data
+    bytes const& dataToPassToEvm = m_t.decryptedData();
+    Address receiverAddressToPassToEvm = m_t.decryptedTo();
+#else
+    bytes const& dataToPassToEvm = m_t.data();
+    Address receiverAddressToPassToEvm = m_t.receiveAddress();
+#endif
+
     if ( m_t.isCreation() )
         return create( m_t.sender(), m_t.value(), m_t.gasPrice(),
-            m_t.gas() - ( u256 ) m_baseGasRequired, &m_t.data(), m_t.sender() );
+            m_t.gas() - ( u256 ) m_baseGasRequired, &dataToPassToEvm, m_t.sender() );
     else
-        return call( m_t.receiveAddress(), m_t.sender(), m_t.value(), m_t.gasPrice(),
-            bytesConstRef( &m_t.data() ), m_t.gas() - ( u256 ) m_baseGasRequired );
+        return call( receiverAddressToPassToEvm, m_t.sender(), m_t.value(), m_t.gasPrice(),
+            bytesConstRef( &dataToPassToEvm ), m_t.gas() - ( u256 ) m_baseGasRequired );
 }
 
 bool Executive::call( Address const& _receiveAddress, Address const& _senderAddress,
@@ -299,7 +334,7 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
         //        for the transaction.
         // Increment associated nonce for sender.
         if ( _p.senderAddress != MaxAddress ||
-             m_envInfo.number() < m_chainParams.constantinopleForkBlock ) {  // EIP86
+             m_envInfo.number() < m_chainParams.getConstantinopleForkBlock() ) {  // EIP86
             MICROPROFILE_SCOPEI( "Executive", "call-incNonce", MP_SEAGREEN );
             m_s.incNonce( _p.senderAddress );
         }
@@ -322,7 +357,7 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
             // https://github.com/ethereum/go-ethereum/pull/3341/files#diff-2433aa143ee4772026454b8abd76b9dd
             // We mark the account as touched here, so that is can be removed among other touched
             // empty accounts (after tx finalization)
-            if ( m_envInfo.number() >= m_chainParams.EIP158ForkBlock )
+            if ( m_envInfo.number() >= m_chainParams.getEIP158ForkBlock() )
                 m_s.addBalance( _p.codeAddress, 0 );
 
             return true;  // true actually means "all finished - nothing more to be done regarding
@@ -331,8 +366,19 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
             m_gas = ( u256 )( _p.gas - g );
             bytes output;
             bool success;
-            tie( success, output ) = m_chainParams.executePrecompiled(
-                _p.codeAddress, _p.data, m_envInfo.number(), m_s.fs().get() );
+            PrecompiledCallContext ctx{ m_envInfo.number(),
+#ifdef BITE2
+                m_txnIndex, m_envInfo.committedBlockTimestamp(),
+#endif
+                m_readOnly };
+#ifdef FAIR
+            tie( success, output ) =
+                m_chainParams.executePrecompiled( _p.codeAddress, _p.data, ctx );
+
+#else
+            tie( success, output ) =
+                m_chainParams.executePrecompiled( _p.codeAddress, _p.data, ctx, m_s.fs().get() );
+#endif
             size_t outputSize = output.size();
             m_output = owning_bytes_ref{ std::move( output ), 0, outputSize };
             if ( !success ) {
@@ -351,7 +397,12 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
             auto const version = m_s.version( _p.codeAddress );
             m_ext = make_shared< ExtVM >( m_s, m_envInfo, m_chainParams, _p.receiveAddress,
                 _p.senderAddress, _origin, _p.apparentValue, _gasPrice, _p.data, &c, codeHash,
-                version, m_depth, false, _p.staticCall, m_readOnly );
+                version, m_depth, false, _p.staticCall, m_readOnly
+#ifdef BITE2
+                ,
+                m_txnIndex
+#endif
+            );
         }
     }
 
@@ -391,7 +442,7 @@ bool Executive::executeCreate( Address const& _sender, u256 const& _endowment,
     u256 const& _gasPrice, u256 const& _gas, bytesConstRef _init, Address const& _origin,
     u256 const& _version ) {
     if ( _sender != MaxAddress ||
-         m_envInfo.number() < m_chainParams.experimentalForkBlock )  // EIP86
+         m_envInfo.number() < m_chainParams.getExperimentalForkBlock() )  // EIP86
         m_s.incNonce( _sender );
 
     m_savepoint = m_s.savepoint();
@@ -405,7 +456,7 @@ bool Executive::executeCreate( Address const& _sender, u256 const& _endowment,
     bool accountAlreadyExist =
         ( m_s.addressHasCode( m_newAddress ) || m_s.getNonce( m_newAddress ) > 0 );
     if ( accountAlreadyExist ) {
-        LOG( m_loggerTrace ) << "Address already used: " << m_newAddress;
+        BOOST_LOG( m_loggerTrace ) << "Address already used: " << m_newAddress;
         m_gas = 0;
         m_excepted = TransactionException::AddressAlreadyUsed;
         revert();
@@ -418,18 +469,27 @@ bool Executive::executeCreate( Address const& _sender, u256 const& _endowment,
     m_s.transferBalance( _sender, m_newAddress, _endowment );
 
     u256 newNonce = m_s.requireAccountStartNonce();
-    if ( m_envInfo.number() >= m_chainParams.EIP158ForkBlock )
+    if ( m_envInfo.number() >= m_chainParams.getEIP158ForkBlock() )
         newNonce += 1;
     m_s.setNonce( m_newAddress, newNonce );
 
     m_s.clearStorage( m_newAddress );
 
     // Schedule _init execution if not empty.
-    if ( !_init.empty() )
-        m_ext = make_shared< ExtVM >( m_s, m_envInfo, m_chainParams, m_newAddress, _sender, _origin,
-            _endowment, _gasPrice, bytesConstRef(), _init, sha3( _init ), _version, m_depth, true,
-            false );
-    else
+    if ( !_init.empty() ) {
+        bool isReadOnly =
+            ContractCreationReadOnlyPatch::isEnabledWhen( m_envInfo.committedBlockTimestamp() ) ?
+                m_readOnly :
+                true;
+        m_ext = make_shared< ExtVM >(
+            m_s, m_envInfo, m_chainParams, m_newAddress, _sender, _origin, _endowment, _gasPrice,
+            bytesConstRef(), _init, sha3( _init ), _version, m_depth, true, false, isReadOnly
+#ifdef BITE2
+            ,
+            m_txnIndex
+#endif
+        );
+    } else
         // code stays empty, but we set the version
         m_s.setCode( m_newAddress, {}, _version );
 
@@ -446,13 +506,13 @@ OnOpFunc Executive::simpleTrace() {
 
         ostringstream o;
         if ( vm )
-            LOG( traceLogger ) << dumpStackAndMemory( *vm );
-        LOG( traceLogger ) << dumpStorage( ext );
-        LOG( traceLogger ) << " < " << dec << ext.depth << " : " << ext.myAddress << " : #" << steps
-                           << " : " << hex << setw( 4 ) << setfill( '0' ) << PC << " : "
-                           << instructionInfo( inst ).name << " : " << dec << gas << " : -" << dec
-                           << gasCost << " : " << newMemSize << "x32"
-                           << " >";
+            BOOST_LOG( traceLogger ) << dumpStackAndMemory( *vm );
+        BOOST_LOG( traceLogger ) << dumpStorage( ext );
+        BOOST_LOG( traceLogger ) << " < " << dec << ext.depth << " : " << ext.myAddress << " : #"
+                                 << steps << " : " << hex << setw( 4 ) << setfill( '0' ) << PC
+                                 << " : " << instructionInfo( inst ).name << " : " << dec << gas
+                                 << " : -" << dec << gasCost << " : " << newMemSize << "x32"
+                                 << " >";
     };
 }
 
@@ -466,6 +526,7 @@ bool Executive::go( OnOpFunc const& _onOp ) {
             // Create VM instance. Force Interpreter if tracing requested.
             auto vm = VMFactory::create();
             if ( m_isCreation ) {
+#ifndef FAIR
                 // Checking whether deployment is allowed via ConfigController contract
                 bytes calldata;
                 if ( FlexibleDeploymentPatch::isEnabledWhen(
@@ -483,7 +544,7 @@ bool Executive::go( OnOpFunc const& _onOp ) {
                 if ( !deploymentCallOutput.empty() && u256( deploymentCallOutput ) == 0 ) {
                     BOOST_THROW_EXCEPTION( InvalidContractDeployer() );
                 }
-
+#endif
                 auto out = vm->exec( m_gas, *m_ext, _onOp );
                 if ( m_res ) {
                     m_res->gasForDeposit = m_gas;
@@ -514,12 +575,12 @@ bool Executive::go( OnOpFunc const& _onOp ) {
             m_output = _e.output();
             m_excepted = TransactionException::RevertInstruction;
         } catch ( VMException const& _e ) {
-            LOG( m_loggerTrace ) << "Safe VM Exception. " << diagnostic_information( _e );
+            BOOST_LOG( m_loggerTrace ) << "Safe VM Exception. " << diagnostic_information( _e );
             m_gas = 0;
             m_excepted = toTransactionException( _e );
             revert();
         } catch ( InternalVMError const& _e ) {
-            LOG( m_loggerWarning )
+            BOOST_LOG( m_loggerWarning )
                 << "Internal VM Error (" << *boost::get_error_info< errinfo_evmcStatusCode >( _e )
                 << ")\n"
                 << diagnostic_information( _e );
@@ -528,19 +589,19 @@ bool Executive::go( OnOpFunc const& _onOp ) {
         } catch ( Exception const& _e ) {
             // TODO: AUDIT: check that this can never reasonably happen. Consider what to do if it
             // does.
-            LOG( m_loggerWarning )
+            BOOST_LOG( m_loggerWarning )
                 << "Unexpected exception in VM. There may be a bug in this implementation. "
                 << diagnostic_information( _e );
-            LOG( m_loggerWarning ) << DETAILED_ERROR;
+            BOOST_LOG( m_loggerWarning ) << DETAILED_ERROR;
             exit( 1 );
             // Another solution would be to reject this transaction, but that also
             // has drawbacks. Essentially, the amount of ram has to be increased here.
         } catch ( std::exception const& _e ) {
             // TODO: AUDIT: check that this can never reasonably happen. Consider what to do if it
             // does.
-            LOG( m_loggerWarning )
+            BOOST_LOG( m_loggerWarning )
                 << "Unexpected std::exception in VM. Not enough RAM? " << _e.what();
-            LOG( m_loggerWarning ) << DETAILED_ERROR;
+            BOOST_LOG( m_loggerWarning ) << DETAILED_ERROR;
             exit( 1 );
             // Another solution would be to reject this transaction, but that also
             // has drawbacks. Essentially, the amount of ram has to be increased here.
@@ -560,8 +621,10 @@ bool Executive::go( OnOpFunc const& _onOp ) {
 bool Executive::finalize() {
     MICROPROFILE_SCOPEI( "Executive", "finalize", MP_PAPAYAWHIP );
     if ( m_ext ) {
+#ifndef FAIR
         // Accumulate refunds for suicides.
         m_ext->sub.refunds += m_ext->evmSchedule().suicideRefundGas * m_ext->sub.suicides.size();
+#endif
 
         // Refunds must be applied before the miner gets the fees.
         assert( m_ext->sub.refunds >= 0 );
@@ -574,13 +637,23 @@ bool Executive::finalize() {
         m_s.addBalance( m_t.sender(), m_gas * m_t.gasPrice() );
 
         u256 feesEarned = ( m_t.gas() - m_gas ) * m_t.gasPrice();
+#ifdef FAIR
+        EVMSchedule currentBlockSchedule = m_chainParams.makeEvmSchedule(
+            m_envInfo.committedBlockTimestamp(), m_envInfo.number() );
+        // calculate share of transaction fees to reward
+        // the rest is effectively burnt
+        feesEarned = dev::calculateShareWithPrecision(
+            feesEarned, currentBlockSchedule.shareOfTransactionFeeToRewardPromille );
+#endif
         m_s.addBalance( m_envInfo.author(), feesEarned );
     }
 
     // Suicides...
+#ifndef FAIR
     if ( m_ext )
         for ( auto a : m_ext->sub.suicides )
             m_s.kill( a );
+#endif
 
     // Logs..
     if ( m_ext )

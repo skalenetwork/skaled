@@ -71,6 +71,24 @@ fs::path dev::getDataDir( string _prefix ) {
     return getDefaultDataDir( _prefix );
 }
 
+bool dev::isDataDirEmpty( string _prefix ) {
+    fs::path dataDir = getDataDir( _prefix );
+
+    try {
+        if ( !fs::exists( dataDir ) ) {
+            return true;
+        }
+        if ( fs::is_directory( dataDir ) ) {
+            return fs::is_empty( dataDir );
+        } else {
+            throw runtime_error( "Provided path exists and is not a directory" );
+        }
+
+    } catch ( const fs::filesystem_error& ) {
+        return false;
+    }
+}
+
 fs::path dev::getDefaultDataDir( string _prefix ) {
     if ( _prefix.empty() )
         _prefix = "ethereum";

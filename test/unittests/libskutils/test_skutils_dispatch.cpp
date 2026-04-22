@@ -111,7 +111,7 @@ BOOST_AUTO_TEST_CASE( loop_functionality_alive ) {
         //
         static const size_t nSleepSeconds = 3;
         //
-        volatile size_t nCallCountOnce = 0;
+        size_t nCallCountOnce = 0;
         const uint64_t nOnceJobTimeout = 500;  // milliseconds
         pLoop->job_add_once( "once uppon a time",
             [&]() -> void {
@@ -132,7 +132,7 @@ BOOST_AUTO_TEST_CASE( loop_functionality_alive ) {
             skutils::dispatch::duration_from_milliseconds( 1200 )  // 1.2 seconds
         );
         //
-        volatile size_t nCallCountPeriodical = 0;
+        size_t nCallCountPeriodical = 0;
         const uint64_t nPeriodicJobTimeout = 500;  // milliseconds
         const size_t nExpectedCallCountPeriodical =
             ( nSleepSeconds * 1000 ) / nPeriodicJobTimeout - 1;  // -1 for safety)

@@ -90,7 +90,7 @@ public:
 
     LocalisedLogEntries logs( unsigned _watchId ) const override;
     LocalisedLogEntries logs( LogFilter const& _filter ) const override;
-    virtual void prependLogsFromBlock( LogFilter const& _filter, h256 const& _blockHash,
+    virtual void appendLogsFromBlock( LogFilter const& _filter, h256 const& _blockHash,
         BlockPolarity _polarity, LocalisedLogEntries& io_logs ) const;
 
     /// Install, uninstall and query watches.
@@ -145,6 +145,10 @@ public:
     h256s pendingHashes() const override;
     BlockHeader pendingInfo() const override;
     BlockDetails pendingDetails() const override;
+
+#ifdef BITE
+    DecryptedTransactionData decryptedTransactionData( h256 _transactionHash ) const;
+#endif
 
     EVMSchedule evmSchedule() const override;
 

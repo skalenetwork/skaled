@@ -86,6 +86,11 @@ static const std::map<Instruction,  InstructionInfo> c_instructionInfo =
     { Instruction::MSIZE,        { "MSIZE",               0,    1,  Tier::Base } },
     { Instruction::GAS,          { "GAS",                 0,    1,  Tier::Base } },
     { Instruction::JUMPDEST,     { "JUMPDEST",            0,    0,  Tier::Special } },
+#ifdef FAIR
+    { Instruction::TLOAD,        { "TLOAD",               1,    1,  Tier::Special } },
+    { Instruction::TSTORE,       { "TSTORE",              2,    0,  Tier::Special } },
+    { Instruction::MCOPY,        { "MCOPY",               3,    0,  Tier::VeryLow } },
+#endif
     // As per EIP-3855 PUSH0 instruction tire is base (2 gas units)
     // As all other PUSH instructions, it removes zero elements from stack and
     // pushes 1 element to stack

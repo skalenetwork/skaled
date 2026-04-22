@@ -44,7 +44,7 @@ elseif( CMAKE_BUILD_TYPE STREQUAL "Debug" )
     set( CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -O0" )
     set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0" )
 else()
-	message( INFO "---- CMAKE_BUILD_TYPE = ${DEPS_INSTALL_ROOT} is not supported explicitly" )
+    message( INFO "---- CMAKE_BUILD_TYPE = ${DEPS_INSTALL_ROOT} is not supported explicitly" )
 endif()
 
 ############################################################################################################
@@ -63,18 +63,14 @@ include( GNUInstallDirs )
 
 if( UNIX )
     # Build deps with PIC to allow building shared libraries.
-    set( toolchain cxx17-pic )
+    set( toolchain cxx20-pic )
 else()
-    set( toolchain cxx17 )
+    set( toolchain cxx20 )
 endif()
 cable_configure_toolchain( DEFAULT ${toolchain} )
 
 set( ETH_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}/cmake" CACHE PATH "The path to the cmake directory" )
 list( APPEND CMAKE_MODULE_PATH ${ETH_CMAKE_DIR} )
-
-# Map current configuration to configurations of imported targets.
-set( CMAKE_MAP_IMPORTED_CONFIG_DEBUG Release )
-set( CMAKE_MAP_IMPORTED_CONFIG_RELWITHDEBINFO Release )
 
 find_program( CCACHE_FOUND ccache )
 if( CCACHE_FOUND )
@@ -90,7 +86,7 @@ else()
     set( run_upload NO )
 endif()
 
-set( CMAKE_CXX_STANDARD 17 )
+set( CMAKE_CXX_STANDARD 20 )
 
 cable_set_build_type( DEFAULT RelWithDebInfo CONFIGURATION_TYPES Debug;Release;RelWithDebInfo )
 
@@ -169,8 +165,24 @@ if( TESTS )
 endif()
 
 if (HISTORIC_STATE)
-add_definitions(-DHISTORIC_STATE=1)
+    add_definitions(-DHISTORIC_STATE=1)
 endif (HISTORIC_STATE)
+
+if (BITE)
+    add_definitions(-DBITE=1)
+endif()
+
+if (BITE2)
+    set(BITE "1")
+    add_definitions(-DBITE=1)
+    add_definitions(-DBITE2=1)
+endif()
+
+if (FAIR)
+    add_definitions(-DBITE=1)
+    add_definitions(-DBITE2=1)
+    add_definitions(-DFAIR=1)
+endif()
 
 add_subdirectory( evmc )
 
@@ -203,7 +215,6 @@ add_subdirectory( libethcore )
 add_subdirectory( libevm )
 add_subdirectory( libethereum )
 add_subdirectory( libethashseal )
-
 add_subdirectory( libweb3jsonrpc )
 
 if( EVMJIT )
@@ -230,15 +241,17 @@ set( CPACK_PACKAGE_CHECKSUM SHA256 )
 set( CPACK_INCLUDE_TOPLEVEL_DIRECTORY FALSE )
 include( CPack )
 
+set(PARENT_BINARY_DIR ${CMAKE_BINARY_DIR})
+
 if ( CONSENSUS )
     set( SKALED_LATEST_STANDARD ON CACHE BOOL "Use latest standards" ) # depricated option. TODO: remove from consensus
     set( BUILD_TESTS OFF CACHE BOOL "Build tests" ) # do not build libbls tests
     add_subdirectory( libconsensus EXCLUDE_FROM_ALL)
     target_compile_options( consensus PRIVATE -Wno-unused-variable ) # silence libff warnings
-    target_compile_options( bls PRIVATE -Wno-unused-variable ) # silence libff warnings
+    target_compile_options( bls PRIVATE -Wno-unused-variable) # silence libff warnings
 else()
     add_subdirectory( libconsensus/libBLS )
-    target_compile_options( bls PRIVATE -Wno-unused-variable ) # silence libff warnings
+    target_compile_options( bls PRIVATE -Wno-unused-variable) # silence libff warnings
     set( BUILD_TESTS OFF CACHE BOOL "Build tests" ) # do not build libbls tests
 endif()
 

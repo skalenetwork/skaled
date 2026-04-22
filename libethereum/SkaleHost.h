@@ -80,7 +80,6 @@ public:
 
 private:
     const dev::eth::Client& m_client;
-
     /// Loggers
     mutable dev::Logger m_loggerInfo{ dev::createLogger(
         dev::VerbosityInfo, "DefaultConsensusFactory" ) };
@@ -113,7 +112,10 @@ public:
 
     SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory = nullptr,
         std::shared_ptr< InstanceMonitor > _instanceMonitor = nullptr,
-        const std::string& _gethURL = "", bool _broadcastEnabled = true );
+#ifndef FAIR
+        const std::string& _gethURL = "",
+#endif
+        bool _broadcastEnabled = true );
     virtual ~SkaleHost();
 
     void startWorking();
@@ -127,12 +129,17 @@ public:
     dev::h256 receiveTransaction( std::string );
 
     void pushToBroadcastQueue( const dev::eth::Transaction& _transaction );
+#ifdef BITE2
+    void pushToBITE2Queue( dev::eth::Transaction&& _transaction );
+#endif
 
     dev::u256 getGasPrice( unsigned _blockNumber = dev::eth::LatestBlock ) const;
-    dev::u256 getBlockRandom() const;
+    dev::u256 getBlockRandom( unsigned _blockNumber, bool _isCalledFromTxn ) const;
     dev::eth::SyncStatus syncStatus() const;
     std::map< std::string, uint64_t > getConsensusDbUsage() const;
-    std::array< std::string, 4 > getIMABLSPublicKey() const;
+    bool ignoreNewBlocksEnabled() const;
+
+    std::array< std::string, 4 > getCurrentBLSPublicKey() const;
 
     // get node id for historic node in chain
     std::string getHistoricNodeId( unsigned _id ) const;
@@ -143,8 +150,10 @@ public:
     // get public key for historic node in chain
     std::string getHistoricNodePublicKey( unsigned _idx ) const;
 
+#ifndef FAIR
     uint64_t submitOracleRequest( const string& _spec, string& _receipt, string& _errorMessage );
     uint64_t checkOracleResult( const string& _receipt, string& _result );
+#endif
 
     void pauseConsensus( bool _pause ) {
         if ( _pause && !m_consensusPaused ) {
@@ -164,6 +173,16 @@ public:
 
     SkaleDebugInterface::handler getDebugHandler() const { return m_debugHandler; }
 
+#ifdef BITE2
+    const dev::eth::Client& client() const { return m_client; }
+#endif
+
+#ifdef FAIR
+    bool isConsesusUpdateHappened() const { return m_consensusUpdateHappened; }
+
+    void handleConsensusUpdate() const;
+#endif
+
 private:
     std::atomic_bool working = false;
 
@@ -173,8 +192,23 @@ private:
     virtual ConsensusExtFace::transactions_vector pendingTransactions(
         size_t _limit, u256& _stateRoot );
     virtual void createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
+#ifdef BITE
+        shared_ptr< DecryptedTransactionFieldsMap > _decryptedTransactions,
+#endif
         uint64_t _timeStamp, uint64_t _blockID, dev::u256 _gasPrice, u256 _stateRoot,
         uint64_t _winningNodeIndex );
+
+protected:
+#ifdef FAIR
+    virtual void runCommitteeRotationForConsensus();
+#endif
+
+private:
+#ifdef FAIR
+    void syncNodeGroups();
+#endif
+
+    void checkStateRoot( uint64_t _blockId, uint64_t _winningNodeIndex, u256 _stateRoot );
 
     std::thread m_broadcastThread;
     void broadcastFunc();
@@ -193,6 +227,9 @@ private:
     void penalizePeer(){};  // fake function for now
 
     std::thread m_consensusThread;
+#ifdef FAIR
+    std::unique_ptr< std::thread > m_committeeRotationMonitorThread;
+#endif
 
     std::atomic_bool m_exitNeeded = false;
 
@@ -207,7 +244,10 @@ private:
     std::atomic_bool m_ignoreNewBlocks = false;  // used when we need to exit at specific block
 
     bool m_broadcastEnabled;
-
+#ifdef FAIR
+    std::atomic_bool m_broadcastRestartNeeded = false;
+    mutable std::atomic_bool m_consensusUpdateHappened = false;
+#endif
 
     dev::Logger m_loggerError{ dev::createLogger( dev::VerbosityError, "skale-host" ) };
     dev::Logger m_loggerWarning{ dev::createLogger( dev::VerbosityWarning, "skale-host" ) };
@@ -218,7 +258,6 @@ private:
 
     std::unique_ptr< ConsensusExtFace > m_extFace;
     std::unique_ptr< ConsensusInterface > m_consensus;
-
     std::optional< uint64_t > emptyBlockIntervalMsForRestore;  // used for temporary setting this
                                                                // to 0
     bool need_restore_emptyBlockInterval = false;

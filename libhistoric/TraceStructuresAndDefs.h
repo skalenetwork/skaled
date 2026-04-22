@@ -23,6 +23,7 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 #include "libdevcore/Common.h"
 #include "libevm/Instruction.h"
 
+#include <memory>
 
 //  we limit the  memory and storage entries returned to avoid
 // denial of service attack.

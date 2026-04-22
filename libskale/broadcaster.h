@@ -57,6 +57,10 @@ public:
 
     virtual void startService() = 0;
     virtual void stopService() = 0;
+
+#ifdef FAIR
+    virtual void resetServerSocket() = 0;
+#endif
 };
 
 class HttpBroadcaster : public Broadcaster {
@@ -68,11 +72,15 @@ public:
     virtual void startService() {}
     virtual void stopService() {}
 
+#ifdef FAIR
+    virtual void resetServerSocket() {}
+#endif
+
 private:
     dev::eth::Client& m_client;
     std::vector< std::shared_ptr< SkaleClient > > m_nodeClients;
 
-    void initClients( dev::eth::SChain, dev::eth::NodeInfo );
+    void initClients( const dev::eth::ChainParams& _chainParams );
     std::string getHttpUrl( const dev::eth::sChainNode& );
 
     dev::Logger m_loggerInfo{ dev::createLogger( dev::VerbosityInfo, "HttpBroadcaster" ) };
@@ -89,6 +97,10 @@ public:
     virtual void startService();
     virtual void stopService();
 
+#ifdef FAIR
+    virtual void resetServerSocket();
+#endif
+
 private:
     dev::eth::Client& m_client;
     SkaleHost& m_skaleHost;
@@ -98,6 +110,7 @@ private:
     mutable void* m_zmq_client_socket;
 
     std::string getZmqUrl( const dev::eth::sChainNode& ) const;
+
     void* server_socket() const;
     void* client_socket() const;
 

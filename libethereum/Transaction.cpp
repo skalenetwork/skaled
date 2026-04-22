@@ -74,6 +74,10 @@ TransactionException dev::eth::toTransactionException( Exception const& _e ) {
         return TransactionException::StackUnderflow;
     if ( !!dynamic_cast< InvalidContractDeployer const* >( &_e ) )
         return TransactionException::InvalidContractDeployer;
+#ifdef FAIR
+    if ( !!dynamic_cast< UnsupportedDencunOpcode const* >( &_e ) )
+        return TransactionException::UnsupportedDencunOpcode;
+#endif
     return TransactionException::Unknown;
 }
 
@@ -136,6 +140,11 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, TransactionException con
     case TransactionException::WouldNotBeInBlock:
         _out << "WouldNotBeInBlock";
         break;
+#ifdef FAIR
+    case TransactionException::UnsupportedDencunOpcode:
+        _out << "UnsupportedDencunOpcode";
+        break;
+#endif
     default:
         _out << "Unknown";
         break;
@@ -148,17 +157,38 @@ Transaction::Transaction() {}
 Transaction::Transaction( const TransactionSkeleton& _ts, const Secret& _s )
     : TransactionBase( _ts, _s ) {}
 
+#ifdef FAIR
+
+Transaction::Transaction( const u256& _value, const u256& _gasPrice, const u256& _gas,
+    const Address& _dest, const bytes& _data, const u256& _nonce, const u256& _chainId,
+    const Secret& _secret )
+    : TransactionBase( _value, _gasPrice, _gas, _dest, _data, _nonce, _chainId, _secret ) {}
+
+Transaction::Transaction( const u256& _value, const u256& _gasPrice, const u256& _gas,
+    const Address& _dest, const bytes& _data, const u256& _nonce, const u256& _chainId )
+    : TransactionBase( _value, _gasPrice, _gas, _dest, _data, _nonce, _chainId ) {}
+
+Transaction::Transaction( const u256& _value, const u256& _gasPrice, const u256& _gas,
+    const bytes& _data, const u256& _nonce, const u256& _chainId, const Secret& _secret )
+    : TransactionBase( _value, _gasPrice, _gas, _data, _nonce, _chainId, _secret ) {}
+
+Transaction::Transaction( const u256& _value, const u256& _gasPrice, const u256& _gas,
+    const bytes& _data, const u256& _nonce, const u256& _chainId )
+    : TransactionBase( _value, _gasPrice, _gas, _data, _nonce, _chainId ) {}
+
+#endif
+
 Transaction::Transaction( const u256& _value, const u256& _gasPrice, const u256& _gas,
     const Address& _dest, const bytes& _data, const u256& _nonce, const Secret& _secret )
     : TransactionBase( _value, _gasPrice, _gas, _dest, _data, _nonce, _secret ) {}
 
 Transaction::Transaction( const u256& _value, const u256& _gasPrice, const u256& _gas,
-    const bytes& _data, const u256& _nonce, const Secret& _secret )
-    : TransactionBase( _value, _gasPrice, _gas, _data, _nonce, _secret ) {}
-
-Transaction::Transaction( const u256& _value, const u256& _gasPrice, const u256& _gas,
     const Address& _dest, const bytes& _data, const u256& _nonce )
     : TransactionBase( _value, _gasPrice, _gas, _dest, _data, _nonce ) {}
+
+Transaction::Transaction( const u256& _value, const u256& _gasPrice, const u256& _gas,
+    const bytes& _data, const u256& _nonce, const Secret& _secret )
+    : TransactionBase( _value, _gasPrice, _gas, _data, _nonce, _secret ) {}
 
 Transaction::Transaction( const u256& _value, const u256& _gasPrice, const u256& _gas,
     const bytes& _data, const u256& _nonce )
@@ -174,6 +204,7 @@ Transaction::Transaction( const bytes& _rlp, CheckTransaction _checkSig, bool _a
     : Transaction( &_rlp, _checkSig, _allowInvalid, _eip1559Enabled,
           _invalidTransactionFormatPatchEnabled ) {}
 
+#ifndef FAIR
 bool Transaction::hasExternalGas() const {
     if ( !m_externalGasIsChecked ) {
         throw ExternalGasException();
@@ -188,18 +219,24 @@ u256 Transaction::getExternalGas() const {
         return u256( 0 );
     }
 }
+#endif
 
 u256 Transaction::gasPrice() const {
+#ifdef FAIR
+    return TransactionBase::gasPrice();
+#else
     if ( m_externalGasIsChecked && hasExternalGas() ) {
         return 0;
     } else {
         return TransactionBase::gasPrice();
     }
+#endif
 }
 
+#ifndef FAIR
 void Transaction::checkOutExternalGas(
     const ChainParams& _cp, time_t _committedBlockTimestamp, uint64_t _committedBlockNumber ) {
-    u256 const& difficulty = _cp.externalGasDifficulty;
+    u256 const& difficulty = _cp.getExternalGasDifficulty();
     assert( difficulty > 0 );
     if ( !isInvalid() ) {
         h256 hash;
@@ -219,7 +256,7 @@ void Transaction::checkOutExternalGas(
         }
         u256 externalGas = ~u256( 0 ) / u256( hash ) / difficulty;
         if ( externalGas > 0 )
-            LOG( m_loggerTrace ) << "Mined gas: " << externalGas;
+            BOOST_LOG( m_loggerTrace ) << "Mined gas: " << externalGas;
 
         EVMSchedule scheduleForUse = ConstantinopleSchedule;
         if ( CorrectForkInPowPatch::isEnabledWhen( _committedBlockTimestamp ) )
@@ -232,6 +269,7 @@ void Transaction::checkOutExternalGas(
         m_externalGasIsChecked = true;
     }
 }
+#endif
 
 LocalisedTransaction::LocalisedTransaction( const Transaction& _t, const h256& _blockHash,
     unsigned _transactionIndex, BlockNumber _blockNumber )

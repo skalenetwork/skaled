@@ -46,6 +46,9 @@
 #include <jsonrpccpp/client/connectors/httpclient.h>
 
 #include <libconsensus/exceptions/InvalidStateException.h>
+#ifdef BITE
+#include <libconsensus/libBLS/threshold_encryption/TEPublicKey.h>
+#endif
 #include <skutils/rest_call.h>
 #include <skutils/utils.h>
 
@@ -75,7 +78,7 @@ Skale::~Skale() {
     threadExitRequested = true;
     if ( snapshotDownloadFragmentMonitorThread != nullptr &&
          snapshotDownloadFragmentMonitorThread->joinable() ) {
-        LOG( m_loggerInfo ) << "Joining downloadSnapshotFragmentMonitorThread";
+        BOOST_LOG( m_loggerInfo ) << "Joining downloadSnapshotFragmentMonitorThread";
         snapshotDownloadFragmentMonitorThread->join();
     }
 }
@@ -103,15 +106,15 @@ void Skale::onShutdownInvoke( fn_on_shutdown_t fn ) {
 
 std::string Skale::skale_shutdownInstance() {
     if ( !g_bShutdownViaWeb3Enabled ) {
-        LOG( m_loggerWarning ) << "\nINSTANCE SHUTDOWN ATTEMPT WHEN DISABLED\n\n";
+        BOOST_LOG( m_loggerWarning ) << "\nINSTANCE SHUTDOWN ATTEMPT WHEN DISABLED\n\n";
         return toJS( "disabled" );
     }
     if ( g_bNodeInstanceShouldShutdown ) {
-        LOG( m_loggerInfo ) << "\nSECONDARY INSTANCE SHUTDOWN EVENT\n\n";
+        BOOST_LOG( m_loggerInfo ) << "\nSECONDARY INSTANCE SHUTDOWN EVENT\n\n";
         return toJS( "in progress(secondary attempt)" );
     }
     g_bNodeInstanceShouldShutdown = true;
-    LOG( m_loggerInfo ) << "\nINSTANCE SHUTDOWN EVENT\n\n";
+    BOOST_LOG( m_loggerInfo ) << "\nINSTANCE SHUTDOWN EVENT\n\n";
     for ( auto& fn : g_list_fn_on_shutdown ) {
         if ( !fn )
             continue;
@@ -121,9 +124,9 @@ std::string Skale::skale_shutdownInstance() {
             std::string s = ex.what();
             if ( s.empty() )
                 s = "no description";
-            LOG( m_loggerError ) << "Exception in shutdown event handler: " << s;
+            BOOST_LOG( m_loggerError ) << "Exception in shutdown event handler: " << s;
         } catch ( ... ) {
-            LOG( m_loggerError ) << "Unknown exception in shutdown event handler";
+            BOOST_LOG( m_loggerError ) << "Unknown exception in shutdown event handler";
         }
     }  // for( auto & fn : g_list_fn_on_shutdown )
     g_list_fn_on_shutdown.clear();
@@ -166,7 +169,7 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
             "snapshot info request received too early, no snapshot available yet, please try later "
             "or request earlier block number";
         joResponse["timeValid"] =
-            currentSnapshotTime + m_client.chainParams().sChain.snapshotDownloadTimeout;
+            currentSnapshotTime + m_client.chainParams().getSnapshotDownloadTimeout();
         return joResponse;
     }
 
@@ -181,7 +184,7 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
     if ( m_shared_space && !m_shared_space->try_lock() ) {
         joResponse["error"] = "snapshot serialization space is occupied, please try again later";
         joResponse["timeValid"] =
-            time( NULL ) + m_client.chainParams().sChain.snapshotDownloadTimeout;
+            time( NULL ) + m_client.chainParams().getSnapshotDownloadTimeout();
         return joResponse;
     }
 
@@ -204,24 +207,24 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
          !snapshotDownloadFragmentMonitorThread->joinable() ) {
         snapshotDownloadFragmentMonitorThread.reset( new std::thread( [this]() {
             while ( ( time( NULL ) - lastSnapshotDownloadFragmentTime <
-                            m_client.chainParams().sChain.snapshotDownloadInactiveTimeout ||
+                            m_client.chainParams().getSnapshotDownloadInactiveTimeout() ||
                         time( NULL ) - currentSnapshotTime <
-                            m_client.chainParams().sChain.snapshotDownloadInactiveTimeout ) &&
+                            m_client.chainParams().getSnapshotDownloadInactiveTimeout() ) &&
                     ( time( NULL ) - currentSnapshotTime <
-                            m_client.chainParams().sChain.snapshotDownloadTimeout ||
-                        m_client.chainParams().nodeInfo.archiveMode ) ) {
+                            m_client.chainParams().getSnapshotDownloadTimeout() ||
+                        m_client.chainParams().isArchiveModeEnabled() ) ) {
                 if ( threadExitRequested )
                     break;
                 sleep( SNAPSHOT_DOWNLOAD_MONITOR_THREAD_SLEEP_MS );
             }
 
-            LOG( m_loggerInfo ) << "Unlocking shared space.";
+            BOOST_LOG( m_loggerInfo ) << "Unlocking shared space.";
 
             std::lock_guard< std::mutex > lock( m_snapshot_mutex );
             if ( currentSnapshotBlockNumber >= 0 ) {
                 try {
                     fs::remove( currentSnapshotPath );
-                    LOG( m_loggerInfo ) << "Deleted snapshot file.";
+                    BOOST_LOG( m_loggerInfo ) << "Deleted snapshot file.";
                 } catch ( ... ) {
                 }
                 currentSnapshotBlockNumber = -1;
@@ -322,7 +325,7 @@ nlohmann::json Skale::impl_skale_downloadSnapshotFragmentJSON( const nlohmann::j
     std::string strBase64 = skutils::tools::base64::encode( buffer.data(), sizeOfChunk );
 
     if ( sizeOfChunk + idxFrom == sizeOfFile )
-        LOG( m_loggerInfo ) << "Sent all chunks for " << currentSnapshotPath.string();
+        BOOST_LOG( m_loggerInfo ) << "Sent all chunks for " << currentSnapshotPath.string();
 
     joResponse["size"] = sizeOfChunk;
     joResponse["data"] = strBase64;
@@ -353,10 +356,33 @@ std::string Skale::skale_getLatestSnapshotBlockNumber() {
     return response > 0 ? std::to_string( response ) : "earliest";
 }
 
+#ifdef FAIR
+Json::Value Skale::skale_getBLSPublicKey() {
+    try {
+        Json::Value publicKeyInfo;
+        const auto& blsPublicKey = m_client.chainParams().getSelfBlsPublicKey();
+
+        publicKeyInfo["BLSPublicKey0"] = blsPublicKey.at( 0 );
+        publicKeyInfo["BLSPublicKey1"] = blsPublicKey.at( 1 );
+        publicKeyInfo["BLSPublicKey2"] = blsPublicKey.at( 2 );
+        publicKeyInfo["BLSPublicKey3"] = blsPublicKey.at( 3 );
+
+        return publicKeyInfo;
+    } catch ( Exception const& ) {
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+    } catch ( const std::exception& e ) {
+        throw jsonrpc::JsonRpcException( e.what() );
+    } catch ( ... ) {
+        BOOST_THROW_EXCEPTION(
+            jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
+    }
+}
+#endif
+
 Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
-    dev::eth::ChainParams chainParams = this->m_client.chainParams();
-    if ( !chainParams.nodeInfo.syncNode && ( chainParams.nodeInfo.keyShareName.empty() ||
-                                               chainParams.nodeInfo.sgxServerUrl.empty() ) )
+    const dev::eth::ChainParams& chainParams = this->m_client.chainParams();
+    if ( !chainParams.isSyncNode() &&
+         ( chainParams.getKeyShareName().empty() || chainParams.getSgxServerUrl().empty() ) )
         throw jsonrpc::JsonRpcException( "Snapshot signing is not enabled" );
 
     if ( blockNumber != 0 && blockNumber != this->m_client.getLatestSnapshotBlockNumer() ) {
@@ -371,8 +397,8 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
                 "Requested hash of block " + to_string( blockNumber ) + " is absent" );
 
         nlohmann::json joSignature = nlohmann::json::object();
-        if ( !chainParams.nodeInfo.syncNode ) {
-            std::string sgxServerURL = chainParams.nodeInfo.sgxServerUrl;
+        if ( !chainParams.isSyncNode() ) {
+            std::string sgxServerURL = chainParams.getSgxServerUrl();
             skutils::url u( sgxServerURL );
 
             nlohmann::json joCall = nlohmann::json::object();
@@ -382,18 +408,10 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
                 joCall["type"] = "BLSSignReq";
             nlohmann::json obj = nlohmann::json::object();
 
-            obj["keyShareName"] = chainParams.nodeInfo.keyShareName;
+            obj["keyShareName"] = chainParams.getKeyShareName();
             obj["messageHash"] = snapshotHash.hex();
-            obj["n"] = chainParams.sChain.nodes.size();
-            obj["t"] = chainParams.sChain.t;
-
-            auto it =
-                std::find_if( chainParams.sChain.nodes.begin(), chainParams.sChain.nodes.end(),
-                    [chainParams]( const dev::eth::sChainNode& schain_node ) {
-                        return schain_node.id == chainParams.nodeInfo.id;
-                    } );
-            assert( it != chainParams.sChain.nodes.end() );
-            dev::eth::sChainNode schain_node = *it;
+            obj["n"] = chainParams.getNodesCount();
+            obj["t"] = chainParams.getThresholdCount();
 
             joCall["params"] = obj;
 
@@ -421,15 +439,15 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
             cli.optsSSL_ = ssl_options;
             bool fl = cli.open( sgxServerURL );
             if ( !fl ) {
-                LOG( m_loggerInfo ) << "FATAL:"
-                                    << " Exception while trying to connect to sgx server: "
-                                    << "connection refused";
+                BOOST_LOG( m_loggerInfo ) << "FATAL:"
+                                          << " Exception while trying to connect to sgx server: "
+                                          << "connection refused";
             }
 
             skutils::rest::data_t d;
             while ( true ) {
-                LOG( m_loggerInfo ) << ">>> SGX call >>>"
-                                    << " " << joCall;
+                BOOST_LOG( m_loggerInfo ) << ">>> SGX call >>>"
+                                          << " " << joCall;
                 d = cli.call( joCall );
                 if ( d.ei_.et_ !=
                      skutils::http::common_network_exception::error_type::et_no_error ) {
@@ -437,14 +455,16 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
                              skutils::http::common_network_exception::error_type::et_unknown ||
                          d.ei_.et_ ==
                              skutils::http::common_network_exception::error_type::et_fatal ) {
-                        LOG( m_loggerError ) << "ERROR:"
-                                             << " Exception while trying to connect to sgx server: "
-                                             << " error with connection: "
-                                             << " retrying... ";
+                        BOOST_LOG( m_loggerError )
+                            << "ERROR:"
+                            << " Exception while trying to connect to sgx server: "
+                            << " error with connection: "
+                            << " retrying... ";
                     } else {
-                        LOG( m_loggerError ) << "ERROR:"
-                                             << " Exception while trying to connect to sgx server: "
-                                             << " error with ssl certificates " << d.ei_.strError_;
+                        BOOST_LOG( m_loggerError )
+                            << "ERROR:"
+                            << " Exception while trying to connect to sgx server: "
+                            << " error with ssl certificates " << d.ei_.strError_;
                     }
                 } else {
                     break;
@@ -453,8 +473,8 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
 
             if ( d.empty() ) {
                 static const char g_strErrMsg[] = "SGX Server call to blsSignMessageHash failed";
-                LOG( m_loggerError ) << "SGX call error"
-                                     << " " << g_strErrMsg;
+                BOOST_LOG( m_loggerError ) << "SGX call error"
+                                           << " " << g_strErrMsg;
                 throw std::runtime_error( g_strErrMsg );
             }
 
@@ -509,8 +529,12 @@ Json::Value Skale::skale_getDBUsage() {
 
     joSkaledDBUsage["blocks.db_disk_usage"] = blocksDbUsage.first;
     joSkaledDBUsage["pieceUsageBytes"] = blocksDbUsage.second;
+#ifndef FAIR
     joSkaledDBUsage["state.db_disk_usage"] = stateDbUsage.first;
     joSkaledDBUsage["contractStorageUsed"] = stateDbUsage.second;
+#else
+    joSkaledDBUsage["state.db_disk_usage"] = stateDbUsage;
+#endif
 
     joDBUsageInfo["skaledDBUsage"] = joSkaledDBUsage;
 
@@ -528,14 +552,15 @@ Json::Value Skale::skale_getDBUsage() {
     return response;
 }
 
+#ifndef FAIR
 std::string Skale::oracle_submitRequest( std::string& request ) {
     try {
-        if ( m_client.chainParams().nodeInfo.syncNode )
+        if ( m_client.chainParams().isSyncNode() )
             throw std::runtime_error( "Oracle is disabled on this instance" );
         std::string receipt;
         std::string errorMessage;
 
-        LOG( m_loggerDebug ) << request;
+        BOOST_LOG( m_loggerDebug ) << request;
 
         uint64_t status = this->m_client.submitOracleRequest( request, receipt, errorMessage );
         if ( status != ORACLE_SUCCESS ) {
@@ -551,7 +576,7 @@ std::string Skale::oracle_submitRequest( std::string& request ) {
 
 std::string Skale::oracle_checkResult( std::string& receipt ) {
     try {
-        if ( m_client.chainParams().nodeInfo.syncNode )
+        if ( m_client.chainParams().isSyncNode() )
             throw std::runtime_error( "Oracle is disabled on this instance" );
         std::string result;
         // this function is guaranteed not to throw exceptions
@@ -565,7 +590,7 @@ std::string Skale::oracle_checkResult( std::string& receipt ) {
             throw jsonrpc::JsonRpcException(
                 status, skutils::tools::format( "Oracle request failed with status %zu", status ) );
         }
-        LOG( m_loggerDebug ) << result;
+        BOOST_LOG( m_loggerDebug ) << result;
         return result;
     } catch ( jsonrpc::JsonRpcException const& e ) {
         throw e;
@@ -573,6 +598,76 @@ std::string Skale::oracle_checkResult( std::string& receipt ) {
         throw jsonrpc::JsonRpcException( ORACLE_INTERNAL_SERVER_ERROR, e.what() );
     }
 }
+#endif
+
+#ifdef BITE
+Json::Value Skale::bite_getCommitteesInfo() {
+    try {
+        auto stringArrayToBLSPublicKey = []( const std::array< std::string, 4 >& publicKeyArray ) {
+            libBLS::algebra::G2Point publicKeyG2 =
+                libBLS::algebra::G2Point::fromString( publicKeyArray, libBLS::Base::DEC );
+            libBLS::TEPublicKey publicKey( publicKeyG2 );
+            return publicKey;
+        };
+        auto publicKeyArray = m_client.getCurrentBLSPublicKey();
+
+        Json::Value response = Json::arrayValue;
+        response[0]["commonBLSPublicKey"] =
+            stringArrayToBLSPublicKey( publicKeyArray ).toString( libBLS::Base::HEXA );
+        response[0]["epochId"] = m_client.getCurrentEpochId();
+#ifdef FAIR
+        if ( m_client.isCommitteeRotationSoon() ) {
+            auto nextCommitteeBITEInfo = m_client.getNextCommitteeBITEInfo();
+            response[1]["commonBLSPublicKey"] =
+                stringArrayToBLSPublicKey( nextCommitteeBITEInfo.first )
+                    .toString( libBLS::Base::HEXA );
+            response[1]["epochId"] = nextCommitteeBITEInfo.second;
+        }
+#endif  // FAIR
+
+        return response;
+    } catch ( Exception const& ) {
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+    } catch ( const std::exception& e ) {
+        throw jsonrpc::JsonRpcException( e.what() );
+    }
+}
+
+// TODO - returns the data + to address (?)
+Json::Value Skale::bite_getDecryptedTransactionData( const std::string& _transactionHash ) {
+    try {
+        h256 h = jsToFixed< 32 >( _transactionHash );
+        if ( !m_client.isKnownTransaction( h ) )
+            throw std::invalid_argument( "Transaction with provided hash does not exist." );
+
+#ifdef HISTORIC_STATE
+        // skip invalid
+        auto rcp = m_client.localisedTransactionReceipt( h );
+        if ( rcp.gasUsed() == 0 )
+            return std::string();
+#endif  // HISTORIC_STATE
+
+        auto decryptedData = m_client.decryptedTransactionData( h );
+        if ( !decryptedData ) {
+            throw std::invalid_argument(
+                "Transaction with provided hash does not have any decrypted data associated with "
+                "it." );
+        }
+
+        Json::Value response;
+        response["data"] = dev::toHexPrefixed( decryptedData.data() );
+        response["to"] = dev::toHexPrefixed( decryptedData.to() );
+        return response;
+    } catch ( Exception const& ) {
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+    } catch ( const std::exception& e ) {
+        throw jsonrpc::JsonRpcException( e.what() );
+    } catch ( ... ) {
+        BOOST_THROW_EXCEPTION(
+            jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
+    }
+}
+#endif  // BITE
 
 namespace snapshot {
 

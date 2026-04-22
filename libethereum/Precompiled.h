@@ -38,36 +38,83 @@
 class SkaleHost;
 
 namespace skale {
-class State;
+#ifndef FAIR
 class OverlayFS;
+#endif
 }  // namespace skale
-
-using skale::State;
 
 namespace dev {
 namespace eth {
 
 extern std::shared_ptr< skutils::json_config_file_accessor > g_configAccesssor;
 extern std::shared_ptr< SkaleHost > g_skaleHost;
-extern skale::State g_state;
+
+struct PrecompiledCallContext {
+    PrecompiledCallContext()
+        : blockNumber( 0 ),
+#ifdef BITE2
+          currentTxnIndex( -1 ),
+          latestBlockTimestamp( 0 ),
+#endif
+          isReadOnly( true ) {
+    }
+    PrecompiledCallContext( const dev::u256& _bn,
+#ifdef BITE2
+        const dev::u256& _currentTxnIndex, int64_t _latestBlockTimestamp,
+#endif
+        bool _readOnly )
+        : blockNumber( _bn ),
+#ifdef BITE2
+          currentTxnIndex( _currentTxnIndex ),
+          latestBlockTimestamp( _latestBlockTimestamp ),
+#endif
+          isReadOnly( _readOnly ) {
+    }
+    dev::u256 blockNumber;
+#ifdef BITE2
+    dev::u256 currentTxnIndex;
+    int64_t latestBlockTimestamp;
+#endif
+    bool isReadOnly;
+};
 
 struct ChainOperationParams;
 
 // allow call both with overlayFS and without it
 class PrecompiledExecutor {
 public:
+#ifdef FAIR
     std::pair< bool, bytes > operator()(
-        bytesConstRef _in, skale::OverlayFS* _overlayFS = nullptr ) const {
-        return proxy( _in, _overlayFS );
+        bytesConstRef _in, const PrecompiledCallContext& _ctx ) const {
+        return proxy( _in, _ctx );
     }
+#else
+    std::pair< bool, bytes > operator()( bytesConstRef _in, const PrecompiledCallContext& _ctx,
+        skale::OverlayFS* _overlayFS = nullptr ) const {
+        return proxy( _in, _ctx, _overlayFS );
+    }
+#endif
     PrecompiledExecutor() {}
+#ifdef FAIR
     PrecompiledExecutor( const std::function< std::pair< bool, bytes >(
-            bytesConstRef _in, skale::OverlayFS* _overlayFS ) >& _func )
+            bytesConstRef _in, const PrecompiledCallContext& _ctx ) >& _func )
         : proxy( _func ) {}
+#else
+    PrecompiledExecutor( const std::function< std::pair< bool, bytes >( bytesConstRef _in,
+            const PrecompiledCallContext& _ctx, skale::OverlayFS* _overlayFS ) >& _func )
+        : proxy( _func ) {}
+#endif
 
 private:
-    std::function< std::pair< bool, bytes >( bytesConstRef _in, skale::OverlayFS* _overlayFS ) >
+#ifdef FAIR
+    std::function< std::pair< bool, bytes >(
+        bytesConstRef _in, const PrecompiledCallContext& _ctx ) >
         proxy;
+#else
+    std::function< std::pair< bool, bytes >(
+        bytesConstRef _in, const PrecompiledCallContext& _ctx, skale::OverlayFS* _overlayFS ) >
+        proxy;
+#endif
 };
 
 using PrecompiledPricer = std::function< bigint(
@@ -112,25 +159,40 @@ private:
     static PrecompiledRegistrar* s_this;
 };
 
-// ignore _overlayFS param and call registered function with 1 parameter
+#ifdef FAIR
+#define ETH_REGISTER_PRECOMPILED( Name )                                                      \
+    static std::pair< bool, bytes > __eth_registerPrecompiledFunction##Name(                  \
+        bytesConstRef _in, const PrecompiledCallContext& _ctx );                              \
+    static PrecompiledExecutor __eth_registerPrecompiledFactory##Name =                       \
+        ::dev::eth::PrecompiledRegistrar::registerExecutor(                                   \
+            #Name, PrecompiledExecutor(                                                       \
+                       []( bytesConstRef _in,                                                 \
+                           const PrecompiledCallContext& _ctx ) -> std::pair< bool, bytes > { \
+                           return __eth_registerPrecompiledFunction##Name( _in, _ctx );       \
+                       } ) );                                                                 \
+    static std::pair< bool, bytes > __eth_registerPrecompiledFunction##Name
+#else
+// ignore _overlayFS param and call registered function with 2 parameters
 // TODO: unregister on unload with a static object.
-#define ETH_REGISTER_PRECOMPILED( Name )                                                          \
-    static std::pair< bool, bytes > __eth_registerPrecompiledFunction##Name( bytesConstRef _in ); \
-    static PrecompiledExecutor __eth_registerPrecompiledFactory##Name =                           \
-        ::dev::eth::PrecompiledRegistrar::registerExecutor(                                       \
-            #Name, PrecompiledExecutor(                                                           \
-                       []( bytesConstRef _in, skale::OverlayFS* ) -> std::pair< bool, bytes > {   \
-                           return __eth_registerPrecompiledFunction##Name( _in );                 \
-                       } ) );                                                                     \
+#define ETH_REGISTER_PRECOMPILED( Name )                                                           \
+    static std::pair< bool, bytes > __eth_registerPrecompiledFunction##Name(                       \
+        bytesConstRef _in, const PrecompiledCallContext& _ctx );                                   \
+    static PrecompiledExecutor __eth_registerPrecompiledFactory##Name =                            \
+        ::dev::eth::PrecompiledRegistrar::registerExecutor(                                        \
+            #Name, PrecompiledExecutor( []( bytesConstRef _in, const PrecompiledCallContext& _ctx, \
+                                            skale::OverlayFS* ) -> std::pair< bool, bytes > {      \
+                return __eth_registerPrecompiledFunction##Name( _in, _ctx );                       \
+            } ) );                                                                                 \
     static std::pair< bool, bytes > __eth_registerPrecompiledFunction##Name
 
-#define ETH_REGISTER_FS_PRECOMPILED( Name )                                           \
-    static std::pair< bool, bytes > __eth_registerPrecompiledFunction##Name(          \
-        bytesConstRef _in, skale::OverlayFS* _overlayFS );                            \
-    static PrecompiledExecutor __eth_registerPrecompiledFactory##Name =               \
-        ::dev::eth::PrecompiledRegistrar::registerExecutor(                           \
-            #Name, PrecompiledExecutor( &__eth_registerPrecompiledFunction##Name ) ); \
+#define ETH_REGISTER_FS_PRECOMPILED( Name )                                                    \
+    static std::pair< bool, bytes > __eth_registerPrecompiledFunction##Name(                   \
+        bytesConstRef _in, const PrecompiledCallContext& _ctx, skale::OverlayFS* _overlayFS ); \
+    static PrecompiledExecutor __eth_registerPrecompiledFactory##Name =                        \
+        ::dev::eth::PrecompiledRegistrar::registerExecutor(                                    \
+            #Name, PrecompiledExecutor( &__eth_registerPrecompiledFunction##Name ) );          \
     static std::pair< bool, bytes > __eth_registerPrecompiledFunction##Name
+#endif
 
 #define ETH_REGISTER_PRECOMPILED_PRICER( Name )                                                  \
     static bigint __eth_registerPricerFunction##Name(                                            \

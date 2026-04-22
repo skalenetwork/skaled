@@ -43,7 +43,7 @@ set(sources
     Skale.h
     Skale.cpp
     SkaleFace.h
-	
+
     SkaleStats.h
     SkaleStats.cpp
     SkaleStatsFace.h
@@ -65,7 +65,7 @@ endif()
 add_library(web3jsonrpc ${sources})
 
 if( APPLE )
-	target_compile_definitions( web3jsonrpc PRIVATE __BUILDING_4_MAC_OS_X__=1 )
+        target_compile_definitions( web3jsonrpc PRIVATE __BUILDING_4_MAC_OS_X__=1 )
 endif()
 
 jsonrpcstub_create(
@@ -110,13 +110,13 @@ jsonrpcstub_create(web3jsonrpc test.json
 )
 
 jsonrpcstub_create(web3jsonrpc skale.jsonweb3jsonrpc
-	dev::rpc::SkaleFace ${CMAKE_CURRENT_SOURCE_DIR} SkaleFace
-	SkaleClient ${CMAKE_CURRENT_BINARY_DIR} SkaleClient
+        dev::rpc::SkaleFace ${CMAKE_CURRENT_SOURCE_DIR} SkaleFace
+        SkaleClient ${CMAKE_CURRENT_BINARY_DIR} SkaleClient
 )
 
 jsonrpcstub_create(web3jsonrpc skaleStats.json
-	dev::rpc::SkaleStatsFace ${CMAKE_CURRENT_SOURCE_DIR} SkaleStatsFace
-	SkaleStatsClient ${CMAKE_CURRENT_BINARY_DIR} SkaleStatsClient
+        dev::rpc::SkaleStatsFace ${CMAKE_CURRENT_SOURCE_DIR} SkaleStatsFace
+        SkaleStatsClient ${CMAKE_CURRENT_BINARY_DIR} SkaleStatsClient
 )
 
 jsonrpcstub_create(web3jsonrpc skaleDebug.json
@@ -128,16 +128,16 @@ link_directories(${BLS_WITH_FF_LIBRARY_DIR})
 
 target_include_directories( web3jsonrpc PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/libBLS/
-		${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/jsoncpp/include
-		${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/libjson-rpc-cpp/build/gen/jsonrpccpp/common/
-		${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/libjson-rpc-cpp/build/gen
-		${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/libjson-rpc-cpp/src
-		${DEPS_INSTALL_ROOT}/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/jsoncpp/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/libjson-rpc-cpp/build/gen/jsonrpccpp/common/
+        ${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/libjson-rpc-cpp/build/gen
+        ${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/libjson-rpc-cpp/src
+        ${DEPS_INSTALL_ROOT}/include
         ${BLS_WITH_FF_INCLUDE_DIR}
         ${BLS_INCLUDE_DIRS}
-	"${UTILS_INCLUDE_DIR}"
-	${SKUTILS_INCLUDE_DIRS}
-	)
+        "${UTILS_INCLUDE_DIR}"
+        ${SKUTILS_INCLUDE_DIRS}
+        )
 
 target_compile_options( web3jsonrpc PRIVATE
     -Wno-error=deprecated-copy -Wno-error=unused-result -Wno-error=unused-parameter -Wno-error=unused-variable -Wno-error=maybe-uninitialized
@@ -148,16 +148,19 @@ target_compile_options( web3jsonrpc PRIVATE
 
 target_link_libraries( web3jsonrpc
                 consensus
-#    bls
-		ethashseal
+                ethashseal
                 skutils
-		jsonrpccpp-client # ${CMAKE_SOURCE_DIR}/libconsensus/libjson-rpc-cpp/build/lib/libjsonrpccpp-client.a
-		jsonrpccpp-server # ${CMAKE_SOURCE_DIR}/libconsensus/libjson-rpc-cpp/build/lib/libjsonrpccpp-server.a
-		jsonrpccpp-common # ${CMAKE_SOURCE_DIR}/libconsensus/libjson-rpc-cpp/build/lib/libjsonrpccpp-common.a
+                jsonrpccpp-client # ${CMAKE_SOURCE_DIR}/libconsensus/libjson-rpc-cpp/build/lib/libjsonrpccpp-client.a
+                jsonrpccpp-server # ${CMAKE_SOURCE_DIR}/libconsensus/libjson-rpc-cpp/build/lib/libjsonrpccpp-server.a
+                jsonrpccpp-common # ${CMAKE_SOURCE_DIR}/libconsensus/libjson-rpc-cpp/build/lib/libjsonrpccpp-common.a
                 jsoncpp           # ${CMAKE_SOURCE_DIR}/libconsensus/jsoncpp/build/src/lib_json/libjsoncpp.a
-		${DEPS_INSTALL_ROOT}/lib/libmicrohttpd.a
-		${DEPS_INSTALL_ROOT}/lib/libcurl.a
-		${DEPS_INSTALL_ROOT}/lib/libssl.a
-		${DEPS_INSTALL_ROOT}/lib/libcrypto.a
-		${DEPS_INSTALL_ROOT}/lib/libz.a
+                ${DEPS_INSTALL_ROOT}/lib/libmicrohttpd.a
+                ${DEPS_INSTALL_ROOT}/lib/libcurl.a
+                ${DEPS_INSTALL_ROOT}/lib/libssl.a
+                ${DEPS_INSTALL_ROOT}/lib/libcrypto.a
+                ${DEPS_INSTALL_ROOT}/lib/libz.a
     )
+
+if (BITE)
+    target_link_libraries(web3jsonrpc te)
+endif()

@@ -65,7 +65,7 @@ public:
     std::string json( bool _styled = false ) const;
 
     OnOpFunc onOp() {
-        return [=]( uint64_t _steps, uint64_t _PC, Instruction _inst, bigint _newMemSize,
+        return [this]( uint64_t _steps, uint64_t _PC, Instruction _inst, bigint _newMemSize,
                    bigint _gasCost, bigint _gas, VMFace const* _vm, ExtVMFace const* _extVM ) {
             ( *this )( _steps, _PC, _inst, _newMemSize, _gasCost, _gas, _vm, _extVM );
         };
@@ -105,13 +105,24 @@ class Executive {
 public:
     /// Simple constructor; executive will operate on given state, with the given environment info.
     Executive( skale::State& _s, EnvInfo const& _envInfo, ChainOperationParams const& _chainParams,
-        const u256& _gasPrice, unsigned _level, bool _readOnly = true )
+        const u256& _gasPrice, unsigned _level, bool _readOnly = true
+#ifdef BITE2
+        ,
+        const u256& _txnIndex = u256( -1 )
+#endif
+            )
         : m_s( _s ),
           m_envInfo( _envInfo ),
           m_depth( _level ),
           m_readOnly( _readOnly ),
           m_chainParams( _chainParams ),
-          m_systemGasPrice( _gasPrice ) {}
+          m_systemGasPrice( _gasPrice )
+#ifdef BITE2
+          ,
+          m_txnIndex( _txnIndex )
+#endif
+    {
+    }
 
     /** Easiest constructor.
      * Creates executive to operate on the state of end of the given block, populating environment
@@ -244,6 +255,10 @@ private:
     bool m_isCreation = false;
     Address m_newAddress;
     size_t m_savepoint = 0;
+
+#ifdef BITE2
+    u256 m_txnIndex = u256( -1 );  ///< Index of transaction under execution. -1 for external calls
+#endif
 
     Logger m_loggerDebug{ createLogger( VerbosityDebug, "Executive" ) };
     Logger m_loggerTrace{ createLogger( VerbosityTrace, "Executive" ) };

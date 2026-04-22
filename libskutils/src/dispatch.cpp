@@ -83,7 +83,7 @@ queue_ptr_t get( const queue_id_t& id,
 std::string generate_id( void* ptr /*= nullptr*/, const char* strSys /*= nullptr*/ ) {
     static std::mutex g_mtx;
     std::lock_guard< std::mutex > lock( g_mtx );
-    static volatile uint64_t g_counter_ = 0;
+    static uint64_t g_counter_ = 0;
     std::stringstream ss;
     ss << "auto";
     if ( ptr )

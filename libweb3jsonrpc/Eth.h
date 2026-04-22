@@ -30,6 +30,7 @@
 #include <jsonrpccpp/common/exception.h>
 #include <jsonrpccpp/server.h>
 #include <libdevcore/Common.h>
+#include <rapidjson/document.h>
 #include <iosfwd>
 #include <memory>
 
@@ -196,9 +197,15 @@ public:
     virtual bool eth_uninstallFilter( std::string const& _filterId ) override;
     virtual Json::Value eth_getFilterChanges( std::string const& _filterId ) override;
     virtual Json::Value eth_getFilterChangesEx( std::string const& _filterId ) override;
-    virtual Json::Value eth_getFilterLogs( std::string const& _filterId ) override;
     //    virtual Json::Value eth_getFilterLogsEx( std::string const& _filterId ) override;
     virtual Json::Value eth_getLogs( Json::Value const& _json ) override;
+    rapidjson::Document eth_getLogs(
+        rapidjson::Value const& _json, rapidjson::Document::AllocatorType& _responseAllocator );
+    // Adapter functions used for unit tests to use old json interface
+    // Should be removed once everything is moved to rapidjson
+    rapidjson::Document eth_getFilterLogsAsRapid(
+        std::string const& _filterId, rapidjson::Document::AllocatorType& _responseAllocator );
+    Json::Value eth_getFilterLogsAsJson( std::string const& _filterId );
     //    virtual Json::Value eth_getLogsEx( Json::Value const& _json ) override;
     virtual Json::Value eth_getWork() override;
     virtual bool eth_submitWork(
@@ -245,6 +252,7 @@ protected:
 
 private:
     dev::Logger m_loggerDebug{ dev::createLogger( dev::VerbosityDebug, "Eth" ) };
+    static const int LIMIT_EXCEEDED_ERR_CODE = -32005;
 };
 
 }  // namespace rpc

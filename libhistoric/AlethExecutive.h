@@ -47,8 +47,21 @@ class AlethExecutive {
 public:
     /// Simple constructor; executive will operate on given state, with the given environment info.
     AlethExecutive( dev::eth::HistoricState& _s, EnvInfo const& _envInfo,
-        ChainOperationParams const& _chainParams, unsigned _level = 0 )
-        : m_s( _s ), m_envInfo( _envInfo ), m_depth( _level ), m_chainParams( _chainParams ){};
+        ChainOperationParams const& _chainParams, unsigned _level = 0
+#ifdef BITE2
+        ,
+        const dev::u256& _txnIndex = dev::u256( -1 )
+#endif
+            )
+        : m_s( _s ),
+          m_envInfo( _envInfo ),
+          m_depth( _level ),
+          m_chainParams( _chainParams )
+#ifdef BITE2
+          ,
+          m_txnIndex( _txnIndex )
+#endif
+              {};
 
     /** Easiest constructor.
      * Creates executive to operate on the state of end of the given block, populating environment
@@ -172,6 +185,10 @@ private:
     bool m_isCreation = false;
     Address m_newAddress;
     size_t m_savepoint = 0;
+
+#ifdef BITE2
+    dev::u256 m_txnIndex = dev::u256( -1 );
+#endif
 
     Logger m_loggerDebug{ createLogger( VerbosityDebug, "AlethExecutive" ) };
     Logger m_loggerTrace{ createLogger( VerbosityTrace, "AlethExecutive" ) };

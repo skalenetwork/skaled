@@ -141,16 +141,16 @@ static void version() {
         ver = pv.substr( 0, pos );
     } else
         ver = pv;
-    LOG( loggerInfo ) << "Skaled ............................" << ver << "\n";
+    BOOST_LOG( loggerInfo ) << "Skaled ............................" << ver << "\n";
     if ( !commit.empty() )
-        LOG( loggerInfo ) << "Commit ............................." << commit << "\n";
-    LOG( loggerInfo ) << "Skale network protocol version ...." << dev::eth::c_protocolVersion << "."
-                      << c_minorProtocolVersion << "\n";
-    LOG( loggerInfo ) << "Client database version ..........." << dev::eth::c_databaseVersion
-                      << "\n";
-    LOG( loggerInfo ) << "Build ............................." << buildinfo->system_name << "/"
-                      << buildinfo->build_type << "\n";
-    LOG( loggerInfo ).flush();
+        BOOST_LOG( loggerInfo ) << "Commit ............................." << commit << "\n";
+    BOOST_LOG( loggerInfo ) << "Skale network protocol version ...." << dev::eth::c_protocolVersion
+                            << "." << c_minorProtocolVersion << "\n";
+    BOOST_LOG( loggerInfo ) << "Client database version ..........." << dev::eth::c_databaseVersion
+                            << "\n";
+    BOOST_LOG( loggerInfo ) << "Build ............................." << buildinfo->system_name
+                            << "/" << buildinfo->build_type << "\n";
+    BOOST_LOG( loggerInfo ).flush();
 }
 
 static std::string clientVersion() {
@@ -211,6 +211,14 @@ void stopSealingAfterXBlocks( eth::Client* _c, unsigned _start, unsigned& io_min
     } catch ( InvalidSealEngine& ) {
     }
 
+#ifdef FAIR
+    // HACK: this should be called from every active thread
+    // that has ever entered consensus
+    // in reality this is the only place this function is executed
+    if ( _c->skaleHost()->isConsesusUpdateHappened() )
+        _c->skaleHost()->handleConsensusUpdate();
+#endif
+
     this_thread::sleep_for( chrono::milliseconds( 100 ) );
 }
 
@@ -251,6 +259,83 @@ unsigned getLatestSnapshotBlockNumber( const std::string& strURLWeb3 ) {
     return block_number;
 }
 
+#ifdef FAIR
+uint64_t fetchLatestBlockTimestamp( const std::string& url ) {
+    static Logger loggerInfo{ createLogger( VerbosityInfo, "fetchLatestBlockTimestamp" ) };
+
+    skutils::rest::client cli( skutils::rest::g_nClientConnectionTimeoutMS );
+    if ( !cli.open( url ) ) {
+        throw std::runtime_error( "REST failed to connect to server: " + url );
+    }
+
+    // Create JSON-RPC request
+    nlohmann::json request = nlohmann::json::object();
+    request["jsonrpc"] = "2.0";
+    request["method"] = "eth_getBlockByNumber";
+    request["params"] = nlohmann::json::array( { "latest", false } );
+
+    BOOST_LOG( loggerInfo ) << "Sending eth_getBlockByNumber request to " << url;
+    skutils::rest::data_t response = cli.call( request );
+
+    // Response validation
+    if ( !response.err_s_.empty() ) {
+        throw std::runtime_error( "RPC call error for " + url + ": " + response.err_s_ );
+    }
+
+    if ( response.empty() ) {
+        throw std::runtime_error( "Empty response from " + url );
+    }
+
+    nlohmann::json responseData;
+    try {
+        responseData = nlohmann::json::parse( response.s_ );
+    } catch ( const nlohmann::json::parse_error& ex ) {
+        throw std::runtime_error( "JSON parse error from " + url + ": " + ex.what() );
+    }
+
+    // Check for JSON-RPC error
+    if ( responseData.contains( "error" ) ) {
+        auto error = responseData["error"];
+        std::string error_msg = "JSON-RPC error from " + url + ": ";
+        if ( error.contains( "message" ) ) {
+            error_msg += error["message"].get< std::string >();
+        }
+        if ( error.contains( "code" ) ) {
+            error_msg += " (code: " + std::to_string( error["code"].get< int >() ) + ")";
+        }
+        throw std::runtime_error( error_msg );
+    }
+
+    // Validate response data
+    if ( !responseData.contains( "result" ) ) {
+        throw std::runtime_error( "Missing 'result' field in response from " + url );
+    }
+
+    auto result = responseData["result"];
+    if ( result.is_null() ) {
+        throw std::runtime_error( "Block result is null from " + url );
+    }
+
+    if ( !result.contains( "timestamp" ) ) {
+        throw std::runtime_error( "Missing 'timestamp' field in block data from " + url );
+    }
+
+    std::string timestampStringRep = result["timestamp"].get< std::string >();
+
+    // Converting timestamp to uint64_t
+    uint64_t timestamp;
+    try {
+        timestamp = jsToInt( timestampStringRep );
+    } catch ( const std::exception& ex ) {
+        throw std::runtime_error( "Failed to parse timestamp '" + timestampStringRep + "' from " +
+                                  url + ": " + ex.what() );
+    }
+
+    BOOST_LOG( loggerInfo ) << "Successfully fetched timestamp " << timestamp << " from " << url;
+    return timestamp;
+}
+#endif
+
 void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >& snapshotManager,
     const std::string& strURLWeb3, const ChainParams& chainParams ) {
     static Logger loggerInfo{ createLogger( VerbosityInfo, "downloadSnapshot" ) };
@@ -258,7 +343,7 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
 
     fs::path saveTo;
     try {
-        LOG( loggerInfo ) << "Will download snapshot from " << strURLWeb3;
+        BOOST_LOG( loggerInfo ) << "Will download snapshot from " << strURLWeb3;
 
         try {
             bool isBinaryDownload = true;
@@ -267,12 +352,12 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
             bool bOK = dev::rpc::snapshot::download(
                 strURLWeb3, block_number, saveTo,
                 [&]( size_t idxChunck, size_t cntChunks ) -> bool {
-                    LOG( loggerInfo )
+                    BOOST_LOG( loggerInfo )
                         << "... download progress ... " << idxChunck << " of " << cntChunks << "\r";
                     return true;  // continue download
                 },
                 isBinaryDownload, &strErrorDescription );
-            LOG( loggerInfo )
+            BOOST_LOG( loggerInfo )
                 << "                                                  \r";  // clear
                                                                             // progress
                                                                             // line
@@ -286,7 +371,8 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
             boost::filesystem::remove( saveTo );
             std::throw_with_nested( std::runtime_error( "Exception while downloading snapshot" ) );
         }
-        LOG( loggerInfo ) << "Snapshot download success for block " << to_string( block_number );
+        BOOST_LOG( loggerInfo ) << "Snapshot download success for block "
+                                << to_string( block_number );
         try {
             snapshotManager->importDiff( block_number );
         } catch ( ... ) {
@@ -306,12 +392,12 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
                 }  // if
             }
             if ( db_path.empty() ) {
-                LOG( loggerError ) << "Snapshot downloaded without " + prefix + " db";
+                BOOST_LOG( loggerError ) << "Snapshot downloaded without " + prefix + " db";
                 return;
             }
 
             fs::rename( db_path,
-                db_path.parent_path() / ( prefix + chainParams.nodeInfo.id.str() + ".db" ) );
+                db_path.parent_path() / ( prefix + chainParams.getSelfNodeId().str() + ".db" ) );
         }
         //// HACK END ////
 
@@ -326,9 +412,9 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
 std::array< std::string, 4 > getBLSPublicKeyToVerifySnapshot( const ChainParams& chainParams ) {
     std::array< std::string, 4 > arrayCommonPublicKey;
     bool isRotationtrigger = true;
-    if ( chainParams.sChain.nodeGroups.size() > 1 ) {
+    if ( chainParams.getNodeGroups().size() > 1 ) {
         if ( ( uint64_t ) time( NULL ) >=
-             chainParams.sChain.nodeGroups[chainParams.sChain.nodeGroups.size() - 2].finishTs ) {
+             chainParams.getNodeGroupByIndex( chainParams.getNodeGroups().size() - 2 ).finishTs ) {
             isRotationtrigger = false;
         }
     } else {
@@ -336,9 +422,10 @@ std::array< std::string, 4 > getBLSPublicKeyToVerifySnapshot( const ChainParams&
     }
     if ( isRotationtrigger ) {
         arrayCommonPublicKey =
-            chainParams.sChain.nodeGroups[chainParams.sChain.nodeGroups.size() - 2].blsPublicKey;
+            chainParams.getNodeGroupByIndex( chainParams.getNodeGroups().size() - 2 ).blsPublicKey;
     } else {
-        arrayCommonPublicKey = chainParams.sChain.nodeGroups.back().blsPublicKey;
+        arrayCommonPublicKey =
+            chainParams.getNodeGroupByIndex( chainParams.getNodeGroups().size() - 1 ).blsPublicKey;
     }
 
     return arrayCommonPublicKey;
@@ -347,26 +434,27 @@ std::array< std::string, 4 > getBLSPublicKeyToVerifySnapshot( const ChainParams&
 unsigned getBlockToDownladSnapshot( const std::string& nodeUrl ) {
     static Logger loggerInfo{ createLogger( VerbosityInfo, "getBlockToDownladSnapshot" ) };
 
-    LOG( loggerInfo ) << "Asking node " << ' ' << nodeUrl << " for latest snapshot block number.";
+    BOOST_LOG( loggerInfo ) << "Asking node " << ' ' << nodeUrl
+                            << " for latest snapshot block number.";
 
     unsigned blockNumber = getLatestSnapshotBlockNumber( nodeUrl );
-    LOG( loggerInfo ) << std::string( "Latest Snapshot Block Number is: " ) << blockNumber
-                      << " (from " << nodeUrl << ")";
+    BOOST_LOG( loggerInfo ) << std::string( "Latest Snapshot Block Number is: " ) << blockNumber
+                            << " (from " << nodeUrl << ")";
 
     return blockNumber;
 }
 
-std::pair< std::vector< std::string >, std::pair< dev::h256, libff::alt_bn128_G1 > >
+std::pair< std::vector< std::string >, std::pair< dev::h256, libBLS::algebra::G1Point > >
 voteForSnapshotHash(
     std::unique_ptr< SnapshotHashAgent >& snapshotHashAgent, unsigned blockNumber ) {
     static Logger loggerInfo{ createLogger( VerbosityInfo, "voteForSnapshotHash" ) };
 
-    std::pair< dev::h256, libff::alt_bn128_G1 > votedHash;
+    std::pair< dev::h256, libBLS::algebra::G1Point > votedHash;
     std::vector< std::string > listUrlsToDownload;
     try {
         listUrlsToDownload = snapshotHashAgent->getNodesToDownloadSnapshotFrom( blockNumber );
-        LOG( loggerInfo ) << "Got urls to download snapshot from " << listUrlsToDownload.size()
-                          << " nodes ";
+        BOOST_LOG( loggerInfo ) << "Got urls to download snapshot from "
+                                << listUrlsToDownload.size() << " nodes ";
 
         if ( listUrlsToDownload.size() == 0 )
             return { listUrlsToDownload, votedHash };
@@ -386,26 +474,28 @@ bool checkLocalSnapshot( std::shared_ptr< SnapshotManager >& snapshotManager, un
     static Logger loggerWarning{ createLogger( VerbosityWarning, "checkLocalSnapshot" ) };
 
     try {
-        if ( snapshotManager->isSnapshotHashPresent( blockNumber ) ) {
-            LOG( loggerInfo ) << "Snapshot for block " << blockNumber << " already present locally";
+        if ( snapshotManager->checkSnapshotFolderAndSnapshotHash( blockNumber ) ) {
+            BOOST_LOG( loggerInfo )
+                << "Snapshot for block " << blockNumber << " already present locally";
 
             dev::h256 calculated_hash = snapshotManager->getSnapshotHash( blockNumber );
 
             if ( calculated_hash == votedHash ) {
-                LOG( loggerInfo ) << std::string( "Will delete all snapshots except " )
-                                  << std::to_string( blockNumber );
+                BOOST_LOG( loggerInfo ) << std::string( "Will delete all snapshots except " )
+                                        << std::to_string( blockNumber );
                 snapshotManager->cleanupButKeepSnapshot( blockNumber );
                 snapshotManager->restoreSnapshot( blockNumber );
-                LOG( loggerInfo ) << "Snapshot restore success for block "
-                                  << std::to_string( blockNumber );
+                BOOST_LOG( loggerInfo )
+                    << "Snapshot restore success for block " << std::to_string( blockNumber );
                 return true;
             } else {
-                LOG( loggerWarning ) << "Snapshot is present locally but its hash is different";
+                BOOST_LOG( loggerWarning )
+                    << "Snapshot is present locally but its hash is different";
             }
         }  // if present
     } catch ( const std::exception& ex ) {
         // usually snapshot absent exception
-        LOG( loggerInfo ) << dev::nested_exception_what( ex );
+        BOOST_LOG( loggerInfo ) << dev::nested_exception_what( ex );
     }
 
     return false;
@@ -413,22 +503,22 @@ bool checkLocalSnapshot( std::shared_ptr< SnapshotManager >& snapshotManager, un
 
 bool tryDownloadSnapshot( std::shared_ptr< SnapshotManager >& snapshotManager,
     const ChainParams& chainParams, const std::vector< std::string >& listUrlsToDownload,
-    const std::pair< dev::h256, libff::alt_bn128_G1 >& votedHash, unsigned blockNumber,
+    const std::pair< dev::h256, libBLS::algebra::G1Point >& votedHash, unsigned blockNumber,
     bool isRegularSnapshot ) {
     static Logger loggerInfo{ createLogger( VerbosityInfo, "tryDownloadSnapshot" ) };
     static Logger loggerWarning{ createLogger( VerbosityWarning, "tryDownloadSnapshot" ) };
 
-    LOG( loggerInfo ) << "Will cleanup data dir and snapshots dir if needed";
+    BOOST_LOG( loggerInfo ) << "Will cleanup data dir and snapshots dir if needed";
     if ( isRegularSnapshot )
         snapshotManager->cleanup();
 
-    bool successfullDownload = false;
+    bool successfulDownload = false;
 
     size_t n_found = listUrlsToDownload.size();
 
     size_t shift = rand() % n_found;
 
-    for ( size_t cnt = 0; cnt < n_found && !successfullDownload; ++cnt )
+    for ( size_t cnt = 0; cnt < n_found && !successfulDownload; ++cnt )
         try {
             size_t i = ( shift + cnt ) % n_found;
 
@@ -438,7 +528,12 @@ bool tryDownloadSnapshot( std::shared_ptr< SnapshotManager >& snapshotManager,
             downloadSnapshot( blockNumber, snapshotManager, urlToDownloadSnapshot, chainParams );
 
             try {
-                snapshotManager->computeSnapshotHash( blockNumber, true );
+                snapshotManager->computeSnapshotHash( blockNumber
+#ifndef FAIR
+                    ,
+                    true
+#endif
+                );
             } catch ( const std::exception& ) {
                 std::throw_with_nested( std::runtime_error(
                     std::string( "FATAL:" ) +
@@ -448,18 +543,19 @@ bool tryDownloadSnapshot( std::shared_ptr< SnapshotManager >& snapshotManager,
             dev::h256 calculated_hash = snapshotManager->getSnapshotHash( blockNumber );
 
             if ( calculated_hash == votedHash.first ) {
-                successfullDownload = true;
+                successfulDownload = true;
                 if ( isRegularSnapshot ) {
                     snapshotManager->restoreSnapshot( blockNumber );
-                    LOG( loggerInfo )
+                    BOOST_LOG( loggerInfo )
                         << "Snapshot restore success for block " << to_string( blockNumber );
                 }
-                return successfullDownload;
+                return successfulDownload;
             } else {
-                LOG( loggerWarning ) << "tryDownloadSnapshot"
-                                     << "Downloaded snapshot with incorrect hash! Incoming hash "
-                                     << votedHash.first.hex() << " is not equal to calculated hash "
-                                     << calculated_hash.hex() << " Will try again";
+                BOOST_LOG( loggerWarning )
+                    << "tryDownloadSnapshot"
+                    << "Downloaded snapshot with incorrect hash! Incoming hash "
+                    << votedHash.first.hex() << " is not equal to calculated hash "
+                    << calculated_hash.hex() << " Will try again";
                 if ( isRegularSnapshot )
                     snapshotManager->cleanup();
                 else
@@ -467,7 +563,7 @@ bool tryDownloadSnapshot( std::shared_ptr< SnapshotManager >& snapshotManager,
             }
         } catch ( const std::exception& ex ) {
             // just retry
-            LOG( loggerWarning ) << dev::nested_exception_what( ex );
+            BOOST_LOG( loggerWarning ) << dev::nested_exception_what( ex );
         }  // for download url
     return false;
 }
@@ -477,6 +573,7 @@ bool downloadSnapshotFromUrl( std::shared_ptr< SnapshotManager >& snapshotManage
     const std::string& urlToDownloadSnapshotFrom, bool isRegularSnapshot,
     bool forceDownload = false ) {
     static Logger loggerWarning{ createLogger( VerbosityWarning, "downloadSnapshotFromUrl" ) };
+    static Logger loggerInfo{ createLogger( VerbosityInfo, "downloadSnapshotFromUrl" ) };
 
     unsigned blockNumber = 0;
     if ( isRegularSnapshot )
@@ -489,8 +586,7 @@ bool downloadSnapshotFromUrl( std::shared_ptr< SnapshotManager >& snapshotManage
     else
         snapshotHashAgent.reset( new SnapshotHashAgent( chainParams, arrayCommonPublicKey ) );
 
-    libff::init_alt_bn128_params();
-    std::pair< dev::h256, libff::alt_bn128_G1 > votedHash;
+    std::pair< dev::h256, libBLS::algebra::G1Point > votedHash;
     std::vector< std::string > listUrlsToDownload;
     std::tie( listUrlsToDownload, votedHash ) =
         voteForSnapshotHash( snapshotHashAgent, blockNumber );
@@ -498,20 +594,55 @@ bool downloadSnapshotFromUrl( std::shared_ptr< SnapshotManager >& snapshotManage
     if ( listUrlsToDownload.empty() ) {
         if ( !isRegularSnapshot )
             return true;
-        LOG( loggerWarning ) << "No nodes to download from - will skip "
-                             << urlToDownloadSnapshotFrom;
+        BOOST_LOG( loggerWarning )
+            << "No nodes to download from - will skip " << urlToDownloadSnapshotFrom;
         return false;
     }
 
-    bool successfullDownload = checkLocalSnapshot( snapshotManager, blockNumber, votedHash.first );
-    if ( successfullDownload )
-        return successfullDownload;
+    bool successfulDownload = checkLocalSnapshot( snapshotManager, blockNumber, votedHash.first );
+    if ( successfulDownload )
+        return successfulDownload;
 
-    successfullDownload = tryDownloadSnapshot( snapshotManager, chainParams, listUrlsToDownload,
+    successfulDownload = tryDownloadSnapshot( snapshotManager, chainParams, listUrlsToDownload,
         votedHash, blockNumber, isRegularSnapshot );
 
-    return successfullDownload;
+    if ( successfulDownload ) {
+        BOOST_LOG( loggerInfo ) << "Snapshot download success for block "
+                                << std::to_string( blockNumber );
+    }
+    return successfulDownload;
 }
+
+#ifdef FAIR
+uint64_t fetchLatestBlockTimestampFromNodes( const std::vector< sChainNode >& nodes ) {
+    static Logger loggerWarning{ createLogger(
+        VerbosityWarning, "fetchLatestBlockTimestampFromNodes" ) };
+    static Logger loggerInfo{ createLogger( VerbosityInfo, "fetchLatestBlockTimestampFromNodes" ) };
+
+    uint64_t timestamp = 0;
+    // Trying to get latest block timestamp from each node until we succeed
+    for ( auto& node : nodes ) {
+        std::string nodeUrl = std::string( "http://" ) + std::string( node.ip ) +
+                              std::string( ":" ) + ( node.port + 3 ).convert_to< std::string >();
+        BOOST_LOG( loggerInfo ) << "Trying to fetch latest block timestamp from " << nodeUrl;
+        try {
+            timestamp = fetchLatestBlockTimestamp( nodeUrl );
+        } catch ( ... ) {
+            BOOST_LOG( loggerWarning ) << "Could not fetch latest block timestamp from " << nodeUrl;
+        }
+
+        if ( timestamp > 0 ) {
+            BOOST_LOG( loggerInfo ) << "Successfully fetched latest block timestamp  " << timestamp
+                                    << " from " << nodeUrl;
+            break;
+        }
+    }
+    if ( !timestamp ) {
+        throw std::runtime_error( "Could not fetch current block timestamp from provided nodes " );
+    }
+    return timestamp;
+}
+#endif
 
 void downloadAndProccessSnapshot( std::shared_ptr< SnapshotManager >& snapshotManager,
     const ChainParams& chainParams, const std::string& urlToDownloadSnapshotFrom,
@@ -521,32 +652,97 @@ void downloadAndProccessSnapshot( std::shared_ptr< SnapshotManager >& snapshotMa
     std::array< std::string, 4 > arrayCommonPublicKey =
         getBLSPublicKeyToVerifySnapshot( chainParams );
 
-    bool successfullDownload = false;
+    bool successfulDownload = false;
 
     if ( !urlToDownloadSnapshotFrom.empty() )
-        successfullDownload = downloadSnapshotFromUrl( snapshotManager, chainParams,
+        successfulDownload = downloadSnapshotFromUrl( snapshotManager, chainParams,
             arrayCommonPublicKey, urlToDownloadSnapshotFrom, isRegularSnapshot, true );
     else {
-        for ( size_t idx = 0; idx < chainParams.sChain.nodes.size() && !successfullDownload; ++idx )
+        for ( size_t idx = 0; idx < chainParams.getNodesCount() && !successfulDownload; ++idx )
             try {
-                if ( chainParams.nodeInfo.id == chainParams.sChain.nodes.at( idx ).id )
+                if ( chainParams.getSelfNodeId() == chainParams.getNodeByIndex( idx ).id )
                     continue;
 
                 std::string nodeUrl =
-                    std::string( "http://" ) +
-                    std::string( chainParams.sChain.nodes.at( idx ).ip ) + std::string( ":" ) +
-                    ( chainParams.sChain.nodes.at( idx ).port + 3 ).convert_to< std::string >();
+                    std::string( "http://" ) + std::string( chainParams.getNodeByIndex( idx ).ip ) +
+                    std::string( ":" ) +
+                    ( chainParams.getNodeByIndex( idx ).port + 3 ).convert_to< std::string >();
 
-                successfullDownload = downloadSnapshotFromUrl( snapshotManager, chainParams,
+                successfulDownload = downloadSnapshotFromUrl( snapshotManager, chainParams,
                     arrayCommonPublicKey, nodeUrl, isRegularSnapshot );
             } catch ( std::exception& ex ) {
-                LOG( loggerWarning ) << "Exception while trying to set up snapshot: "
-                                     << dev::nested_exception_what( ex );
+                BOOST_LOG( loggerWarning ) << "Exception while trying to set up snapshot: "
+                                           << dev::nested_exception_what( ex );
             }  // for blockNumber_url
     }
 
-    if ( !successfullDownload ) {
+    if ( !successfulDownload ) {
         throw std::runtime_error( "FATAL: tried to download snapshot from everywhere!" );
+    }
+}
+
+void doSnapshotDownload( const std::shared_ptr< ChainParams >& chainParams,
+    std::shared_ptr< StatusAndControl >& statusAndControl,
+    const std::string& urlToDownloadSnapshotFrom,
+    std::shared_ptr< SnapshotManager >& snapshotManager,
+    std::shared_ptr< SharedSpace >& sharedSpace, bool zeroSnapshotOnly = false ) {
+    static Logger loggerInfo{ createLogger( VerbosityInfo, "doSnapshotDownload" ) };
+    static Logger loggerWarning{ createLogger( VerbosityWarning, "doSnapshotDownload" ) };
+#ifdef FAIR
+    // To process correct signatures we fetch current block timestamp
+    // from one of the nodes and temporarily changing current group
+
+    CurrentGroup latestGroup = chainParams->getNewestGroup();
+    uint64_t fetchedCurrentBlockTimestamp = fetchLatestBlockTimestampFromNodes( latestGroup.nodes );
+    chainParams->updateCurrentGroupIfNeeded( fetchedCurrentBlockTimestamp );
+#endif
+
+    statusAndControl->setExitState( StatusAndControl::StartAgain, true );
+    statusAndControl->setExitState( StatusAndControl::StartFromSnapshot, true );
+    statusAndControl->setSubsystemRunning( StatusAndControl::SnapshotDownloader, true );
+
+    if ( !zeroSnapshotOnly ) {
+        std::unique_ptr< std::lock_guard< SharedSpace > > sharedSpace_lock;
+        if ( sharedSpace )
+            sharedSpace_lock.reset( new std::lock_guard< SharedSpace >( *sharedSpace ) );
+
+        try {
+            downloadAndProccessSnapshot(
+                snapshotManager, *chainParams, urlToDownloadSnapshotFrom, true );
+
+        } catch ( std::exception& e ) {
+            std::throw_with_nested( std::runtime_error(
+                std::string( "Fatal error in downloadAndProccessSnapshot: " ) + e.what() ) );
+        }
+    }
+    // if we dont have 0 snapshot yet
+    try {
+        snapshotManager->checkSnapshotFolderAndSnapshotHash( 0 );
+    } catch ( SnapshotManager::SnapshotAbsent& ex ) {
+        // sleep before send skale_getSnapshot again - will receive error
+        BOOST_LOG( loggerInfo )
+            << std::string( "Will sleep for " )
+            << chainParams->getSnapshotDownloadInactiveTimeout() +
+                   dev::rpc::Skale::snapshotDownloadFragmentMonitorThreadTimeout()
+            << std::string( " seconds before downloading 0 snapshot" );
+        sleep( chainParams->getSnapshotDownloadInactiveTimeout() +
+               dev::rpc::Skale::snapshotDownloadFragmentMonitorThreadTimeout() );
+#ifdef FAIR
+        // Fetch timestamp and update group again
+        // since the group may change during previous requests
+
+        fetchedCurrentBlockTimestamp = fetchLatestBlockTimestampFromNodes( latestGroup.nodes );
+        chainParams->updateCurrentGroupIfNeeded( fetchedCurrentBlockTimestamp );
+#endif
+        downloadAndProccessSnapshot(
+            snapshotManager, *chainParams, urlToDownloadSnapshotFrom, false );
+        if ( zeroSnapshotOnly ) {
+            // Restoring here since we do not restore it during latest snapshot download
+            snapshotManager->restoreSnapshot( 0 );
+        }
+    } catch ( std::exception& ) {
+        std::throw_with_nested( std::runtime_error( std::string(
+            " Fatal error in downloadAndProccessSnapshot for zero block! Will exit " ) ) );
     }
 }
 
@@ -594,6 +790,9 @@ int main( int argc, char** argv ) {
         Ethash::init();
         NoProof::init();
 
+        // init cryptographic parameters
+        libBLS::init();
+
         /// General params for Node operation
         NodeMode nodeMode = NodeMode::Full;
 
@@ -621,13 +820,8 @@ int main( int argc, char** argv ) {
         bool bEnabledAPIs_debug = false;
         bool bEnabledAPIs_performanceTracker = false;
 
-        const std::list< std::pair< std::string, std::string > >& listIfaceInfos4 =
-            get_machine_ip_addresses_4();  // IPv4
-        const std::list< std::pair< std::string, std::string > >& listIfaceInfos6 =
-            get_machine_ip_addresses_6();  // IPv6
-
         string strJsonAdminSessionKey;
-        ChainParams chainParams;
+        std::shared_ptr< ChainParams > chainParams = std::make_shared< ChainParams >();
         string privateChain;
 
         bool upnp = true;
@@ -922,12 +1116,12 @@ int main( int argc, char** argv ) {
             po::store( parsed, vm );
             po::notify( vm );
         } catch ( po::error const& e ) {
-            LOG( loggerError ) << e.what();
+            BOOST_LOG( loggerError ) << e.what();
             return EX_USAGE;
         }
         for ( size_t i = 0; i < unrecognisedOptions.size(); ++i )
             if ( !m.interpretOption( i, unrecognisedOptions ) ) {
-                LOG( loggerError ) << "Invalid argument: " << unrecognisedOptions[i];
+                BOOST_LOG( loggerError ) << "Invalid argument: " << unrecognisedOptions[i];
                 return EX_USAGE;
             }
 
@@ -940,12 +1134,12 @@ int main( int argc, char** argv ) {
             return 0;
         }
         if ( vm.count( "help" ) ) {
-            LOG( loggerInfo ) << "NAME:\n"
-                              << "   skaled " << Version << '\n'
-                              << "USAGE:\n"
-                              << "   skaled [options]";
-            LOG( loggerInfo ) << clientDefaultMode << clientTransacting << clientNetworking;
-            LOG( loggerInfo ) << vmOptions << loggingProgramOptions << generalOptions;
+            BOOST_LOG( loggerInfo ) << "NAME:\n"
+                                    << "   skaled " << Version << '\n'
+                                    << "USAGE:\n"
+                                    << "   skaled [options]";
+            BOOST_LOG( loggerInfo ) << clientDefaultMode << clientTransacting << clientNetworking;
+            BOOST_LOG( loggerInfo ) << vmOptions << loggingProgramOptions << generalOptions;
             return 0;
         }
 
@@ -984,43 +1178,43 @@ int main( int argc, char** argv ) {
             skutils::url u;
             try {
                 u = skutils::url( strURL );
-                LOG( loggerDebug ) << "Using URL ................" + u.str();
+                BOOST_LOG( loggerDebug ) << "Using URL ................" + u.str();
             } catch ( const std::exception& ex ) {
-                LOG( loggerError )
+                BOOST_LOG( loggerError )
                     << "ERROR: Failed to parse test URL: " + std::string( ex.what() );
                 return EX_TEMPFAIL;
             } catch ( ... ) {
-                LOG( loggerError ) << "ERROR: Failed to parse test URL: unknown exception";
+                BOOST_LOG( loggerError ) << "ERROR: Failed to parse test URL: unknown exception";
                 return EX_TEMPFAIL;
             }
             nlohmann::json joIn, joOut;
             try {
                 if ( !strJSON.empty() ) {
                     joIn = nlohmann::json::parse( strJSON );
-                    LOG( loggerDebug ) << "Input JSON is ............" + joIn.dump();
+                    BOOST_LOG( loggerDebug ) << "Input JSON is ............" + joIn.dump();
                 } else
-                    LOG( loggerWarning ) << "NOTICE: No valid JSON specified for test call";
+                    BOOST_LOG( loggerWarning ) << "NOTICE: No valid JSON specified for test call";
             } catch ( const std::exception& ex ) {
-                LOG( loggerError )
+                BOOST_LOG( loggerError )
                     << "ERROR: Failed to parse specified test JSON: " + std::string( ex.what() );
                 return EX_TEMPFAIL;
             } catch ( ... ) {
-                LOG( loggerError )
+                BOOST_LOG( loggerError )
                     << "ERROR: Failed to parse specified test JSON: unknown exception";
                 return EX_TEMPFAIL;
             }
             skutils::http::SSL_client_options optsSSL;
             if ( !strPathCA.empty() ) {
                 optsSSL.ca_file = skutils::tools::trim_copy( strPathCA );
-                LOG( loggerDebug ) << "Using CA file ..........." + strPathCA;
+                BOOST_LOG( loggerDebug ) << "Using CA file ..........." + strPathCA;
             }
             if ( !strPathCert.empty() ) {
                 optsSSL.client_cert = skutils::tools::trim_copy( strPathCert );
-                LOG( loggerDebug ) << "Using CERT file ........." + strPathCert;
+                BOOST_LOG( loggerDebug ) << "Using CERT file ........." + strPathCert;
             }
             if ( !strPathKey.empty() ) {
                 optsSSL.client_key = skutils::tools::trim_copy( strPathKey );
-                LOG( loggerDebug ) << "Using KEY file .........." + strPathKey;
+                BOOST_LOG( loggerDebug ) << "Using KEY file .........." + strPathKey;
             }
             try {
                 skutils::rest::client cli( skutils::rest::g_nClientConnectionTimeoutMS );
@@ -1038,27 +1232,28 @@ int main( int argc, char** argv ) {
                     throw std::runtime_error( "REST call error: " + d.err_s_ );
                 if ( d.empty() )
                     throw std::runtime_error( "EMPTY answer received" );
-                LOG( loggerDebug ) << "Raw received data is ....." + d.s_;
+                BOOST_LOG( loggerDebug ) << "Raw received data is ....." + d.s_;
                 joOut = nlohmann::json::parse( d.s_ );
-                LOG( loggerDebug ) << "Output JSON is ..........." + joOut.dump();
+                BOOST_LOG( loggerDebug ) << "Output JSON is ..........." + joOut.dump();
             } catch ( const std::exception& ex ) {
-                LOG( loggerError ) << "ERROR: JSON RPC call failed: " + std::string( ex.what() );
+                BOOST_LOG( loggerError )
+                    << "ERROR: JSON RPC call failed: " + std::string( ex.what() );
                 return EX_TEMPFAIL;
             } catch ( ... ) {
-                LOG( loggerError ) << "ERROR: JSON RPC call failed: unknown exception";
+                BOOST_LOG( loggerError ) << "ERROR: JSON RPC call failed: unknown exception";
                 return EX_TEMPFAIL;
             }
             return 0;
         }
 
-        LOG( loggerInfo ) << "skaled " << Version << "\n"
-                          << "client " << clientVersionColorized();
-        LOG( loggerInfo ).flush();
+        BOOST_LOG( loggerInfo ) << "skaled " << Version << "\n"
+                                << "client " << clientVersionColorized();
+        BOOST_LOG( loggerInfo ).flush();
         version();
 
         pid_t this_process_pid = getpid();
-        LOG( loggerDebug ) << "This process PID = " << size_t( this_process_pid );
-        LOG( loggerDebug ).flush();
+        BOOST_LOG( loggerDebug ) << "This process PID = " << size_t( this_process_pid );
+        BOOST_LOG( loggerDebug ).flush();
 
         setupLogging( loggingOptions );
 
@@ -1072,8 +1267,8 @@ int main( int argc, char** argv ) {
                 n = nMin;
             nDispatchThreads = n;
         }
-        LOG( loggerInfo ) << "Using " << std::to_string( nDispatchThreads )
-                          << " threads in task dispatcher";
+        BOOST_LOG( loggerInfo ) << "Using " << std::to_string( nDispatchThreads )
+                                << " threads in task dispatcher";
         skutils::dispatch::default_domain( nDispatchThreads );
         // skutils::dispatch::default_domain( 48 );
 
@@ -1086,69 +1281,71 @@ int main( int argc, char** argv ) {
             strJsonAdminSessionKey = vm["admin"].as< string >();
 
         if ( vm.count( "skale" ) ) {
-            chainParams = ChainParams( genesisInfo( eth::Network::Skale ) );
+            chainParams.reset( new ChainParams( genesisInfo( eth::Network::Skale ) ) );
             chainConfigIsSet = true;
         }
 
         if ( vm.count( "config" ) ) {
             try {
                 configPath = vm["config"].as< string >();
-                LOG( loggerInfo ) << "main: Using config file:" << configPath;
+                BOOST_LOG( loggerInfo ) << "main: Using config file:" << configPath;
                 if ( !fs::is_regular_file( configPath.string() ) )
                     throw std::runtime_error( "Bad config file path" );
                 configJSON = contentsString( configPath.string() );
                 if ( configJSON.empty() )
                     throw std::runtime_error( "Config file probably not found" );
-                chainParams = chainParams.loadConfig( configJSON, configPath );
+                chainParams->loadConfig( configJSON, configPath );
                 chainConfigIsSet = true;
                 // TODO avoid double-parse
                 joConfig = nlohmann::json::parse( configJSON );
                 chainConfigParsed = true;
                 dev::eth::g_configAccesssor.reset(
                     new skutils::json_config_file_accessor( configPath.string() ) );
-                dev::db::DBFactory::setReopenPeriodMs( chainParams.sChain.levelDBReopenIntervalMs );
+                dev::db::DBFactory::setReopenPeriodMs( chainParams->getLevelDbReopenIntervalMs() );
             } catch ( const char* str ) {
-                LOG( loggerError ) << "Error: " << str << ": " << configPath;
+                BOOST_LOG( loggerError ) << "Error: " << str << ": " << configPath;
                 return EX_USAGE;
             } catch ( const json_spirit::Error_position& err ) {
-                LOG( loggerError ) << "error in parsing config json:";
-                LOG( loggerError ) << configJSON;
-                LOG( loggerError ) << err.reason_ << " line " << err.line_;
+                BOOST_LOG( loggerError ) << "error in parsing config json:";
+                BOOST_LOG( loggerError ) << configJSON;
+                BOOST_LOG( loggerError ) << err.reason_ << " line " << err.line_;
                 return EX_CONFIG;
             } catch ( const std::exception& ex ) {
-                LOG( loggerError ) << "provided configuration is incorrect";
-                LOG( loggerError ) << configJSON;
-                LOG( loggerError ) << nested_exception_what( ex );
+                BOOST_LOG( loggerError ) << "provided configuration is incorrect";
+                BOOST_LOG( loggerError ) << configJSON;
+                BOOST_LOG( loggerError ) << nested_exception_what( ex );
                 return EX_CONFIG;
             } catch ( ... ) {
-                LOG( loggerError ) << "provided configuration is incorrect";
-                LOG( loggerError ) << configJSON;
+                BOOST_LOG( loggerError ) << "provided configuration is incorrect";
+                BOOST_LOG( loggerError ) << configJSON;
                 return EX_CONFIG;
             }
         }
 
+#ifndef FAIR
         // for now, leave previous values in file (for case of crash)
 
         if ( vm.count( "main-net-url" ) ) {
             if ( !g_configAccesssor ) {
-                LOG( loggerError )
+                BOOST_LOG( loggerError )
                     << "config=<path> should be specified before --main-net-url=<url>";
                 return EX_SOFTWARE;
             }
             skutils::json_config_file_accessor::g_strImaMainNetURL =
                 skutils::tools::trim_copy( vm["main-net-url"].as< string >() );
             if ( !g_configAccesssor->validateImaMainNetURL() ) {
-                LOG( loggerError ) << "bad --main-net-url=<url> parameter value: "
-                                   << skutils::json_config_file_accessor::g_strImaMainNetURL;
+                BOOST_LOG( loggerError ) << "bad --main-net-url=<url> parameter value: "
+                                         << skutils::json_config_file_accessor::g_strImaMainNetURL;
                 return EX_SOFTWARE;
             }
-            LOG( loggerDebug ) << "Main Net URL is: "
-                               << skutils::json_config_file_accessor::g_strImaMainNetURL;
+            BOOST_LOG( loggerDebug )
+                << "Main Net URL is: " << skutils::json_config_file_accessor::g_strImaMainNetURL;
         }
+#endif
 
         if ( !chainConfigIsSet )
             // default to skale if not already set with `--config`
-            chainParams = ChainParams( genesisInfo( eth::Network::Skale ) );
+            chainParams.reset( new ChainParams( genesisInfo( eth::Network::Skale ) ) );
 
         if ( chainConfigParsed ) {
             try {
@@ -1185,7 +1382,7 @@ int main( int argc, char** argv ) {
             is_ipc = true;
         if ( vm.count( "no-ipc" ) )
             is_ipc = false;
-        LOG( loggerDebug ) << "IPC server is: " << ( is_ipc ? "on" : "off" );
+        BOOST_LOG( loggerDebug ) << "IPC server is: " << ( is_ipc ? "on" : "off" );
 
         // First, get "httpRpcPort", "httpsRpcPort", "wsRpcPort", "wssRpcPort" ... from config.json
         // Second, get them from command line parameters (higher priority source)
@@ -1201,7 +1398,7 @@ int main( int argc, char** argv ) {
                 if ( !( 0 <= nPort && nPort <= 65535 ) )
                     nPort = -1;
                 else
-                    LOG( loggerDebug )
+                    BOOST_LOG( loggerDebug )
                         << "Got "
                         << std::string( strDescription ) + " from configuration JSON: " << nPort;
                 if ( vm.count( strCommandLineKey ) ) {
@@ -1211,7 +1408,7 @@ int main( int argc, char** argv ) {
                         if ( !( 0 <= nPort && nPort <= 65535 ) )
                             nPort = -1;
                         else
-                            LOG( loggerDebug )
+                            BOOST_LOG( loggerDebug )
                                 << "Got "
                                 << std::string( strDescription ) + " from command line: " << nPort;
                     }
@@ -1258,7 +1455,8 @@ int main( int argc, char** argv ) {
         }
         if ( vm.count( "web3-trace" ) )
             bTraceJsonRpcCalls = true;
-        LOG( loggerDebug ) << "JSON RPC trace logging mode is " << flag_ed( bTraceJsonRpcCalls );
+        BOOST_LOG( loggerDebug ) << "JSON RPC trace logging mode is "
+                                 << flag_ed( bTraceJsonRpcCalls );
 
         // First, get "special-rpc-trace" from config.json
         // Second, get it from command line parameter (higher priority source)
@@ -1272,8 +1470,9 @@ int main( int argc, char** argv ) {
         }
         if ( vm.count( "special-rpc-trace" ) )
             bTraceJsonRpcSpecialCalls = true;
-        LOG( loggerDebug ) << "Special JSON RPC"
-                           << " trace logging mode is " << flag_ed( bTraceJsonRpcSpecialCalls );
+        BOOST_LOG( loggerDebug ) << "Special JSON RPC"
+                                 << " trace logging mode is "
+                                 << flag_ed( bTraceJsonRpcSpecialCalls );
 
         // First, get "enable-personal-apis", "enable-admin-apis", "enable-debug-behavior-apis",
         // "enable-performance-tracker-apis" from config.json Second, get it from command line
@@ -1315,13 +1514,14 @@ int main( int argc, char** argv ) {
             bEnabledAPIs_debug = true;
         if ( vm.count( "enable-performance-tracker-apis" ) )
             bEnabledAPIs_performanceTracker = true;
-        LOG( loggerWarning ) << "Important notice: Programmatic enable-personal-apis mode is "
-                             << flag_ed( bEnabledAPIs_personal );
-        LOG( loggerWarning ) << "Important notice: Programmatic enable-admin-apis mode is "
-                             << flag_ed( bEnabledAPIs_admin );
-        LOG( loggerWarning ) << "Important notice: Programmatic enable-debug-behavior-apis mode is "
-                             << flag_ed( bEnabledAPIs_debug );
-        LOG( loggerWarning )
+        BOOST_LOG( loggerWarning ) << "Important notice: Programmatic enable-personal-apis mode is "
+                                   << flag_ed( bEnabledAPIs_personal );
+        BOOST_LOG( loggerWarning ) << "Important notice: Programmatic enable-admin-apis mode is "
+                                   << flag_ed( bEnabledAPIs_admin );
+        BOOST_LOG( loggerWarning )
+            << "Important notice: Programmatic enable-debug-behavior-apis mode is "
+            << flag_ed( bEnabledAPIs_debug );
+        BOOST_LOG( loggerWarning )
             << "Important notice: Programmatic enable-performance-tracker-apis mode is "
             << flag_ed( bEnabledAPIs_performanceTracker );
 
@@ -1337,8 +1537,8 @@ int main( int argc, char** argv ) {
         }
         if ( vm.count( "unsafe-transactions" ) )
             alwaysConfirm = false;
-        LOG( loggerWarning ) << "Important notice: Programmatic unsafe-transactions mode is "
-                             << flag_ed( !alwaysConfirm );
+        BOOST_LOG( loggerWarning ) << "Important notice: Programmatic unsafe-transactions mode is "
+                                   << flag_ed( !alwaysConfirm );
 
         // First, get "web3-shutdown" from config.json
         // Second, get it from command line parameter (higher priority source)
@@ -1353,8 +1553,8 @@ int main( int argc, char** argv ) {
         }
         if ( vm.count( "web3-shutdown" ) )
             bEnabledShutdownViaWeb3 = true;
-        LOG( loggerWarning ) << "Important notice: Programmatic web3-shutdown mode is "
-                             << flag_ed( bEnabledShutdownViaWeb3 );
+        BOOST_LOG( loggerWarning ) << "Important notice: Programmatic web3-shutdown mode is "
+                                   << flag_ed( bEnabledShutdownViaWeb3 );
 
         // First, get "ipcpath" from config.json
         // Second, get it from command line parameter (higher priority source)
@@ -1368,7 +1568,7 @@ int main( int argc, char** argv ) {
             }
         }
 
-        LOG( loggerDebug ) << "IPC path is: " << strPathIPC;
+        BOOST_LOG( loggerDebug ) << "IPC path is: " << strPathIPC;
         if ( vm.count( "ipcpath" ) )
             strPathIPC = vm["ipcpath"].as< std::string >();
         if ( !strPathIPC.empty() )
@@ -1386,14 +1586,15 @@ int main( int argc, char** argv ) {
         }
         if ( vm.count( "db-path" ) )
             strPathDB = vm["db-path"].as< std::string >();
-        LOG( loggerInfo ) << "DB path is: " << strPathDB;
+        BOOST_LOG( loggerInfo ) << "DB path is: " << strPathDB;
 
         if ( !strPathDB.empty() )
             setDataDir( strPathDB );
 
         UnsafeRegion::init( getDataDir() );
         if ( UnsafeRegion::isActive() ) {
-            LOG( loggerError ) << "FATAL Previous skaled shutdown was too hard, need to repair!";
+            BOOST_LOG( loggerError )
+                << "FATAL Previous skaled shutdown was too hard, need to repair!";
             return int( ExitHandler::ec_state_root_mismatch );
         }  // if bad exit
 
@@ -1411,8 +1612,8 @@ int main( int argc, char** argv ) {
         if ( vm.count( "block-rotation-period" ) )
             clockDbRotationPeriodInSeconds = vm["block-rotation-period"].as< size_t >();
         if ( clockDbRotationPeriodInSeconds > 0 )
-            LOG( loggerInfo ) << "Timer-based Block Rotation period is: "
-                              << clockDbRotationPeriodInSeconds;
+            BOOST_LOG( loggerInfo )
+                << "Timer-based Block Rotation period is: " << clockDbRotationPeriodInSeconds;
 
 
         ///////////////// CACHE PARAMS ///////////////
@@ -1549,9 +1750,9 @@ int main( int argc, char** argv ) {
             try {
                 networkID = vm["network-id"].as< unsigned >();
             } catch ( ... ) {
-                LOG( loggerError ) << "Bad "
-                                   << "--network-id"
-                                   << " option: " << vm["network-id"].as< string >();
+                BOOST_LOG( loggerError ) << "Bad "
+                                         << "--network-id"
+                                         << " option: " << vm["network-id"].as< string >();
                 return EX_USAGE;
             }
         if ( vm.count( "kill" ) )
@@ -1579,7 +1780,7 @@ int main( int argc, char** argv ) {
             u.fragment( "" );
             u.set_query();
             strURL = u.str();
-            chainParams.nodeInfo.sgxServerUrl = strURL;
+            chainParams->setSgxServerUrl( strURL );
         }
 
         std::shared_ptr< StatusAndControl > statusAndControl =
@@ -1612,75 +1813,48 @@ int main( int argc, char** argv ) {
         if ( vm.count( "no-snapshot-majority" ) ) {
             downloadSnapshotFlag = true;
             urlToDownloadSnapshotFrom = vm["no-snapshot-majority"].as< string >();
-            LOG( loggerInfo ) << "Manually set url to download snapshot from: "
-                              << urlToDownloadSnapshotFrom;
+            BOOST_LOG( loggerInfo )
+                << "Manually set url to download snapshot from: " << urlToDownloadSnapshotFrom;
         }
 
-        if ( chainParams.sChain.snapshotIntervalSec > 0 || downloadSnapshotFlag ) {
-            std::vector< std::string > coreVolumes = { BlockChain::getChainDirName( chainParams ),
-                "filestorage", "prices_" + chainParams.nodeInfo.id.str() + ".db",
-                "blocks_" + chainParams.nodeInfo.id.str() + ".db" };
+        // Checking that data dir is empty before doing creating initial layout
+        bool dataDirEmpty = isDataDirEmpty();
+        if ( chainParams->getSnapshotIntervalSec() > 0 || downloadSnapshotFlag ) {
+            std::vector< std::string > coreVolumes = { BlockChain::getChainDirName( *chainParams ),
+#ifndef FAIR
+                "filestorage",
+#endif
+                "prices_" + chainParams->getSelfNodeId().str() + ".db",
+                "blocks_" + chainParams->getSelfNodeId().str() + ".db" };
             snapshotManager.reset( new SnapshotManager(
                 chainParams, getDataDir(), sharedSpace ? sharedSpace->getPath() : "" ) );
         }
-
         if ( downloadSnapshotFlag ) {
-            statusAndControl->setExitState( StatusAndControl::StartAgain, true );
-            statusAndControl->setExitState( StatusAndControl::StartFromSnapshot, true );
-            statusAndControl->setSubsystemRunning( StatusAndControl::SnapshotDownloader, true );
-
-            std::unique_ptr< std::lock_guard< SharedSpace > > sharedSpace_lock;
-            if ( sharedSpace )
-                sharedSpace_lock.reset( new std::lock_guard< SharedSpace >( *sharedSpace ) );
-
-            try {
-                downloadAndProccessSnapshot(
-                    snapshotManager, chainParams, urlToDownloadSnapshotFrom, true );
-
-                // if we dont have 0 snapshot yet
-                try {
-                    snapshotManager->isSnapshotHashPresent( 0 );
-                } catch ( SnapshotManager::SnapshotAbsent& ex ) {
-                    // sleep before send skale_getSnapshot again - will receive error
-                    LOG( loggerInfo )
-                        << std::string( "Will sleep for " )
-                        << chainParams.sChain.snapshotDownloadInactiveTimeout +
-                               dev::rpc::Skale::snapshotDownloadFragmentMonitorThreadTimeout()
-                        << std::string( " seconds before downloading 0 snapshot" );
-                    sleep( chainParams.sChain.snapshotDownloadInactiveTimeout +
-                           dev::rpc::Skale::snapshotDownloadFragmentMonitorThreadTimeout() );
-
-                    downloadAndProccessSnapshot(
-                        snapshotManager, chainParams, urlToDownloadSnapshotFrom, false );
-                }
-
-            } catch ( std::exception& ) {
-                std::throw_with_nested( std::runtime_error(
-                    std::string( " Fatal error in downloadAndProccessSnapshot! Will exit " ) ) );
+            if ( dataDirEmpty ) {
+                doSnapshotDownload( chainParams, statusAndControl, urlToDownloadSnapshotFrom,
+                    snapshotManager, sharedSpace, false );
+            } else {
+                BOOST_LOG( loggerInfo )
+                    << "Skipping snapshot downloading since data directroy is not empty";
             }
-
         }  // if --download-snapshot
 
         // download 0 snapshot if needed
-        if ( chainParams.nodeInfo.syncNode ) {
-            auto bc = BlockChain( chainParams, getDataDir() );
-            if ( bc.number() == 0 ) {
-                if ( chainParams.nodeInfo.syncFromCatchup && !downloadSnapshotFlag ) {
-                    statusAndControl->setExitState( StatusAndControl::StartAgain, true );
-                    statusAndControl->setExitState( StatusAndControl::StartFromSnapshot, true );
-                    statusAndControl->setSubsystemRunning(
-                        StatusAndControl::SnapshotDownloader, true );
-
-                    try {
-                        downloadAndProccessSnapshot(
-                            snapshotManager, chainParams, urlToDownloadSnapshotFrom, false );
-                        snapshotManager->restoreSnapshot( 0 );
-                    } catch ( SnapshotManager::SnapshotAbsent& ) {
-                        LOG( loggerWarning ) << "Snapshot for 0 block is not found";
-                    }
-                }
-            }
+        if ( chainParams->isSyncFromCatchupEnabled() && dataDirEmpty && !downloadSnapshotFlag ) {
+            // Syncing from catchup, so zeroSnapshotOnly = true
+            doSnapshotDownload( chainParams, statusAndControl, urlToDownloadSnapshotFrom,
+                snapshotManager, sharedSpace, true );
         }
+
+#ifdef FAIR
+
+        // Configuring current group if it is regular syncing from catchup.
+        // Setting back correct group if it starting from snapshot mode.
+
+        uint64_t latestBlockTs = BlockChain::getLatestBlockTimestamp( *chainParams, getDataDir() );
+        BOOST_LOG( loggerInfo ) << "Latest block timestamp is: " << latestBlockTs;
+        chainParams->updateCurrentGroupIfNeeded( latestBlockTs );
+#endif
 
         statusAndControl->setSubsystemRunning( StatusAndControl::SnapshotDownloader, false );
 
@@ -1688,7 +1862,7 @@ int main( int argc, char** argv ) {
         statusAndControl->setExitState( StatusAndControl::StartFromSnapshot, false );
 
         // it was needed for snapshot downloading
-        if ( chainParams.sChain.snapshotIntervalSec <= 0 ) {
+        if ( chainParams->getSnapshotIntervalSec() <= 0 ) {
             snapshotManager = nullptr;
         }
 
@@ -1699,7 +1873,7 @@ int main( int argc, char** argv ) {
 
         if ( time( NULL ) < startTimestamp ) {
             statusAndControl->setSubsystemRunning( StatusAndControl::WaitingForTimestamp, true );
-            LOG( loggerInfo ) << "\nWill start at localtime " << ctime( &startTimestamp );
+            BOOST_LOG( loggerInfo ) << "\nWill start at localtime " << ctime( &startTimestamp );
             do
                 sleep( 1 );
             while ( time( NULL ) < startTimestamp );
@@ -1707,7 +1881,7 @@ int main( int argc, char** argv ) {
         }
 
         if ( loggingOptions.verbosity > 0 )
-            LOG( loggerInfo ) << "skaled, a C++ Skale client";
+            BOOST_LOG( loggerInfo ) << "skaled, a C++ Skale client";
 
         m.execute();
 
@@ -1775,21 +1949,22 @@ int main( int argc, char** argv ) {
             Ethash::init();
             NoProof::init();
 
-            if ( chainParams.sealEngineName == Ethash::name() ) {
-                g_client.reset( new eth::EthashClient( chainParams, ( int ) chainParams.networkID,
+            if ( chainParams->getSealEngineName() == Ethash::name() ) {
+                g_client.reset( new eth::EthashClient( chainParams, chainParams->getNetworkId(),
                     shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
                     withExisting,
                     TransactionQueue::Limits{ c_transactionQueueSize, c_futureTransactionQueueSize,
                         c_transactionQueueSizeBytes, c_futureTransactionQueueSizeBytes } ) );
-            } else if ( chainParams.sealEngineName == NoProof::name() ) {
-                g_client.reset( new eth::Client( chainParams, ( int ) chainParams.networkID,
+            } else if ( chainParams->getSealEngineName() == NoProof::name() ) {
+                g_client.reset( new eth::Client( chainParams, chainParams->getNetworkId(),
                     shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
                     withExisting,
                     TransactionQueue::Limits{ c_transactionQueueSize, c_futureTransactionQueueSize,
                         c_transactionQueueSizeBytes, c_futureTransactionQueueSizeBytes } ) );
             } else
-                BOOST_THROW_EXCEPTION( ChainParamsInvalid() << errinfo_comment(
-                                           "Unknown seal engine: " + chainParams.sealEngineName ) );
+                BOOST_THROW_EXCEPTION(
+                    ChainParamsInvalid() << errinfo_comment(
+                        "Unknown seal engine: " + chainParams->getSealEngineName() ) );
 
             g_client->dbRotationPeriod(
                 ( ( clock_t )( clockDbRotationPeriodInSeconds ) ) * CLOCKS_PER_SEC );
@@ -1802,14 +1977,17 @@ int main( int argc, char** argv ) {
                 else
                     return "";
             } );
-            g_client->setAuthor( chainParams.sChain.blockAuthor );
+            g_client->setAuthor( chainParams->getBlockAuthor() );
 
             DefaultConsensusFactory cons_fact( *g_client );
             setenv( "DATA_DIR", getDataDir().c_str(), 0 );
 
-            std::shared_ptr< SkaleHost > skaleHost = std::make_shared< SkaleHost >( *g_client,
-                &cons_fact, instanceMonitor, skutils::json_config_file_accessor::g_strImaMainNetURL,
-                !chainParams.nodeInfo.syncNode );
+            std::shared_ptr< SkaleHost > skaleHost =
+                std::make_shared< SkaleHost >( *g_client, &cons_fact, instanceMonitor,
+#ifndef FAIR
+                    skutils::json_config_file_accessor::g_strImaMainNetURL,
+#endif
+                    !chainParams->isSyncNode() );
             dev::eth::g_skaleHost = skaleHost;
 
             // XXX nested lambdas and strlen hacks..
@@ -1856,8 +2034,8 @@ int main( int argc, char** argv ) {
                     keyManager.create( std::string() );
             }
         } catch ( ... ) {
-            LOG( loggerError ) << "Error initializing key manager: "
-                               << boost::current_exception_diagnostic_information();
+            BOOST_LOG( loggerError ) << "Error initializing key manager: "
+                                     << boost::current_exception_diagnostic_information();
             return 1;
         }
 
@@ -1876,7 +2054,7 @@ int main( int argc, char** argv ) {
                 g_client->setNetworkId( networkID );
         }
 
-        LOG( loggerInfo ) << "Mining Beneficiary: " << g_client->author();
+        BOOST_LOG( loggerInfo ) << "Mining Beneficiary: " << g_client->author();
 
         unique_ptr< rpc::SessionManager > sessionManager;
         unique_ptr< SimpleAccountHolder > accountHolder;
@@ -1901,12 +2079,12 @@ int main( int argc, char** argv ) {
             if ( strAA == "yes" || strAA == "no" || strAA == "always" )
                 autoAuthAnswer = strAA;
             else {
-                LOG( loggerError ) << "Bad "
-                                   << "--aa"
-                                   << " option: " << strAA;
+                BOOST_LOG( loggerError ) << "Bad "
+                                         << "--aa"
+                                         << " option: " << strAA;
                 return EX_USAGE;
             }
-            LOG( loggerDebug ) << "Auto-answer mode is set to: " << strAA;
+            BOOST_LOG( loggerDebug ) << "Auto-answer mode is set to: " << strAA;
         }
 
         std::function< bool( TransactionSkeleton const&, bool ) > authenticator;
@@ -1943,15 +2121,16 @@ int main( int argc, char** argv ) {
                     allowedDestinations.insert( _t.to );
                 return r == "yes" || r == "always";
             };
-        if ( chainParams.nodeInfo.ip.empty() ) {
-            LOG( loggerWarning ) << "IPv4"
-                                 << " bind address is not set, will not start RPC on this protocol";
+        if ( chainParams->getSelfNodeIp().empty() ) {
+            BOOST_LOG( loggerWarning )
+                << "IPv4"
+                << " bind address is not set, will not start RPC on this protocol";
             nExplicitPortHTTP4std = nExplicitPortHTTPS4std = nExplicitPortHTTP4nfo =
                 nExplicitPortHTTPS4nfo = nExplicitPortWS4std = nExplicitPortWSS4std =
                     nExplicitPortWS4nfo = nExplicitPortWSS4nfo = -1;
         }
-        if ( chainParams.nodeInfo.ip6.empty() ) {
-            LOG( loggerWarning )
+        if ( chainParams->getSelfNodeIpV6().empty() ) {
+            BOOST_LOG( loggerWarning )
                 << "IPv6 bind address is not set, will not start RPC on this protocol";
             nExplicitPortHTTP6std = nExplicitPortHTTPS6std = nExplicitPortHTTP6nfo =
                 nExplicitPortHTTPS6nfo = nExplicitPortWS6std = nExplicitPortWSS6std =
@@ -1997,8 +2176,7 @@ int main( int argc, char** argv ) {
             auto pWeb3Face = new rpc::Web3( clientVersion() );
             auto pEthFace = new rpc::Eth( configPath.string(), *g_client, *accountHolder.get() );
             auto pSkaleFace = new rpc::Skale( *g_client, sharedSpace );
-            auto pSkaleStatsFace =
-                new rpc::SkaleStats( configPath.string(), *g_client, chainParams );
+            auto pSkaleStatsFace = new rpc::SkaleStats( configPath.string(), *g_client );
             pSkaleStatsFace->isExposeAllDebugInfo_ = isExposeAllDebugInfo;
             auto pPersonalFace = bEnabledAPIs_personal ?
                                      new rpc::Personal( keyManager, *accountHolder, *g_client ) :
@@ -2036,13 +2214,13 @@ int main( int argc, char** argv ) {
                     auto ipcConnector = new IpcServer( "geth" );
                     g_jsonrpcIpcServer->addConnector( ipcConnector );
                     if ( !ipcConnector->StartListening() ) {
-                        LOG( loggerError )
+                        BOOST_LOG( loggerError )
                             << "Cannot start listening for RPC requests on ipc port: "
                             << strerror( errno );
                         return EX_IOERR;
                     }  // error
                 } catch ( const std::exception& ex ) {
-                    LOG( loggerError )
+                    BOOST_LOG( loggerError )
                         << "Cannot start listening for RPC requests on ipc port: " << ex.what();
                     return EX_IOERR;
                 }  // catch
@@ -2050,9 +2228,9 @@ int main( int argc, char** argv ) {
 
             auto fnCheckPort = [&]( int& nPort, const char* strCommandLineKey ) -> bool {
                 if ( nPort <= 0 || nPort >= 65536 ) {
-                    LOG( loggerError ) << "WARNING: No valid port value provided with "
-                                       << std::string( "--" ) + strCommandLineKey << "="
-                                       << "number";
+                    BOOST_LOG( loggerError ) << "WARNING: No valid port value provided with "
+                                             << std::string( "--" ) + strCommandLineKey << "="
+                                             << "number";
                     return false;
                 }
                 return true;
@@ -2112,7 +2290,7 @@ int main( int argc, char** argv ) {
                  nExplicitPortWS4std > 0 || nExplicitPortWSS4std > 0 || nExplicitPortWS6std > 0 ||
                  nExplicitPortWSS6std > 0 || nExplicitPortWS4nfo > 0 || nExplicitPortWSS4nfo > 0 ||
                  nExplicitPortWS6nfo > 0 || nExplicitPortWSS6nfo > 0 ) {
-                LOG( loggerDebug ) << "....RPC params:";
+                BOOST_LOG( loggerDebug ) << "....RPC params:";
                 //
                 auto fnPrintPort = [&]( const int& nPort, const char* strDescription ) -> void {
                     static const size_t nAlign = 35;
@@ -2120,8 +2298,9 @@ int main( int argc, char** argv ) {
                     std::string strDots;
                     for ( ; ( strDots.size() + nDescLen ) < nAlign; )
                         strDots += ".";
-                    LOG( loggerDebug ) << "...." << strDescription << strDots << " "
-                                       << ( ( nPort >= 0 ) ? std::to_string( nPort ) : "off" );
+                    BOOST_LOG( loggerDebug )
+                        << "...." << strDescription << strDots << " "
+                        << ( ( nPort >= 0 ) ? std::to_string( nPort ) : "off" );
                 };
                 fnPrintPort( nExplicitPortHTTP4std, "HTTP/4/std port" );
                 fnPrintPort( nExplicitPortHTTP4nfo, "HTTP/4/nfo port" );
@@ -2175,7 +2354,7 @@ int main( int argc, char** argv ) {
                     size_t maxItemCount = vm["performance-timeline-max-items"].as< size_t >();
                     pTracker->set_safe_max_item_count( maxItemCount );
                 }
-                LOG( loggerDebug )
+                BOOST_LOG( loggerDebug )
                     << "....Performance timeline tracker............. "
                     << ( pTracker->is_enabled() ?
                                std::to_string( pTracker->get_safe_max_item_count() ) :
@@ -2186,11 +2365,11 @@ int main( int argc, char** argv ) {
                         nExplicitPortHTTPS6nfo = nExplicitPortWSS4std = nExplicitPortWSS6std =
                             nExplicitPortWSS4nfo = nExplicitPortWSS6nfo = -1;
                 if ( bHaveSSL ) {
-                    LOG( loggerDebug )
+                    BOOST_LOG( loggerDebug )
                         << "....SSL key is............................... " << strPathSslKey;
-                    LOG( loggerDebug )
+                    BOOST_LOG( loggerDebug )
                         << "....SSL certificate is....................... " << strPathSslCert;
-                    LOG( loggerDebug )
+                    BOOST_LOG( loggerDebug )
                         << "....SSL CA is................................ " << strPathSslCA;
                 }
                 //
@@ -2344,31 +2523,31 @@ int main( int argc, char** argv ) {
                     skutils::ws::g_eWSLL = skutils::ws::str2wsll( s );
                 }
 
-                LOG( loggerDebug )
+                BOOST_LOG( loggerDebug )
                     << "....WS mode.................................. "
                     << skutils::ws::nlws::srvmode2str( skutils::ws::nlws::g_default_srvmode );
-                LOG( loggerDebug ) << "....WS logging............................... "
-                                   << skutils::ws::wsll2str( skutils::ws::g_eWSLL );
-                LOG( loggerDebug )
+                BOOST_LOG( loggerDebug ) << "....WS logging............................... "
+                                         << skutils::ws::wsll2str( skutils::ws::g_eWSLL );
+                BOOST_LOG( loggerDebug )
                     << "....Max RPC connections...................... "
                     << ( ( maxConnections > 0 ) ? std::to_string( maxConnections ) : "disabled" );
-                LOG( loggerDebug ) << "....Max HTTP queues.......................... "
-                                   << ( ( max_http_handler_queues > 0 ) ?
-                                              std::to_string( max_http_handler_queues ) :
-                                              "default" );
-                LOG( loggerDebug ) << "....Asynchronous HTTP........................ "
-                                   << ( is_async_http_transfer_mode ? "yes" : "no" );
-                LOG( loggerDebug )
+                BOOST_LOG( loggerDebug ) << "....Max HTTP queues.......................... "
+                                         << ( ( max_http_handler_queues > 0 ) ?
+                                                    std::to_string( max_http_handler_queues ) :
+                                                    "default" );
+                BOOST_LOG( loggerDebug ) << "....Asynchronous HTTP........................ "
+                                         << ( is_async_http_transfer_mode ? "yes" : "no" );
+                BOOST_LOG( loggerDebug )
                     << "....Proxygen threads......................... " << pg_threads;
-                LOG( loggerDebug )
+                BOOST_LOG( loggerDebug )
                     << "....Proxygen threads limit................... " << pg_threads_limit;
 
                 //
-                LOG( loggerDebug )
+                BOOST_LOG( loggerDebug )
                     << "....Max count in batch JSON RPC request...... " << cntInBatch;
-                LOG( loggerDebug )
+                BOOST_LOG( loggerDebug )
                     << "....Parallel RPC connection acceptors........ " << cntServersStd;
-                LOG( loggerDebug )
+                BOOST_LOG( loggerDebug )
                     << "....Parallel informational RPC acceptors..... " << cntServersNfo;
                 SkaleServerOverride::fn_binary_snapshot_download_t fn_binary_snapshot_download =
                     [=]( const nlohmann::json& joRequest ) -> std::vector< uint8_t > {
@@ -2380,43 +2559,52 @@ int main( int argc, char** argv ) {
                 inject_rapidjson_handlers( serverOpts, pEthFace );
                 serverOpts.fn_binary_snapshot_download_ = fn_binary_snapshot_download;
                 serverOpts.netOpts_.bindOptsStandard_.cntServers_ = cntServersStd;
-                serverOpts.netOpts_.bindOptsStandard_.strAddrHTTP4_ = chainParams.nodeInfo.ip;
+                serverOpts.netOpts_.bindOptsStandard_.strAddrHTTP4_ = chainParams->getSelfNodeIp();
                 serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ = nExplicitPortHTTP4std;
-                serverOpts.netOpts_.bindOptsStandard_.strAddrHTTP6_ = chainParams.nodeInfo.ip6;
+                serverOpts.netOpts_.bindOptsStandard_.strAddrHTTP6_ =
+                    chainParams->getSelfNodeIpV6();
                 serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP6_ = nExplicitPortHTTP6std;
-                serverOpts.netOpts_.bindOptsStandard_.strAddrHTTPS4_ = chainParams.nodeInfo.ip;
+                serverOpts.netOpts_.bindOptsStandard_.strAddrHTTPS4_ = chainParams->getSelfNodeIp();
                 serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTPS4_ = nExplicitPortHTTPS4std;
-                serverOpts.netOpts_.bindOptsStandard_.strAddrHTTPS6_ = chainParams.nodeInfo.ip6;
+                serverOpts.netOpts_.bindOptsStandard_.strAddrHTTPS6_ =
+                    chainParams->getSelfNodeIpV6();
                 serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTPS6_ = nExplicitPortHTTPS6std;
-                serverOpts.netOpts_.bindOptsStandard_.strAddrWS4_ = chainParams.nodeInfo.ip;
+                serverOpts.netOpts_.bindOptsStandard_.strAddrWS4_ = chainParams->getSelfNodeIp();
                 serverOpts.netOpts_.bindOptsStandard_.nBasePortWS4_ = nExplicitPortWS4std;
-                serverOpts.netOpts_.bindOptsStandard_.strAddrWS6_ = chainParams.nodeInfo.ip6;
+                serverOpts.netOpts_.bindOptsStandard_.strAddrWS6_ = chainParams->getSelfNodeIpV6();
                 serverOpts.netOpts_.bindOptsStandard_.nBasePortWS6_ = nExplicitPortWS6std;
-                serverOpts.netOpts_.bindOptsStandard_.strAddrWSS4_ = chainParams.nodeInfo.ip;
+                serverOpts.netOpts_.bindOptsStandard_.strAddrWSS4_ = chainParams->getSelfNodeIp();
                 serverOpts.netOpts_.bindOptsStandard_.nBasePortWSS4_ = nExplicitPortWSS4std;
-                serverOpts.netOpts_.bindOptsStandard_.strAddrWSS6_ = chainParams.nodeInfo.ip6;
+                serverOpts.netOpts_.bindOptsStandard_.strAddrWSS6_ = chainParams->getSelfNodeIpV6();
                 serverOpts.netOpts_.bindOptsStandard_.nBasePortWSS6_ = nExplicitPortWSS6std;
 
                 serverOpts.netOpts_.bindOptsInformational_.cntServers_ = cntServersNfo;
-                serverOpts.netOpts_.bindOptsInformational_.strAddrHTTP4_ = chainParams.nodeInfo.ip;
+                serverOpts.netOpts_.bindOptsInformational_.strAddrHTTP4_ =
+                    chainParams->getSelfNodeIp();
                 serverOpts.netOpts_.bindOptsInformational_.nBasePortHTTP4_ = nExplicitPortHTTP4nfo;
-                serverOpts.netOpts_.bindOptsInformational_.strAddrHTTP6_ = chainParams.nodeInfo.ip6;
+                serverOpts.netOpts_.bindOptsInformational_.strAddrHTTP6_ =
+                    chainParams->getSelfNodeIpV6();
                 serverOpts.netOpts_.bindOptsInformational_.nBasePortHTTP6_ = nExplicitPortHTTP6nfo;
-                serverOpts.netOpts_.bindOptsInformational_.strAddrHTTPS4_ = chainParams.nodeInfo.ip;
+                serverOpts.netOpts_.bindOptsInformational_.strAddrHTTPS4_ =
+                    chainParams->getSelfNodeIp();
                 serverOpts.netOpts_.bindOptsInformational_.nBasePortHTTPS4_ =
                     nExplicitPortHTTPS4nfo;
                 serverOpts.netOpts_.bindOptsInformational_.strAddrHTTPS6_ =
-                    chainParams.nodeInfo.ip6;
+                    chainParams->getSelfNodeIpV6();
                 serverOpts.netOpts_.bindOptsInformational_.nBasePortHTTPS6_ =
                     nExplicitPortHTTPS6nfo;
 
-                serverOpts.netOpts_.bindOptsInformational_.strAddrWS4_ = chainParams.nodeInfo.ip;
+                serverOpts.netOpts_.bindOptsInformational_.strAddrWS4_ =
+                    chainParams->getSelfNodeIp();
                 serverOpts.netOpts_.bindOptsInformational_.nBasePortWS4_ = nExplicitPortWS4nfo;
-                serverOpts.netOpts_.bindOptsInformational_.strAddrWS6_ = chainParams.nodeInfo.ip6;
+                serverOpts.netOpts_.bindOptsInformational_.strAddrWS6_ =
+                    chainParams->getSelfNodeIpV6();
                 serverOpts.netOpts_.bindOptsInformational_.nBasePortWS6_ = nExplicitPortWS6nfo;
-                serverOpts.netOpts_.bindOptsInformational_.strAddrWSS4_ = chainParams.nodeInfo.ip;
+                serverOpts.netOpts_.bindOptsInformational_.strAddrWSS4_ =
+                    chainParams->getSelfNodeIp();
                 serverOpts.netOpts_.bindOptsInformational_.nBasePortWSS4_ = nExplicitPortWSS4nfo;
-                serverOpts.netOpts_.bindOptsInformational_.strAddrWSS6_ = chainParams.nodeInfo.ip6;
+                serverOpts.netOpts_.bindOptsInformational_.strAddrWSS6_ =
+                    chainParams->getSelfNodeIpV6();
                 serverOpts.netOpts_.bindOptsInformational_.nBasePortWSS6_ = nExplicitPortWSS6nfo;
 
                 serverOpts.netOpts_.strPathSslKey_ = strPathSslKey;
@@ -2444,11 +2632,11 @@ int main( int argc, char** argv ) {
                     if ( serverOpts.strEthErc20Address_.empty() )
                         throw std::runtime_error(
                             "\"ethERC20Address\" was not found in config JSON" );
-                    LOG( loggerDebug )
+                    BOOST_LOG( loggerDebug )
                         << "\"ethERC20Address\" is " + serverOpts.strEthErc20Address_;
                 } catch ( ... ) {
                     serverOpts.strEthErc20Address_ = "0xd3cdbc1b727b2ed91b8ad21333841d2e96f255af";
-                    LOG( loggerWarning )
+                    BOOST_LOG( loggerWarning )
                         << "WARNING: \"ethERC20Address\" was not found in config JSON, assuming " +
                                serverOpts.strEthErc20Address_;
                 }
@@ -2460,7 +2648,7 @@ int main( int argc, char** argv ) {
                     nlohmann::json joUnDdosSettings = joConfig["unddos"];
                     skale_server_connector->unddos_.load_settings_from_json( joUnDdosSettings );
                 } else {
-                    LOG( loggerWarning ) << "No DDOS config found. DDOS Disabled";
+                    BOOST_LOG( loggerWarning ) << "No DDOS config found. DDOS Disabled";
                     skale_server_connector->unddos_.disable_ddos();  // auto-init
                 }
 
@@ -2471,9 +2659,10 @@ int main( int argc, char** argv ) {
                 skale_server_connector->pg_threads_limit_ = pg_threads_limit;
 
                 if ( pg_threads > 0 ) {
-                    LOG( loggerInfo ) << "Count of threads in proxygen server: " << pg_threads;
+                    BOOST_LOG( loggerInfo )
+                        << "Count of threads in proxygen server: " << pg_threads;
                 } else {
-                    LOG( loggerWarning )
+                    BOOST_LOG( loggerWarning )
                         << "Count of threads in proxygen server is not defined in config. "
                            "Using default value of 10 from the mainnet";
                     pg_threads = 10;
@@ -2490,7 +2679,7 @@ int main( int argc, char** argv ) {
                 skale_server_connector->max_connection_set( maxConnections );
                 g_jsonrpcIpcServer->addConnector( skale_server_connector );
                 if ( !skale_server_connector->StartListening() ) {  // TODO Will it delete itself?
-                    LOG( loggerError ) << "FATAL: Failed to start JSON RPC, will exit...";
+                    BOOST_LOG( loggerError ) << "FATAL: Failed to start JSON RPC, will exit...";
                     return EX_IOERR;
                 }
                 int nStatHTTP4std = skale_server_connector->getServerPortStatusProxygenHTTP(
@@ -2534,7 +2723,7 @@ int main( int argc, char** argv ) {
                           ( !ExitHandler::shouldExit() );
                           ++idxWaitAttempt ) {
                         if ( idxWaitAttempt == 0 )
-                            LOG( loggerDebug ) << "Waiting for HTTP/4/std start... ";
+                            BOOST_LOG( loggerDebug ) << "Waiting for HTTP/4/std start... ";
                         std::this_thread::sleep_for( g_waitAttempt );
                         nStatHTTP4std = skale_server_connector->getServerPortStatusProxygenHTTP(
                             4, e_server_mode_t::esm_standard );
@@ -2546,7 +2735,7 @@ int main( int argc, char** argv ) {
                           ( !ExitHandler::shouldExit() );
                           ++idxWaitAttempt ) {
                         if ( idxWaitAttempt == 0 )
-                            LOG( loggerDebug ) << "Waiting for HTTP/4/nfo start... ";
+                            BOOST_LOG( loggerDebug ) << "Waiting for HTTP/4/nfo start... ";
                         std::this_thread::sleep_for( g_waitAttempt );
                         nStatHTTP4nfo = skale_server_connector->getServerPortStatusProxygenHTTP(
                             4, e_server_mode_t::esm_informational );
@@ -2558,7 +2747,7 @@ int main( int argc, char** argv ) {
                           ( !ExitHandler::shouldExit() );
                           ++idxWaitAttempt ) {
                         if ( idxWaitAttempt == 0 )
-                            LOG( loggerDebug ) << "Waiting for HTTP/6/std start... ";
+                            BOOST_LOG( loggerDebug ) << "Waiting for HTTP/6/std start... ";
                         std::this_thread::sleep_for( g_waitAttempt );
                         nStatHTTP6std = skale_server_connector->getServerPortStatusProxygenHTTP(
                             6, e_server_mode_t::esm_standard );
@@ -2570,7 +2759,7 @@ int main( int argc, char** argv ) {
                           ( !ExitHandler::shouldExit() );
                           ++idxWaitAttempt ) {
                         if ( idxWaitAttempt == 0 )
-                            LOG( loggerDebug ) << "Waiting for HTTP/6/nfo start... ";
+                            BOOST_LOG( loggerDebug ) << "Waiting for HTTP/6/nfo start... ";
                         std::this_thread::sleep_for( g_waitAttempt );
                         nStatHTTP6nfo = skale_server_connector->getServerPortStatusProxygenHTTP(
                             6, e_server_mode_t::esm_informational );
@@ -2582,7 +2771,7 @@ int main( int argc, char** argv ) {
                           ( !ExitHandler::shouldExit() );
                           ++idxWaitAttempt ) {
                         if ( idxWaitAttempt == 0 )
-                            LOG( loggerDebug ) << "Waiting for HTTPS/4/std start... ";
+                            BOOST_LOG( loggerDebug ) << "Waiting for HTTPS/4/std start... ";
                         std::this_thread::sleep_for( g_waitAttempt );
                         nStatHTTPS4std = skale_server_connector->getServerPortStatusProxygenHTTPS(
                             4, e_server_mode_t::esm_standard );
@@ -2594,7 +2783,7 @@ int main( int argc, char** argv ) {
                           ( !ExitHandler::shouldExit() );
                           ++idxWaitAttempt ) {
                         if ( idxWaitAttempt == 0 )
-                            LOG( loggerDebug ) << "Waiting for HTTPS/4/nfo start... ";
+                            BOOST_LOG( loggerDebug ) << "Waiting for HTTPS/4/nfo start... ";
                         std::this_thread::sleep_for( g_waitAttempt );
                         nStatHTTPS4nfo = skale_server_connector->getServerPortStatusProxygenHTTPS(
                             4, e_server_mode_t::esm_informational );
@@ -2606,7 +2795,7 @@ int main( int argc, char** argv ) {
                           ( !ExitHandler::shouldExit() );
                           ++idxWaitAttempt ) {
                         if ( idxWaitAttempt == 0 )
-                            LOG( loggerDebug ) << "Waiting for HTTPS/6/std start... ";
+                            BOOST_LOG( loggerDebug ) << "Waiting for HTTPS/6/std start... ";
                         std::this_thread::sleep_for( g_waitAttempt );
                         nStatHTTPS6std = skale_server_connector->getServerPortStatusProxygenHTTPS(
                             6, e_server_mode_t::esm_standard );
@@ -2618,8 +2807,8 @@ int main( int argc, char** argv ) {
                           ( !ExitHandler::shouldExit() );
                           ++idxWaitAttempt ) {
                         if ( idxWaitAttempt == 0 )
-                            LOG( loggerDebug ) << "Waiting for HTTPS/6/nfo"
-                                               << " start... ";
+                            BOOST_LOG( loggerDebug ) << "Waiting for HTTPS/6/nfo"
+                                                     << " start... ";
                         std::this_thread::sleep_for( g_waitAttempt );
                         nStatHTTPS6nfo = skale_server_connector->getServerPortStatusProxygenHTTPS(
                             6, e_server_mode_t::esm_informational );
@@ -2631,7 +2820,7 @@ int main( int argc, char** argv ) {
                           ( !ExitHandler::shouldExit() );
                           ++idxWaitAttempt ) {
                         if ( idxWaitAttempt == 0 )
-                            LOG( loggerDebug ) << "Waiting for WS/4/std start... ";
+                            BOOST_LOG( loggerDebug ) << "Waiting for WS/4/std start... ";
                         std::this_thread::sleep_for( g_waitAttempt );
                         nStatWS4std = skale_server_connector->getServerPortStatusWS(
                             4, e_server_mode_t::esm_standard );
@@ -2643,7 +2832,7 @@ int main( int argc, char** argv ) {
                           ( !ExitHandler::shouldExit() );
                           ++idxWaitAttempt ) {
                         if ( idxWaitAttempt == 0 )
-                            LOG( loggerDebug ) << "Waiting for WS/4/nfo start... ";
+                            BOOST_LOG( loggerDebug ) << "Waiting for WS/4/nfo start... ";
                         std::this_thread::sleep_for( g_waitAttempt );
                         nStatWS4nfo = skale_server_connector->getServerPortStatusWS(
                             4, e_server_mode_t::esm_informational );
@@ -2655,7 +2844,7 @@ int main( int argc, char** argv ) {
                           ( !ExitHandler::shouldExit() );
                           ++idxWaitAttempt ) {
                         if ( idxWaitAttempt == 0 )
-                            LOG( loggerDebug ) << "Waiting for WS/6/std start... ";
+                            BOOST_LOG( loggerDebug ) << "Waiting for WS/6/std start... ";
                         std::this_thread::sleep_for( g_waitAttempt );
                         nStatWS6std = skale_server_connector->getServerPortStatusWS(
                             6, e_server_mode_t::esm_standard );
@@ -2667,7 +2856,7 @@ int main( int argc, char** argv ) {
                           ( !ExitHandler::shouldExit() );
                           ++idxWaitAttempt ) {
                         if ( idxWaitAttempt == 0 )
-                            LOG( loggerDebug ) << "Waiting for WS/6/nfo start... ";
+                            BOOST_LOG( loggerDebug ) << "Waiting for WS/6/nfo start... ";
                         std::this_thread::sleep_for( g_waitAttempt );
                         nStatWS6nfo = skale_server_connector->getServerPortStatusWS(
                             6, e_server_mode_t::esm_informational );
@@ -2679,7 +2868,7 @@ int main( int argc, char** argv ) {
                           ( !ExitHandler::shouldExit() );
                           ++idxWaitAttempt ) {
                         if ( idxWaitAttempt == 0 )
-                            LOG( loggerDebug ) << "Waiting for WSS/4/std start... ";
+                            BOOST_LOG( loggerDebug ) << "Waiting for WSS/4/std start... ";
                         nStatWSS4std = skale_server_connector->getServerPortStatusWSS(
                             4, e_server_mode_t::esm_standard );
                     }
@@ -2690,7 +2879,7 @@ int main( int argc, char** argv ) {
                           ( !ExitHandler::shouldExit() );
                           ++idxWaitAttempt ) {
                         if ( idxWaitAttempt == 0 )
-                            LOG( loggerDebug ) << "Waiting for WSS/4/nfo start... ";
+                            BOOST_LOG( loggerDebug ) << "Waiting for WSS/4/nfo start... ";
                         nStatWSS4nfo = skale_server_connector->getServerPortStatusWSS(
                             4, e_server_mode_t::esm_informational );
                     }
@@ -2701,7 +2890,7 @@ int main( int argc, char** argv ) {
                           ( !ExitHandler::shouldExit() );
                           ++idxWaitAttempt ) {
                         if ( idxWaitAttempt == 0 )
-                            LOG( loggerDebug ) << "Waiting for WSS/6/std start... ";
+                            BOOST_LOG( loggerDebug ) << "Waiting for WSS/6/std start... ";
                         nStatWSS6std = skale_server_connector->getServerPortStatusWSS(
                             6, e_server_mode_t::esm_standard );
                     }
@@ -2712,12 +2901,12 @@ int main( int argc, char** argv ) {
                           ( !ExitHandler::shouldExit() );
                           ++idxWaitAttempt ) {
                         if ( idxWaitAttempt == 0 )
-                            LOG( loggerDebug ) << "Waiting for WSS/6/nfo start... ";
+                            BOOST_LOG( loggerDebug ) << "Waiting for WSS/6/nfo start... ";
                         nStatWSS6nfo = skale_server_connector->getServerPortStatusWSS(
                             6, e_server_mode_t::esm_informational );
                     }
                 }
-                LOG( loggerDebug ) << "....RPC status:";
+                BOOST_LOG( loggerDebug ) << "....RPC status:";
                 auto fnPrintStatus = [&loggerDebug]( const int& nPort, const int& nStat,
                                          const char* strDescription ) -> void {
                     static const size_t nAlign = 35;
@@ -2725,7 +2914,7 @@ int main( int argc, char** argv ) {
                     std::string strDots;
                     for ( ; ( strDots.size() + nDescLen ) < nAlign; )
                         strDots += ".";
-                    LOG( loggerDebug )
+                    BOOST_LOG( loggerDebug )
                         << "...." << strDescription << strDots
                         << ( ( nStat >= 0 ) ? ( ( nPort > 0 ) ? std::to_string( nStat ) :
                                                                 "still starting..." ) :
@@ -2761,15 +2950,15 @@ int main( int argc, char** argv ) {
         }  // if ( is_ipc || nExplicitPort...
 
         if ( bEnabledShutdownViaWeb3 ) {
-            LOG( loggerWarning ) << "Enabling programmatic shutdown via Web3...";
+            BOOST_LOG( loggerWarning ) << "Enabling programmatic shutdown via Web3...";
             dev::rpc::Skale::enableWeb3Shutdown( true );
             dev::rpc::Skale::onShutdownInvoke(
                 []() { ExitHandler::exitHandler( -1, ExitHandler::ec_web3_request ); } );
-            LOG( loggerWarning ) << "Done, programmatic shutdown via Web3 is enabled";
+            BOOST_LOG( loggerWarning ) << "Done, programmatic shutdown via Web3 is enabled";
         } else {
-            LOG( loggerDebug ) << "Disabling programmatic shutdown via Web3...";
+            BOOST_LOG( loggerDebug ) << "Disabling programmatic shutdown via Web3...";
             dev::rpc::Skale::enableWeb3Shutdown( false );
-            LOG( loggerDebug ) << "Done, programmatic shutdown via Web3 is disabled";
+            BOOST_LOG( loggerDebug ) << "Done, programmatic shutdown via Web3 is disabled";
         }
 
         if ( g_client ) {
@@ -2802,37 +2991,37 @@ int main( int argc, char** argv ) {
             g_client.reset( nullptr );
         }
 
-        LOG( loggerError ) << localeconv()->decimal_point;
+        BOOST_LOG( loggerError ) << localeconv()->decimal_point;
 
-        std::string basename = "profile" + chainParams.nodeInfo.id.str();
+        std::string basename = "profile" + chainParams->getSelfNodeId().str();
         MicroProfileDumpFileImmediately(
             ( basename + ".html" ).c_str(), ( basename + ".csv" ).c_str(), nullptr );
         MicroProfileShutdown();
 
         ExitHandler::exit_code_t ec = ExitHandler::requestedExitCode();
         if ( ec != ExitHandler::ec_success ) {
-            LOG( loggerError ) << "Exiting main with code " << int( ec ) << "...";
+            BOOST_LOG( loggerError ) << "Exiting main with code " << int( ec ) << "...";
         }
         return int( ec );
     } catch ( const Client::CreationException& ex ) {
         // cannot use loggerError - not in scope
-        LOG( loggerError ) << dev::nested_exception_what( ex );
+        BOOST_LOG( loggerError ) << dev::nested_exception_what( ex );
         // TODO close microprofile!!
         g_client.reset( nullptr );
         return int( ExitHandler::ec_failure );
     } catch ( const SkaleHost::CreationException& ex ) {
-        LOG( loggerError ) << dev::nested_exception_what( ex );
+        BOOST_LOG( loggerError ) << dev::nested_exception_what( ex );
         // TODO close microprofile!!
         g_client.reset( nullptr );
         return int( ExitHandler::ec_failure );
     } catch ( const std::exception& ex ) {
-        LOG( loggerError ) << "CRITICAL " << dev::nested_exception_what( ex );
-        LOG( loggerError ) << "\n" << skutils::signal::generate_stack_trace();
+        BOOST_LOG( loggerError ) << "CRITICAL " << dev::nested_exception_what( ex );
+        BOOST_LOG( loggerError ) << "\n" << skutils::signal::generate_stack_trace();
         g_client.reset( nullptr );
         return int( ExitHandler::ec_failure );
     } catch ( ... ) {
-        LOG( loggerError ) << "CRITICAL unknown error";
-        LOG( loggerError ) << "\n" << skutils::signal::generate_stack_trace();
+        BOOST_LOG( loggerError ) << "CRITICAL unknown error";
+        BOOST_LOG( loggerError ) << "\n" << skutils::signal::generate_stack_trace();
         g_client.reset( nullptr );
         return int( ExitHandler::ec_failure );
     }

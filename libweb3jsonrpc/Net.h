@@ -35,7 +35,7 @@ namespace rpc {
 
 class Net : public NetFace {
 public:
-    Net( const dev::eth::ChainParams& );
+    Net( std::shared_ptr< const dev::eth::ChainParams > );
     virtual RPCModules implementedModules() const override {
         return RPCModules{ RPCModule{ "net", "1.0" } };
     }
@@ -44,7 +44,7 @@ public:
     virtual bool net_listening() override;
 
 private:
-    const dev::eth::ChainParams m_chainParams;
+    std::shared_ptr< const dev::eth::ChainParams > m_chainParams;
 };
 
 }  // namespace rpc

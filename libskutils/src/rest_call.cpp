@@ -640,7 +640,7 @@ bool client::stat_auto_gen_json_id( nlohmann::json& jo ) {
         return false;
     static mutex_type g_mtx;
     lock_type lock( g_mtx );
-    static volatile uint64_t g_id = stat_get_random_number();
+    static uint64_t g_id = stat_get_random_number();
     ++g_id;
     if ( g_id == 0 )
         ++g_id;
@@ -762,7 +762,7 @@ void client::async_add( await_t& a ) {
     map_await_t::const_iterator itFind = map_await_.find( a.strCallID ), itEnd = map_await_.cend();
     if ( itFind != itEnd )
         throw std::runtime_error( "rest async call must have unique \"id\"" );
-    skutils::dispatch::job_t fnTimeout = [=]() -> void {
+    skutils::dispatch::job_t fnTimeout = [this, strCallID]() -> void {
         await_t a2 = async_get( strCallID );
         async_remove_by_call_id( strCallID );
         if ( a2.onError )

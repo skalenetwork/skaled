@@ -101,12 +101,12 @@ Json::Value toJson( dev::eth::Transaction const& _t, std::pair< h256, unsigned >
         res["blockHash"] = toJS( _location.first );
         res["transactionIndex"] = toJS( _location.second );
         res["blockNumber"] = toJS( _blockNumber );
-        if ( _t.txType() == dev::eth::TransactionType::Legacy )
+        if ( _t.txType() == dev::eth::TransactionType::Legacy ) {
             if ( _t.isReplayProtected() )
                 res["v"] = toJS( 2 * _t.chainId() + 35 + _t.signature().v );
             else
                 res["v"] = toJS( 27 + _t.signature().v );
-        else
+        } else
             res["v"] = toJS( _t.signature().v );
         res["r"] = toJS( _t.signature().r );
         res["s"] = toJS( _t.signature().s );
@@ -355,12 +355,12 @@ Json::Value toJson( dev::eth::Transaction const& _t ) {
         res["nonce"] = toJS( _t.nonce() );
         res["r"] = toJS( _t.signature().r );
         res["s"] = toJS( _t.signature().s );
-        if ( _t.txType() == dev::eth::TransactionType::Legacy )
+        if ( _t.txType() == dev::eth::TransactionType::Legacy ) {
             if ( _t.isReplayProtected() )
                 res["v"] = toJS( 2 * _t.chainId() + 35 + _t.signature().v );
             else
                 res["v"] = toJS( 27 + _t.signature().v );
-        else
+        } else
             res["v"] = toJS( _t.signature().v );
         res["type"] = toJS( int( _t.txType() ) );
         if ( _t.txType() != dev::eth::TransactionType::Legacy ) {
@@ -411,12 +411,12 @@ Json::Value toJson( dev::eth::LocalisedTransaction const& _t ) {
         res["to"] = _t.isCreation() ? Json::Value() : toJS( _t.receiveAddress() );
         res["transactionIndex"] = toJS( _t.transactionIndex() );
         res["value"] = toJS( _t.value() );
-        if ( _t.txType() == dev::eth::TransactionType::Legacy )
+        if ( _t.txType() == dev::eth::TransactionType::Legacy ) {
             if ( _t.isReplayProtected() )
                 res["v"] = toJS( 2 * _t.chainId() + 35 + _t.signature().v );
             else
                 res["v"] = toJS( 27 + _t.signature().v );
-        else
+        } else
             res["v"] = toJS( _t.signature().v );
         res["r"] = toJS( _t.signature().r.hex() );
         res["s"] = toJS( _t.signature().s.hex() );
@@ -646,6 +646,68 @@ TransactionSkeleton rapidJsonToTransactionSkeleton( rapidjson::Value const& _jso
     }
 
     return ret;
+}
+
+LogFilter rapidJsonToLogFilter( rapidjson::Value const& _json ) {
+    LogFilter filter;
+    if ( !_json.IsObject() )
+        return filter;
+
+    if ( _json.HasMember( "fromBlock" ) ) {
+        if ( _json["fromBlock"].IsString() )
+            filter.withEarliest( dev::eth::jsToBlockNumber( _json["fromBlock"].GetString() ) );
+        else if ( _json["fromBlock"].IsInt() )
+            filter.withEarliest(
+                static_cast< dev::eth::BlockNumber >( _json["fromBlock"].GetInt() ) );
+    }
+    if ( _json.HasMember( "toBlock" ) ) {
+        if ( _json["toBlock"].IsString() )
+            filter.withLatest( dev::eth::jsToBlockNumber( _json["toBlock"].GetString() ) );
+        else if ( _json["toBlock"].IsInt() )
+            filter.withLatest( static_cast< dev::eth::BlockNumber >( _json["toBlock"].GetInt() ) );
+    }
+    if ( _json.HasMember( "address" ) ) {
+        if ( _json["address"].IsArray() ) {
+            for ( auto const& addr : _json["address"].GetArray() ) {
+                if ( addr.IsString() )
+                    filter.address( jsToAddress( addr.GetString() ) );
+            }
+        } else if ( _json["address"].IsString() ) {
+            filter.address( jsToAddress( _json["address"].GetString() ) );
+        }
+    }
+    if ( _json.HasMember( "topics" ) && _json["topics"].IsArray() ) {
+        unsigned topicIndex = 0;
+        for ( auto const& topicValue : _json["topics"].GetArray() ) {
+            if ( topicValue.IsArray() ) {
+                for ( auto const& t : topicValue.GetArray() ) {
+                    if ( !t.IsNull() && t.IsString() )
+                        filter.topic( topicIndex, jsToFixed< 32 >( t.GetString() ) );
+                }
+            } else if ( !topicValue.IsNull() && topicValue.IsString() ) {
+                filter.topic( topicIndex, jsToFixed< 32 >( topicValue.GetString() ) );
+            }
+            topicIndex++;
+        }
+    }
+    return filter;
+}
+
+Json::Value rapidDocumentToJson( const rapidjson::Document& doc, const char* errorContext ) {
+    rapidjson::StringBuffer sb;
+    rapidjson::Writer< rapidjson::StringBuffer > writer( sb );
+    doc.Accept( writer );
+
+    Json::Value parsed;
+    Json::CharReaderBuilder rbuilder;
+    std::string errs;
+    std::istringstream iss( sb.GetString() );
+    if ( !Json::parseFromStream( rbuilder, iss, &parsed, &errs ) ) {
+        BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INTERNAL_ERROR,
+            std::string( "Failed to convert rapid " ) +
+                ( errorContext ? errorContext : "document" ) ) );
+    }
+    return parsed;
 }
 
 // TODO: this should be removed once we decide to remove backward compatibility with old log filters

@@ -32,11 +32,23 @@
 
 #include <libdevcore/microprofile.h>
 
+#ifdef BITE
+#include <libconsensus/libBLS/threshold_encryption/ThresholdEncryption.h>
+#include <libconsensus/node/ConsensusInterface.h>
+#endif
 using namespace std;
+
 using namespace dev;
 using namespace dev::eth;
 
 const size_t MAX_ACCESS_LIST_COUNT = 16;
+
+
+#ifdef BITE
+// Used for comparing the 'to' address against this constant to check if transaction is BITE
+const dev::Address TransactionBase::BITE_ADDRESS =
+    dev::Address( std::string( BITE_ADDRESS_AS_STRING ) );
+#endif
 
 std::vector< bytes > validateAccessListRLP( const RLP& _data ) {
     if ( !_data.isList() )
@@ -98,6 +110,10 @@ TransactionBase::TransactionBase( TransactionSkeleton const& _ts, Secret const& 
       m_receiveAddress( _ts.to ) {
     if ( _s )
         sign( _s );
+
+#ifdef BITE
+    checkIfBITETxnAndSet( _ts.to );
+#endif
 }
 
 void TransactionBase::fillFromBytesLegacy(
@@ -138,13 +154,15 @@ void TransactionBase::fillFromBytesLegacy(
                 if ( chainId > std::numeric_limits< uint64_t >::max() )
                     BOOST_THROW_EXCEPTION( InvalidSignature() );
                 m_chainId = static_cast< uint64_t >( chainId );
-            } else if ( v != 27 && v != 28 )
+            } else if ( v != 27 && v != 28 ) {
                 BOOST_THROW_EXCEPTION( InvalidSignature() );
-            // else leave m_chainId as is (unitialized)
+            }
 
+            // ifdef FAIR, then chainId is always set at this point - will fall into first branch
             auto const recoveryID = m_chainId.has_value() ?
                                         _byte_{ v - ( u256{ *m_chainId } * 2 + 35 ) } :
                                         _byte_{ v - 27 };
+
             m_vrs = SignatureStruct{ r, s, recoveryID };
 
             if ( _checkSig >= CheckTransaction::Cheap && !m_vrs->isValid() )
@@ -183,7 +201,7 @@ void TransactionBase::fillFromBytesType1( bytesConstRef _rlpData, CheckTransacti
             BOOST_THROW_EXCEPTION(
                 InvalidTransactionFormat() << errinfo_comment( "transaction RLP must be a list" ) );
 
-        m_chainId = rlp[0].toInt< u256 >();
+        m_chainId = rlp[0].toInt< u256 >().convert_to< uint64_t >();
         m_nonce = rlp[1].toInt< u256 >();
         m_gasPrice = rlp[2].toInt< u256 >();
         m_gas = rlp[3].toInt< u256 >();
@@ -249,7 +267,7 @@ void TransactionBase::fillFromBytesType2( bytesConstRef _rlpData, CheckTransacti
             BOOST_THROW_EXCEPTION(
                 InvalidTransactionFormat() << errinfo_comment( "transaction RLP must be a list" ) );
 
-        m_chainId = rlp[0].toInt< u256 >();
+        m_chainId = rlp[0].toInt< u256 >().convert_to< uint64_t >();
         m_nonce = rlp[1].toInt< u256 >();
         m_maxPriorityFeePerGas = rlp[2].toInt< u256 >();
         m_maxFeePerGas = rlp[3].toInt< u256 >();
@@ -356,6 +374,12 @@ TransactionBase::TransactionBase( bytesConstRef _rlpData, CheckTransaction _chec
         } else {
             fillFromBytesLegacy( _rlpData, _checkSig, _allowInvalid );
         }
+#ifdef BITE
+        // check if a txn is a BITE txn here
+        // bad formatted txns cannot make it to the block
+        // therefore no need to check it anywhere else
+        checkIfBITETxnAndSet( m_receiveAddress );
+#endif
     } catch ( std::exception& e ) {
         m_type = Type::Invalid;
         RLPStream s;
@@ -412,7 +436,7 @@ SignatureStruct const& TransactionBase::signature() const {
 }
 
 void TransactionBase::sign( Secret const& _priv ) {
-    assert( !isInvalid() );
+    CHECK_STATE2( !isInvalid(), "Transaction is invalid. Cannot sign transaction." );
 
     auto sig = dev::sign( _priv, sha3( WithoutSignature ) );
     SignatureStruct sigStruct = *( SignatureStruct const* ) &sig;
@@ -458,8 +482,11 @@ void TransactionBase::streamType1Transaction( RLPStream& _s, IncludeSignature _s
 
     _s << accessListToRLPs( m_accessList );
 
-    if ( _sig )
-        _s << ( u256 ) m_vrs->v << ( u256 ) m_vrs->r << ( u256 ) m_vrs->s;
+    if ( _sig ) {
+        _s << static_cast< u256 >( m_vrs->v );
+        _s << static_cast< u256 >( m_vrs->r );
+        _s << static_cast< u256 >( m_vrs->s );
+    }
 }
 
 void TransactionBase::streamType2Transaction( RLPStream& _s, IncludeSignature _sig ) const {
@@ -475,8 +502,11 @@ void TransactionBase::streamType2Transaction( RLPStream& _s, IncludeSignature _s
 
     _s << accessListToRLPs( m_accessList );
 
-    if ( _sig )
-        _s << ( u256 ) m_vrs->v << ( u256 ) m_vrs->r << ( u256 ) m_vrs->s;
+    if ( _sig ) {
+        _s << static_cast< u256 >( m_vrs->v );
+        _s << static_cast< u256 >( m_vrs->r );
+        _s << static_cast< u256 >( m_vrs->s );
+    }
 }
 
 void TransactionBase::streamRLP( RLPStream& _s, IncludeSignature _sig, bool _forEip155hash ) const {
@@ -514,25 +544,65 @@ void TransactionBase::checkLowS() const {
         BOOST_THROW_EXCEPTION( InvalidSignature() );
 }
 
-void TransactionBase::checkChainId( uint64_t chainId, bool disableChainIdCheck ) const {
-    if ( !disableChainIdCheck ) {
-        if ( !m_chainId.has_value() ) {
-            BOOST_THROW_EXCEPTION( InvalidTransactionFormat() );
-        }
+void TransactionBase::checkChainId( uint64_t chainId ) const {
+    if ( !m_chainId.has_value() ) {
+        BOOST_THROW_EXCEPTION( InvalidTransactionFormat() );
     }
-    if ( m_chainId.has_value() && m_chainId != chainId )
-        BOOST_THROW_EXCEPTION( InvalidSignature() );
+
+    if ( m_chainId != chainId )
+        BOOST_THROW_EXCEPTION( InvalidSignature() << errinfo_txHash( sha3() ) );
 }
 
 int64_t TransactionBase::baseGasRequired(
-    bool _contractCreation, bytesConstRef _data, EVMSchedule const& _es ) {
+    bool _contractCreation, bytesConstRef _data, EVMSchedule const& _es
+#ifdef BITE
+    ,
+    bool _isBITETxn
+#endif
+#ifdef BITE2
+    ,
+    std::optional< size_t > _bite2EncryptedArgsSize
+#endif
+) {
     int64_t g = _contractCreation ? _es.txCreateGas : _es.txGas;
+
+    // charge the cost of BITE transaction
+#ifdef BITE
+    if ( _isBITETxn ) {
+        if ( g > std::numeric_limits< int64_t >::max() - _es.BITETxnCost )
+            BOOST_THROW_EXCEPTION(
+                InvalidTransactionFormat() << errinfo_comment( "Gas calculation overflow" ) );
+        g += _es.BITETxnCost;
+    }
+#endif
+
+#ifdef BITE2
+    // BITE2 transaction - charge for every encrypted payload
+    if ( _bite2EncryptedArgsSize.has_value() ) {
+        // Check for multiplication overflow
+        if ( _bite2EncryptedArgsSize.value() > 0 &&
+             _es.BITETxnCost >
+                 std::numeric_limits< int64_t >::max() / _bite2EncryptedArgsSize.value() )
+            BOOST_THROW_EXCEPTION(
+                InvalidTransactionFormat() << errinfo_comment( "Gas calculation overflow" ) );
+        int64_t bite2Cost = _bite2EncryptedArgsSize.value() * _es.BITETxnCost;
+        if ( g > std::numeric_limits< int64_t >::max() - bite2Cost )
+            BOOST_THROW_EXCEPTION(
+                InvalidTransactionFormat() << errinfo_comment( "Gas calculation overflow" ) );
+        g += bite2Cost;
+    }
+#endif
 
     // Calculate the cost of input data.
     // No risk of overflow by using int64 until txDataNonZeroGas is quite small
     // (the value not in billions).
-    for ( auto i : _data )
-        g += i ? _es.txDataNonZeroGas : _es.txDataZeroGas;
+    for ( auto i : _data ) {
+        int64_t dataCost = i ? _es.txDataNonZeroGas : _es.txDataZeroGas;
+        if ( g > std::numeric_limits< int64_t >::max() - dataCost )
+            BOOST_THROW_EXCEPTION(
+                InvalidTransactionFormat() << errinfo_comment( "Gas calculation overflow" ) );
+        g += dataCost;
+    }
     return g;
 }
 
@@ -545,7 +615,8 @@ h256 TransactionBase::sha3( IncludeSignature _sig ) const {
     dev::bytes input;
     if ( !isInvalid() ) {
         RLPStream s;
-        streamRLP( s, _sig, !isInvalid() && isReplayProtected() && _sig == WithoutSignature );
+
+        streamRLP( s, _sig, isReplayProtected() && _sig == WithoutSignature );
 
         input = s.out();
         if ( m_txType != TransactionType::Legacy )
@@ -562,7 +633,7 @@ h256 TransactionBase::sha3( IncludeSignature _sig ) const {
 }
 
 u256 TransactionBase::gasPrice() const {
-    assert( !isInvalid() );
+    CHECK_STATE2( !isInvalid(), "Transaction is invalid. Cannot get gas price." );
     return m_gasPrice;
 }
 
@@ -571,17 +642,23 @@ u256 TransactionBase::gas() const {
      * instead the logic has been moved to the gas() function of TransactionBase
      * this has been done in order to address the problem of switching "virtual" on/off
      */
-    assert( !isInvalid() );
+    CHECK_STATE2( !isInvalid(), "Transaction is invalid. Cannot get gas." );
+#ifdef FAIR
+    return m_gas;
+#else
     if ( getExternalGas() != 0 ) {
         return getExternalGas();
     } else {
         return m_gas;
     }
+#endif
 }
 
+#ifndef FAIR
 u256 TransactionBase::nonPowGas() const {
     return m_gas;
 }
+#endif
 
 bytesConstRef dev::eth::bytesRefFromTransactionRlp( const RLP& _rlp ) {
     if ( _rlp.isList() )
@@ -589,3 +666,99 @@ bytesConstRef dev::eth::bytesRefFromTransactionRlp( const RLP& _rlp ) {
     else
         return _rlp.payload();
 }
+
+#ifdef BITE
+bytes const& TransactionBase::decryptedData() const {
+    if ( !m_decryptedData )
+        return data();
+    return *m_decryptedData;
+}
+
+void TransactionBase::checkIfBITETxnAndSet( const Address& _to ) {
+    m_isBITETxn = _to == BITE_ADDRESS;
+}
+
+Address TransactionBase::decryptedTo() const {
+    if ( !m_decryptedTo )
+        return to();
+    return *m_decryptedTo;
+}
+
+void TransactionBase::checkAndValidateBITETransaction( uint64_t _currentEpochId ) const {
+    if ( !isBite() )
+        return;
+
+    RLP rlpEncodedBITETxn;
+    try {
+        try {
+            rlpEncodedBITETxn = RLP( m_data );
+        } catch ( ... ) {
+            BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment( std::string(
+                                       "BITE transaction's data must be RLP encoded" ) ) );
+        }
+
+        // RLP structure: [epochId1, encryptedBITEData]
+        // encryptedBITEData may optionally have 1 or 2 encrypted AES keys assosiated with it
+
+        if ( !rlpEncodedBITETxn.isList() )
+            BOOST_THROW_EXCEPTION(
+                InvalidBITETransaction() << errinfo_comment(
+                    std::string( "BITE transaction's data is invalid: RLP must be a list" ) ) );
+
+        if ( rlpEncodedBITETxn.itemCount() != 2 )
+            BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment(
+                                       std::string( "BITE transaction's data is invalid: RLP list "
+                                                    "should have exactly 2 elements, got: " ) +
+                                       std::to_string( rlpEncodedBITETxn.itemCount() ) ) );
+
+        // read encrypted data
+        dev::bytes encryptedBITEData = rlpEncodedBITETxn[1].toBytes();
+        if ( encryptedBITEData.size() < BITE_CIPHERTEXT_MIN_LEN )
+            BOOST_THROW_EXCEPTION(
+                BITETransactionTooShort() << errinfo_comment(
+                    std::string( "BITE transaction's data size must be at least " ) +
+                    std::to_string( BITE_CIPHERTEXT_MIN_LEN ) + std::string( ", got " ) +
+                    std::to_string( encryptedBITEData.size() ) ) );
+
+        // read epochId
+        if ( !rlpEncodedBITETxn[0].isInt() )
+            BOOST_THROW_EXCEPTION(
+                InvalidBITETransaction() << errinfo_comment(
+                    std::string( "BITE transaction's data is invalid: epochId must be an int" ) ) );
+        uint64_t epochIdCandidate = rlpEncodedBITETxn[0].toInt< uint64_t >();
+        // if a txn was sent before rotation it may have previous epochId: currentEpochId - 1
+        if ( _currentEpochId != epochIdCandidate && _currentEpochId != epochIdCandidate + 1 )
+            BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment(
+                                       std::string( "BITE transaction's data is invalid: no "
+                                                    "payload found with matching epochId " ) +
+                                       std::to_string( _currentEpochId ) ) );
+
+        try {
+            // check that ciphertext is valid
+            libBLS::Ciphertext ciphertext = libBLS::Ciphertext::fromBytes( encryptedBITEData );
+            // if currentEpochId = epochIdCandidate + 1, then ciphertext must have
+            // 2 encrypted AES keys associated with it
+            if ( epochIdCandidate != _currentEpochId && ciphertext.getKeys().size() != 2 )
+                BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment(
+                                           std::string( "BITE transaction's data is invalid: no "
+                                                        "payload found with matching epochId " ) +
+                                           std::to_string( _currentEpochId ) ) );
+            // validate encrypted AES keys
+            for ( const auto& cipheredKey : ciphertext.getKeys() )
+                libBLS::ThresholdEncryption::validateEncryption( cipheredKey );
+        } catch ( libBLS::ThresholdUtils::IncorrectInput& ex ) {
+            BOOST_THROW_EXCEPTION(
+                InvalidBITETransaction() << errinfo_comment(
+                    std::string( "BITE transaction's data is invalid: " ) + ex.what() ) );
+        } catch ( libBLS::ThresholdUtils::IsNotWellFormed& ex ) {
+            BOOST_THROW_EXCEPTION(
+                InvalidBITETransaction() << errinfo_comment(
+                    std::string( "BITE transaction's data is invalid: " ) + ex.what() ) );
+        }
+    } catch ( const Exception& _e ) {
+        BOOST_LOG( m_loggerDebug )
+            << std::string( "invalid BITE data format: " ) << std::string( _e.what() );
+        throw;
+    }
+}
+#endif

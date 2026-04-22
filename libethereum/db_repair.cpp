@@ -57,8 +57,8 @@ void dump_blocks_and_extras_db( const BlockChain& _bc, size_t _startBlock ) {
 }
 
 void dump_blocks_and_extras_db( boost::filesystem::path const& _path, size_t _startBlock ) {
-    ChainParams dummy_cp;
-    dummy_cp.sealEngineName = NoProof::name();
+    std::shared_ptr< ChainParams > dummy_cp;
+    dummy_cp->setSealEngineName( NoProof::name() );
     BlockChain bc( dummy_cp, _path, false, WithExisting::Trust );
     dump_blocks_and_extras_db( bc, _startBlock );
 }

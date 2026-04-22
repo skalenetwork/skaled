@@ -7,7 +7,7 @@ namespace db {
 
 using namespace batched_io;
 
-const uint64_t MAX_HISTORIC_STATE_LRU_CACHE_ENTRIES = 1024;
+constexpr uint64_t MAX_HISTORIC_STATE_LRU_CACHE_ENTRIES = 1024;
 
 RotatingHistoricState::RotatingHistoricState(
     std::shared_ptr< BatchedRotatingHistoricDbIO > ioBackend_ )

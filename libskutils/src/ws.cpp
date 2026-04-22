@@ -1977,9 +1977,9 @@ static void my_event_ev_timeout_cb( evutil_socket_t sock_fd, short events, void*
 #if ( defined LWS_WITH_LIBUV )
 struct my_uv_counter_struct {
     server_api& api_;
-    volatile size_t cur_ = 0;
-    volatile size_t lim_ = 65535;
-    volatile bool stop_loop_ = false;
+    size_t cur_ = 0;
+    size_t lim_ = 65535;
+    bool stop_loop_ = false;
     my_uv_counter_struct( server_api& api ) : api_( api ) {}
 };  /// struct my_uv_counter_struct
 
@@ -2854,7 +2854,10 @@ server::server( basic_network_settings* pBNS )
         onLogMessage( eWSLMT, strMessage );
     };
 }
-server::~server() {}
+server::~server() {
+    close();
+}
+
 nlohmann::json server::toJSON() const {
     nlohmann::json jo = nlohmann::json::object();
     jo["type"] = "server";
@@ -2967,7 +2970,7 @@ bool server::onPeerRegister( peer_ptr_t pPeer ) {
     try {
         pPeer->opened_ = true;
         // hdl_t hdl = pPeer->hdl();
-        pPeer->ref_retain();  // mormal, typically first/last ref
+        pPeer->ref_retain();  // normal, typically first/last ref
         if ( onPeerRegister_ )
             onPeerRegister_( pPeer );
         pPeer->onPeerRegister();

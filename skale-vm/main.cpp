@@ -52,7 +52,7 @@ unsigned const c_lineWidth = 160;
 
 int64_t maxBlockGasLimit() {
     static int64_t limit =
-        ChainParams( genesisInfo( Network::MainNetwork ) ).maxGasLimit.convert_to< int64_t >();
+        ChainParams( genesisInfo( Network::MainNetwork ) ).getMaxGasLimit().convert_to< int64_t >();
     return limit;
 }
 
@@ -290,7 +290,7 @@ int main( int argc, char** argv ) {
     LastBlockHashes lastBlockHashes;
 
     EnvInfo const envInfo( blockHeader, lastBlockHashes, 0 /*_committedBlockTimestamp*/,
-        0 /* gasUsed */, chainParams.chainID );
+        0 /* gasUsed */, chainParams.getChainId() );
     EVMSchedule evmSchedule = chainParams.makeEvmSchedule( 0, envInfo.number() );
 
 
@@ -310,7 +310,9 @@ int main( int argc, char** argv ) {
         // data.
         t = Transaction( value, gasPrice, gas, data, 0 );
 
+#ifndef FAIR
     t.ignoreExternalGas();  // for tests
+#endif
 
     state.addBalance( sender, value );
 

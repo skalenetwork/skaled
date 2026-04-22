@@ -123,7 +123,7 @@ The `skale_getDBUsage` method is available via the `skaled` JSON-RPC API. It ret
     "da_proof.db_disk_usage": 5746940,
     "da_sigshare.db_disk_usage": 7168259,
     "incoming_msg.db_disk_usage": 123,
-    "interna_info.db_disk_usage": 166,
+    "internal_info.db_disk_usage": 166,
     "outgoing_msg.db_disk_usage": 1639766,
     "price.db_disk_usage": 1007933,
     "proposal_hash.db_disk_usage": 6750622,

@@ -26,6 +26,7 @@
 #include <libethereum/SchainPatch.h>
 
 #include <algorithm>
+#include <stdexcept>
 #include <utility>
 
 #include "BlockChain.h"
@@ -92,9 +93,11 @@ std::pair< bool, ExecutionResult > ClientBase::estimateGasStep( int64_t _gas, Bl
         t = Transaction( _value, _gasPrice, _gas, _data, nonce );
     t.forceSender( _from );
     t.forceChainId( chainId() );
+#ifndef FAIR
     t.ignoreExternalGas();
+#endif
     EnvInfo const env( _pendingBlock.info(), bc().lastBlockHashes(),
-        _pendingBlock.previousInfo().timestamp(), 0, _gas, bc().chainParams().chainID );
+        _pendingBlock.previousInfo().timestamp(), 0, _gas, bc().chainParams().getChainId() );
     // Make a copy of the state, it will be deleted after this step
     State tempState = _latestBlock.mutableState();
     tempState.addBalance( _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
@@ -126,7 +129,6 @@ std::pair< u256, ExecutionResult > ClientBase::estimateGas( Address const& _from
                     bc().info().timestamp(), bc().number() ) );
         else
             lowerBound = Transaction::baseGasRequired( !_dest, &_data, EVMSchedule() );
-
         Block latest = latestBlock();
         Block pending = preSeal();
 
@@ -198,19 +200,12 @@ LocalisedLogEntries ClientBase::logs( LogFilter const& _f ) const {
     unsigned begin = min( bc().number() + 1, ( unsigned ) _f.latest() );
     unsigned end = min( bc().number(), min( begin, ( unsigned ) _f.earliest() ) );
 
-    if ( begin >= end && begin - end > ( uint64_t ) bc().chainParams().getLogsBlocksLimit )
+    if ( begin >= end && begin - end > ( uint64_t ) bc().chainParams().getLogsBlocksLimit() )
         BOOST_THROW_EXCEPTION( TooBigResponse() );
 
-    // Handle pending transactions differently as they're not on the block chain.
+    bool addPending = false;
     if ( begin > bc().number() ) {
-        Block temp = postSeal();
-        for ( unsigned i = 0; i < temp.pending().size(); ++i ) {
-            // Might have a transaction that contains a matching log.
-            TransactionReceipt const& tr = temp.receipt( i );
-            LogEntries le = _f.matches( tr );
-            for ( unsigned j = 0; j < le.size(); ++j )
-                ret.insert( ret.begin(), LocalisedLogEntry( le[j] ) );
-        }
+        addPending = true;
         begin = bc().number();
     }
 
@@ -225,56 +220,85 @@ LocalisedLogEntries ClientBase::logs( LogFilter const& _f ) const {
         // if it is a range filter, we want to get all logs from all blocks in given range
         for ( unsigned i = end; i <= begin; i++ )
             matchingBlocks.insert( i );
-
     for ( auto n : matchingBlocks )
-        prependLogsFromBlock( _f, bc().numberHash( n ), BlockPolarity::Live, ret );
+        appendLogsFromBlock( _f, bc().numberHash( n ), BlockPolarity::Live, ret );
 
-    reverse( ret.begin(), ret.end() );
+    if ( addPending ) {
+        // Handle pending transactions differently as they're not on the block chain.
+        Block temp = postSeal();
+        for ( unsigned i = 0; i < temp.pending().size(); ++i ) {
+            // Might have a transaction that contains a matching log.
+            TransactionReceipt const& tr = temp.receipt( i );
+            LogEntries le = _f.matches( tr );
+            for ( unsigned j = 0; j < le.size(); ++j )
+                ret.emplace_back( LocalisedLogEntry( le[j] ) );
+        }
+    }
+
     return ret;
 }
 
-void ClientBase::prependLogsFromBlock( LogFilter const& _f, h256 const& _blockHash,
+void ClientBase::appendLogsFromBlock( LogFilter const& _f, h256 const& _blockHash,
     BlockPolarity _polarity, LocalisedLogEntries& io_logs ) const {
-    auto receipts = bc().receipts( _blockHash ).receipts;
+    auto receiptsBundle = bc().receipts( _blockHash );
+    const auto& receipts = receiptsBundle.receipts;
+    const auto& hashes = bc().transactionHashes( _blockHash );
+    auto blockNumber = ( BlockNumber ) bc().number( _blockHash );
+
     unsigned logIndex = 0;
+    const int64_t logCountLimit = bc().chainParams().getResponseLogCountLimit();
+    const bool limitEnabled = logCountLimit != -1;
+
     for ( size_t i = 0; i < receipts.size(); i++ ) {
-        TransactionReceipt receipt = receipts[i];
-        auto th = transaction( _blockHash, i ).sha3();
+        const TransactionReceipt& receipt = receipts[i];
+        const h256& th = hashes[i];
+
         if ( _f.isRangeFilter() ) {
             for ( const auto& e : receipt.log() ) {
-                io_logs.insert( io_logs.begin(),
-                    LocalisedLogEntry( e, _blockHash, ( BlockNumber ) bc().number( _blockHash ), th,
-                        i, logIndex++, _polarity ) );
+                if ( limitEnabled && io_logs.size() + 1 > static_cast< size_t >( logCountLimit ) )
+                    BOOST_THROW_EXCEPTION( LogCountLimitExceeded() );
+
+                io_logs.emplace_back(
+                    LocalisedLogEntry( e, _blockHash, blockNumber, th, i, logIndex++, _polarity ) );
             }
             continue;
         }
 
-        if ( _f.matches( receipt.bloom() ) )
+        if ( _f.matches( receipt.bloom() ) ) {
+            const auto& filterAddresses = _f.getAddresses();
+            const auto& filterTopicsArray = _f.getTopics();
+
             for ( const auto& e : receipt.log() ) {
-                auto addresses = _f.getAddresses();
-                if ( addresses.empty() || std::find( addresses.begin(), addresses.end(),
-                                              e.address ) != addresses.end() ) {
-                    bool isGood = true;
-                    for ( unsigned j = 0; j < 4; ++j ) {
-                        auto topics = _f.getTopics()[j];
-                        if ( !topics.empty() &&
-                             ( e.topics.size() < j || ( std::find( topics.begin(), topics.end(),
-                                                            e.topics[j] ) == topics.end() ) ) ) {
-                            isGood = false;
-                        }
-                    }
-                    if ( isGood )
-                        io_logs.insert(
-                            io_logs.begin(), LocalisedLogEntry( e, _blockHash,
-                                                 ( BlockNumber ) bc().number( _blockHash ), th, i,
-                                                 logIndex++, _polarity ) );
-                    else
-                        ++logIndex;
-                } else
+                if ( !filterAddresses.empty() &&
+                     std::find( filterAddresses.begin(), filterAddresses.end(), e.address ) ==
+                         filterAddresses.end() ) {
                     ++logIndex;
+                    continue;
+                }
+
+                bool isGood = true;
+                for ( unsigned j = 0; j < 4 && isGood; ++j ) {
+                    const auto& topics = filterTopicsArray[j];
+                    if ( !topics.empty() &&
+                         ( e.topics.size() <= j || std::find( topics.begin(), topics.end(),
+                                                       e.topics[j] ) == topics.end() ) ) {
+                        isGood = false;
+                    }
+                }
+
+                if ( isGood ) {
+                    if ( limitEnabled && io_logs.size() >= static_cast< size_t >( logCountLimit ) )
+                        BOOST_THROW_EXCEPTION( LogCountLimitExceeded() );
+
+                    io_logs.emplace_back( LocalisedLogEntry(
+                        e, _blockHash, blockNumber, th, i, logIndex++, _polarity ) );
+                } else {
+                    ++logIndex;
+                }
             }
-        else
+        } else {
             logIndex += receipt.log().size();
+        }
     }
 }
 
@@ -284,7 +308,7 @@ unsigned ClientBase::installWatch(
     {
         Guard l( x_filtersWatches );
         if ( !m_filters.count( h ) ) {
-            LOG( m_loggerWatch ) << "FFF" << _f << h;
+            BOOST_LOG( m_loggerWatch ) << "FFF" << _f << h;
             m_filters.insert( make_pair( h, _f ) );
         }
     }
@@ -298,7 +322,7 @@ unsigned ClientBase::installWatch(
         Guard l( x_filtersWatches );
         ret = m_watches.size() ? m_watches.rbegin()->first + 1 : 0;
         m_watches[ret] = ClientWatch( isWS, _h, _r, fnOnNewChanges, ret );
-        LOG( m_loggerWatch ) << "+++" << ret << _h;
+        BOOST_LOG( m_loggerWatch ) << "+++" << ret << _h;
     }
 #if INITIAL_STATE_AS_CHANGES
     auto ch = logs( ret );
@@ -313,7 +337,7 @@ unsigned ClientBase::installWatch(
 }
 
 bool ClientBase::uninstallWatch( unsigned _i ) {
-    LOG( m_loggerWatch ) << "XXX" << _i;
+    BOOST_LOG( m_loggerWatch ) << "Uninstalling watch " << _i;
 
     Guard l( x_filtersWatches );
 
@@ -326,7 +350,7 @@ bool ClientBase::uninstallWatch( unsigned _i ) {
     auto fit = m_filters.find( id );
     if ( fit != m_filters.end() )
         if ( !--fit->second.refCount ) {
-            LOG( m_loggerWatch ) << "*X*" << fit->first << ":" << fit->second.filter;
+            BOOST_LOG( m_loggerWatch ) << "*X*" << fit->first << ":" << fit->second.filter;
             m_filters.erase( fit );
         }
     return true;
@@ -336,9 +360,9 @@ LocalisedLogEntries ClientBase::checkWatch( unsigned _watchId ) {
     Guard l( x_filtersWatches );
     LocalisedLogEntries ret;
 
-    //	LOG(m_loggerWatch) << "checkWatch" << _watchId;
+    //	BOOST_LOG(m_loggerWatch) << "checkWatch" << _watchId;
     auto& w = m_watches.at( _watchId );
-    //	LOG(m_loggerWatch) << "lastPoll updated to " <<
+    //	BOOST_LOG(m_loggerWatch) << "lastPoll updated to " <<
     // chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
     w.swap_changes( ret );
     if ( w.lastPoll != chrono::system_clock::time_point::max() )
@@ -399,32 +423,59 @@ TransactionReceipt ClientBase::transactionReceipt( h256 const& _transactionHash 
 
 LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(
     h256 const& _transactionHash ) const {
-    std::pair< h256, unsigned > tl = bc().transactionLocation( _transactionHash );
-    auto blockTimestamp = blockInfo( numberFromHash( tl.first ) - 1 ).timestamp();
-    // allow invalid
-    Transaction t = Transaction( bc().transaction( tl.first, tl.second ), CheckTransaction::Cheap,
-        true, EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
+    auto [blockHash, transactionIdx] = bc().transactionLocation( _transactionHash );
+    dev::eth::BlockNumber blockNumber{ numberFromHash( blockHash ) };
+
+    auto blockTimestamp = blockInfo( blockNumber - 1 ).timestamp();
+
+    Transaction t = Transaction( bc().transaction( blockHash, transactionIdx ),  // rlp
+        CheckTransaction::Cheap,                                                 // Check sig
+        true,                                                                    // allow invalid
+        EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
         InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp ) );
-    TransactionReceipt tr = bc().transactionReceipt( tl.first, tl.second );
-    u256 gasUsed = tr.cumulativeGasUsed();
-    if ( tl.second > 0 )
-        gasUsed -= bc().transactionReceipt( tl.first, tl.second - 1 ).cumulativeGasUsed();
-    //
+
+    TransactionReceipt receipt = bc().transactionReceipt( blockHash, transactionIdx );
+
+    u256 gasUsed = receipt.cumulativeGasUsed();
+    if ( transactionIdx > 0 ) {
+        gasUsed -= bc().transactionReceipt( blockHash, transactionIdx - 1 ).cumulativeGasUsed();
+    }
+
     // The "contractAddress" field must be null for all types of transactions but contract
     // deployment ones. The contract deployment transaction is special because it's the only type of
     // transaction with "to" filed set to null.
-    //
     dev::Address contractAddress;
     if ( !t.isInvalid() && t.to() == dev::Address( 0 ) ) {
         // if this transaction is contract deployment
         contractAddress = toAddress( t.from(), t.nonce() );
     }
-    //
-    //
-    return LocalisedTransactionReceipt( tr, t.sha3(), tl.first, numberFromHash( tl.first ),
-        tl.second, t.isInvalid() ? dev::Address( 0 ) : t.from(),
-        t.isInvalid() ? dev::Address( 0 ) : t.to(), gasUsed, contractAddress, int( t.txType() ),
-        t.isInvalid() ? 0 : t.gasPrice() );
+
+    // Set transaction's 'to' address
+    // If BITE -> get decrypted 'to'
+    // Else    -> get 'to'
+    dev::Address to;
+    if ( !t.isInvalid() ) {
+#ifdef BITE
+        if ( t.isBite() ) {
+            DecryptedTransactionData decryptedData = decryptedTransactionData( _transactionHash );
+            to = decryptedData.to();
+        } else
+#endif
+
+            to = t.to();
+
+    } else {
+        to = dev::Address( 0 );
+    }
+
+    // Build all other needed fields
+    dev::h256 txHash{ t.sha3() };
+    dev::Address from{ t.isInvalid() ? dev::Address( 0 ) : t.from() };
+    int txType{ t.txType() };
+    dev::u256 effectiveGasPrice{ t.isInvalid() ? 0 : t.gasPrice() };
+
+    return LocalisedTransactionReceipt( receipt, txHash, blockHash, blockNumber, transactionIdx,
+        from, to, gasUsed, contractAddress, txType, effectiveGasPrice );
 }
 
 pair< h256, unsigned > ClientBase::transactionLocation( h256 const& _transactionHash ) const {
@@ -448,6 +499,12 @@ Transactions ClientBase::transactions( h256 _blockHash ) const {
 TransactionHashes ClientBase::transactionHashes( h256 _blockHash ) const {
     return bc().transactionHashes( _blockHash );
 }
+
+#ifdef BITE
+DecryptedTransactionData ClientBase::decryptedTransactionData( h256 _transactionHash ) const {
+    return bc().decryptedTransactionData( _transactionHash );
+}
+#endif
 
 BlockHeader ClientBase::uncle( h256 _blockHash, unsigned _i ) const {
     auto bl = bc().block( _blockHash );
@@ -572,7 +629,7 @@ Block ClientBase::latestBlock() const {
 }
 
 uint64_t ClientBase::chainId() const {
-    return bc().chainParams().chainID;
+    return bc().chainParams().getChainId();
 }
 
 

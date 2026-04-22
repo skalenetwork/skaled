@@ -317,7 +317,7 @@ void AlethStandardTrace::recordInstructionIsExecuted( uint64_t _pc, Instruction 
     STATE_CHECK( !m_isFinalized )
 
     // remove const qualifier since we need to set tracing values in AlethExtVM
-    AlethExtVM& ext = ( AlethExtVM& ) ( *_voidExt );
+    AlethExtVM& ext = dynamic_cast< AlethExtVM& >( *const_cast< ExtVMFace* >( _voidExt ) );
     auto vm = dynamic_cast< LegacyVM const* >( _vm );
     if ( !vm ) {
         BOOST_THROW_EXCEPTION( std::runtime_error( std::string( "Null _vm in" ) + __FUNCTION__ ) );

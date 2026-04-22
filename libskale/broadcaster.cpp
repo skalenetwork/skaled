@@ -37,13 +37,12 @@
 Broadcaster::~Broadcaster() {}
 
 HttpBroadcaster::HttpBroadcaster( dev::eth::Client& _client ) : m_client( _client ) {
-    const dev::eth::ChainParams& ch = _client.chainParams();
-    initClients( ch.sChain, ch.nodeInfo );
+    initClients( m_client.chainParams() );
 }
 
-void HttpBroadcaster::initClients( dev::eth::SChain sChain, dev::eth::NodeInfo nodeInfo ) {
-    for ( const auto& node : sChain.nodes ) {
-        if ( nodeInfo.id == node.id ) {
+void HttpBroadcaster::initClients( const dev::eth::ChainParams& _chainParams ) {
+    for ( const auto& node : _chainParams.getSchainNodes() ) {
+        if ( _chainParams.getSelfNodeId() == node.id ) {
             continue;
         }
         auto c = new jsonrpc::HttpClient( getHttpUrl( node ) );
@@ -56,7 +55,7 @@ void HttpBroadcaster::initClients( dev::eth::SChain sChain, dev::eth::NodeInfo n
 std::string HttpBroadcaster::getHttpUrl( const dev::eth::sChainNode& node ) {
     std::string url =
         "http://" + node.ip + ":" + ( node.port + 3 ).str();  // HACK +0 +1 +2 are used by consensus
-    LOG( m_loggerInfo ) << url;                               // todo
+    BOOST_LOG( m_loggerInfo ) << url;                         // todo
     return url;
 }
 
@@ -82,12 +81,12 @@ ZmqBroadcaster::ZmqBroadcaster( dev::eth::Client& _client, SkaleHost& _skaleHost
 
 std::string ZmqBroadcaster::getZmqUrl( const dev::eth::sChainNode& node ) const {
     std::string url = "tcp://" + node.ip + ":" + ( node.port + 5 ).str();  // HACK +5
-    LOG( m_loggerInfo ) << url;
+    BOOST_LOG( m_loggerInfo ) << url;
     return url;
 }
 
 void* ZmqBroadcaster::server_socket() const {
-    if ( !m_zmq_server_socket ) {
+    if ( !m_zmq_server_socket ) [[unlikely]] {
         m_zmq_server_socket = zmq_socket( m_zmq_context, ZMQ_PUB );
 
         int val = 15000;
@@ -104,8 +103,8 @@ void* ZmqBroadcaster::server_socket() const {
         const dev::eth::ChainParams& ch = m_client.chainParams();
 
         // connect server to clients
-        for ( const auto& node : ch.sChain.nodes ) {
-            if ( node.id == ch.nodeInfo.id )
+        for ( const auto& node : ch.getSchainNodes() ) {
+            if ( node.id == ch.getSelfNodeId() )
                 continue;
             int res = zmq_connect( m_zmq_server_socket, getZmqUrl( node ).c_str() );
             if ( res != 0 ) {
@@ -118,7 +117,7 @@ void* ZmqBroadcaster::server_socket() const {
 }
 
 void* ZmqBroadcaster::client_socket() const {
-    if ( !m_zmq_client_socket ) {
+    if ( !m_zmq_client_socket ) [[unlikely]] {
         m_zmq_client_socket = zmq_socket( m_zmq_context, ZMQ_SUB );
 
         int value = 1;
@@ -138,7 +137,7 @@ void* ZmqBroadcaster::client_socket() const {
 
         // start listen as client
         std::string listen_addr =
-            "tcp://" + ch.nodeInfo.ip + ":" + std::to_string( ch.nodeInfo.port + 5 );
+            "tcp://" + ch.getSelfNodeIp() + ":" + std::to_string( ch.getSelfNodePort() + 5 );
         int res = zmq_bind( m_zmq_client_socket, listen_addr.c_str() );
         if ( res ) {
             throw StartupException(
@@ -192,7 +191,7 @@ void ZmqBroadcaster::startService() {
                 }
 
                 if ( res < 0 ) {
-                    LOG( m_loggerWarning )
+                    BOOST_LOG( m_loggerWarning )
                         << "Received bad message on ZmqBroadcaster port. errno = " << errno;
                     continue;
                 }
@@ -205,17 +204,21 @@ void ZmqBroadcaster::startService() {
                 try {
                     m_skaleHost.receiveTransaction( str );
                 } catch ( const std::exception& ex ) {
-                    LOG( m_loggerDebug )
+                    BOOST_LOG( m_loggerDebug )
                         << "Received bad transaction through broadcast: " << ex.what();
                 }
 
             } catch ( const std::exception& ex ) {
-                LOG( m_loggerError ) << "CRITICAL " << ex.what() << " (restarting ZmqBroadcaster)";
-                LOG( m_loggerError ) << "\n" << skutils::signal::generate_stack_trace() << "\n";
+                BOOST_LOG( m_loggerError )
+                    << "CRITICAL " << ex.what() << " (restarting ZmqBroadcaster)";
+                BOOST_LOG( m_loggerError ) << "\n"
+                                           << skutils::signal::generate_stack_trace() << "\n";
                 sleep( 2 );
             } catch ( ... ) {
-                LOG( m_loggerError ) << "CRITICAL unknown exception (restarting ZmqBroadcaster)";
-                LOG( m_loggerError ) << "\n" << skutils::signal::generate_stack_trace() << "\n";
+                BOOST_LOG( m_loggerError )
+                    << "CRITICAL unknown exception (restarting ZmqBroadcaster)";
+                BOOST_LOG( m_loggerError ) << "\n"
+                                           << skutils::signal::generate_stack_trace() << "\n";
                 sleep( 2 );
             }
 
@@ -240,16 +243,27 @@ void ZmqBroadcaster::stopService() {
     m_thread.join();
 }
 
-
 void ZmqBroadcaster::initSocket() {
     server_socket();
 }
 
+#ifdef FAIR
+void ZmqBroadcaster::resetServerSocket() {
+    if ( m_zmq_server_socket ) {
+        int linger = 1;
+        zmq_setsockopt( m_zmq_server_socket, ZMQ_LINGER, &linger, sizeof( linger ) );
+        zmq_close( m_zmq_server_socket );
+        m_zmq_server_socket = nullptr;
+    }
+    initSocket();
+}
+#endif
 
 void ZmqBroadcaster::broadcast( const std::string& _rlp ) {
     int res = zmq_send( server_socket(), const_cast< char* >( _rlp.c_str() ), _rlp.size(), 0 );
     if ( res <= 0 ) {
-        LOG( m_loggerWarning ) << "Got error " << res << " in zmq_send: " << zmq_strerror( res );
+        BOOST_LOG( m_loggerWarning )
+            << "Got error " << res << " in zmq_send: " << zmq_strerror( res );
         throw std::runtime_error( "Zmq can't send data" );
     }
 }

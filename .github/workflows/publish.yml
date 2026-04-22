@@ -18,6 +18,12 @@ jobs:
     outputs:
       version_orig: ${{ steps.set-version.outputs.version_orig }}
       version_historic: ${{ steps.set-version.outputs.version_historic }}
+      version_fair: ${{ steps.set-version.outputs.version_fair }}
+      version_fair_historic: ${{ steps.set-version.outputs.version_fair_historic }}
+      version_bite: ${{ steps.set-version.outputs.version_bite }}
+      version_bite_historic: ${{ steps.set-version.outputs.version_bite_historic }}
+      version_bite2: ${{ steps.set-version.outputs.version_bite2 }}
+      version_bite2_historic: ${{ steps.set-version.outputs.version_bite2_historic }}
       release_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
       - name: Checkout repository
@@ -34,13 +40,20 @@ jobs:
           VERSION=$(bash ./scripts/calculate_version.sh $BRANCH_NAME $VERSION)
           echo "Calculated version: $VERSION"
 
-          ( test $BRANCH = "stable" && export PRERELEASE=false ) || export PRERELEASE=true
+          ( test "$BRANCH_NAME" = "stable" && export PRERELEASE=false ) || export PRERELEASE=true
           echo "VERSION_ORIG=$VERSION" >> $GITHUB_ENV
           echo "VERSION_HISTORIC=$VERSION-historic" >> $GITHUB_ENV
+          echo "VERSION_FAIR=$VERSION-fair" >> $GITHUB_ENV
           echo "PRERELEASE=$PRERELEASE" >> $GITHUB_ENV
 
           echo "::set-output name=version_orig::$VERSION"
           echo "::set-output name=version_historic::$VERSION-historic"
+          echo "::set-output name=version_fair::$VERSION-fair"
+          echo "::set-output name=version_fair_historic::$VERSION-fair-historic"
+          echo "::set-output name=version_bite::$VERSION-bite"
+          echo "::set-output name=version_bite_historic::$VERSION-bite-historic"
+          echo "::set-output name=version_bite2::$VERSION-bite2"
+          echo "::set-output name=version_bite2_historic::$VERSION-bite2-historic"
           
       - name: Create GitHub Release
         id: create_release
@@ -76,6 +89,78 @@ jobs:
       release_url: ${{ needs.configure.outputs.release_url }}
       use_plain_version: true
     secrets: inherit
+  
+  build-fair:
+    needs: configure
+    uses: ./.github/workflows/setup-build-publish.yml
+    with:
+      branch_name: ${{ github.ref_name }}
+      image_version: ${{ needs.configure.outputs.version_fair }}
+      build_type: "RelWithDebInfo"
+      node_type: fair
+      release_url: ${{ needs.configure.outputs.release_url }}
+      use_plain_version: true
+    secrets: inherit
+  
+  build-fair-historic:
+    needs: configure
+    uses: ./.github/workflows/setup-build-publish.yml
+    with:
+      branch_name: ${{ github.ref_name }}
+      image_version: ${{ needs.configure.outputs.version_fair_historic }}
+      build_type: "RelWithDebInfo"
+      node_type: fair-historic
+      release_url: ${{ needs.configure.outputs.release_url }}
+      use_plain_version: true
+    secrets: inherit
+  
+  build-bite:
+    needs: configure
+    uses: ./.github/workflows/setup-build-publish.yml
+    with:
+      branch_name: ${{ github.ref_name }}
+      image_version: ${{ needs.configure.outputs.version_bite }}
+      build_type: "RelWithDebInfo"
+      node_type: bite
+      release_url: ${{ needs.configure.outputs.release_url }}
+      use_plain_version: true
+    secrets: inherit
+  
+  build-bite-historic:
+    needs: configure
+    uses: ./.github/workflows/setup-build-publish.yml
+    with:
+      branch_name: ${{ github.ref_name }}
+      image_version: ${{ needs.configure.outputs.version_bite_historic }}
+      build_type: "RelWithDebInfo"
+      node_type: bite-historic
+      release_url: ${{ needs.configure.outputs.release_url }}
+      use_plain_version: true
+    secrets: inherit
+  
+  build-bite2:
+    needs: configure
+    uses: ./.github/workflows/setup-build-publish.yml
+    with:
+      branch_name: ${{ github.ref_name }}
+      image_version: ${{ needs.configure.outputs.version_bite2 }}
+      build_type: "RelWithDebInfo"
+      node_type: bite2
+      release_url: ${{ needs.configure.outputs.release_url }}
+      use_plain_version: true
+    secrets: inherit
+  
+  build-bite2-historic:
+    needs: configure
+    uses: ./.github/workflows/setup-build-publish.yml
+    with:
+      branch_name: ${{ github.ref_name }}
+      image_version: ${{ needs.configure.outputs.version_bite2_historic }}
+      build_type: "RelWithDebInfo"
+      node_type: bite2-historic
+      release_url: ${{ needs.configure.outputs.release_url }}
+      use_plain_version: true
+    secrets: inherit
 
   functional-tests:
     uses: ./.github/workflows/functional-tests.yml
@@ -91,4 +176,52 @@ jobs:
     needs: build-historic
     with:
       version: ${{ needs.build-historic.outputs.version }}
+    secrets: inherit
+  
+  functional-tests-fair:
+    uses: ./.github/workflows/functional-tests.yml
+    name: Functional testing for fair build
+    needs: build-fair
+    with:
+      version: ${{ needs.build-fair.outputs.version }}
+    secrets: inherit
+  
+  functional-tests-fair-historic:
+    uses: ./.github/workflows/functional-tests.yml
+    name: Functional testing for fair-historic build
+    needs: build-fair-historic
+    with:
+      version: ${{ needs.build-fair-historic.outputs.version }}
+    secrets: inherit
+  
+  functional-tests-bite:
+    uses: ./.github/workflows/functional-tests.yml
+    name: Functional testing for bite build
+    needs: build-bite
+    with:
+      version: ${{ needs.build-bite.outputs.version }}
+    secrets: inherit
+  
+  functional-tests-bite-historic:
+    uses: ./.github/workflows/functional-tests.yml
+    name: Functional testing for bite-historic build
+    needs: build-bite-historic
+    with:
+      version: ${{ needs.build-bite-historic.outputs.version }}
+    secrets: inherit
+  
+  functional-tests-bite2:
+    uses: ./.github/workflows/functional-tests.yml
+    name: Functional testing for bite2 build
+    needs: build-bite2
+    with:
+      version: ${{ needs.build-bite2.outputs.version }}
+    secrets: inherit
+  
+  functional-tests-bite2-historic:
+    uses: ./.github/workflows/functional-tests.yml
+    name: Functional testing for bite2-historic build
+    needs: build-bite2-historic
+    with:
+      version: ${{ needs.build-bite2-historic.outputs.version }}
     secrets: inherit

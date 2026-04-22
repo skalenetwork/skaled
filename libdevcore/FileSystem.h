@@ -34,6 +34,8 @@ namespace dev {
 void setDataDir( boost::filesystem::path const& _dir );
 /// @returns the path for user data.
 boost::filesystem::path getDataDir( std::string _prefix = "ethereum" );
+/// @returns true if user data directory is empty
+bool isDataDirEmpty( std::string _prefix = "ethereum" );
 /// @returns the default path for user data, ignoring the one set by `setDataDir`.
 boost::filesystem::path getDefaultDataDir( std::string _prefix = "ethereum" );
 /// Sets the ipc socket dir

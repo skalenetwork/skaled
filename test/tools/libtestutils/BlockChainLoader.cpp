@@ -37,9 +37,9 @@ BlockChainLoader::BlockChainLoader( Json::Value const& _json, eth::Network _seal
     bytes genesisBlock = fromHex( _json["genesisRLP"].asString() );
 
     Json::FastWriter a;
-    m_bc.reset( new BlockChain( ChainParams( genesisInfo( _sealEngineNetwork ), genesisBlock,
-                                    jsonToAccountMap( a.write( _json["pre"] ) ) ),
-        m_dir.path(), false, WithExisting::Kill ) );
+    m_chainParams.reset( new ChainParams( genesisInfo( _sealEngineNetwork ), genesisBlock,
+                                          jsonToAccountMap( a.write( _json["pre"] ) ) ) );
+    m_bc.reset( new BlockChain( m_chainParams, m_dir.path(), false, WithExisting::Kill ) );
 
     // load pre state
     m_block = m_bc->genesisBlock( m_dir.path(), m_bc->genesisHash() );

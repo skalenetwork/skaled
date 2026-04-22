@@ -30,10 +30,12 @@
 #include <libethereum/LogFilter.h>
 
 #include <stdexcept>
+#ifndef RAPIDJSON_ASSERT
 #define RAPIDJSON_ASSERT( x )                                       \
     if ( !( x ) ) {                                                 \
         throw std::out_of_range( #x " failed with provided JSON" ); \
     }
+#endif
 #define RAPIDJSON_ASSERT_THROWS
 #include <rapidjson/document.h>
 
@@ -85,7 +87,9 @@ std::string getBlockFromEIP1898Json( const rapidjson::Value& jo );
 
 TransactionSkeleton toTransactionSkeleton( Json::Value const& _json );
 TransactionSkeleton rapidJsonToTransactionSkeleton( rapidjson::Value const& _json );
+LogFilter rapidJsonToLogFilter( rapidjson::Value const& _json );
 LogFilter toLogFilter( Json::Value const& _json );
+Json::Value rapidDocumentToJson( const rapidjson::Document& doc, const char* errorContext );
 // LogFilter toLogFilter( Json::Value const& _json,
 //    Interface const& _client );  // commented to avoid warning. Uncomment once in use @ PoC-7.
 

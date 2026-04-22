@@ -58,7 +58,13 @@ public:
 
     bytes executeTest( bool _isFilling );
     int exportTest();
-    static int compareStates( skale::State const& _stateExpect, State const& _statePost,
+#ifdef FAIR
+    static int compareStatesFAIR( skale::State const& _stateExpect, skale::State const& _statePost,
+        std::unordered_set<Address> const& owners,
+        eth::AccountMaskMap const _expectedStateOptions = eth::AccountMaskMap(),
+        WhenError _throw = WhenError::Throw );
+#endif
+    static int compareStates( skale::State const& _stateExpect, skale::State const& _statePost,
         eth::AccountMaskMap const _expectedStateOptions = eth::AccountMaskMap(),
         WhenError _throw = WhenError::Throw );
     bool checkGeneralTestSection( json_spirit::mObject const& _expects,

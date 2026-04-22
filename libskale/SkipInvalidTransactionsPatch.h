@@ -16,7 +16,7 @@ class Client;
 // What this patch does:
 // 1. "Invalid" transactions that came with winning block proposal from consensus
 // are skipped, and not included in block.
-// Their "validity is determined in Block::syncEveryone:
+// Their "validity" is determined in Block::syncEveryone:
 // a) Transactions should have gasPrice >= current block min gas price
 // b) State::execute should not throw (it causes WouldNotBeInBlock exception).
 //    Usually this exception is caused by Executive::verifyTransaction() failure.

@@ -96,7 +96,9 @@ string const c_allowFutureBlocks = "allowFutureBlocks";
 string const c_skaleConfig = "skaleConfig";
 string const c_stateRoot = "stateRoot";
 string const c_accountInitialFunds = "accountInitialFunds";
+
 string const c_externalGasDifficulty = "externalGasDifficulty";
+string const c_allowPreEIP155Txns = "allowPreEIP155Txns";
 
 void validateConfigJson( js::mObject const& _obj ) {
     requireJsonFields( _obj, "ChainParams::loadConfig",
@@ -163,7 +165,9 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "leveldbReopenIntervalMs", { { js::int_type }, JsonFieldPresence::Optional } },
             { "snapshotIntervalSec", { { js::int_type }, JsonFieldPresence::Optional } },
             { "rotateAfterBlock", { { js::int_type }, JsonFieldPresence::Optional } },
+
             { "wallets", { { js::obj_type }, JsonFieldPresence::Optional } },
+
             { "ecdsaKeyName", { { js::str_type }, JsonFieldPresence::Optional } },
             { "verifyImaMessagesViaLogsSearch",
                 { { js::bool_type }, JsonFieldPresence::Optional } },
@@ -223,13 +227,26 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "archiveMode", { { js::bool_type }, JsonFieldPresence::Optional } },
             { "syncFromCatchup", { { js::bool_type }, JsonFieldPresence::Optional } },
             { "testSignatures", { { js::bool_type }, JsonFieldPresence::Optional } },
-            { "wallets", { { js::obj_type }, JsonFieldPresence::Optional } },
             { "catchupTimeoutSec", { { js::int_type }, JsonFieldPresence::Optional } },
             { "syncNodeCatchupTimeoutSec", { { js::int_type }, JsonFieldPresence::Optional } },
             { "readJsonHeaderTimeoutSec", { { js::int_type }, JsonFieldPresence::Optional } },
             { "syncNodeReadJsonHeaderTimeoutSec",
-                { { js::int_type }, JsonFieldPresence::Optional } } } );
+                { { js::int_type }, JsonFieldPresence::Optional } },
+            { "dynamicPricingMinPrice", { { js::int_type }, JsonFieldPresence::Optional } },
+            { "dynamicPricingStartPrice", { { js::int_type }, JsonFieldPresence::Optional } },
+            { "dynamicPricingMaxPrice", { { js::int_type }, JsonFieldPresence::Optional } } } );
 
+    {
+        int dynamicPricingFieldCount = nodeInfo.count( "dynamicPricingMinPrice" ) +
+                                       nodeInfo.count( "dynamicPricingStartPrice" ) +
+                                       nodeInfo.count( "dynamicPricingMaxPrice" );
+        if ( dynamicPricingFieldCount != 0 && dynamicPricingFieldCount != 3 )
+            throw std::invalid_argument(
+                "dynamicPricingMinPrice, dynamicPricingStartPrice, and dynamicPricingMaxPrice "
+                "must be either all present or all missing in nodeInfo" );
+    }
+
+#ifndef FAIR
     std::string keyShareName = "";
     try {
         nodeInfo.at( "wallets" ).get_obj().at( "ima" ).get_obj().at( "keyShareName" ).get_str();
@@ -249,6 +266,7 @@ void validateConfigJson( js::mObject const& _obj ) {
                 { "commonBLSPublicKey2", { { js::str_type }, JsonFieldPresence::Required } },
                 { "commonBLSPublicKey3", { { js::str_type }, JsonFieldPresence::Required } } } );
     }  // keyShareName
+#endif
 
     const js::mObject& sChain = _obj.at( c_skaleConfig ).get_obj().at( "sChain" ).get_obj();
     requireJsonFields( sChain, "ChainParams::loadConfig::skaleConfig::sChain",
@@ -268,16 +286,24 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "rotateAfterBlock", { { js::int_type }, JsonFieldPresence::Optional } },
             { "contractStorageLimit", { { js::int_type }, JsonFieldPresence::Optional } },
             { "dbStorageLimit", { { js::int_type }, JsonFieldPresence::Optional } },
+#ifdef FAIR
+            { "nodes", { { js::obj_type, js::array_type }, JsonFieldPresence::Required } },
+#else
             { "nodes", { { js::array_type }, JsonFieldPresence::Required } },
+#endif
             { "maxConsensusStorageBytes", { { js::int_type }, JsonFieldPresence::Optional } },
             { "maxFileStorageBytes", { { js::int_type }, JsonFieldPresence::Optional } },
             { "maxReservedStorageBytes", { { js::int_type }, JsonFieldPresence::Optional } },
             { "maxSkaledLeveldbStorageBytes", { { js::int_type }, JsonFieldPresence::Optional } },
-            { "freeContractDeployment", { { js::bool_type }, JsonFieldPresence::Optional } },
             { "multiTransactionMode", { { js::bool_type }, JsonFieldPresence::Optional } },
-            { "nodeGroups", { { js::obj_type }, JsonFieldPresence::Optional } } },
+            { "nodeGroups", { { js::obj_type }, JsonFieldPresence::Optional } }
+#ifdef FAIR
+            ,
+            { "constantGasPrice", { { js::int_type }, JsonFieldPresence::Optional } }
+#endif
+        },
         []( const string& _key ) {
-            // function fow allowing fields
+            // function for allowing fields
             // exception means bad name
             try {
                 string patchName = boost::algorithm::erase_last_copy( _key, "Timestamp" );
@@ -289,11 +315,8 @@ void validateConfigJson( js::mObject const& _obj ) {
             }
         } );
 
-    js::mArray const& nodes = sChain.at( "nodes" ).get_array();
-    for ( auto const& obj : nodes ) {
-        const js::mObject node = obj.get_obj();
-
-        requireJsonFields( node, "ChainParams::loadConfig::skaleConfig::sChain::nodes",
+    auto requireNodeJsonFields = []( const js::mObject& nodeJsonObject ) {
+        requireJsonFields( nodeJsonObject, "ChainParams::loadConfig::skaleConfig::sChain::nodes",
             { { "nodeName", { { js::str_type }, JsonFieldPresence::Optional } },
                 { "nodeID", { { js::int_type }, JsonFieldPresence::Required } },
                 { "ip", { { js::str_type }, JsonFieldPresence::Required } },
@@ -326,8 +349,68 @@ void validateConfigJson( js::mObject const& _obj ) {
                 { "blsPublicKey2", { { js::str_type }, JsonFieldPresence::Optional } },
                 { "blsPublicKey3", { { js::str_type }, JsonFieldPresence::Optional } },
                 { "owner", { { js::str_type }, JsonFieldPresence::Optional } },
+                { "rewardWalletAddress", { { js::str_type }, JsonFieldPresence::Optional } },
                 { "blockAuthor", { { js::str_type }, JsonFieldPresence::Optional } } } );
+    };
+#ifndef FAIR
+    js::mArray const& nodes = sChain.at( "nodes" ).get_array();
+    for ( auto const& obj : nodes ) {
+        const js::mObject& node = obj.get_obj();
+        requireNodeJsonFields( node );
     }
+#else
+    if ( sChain.at( "nodes" ).type() == json_spirit::array_type ) {
+        // legacy config, keep it for compatibility
+        js::mArray const& nodes = sChain.at( "nodes" ).get_array();
+        for ( auto const& obj : nodes ) {
+            const js::mObject& node = obj.get_obj();
+            requireNodeJsonFields( node );
+        }
+    } else {
+        js::mObject const& nodeGroups = sChain.at( "nodes" ).get_obj();
+        for ( const auto& nodeGroup : nodeGroups ) {
+            int64_t ts = std::stoll( nodeGroup.first );
+            // BOOT group have ts set to 0
+            if ( ts > 0 ) {
+                const js::mObject& groupInfo = nodeGroup.second.get_obj();
+                requireJsonFields( groupInfo, "ChainParams::loadConfig::skaleConfig::sChain::nodes",
+                    { { "group", { { js::array_type }, JsonFieldPresence::Required } },
+                        { "blsKey", { { js::obj_type }, JsonFieldPresence::Optional } },
+                        { "stakingContractAddress",
+                            { { js::str_type }, JsonFieldPresence::Optional } } } );
+                if ( groupInfo.count( "blsKey" ) ) {
+                    const js::mObject& blsKeyInfo = groupInfo.at( "blsKey" ).get_obj();
+                    requireJsonFields( blsKeyInfo,
+                        "ChainParams::loadConfig::skaleConfig::sChain::nodes::blsKey",
+                        {
+                            { "keyShareName", { { js::str_type }, JsonFieldPresence::Optional } },
+                            { "t", { { js::int_type }, JsonFieldPresence::Required } },
+                            { "n", { { js::int_type }, JsonFieldPresence::Required } },
+                            { "commonBLSPublicKey0",
+                                { { js::str_type }, JsonFieldPresence::Required } },
+                            { "commonBLSPublicKey1",
+                                { { js::str_type }, JsonFieldPresence::Required } },
+                            { "commonBLSPublicKey2",
+                                { { js::str_type }, JsonFieldPresence::Required } },
+                            { "commonBLSPublicKey3",
+                                { { js::str_type }, JsonFieldPresence::Required } },
+                            { "BLSPublicKey0", { { js::str_type }, JsonFieldPresence::Optional } },
+                            { "BLSPublicKey1", { { js::str_type }, JsonFieldPresence::Optional } },
+                            { "BLSPublicKey2", { { js::str_type }, JsonFieldPresence::Optional } },
+                            { "BLSPublicKey3", { { js::str_type }, JsonFieldPresence::Optional } },
+                            { "certFile", { { js::str_type }, JsonFieldPresence::Optional } },
+                            { "keyFile", { { js::str_type }, JsonFieldPresence::Optional } },
+                        } );
+                }
+                const js::mArray& nodes = groupInfo.at( "group" ).get_array();
+                for ( const auto& obj : nodes ) {
+                    const js::mObject& node = obj.get_obj();
+                    requireNodeJsonFields( node );
+                }
+            }
+        }
+    }
+#endif
 }
 
 void validateAccountMaskObj( js::mObject const& _obj ) {

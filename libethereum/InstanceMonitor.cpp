@@ -23,6 +23,7 @@
  */
 
 #include "InstanceMonitor.h"
+#include <fstream>
 #include <iostream>
 #include <json.hpp>
 
@@ -47,9 +48,9 @@ void InstanceMonitor::initRotationParams( uint64_t _finishTimestamp ) {
         std::ofstream rotationInfoFile( m_rotationInfoFilePath.string() );
         rotationInfoFile << rotationJson;
 
-        LOG( m_loggerInfo ) << "Set rotation time to " << _finishTimestamp;
+        BOOST_LOG( m_loggerInfo ) << "Set rotation time to " << _finishTimestamp;
     } catch ( ... ) {
-        LOG( m_loggerError ) << "Setting rotation timestamp failed";
+        BOOST_LOG( m_loggerError ) << "Setting rotation timestamp failed";
         throw_with_nested( std::runtime_error( "cannot save rotation timestamp" ) );
     }
 }
@@ -71,18 +72,18 @@ uint64_t InstanceMonitor::rotationTimestamp() const {
     try {
         auto rotationJson = nlohmann::json::parse( rotationInfoFile );
         auto timestamp = rotationJson["timestamp"].get< uint64_t >();
-        LOG( m_loggerInfo ) << "Rotation scheduled for " << timestamp;
+        BOOST_LOG( m_loggerInfo ) << "Rotation scheduled for " << timestamp;
         return timestamp;
     } catch ( ... ) {
-        LOG( m_loggerError ) << "Rotation file is malformed or missing";
+        BOOST_LOG( m_loggerError ) << "Rotation file is malformed or missing";
         throw InvalidRotationInfoFileException( m_rotationInfoFilePath );
     }
 }
 
 void InstanceMonitor::reportExitTimeReached( bool _reached ) {
     if ( m_statusAndControl ) {
-        LOG( m_loggerInfo ) << "Setting ExitTimeReached = " << _reached;
+        BOOST_LOG( m_loggerInfo ) << "Setting ExitTimeReached = " << _reached;
         m_statusAndControl->setExitState( StatusAndControl::ExitTimeReached, _reached );
     } else
-        LOG( m_loggerInfo ) << "Simulating setting ExitTimeReached = " << _reached;
+        BOOST_LOG( m_loggerInfo ) << "Simulating setting ExitTimeReached = " << _reached;
 }

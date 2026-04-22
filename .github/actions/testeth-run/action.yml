@@ -1,0 +1,145 @@
+name: testeth-run
+description: Run testeth (full suites or historic JsonRpcSuite) with marker files and optional verbosity rerun
+inputs:
+  build_dir:
+    required: true
+  mode:
+    required: true
+    description: "full | historic"
+  verbosity:
+    required: true
+    description: "1 | 4"
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        set -euo pipefail
+
+        cd "${{ inputs.build_dir }}/test"
+
+        if [[ "${{ inputs.mode }}" == "historic" ]]; then
+          mkdir -p /tmp/tests/
+          if [[ "${{ inputs.verbosity }}" == "1" ]]; then
+            sudo rm -rf /tmp/tests/*
+          fi
+
+          if [[ "${{ inputs.verbosity }}" == "1" ]]; then
+            ./testeth -t JsonRpcSuite -- --express && touch /tmp/tests/JsonRpcSuitePassed || true
+          else
+            ls /tmp/tests/JsonRpcSuitePassed 2>/dev/null || ./testeth -t JsonRpcSuite -- --express --verbosity 4
+          fi
+          exit 0
+        fi
+
+        # mode == full
+        TEST_SUITES=(
+          TransitionTests TransactionTests VMTests LevelDBTests CoreLibTests RlpTests SharedSpaceTests
+          EthashTests SealEngineTests DifficultyTests BlockSuite BlockChainMainNetworkSuite
+          BlockChainFrontierSuite BlockQueueSuite ClientBase EstimateGas getHistoricNodesData
+          ExtVmSuite GasPricer BasicTests InstanceMonitorSuite PrecompiledTests SkaleHostSuite
+          StateUnitTests libethereum TransactionQueueSuite LegacyVMSuite SkaleInterpreterSuite
+          SnapshotSigningTestSuite SkUtils BlockChainTestSuite TestHelperSuite LevelDBHashBase
+          memDB OverlayDBTests AccountHolderTest ClientTests JsonRpcSuite SingleConsensusTests ConsensusTests
+        )
+
+        if [[ "${{ inputs.verbosity }}" == "1" ]]; then
+          mkdir -p /tmp/tests/
+          sudo rm -rf /tmp/tests/*
+
+          run_test() {
+            local suite="$1"
+            if ./testeth --report_level=detailed -t "$suite" -- --express; then
+              touch "/tmp/tests/${suite}Passed"
+            else
+              echo "Suite ${suite} failed (continuing)"
+            fi
+          }
+          for s in "${TEST_SUITES[@]}"; do run_test "$s"; done
+
+        else
+          rerun_test() {
+            local suite="$1"
+            if ls "/tmp/tests/${suite}Passed" 2>/dev/null; then
+              return
+            fi
+            ./testeth --report_level=detailed -t "$suite" -- --express --verbosity 4
+          }
+          for s in "${TEST_SUITES[@]}"; do rerun_test "$s"; done
+        fi
+
+    - name: Btrfs test suites
+      if: inputs.mode == 'full'
+      shell: bash
+      run: |
+        set -uo pipefail
+
+        cd "${{ inputs.build_dir }}/test"
+
+        BTRFS_SUITES=(BtrfsTestSuite HashSnapshotTestSuite ClientSnapshotsSuite)
+
+        check_btrfs_state() {
+          local label="$1"
+          echo "=== BTRFS STATE CHECK (${label}) ==="
+          ls -la btrfs.file 2>/dev/null && echo "  WARNING: btrfs.file exists" || echo "  btrfs.file: absent (OK)"
+          if mount | grep -q btrfs.file; then
+            echo "  WARNING: btrfs.file IS MOUNTED:"
+            mount | grep btrfs.file
+          else
+            echo "  mount: not mounted (OK)"
+          fi
+          if mountpoint -q btrfs 2>/dev/null; then
+            echo "  WARNING: btrfs/ IS a mount point"
+          else
+            echo "  btrfs/: not a mount point (OK)"
+          fi
+          grep btrfs /proc/mounts && true || echo "  /proc/mounts: no btrfs entries (OK)"
+          echo "=== END BTRFS STATE CHECK ==="
+        }
+
+        force_btrfs_cleanup() {
+          if mountpoint -q btrfs 2>/dev/null || mount | grep -q btrfs.file; then
+            echo "  Stale btrfs mount detected — forcing cleanup"
+            sudo umount btrfs 2>/dev/null \
+              || sudo umount -f btrfs 2>/dev/null \
+              || sudo umount -l btrfs 2>/dev/null \
+              || true
+          fi
+          sudo rm -rf btrfs 2>/dev/null || true
+          rm -f btrfs.file 2>/dev/null || true
+        }
+
+        if [[ "${{ inputs.verbosity }}" == "1" ]]; then
+          for s in "${BTRFS_SUITES[@]}"; do
+            echo ""
+            echo "========================================"
+            echo "  BTRFS SUITE: ${s}"
+            echo "========================================"
+            check_btrfs_state "before ${s}"
+            force_btrfs_cleanup
+            if sudo NO_ULIMIT_CHECK="${NO_ULIMIT_CHECK:-1}" NO_NTP_CHECK="${NO_NTP_CHECK:-1}" ./testeth -t "${s}" -- --all; then
+              touch "/tmp/tests/${s}Passed"
+              echo "Suite ${s}: PASSED"
+            else
+              echo "Suite ${s}: FAILED (continuing)"
+            fi
+            check_btrfs_state "after ${s}"
+            force_btrfs_cleanup
+          done
+        else
+          for s in "${BTRFS_SUITES[@]}"; do
+            if ls "/tmp/tests/${s}Passed" 2>/dev/null; then
+              continue
+            fi
+            echo ""
+            echo "========================================"
+            echo "  BTRFS SUITE RERUN: ${s}"
+            echo "========================================"
+            check_btrfs_state "before ${s} (rerun)"
+            force_btrfs_cleanup
+            sudo NO_ULIMIT_CHECK="${NO_ULIMIT_CHECK:-1}" NO_NTP_CHECK="${NO_NTP_CHECK:-1}" ./testeth -t "${s}" -- --all --verbosity 4
+            check_btrfs_state "after ${s} (rerun)"
+            force_btrfs_cleanup
+          done
+        fi

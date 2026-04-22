@@ -15,7 +15,8 @@ BatchedRotatingHistoricDbIO::BatchedRotatingHistoricDbIO( const boost::filesyste
     // initialize blockNumbers
     if ( boost::filesystem::exists( basePath ) )
         for ( const auto& f : boost::filesystem::directory_iterator( basePath ) )
-            blockNumbers.push_back( std::stoull( boost::filesystem::basename( f ) ) );
+            blockNumbers.push_back(
+                std::stoull( boost::filesystem::path( f ).filename().string() ) );
 
     if ( blockNumbers.empty() )
         blockNumbers.push_back( 0 );

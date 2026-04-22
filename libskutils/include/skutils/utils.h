@@ -584,11 +584,13 @@ public:
     bool extract_s_chain_URL_infos( size_t& nOwnNodeIndex, std::vector< std::string >& vecURLs ) {
         return stat_extract_s_chain_URL_infos( getConfigJSON(), nOwnNodeIndex, vecURLs );
     }
+#ifndef FAIR
     //
     static std::string g_strImaMainNetURL;
     std::string getImaMainNetURLstring() const;
     skutils::url getImaMainNetURL() const;
     bool validateImaMainNetURL() const;
+#endif
 };  /// class json_config_file_accessor
 
 

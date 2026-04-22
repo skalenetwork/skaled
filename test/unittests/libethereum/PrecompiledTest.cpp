@@ -31,7 +31,9 @@
 #include <libethereum/TransactionQueue.h>
 #include <test/tools/libtesteth/TestHelper.h>
 #include <boost/test/unit_test.hpp>
+#ifndef FAIR
 #include <libskale/OverlayFS.h>
+#endif
 #include <libethereum/SchainPatch.h>
 
 #include <secp256k1_sha256.h>
@@ -70,7 +72,12 @@ BOOST_AUTO_TEST_CASE( modexpFermatTheorem,
         "03"
         "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e"
         "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f" );
-    auto res = exec( bytesConstRef( in.data(), in.size() ) );
+    auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+#ifdef BITE2
+                                                              0,
+                                                              1,
+#endif
+                                                              true } );
 
     BOOST_REQUIRE( res.first );
     bytes expected = fromHex( "0000000000000000000000000000000000000000000000000000000000000001" );
@@ -88,7 +95,12 @@ BOOST_AUTO_TEST_CASE( modexpZeroBase,
         "0000000000000000000000000000000000000000000000000000000000000020"
         "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e"
         "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f" );
-    auto res = exec( bytesConstRef( in.data(), in.size() ) );
+    auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+#ifdef BITE2
+                                                              0,
+                                                              1,
+#endif
+                                                              true } );
 
     BOOST_REQUIRE( res.first );
     bytes expected = fromHex( "0000000000000000000000000000000000000000000000000000000000000000" );
@@ -108,7 +120,12 @@ BOOST_AUTO_TEST_CASE( modexpExtraByteIgnored,
         "ffff"
         "8000000000000000000000000000000000000000000000000000000000000000"
         "07" );
-    auto res = exec( bytesConstRef( in.data(), in.size() ) );
+    auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+#ifdef BITE2
+                                                              0,
+                                                              1,
+#endif
+                                                              true } );
 
     BOOST_REQUIRE( res.first );
     bytes expected = fromHex( "3b01b01ac41f2d6e917c6d6a221ce793802469026d9ab7578fa2e79e4da6aaab" );
@@ -127,7 +144,12 @@ BOOST_AUTO_TEST_CASE( modexpRightPadding,
         "03"
         "ffff"
         "80" );
-    auto res = exec( bytesConstRef( in.data(), in.size() ) );
+    auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+#ifdef BITE2
+                                                              0,
+                                                              1,
+#endif
+                                                              true } );
 
     BOOST_REQUIRE( res.first );
     bytes expected = fromHex( "3b01b01ac41f2d6e917c6d6a221ce793802469026d9ab7578fa2e79e4da6aaab" );
@@ -143,7 +165,12 @@ BOOST_AUTO_TEST_CASE( modexpMissingValues ) {
         "0000000000000000000000000000000000000000000000000000000000000002"
         "0000000000000000000000000000000000000000000000000000000000000020"
         "03" );
-    auto res = exec( bytesConstRef( in.data(), in.size() ) );
+    auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+#ifdef BITE2
+                                                              0,
+                                                              1,
+#endif
+                                                              true } );
 
     BOOST_REQUIRE( res.first );
     bytes expected = fromHex( "0000000000000000000000000000000000000000000000000000000000000000" );
@@ -161,7 +188,12 @@ BOOST_AUTO_TEST_CASE( modexpEmptyValue,
         "0000000000000000000000000000000000000000000000000000000000000020"
         "03"
         "8000000000000000000000000000000000000000000000000000000000000000" );
-    auto res = exec( bytesConstRef( in.data(), in.size() ) );
+    auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+#ifdef BITE2
+                                                              0,
+                                                              1,
+#endif
+                                                              true } );
 
     BOOST_REQUIRE( res.first );
     bytes expected = fromHex( "0000000000000000000000000000000000000000000000000000000000000001" );
@@ -180,7 +212,12 @@ BOOST_AUTO_TEST_CASE( modexpZeroPowerZero,
         "00"
         "00"
         "80" );
-    auto res = exec( bytesConstRef( in.data(), in.size() ) );
+    auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+#ifdef BITE2
+                                                              0,
+                                                              1,
+#endif
+                                                              true } );
 
     BOOST_REQUIRE( res.first );
     bytes expected = fromHex( "0000000000000000000000000000000000000000000000000000000000000001" );
@@ -199,7 +236,12 @@ BOOST_AUTO_TEST_CASE( modexpZeroPowerZeroModZero,
         "00"
         "00"
         "00" );
-    auto res = exec( bytesConstRef( in.data(), in.size() ) );
+    auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+#ifdef BITE2
+                                                              0,
+                                                              1,
+#endif
+                                                              true } );
 
     BOOST_REQUIRE( res.first );
     bytes expected = fromHex( "0000000000000000000000000000000000000000000000000000000000000000" );
@@ -217,7 +259,12 @@ BOOST_AUTO_TEST_CASE( modexpModLengthZero,
         "0000000000000000000000000000000000000000000000000000000000000000"
         "01"
         "01" );
-    auto res = exec( bytesConstRef( in.data(), in.size() ) );
+    auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+#ifdef BITE2
+                                                              0,
+                                                              1,
+#endif
+                                                              true } );
 
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( res.second.empty() );
@@ -1457,13 +1504,23 @@ void benchmarkPrecompiled( char const name[], vector_ref< const PrecompiledTest 
         bytes input = fromHex( test.input );
         bytesConstRef inputRef = &input;
 
-        auto res = exec( inputRef );
+        auto res = exec( inputRef, { 1,
+#ifdef BITE2
+                                     0,
+                                     1,
+#endif
+                                     true } );
         BOOST_REQUIRE_MESSAGE( res.first, test.name );
         BOOST_REQUIRE_EQUAL( toHex( res.second ), test.expected );
 
         timer.restart();
         for ( int i = 0; i < n; ++i )
-            exec( inputRef );
+            exec( inputRef, { 1,
+#ifdef BITE2
+                              0,
+                              1,
+#endif
+                              true } );
         auto d = timer.duration() / n;
 
         auto t = std::chrono::duration_cast< std::chrono::nanoseconds >( d ).count();
@@ -1631,7 +1688,6 @@ static std::string const genesisInfoSkaleConfigTest = R"(
     "sChain": {
         "schainName": "TestChain",
         "schainID": 1,
-        "contractStorageLimit": 32000,
         "precompiledConfigPatchTimestamp": 1,
         "emptyBlockIntervalMs": -1,
         "nodeGroups": {
@@ -1671,7 +1727,7 @@ static std::string const genesisInfoSkaleConfigTest = R"(
         "nodes": [
           { "nodeID": 1112, "ip": "127.0.0.1", "basePort": )" +
         std::to_string( rand_port ) +
-        R"(, "schainIndex" : 1, "publicKey": "0xfa", "owner": "0x21abd6db4e347b4e8c937c1c8370e4b5ed3f0dd3db69cbdb7a38e1e50b1b82fc"}
+        R"(, "schainIndex" : 1, "publicKey": "0xfa", "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588"}
         ]
     }
   },
@@ -1694,11 +1750,20 @@ static std::string const genesisInfoSkaleConfigTest = R"(
 }
 )";
 
+#ifndef FAIR
 BOOST_AUTO_TEST_CASE( getConfigVariable ) {
-    ChainParams chainParams;
-    chainParams = chainParams.loadConfig( genesisInfoSkaleConfigTest );
-    chainParams.sealEngineName = NoProof::name();
-    chainParams.allowFutureBlocks = true;
+    Json::Value ret;
+    Json::Reader().parse( genesisInfoSkaleConfigTest, ret );
+#ifndef FAIR
+    ret["skaleConfig"]["sChain"]["contractStorageLimit"] = 32000;
+#endif
+    Json::FastWriter fastWriter;
+    std::string config = fastWriter.write( ret );
+
+    std::shared_ptr< ChainParams > chainParams = std::make_shared< ChainParams >();
+    chainParams->loadConfig( config );
+    size_t _port = ( srand( time( nullptr ) ), 1024 + rand() % 64000 );
+    chainParams->fillDefaultTestsParameters( _port );
 
     dev::eth::g_configAccesssor.reset( new skutils::json_config_file_accessor( "../../test/unittests/libethereum/PrecompiledConfig.json" ) );
 
@@ -1706,7 +1771,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     dev::TransientDirectory m_tmpDir;
     auto monitor = make_shared< InstanceMonitor >("test");
     setenv("DATA_DIR", m_tmpDir.path().c_str(), 1);
-    client.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
+    client.reset( new eth::ClientTest( chainParams, ( int ) chainParams->getNetworkId(),
         shared_ptr< GasPricer >(), nullptr, monitor, m_tmpDir.path(), dev::WithExisting::Kill ) );
 
     client->setAuthor( Address("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF") );
@@ -1717,7 +1782,16 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     ClientTest* testClient = asClientTest( client.get() );
 
     testClient->mineBlocks( 1 );
-    testClient->importTransactionsAsBlock( dev::eth::Transactions(), 1000, 4294967294 );
+
+    testClient->importTransactionsAsBlock(
+        dev::eth::Transactions(),
+#ifdef BITE
+
+        make_shared< DecryptedTransactionFieldsMap >(),
+#endif
+        1000,
+        4294967294 );
+
     dev::eth::g_skaleHost = testClient->skaleHost();
 
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getConfigVariableUint256" );
@@ -1725,7 +1799,12 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     input = input.substr(0, 58); // remove 0s in the end
 
     bytes in = fromHex( numberToHex( 29 ) + input );
-    auto res = exec( bytesConstRef( in.data(), in.size() ) );
+    auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+#ifdef BITE2
+                                                              { 0 },
+                                                              -1,
+#endif
+                                                              true } );
 
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( dev::fromBigEndian<dev::u256>( res.second ) == 30 );
@@ -1733,7 +1812,12 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     input = stringToHex( "skaleConfig.sChain.nodes.0.schainIndex" );
     input = input.substr(0, 76); // remove 0s in the end
     in = fromHex( numberToHex( 38 ) + input );
-    res = exec( bytesConstRef( in.data(), in.size() ) );
+    res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+#ifdef BITE2
+                                                         { 0 },
+                                                         -1,
+#endif
+                                                         true } );
 
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( dev::fromBigEndian<dev::u256>( res.second ) == 13 );
@@ -1741,21 +1825,36 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     input = stringToHex( "skaleConfig.sChain.nodes.0.publicKey" );
     input = input.substr(0, 72); // remove 0s in the end
     in = fromHex( numberToHex( 36 ) + input );
-    res = exec( bytesConstRef( in.data(), in.size() ) );
+    res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+#ifdef BITE2
+                                                         { 0 },
+                                                         -1,
+#endif
+                                                         true } );
 
     BOOST_REQUIRE( !res.first );
 
     input = stringToHex( "skaleConfig.sChain.nodes.0.unknownField" );
     input = input.substr(0, 78); // remove 0s in the end
     in = fromHex( numberToHex( 39 ) + input );
-    res = exec( bytesConstRef( in.data(), in.size() ) );
+    res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+#ifdef BITE2
+                                                         { 0 },
+                                                         -1,
+#endif
+                                                         true } );
 
     BOOST_REQUIRE( !res.first );
 
     input = stringToHex( "skaleConfig.nodeInfo.wallets.ima.n" );
     input = input.substr(0, 68); // remove 0s in the end
     in = fromHex( numberToHex( 34 ) + input );
-    res = exec( bytesConstRef( in.data(), in.size() ) );
+    res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+#ifdef BITE2
+                                                         { 0 },
+                                                         -1,
+#endif
+                                                         true } );
 
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( dev::fromBigEndian<dev::u256>( res.second ) == 1 );
@@ -1763,7 +1862,12 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     input = stringToHex( "skaleConfig.nodeInfo.wallets.ima.t" );
     input = input.substr(0, 68); // remove 0s in the end
     in = fromHex( numberToHex( 34 ) + input );
-    res = exec( bytesConstRef( in.data(), in.size() ) );
+    res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+#ifdef BITE2
+                                                         { 0 },
+                                                         -1,
+#endif
+                                                         true } );
 
     BOOST_REQUIRE( !res.first );
 
@@ -1772,7 +1876,12 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     input = stringToHex( "skaleConfig.sChain.nodes.0.publicKey" );
     input = input.substr(0, 72); // remove 0s in the end
     in = fromHex( numberToHex( 36 ) + input );
-    res = exec( bytesConstRef( in.data(), in.size() ) );
+    res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+#ifdef BITE2
+                                                         { 0 },
+                                                         -1,
+#endif
+                                                         true } );
 
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( res.second == fromHex("0x6180cde2cbbcc6b6a17efec4503a7d4316f8612f411ee171587089f770335f484003ad236c534b9afa82befc1f69533723abdb6ec2601e582b72dcfd7919338b") );
@@ -1781,21 +1890,36 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     input = input.substr(0, 58); // remove 0s in the end
 
     in = fromHex( numberToHex( 29 ) + input );
-    res = exec( bytesConstRef( in.data(), in.size() ) );
+    res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+#ifdef BITE2
+                                                         { 0 },
+                                                         -1,
+#endif
+                                                         true } );
 
     BOOST_REQUIRE( !res.first );
 
     input = stringToHex( "skaleConfig.sChain.nodes.0.schainIndex" );
     input = input.substr(0, 76); // remove 0s in the end
     in = fromHex( numberToHex( 38 ) + input );
-    res = exec( bytesConstRef( in.data(), in.size() ) );
+    res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+#ifdef BITE2
+                                                         { 0 },
+                                                         -1,
+#endif
+                                                         true } );
 
     BOOST_REQUIRE( !res.first );
 
     input = stringToHex( "skaleConfig.sChain.nodes.0.unknownField" );
     input = input.substr(0, 78); // remove 0s in the end
     in = fromHex( numberToHex( 39 ) + input );
-    res = exec( bytesConstRef( in.data(), in.size() ) );
+    res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+#ifdef BITE2
+                                                         { 0 },
+                                                         -1,
+#endif
+                                                         true } );
 
     BOOST_REQUIRE( !res.first );
 }
@@ -1810,7 +1934,7 @@ struct FilestorageFixture : public TestOutputHelperFixture {
         if ( !boost::filesystem::exists( pathToFile.parent_path() ) )
             boost::filesystem::create_directories( pathToFile.parent_path() );
         boost::filesystem::path pathToTestFile = dev::getDataDir() / "test";
-        boost::filesystem::ofstream of( pathToTestFile );
+        std::ofstream of( pathToTestFile );
 
         hexAddress = ownerAddress.hex();
         hexAddress.insert( hexAddress.begin(), 64 - hexAddress.length(), '0' );
@@ -1850,7 +1974,12 @@ BOOST_AUTO_TEST_CASE( createFile ) {
 
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
                         numberToHex( fileSize ) );
-    auto res = exec( bytesConstRef( in.data(), in.size() ), m_overlayFS.get() );
+    auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+#ifdef BITE2
+                                                              { 0 },
+                                                              -1,
+#endif
+                                                              true }, m_overlayFS.get() );
 
     BOOST_REQUIRE( res.first );
 
@@ -1868,7 +1997,12 @@ BOOST_AUTO_TEST_CASE( fileWithHashExtension ) {
 
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
             numberToHex( fileSize ) );
-    auto res = exec( bytesConstRef( in.data(), in.size() ), m_overlayFS.get() );
+    auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+#ifdef BITE2
+                                                              { 0 },
+                                                              -1,
+#endif
+                                                              true }, m_overlayFS.get() );
     BOOST_REQUIRE( res.first == false);
 
     m_overlayFS->commit();
@@ -1881,7 +2015,12 @@ BOOST_AUTO_TEST_CASE( uploadChunk ) {
     std::string data = "random_data";
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
                         numberToHex( 0 ) + numberToHex( data.length() ) + stringToHex( data ) );
-    auto res = exec( bytesConstRef( in.data(), in.size() ), m_overlayFS.get() );
+    auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+#ifdef BITE2
+                                                              { 0 },
+                                                              -1,
+#endif
+                                                              true }, m_overlayFS.get() );
     BOOST_REQUIRE( res.first );
 
     m_overlayFS->commit();
@@ -1897,7 +2036,12 @@ BOOST_AUTO_TEST_CASE( readChunk ) {
 
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
                         numberToHex( 0 ) + numberToHex( fileSize ) );
-    auto res = exec( bytesConstRef( in.data(), in.size() ), m_overlayFS.get() );
+    auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+#ifdef BITE2
+                                                              { 0 },
+                                                              -1,
+#endif
+                                                              true }, m_overlayFS.get() );
     BOOST_REQUIRE( res.first );
 
     std::ifstream file( pathToFile.c_str(), std::ios_base::binary );
@@ -1914,7 +2058,12 @@ BOOST_AUTO_TEST_CASE( readMaliciousChunk ) {
     fileName = "../../test";
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
                         numberToHex( 0 ) + numberToHex( fileSize ) );
-    auto res = exec( bytesConstRef( in.data(), in.size() ), m_overlayFS.get() );
+    auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+#ifdef BITE2
+                                                              { 0 },
+                                                              -1,
+#endif
+                                                              true }, m_overlayFS.get() );
     BOOST_REQUIRE( res.first == false);
 }
 
@@ -1922,7 +2071,12 @@ BOOST_AUTO_TEST_CASE( getFileSize ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getFileSize" );
 
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) );
-    auto res = exec( bytesConstRef( in.data(), in.size() ), m_overlayFS.get() );
+    auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+#ifdef BITE2
+                                                              { 0 },
+                                                              -1,
+#endif
+                                                              true }, m_overlayFS.get() );
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( res.second == toBigEndian( static_cast< u256 >( fileSize ) ) );
 }
@@ -1933,7 +2087,12 @@ BOOST_AUTO_TEST_CASE( getMaliciousFileSize ) {
     fileName = "../../test";
 
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) );
-    auto res = exec( bytesConstRef( in.data(), in.size() ), m_overlayFS.get() );
+    auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+#ifdef BITE2
+                                                              { 0 },
+                                                              -1,
+#endif
+                                                              true }, m_overlayFS.get() );
     BOOST_REQUIRE( !res.first );
 }
 
@@ -1941,20 +2100,35 @@ BOOST_AUTO_TEST_CASE( deleteFile ) {
     PrecompiledExecutor execCreate = PrecompiledRegistrar::executor( "createFile" );
     bytes inCreate = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
                             numberToHex( fileSize ) );
-    execCreate( bytesConstRef( inCreate.data(), inCreate.size() ), m_overlayFS.get() );
+    execCreate( bytesConstRef( inCreate.data(), inCreate.size() ), { 1,
+#ifdef BITE2
+                                                              { 0 },
+                                                              -1,
+#endif
+                                                              true }, m_overlayFS.get() );
     m_overlayFS->commit();
 
     PrecompiledExecutor execHash = PrecompiledRegistrar::executor( "calculateFileHash" );
     bytes inHash = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
                         numberToHex( fileSize ) );
-    execHash( bytesConstRef( inHash.data(), inHash.size() ), m_overlayFS.get() );
+    execHash( bytesConstRef( inHash.data(), inHash.size() ), { 1,
+#ifdef BITE2
+                                                              { 0 },
+                                                               -1,
+#endif
+                                                              true }, m_overlayFS.get() );
     m_overlayFS->commit();
 
     BOOST_REQUIRE( boost::filesystem::exists( pathToFile.string() + "._hash" ) );
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "deleteFile" );
 
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) );
-    auto res = exec( bytesConstRef( in.data(), in.size() ), m_overlayFS.get() );
+    auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+#ifdef BITE2
+                                                              { 0 },
+                                                              -1,
+#endif
+                                                              true }, m_overlayFS.get() );
     BOOST_REQUIRE( res.first );
 
     m_overlayFS->commit();
@@ -1970,7 +2144,12 @@ BOOST_AUTO_TEST_CASE( createDirectory ) {
         dev::getDataDir() / "filestorage" / ownerAddress.hex() / dirName;
 
     bytes in = fromHex( hexAddress + numberToHex( dirName.length() ) + stringToHex( dirName ) );
-    auto res = exec( bytesConstRef( in.data(), in.size() ), m_overlayFS.get() );
+    auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+#ifdef BITE2
+                                                              { 0 },
+                                                              -1,
+#endif
+                                                              true }, m_overlayFS.get() );
     BOOST_REQUIRE( res.first );
 
     m_overlayFS->commit();
@@ -1987,7 +2166,12 @@ BOOST_AUTO_TEST_CASE( deleteDirectory ) {
     boost::filesystem::create_directories( pathToDir );
 
     bytes in = fromHex( hexAddress + numberToHex( dirName.length() ) + stringToHex( dirName ) );
-    auto res = exec( bytesConstRef( in.data(), in.size() ), m_overlayFS.get() );
+    auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+#ifdef BITE2
+                                                              { 0 },
+                                                              -1,
+#endif
+                                                              true }, m_overlayFS.get() );
 
     BOOST_REQUIRE( res.first );
 
@@ -2009,7 +2193,12 @@ BOOST_AUTO_TEST_CASE( calculateFileHash ) {
 
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
                         numberToHex( fileSize ) );
-    auto res = exec( bytesConstRef( in.data(), in.size() ), m_overlayFS.get() );
+    auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+#ifdef BITE2
+                                                              { 0 },
+                                                              -1,
+#endif
+                                                              true }, m_overlayFS.get() );
 
     BOOST_REQUIRE( res.first );
 
@@ -2047,5 +2236,6 @@ BOOST_AUTO_TEST_CASE( calculateFileHash ) {
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+#endif
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -42,26 +42,26 @@ class SnapshotHashAgentTest {
 public:
     SnapshotHashAgentTest(
         ChainParams& _chainParams, const std::string& urlToDownloadSnapshotFrom ) {
-        std::vector< libff::alt_bn128_Fr > coeffs( _chainParams.sChain.t );
+        std::vector< libBLS::algebra::FrScalar > coeffs( _chainParams.sChain.t );
 
         for ( auto& elem : coeffs ) {
-            elem = libff::alt_bn128_Fr::random_element();
+            elem = libBLS::algebra::FrScalar::random();
 
             while ( elem == 0 ) {
-                elem = libff::alt_bn128_Fr::random_element();
+                elem = libBLS::algebra::FrScalar::random();
             }
         }
 
 
         blsPrivateKeys_.resize( _chainParams.sChain.nodes.size() );
         for ( size_t i = 0; i < _chainParams.sChain.nodes.size(); ++i ) {
-            blsPrivateKeys_[i] = libff::alt_bn128_Fr::zero();
+            blsPrivateKeys_[i] = libBLS::algebra::FrScalar::zero();
 
             for ( size_t j = 0; j < _chainParams.sChain.t; ++j ) {
                 blsPrivateKeys_[i] =
                     blsPrivateKeys_[i] +
                     coeffs[j] *
-                        libff::power( libff::alt_bn128_Fr( std::to_string( i + 1 ).c_str() ), j );
+                        libBLS::algebra::power( libBLS::algebra::FrScalar( i + 1 ), j );
             }
         }
 
@@ -70,24 +70,28 @@ public:
         for ( size_t i = 0; i < _chainParams.sChain.t; ++i ) {
             idx[i] = i + 1;
         }
-        auto lagrange_coeffs = libBLS::ThresholdUtils::LagrangeCoeffs( idx, _chainParams.sChain.t );
+        auto lagrange_coeffs = libBLS::algebra::lagrangeCoeffs( idx, _chainParams.sChain.t );
         auto keys = obj.KeysRecover( lagrange_coeffs, this->blsPrivateKeys_ );
-        keys.second.to_affine_coordinates();
-        _chainParams.nodeInfo.commonBLSPublicKeys[0] =
-            libBLS::ThresholdUtils::fieldElementToString( keys.second.X.c0 );
-        _chainParams.nodeInfo.commonBLSPublicKeys[1] =
-            libBLS::ThresholdUtils::fieldElementToString( keys.second.X.c1 );
-        _chainParams.nodeInfo.commonBLSPublicKeys[2] =
-            libBLS::ThresholdUtils::fieldElementToString( keys.second.Y.c0 );
-        _chainParams.nodeInfo.commonBLSPublicKeys[3] =
-            libBLS::ThresholdUtils::fieldElementToString( keys.second.Y.c1 );
+        keys.second.toAffineCoordinates();
+        auto stringArray = keys.second.toStringArray( libBLS::Base::DEC );
+#ifdef FAIR
+        _chainParams.sChain.currentGroups.back().commonBLSPublicKeys = stringArray;
+#else
+        _chainParams.nodeInfo.commonBLSPublicKeys = stringArray;
+#endif
 
         this->secret_as_is = keys.first;
 
         isSnapshotMajorityRequired = !urlToDownloadSnapshotFrom.empty();
 
+#ifdef FAIR
+        this->hashAgent_.reset( new SnapshotHashAgent( _chainParams,
+            _chainParams.sChain.currentGroups.back().commonBLSPublicKeys,
+            urlToDownloadSnapshotFrom ) );
+#else
         this->hashAgent_.reset( new SnapshotHashAgent(
             _chainParams, _chainParams.nodeInfo.commonBLSPublicKeys, urlToDownloadSnapshotFrom ) );
+#endif
     }
 
     void fillData( const std::vector< dev::h256 >& snapshot_hashes ) {
@@ -96,10 +100,9 @@ public:
         for ( size_t i = 0; i < this->hashAgent_->n_; ++i ) {
             this->hashAgent_->isReceived_[i] = true;
             this->hashAgent_->public_keys_[i] =
-                this->blsPrivateKeys_[i] * libff::alt_bn128_G2::one();
+                this->blsPrivateKeys_[i] * libBLS::algebra::G2Point::generator();
             this->hashAgent_->signatures_[i] = libBLS::Bls::Signing(
-                libBLS::ThresholdUtils::HashtoG1( std::make_shared< std::array< uint8_t, 32 > >(
-                    this->hashAgent_->hashes_[i].asArray() ) ),
+                libBLS::algebra::hashToG1( this->hashAgent_->hashes_[i].asArray() ),
                 this->blsPrivateKeys_[i] );
         }
     }
@@ -131,23 +134,91 @@ public:
         return ret;
     }
 
-    std::pair< dev::h256, libff::alt_bn128_G1 > getVotedHash() const {
+    std::pair< dev::h256, libBLS::algebra::G1Point > getVotedHash() const {
         return this->hashAgent_->getVotedHash();
     }
 
     bool voteForHash() { return this->hashAgent_->voteForHash(); }
 
     void spoilSignature( size_t idx ) {
-        this->hashAgent_->signatures_[idx] = libff::alt_bn128_G1::random_element();
+        this->hashAgent_->signatures_[idx] = libBLS::algebra::G1Point::random();
     }
 
-    libff::alt_bn128_Fr secret_as_is;
+    static std::shared_ptr< ChainParams > makeChainParamsForTest( const std::string& _testName ) {
+        std::shared_ptr< ChainParams > chainParams = std::make_shared< ChainParams >();
+        if ( _testName == "PositiveTest" ) {
+            chainParams->sChain.t = 3;
+            chainParams->sChain.nodes.resize( 4 );
+            for ( size_t i = 0; i < chainParams->sChain.nodes.size(); ++i ) {
+                chainParams->sChain.nodes[i].id = i;
+            }
+            chainParams->nodeInfo.id = 3;
+
+            return chainParams;
+        }
+
+        if ( _testName == "WrongHash" ) {
+            chainParams->sChain.t = 5;
+            chainParams->sChain.nodes.resize( 7 );
+            for ( size_t i = 0; i < chainParams->sChain.nodes.size(); ++i ) {
+                chainParams->sChain.nodes[i].id = i;
+            }
+            chainParams->nodeInfo.id = 6;
+
+            return chainParams;
+        }
+
+        if ( _testName == "NotEnoughVotes" ) {
+            chainParams->sChain.t = 3;
+            chainParams->sChain.nodes.resize( 4 );
+            for ( size_t i = 0; i < chainParams->sChain.nodes.size(); ++i ) {
+                chainParams->sChain.nodes[i].id = i;
+            }
+            chainParams->nodeInfo.id = 3;
+
+            return chainParams;
+        }
+
+        if ( _testName == "WrongSignature" ) {
+            chainParams->sChain.t = 3;
+            chainParams->sChain.nodes.resize( 4 );
+            for ( size_t i = 0; i < chainParams->sChain.nodes.size(); ++i ) {
+                chainParams->sChain.nodes[i].id = i;
+            }
+            chainParams->nodeInfo.id = 3;
+
+            return chainParams;
+        }
+
+        if ( _testName == "noSnapshotMajority" ) {
+            chainParams->sChain.t = 3;
+            chainParams->sChain.nodes.resize( 4 );
+            for ( size_t i = 0; i < chainParams->sChain.nodes.size(); ++i ) {
+                chainParams->sChain.nodes[i].id = i;
+            }
+            chainParams->nodeInfo.id = 3;
+
+            chainParams->sChain.nodes[0].ip = "123.45.68.89";
+            chainParams->sChain.nodes[1].ip = "123.45.87.89";
+            chainParams->sChain.nodes[2].ip = "123.45.77.89";
+
+            chainParams->sChain.nodes[3].ip = "123.45.67.89";
+
+            return chainParams;
+        }
+
+        return chainParams;
+    }
+
+    libBLS::algebra::FrScalar secret_as_is;
 
     std::shared_ptr< SnapshotHashAgent > hashAgent_;
 
     bool isSnapshotMajorityRequired = false;
 
-    std::vector< libff::alt_bn128_Fr > blsPrivateKeys_;
+    std::vector< libBLS::algebra::FrScalar > blsPrivateKeys_;
+
+    enum testNames { PositiveTest, WrongHash, NotEnoughVotes, WrongSignature, noSnapshotMajority };
 };
 }  // namespace test
 }  // namespace dev
@@ -264,21 +335,23 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
 
         gainRoot();
 
-        ChainParams chainParams;
+        std::shared_ptr< ChainParams > chainParams = std::make_shared< ChainParams >();
         dev::p2p::NetworkPreferences nprefs;
-        chainParams.sealEngineName = NoProof::name();
-        chainParams.allowFutureBlocks = true;
-        chainParams.difficulty = chainParams.minimumDifficulty;
-        chainParams.gasLimit = chainParams.maxGasLimit;
-        chainParams.byzantiumForkBlock = 0;
-        chainParams.externalGasDifficulty = 1;
-        chainParams.sChain.contractStorageLimit = 0x1122334455667788UL;
+        chainParams->sealEngineName = NoProof::name();
+        chainParams->allowFutureBlocks = true;
+        chainParams->difficulty = chainParams->getMinimumDifficulty();
+        chainParams->gasLimit = chainParams->getMaxGasLimit();
+        chainParams->byzantiumForkBlock = 0;
+#ifndef FAIR
+        chainParams->externalGasDifficulty = 1;
+        chainParams->sChain.contractStorageLimit = 0x1122334455667788UL;
+#endif
         // add random extra data to randomize genesis hash and get random DB path,
         // so that tests can be run in parallel
         // TODO: better make it use ethemeral in-memory databases
-        chainParams.extraData = h256::random().asBytes();
+        chainParams->extraData = h256::random().asBytes();
 
-        chainParams.sChain.emptyBlockIntervalMs = 1000;
+        chainParams->sChain.emptyBlockIntervalMs = 1000;
 
         //        web3.reset( new WebThreeDirect(
         //            "eth tests", tempDir.path(), "", chainParams, WithExisting::Kill, {"eth"},
@@ -286,6 +359,7 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
 
         mgr.reset( new SnapshotManager( chainParams, boost::filesystem::path( BTRFS_DIR_PATH ) ) );
 
+#ifndef FAIR
         boost::filesystem::create_directory(
             boost::filesystem::path( BTRFS_DIR_PATH ) / "filestorage" / "test_dir" );
 
@@ -322,11 +396,12 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
 
         newFileHash << fileHash;
 
+#endif
         // TODO creation order with dependencies, gasPricer etc..
         auto monitor = make_shared< InstanceMonitor >( "test" );
 
         setenv( "DATA_DIR", BTRFS_DIR_PATH.c_str(), 1 );
-        client.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
+        client.reset( new eth::ClientTest( chainParams, ( int ) chainParams->getNetworkId(),
             shared_ptr< GasPricer >(), NULL, monitor, boost::filesystem::path( BTRFS_DIR_PATH ),
             WithExisting::Kill ) );
 
@@ -372,12 +447,19 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         rpcServer->addConnector( ipcServer );
         ipcServer->StartListening();
 
-        auto client = new TestIpcClient( *ipcServer );
-        rpcClient = unique_ptr< WebThreeStubClient >( new WebThreeStubClient( *client ) );
+        testIpcClient = new TestIpcClient( *ipcServer );
+        rpcClient = unique_ptr< WebThreeStubClient >( new WebThreeStubClient( *testIpcClient ) );
     }
 
     ~SnapshotHashingFixture() {
+        rpcClient.reset();
+        if ( testIpcClient ) {
+            delete testIpcClient;
+            testIpcClient = nullptr;
+        }
+        rpcServer.reset();
         client.reset();
+
         const char* NC = getenv( "NC" );
         if ( NC )
             return;
@@ -411,6 +493,7 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
     KeyManager keyManager{ KeyManager::defaultPath(), SecretStore::defaultPath() };
     unique_ptr< ModularServer<> > rpcServer;
     unique_ptr< WebThreeStubClient > rpcClient;
+    TestIpcClient* testIpcClient;
     std::string adminSession;
     unique_ptr< SnapshotManager > mgr;
 };
@@ -419,17 +502,12 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
 BOOST_AUTO_TEST_SUITE( SnapshotSigningTestSuite )
 
 BOOST_AUTO_TEST_CASE( PositiveTest ) {
-    libff::init_alt_bn128_params();
-    ChainParams chainParams;
-    chainParams.sChain.t = 3;
-    chainParams.sChain.nodes.resize( 4 );
-    for ( size_t i = 0; i < chainParams.sChain.nodes.size(); ++i ) {
-        chainParams.sChain.nodes[i].id = i;
-    }
-    chainParams.nodeInfo.id = 3;
-    SnapshotHashAgentTest test_agent( chainParams, "" );
+    libBLS::init();
+    std::shared_ptr< ChainParams > chainParams =
+        SnapshotHashAgentTest::makeChainParamsForTest( "PositiveTest" );
+    SnapshotHashAgentTest test_agent( *chainParams, "" );
     dev::h256 hash = dev::h256::random();
-    std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.nodes.size(), hash );
+    std::vector< dev::h256 > snapshot_hashes( chainParams->getNodesCount(), hash );
     test_agent.fillData( snapshot_hashes );
     BOOST_REQUIRE( test_agent.verifyAllData() == 3 );
     auto res = test_agent.getNodesToDownloadSnapshotFrom();
@@ -438,23 +516,17 @@ BOOST_AUTO_TEST_CASE( PositiveTest ) {
     BOOST_REQUIRE( test_agent.getVotedHash().first == hash );
     BOOST_REQUIRE(
         test_agent.getVotedHash().second ==
-        libBLS::Bls::Signing( libBLS::ThresholdUtils::HashtoG1(
-                                  std::make_shared< std::array< uint8_t, 32 > >( hash.asArray() ) ),
+        libBLS::Bls::Signing( libBLS::algebra::hashToG1( hash.asArray() ),
             test_agent.secret_as_is ) );
 }
 
 BOOST_AUTO_TEST_CASE( WrongHash ) {
-    libff::init_alt_bn128_params();
-    ChainParams chainParams;
-    chainParams.sChain.t = 5;
-    chainParams.sChain.nodes.resize( 7 );
-    for ( size_t i = 0; i < chainParams.sChain.nodes.size(); ++i ) {
-        chainParams.sChain.nodes[i].id = i;
-    }
-    chainParams.nodeInfo.id = 6;
-    SnapshotHashAgentTest test_agent( chainParams, "" );
+    libBLS::init();
+    std::shared_ptr< ChainParams > chainParams =
+        SnapshotHashAgentTest::makeChainParamsForTest( "WrongHash" );
+    SnapshotHashAgentTest test_agent( *chainParams, "" );
     dev::h256 hash = dev::h256::random();  // `correct` hash
-    std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.nodes.size(), hash );
+    std::vector< dev::h256 > snapshot_hashes( chainParams->getNodesCount(), hash );
     snapshot_hashes[4] = dev::h256::random();  // hash is different from `correct` hash
     test_agent.fillData( snapshot_hashes );
     BOOST_REQUIRE( test_agent.verifyAllData() == 6 );
@@ -464,17 +536,12 @@ BOOST_AUTO_TEST_CASE( WrongHash ) {
 }
 
 BOOST_AUTO_TEST_CASE( NotEnoughVotes ) {
-    libff::init_alt_bn128_params();
-    ChainParams chainParams;
-    chainParams.sChain.t = 3;
-    chainParams.sChain.nodes.resize( 4 );
-    for ( size_t i = 0; i < chainParams.sChain.nodes.size(); ++i ) {
-        chainParams.sChain.nodes[i].id = i;
-    }
-    chainParams.nodeInfo.id = 3;
-    SnapshotHashAgentTest test_agent( chainParams, "" );
+    libBLS::init();
+    std::shared_ptr< ChainParams > chainParams =
+        SnapshotHashAgentTest::makeChainParamsForTest( "NotEnoughVotes" );
+    SnapshotHashAgentTest test_agent( *chainParams, "" );
     dev::h256 hash = dev::h256::random();
-    std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.nodes.size(), hash );
+    std::vector< dev::h256 > snapshot_hashes( chainParams->getNodesCount(), hash );
     snapshot_hashes[2] = dev::h256::random();
     test_agent.fillData( snapshot_hashes );
     BOOST_REQUIRE( test_agent.verifyAllData() == 3 );
@@ -482,42 +549,26 @@ BOOST_AUTO_TEST_CASE( NotEnoughVotes ) {
 }
 
 BOOST_AUTO_TEST_CASE( WrongSignature ) {
-    libff::init_alt_bn128_params();
-    ChainParams chainParams;
-    chainParams.sChain.t = 3;
-    chainParams.sChain.nodes.resize( 4 );
-    for ( size_t i = 0; i < chainParams.sChain.nodes.size(); ++i ) {
-        chainParams.sChain.nodes[i].id = i;
-    }
-    chainParams.nodeInfo.id = 3;
-    SnapshotHashAgentTest test_agent( chainParams, "" );
+    libBLS::init();
+    std::shared_ptr< ChainParams > chainParams =
+        SnapshotHashAgentTest::makeChainParamsForTest( "WrongSignature" );
+    SnapshotHashAgentTest test_agent( *chainParams, "" );
     dev::h256 hash = dev::h256::random();
-    std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.nodes.size(), hash );
+    std::vector< dev::h256 > snapshot_hashes( chainParams->getNodesCount(), hash );
     test_agent.fillData( snapshot_hashes );
     test_agent.spoilSignature( 0 );
     BOOST_REQUIRE( test_agent.verifyAllData() == 2 );
 }
 
 BOOST_AUTO_TEST_CASE( noSnapshotMajority ) {
-    libff::init_alt_bn128_params();
-    ChainParams chainParams;
-    chainParams.sChain.t = 3;
-    chainParams.sChain.nodes.resize( 4 );
-    for ( size_t i = 0; i < chainParams.sChain.nodes.size(); ++i ) {
-        chainParams.sChain.nodes[i].id = i;
-    }
-    chainParams.nodeInfo.id = 3;
+    libBLS::init();
+    std::shared_ptr< ChainParams > chainParams =
+        SnapshotHashAgentTest::makeChainParamsForTest( "noSnapshotMajority" );
+    std::string url = chainParams->getNodeByIndex( 3 ).ip + std::string( ":1234" );
 
-    chainParams.sChain.nodes[0].ip = "123.45.68.89";
-    chainParams.sChain.nodes[1].ip = "123.45.87.89";
-    chainParams.sChain.nodes[2].ip = "123.45.77.89";
-
-    chainParams.sChain.nodes[3].ip = "123.45.67.89";
-    std::string url = chainParams.sChain.nodes[3].ip + std::string( ":1234" );
-
-    SnapshotHashAgentTest test_agent( chainParams, url );
+    SnapshotHashAgentTest test_agent( *chainParams, url );
     dev::h256 hash = dev::h256::random();
-    std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.nodes.size(), hash );
+    std::vector< dev::h256 > snapshot_hashes( chainParams->getNodesCount(), hash );
     snapshot_hashes[2] = dev::h256::random();
     test_agent.fillData( snapshot_hashes );
 
@@ -554,14 +605,14 @@ BOOST_FIXTURE_TEST_CASE( SnapshotHashingTest, SnapshotHashingFixture,
 
     mgr->doSnapshot( 1 );
     mgr->computeSnapshotHash( 1 );
-    BOOST_REQUIRE( mgr->isSnapshotHashPresent( 1 ) );
+    BOOST_REQUIRE( mgr->checkSnapshotFolderAndSnapshotHash( 1 ) );
 
     BOOST_REQUIRE( client->number() == 1 );
     WAIT_FOR_THE_NEXT_BLOCK();
 
     mgr->doSnapshot( 2 );
     mgr->computeSnapshotHash( 2 );
-    BOOST_REQUIRE( mgr->isSnapshotHashPresent( 2 ) );
+    BOOST_REQUIRE( mgr->checkSnapshotFolderAndSnapshotHash( 2 ) );
 
     BOOST_REQUIRE( client->number() == 2 );
     WAIT_FOR_THE_NEXT_BLOCK();
@@ -571,7 +622,8 @@ BOOST_FIXTURE_TEST_CASE( SnapshotHashingTest, SnapshotHashingFixture,
 
     BOOST_REQUIRE( hash1 != hash2 );
 
-    BOOST_REQUIRE_THROW( mgr->isSnapshotHashPresent( 3 ), SnapshotManager::SnapshotAbsent );
+    BOOST_REQUIRE_THROW(
+        mgr->checkSnapshotFolderAndSnapshotHash( 3 ), SnapshotManager::SnapshotAbsent );
 
     BOOST_REQUIRE_THROW( mgr->getSnapshotHash( 3 ), SnapshotManager::SnapshotAbsent );
 
@@ -582,15 +634,19 @@ BOOST_FIXTURE_TEST_CASE( SnapshotHashingTest, SnapshotHashingFixture,
 
     mgr->doSnapshot( 3 );
 
+#ifndef FAIR
     mgr->computeSnapshotHash( 3, true );
+#else
+    mgr->computeSnapshotHash( 3 );
+#endif
 
-    BOOST_REQUIRE( mgr->isSnapshotHashPresent( 3 ) );
+    BOOST_REQUIRE( mgr->checkSnapshotFolderAndSnapshotHash( 3 ) );
 
     dev::h256 hash3_dbl = mgr->getSnapshotHash( 3 );
 
     mgr->computeSnapshotHash( 3 );
 
-    BOOST_REQUIRE( mgr->isSnapshotHashPresent( 3 ) );
+    BOOST_REQUIRE( mgr->checkSnapshotFolderAndSnapshotHash( 3 ) );
 
     dev::h256 hash3 = mgr->getSnapshotHash( 3 );
 

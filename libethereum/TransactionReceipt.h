@@ -44,6 +44,10 @@ public:
     TransactionReceipt( bytesConstRef _rlp );
     TransactionReceipt( h256 const& _root, u256 const& _gasUsed, LogEntries const& _log );
     TransactionReceipt( uint8_t _status, u256 const& _gasUsed, LogEntries const& _log );
+    TransactionReceipt( h256 const& _root, u256 const& _gasUsed, LogEntries const& _log,
+        std::string const& _revertReason );
+    TransactionReceipt( uint8_t _status, u256 const& _gasUsed, LogEntries const& _log,
+        std::string const& _revertReason );
     TransactionReceipt( const TransactionReceipt& other ) = default;
     TransactionReceipt& operator=( const TransactionReceipt& other ) = default;
 

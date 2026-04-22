@@ -149,6 +149,10 @@ private:
     void throwBufferOverrun( bigint const& _enfOfAccess );
     void throwStorageOverflow( const std::string& _addr );
 
+#ifdef FAIR
+    void throwUnsupportedDencunOpcode();
+#endif
+
     std::vector< uint64_t > m_beginSubs;
     std::vector< uint64_t > m_jumpDests;
     int64_t verifyJumpDest( u256 const& _dest, bool _throw = true );

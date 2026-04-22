@@ -28,7 +28,6 @@
 #include <libconsensus/libBLS/bls/bls.h>
 #include <libethereum/ChainParams.h>
 #include <boost/algorithm/string.hpp>
-#include <libff/algebra/curves/alt_bn128/alt_bn128_pp.hpp>
 
 namespace dev {
 namespace test {
@@ -71,29 +70,29 @@ public:
 
     std::vector< std::string > getNodesToDownloadSnapshotFrom( unsigned blockNumber );
 
-    std::pair< dev::h256, libff::alt_bn128_G1 > getVotedHash() const;
+    std::pair< dev::h256, libBLS::algebra::G1Point > getVotedHash() const;
 
     friend class dev::test::SnapshotHashAgentTest;
 
 private:
-    dev::eth::ChainParams chainParams_;
+    const dev::eth::ChainParams& chainParams_;
     unsigned n_;
     std::string urlToDownloadSnapshotFrom_;
     std::shared_ptr< libBLS::Bls > bls_;
 
     std::vector< dev::h256 > hashes_;
-    std::vector< libff::alt_bn128_G1 > signatures_;
-    std::vector< libff::alt_bn128_G2 > public_keys_;
+    std::vector< libBLS::algebra::G1Point > signatures_;
+    std::vector< libBLS::algebra::G2Point > public_keys_;
     std::vector< size_t > nodesToDownloadSnapshotFrom_;
     std::vector< bool > isReceived_;
     std::mutex hashesMutex;
-    libff::alt_bn128_G2 commonPublicKey_;
+    libBLS::algebra::G2Point commonPublicKey_;
 
     bool voteForHash();
     void readPublicKeyFromConfig();
-    std::tuple< dev::h256, libff::alt_bn128_G1, libff::alt_bn128_G2 > askNodeForHash(
+    std::tuple< dev::h256, libBLS::algebra::G1Point, libBLS::algebra::G2Point > askNodeForHash(
         const std::string& url, unsigned blockNumber );
-    std::pair< dev::h256, libff::alt_bn128_G1 > votedHash_;
+    std::pair< dev::h256, libBLS::algebra::G1Point > votedHash_;
 
     size_t verifyAllData() const;
 

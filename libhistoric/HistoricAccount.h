@@ -50,8 +50,18 @@ public:
 
     /// Explicit constructor for wierd cases of construction or a contract account.
     HistoricAccount( u256 _nonce, u256 _balance, StorageRoot _storageRoot, h256 _codeHash,
-        u256 const& _version, Changedness _c, s256 _storageUsed = 0 )
-        : Account( _nonce, _balance, _storageRoot, _codeHash, _version, _c, _storageUsed ){};
+        u256 const& _version, Changedness _c
+#ifndef FAIR
+        ,
+        s256 _storageUsed = 0
+#endif
+        )
+        : Account( _nonce, _balance, _storageRoot, _codeHash, _version, _c
+#ifndef FAIR
+              ,
+              _storageUsed
+#endif
+          ){};
 };
 }  // namespace eth
 }  // namespace dev

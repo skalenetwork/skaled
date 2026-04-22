@@ -54,13 +54,17 @@ const std::string SnapshotManager::snapshotHashFileName = "snapshot_hash.txt";
 // - bad data dir
 // - not btrfs
 // - volumes don't exist
-SnapshotManager::SnapshotManager( const dev::eth::ChainParams& _chainParams,
+SnapshotManager::SnapshotManager( std::shared_ptr< const dev::eth::ChainParams > _chainParams,
     const fs::path& _dataDir, const std::string& _diffsDir )
     : chainParams( _chainParams ) {
     dataDir = _dataDir;
-    coreVolumes = { dev::eth::BlockChain::getChainDirName( chainParams ), "filestorage",
-        "prices_" + chainParams.nodeInfo.id.str() + ".db",
-        "blocks_" + chainParams.nodeInfo.id.str() + ".db" };
+
+    coreVolumes = { dev::eth::BlockChain::getChainDirName( *chainParams ),
+#ifndef FAIR
+        "filestorage",
+#endif
+        "prices_" + chainParams->getSelfNodeId().str() + ".db",
+        "blocks_" + chainParams->getSelfNodeId().str() + ".db" };
 
 #ifdef HISTORIC_STATE
     archiveVolumes = { "historic_roots", "historic_state" };
@@ -151,6 +155,7 @@ void SnapshotManager::doSnapshot( unsigned _blockNumber ) {
 // exceptions:
 // - not found/cannot read
 void SnapshotManager::restoreSnapshot( unsigned _blockNumber ) {
+    BOOST_LOG( m_loggerInfo ) << "Restoring snapshot made for block " << _blockNumber;
     try {
         if ( !fs::exists( snapshotsDir / to_string( _blockNumber ) ) )
             throw SnapshotAbsent( _blockNumber );
@@ -203,7 +208,7 @@ boost::filesystem::path SnapshotManager::makeOrGetDiff( unsigned _toBlock ) {
     fs::path path = getDiffPath( _toBlock );
 
     try {
-        if ( fs::is_regular( path ) )
+        if ( fs::is_regular_file( path ) )
             return path;
 
         if ( !fs::exists( snapshotsDir / to_string( _toBlock ) ) ) {
@@ -357,8 +362,8 @@ void SnapshotManager::leaveNLastSnapshots( unsigned n ) {
     map< int, fs::path, std::greater< int > > numbers;
     for ( auto& f : fs::directory_iterator( snapshotsDir ) ) {
         // HACK We exclude 0 snapshot forcefully
-        if ( fs::basename( f ) != "0" )
-            numbers.insert( make_pair( std::stoi( fs::basename( f ) ), f ) );
+        if ( fs::path( f ).filename().string() != "0" )
+            numbers.insert( make_pair( std::stoi( fs::path( f ).filename().string() ), f ) );
     }  // for
 
     // delete all after n first
@@ -392,8 +397,8 @@ std::pair< int, int > SnapshotManager::getLatestSnapshots() const {
     map< int, fs::path, std::greater< int > > numbers;
     for ( auto& f : fs::directory_iterator( snapshotsDir ) ) {
         // HACK We exclude 0 snapshot forcefully
-        if ( fs::basename( f ) != "0" )
-            numbers.insert( make_pair( std::stoi( fs::basename( f ) ), f ) );
+        if ( fs::path( f ).filename().string() != "0" )
+            numbers.insert( make_pair( std::stoi( fs::path( f ).filename().string() ), f ) );
     }  // for
 
     if ( numbers.empty() ) {
@@ -401,13 +406,13 @@ std::pair< int, int > SnapshotManager::getLatestSnapshots() const {
     }
 
     auto it = numbers.begin();
-    int snd = std::stoi( fs::basename( ( *it++ ).second ) );
+    int snd = std::stoi( fs::path( ( *it++ ).second ).filename().string() );
 
     int fst;
     if ( numbers.size() == 1 ) {
         fst = 0;
     } else {
-        fst = std::stoi( fs::basename( ( *it ).second ) );
+        fst = std::stoi( fs::path( ( *it ).second ).filename().string() );
     }
 
     return std::make_pair( fst, snd );
@@ -418,7 +423,7 @@ void SnapshotManager::leaveNLastDiffs( unsigned n ) {
     map< int, fs::path, std::greater< int > > numbers;
     for ( auto& f : fs::directory_iterator( diffsDir ) ) {
         try {
-            numbers.insert( make_pair( std::stoi( fs::basename( f ) ), f ) );
+            numbers.insert( make_pair( std::stoi( fs::path( f ).filename().string() ), f ) );
         } catch ( ... ) { /*ignore non-numbers*/
         }
     }  // for
@@ -447,7 +452,7 @@ dev::h256 SnapshotManager::getSnapshotHash( unsigned block_number ) const {
         ( this->snapshotsDir / std::to_string( block_number ) / this->snapshotHashFileName )
             .string();
 
-    if ( !isSnapshotHashPresent( block_number ) ) {
+    if ( !checkSnapshotFolderAndSnapshotHash( block_number ) ) {
         BOOST_THROW_EXCEPTION( SnapshotManager::CannotRead( hashFile ) );
     }
 
@@ -463,7 +468,7 @@ dev::h256 SnapshotManager::getSnapshotHash( unsigned block_number ) const {
     return hash;
 }
 
-bool SnapshotManager::isSnapshotHashPresent( unsigned _blockNumber ) const {
+bool SnapshotManager::checkSnapshotFolderAndSnapshotHash( unsigned _blockNumber ) const {
     fs::path snapshot_dir = snapshotsDir / to_string( _blockNumber );
 
     try {
@@ -510,7 +515,7 @@ void SnapshotManager::computeDatabaseHash(
     dev::h256 dbHash;
     secp256k1_sha256_finalize( &dbCtx, dbHash.data() );
 
-    LOG( m_loggerInfo ) << _dbDir << " hash is: " << dbHash;
+    BOOST_LOG( m_loggerInfo ) << _dbDir << " hash is: " << dbHash;
 
     secp256k1_sha256_write( ctx, dbHash.data(), dbHash.size );
 } catch ( const fs::filesystem_error& ex ) {
@@ -520,11 +525,15 @@ void SnapshotManager::computeDatabaseHash(
 void SnapshotManager::addLastPriceToHash( unsigned _blockNumber, secp256k1_sha256_t* ctx ) const {
     dev::u256 last_price = 0;
     // manually open DB
+    std::string pricesDbName = "prices_" + chainParams->getSelfNodeId().str() + ".db";
+    auto pricesDbVolumeIt = std::find( coreVolumes.begin(), coreVolumes.end(), pricesDbName );
+    if ( pricesDbVolumeIt == coreVolumes.end() )
+        throw std::runtime_error( "No btrfs module prices_db" );
     boost::filesystem::path prices_path =
-        this->snapshotsDir / std::to_string( _blockNumber ) / coreVolumes[2];
+        this->snapshotsDir / std::to_string( _blockNumber ) / *pricesDbVolumeIt;
     if ( boost::filesystem::exists( prices_path ) ) {
         boost::filesystem::directory_iterator it( prices_path ), end;
-        std::string last_price_str;
+        std::string last_price_str = "";
         std::string last_price_key = "1.0:" + std::to_string( _blockNumber );
         while ( it != end ) {
             dev::db::LevelDB::LevelDBOptions options;
@@ -552,20 +561,22 @@ void SnapshotManager::addLastPriceToHash( unsigned _blockNumber, secp256k1_sha25
 
     dev::h256 last_price_hash = dev::sha256( last_price.str() );
 
-    LOG( m_loggerInfo ) << "Latest price hash is: " << last_price_hash;
+    BOOST_LOG( m_loggerInfo ) << "Latest price hash is: " << last_price_hash;
     secp256k1_sha256_write( ctx, last_price_hash.data(), last_price_hash.size );
 }
 
+
+#ifndef FAIR
 void SnapshotManager::proceedRegularFile(
-    const boost::filesystem::path& path, secp256k1_sha256_t* ctx, bool is_checking ) const {
-    if ( boost::filesystem::extension( path ) == "._hash" ) {
+    const boost::filesystem::path& path, secp256k1_sha256_t* ctx, bool isChecking ) const {
+    if ( path.extension() == "._hash" ) {
         return;
     }
 
     std::string relativePath = path.string().substr( path.string().find( "filestorage" ) );
 
     std::string fileHashPathStr = path.string() + "._hash";
-    if ( !is_checking ) {
+    if ( !isChecking ) {
         dev::h256 fileHash;
         if ( !boost::filesystem::exists( fileHashPathStr ) ) {
             // file has not been downloaded fully
@@ -634,7 +645,7 @@ void SnapshotManager::proceedDirectory(
 }
 
 void SnapshotManager::proceedFileStorageDirectory( const boost::filesystem::path& _fileSystemDir,
-    secp256k1_sha256_t* ctx, bool is_checking ) const {
+    secp256k1_sha256_t* ctx, bool isChecking ) const {
     boost::filesystem::recursive_directory_iterator directory_it( _fileSystemDir ), end;
 
     std::vector< boost::filesystem::path > contents;
@@ -649,25 +660,31 @@ void SnapshotManager::proceedFileStorageDirectory( const boost::filesystem::path
 
     for ( auto& content : contents ) {
         if ( boost::filesystem::is_regular_file( content ) ) {
-            proceedRegularFile( content, ctx, is_checking );
+            proceedRegularFile( content, ctx, isChecking );
         } else {
             proceedDirectory( content, ctx );
         }
     }
 }
 
+
 void SnapshotManager::computeFileStorageHash( const boost::filesystem::path& _fileSystemDir,
-    secp256k1_sha256_t* ctx, bool is_checking ) const {
+    secp256k1_sha256_t* ctx, bool isChecking ) const {
     if ( !boost::filesystem::exists( _fileSystemDir ) ) {
         throw std::logic_error( "filestorage btrfs subvolume was corrupted - " +
                                 _fileSystemDir.string() + " doesn't exist" );
     }
 
-    this->proceedFileStorageDirectory( _fileSystemDir, ctx, is_checking );
+    this->proceedFileStorageDirectory( _fileSystemDir, ctx, isChecking );
 }
+#endif
 
-void SnapshotManager::computeAllVolumesHash(
-    unsigned _blockNumber, secp256k1_sha256_t* ctx, bool is_checking ) const {
+void SnapshotManager::computeAllVolumesHash( unsigned _blockNumber, secp256k1_sha256_t* ctx
+#ifndef FAIR
+    ,
+    bool isChecking
+#endif
+) const {
     assert( allVolumes.size() != 0 );
 
     // TODO XXX Remove volumes structure knowledge from here!!
@@ -701,12 +718,14 @@ void SnapshotManager::computeAllVolumesHash(
         this->computeDatabaseHash( content, ctx );
     }
 
+#ifndef FAIR
     // filestorage
     this->computeFileStorageHash(
-        this->snapshotsDir / std::to_string( _blockNumber ) / "filestorage", ctx, is_checking );
+        this->snapshotsDir / std::to_string( _blockNumber ) / "filestorage", ctx, isChecking );
+#endif
 
-    // if have prices and blocks
-    if ( _blockNumber && allVolumes.size() > 3 ) {
+    // only if snapshot number > 0
+    if ( _blockNumber ) {
         this->addLastPriceToHash( _blockNumber, ctx );
     }
 
@@ -756,8 +775,13 @@ void SnapshotManager::computeAllVolumesHash(
     //     }
 }
 
-void SnapshotManager::computeSnapshotHash( unsigned _blockNumber, bool is_checking ) {
-    if ( this->isSnapshotHashPresent( _blockNumber ) ) {
+void SnapshotManager::computeSnapshotHash( unsigned _blockNumber
+#ifndef FAIR
+    ,
+    bool isChecking
+#endif
+) {
+    if ( this->checkSnapshotFolderAndSnapshotHash( _blockNumber ) ) {
         return;
     }
 
@@ -788,7 +812,12 @@ void SnapshotManager::computeSnapshotHash( unsigned _blockNumber, bool is_checki
             batched_io::test_crash_before_commit( "SnapshotManager::doSnapshot" );
     }
 
-    this->computeAllVolumesHash( _blockNumber, &ctx, is_checking );
+    this->computeAllVolumesHash( _blockNumber, &ctx
+#ifndef FAIR
+        ,
+        isChecking
+#endif
+    );
 
     for ( const auto& volume : volumes ) {
         int res = btrfs.subvolume.property_set(
@@ -851,7 +880,7 @@ uint64_t SnapshotManager::getBlockTimestamp( unsigned _blockNumber ) const {
 
 
 /*
-      Find the most recent database out of the four rotated block atabases in consensus
+      Find the most recent database out of the four rotated block databases in consensus
       This will find the directory in the form "${_dirname}/.db.X" with the largest X
 */
 boost::filesystem::path SnapshotManager::findMostRecentBlocksDBPath(

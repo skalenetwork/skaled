@@ -1,0 +1,340 @@
+{
+    "sealEngine": "Ethash",
+    "params": {
+        "accountStartNonce": "0x00",
+        "homesteadForkBlock": "0x0",
+        "daoHardforkBlock": "0x0",
+        "EIP150ForkBlock": "0x00",
+        "EIP158ForkBlock": "0x00",
+        "byzantiumForkBlock": "0x0",
+        "constantinopleForkBlock": "0x0",
+        "istanbulForkBlock": "0x0",
+        "networkID": "12313219",
+        "chainID": "0x1",
+        "maximumExtraDataSize": "0x20",
+        "tieBreakingGas": false,
+        "minGasLimit": "0xFFFFFFF",
+        "maxGasLimit": "7fffffffffffffff",
+        "gasLimitBoundDivisor": "0x0400",
+        "minimumDifficulty": "0x0",
+        "difficultyBoundDivisor": "0x0800",
+        "durationLimit": "0x0d",
+        "blockReward": "0x4563918244F40000",
+        "externalGasDifficulty": "0x01",
+        "skaleDisableChainIdCheck": true
+    },
+    "unddos": {
+        "origins": [
+            {
+                "origin": [
+                    "*"
+                ],
+                "ban_lengthy": 30,
+                "ban_peak": 10,
+                "max_calls_per_minute": 60000,
+                "max_calls_per_second": 1000,
+                "max_ws_conn": 20000
+            }
+        ],
+        "global": {
+            "ban_lengthy": 30,
+            "ban_peak": 10,
+            "max_calls_per_minute": 300000,
+            "max_calls_per_second": 5000,
+            "max_ws_conn": 20000
+        }
+    },
+    "genesis": {
+        "nonce": "0x0000000000000042",
+        "difficulty": "0x0",
+        "mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "author": "0x0000000000000000000000000000000000000000",
+        "timestamp": "0x00",
+        "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "extraData": "0x11bbe8db4e347b4e8c937c1c8370e4b5ed33adb3db69cbdb7a38e1e50b1b82fa",
+        "gasLimit": "0xFFFFFFF"
+    },
+    "accounts": {
+        "0x5339Ef05428d1b87f4e2F2db64E782c68E9cDA56": {
+           "balance": "1000000000000000000000000000000000000000"
+        },
+        "0xc868AF52a6549c773082A334E5AE232e0Ea3B513": {
+            "balance": "1000000000000000000000000000000"
+        },
+        "0xa68f946090c600eda6f139783077ee802afeb990": {
+            "balance": "1000000000000000000000000000000"
+        },
+        "0x88fd5e01078629cc194c933d9631b9448fe10b1d": {
+            "balance": "1000000000000000000000000000000"
+        },
+        "0x77a0bc73442d3d9cb993e8d9752f95babf0ccaa6": {
+            "balance": "1000000000000000000000000000000"
+        },
+        "0x0aa6a44690ef52354e976990292cf9c5cd36ad59": {
+            "balance": "1000000000000000000000000000000"
+        },
+        "0x863f816036e3cbba90855196c9d1e339fcff1650": {
+            "balance": "1000000000000000000000000000000"
+        },
+        "0xe3cc6ec63b5652d1594bc63bb293f4e80f76dbdd": {
+            "balance": "1000000000000000000000000000000"
+        },
+        "0x94c6e5746971d6aebeaa42cbbe2feca0f6b5b24f": {
+            "balance": "1000000000000000000000000000000"
+        },
+        "0x3f5bdf5d4c274c82b8d17aa2810b00d2cf050f24": {
+            "balance": "1000000000000000000000000000000"
+        },
+        "0xbf5aa678b969c0871e2fbcf09c3dbb5d5865ac1e": {
+            "balance": "1000000000000000000000000000000"
+        },
+        "0xa6d50055592cecb795bc1ed3b9ea57ed426b0b7c": {
+            "balance": "1000000000000000000000000000000"
+        },
+        "0xb70603c505f85130b5b2e73cd82d196dfd7d8b5e": {
+            "balance": "1000000000000000000000000000000"
+        },
+        "0x079cf317ef40b16141784b6fabff812d64f7c0fd": {
+            "balance": "1000000000000000000000000000000"
+        },
+        "0x482d7f53cba6ae73a354533673c48e2dfd560949": {
+            "balance": "1000000000000000000000000000000"
+        },
+        "0xa2969e82619021ea407338f8bdf7c6f2bd679673": {
+            "balance": "1000000000000000000000000000000"
+        },
+        "0x28353685b0b986a724b92113debb3d8cd9a6b263": {
+            "balance": "1000000000000000000000000000000"
+        },
+        "0x9b77f28285a49601169a33332f08aa309d97edd0": {
+            "balance": "1000000000000000000000000000000"
+        },
+        "0xd2cd302eb060e375a65d65946692a3ac2d838d35": {
+            "balance": "1000000000000000000000000000000"
+        },
+        "0xffffffffffffffffffffffffffffffffffffffff": {
+            "balance": "1000000000000000000000000000000"
+        },
+        "0x0000000000000000000000000000000000000001": {
+            "precompiled": {
+                "name": "ecrecover",
+                "linear": {
+                    "base": 3000,
+                    "word": 0
+                }
+            }
+        },
+        "0x0000000000000000000000000000000000000002": {
+            "precompiled": {
+                "name": "sha256",
+                "linear": {
+                    "base": 60,
+                    "word": 12
+                }
+            }
+        },
+        "0x0000000000000000000000000000000000000003": {
+            "precompiled": {
+                "name": "ripemd160",
+                "linear": {
+                    "base": 600,
+                    "word": 120
+                }
+            }
+        },
+        "0x0000000000000000000000000000000000000004": {
+            "precompiled": {
+                "name": "identity",
+                "linear": {
+                    "base": 15,
+                    "word": 3
+                }
+            }
+        },
+        "0x0000000000000000000000000000000000000005": {
+            "precompiled": {
+                "name": "modexp"
+            }
+        },
+        "0x0000000000000000000000000000000000000006": {
+            "precompiled": {
+                "name": "alt_bn128_G1_add",
+                "linear": {
+                    "base": 500,
+                    "word": 0
+                }
+            }
+        },
+        "0x0000000000000000000000000000000000000007": {
+            "precompiled": {
+                "name": "alt_bn128_G1_mul",
+                "linear": {
+                    "base": 40000,
+                    "word": 0
+                }
+            }
+        },
+        "0x0000000000000000000000000000000000000008": {
+            "precompiled": {
+                "name": "alt_bn128_pairing_product"
+            }
+        },
+        "0x0000000000000000000000000000000000000012": {
+            "precompiled": {
+                "name": "logTextMessage",
+                "linear": {
+                    "base": 15,
+                    "word": 0
+                },
+                "startingBlock": "0x0"
+            }
+        },
+        "0x0000000000000000000000000000000000000016": {
+            "precompiled": {
+                "name": "fnReserved0x16",
+                "linear": {
+                    "base": 15,
+                    "word": 0
+                },
+                "startingBlock": "0x0"
+            }
+        },
+        "0x0000000000000000000000000000000000000017": {
+            "precompiled": {
+                "name": "getConfigPermissionFlag",
+                "linear": {
+                    "base": 15,
+                    "word": 0
+                },
+                "startingBlock": "0x0"
+            }
+        },
+        "0x0000000000000000000000000000000000000018": {
+            "precompiled": {
+                "name": "getBlockRandom",
+                "linear": {
+                    "base": 15,
+                    "word": 0
+                },
+                "startingBlock": "0x0"
+            }
+        },
+        "0x0000000000000000000000000000000000000019": {
+            "precompiled": {
+                "name": "getIMABLSPublicKey",
+                "linear": {
+                    "base": 15,
+                    "word": 0
+                },
+                "startingBlock": "0x0"
+            }
+        }
+    },
+    "skaleConfig": {
+        "nodeInfo": {
+            "nodeID": 1,
+            "nodeName": "TestNode",
+            "basePort": 1231,
+            "httpRpcPort": 1234,
+            "httpsRpcPort": 1239,
+            "wsRpcPort": 1233,
+            "wssRpcPort": 1238,
+            "infoHttpRpcPort": 1240,
+            "info-acceptors": 1,
+            "bindIP": "0.0.0.0",
+            "logLevel": "info",
+            "logLevelConfig": "info",
+            "pg-threads": 10,
+            "pg-threads-limit": 10,
+            "minCacheSize": 8000000,
+            "maxCacheSize": 16000000,
+            "collectionQueueSize": 20,
+            "collectionDuration": 60,
+            "transactionQueueSize": 1000,
+            "maxOpenLeveldbFiles": 1000,
+            "ecdsaKeyName": "ecdsa-key-to-be-filled",
+            "wallets": {
+            "ima": {
+                    "keyShareName": "bls-key-to-be-filled",
+                    "t": 1,
+                    "n": 1,
+                    "certFile": "/skale_node_data/sgx_certs/sgx.crt",
+                    "keyFile": "/skale_node_data/sgx_certs/sgx.key",
+                    "commonBLSPublicKey0": "bls-key-to-be-filled",
+                    "commonBLSPublicKey1": "bls-key-to-be-filled",
+                    "commonBLSPublicKey2": "bls-key-to-be-filled",
+                    "commonBLSPublicKey3": "bls-key-to-be-filled",
+                    "BLSPublicKey0": "bls-key-to-be-filled",
+                    "BLSPublicKey1": "bls-key-to-be-filled",
+                    "BLSPublicKey2": "bls-key-to-be-filled",
+                    "BLSPublicKey3": "bls-key-to-be-filled"
+                }
+            }
+        },
+        "sChain": {
+            "schainID": 1,
+            "schainName": "TestSchain",
+            "blockAuthor": "0xa68f946090c600eda6f139783077ee802afeb990",
+            "dbStorageLimit": 12653999554,
+            "maxConsensusStorageBytes": 63269997772,
+            "maxSkaledLeveldbStorageBytes": 63269997772,
+            "maxFileStorageBytes": 63269997772,
+            "maxReservedStorageBytes": 21089999257,
+            "multiTransactionMode": true,
+            "nodeGroups": {
+                "0": {
+                    "nodes": {
+                        "1": [
+                            1,
+                            1,
+                            "ecdsa-key-to-be-filled"
+                        ]
+                    },
+                    "finish_ts": null,
+                    "bls_public_key": {
+                        "blsPublicKey0": "bls-key-to-be-filled",
+                        "blsPublicKey1": "bls-key-to-be-filled",
+                        "blsPublicKey2": "bls-key-to-be-filled",
+                        "blsPublicKey3": "bls-key-to-be-filled"
+                    }
+                }
+            },
+            "nodes": [
+                {
+                    "nodeID": 1,
+                    "nodeName": "TestNode",
+                    "basePort": 1231,
+                    "httpRpcPort": 1234,
+                    "httpsRpcPort": 1239,
+                    "wsRpcPort": 1233,
+                    "wssRpcPort": 1238,
+                    "blsPublicKey0": "bls-key-to-be-filled",
+                    "blsPublicKey1": "bls-key-to-be-filled",
+                    "blsPublicKey2": "bls-key-to-be-filled",
+                    "blsPublicKey3": "bls-key-to-be-filled",
+                    "publicKey": "ecdsa-key-to-be-filled",
+                    "owner": "0x88fd5e01078629cc194c933d9631b9448fe10b1d",
+                    "schainIndex": 1,
+                    "ip": "127.0.0.1",
+                    "publicIP": "127.0.0.1"
+                }
+            ],
+            "contractStorageZeroValuePatchTimestamp": 1681128000,
+            "revertableFSPatchTimestamp": 1681473600,
+            "contractStoragePatchTimestamp": 1681732800,
+            "verifyDaSigsPatchTimestamp": 1681300800,
+            "storageDestructionPatchTimestamp": 1702393200,
+            "powCheckPatchTimestamp": 1702296000,
+            "skipInvalidTransactionsPatchTimestamp": 1702382400,
+            "pushZeroPatchTimestamp": 1710331200,
+            "precompiledConfigPatchTimestamp": 1710331200,
+            "correctForkInPowPatchTimestamp": 1710331200,
+            "EIP1559TransactionsPatchTimestamp": 1,
+            "fastConsensusPatchTimestamp": 1721822400,
+            "flexibleDeploymentPatchTimestamp": 1721826000,
+            "verifyBlsSyncPatchTimestamp": 1721829600,
+            "externalGasPatchTimestamp": 1727712000,
+            "emptyBlockIntervalMs": 1000
+        }
+    }
+}

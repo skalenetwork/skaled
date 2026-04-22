@@ -10,7 +10,7 @@ REPO_NAME=skalenetwork/$NAME
 IMAGE_NAME=$REPO_NAME:$VERSION
 
 # 3.17.0-develop.22 -> 3.17.0-develop
-# 3.17.0-develop.22-hostoric -> 3.17.0-develop
+# 3.17.0-develop.22-historic -> 3.17.0-develop
 LABEL="${VERSION%.*}"
 
 # 3.17.0 -> 3.17.0
@@ -18,9 +18,15 @@ LABEL="${VERSION%.*}"
 if [[ "$BRANCH" == "stable" ]]
 then
     LABEL=${VERSION%-historic}
+    LABEL=${VERSION%-bite}
 fi
 
 LATEST_IMAGE_NAME=$REPO_NAME:$LABEL-latest
+
+if [[ $VERSION == *"bite" ]]
+then
+    LATEST_IMAGE_NAME=$LATEST_IMAGE_NAME-bite
+fi
 
 if [[ $VERSION == *"historic" ]]
 then

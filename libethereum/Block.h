@@ -24,6 +24,7 @@
 #pragma once
 
 #include <array>
+#include <optional>
 #include <unordered_map>
 
 #include <libdevcore/Common.h>
@@ -42,6 +43,7 @@
 #include "Transaction.h"
 #include "TransactionReceipt.h"
 
+#include "libconsensus/node/ConsensusInterface.h"
 
 namespace skale {
 class State;
@@ -120,6 +122,17 @@ public:
         m_author = _id;
         resetCurrent();
     }
+
+#ifdef FAIR
+    /// Set the author address for any transactions we do and rewards we get.
+    /// No reset of current block
+    void safeSetAuthor( Address const& _id ) {
+        m_author = _id;
+        m_currentBlock.setAuthor( m_author );
+    }
+
+    static const Address DEFAULT_BLOCK_OWNER_ADDRESS;
+#endif
 
     /// Note the fact that this block is being used with a particular chain.
     /// Call this before using any non-const methods.
@@ -309,16 +322,60 @@ public:
 
     void startReadState();
 
+#ifdef BITE
+    void setDecryptedTransactionDataFields(
+        const std::shared_ptr< DecryptedTransactionFieldsMap >& _decryptedTransactionDataFields ) {
+        CHECK_EXPRESSION( _decryptedTransactionDataFields );
+        m_decryptedTransactionDataFields = _decryptedTransactionDataFields;
+    }
+
+    const std::shared_ptr< DecryptedTransactionFieldsMap >& decryptedTransactionDataFields() const {
+        return m_decryptedTransactionDataFields;
+    }
+#endif
+
 private:
+    struct SyncContext {
+        bool singleCommitEnabled = false;
+        TransactionReceipts receipts;
+        TransactionReceipts receiptsOfCommitted;
+        unsigned badCount = 0;
+    };
+
     SealEngineFace* sealEngine() const;
 
     /// Undo the changes to the state for committing to mine.
     void uncommitToSeal();
 
+    void prepareStateForSync( uint64_t _timestamp, SyncContext& _context );
+    void executeTransactions( BlockChain const& _bc, const Transactions& _transactions,
+        u256 _gasPrice, SyncContext& _context );
+    std::optional< TransactionReceipt > executeSingleTransaction( BlockChain const& _bc,
+        Transaction const& _tx, unsigned _txIndex, u256 _gasPrice, skale::Permanence _permanence,
+        SyncContext& _context );
+    bool isCurrentBlockCommitted();
+    // Main recovery mechanism for single block commit mode.
+    // Loads saved receipts from progress log to skip re-execution after crash.
+    // Throws if called outside single commit mode or if receipts are unavailable.
+    std::pair< TransactionReceipts, unsigned > recoverFromReceipts(
+        const Transactions& _transactions, uint64_t _timestamp );
+    void saveStateChanges(
+        BlockChain const& _bc, const Transactions& _transactions, const SyncContext& _context );
+    void runCommit( BlockChain const& _bc, const SyncContext& _context );  // run commit for state
+                                                                           // and filestorage
+    void createBlockSnapshot();
+    void clearPartialReceipts();
+    void handleLegacyPartialReceipts( BlockChain const& _bc, const SyncContext& _context );
+
     /// Execute the given block, assuming it corresponds to m_currentBlock.
     /// Throws on failure.
     u256 enact( VerifiedBlockRef const& _block, BlockChain const& _bc );
 
+#ifdef FAIR
+    // Distribute block rewards to block author and staking contract, if it is not default block
+    void rewardAllForNonDefaultBlock(
+        const dev::Address& _stakingContractAddress, u256 const& _blockReward );
+#endif
     /// Finalise the block, applying the earned rewards.
     void applyRewards(
         std::vector< BlockHeader > const& _uncleBlockHeaders, u256 const& _blockReward );
@@ -332,7 +389,11 @@ private:
     /// Creates and updates the special contract for storing block hashes according to EIP96
     void updateBlockhashContract();
 
-    State m_state;                ///< Our state.
+    // Sanity check for partial transaction receipts
+    void sanityCheckPartialTransactionReceipts(
+        std::optional< BlockNumber > blockNumber = std::nullopt );
+
+    skale::State m_state;         ///< Our state.
     Transactions m_transactions;  ///< The current list of transactions that we've included in the
                                   ///< state.
     TransactionReceipts m_receipts;  ///< The corresponding list of transaction receipts.
@@ -352,13 +413,19 @@ private:
 
     SealEngineFace* m_sealEngine = nullptr;  ///< The chain's seal engine.
 
+#ifdef BITE
+    // decrypted transaction data fields to be stored with the block and their indexes
+    // only filled for a working block
+    std::shared_ptr< DecryptedTransactionFieldsMap > m_decryptedTransactionDataFields =
+        std::make_shared< DecryptedTransactionFieldsMap >();
+#endif
+
     Logger m_loggerDebug{ createLogger( VerbosityDebug, "block" ) };
     Logger m_loggerTrace{ createLogger( VerbosityTrace, "block" ) };
     Logger m_loggerWarning{ createLogger( VerbosityWarning, "block" ) };
     Logger m_loggerError{ createLogger( VerbosityError, "block" ) };
 
     Counter< Block > c;
-    ;
 
 public:
     static uint64_t howMany() { return Counter< Block >::howMany(); }

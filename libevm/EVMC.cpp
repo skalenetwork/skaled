@@ -39,14 +39,14 @@ EVMC::EVMC( evmc_instance* _instance ) noexcept : evmc::vm( _instance ) {
         case EVMC_SET_OPTION_SUCCESS:
             break;
         case EVMC_SET_OPTION_INVALID_NAME:
-            LOG( m_loggerWarning ) << "Unknown EVMC option '" << pair.first << "'";
+            BOOST_LOG( m_loggerWarning ) << "Unknown EVMC option '" << pair.first << "'";
             break;
         case EVMC_SET_OPTION_INVALID_VALUE:
-            LOG( m_loggerWarning )
+            BOOST_LOG( m_loggerWarning )
                 << "Invalid value '" << pair.second << "' for EVMC option '" << pair.first << "'";
             break;
         default:
-            LOG( m_loggerWarning )
+            BOOST_LOG( m_loggerWarning )
                 << "Unknown error when setting EVMC option '" << pair.first << "'";
         }
     }
@@ -113,7 +113,7 @@ owning_bytes_ref EVMC::exec( u256& io_gas, ExtVMFace& _ext, const OnOpFunc& _onO
         BOOST_THROW_EXCEPTION( DisallowedStateChange() );
 
     case EVMC_REJECTED:
-        LOG( m_loggerWarning )
+        BOOST_LOG( m_loggerWarning )
             << "Execution rejected by EVMC, executing with default VM implementation";
         return VMFactory::create( VMKind::Legacy )->exec( io_gas, _ext, _onOp );
 

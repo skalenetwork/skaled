@@ -5,6 +5,7 @@
 
 #include <boost/filesystem.hpp>
 
+#include <list>
 #include <shared_mutex>
 
 namespace dev {

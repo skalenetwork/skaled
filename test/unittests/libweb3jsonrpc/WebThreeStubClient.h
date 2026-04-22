@@ -38,8 +38,8 @@ public:
     std::string eth_blockNumber() noexcept( false );
     std::string eth_getBalance( const std::string& param1, const std::string& param2 ) noexcept(
         false );
-    std::string eth_getBalanceEIP1898( const std::string& param1, const Json::Value& param2 ) noexcept(
-        false );
+    std::string eth_getBalanceEIP1898(
+        const std::string& param1, const Json::Value& param2 ) noexcept( false );
     std::string eth_getStorageAt( const std::string& param1, const std::string& param2,
         const std::string& param3 ) noexcept( false );
     std::string eth_getStorageAtEIP1898( const std::string& param1, const std::string& param2,
@@ -58,9 +58,11 @@ public:
         false );
     std::string eth_sendTransaction( const Json::Value& param1 ) noexcept( false );
     std::string eth_call( const Json::Value& param1, const std::string& param2 ) noexcept( false );
-    std::string eth_callEIP1898( const Json::Value& param1, const Json::Value& param2 ) noexcept( false );
+    std::string eth_callEIP1898( const Json::Value& param1, const Json::Value& param2 ) noexcept(
+        false );
     bool eth_flush() noexcept( false );
-    std::string eth_estimateGas( const Json::Value& param1, const std::string& param2 = "latest" ) noexcept( false );
+    std::string eth_estimateGas(
+        const Json::Value& param1, const std::string& param2 = "latest" ) noexcept( false );
     Json::Value eth_getBlockByHash( const std::string& param1, bool param2 ) noexcept( false );
     Json::Value eth_getBlockByNumber( const std::string& param1, bool param2 ) noexcept( false );
     Json::Value eth_getTransactionByHash( const std::string& param1 ) noexcept( false );
@@ -83,6 +85,7 @@ public:
     Json::Value eth_getFilterLogs( const std::string& param1 ) noexcept( false );
     Json::Value eth_getFilterLogsEx( const std::string& param1 ) noexcept( false );
     Json::Value eth_getLogs( const Json::Value& param1 ) noexcept( false );
+    Json::Value eth_getLogsRapid( const Json::Value& param1 ) noexcept( false );
     Json::Value eth_getLogsEx( const Json::Value& param1 ) noexcept( false );
     Json::Value eth_getWork() noexcept( false );
     bool eth_submitWork( const std::string& param1, const std::string& param2,
@@ -100,8 +103,10 @@ public:
     Json::Value eth_pendingTransactions() noexcept( false );
     std::string eth_sendRawTransaction( const std::string& param1 ) noexcept( false );
     std::string eth_maxPriorityFeePerGas() noexcept( false );
-    Json::Value eth_createAccessList( const Json::Value& param1, const std::string& param2 ) noexcept( false );
-    Json::Value eth_feeHistory( const Json::Value& param1, const std::string& param2, const Json::Value& param3 ) noexcept( false );
+    Json::Value eth_createAccessList(
+        const Json::Value& param1, const std::string& param2 ) noexcept( false );
+    Json::Value eth_feeHistory( const Json::Value& param1, const std::string& param2,
+        const Json::Value& param3 ) noexcept( false );
     bool eth_notePassword( const std::string& param1 ) noexcept( false );
     bool db_put( const std::string& param1, const std::string& param2,
         const std::string& param3 ) noexcept( false );
@@ -160,7 +165,8 @@ public:
     Json::Value debug_storageRangeAt( const std::string& param1, int param2,
         const std::string& param3, const std::string& param4, int param5 ) noexcept( false );
     std::string debug_preimage( const std::string& param1 ) noexcept( false );
-    Json::Value debug_traceBlockByNumber( const std::string &  param1, const Json::Value& param2 ) noexcept( false );
+    Json::Value debug_traceBlockByNumber(
+        const std::string& param1, const Json::Value& param2 ) noexcept( false );
     Json::Value debug_traceBlockByHash(
         const std::string& param1, const Json::Value& param2 ) noexcept( false );
     Json::Value debug_traceCall( const Json::Value& param1, const std::string& param2,
@@ -169,6 +175,16 @@ public:
     Json::Value debug_doBlocksDbCompaction() noexcept( false );
     Json::Value debug_getFutureTransactions() noexcept( false );
     Json::Value debug_getPatchTimestamps() noexcept( false );
+    void debug_pauseConsensus( bool param1 ) noexcept( false );
+
+#ifdef BITE
+    Json::Value bite_getCommitteesInfo() noexcept( false );
+    Json::Value bite_getDecryptedTransactionData( const std::string& param1 ) noexcept( false );
+#endif
+
+#ifdef FAIR
+    Json::Value skale_getBLSPublicKey() noexcept( false );
+#endif
 };
 
 #endif  // JSONRPC_CPP_STUB_WEBTHREESTUBCLIENT_H_

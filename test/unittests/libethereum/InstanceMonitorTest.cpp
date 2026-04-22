@@ -42,16 +42,18 @@ public:
         fs::create_directory(rotationFlagDirPath);
 
         statusAndControlFile = std::make_shared<StatusAndControlFile>(rotationFlagDirPath);
-        instanceMonitor = new InstanceMonitorMock(rotationFlagDirPath, statusAndControlFile);
+        instanceMonitor = std::make_shared< InstanceMonitorMock >(rotationFlagDirPath, statusAndControlFile);
 
         rotationFilePath = instanceMonitor->getRotationInfoFilePath();
     }
 
-    InstanceMonitorMock* instanceMonitor;
     std::shared_ptr<StatusAndControl> statusAndControlFile;
+    std::shared_ptr< InstanceMonitorMock > instanceMonitor;
     fs::path rotationFilePath;
 
     ~InstanceMonitorTestFixture() override {
+        instanceMonitor.reset();
+        statusAndControlFile.reset();
         if (fs::exists(rotationFilePath)) {
             fs::remove(rotationFilePath);
         }
