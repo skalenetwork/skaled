@@ -1089,6 +1089,140 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
     bytes response = toBigEndian( code );
     return { false, response };  // 1st false - means bad error occur
 }
+
+ETH_REGISTER_PRECOMPILED( getRandomWalletAndSignatureForCTX )
+( bytesConstRef _in, const PrecompiledCallContext& _ctx ) {
+    try {
+        PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getBlockRandom" );
+        auto rngPrecompiledResponse = exec( _in, _ctx );
+        // if call to getBlockRandom() fails, return error
+        if ( !rngPrecompiledResponse.first )
+            return rngPrecompiledResponse;
+
+        // generate a signature based on block random and txn index
+        SignatureStruct vrs =
+            dev::makeSignature( rngPrecompiledResponse.second, _ctx.currentTxnIndex );
+
+        // Parse ABI-encoded input: abi.encode(address destination, uint256 gasLimit, bytes data)
+        // Format: address_value(32) + gasLimit_value(32) + offset_to_bytes(32) + bytes_length(32) +
+        // bytes_data ( at least BITE_CIPHERTEXT_MIN_LEN ) bytes
+        if ( _in.size() < BITE2_WALLET_GENERATION_INPUT_DATA_MIN_LEN )
+            return { false, toBigEndian( dev::u256( GetRandomWalletStatus::INPUT_TOO_SHORT ) ) };
+
+        // Extract address from first 32 bytes (skip first 12 bytes of padding)
+        dev::Address destination( _in.cropped( 12, dev::Address::size ) );
+        if ( destination == dev::ZeroAddress )
+            return { false,
+                toBigEndian( dev::u256( GetRandomWalletStatus::INVALID_DESTINATION ) ) };
+
+        // Extract gas limit from next 32 bytes
+        bigint const gas( parseBigEndianRightPadded( _in, dev::h256::size, dev::h256::size ) );
+
+        // Read offset to bytes data from third 32 bytes
+        bigint const dataOffset(
+            parseBigEndianRightPadded( _in, 2 * dev::h256::size, dev::h256::size ) );
+
+        // Extract bytes data at the offset (has length prefix)
+        if ( _in.size() < dataOffset.convert_to< size_t >() + dev::h256::size )
+            return { false,
+                toBigEndian( dev::u256( GetRandomWalletStatus::DATA_OFFSET_OUT_OF_BOUNDS ) ) };
+
+        bigint const dataLength( parseBigEndianRightPadded( _in, dataOffset, dev::h256::size ) );
+        if ( _in.size() < dataOffset.convert_to< size_t >() + dev::h256::size +
+                              dataLength.convert_to< size_t >() )
+            return { false, toBigEndian( dev::u256( GetRandomWalletStatus::DATA_TOO_SHORT ) ) };
+
+        dev::bytes data = _in.cropped( dataOffset.convert_to< size_t >() + dev::h256::size,
+                                 dataLength.convert_to< size_t >() )
+                              .toBytes();
+        if ( data.empty() )
+            return { false, toBigEndian( dev::u256( GetRandomWalletStatus::EMPTY_DATA ) ) };
+
+        dev::bytes rlpEncodedData;
+        size_t encryptedArgsCount = 0;
+        try {
+            auto [rlpData, count] = abiEncodedArraysToRlp( data );
+            rlpEncodedData = std::move( rlpData );
+            encryptedArgsCount = count;
+        } catch ( std::exception& ex ) {
+            std::string strError = ex.what();
+            if ( strError.empty() )
+                strError = "exception without description";
+            BOOST_LOG( getLogger( VerbosityError ) )
+                << "Exception in precompiled/getRandomWalletForCTX/abiEncodedArraysToRlp(): "
+                << strError << "\n";
+            return { false,
+                toBigEndian( dev::u256( GetRandomWalletStatus::ABI_TO_RLP_CONVERSION_FAILED ) ) };
+        } catch ( ... ) {
+            BOOST_LOG( getLogger( VerbosityError ) )
+                << "Unknown exception in "
+                   "precompiled/getRandomWalletForCTX/abiEncodedArraysToRlp()\n";
+            return { false,
+                toBigEndian( dev::u256( GetRandomWalletStatus::ABI_TO_RLP_UNKNOWN_ERROR ) ) };
+        }
+
+        // add onDecrypt function selector at the beginning
+        rlpEncodedData.insert( rlpEncodedData.begin(), ON_DECRYPT_FUNCTION_SELECTOR.begin(),
+            ON_DECRYPT_FUNCTION_SELECTOR.end() );
+
+        // validate gasLimit
+        auto evmSchedule = g_skaleHost->client().chainParams().makeEvmSchedule(
+            _ctx.latestBlockTimestamp, _ctx.blockNumber );
+        if ( TransactionBase::baseGasRequired( false,
+                 dev::bytesConstRef( rlpEncodedData.data(), rlpEncodedData.size() ), evmSchedule,
+                 false, encryptedArgsCount ) > gas )
+            return { false,
+                toBigEndian( dev::u256( GetRandomWalletStatus::INSUFFICIENT_GAS_LIMIT ) ) };
+
+        dev::u256 gasPrice =
+            g_skaleHost->getGasPrice( _ctx.blockNumber.convert_to< BlockNumber >() );
+
+        // construct unsigned transaction and calculate its hash
+        Transaction sampleTransaction(
+            0, gasPrice, gas.convert_to< dev::u256 >(), destination, rlpEncodedData, 0 );
+        if ( sampleTransaction.isInvalid() )
+            return { false,
+                toBigEndian( dev::u256( GetRandomWalletStatus::INVALID_TRANSACTION ) ) };
+
+        dev::h256 txnHash = sampleTransaction.sha3( dev::eth::WithoutSignature );
+
+        dev::Public publicKey = recover( vrs, txnHash );
+
+        dev::Address walletAddress = dev::toAddress( publicKey );
+        // verify account is not active
+        if ( g_skaleHost->client().countAt( walletAddress ) > 0 )
+            return { false,
+                toBigEndian( dev::u256( GetRandomWalletStatus::WALLET_ALREADY_ACTIVE ) ) };
+
+        // Encode response: address(20 bytes) + r(32 bytes) + s(32 bytes) + v(32 bytes)
+        dev::bytes response;
+        dev::bytes addressBytes = walletAddress.asBytes();
+        response.insert( response.end(), addressBytes.begin(), addressBytes.end() );
+
+        dev::bytes rBytes = toBigEndian( dev::u256( vrs.r ) );
+        response.insert( response.end(), rBytes.begin(), rBytes.end() );
+
+        dev::bytes sBytes = toBigEndian( dev::u256( vrs.s ) );
+        response.insert( response.end(), sBytes.begin(), sBytes.end() );
+
+        dev::bytes vBytes = toBigEndian( dev::u256( vrs.v ) );
+        response.insert( response.end(), vBytes.begin(), vBytes.end() );
+
+        return { true, response };
+    } catch ( std::exception& ex ) {
+        std::string strError = ex.what();
+        if ( strError.empty() )
+            strError = "exception without description";
+        BOOST_LOG( getLogger( VerbosityError ) )
+            << "Exception in precompiled/getRandomWalletForCTX(): " << strError << "\n";
+    } catch ( ... ) {
+        BOOST_LOG( getLogger( VerbosityError ) )
+            << "Unknown exception in precompiled/getRandomWalletForCTX()\n";
+    }
+    dev::u256 code = 0;
+    bytes response = toBigEndian( code );
+    return { false, response };  // 1st false - means bad error occur
+}
 #endif
 
 #ifndef FAIR
