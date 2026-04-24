@@ -690,9 +690,8 @@ size_t Client::syncTransactions(
 
         if ( LondonForkPatch::isEnabledWhen( static_cast< time_t >( _timestamp ) ) ) {
             int64_t bn = m_working.info().number();
-            BOOST_LOG( m_loggerWarning ) << gasBidPrice( static_cast< unsigned >( bn ) );
             u256 baseFee = ( bn > 0 ) ? gasBidPrice( static_cast< unsigned >( bn ) ) : u256( 1 );
-            if ( baseFee < 1 )
+            if ( baseFee == 0 )
                 baseFee = 1;
 
             m_working.setBaseFeePerGas( baseFee );

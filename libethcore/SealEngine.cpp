@@ -183,12 +183,15 @@ void SealEngineFace::verifyTransaction( ChainOperationParams const& _chainParams
                                    static_cast< bigint >( gas ),
                                    string( "_gasUsed + (bigint)_t.gas() > _header.gasLimit()" ) ) );
 
-    // maxPriorityFeePerGas <= maxFeePerGas is already enforced in TransactionBase parsing
-    if ( _t.txType() == 2 && LondonForkPatch::isEnabledWhen( _committedBlockTimestamp ) ) {
+    // maxPriorityFeePerGas <= maxFeePerGas is already enforced in TransactionBase parsing.
+    // Under London every tx type must pay at least baseFeePerGas: for type-2 txs the cap is
+    // maxFeePerGas (TransactionBase stores it in m_gasPrice), for legacy / EIP-2930 txs the cap
+    // is the explicit gasPrice. _t.gasPrice() returns the correct field in all cases.
+    if ( LondonForkPatch::isEnabledWhen( _committedBlockTimestamp ) ) {
         u256 baseFee = _header.baseFeePerGas();
-        if ( _t.maxFeePerGas() < baseFee )
-            BOOST_THROW_EXCEPTION(
-                InvalidTransactionFormat() << errinfo_comment( "maxFeePerGas < baseFeePerGas" ) );
+        if ( _t.gasPrice() < baseFee )
+            BOOST_THROW_EXCEPTION( InvalidTransactionFormat()
+                                   << errinfo_comment( "transaction gasPrice < baseFeePerGas" ) );
     }
 }
 
