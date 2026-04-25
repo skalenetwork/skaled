@@ -279,7 +279,9 @@ void Executive::initialize( Transaction const& _transaction ) {
         throw;
     }
 
-    bigint gasCost = ( bigint ) m_t.gas() * m_t.gasPrice();
+    m_effectiveGasPrice = getEffectiveGasPrice( m_t, m_envInfo.header().baseFeePerGas() );
+
+    bigint gasCost = ( bigint ) m_t.gas() * m_effectiveGasPrice;
     m_gasCost = ( u256 ) gasCost;
 }
 
@@ -290,14 +292,14 @@ bool Executive::execute() {
     // Pay...
     BOOST_LOG( m_loggerTrace ) << "Paying " << formatBalance( m_gasCost )
                                << " from sender for gas (" << m_t.gas() << " gas at "
-                               << formatBalance( m_t.gasPrice() ) << ")";
+                               << formatBalance( m_effectiveGasPrice ) << ")";
     m_s.subBalance( m_t.sender(), m_gasCost );
 #else
     if ( !m_t.hasExternalGas() ) {
         // Pay...
         BOOST_LOG( m_loggerTrace )
             << "Paying " << formatBalance( m_gasCost ) << " from sender for gas (" << m_t.gas()
-            << " gas at " << formatBalance( m_t.gasPrice() ) << ")";
+            << " gas at " << formatBalance( m_effectiveGasPrice ) << ")";
         m_s.subBalance( m_t.sender(), m_gasCost );
     }
 #endif
@@ -340,10 +342,10 @@ bool Executive::execute() {
 
     bool result;
     if ( m_t.isCreation() )
-        result = create( m_t.sender(), m_t.value(), m_t.gasPrice(),
+        result = create( m_t.sender(), m_t.value(), m_effectiveGasPrice,
             m_t.gas() - ( u256 ) m_baseGasRequired, &dataToPassToEvm, m_t.sender() );
     else
-        result = call( receiverAddressToPassToEvm, m_t.sender(), m_t.value(), m_t.gasPrice(),
+        result = call( receiverAddressToPassToEvm, m_t.sender(), m_t.value(), m_effectiveGasPrice,
             bytesConstRef( &dataToPassToEvm ), m_t.gas() - ( u256 ) m_baseGasRequired );
 
     return result;
@@ -721,9 +723,9 @@ bool Executive::finalize() {
     }
 
     if ( m_t ) {
-        m_s.addBalance( m_t.sender(), m_gas * m_t.gasPrice() );
+        m_s.addBalance( m_t.sender(), m_gas * m_effectiveGasPrice );
 
-        u256 feesEarned = ( m_t.gas() - m_gas ) * m_t.gasPrice();
+        u256 feesEarned = ( m_t.gas() - m_gas ) * m_effectiveGasPrice;
 #ifdef FAIR
         EVMSchedule currentBlockSchedule = m_chainParams.makeEvmSchedule(
             m_envInfo.committedBlockTimestamp(), m_envInfo.number() );

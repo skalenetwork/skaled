@@ -23,6 +23,7 @@
 
 #include "Transaction.h"
 #include "Interface.h"
+#include <algorithm>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/vector_ref.h>
@@ -40,6 +41,16 @@ using namespace dev::eth;
 std::ostream& dev::eth::operator<<( std::ostream& _out, ExecutionResult const& _er ) {
     _out << "{" << _er.gasUsed << ", " << _er.newAddress << ", " << toHex( _er.output ) << "}";
     return _out;
+}
+
+u256 dev::eth::getEffectiveGasPrice(
+    TransactionBase const& _transaction, u256 const& _baseFeePerGas ) {
+    if ( _transaction.txType() != TransactionType::Type2 ) {
+        return _transaction.gasPrice();
+    }
+
+    return std::min(
+        _transaction.maxFeePerGas(), _baseFeePerGas + _transaction.maxPriorityFeePerGas() );
 }
 
 TransactionException dev::eth::toTransactionException( Exception const& _e ) {

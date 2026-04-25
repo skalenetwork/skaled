@@ -514,12 +514,7 @@ LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(
     int txType{ t.txType() };
     dev::u256 effectiveGasPrice{ 0 };
     if ( !t.isInvalid() ) {
-        if ( t.txType() == 2 && LondonForkPatch::isEnabledWhen( blockTimestamp ) ) {
-            dev::u256 baseFee = blockInfo( blockHash ).baseFeePerGas();
-            effectiveGasPrice = std::min( t.maxFeePerGas(), baseFee + t.maxPriorityFeePerGas() );
-        } else {
-            effectiveGasPrice = t.gasPrice();
-        }
+        effectiveGasPrice = getEffectiveGasPrice( t, blockInfo( blockHash ).baseFeePerGas() );
     }
 
     return LocalisedTransactionReceipt( receipt, txHash, blockHash, blockNumber, transactionIdx,

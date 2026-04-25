@@ -4575,7 +4575,10 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE( receipt["status"] == string( "0x1" ) );
     BOOST_REQUIRE( receipt["type"] == "0x2" );
-    BOOST_REQUIRE( receipt["effectiveGasPrice"] == "0x4a817c801" );
+    u256 expectedEffectiveGasPrice =
+        std::min( jsToU256( block["baseFeePerGas"].asString() ) + jsToU256( "0x4a817c800" ),
+            jsToU256( "0x4a817c801" ) );
+    BOOST_REQUIRE( jsToU256( receipt["effectiveGasPrice"].asString() ) == expectedEffectiveGasPrice );
 
     result = fixture.rpcClient->eth_getTransactionByHash( txHash );
     BOOST_REQUIRE( result["hash"].asString() == txHash );
