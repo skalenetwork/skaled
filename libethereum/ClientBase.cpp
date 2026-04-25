@@ -41,6 +41,23 @@ using namespace dev::eth;
 using skale::Permanence;
 using skale::State;
 
+namespace {
+
+u256 getBaseFeeValue( dev::eth::ClientBase const& _client, BlockHeader const& _header ) {
+    if ( _header.baseFeePerGas() != 0 || _header.number() == 0 ||
+         !LondonForkPatch::isEnabledWhen( static_cast< time_t >( _header.timestamp() ) ) )
+        return _header.baseFeePerGas();
+
+    try {
+        return _client.gasBidPrice( static_cast< unsigned >( _header.number() - 1 ) );
+    } catch ( std::invalid_argument const& ) {
+        BOOST_THROW_EXCEPTION(
+            std::runtime_error( "Historical baseFeePerGas is unavailable for London block " +
+                                toString( _header.number() ) ) );
+    }
+}
+
+}  // namespace
 
 static const int64_t c_maxGasEstimate = 50000000;
 
@@ -374,7 +391,10 @@ LocalisedLogEntries ClientBase::checkWatch( unsigned _watchId ) {
 BlockHeader ClientBase::blockInfo( h256 _hash ) const {
     if ( _hash == PendingBlockHash )
         return preSeal().info();
-    return BlockHeader( bc().block( _hash ) );
+
+    BlockHeader blockInfo( bc().block( _hash ) );
+    blockInfo.setBaseFeePerGas( getBaseFeeValue( *this, blockInfo ) );
+    return blockInfo;
 }
 
 BlockDetails ClientBase::blockDetails( h256 _hash ) const {
@@ -495,7 +515,7 @@ LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(
     dev::u256 effectiveGasPrice{ 0 };
     if ( !t.isInvalid() ) {
         if ( t.txType() == 2 && LondonForkPatch::isEnabledWhen( blockTimestamp ) ) {
-            dev::u256 baseFee = bc().info( blockHash ).baseFeePerGas();
+            dev::u256 baseFee = blockInfo( blockHash ).baseFeePerGas();
             effectiveGasPrice = std::min( t.maxFeePerGas(), baseFee + t.maxPriorityFeePerGas() );
         } else {
             effectiveGasPrice = t.gasPrice();

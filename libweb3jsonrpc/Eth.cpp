@@ -41,6 +41,7 @@
 
 #include <csignal>
 #include <exception>
+#include <stdexcept>
 
 #include <skutils/console_colors.h>
 #include <skutils/eth_utils.h>
@@ -586,7 +587,8 @@ Json::Value Eth::eth_getBlockByHash( string const& _blockHash, bool _includeTran
         if ( !client()->isKnown( h ) )
             return Json::Value( Json::nullValue );
 
-        u256 baseFeePerGas = client()->blockInfo( h ).baseFeePerGas();
+        BlockHeader blockInfo = client()->blockInfo( h );
+        u256 baseFeePerGas = blockInfo.baseFeePerGas();
 
 #ifdef HISTORIC_STATE
         BlockNumber bn = client()->numberFromHash( h );
@@ -607,8 +609,8 @@ Json::Value Eth::eth_getBlockByHash( string const& _blockHash, bool _includeTran
                 transactions.erase( newEnd, transactions.end() );
             }
 #endif
-            return toJson( client()->blockInfo( h ), client()->blockDetails( h ),
-                client()->uncleHashes( h ), transactions, client()->sealEngine(), baseFeePerGas );
+            return toJson( blockInfo, client()->blockDetails( h ), client()->uncleHashes( h ),
+                transactions, client()->sealEngine(), baseFeePerGas );
         } else {
             h256s transactions = client()->transactionHashes( h );
 
@@ -624,9 +626,13 @@ Json::Value Eth::eth_getBlockByHash( string const& _blockHash, bool _includeTran
                 transactions.erase( newEnd, transactions.end() );
             }
 #endif
-            return toJson( client()->blockInfo( h ), client()->blockDetails( h ),
-                client()->uncleHashes( h ), transactions, client()->sealEngine(), baseFeePerGas );
+            return toJson( blockInfo, client()->blockDetails( h ), client()->uncleHashes( h ),
+                transactions, client()->sealEngine(), baseFeePerGas );
         }
+    } catch ( const JsonRpcException& ) {
+        throw;
+    } catch ( const std::runtime_error& _e ) {
+        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INTERNAL_ERROR, _e.what() ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
@@ -644,17 +650,20 @@ Json::Value Eth::eth_getBlockByNumber( string const& _blockNumber, bool _include
     } catch ( const JsonRpcException& ) {
         throw;
 #else
-        u256 baseFeePerGas = client()->blockInfo( h ).baseFeePerGas();
+        BlockHeader blockInfo = client()->blockInfo( h );
+        u256 baseFeePerGas = blockInfo.baseFeePerGas();
 
         if ( _includeTransactions )
-            return toJson( client()->blockInfo( h ), client()->blockDetails( h ),
-                client()->uncleHashes( h ), client()->transactions( h ), client()->sealEngine(),
-                baseFeePerGas );
+            return toJson( blockInfo, client()->blockDetails( h ), client()->uncleHashes( h ),
+                client()->transactions( h ), client()->sealEngine(), baseFeePerGas );
         else
-            return toJson( client()->blockInfo( h ), client()->blockDetails( h ),
-                client()->uncleHashes( h ), client()->transactionHashes( h ),
-                client()->sealEngine(), baseFeePerGas );
+            return toJson( blockInfo, client()->blockDetails( h ), client()->uncleHashes( h ),
+                client()->transactionHashes( h ), client()->sealEngine(), baseFeePerGas );
 #endif
+    } catch ( const JsonRpcException& ) {
+        throw;
+    } catch ( const std::runtime_error& _e ) {
+        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INTERNAL_ERROR, _e.what() ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
@@ -674,6 +683,10 @@ Json::Value Eth::eth_getTransactionByHash( string const& _transactionHash ) {
 #endif
 
         return toJson( client()->localisedTransaction( h ) );
+    } catch ( const JsonRpcException& ) {
+        throw;
+    } catch ( const std::runtime_error& _e ) {
+        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INTERNAL_ERROR, _e.what() ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
@@ -699,6 +712,10 @@ Json::Value Eth::eth_getTransactionByBlockHashAndIndex(
             return Json::Value( Json::nullValue );
 
         return toJson( client()->localisedTransaction( bh, ti ) );
+    } catch ( const JsonRpcException& ) {
+        throw;
+    } catch ( const std::runtime_error& _e ) {
+        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INTERNAL_ERROR, _e.what() ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
@@ -725,6 +742,10 @@ Json::Value Eth::eth_getTransactionByBlockNumberAndIndex(
             return Json::Value( Json::nullValue );
 
         return toJson( client()->localisedTransaction( bh, ti ) );
+    } catch ( const JsonRpcException& ) {
+        throw;
+    } catch ( const std::runtime_error& _e ) {
+        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INTERNAL_ERROR, _e.what() ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
@@ -765,7 +786,14 @@ LocalisedTransactionReceipt Eth::eth_getTransactionReceipt( string const& _trans
     }
 
     auto cli = client();
-    auto rcp = cli->localisedTransactionReceipt( h );
+    LocalisedTransactionReceipt rcp = [&]() {
+        try {
+            return cli->localisedTransactionReceipt( h );
+        } catch ( const std::runtime_error& _e ) {
+            BOOST_THROW_EXCEPTION(
+                JsonRpcException( Errors::ERROR_RPC_INTERNAL_ERROR, _e.what() ) );
+        }
+    }();
 
 #ifdef HISTORIC_STATE
     if ( SkipInvalidTransactionsPatch::hasPotentialInvalidTransactionsInBlock(
@@ -1063,6 +1091,10 @@ Json::Value Eth::eth_feeHistory( dev::u256 _blockCount, const std::string& _newe
         }
 
         return result;
+    } catch ( const JsonRpcException& ) {
+        throw;
+    } catch ( const std::runtime_error& _e ) {
+        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INTERNAL_ERROR, _e.what() ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
