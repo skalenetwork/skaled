@@ -1670,6 +1670,80 @@ def test_eip_1559_effective_price(
     )
 
 
+def test_eip_1559_legacy_gasprice_equals_basefee(
+    w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000
+) -> EIPTestResult:
+    """Legacy tx with gasPrice == baseFeePerGas: effectiveGasPrice must equal baseFee."""
+    logger.info("=== EIP-1559 legacy gasPrice == baseFee test ===")
+
+    latest = w3.eth.get_block("latest")
+    base_fee = _as_int(latest.get("baseFeePerGas"))
+    logger.info("BASE FEE for LEGACY GAS PRICE %s", base_fee)
+
+    if base_fee is None or base_fee == 0:
+        return EIPTestResult(
+            eip="1559-legacy-gasprice-eq-basefee",
+            passed=False,
+            message="baseFeePerGas missing or zero in latest block",
+            details={"base_fee": base_fee},
+        )
+
+    # Send a simple value transfer with gasPrice set exactly to baseFee.
+    tx_dict = {
+        "from": deployer.address,
+        "to": deployer.address,
+        "value": 0,
+        "gas": 21_000,
+        "gasPrice": base_fee,
+        "chainId": w3.eth.chain_id,
+        "nonce": w3.eth.get_transaction_count(deployer.address),
+    }
+    signed = deployer.sign_transaction(tx_dict)
+    tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
+    receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=300)
+
+    inclusion_block = w3.eth.get_block(receipt["blockNumber"])
+    inclusion_base_fee = _as_int(inclusion_block.get("baseFeePerGas")) or 0
+    receipt_effective = _as_int(receipt.get("effectiveGasPrice"))
+
+    details = {
+        "gas_price_sent": base_fee,
+        "inclusion_base_fee": inclusion_base_fee,
+        "receipt_effective_gas_price": receipt_effective,
+        "status": receipt["status"],
+    }
+
+    if receipt["status"] != 1:
+        return EIPTestResult(
+            eip="1559-legacy-gasprice-eq-basefee",
+            passed=False,
+            message="Legacy tx with gasPrice==baseFee reverted",
+            details=details,
+        )
+
+    # For legacy txs, effectiveGasPrice == gasPrice.
+    if receipt_effective is not None and receipt_effective != base_fee:
+        return EIPTestResult(
+            eip="1559-legacy-gasprice-eq-basefee",
+            passed=False,
+            message=(
+                f"effectiveGasPrice={receipt_effective} != gasPrice={base_fee} "
+                f"(baseFee={inclusion_base_fee})"
+            ),
+            details=details,
+        )
+
+    return EIPTestResult(
+        eip="1559-legacy-gasprice-eq-basefee",
+        passed=True,
+        message=(
+            f"Legacy tx accepted with gasPrice==baseFee={base_fee}, "
+            f"effectiveGasPrice={receipt_effective}"
+        ),
+        details=details,
+    )
+
+
 def test_eip_1559_basefee_header(
     w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000
 ) -> EIPTestResult:
@@ -2026,6 +2100,7 @@ EIP_TEST_MAP = {
     "3529-selfdestruct": test_eip_3529_selfdestruct,
     "3541":             test_eip_3541,
     "1559-effective-price": test_eip_1559_effective_price,
+    "1559-legacy-gasprice-eq-basefee": test_eip_1559_legacy_gasprice_equals_basefee,
     "1559-basefee-header": test_eip_1559_basefee_header,
     "1559-fee-history": test_eip_1559_fee_history,
     "1559-max-priority-fee": test_eip_1559_max_priority_fee,
@@ -2038,7 +2113,7 @@ ALL_EIPS = [
     "2718-type2",
     "2565", "2565-formula", "2565-zero-exp",
     "3198", "3529", "3529-refund-cap", "3529-selfdestruct", "3541",
-    "1559-effective-price", "1559-basefee-header",
+    "1559-effective-price", "1559-legacy-gasprice-eq-basefee", "1559-basefee-header",
     "1559-fee-history", "1559-max-priority-fee",
     "1559-block-hash-integrity",
 ]

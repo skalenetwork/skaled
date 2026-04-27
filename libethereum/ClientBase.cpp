@@ -41,23 +41,19 @@ using namespace dev::eth;
 using skale::Permanence;
 using skale::State;
 
-namespace {
-
-u256 getBaseFeeValue( dev::eth::ClientBase const& _client, BlockHeader const& _header ) {
+u256 ClientBase::getBaseFeeValue( BlockHeader const& _header ) const {
     if ( _header.baseFeePerGas() != 0 || _header.number() == 0 ||
          !LondonForkPatch::isEnabledWhen( static_cast< time_t >( _header.timestamp() ) ) )
         return _header.baseFeePerGas();
 
     try {
-        return _client.gasBidPrice( static_cast< unsigned >( _header.number() - 1 ) );
+        return gasBidPrice( static_cast< unsigned >( _header.number() - 1 ) );
     } catch ( std::invalid_argument const& ) {
         BOOST_THROW_EXCEPTION(
             std::runtime_error( "Historical baseFeePerGas is unavailable for London block " +
                                 toString( _header.number() ) ) );
     }
 }
-
-}  // namespace
 
 static const int64_t c_maxGasEstimate = 50000000;
 
@@ -393,7 +389,7 @@ BlockHeader ClientBase::blockInfo( h256 _hash ) const {
         return preSeal().info();
 
     BlockHeader blockInfo( bc().block( _hash ) );
-    blockInfo.setBaseFeePerGas( getBaseFeeValue( *this, blockInfo ) );
+    blockInfo.setBaseFeePerGas( getBaseFeeValue( blockInfo ) );
     return blockInfo;
 }
 
