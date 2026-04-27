@@ -43,8 +43,7 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, ExecutionResult const& _
     return _out;
 }
 
-u256 dev::eth::getEffectiveGasPrice(
-    Transaction const& _transaction, u256 const& _baseFeePerGas ) {
+u256 dev::eth::getEffectiveGasPrice( Transaction const& _transaction, u256 const& _baseFeePerGas ) {
     if ( _transaction.txType() != TransactionType::Type2 ) {
         return _transaction.gasPrice();
     }
