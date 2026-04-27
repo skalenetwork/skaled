@@ -559,8 +559,7 @@ std::pair< TransactionReceipts, unsigned > Block::recoverFromReceipts(
     return std::make_pair( m_receipts, m_receipts.size() - badCount );
 }
 
-void Block::prepareStateForSync(
-    uint64_t _timestamp, u256 _baseFeePerGas, SyncContext& _context ) {
+void Block::prepareStateForSync( uint64_t _timestamp, u256 _baseFeePerGas, SyncContext& _context ) {
     resetCurrent( _timestamp );
     if ( _baseFeePerGas != 0 )
         m_currentBlock.setBaseFeePerGas( _baseFeePerGas );
