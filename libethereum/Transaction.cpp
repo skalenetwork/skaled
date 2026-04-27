@@ -23,7 +23,6 @@
 
 #include "Transaction.h"
 #include "Interface.h"
-#include <algorithm>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/vector_ref.h>
@@ -31,6 +30,7 @@
 #include <libethcore/Exceptions.h>
 #include <libethereum/SchainPatch.h>
 #include <libevm/VMFace.h>
+#include <algorithm>
 
 using namespace std;
 using namespace dev;
