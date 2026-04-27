@@ -485,7 +485,7 @@ void Block::sanityCheckPartialTransactionReceipts( std::optional< BlockNumber > 
 }
 
 tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _bc,
-    const Transactions& _transactions, uint64_t _timestamp, u256 _gasPrice ) {
+    const Transactions& _transactions, uint64_t _timestamp, u256 _gasPrice, u256 _baseFeePerGas ) {
     if ( isSealed() )
         BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
 
@@ -496,10 +496,10 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
     context.singleCommitEnabled = SingleStateCommitPerBlockPatch::isEnabledInWorkingBlock();
 
     if ( context.singleCommitEnabled && isCurrentBlockCommitted() ) {
-        return recoverFromReceipts( _transactions, _timestamp );
+        return recoverFromReceipts( _transactions, _timestamp, _baseFeePerGas );
     }
 
-    prepareStateForSync( _timestamp, context );
+    prepareStateForSync( _timestamp, _baseFeePerGas, context );
     executeTransactions( _bc, _transactions, _gasPrice, context );
 
     if ( !context.singleCommitEnabled || !isCurrentBlockCommitted() ) {
@@ -510,7 +510,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
 }
 
 std::pair< TransactionReceipts, unsigned > Block::recoverFromReceipts(
-    const Transactions& _transactions, uint64_t ) {
+    const Transactions& _transactions, uint64_t, u256 _baseFeePerGas ) {
     if ( !SingleStateCommitPerBlockPatch::isEnabledInWorkingBlock() ) {
         BOOST_THROW_EXCEPTION(
             std::runtime_error( "recoverFromReceipts called outside single commit mode" ) );
@@ -533,6 +533,8 @@ std::pair< TransactionReceipts, unsigned > Block::recoverFromReceipts(
                                  << " from saved receipts with timestamp " << savedData->timestamp;
 
     resetCurrent( savedData->timestamp );
+    if ( _baseFeePerGas != 0 )
+        m_currentBlock.setBaseFeePerGas( _baseFeePerGas );
 
     for ( const auto& tx : _transactions ) {
         m_transactions.push_back( tx );
@@ -557,8 +559,11 @@ std::pair< TransactionReceipts, unsigned > Block::recoverFromReceipts(
     return std::make_pair( m_receipts, m_receipts.size() - badCount );
 }
 
-void Block::prepareStateForSync( uint64_t _timestamp, SyncContext& _context ) {
+void Block::prepareStateForSync(
+    uint64_t _timestamp, u256 _baseFeePerGas, SyncContext& _context ) {
     resetCurrent( _timestamp );
+    if ( _baseFeePerGas != 0 )
+        m_currentBlock.setBaseFeePerGas( _baseFeePerGas );
     m_state = m_state.createStateCopyAndClearCaches();
 
 #ifndef FAIR

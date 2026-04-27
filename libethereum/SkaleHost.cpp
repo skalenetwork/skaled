@@ -297,6 +297,7 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
     : m_client( _client ),
       m_tq( _client.m_tq ),
       m_instanceMonitor( _instanceMonitor ),
+      //  disabled only for tests
       m_broadcastEnabled( _broadcastEnabled ),
       total_sent( 0 ),
       total_arrived( 0 ),

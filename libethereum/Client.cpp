@@ -682,6 +682,7 @@ size_t Client::syncTransactions(
 
     DEV_WRITE_GUARDED( x_working ) {
         assert( !m_working.isSealed() );
+        u256 baseFeePerGas = 0;
 
 #ifdef HISTORIC_STATE
         m_state.mutableHistoricState().rotateDbsIfNeeded( m_working.info().number() );
@@ -690,20 +691,18 @@ size_t Client::syncTransactions(
 
         if ( LondonForkPatch::isEnabledWhen( static_cast< time_t >( _timestamp ) ) ) {
             int64_t bn = m_working.info().number();
-            u256 baseFee = ( bn > 0 ) ? gasBidPrice( static_cast< unsigned >( bn ) ) : u256( 1 );
-            if ( baseFee == 0 )
-                baseFee = 1;
-
-            m_working.setBaseFeePerGas( baseFee );
+            baseFeePerGas = ( bn > 0 ) ? gasBidPrice( static_cast< unsigned >( bn ) ) : u256( 1 );
+            if ( baseFeePerGas == 0 )
+                baseFeePerGas = 1;
             // Align the in-block tx validation floor with the header's baseFee so
             // mining and post-commit admission (gasBidPrice(LatestBlock) returns
             // PriceDB[bn] once block bn is committed) all agree with what
             // eth_getBlockByNumber("latest") reports.
-            _gasPrice = baseFee;
+            _gasPrice = baseFeePerGas;
         }
 
         tie( newPendingReceipts, goodReceipts ) =
-            m_working.syncEveryone( bc(), _transactions, _timestamp, _gasPrice );
+            m_working.syncEveryone( bc(), _transactions, _timestamp, _gasPrice, baseFeePerGas );
         m_state = m_state.createStateCopyAndClearCaches();
 #ifdef HISTORIC_STATE
         // make sure the trie in new state object points to the new state root

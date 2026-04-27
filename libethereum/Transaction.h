@@ -90,8 +90,6 @@ struct ExecutionResult {
 
 std::ostream& operator<<( std::ostream& _out, ExecutionResult const& _er );
 
-u256 getEffectiveGasPrice( Transaction const& _transaction, u256 const& _baseFeePerGas );
-
 /// Encodes a transaction, ready to be exported to or freshly imported from RLP.
 class Transaction : public TransactionBase {
 public:
@@ -170,6 +168,7 @@ public:
 #endif
 
     u256 gasPrice() const;
+    u256 getEffectiveGasPrice( u256 const& _baseFeePerGas ) const;
 
 #ifndef FAIR
     void ignoreExternalGas() {

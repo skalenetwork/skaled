@@ -460,7 +460,8 @@ protected:
     u256 m_nonce;  ///< The transaction-count of the sender.
     u256 m_value;  ///< The amount of ETH to be transferred by this transaction. Called 'endowment'
     ///< for contract-creation transactions.
-    u256 m_gasPrice;  ///< The base fee and thus the implied exchange rate of ETH to GAS.
+    u256 m_gasPrice;  ///< The base fee and thus the implied exchange rate of ETH to GAS. Equals to
+                      ///< maxFeePerGas for type >= 2
     u256 m_gas;  ///< The total gas to convert, paid for from sender's account. Any unused gas gets
     ///< refunded once the contract is ended.
     bytes m_data;  ///< The data associated with the transaction, or the initialiser if it's a

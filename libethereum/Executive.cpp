@@ -279,7 +279,7 @@ void Executive::initialize( Transaction const& _transaction ) {
         throw;
     }
 
-    m_effectiveGasPrice = getEffectiveGasPrice( m_t, m_envInfo.header().baseFeePerGas() );
+    m_effectiveGasPrice = m_t.getEffectiveGasPrice( m_envInfo.header().baseFeePerGas() );
 
     bigint gasCost = ( bigint ) m_t.gas() * m_effectiveGasPrice;
     m_gasCost = ( u256 ) gasCost;

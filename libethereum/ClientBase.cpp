@@ -47,7 +47,7 @@ u256 ClientBase::getBaseFeeValue( BlockHeader const& _header ) const {
         return _header.baseFeePerGas();
 
     try {
-        return gasBidPrice( static_cast< unsigned >( _header.number() - 1 ) );
+        return gasBidPrice( static_cast< unsigned >( _header.number() ) );
     } catch ( std::invalid_argument const& ) {
         BOOST_THROW_EXCEPTION(
             std::runtime_error( "Historical baseFeePerGas is unavailable for London block " +
@@ -510,7 +510,7 @@ LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(
     int txType{ t.txType() };
     dev::u256 effectiveGasPrice{ 0 };
     if ( !t.isInvalid() ) {
-        effectiveGasPrice = getEffectiveGasPrice( t, blockInfo( blockHash ).baseFeePerGas() );
+        effectiveGasPrice = t.getEffectiveGasPrice( blockInfo( blockHash ).baseFeePerGas() );
     }
 
     return LocalisedTransactionReceipt( receipt, txHash, blockHash, blockNumber, transactionIdx,
