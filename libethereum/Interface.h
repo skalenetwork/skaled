@@ -128,23 +128,23 @@ public:
         throw std::logic_error( "setDefault is not supported" );
     }
 
-    virtual u256 balanceAt( const Address& _a ) const = 0;
-    virtual u256 countAt( const Address& _a ) const = 0;
-    virtual u256 stateAt( const Address& _a, const u256& _l ) const = 0;
-    virtual bytes codeAt( const Address& _a ) const = 0;
-    virtual h256 codeHashAt( const Address& _a ) const = 0;
+    virtual u256 balanceAt( Address const& _a ) const = 0;
+    virtual u256 countAt( Address const& _a ) const = 0;
+    virtual u256 stateAt( Address const& _a, u256 const& _l ) const = 0;
+    virtual bytes codeAt( Address const& _a ) const = 0;
+    virtual h256 codeHashAt( Address const& _a ) const = 0;
 
 
 #ifdef HISTORIC_STATE
-    virtual u256 historicStateBalanceAt( const Address& _a, BlockNumber _block ) const = 0;
-    virtual u256 historicStateCountAt( const Address& _a, BlockNumber _block ) const = 0;
-    virtual u256 historicStateAt( const Address& _a, u256 const& _l, BlockNumber _block ) const = 0;
-    virtual h256 historicStateRootAt( const Address& _a, BlockNumber _block ) const = 0;
-    virtual bytes historicStateCodeAt( const Address& _a, BlockNumber _block ) const = 0;
+    virtual u256 historicStateBalanceAt( Address const& _a, BlockNumber _block ) const = 0;
+    virtual u256 historicStateCountAt( Address const& _a, BlockNumber _block ) const = 0;
+    virtual u256 historicStateAt( Address const& _a, u256 const& _l, BlockNumber _block ) const = 0;
+    virtual h256 historicStateRootAt( Address const& _a, BlockNumber _block ) const = 0;
+    virtual bytes historicStateCodeAt( Address const& _a, BlockNumber _block ) const = 0;
 #endif
 
 
-    virtual std::map< h256, std::pair< u256, u256 > > storageAt( const Address& _a ) const = 0;
+    virtual std::map< h256, std::pair< u256, u256 > > storageAt( Address const& _a ) const = 0;
 
     // [LOGS API]
 

@@ -1267,7 +1267,8 @@ BOOST_AUTO_TEST_CASE( enqueue_while_busy ) {
 //                    fnLogCall( id_my_queue, nCalls );
 //                    BOOST_REQUIRE( nCalls > 0 );
 //                    //							if( g_bShowDetailedJobLogs )
-//                    //								skutils::test::test_log_e( thread_prefix_str()
+//                    //								skutils::test::test_log_e(
+//                    thread_prefix_str()
 //                    +
 //                    // cc::debug("--- async job in queue ") + cc::info(id_my_queue) + cc::debug(",
 //                    // invocation ") +

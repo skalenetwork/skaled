@@ -113,7 +113,7 @@ void mine( BlockHeader& _bi, SealEngineFace* _sealer, bool _verify ) {
         _sealer->verify( JustSeal, _bi );
 }
 
-void simulateMining( Client& client, size_t numBlocks, const dev::Address& address ) {
+void simulateMining( Client& client, size_t numBlocks, dev::Address const& address ) {
     const auto balanceBefore = client.balanceAt( address );
     State state = client.state();
     u256 reward = 0;
@@ -314,7 +314,7 @@ u256 toInt( json_spirit::mValue const& _v ) {
     return 0;
 }
 
-int64_t toPositiveInt64( const json_spirit::mValue& _v ) {
+int64_t toPositiveInt64( json_spirit::mValue const& _v ) {
     int64_t n = 0;
     switch ( _v.type() ) {
     case json_spirit::str_type:
