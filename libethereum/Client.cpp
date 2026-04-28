@@ -188,8 +188,7 @@ void Client::stopWorking() {
 
     m_signalled.notify_all();  // to wake up the thread from Client::doWork()
 
-    m_tq.HandleDestruction();  // l_sergiy: destroy transaction queue earlier
-    m_bq.stop();               // l_sergiy: added to stop block queue processing
+    m_bq.stop();  // l_sergiy: added to stop block queue processing
 
     m_bc.close();
     BOOST_LOG( m_loggerInfo ) << "Blockchain is closed";

@@ -73,11 +73,6 @@ public:
         : TransactionQueue(
               _l.currentLimit, _l.futureLimit, _l.currentLimitBytes, _l.futureLimitBytes ) {}
     ~TransactionQueue();
-    void HandleDestruction();
-    /// Add transaction to the queue to be verified and imported.
-    /// @param _data RLP encoded transaction data.
-    /// @param _nodeId Optional network identified of a node transaction comes from.
-    void enqueue( RLP const& _data, h512 const& _nodeId );
 
     /// Verify and add transaction to the queue synchronously.
     /// @param _tx RLP encoded transaction data.
@@ -187,7 +182,6 @@ public:
     struct Status {
         size_t current;
         size_t future;
-        size_t unverified;
         size_t dropped;
         size_t currentBytes;
         size_t futureBytes;
@@ -195,7 +189,6 @@ public:
     /// @returns the status of the transaction queue.
     Status status() const {
         Status ret;
-        DEV_GUARDED( x_queue ) { ret.unverified = m_unverified.size(); }
         ReadGuard l( m_lock );
         ret.dropped = m_dropped.size();
         ret.current = m_currentByHash.size();
@@ -369,7 +362,6 @@ private:
     u256 maxNonce_WITH_LOCK( Address const& _a ) const;
     u256 maxCurrentNonce_WITH_LOCK( Address const& _a ) const;
     void setFuture_WITH_LOCK( h256 const& _t );
-    void verifierBody();
 
     mutable SharedMutex m_lock;                    ///< General lock.
     mutable boost::condition_variable_any m_cond;  // for wait/notify
@@ -406,12 +398,6 @@ private:
     unsigned m_currentSizeBytes = 0;       // current pending queue size in bytes
     unsigned m_futureSizeBytesLimit = 0;   // max future queue size in bytes
     unsigned m_futureSizeBytes = 0;        // current future queue size in bytes
-
-    std::condition_variable m_queueReady;  ///< Signaled when m_unverified has a new entry.
-    std::vector< std::thread > m_verifiers;
-    std::deque< UnverifiedTransaction > m_unverified;  ///< Pending verification queue
-    mutable Mutex x_queue;                             ///< Verification queue mutex
-    std::atomic_bool m_aborting;                       ///< Exit condition for verifier.
 
 #ifdef BITE
     BITE2TransactionQueue m_bite2Queue;
