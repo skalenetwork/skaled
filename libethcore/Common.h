@@ -127,7 +127,8 @@ enum class ImportResult {
     Malformed,
     SameNonceAlreadyInQueue,
     BadChain,
-    ZeroSignature
+    ZeroSignature,
+    QueueIsFull
 };
 
 struct ImportRequirements {

@@ -1211,7 +1211,7 @@ BOOST_AUTO_TEST_CASE( transactionDropReceive
 #endif
 
     // submit it!
-    tq->import( tx1 );
+    tq->import( tx1, IfDropped::Ignore, true, 0 );
 
     // 2nd tx
     u256 value2 = 20000 * dev::eth::szabo;
@@ -1289,7 +1289,7 @@ BOOST_AUTO_TEST_CASE(
 #endif
 
     // submit it!
-    tq->import( tx1 );
+    tq->import( tx1, IfDropped::Ignore, true, 0 );
 
     sleep( 1 );
     BOOST_REQUIRE_EQUAL( tq->knownTransactions().size(), 1 );
@@ -1365,7 +1365,7 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPrice
 #endif
 
     // submit it!
-    tq->import( tx1 );
+    tq->import( tx1, IfDropped::Ignore, true, 0 );
 
     sleep( 1 );
     BOOST_REQUIRE_EQUAL( tq->knownTransactions().size(), 1 );

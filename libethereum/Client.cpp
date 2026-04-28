@@ -724,11 +724,10 @@ void Client::onDeadBlocks( h256s const& _blocks, h256Hash& io_changed ) {
     for ( auto const& h : _blocks ) {
         BOOST_LOG( m_loggerTrace ) << "Dead block: " << h;
         for ( auto const& t : bc().transactions( h ) ) {
-            BOOST_LOG( m_loggerTrace ) << "Resubmitting dead-block transaction "
-                                       << Transaction( t, CheckTransaction::None );
-            BOOST_LOG( m_loggerTrace ) << "Resubmitting dead-block transaction "
-                                       << Transaction( t, CheckTransaction::None );
-            m_tq.import( t, IfDropped::Retry );
+            Transaction tx( t, CheckTransaction::None );
+            BOOST_LOG( m_loggerTrace ) << "Resubmitting dead-block transaction " << tx;
+            m_tq.import( tx, IfDropped::Retry, chainParams().isMultiTransactionModeEnabled(),
+                state().getNonce( tx.sender() ) );
         }
     }
 
@@ -772,7 +771,8 @@ void Client::restartMining() {
             for ( auto const& t : m_postSeal.pending() ) {
                 BOOST_LOG( m_loggerTrace ) << "Resubmitting post-seal transaction " << t;
                 //                      ctrace << "Resubmitting post-seal transaction " << t;
-                auto ir = m_tq.import( t, IfDropped::Retry );
+                auto ir = m_tq.import( t, IfDropped::Retry,
+                    chainParams().isMultiTransactionModeEnabled(), state().getNonce( t.sender() ) );
                 if ( ir != ImportResult::Success )
                     onTransactionQueueReady();
             }
@@ -1224,13 +1224,9 @@ h256 Client::importTransaction( Transaction const& _t, TransactionBroadcast _txO
 #endif  // BITE
 
     ImportResult res;
-    if ( chainParams().isMultiTransactionModeEnabled() &&
-         state.getNonce( _t.sender() ) < _t.nonce() &&
-         m_tq.maxCurrentNonce( _t.sender() ) != _t.nonce() ) {
-        res = m_tq.import( _t, IfDropped::Ignore, true );
-    } else {
-        res = m_tq.import( _t );
-    }
+    auto stateNonce = state.getNonce( _t.sender() );
+    bool const allowFutureQueue = chainParams().isMultiTransactionModeEnabled();
+    res = m_tq.import( _t, IfDropped::Ignore, allowFutureQueue, stateNonce );
 
     switch ( res ) {
     case ImportResult::Success:
@@ -1243,6 +1239,8 @@ h256 Client::importTransaction( Transaction const& _t, TransactionBroadcast _txO
         BOOST_THROW_EXCEPTION( PendingTransactionAlreadyExists() );
     case ImportResult::AlreadyInChain:
         BOOST_THROW_EXCEPTION( TransactionAlreadyInChain() );
+    case ImportResult::QueueIsFull:
+        BOOST_THROW_EXCEPTION( TransactionQueueIsFull() );
     default:
         BOOST_THROW_EXCEPTION( UnknownTransactionValidationError() );
     }
