@@ -115,6 +115,16 @@ Block::Block( const BlockChain& _bc, h256 const& _hash, const State& _state, Bas
         //        m_state = State(m_state.accountStartNonce(), m_state.db(),
         //            BaseState::Empty);  // TODO: try with PreExisting.
         sync( _bc, _hash, bi );
+    } else {
+        auto parentHash = bi.parentHash();
+        if ( !_bc.isKnown( parentHash ) ) {
+            // Might be worth throwing here.
+            BOOST_LOG( m_loggerWarning )
+                << "Invalid parent hash given for population " << parentHash;
+            BOOST_THROW_EXCEPTION( BlockNotFound() << errinfo_target( parentHash ) );
+        }
+        auto pb = _bc.block( parentHash );
+        m_previousBlock = BlockHeader( pb );
     }
 }
 
@@ -1088,7 +1098,6 @@ ExecutionResult Block::executeHistoricCall( LastBlockHashesFace const& _lh, Tran
         if ( _tracer ) {
             onOp = _tracer->functionToExecuteOnEachOperation();
         }
-
 
         if ( isSealed() )
             BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
