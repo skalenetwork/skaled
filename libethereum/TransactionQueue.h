@@ -172,8 +172,8 @@ public:
     std::vector< dev::h256 > getTempBITE2Hashes() const;
     /// Move BITE2 txn from temporary to permanent
     void commitTempBITE2Transactions();
-    /// Get origin for first N CTXs in queue
-    std::vector< dev::h256 > getNCTXOrigins( size_t _n ) const;
+    /// Get initialization metadata for first N CTXs in queue
+    std::vector< BITE2TransactionQueue::CTXInitData > getNCTXInitData( size_t _n ) const;
 
     void clearTempBITE2Transactions();
 

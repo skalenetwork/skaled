@@ -944,10 +944,17 @@ ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef, const PrecompiledCall
 
 ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallContext& _ctx ) {
     try {
-        // Parse ABI-encoded input: abi.encode(uint256 gasLimit, bytes data)
-        // Format: gasLimit(32) + offset_to_data(32) + data_length(32) + data_bytes
+        bool const ctxRefundPatchEnabled =
+            CtxRefundPatch::isEnabledWhen( _ctx.latestBlockTimestamp );
+        // Parse ABI-encoded input:
+        // - before CtxRefundPatch: abi.encode(uint256 gasLimit, bytes data)
+        // - after CtxRefundPatch:  abi.encode(uint256 gasLimit, bytes data, uint256 refundCell)
+        // Format before patch: gasLimit(32) + offset_to_data(32) + data_length(32) + data_bytes
+        // Format after patch:  gasLimit(32) + offset_to_data(32) + refundCell(32) +
+        //                      data_length(32) + data_bytes
 
-        if ( _in.size() < 3 * dev::h256::size )
+        size_t const minInputSize = 3 * dev::h256::size;
+        if ( _in.size() < minInputSize )
             return { false, toBigEndian( dev::u256( SubmitCTXStatus::INPUT_TOO_SHORT ) ) };
 
         // Get destination address from context
@@ -963,6 +970,14 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
         // Read offset to data from second 32 bytes
         bigint const dataOffset(
             parseBigEndianRightPadded( _in, dev::h256::size, dev::h256::size ) );
+
+        std::optional< dev::u256 > refundStorageCell = std::nullopt;
+        if ( ctxRefundPatchEnabled && dataOffset == 3 * dev::h256::size &&
+             _in.size() >= 4 * dev::h256::size ) {
+            refundStorageCell =
+                parseBigEndianRightPadded( _in, 2 * dev::h256::size, dev::h256::size )
+                    .convert_to< dev::u256 >();
+        }
 
         // Extract transaction data at the offset (has length prefix)
         if ( _in.size() < dataOffset.convert_to< size_t >() + dev::h256::size )
@@ -1034,6 +1049,8 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
             InvalidTransactionFormatPatch::isEnabledWhen( _ctx.latestBlockTimestamp ),
             Bite2Patch::isEnabledWhen( _ctx.latestBlockTimestamp ) );
         signedTransaction.setBITE2EncryptedArgsSize( encryptedArgsCount );
+        if ( refundStorageCell.has_value() )
+            signedTransaction.setCTXRefundStorageCell( refundStorageCell );
 
         if ( signedTransaction.isInvalid() )
             return { false, toBigEndian( dev::u256( SubmitCTXStatus::INVALID_TRANSACTION ) ) };

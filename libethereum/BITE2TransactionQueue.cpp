@@ -128,13 +128,15 @@ void BITE2TransactionQueue::setQueueOnInit( std::deque< Transaction >&& _ctxQueu
     BOOST_LOG( m_loggerInfo ) << "BITE2 queue initialized with " << m_current->size() << " CTXs";
 }
 
-std::vector< dev::h256 > BITE2TransactionQueue::getNCTXOrigins( size_t _n ) const {
+std::vector< BITE2TransactionQueue::CTXInitData > BITE2TransactionQueue::getNCTXInitData(
+    size_t _n ) const {
     CHECK_EXPRESSION( _n <= m_current->size() );
-    std::vector< dev::h256 > res;
+    std::vector< CTXInitData > res;
     res.reserve( _n );
 
     for ( size_t i = 0; i < _n; ++i ) {
-        res.push_back( m_current->at( i ).getCTXOrigin() );
+        const auto& tx = m_current->at( i );
+        res.push_back( CTXInitData{ tx.getCTXOrigin(), tx.getCTXRefundStorageCell() } );
     }
 
     return res;

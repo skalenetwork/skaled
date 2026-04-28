@@ -27,12 +27,18 @@
 #include <libdevcore/Log.h>
 
 #include <deque>
+#include <optional>
 
 namespace dev {
 namespace eth {
 
 class BITE2TransactionQueue {
 public:
+    struct CTXInitData {
+        dev::h256 origin;
+        std::optional< dev::u256 > refundStorageCell;
+    };
+
     /// Thread-safe, locks and returns a copy. For Debug/RPC.
     std::deque< Transaction > debug_pendingBITE2Transactions() const;
 
@@ -59,7 +65,7 @@ public:
     /// Set the queue on startup with CTXs that were created in the previous block
     void setQueueOnInit( std::deque< Transaction >&& _ctxQueue );
 
-    std::vector< dev::h256 > getNCTXOrigins( size_t _n ) const;
+    std::vector< CTXInitData > getNCTXInitData( size_t _n ) const;
 
 private:
     std::shared_ptr< std::deque< Transaction > > m_current =

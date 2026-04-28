@@ -262,6 +262,12 @@ public:
 
     dev::h256 getCTXOrigin() const { return m_ctxOrigin; }
 
+    void setCTXRefundStorageCell( const std::optional< dev::u256 >& _storageCell ) {
+        m_ctxRefundStorageCell = _storageCell;
+    }
+
+    std::optional< dev::u256 > getCTXRefundStorageCell() const { return m_ctxRefundStorageCell; }
+
 #endif  // BITE
 
     /// @throws TransactionIsUnsigned if signature was not initialized
@@ -480,6 +486,9 @@ protected:
     static const Address BITE_ADDRESS;
 
     dev::h256 m_ctxOrigin = dev::h256( 0 );  ///< Txn that initiated submitCTX call
+
+    std::optional< dev::u256 > m_ctxRefundStorageCell =
+        std::nullopt;  ///< Storage slot used to resolve CTX refund recipient
 
     std::optional< size_t > m_ctxEncryptedArgsSize = std::nullopt;
     bool m_isCTX = false;

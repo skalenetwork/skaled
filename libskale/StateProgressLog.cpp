@@ -72,12 +72,17 @@ void StateProgressLog::writeProgressData( const CommittedProgressData& _data ) {
 
 #ifdef BITE
     dev::RLPStream ctxsStream;
+    bool const ctxRefundPatchEnabled = CtxRefundPatch::isEnabledInWorkingBlock();
     ctxsStream.appendList( _data.ctxsCreatedInBlock.size() );
     for ( const auto& ctx : _data.ctxsCreatedInBlock ) {
         dev::RLPStream ctxEntry;
-        ctxEntry.appendList( 2 );
+        auto refundStorageCell = ctx.getCTXRefundStorageCell();
+        bool const hasRefundStorageCell = ctxRefundPatchEnabled && refundStorageCell.has_value();
+        ctxEntry.appendList( hasRefundStorageCell ? 3 : 2 );
         ctxEntry.appendRaw( ctx.toBytes() );
         ctxEntry << ctx.getCTXOrigin();
+        if ( hasRefundStorageCell )
+            ctxEntry << refundStorageCell.value();
         ctxsStream.appendRaw( ctxEntry.out() );
     }
     rlpStream.appendRaw( ctxsStream.out() );
@@ -141,13 +146,16 @@ std::optional< CommittedProgressData > StateProgressLog::loadProgressData() cons
         }
 
 #ifdef BITE
+        bool const ctxRefundPatchEnabled = CtxRefundPatch::isEnabledInWorkingBlock();
         for ( auto const& item : rlp[4] ) {
-            CHECK_EXPRESSION( item.isList() && item.itemCount() == 2 );
+            CHECK_EXPRESSION( item.isList() && ( item.itemCount() == 2 || item.itemCount() == 3 ) );
             dev::eth::Transaction tx( item[0].data(), dev::eth::CheckTransaction::None, true,
                 EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
                 InvalidTransactionFormatPatch::isEnabledInWorkingBlock(),
                 Bite2Patch::isEnabledInWorkingBlock() );
             tx.setCTXOrigin( item[1].toHash< dev::h256 >() );
+            if ( ctxRefundPatchEnabled && item.itemCount() == 3 )
+                tx.setCTXRefundStorageCell( item[2].toInt< dev::u256 >() );
             data.ctxsCreatedInBlock.push_back( std::move( tx ) );
         }
 #endif

@@ -28,6 +28,7 @@ enum class SchainPatchEnum {
     ContractCreationReadOnlyPatch,
 #ifdef BITE
     Bite2Patch,
+    CtxRefundPatch,
 #endif  // BITE
 #ifdef FAIR
     DisableSelfDestructPatch,

@@ -444,6 +444,19 @@ bool AlethExecutive::finalize() {
         m_s.addBalance( m_envInfo.author(), feesEarned );
     }
 
+#ifdef BITE
+    if ( m_t.isCTX() && CtxRefundPatch::isEnabledWhen( m_envInfo.committedBlockTimestamp() ) ) {
+        // Refund everything from the CTX burner to recipient resolved from destination
+        // contract storage at the slot provided during submitCTX.
+        auto remainingBalance = m_s.balance( m_t.sender() );
+        if ( remainingBalance > 0 ) {
+            dev::u256 storageCell = m_t.getCTXRefundStorageCell();
+            m_s.setStorage( m_t.to(), storageCell, remainingBalance );
+            m_s.subBalance( m_t.sender(), remainingBalance );
+        }
+    }
+#endif
+
     // Selfdestructs...
     if ( m_ext )
         for ( auto a : m_ext->sub.suicides )

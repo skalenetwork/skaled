@@ -780,13 +780,20 @@ void BlockChain::insertTransactionsDetailsToDb(
                 ( db::Slice ) dev::ref( ctxOrigin.rlp() ) );
 
             CHECK_EXPRESSION( _block.pendingCtxs );
+            bool const ctxRefundPatchEnabled =
+                CtxRefundPatch::isEnabledWhen( _block.info.timestamp() );
             RLPStream s;
             s.appendList( _block.pendingCtxs->size() );
             for ( const auto& ctx : *_block.pendingCtxs ) {
                 RLPStream ctxEntry;
-                ctxEntry.appendList( 2 );
+                auto refundStorageCell = ctx.getCTXRefundStorageCell();
+                bool const hasRefundStorageCell =
+                    ctxRefundPatchEnabled && refundStorageCell.has_value();
+                ctxEntry.appendList( hasRefundStorageCell ? 3 : 2 );
                 ctxEntry.appendRaw( ctx.toBytes() );
                 ctxEntry << ctx.getCTXOrigin();
+                if ( hasRefundStorageCell )
+                    ctxEntry << refundStorageCell.value();
                 s.appendRaw( ctxEntry.out() );
             }
             dev::bytes ctxListRlp = s.out();
@@ -1932,13 +1939,17 @@ std::deque< Transaction > BlockChain::pendingCTXsList() const {
     RLP rlp( lastBlockCTXs );
     std::deque< Transaction > ctxs;
     uint64_t prevBlockTimestamp = info().timestamp();
+    bool const ctxRefundPatchEnabled = CtxRefundPatch::isEnabledWhen( prevBlockTimestamp );
     for ( auto const& entry : rlp ) {
-        CHECK_EXPRESSION( entry.isList() && entry.itemCount() == 2 );
+        CHECK_EXPRESSION( entry.isList() && ( entry.itemCount() == 2 || entry.itemCount() == 3 ) );
         Transaction tx( entry[0].data(), CheckTransaction::None, true,
             EIP1559TransactionsPatch::isEnabledWhen( prevBlockTimestamp ),
             InvalidTransactionFormatPatch::isEnabledWhen( prevBlockTimestamp ),
             Bite2Patch::isEnabledWhen( prevBlockTimestamp ) );
         tx.setCTXOrigin( entry[1].toHash< dev::h256 >() );
+        if ( ctxRefundPatchEnabled && entry.itemCount() == 3 ) {
+            tx.setCTXRefundStorageCell( entry[2].toInt< dev::u256 >() );
+        }
         ctxs.push_back( std::move( tx ) );
     }
     return ctxs;

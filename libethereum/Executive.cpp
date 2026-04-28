@@ -666,6 +666,24 @@ bool Executive::finalize() {
             feesEarned, currentBlockSchedule.shareOfTransactionFeeToRewardPromille );
 #endif
         m_s.addBalance( m_envInfo.author(), feesEarned );
+
+#ifdef BITE
+        if ( m_t.isCTX() && CtxRefundPatch::isEnabledWhen( m_envInfo.committedBlockTimestamp() ) ) {
+            // Refund everything from the CTX burner to recipient resolved from destination
+            // contract storage at the slot provided during submitCTX.
+            auto remainingBalance = m_s.balance( m_t.sender() );
+            if ( remainingBalance > 0 ) {
+                auto storageCell = m_t.getCTXRefundStorageCell();
+                if ( storageCell.has_value() ) {
+                    dev::u256 currentValue = m_s.storage( m_t.to(), storageCell.value() );
+                    m_s.setStorage(
+                        m_t.to(), storageCell.value(), currentValue + remainingBalance );
+                }
+                m_s.subBalance( m_t.sender(), remainingBalance );
+                m_s.addBalance( m_t.to(), remainingBalance );
+            }
+        }
+#endif
     }
 
     // Suicides...

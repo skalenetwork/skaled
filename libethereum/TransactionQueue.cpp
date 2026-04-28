@@ -608,8 +608,9 @@ void TransactionQueue::clearTempBITE2Transactions() {
     m_bite2Queue.clearTemp();
 }
 
-std::vector< dev::h256 > TransactionQueue::getNCTXOrigins( size_t _n ) const {
-    return m_bite2Queue.getNCTXOrigins( _n );
+std::vector< BITE2TransactionQueue::CTXInitData > TransactionQueue::getNCTXInitData(
+    size_t _n ) const {
+    return m_bite2Queue.getNCTXInitData( _n );
 }
 
 void TransactionQueue::setBITE2QueueOnInit( std::deque< Transaction >&& _ctxQueue ) {

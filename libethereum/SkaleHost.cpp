@@ -1111,7 +1111,8 @@ std::vector< Transaction > SkaleHost::processCTXTransactions(
     const ConsensusExtFace::Transactions& _approvedTransactions,
     [[maybe_unused]] const dev::eth::BlockHeader& latestInfo,
     DecryptedTransactions _decryptedTransactions ) {
-    std::vector< dev::h256 > ctxOrigins = m_tq.getNCTXOrigins( _approvedTransactions.sizeCTX() );
+    std::vector< BITE2TransactionQueue::CTXInitData > ctxInitData =
+        m_tq.getNCTXInitData( _approvedTransactions.sizeCTX() );
     std::vector< Transaction > outTxns;
     auto ctxIterator = _decryptedTransactions.ctxTxsMap->begin();
     for ( size_t i = 0; i < _approvedTransactions.sizeCTX(); ++i ) {
@@ -1140,7 +1141,9 @@ std::vector< Transaction > SkaleHost::processCTXTransactions(
 
         // no POW for CTXs
 
-        t.setCTXOrigin( ctxOrigins[i] );
+        t.setCTXOrigin( ctxInitData[i].origin );
+        if ( ctxInitData[i].refundStorageCell.has_value() )
+            t.setCTXRefundStorageCell( ctxInitData[i].refundStorageCell );
         outTxns.push_back( t );
         m_debugTracer.tracepoint( "drop_good" );
         m_tq.dropGood( t );

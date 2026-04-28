@@ -193,6 +193,12 @@ DEFINE_AMNESIC_PATCH( GroupIndexInitPatch );
  * return a revert and CTX status is not set in TransactionBase constructor.
  */
 DEFINE_SIMPLE_PATCH( Bite2Patch );
+
+/*
+ * Purpose: to execute CTX a temporary account's balance is refilled
+ * To avoid losing those funds, skaled refunds them back
+ */
+DEFINE_SIMPLE_PATCH( CtxRefundPatch );
 #endif  // BITE
 
 /*
