@@ -262,9 +262,8 @@ ImportResult TransactionQueue::manageImport_WITH_LOCK( h256 const& _h,
         // If transaction was not compatible with CTQ, meaning it was a future tx
         // AND FTQ (future tx queue) is disabled
         if ( !_allowFutureQueue ) {
-            BOOST_LOG( m_loggerWarning )
-                << "Transaction queue cannot accept transaction " << _h;
-            return ret; // ret is QueueIsFull
+            BOOST_LOG( m_loggerWarning ) << "Transaction queue cannot accept transaction " << _h;
+            return ret;  // ret is QueueIsFull
         }
 
         // If transaction was not compatible with CTQ, meaning it was a future tx
@@ -273,8 +272,8 @@ ImportResult TransactionQueue::manageImport_WITH_LOCK( h256 const& _h,
         if ( ret == ImportResult::Success )
             BOOST_LOG( m_loggerTrace ) << "Queued future transaction " << _h;
         else if ( ret == ImportResult::QueueIsFull )
-            BOOST_LOG( m_loggerWarning ) << "Future transaction queue is full. Dropping transaction "
-                                         << _h;
+            BOOST_LOG( m_loggerWarning )
+                << "Future transaction queue is full. Dropping transaction " << _h;
 
         return ret;
     } catch ( Exception const& _e ) {
@@ -368,8 +367,8 @@ ImportResult TransactionQueue::tryInsertFuture_WITH_LOCK(
         auto existing = fs->second.find( t.nonce() );
         if ( existing != fs->second.end() ) {
             if ( existing->second.transaction.sha3() == _p.first )
-                return ImportResult::Success; // tx already exists
-            
+                return ImportResult::Success;  // tx already exists
+
             // different tx with same nonce
             return ImportResult::SameNonceAlreadyInQueue;
         }
@@ -395,7 +394,8 @@ bool TransactionQueue::isCurrentNonceCompatible_WITH_LOCK(
     if ( cs == m_currentByAddressAndNonce.end() || cs->second.empty() )
         return _transaction.nonce() == _stateNonce;
 
-    // Some txs from same user in queue -> check if nonce is compatible with last tx from same user in queue
+    // Some txs from same user in queue -> check if nonce is compatible with last tx from same user
+    // in queue
     return _transaction.nonce() == cs->second.rbegin()->first + 1;
 }
 

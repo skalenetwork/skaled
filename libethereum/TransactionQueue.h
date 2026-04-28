@@ -86,8 +86,8 @@ public:
     /// put in the current queue.
     /// @param _stateNonce Current committed nonce for the transaction sender.
     /// @returns Import result code.
-    ImportResult import( bytes const& _tx, IfDropped _ik, bool _allowFutureQueue,
-        u256 const& _stateNonce ) {
+    ImportResult import(
+        bytes const& _tx, IfDropped _ik, bool _allowFutureQueue, u256 const& _stateNonce ) {
         return import( &_tx, _ik, _allowFutureQueue, _stateNonce );
     }
 
@@ -98,8 +98,8 @@ public:
     /// put in the current queue.
     /// @param _stateNonce Current committed nonce for the transaction sender.
     /// @returns Import result code.
-    ImportResult import( Transaction const& _tx, IfDropped _ik, bool _allowFutureQueue,
-        u256 const& _stateNonce );
+    ImportResult import(
+        Transaction const& _tx, IfDropped _ik, bool _allowFutureQueue, u256 const& _stateNonce );
 
     /// Remove transaction from the queue
     /// @param _txHash Transaction hash
@@ -341,8 +341,8 @@ private:
     // account min account nonce. Updating it does not affect the order.
     using PriorityQueue = boost::container::multiset< VerifiedTransaction, PriorityCompare >;
 
-    ImportResult import( bytesConstRef _tx, IfDropped _ik, bool _allowFutureQueue,
-        u256 const& _stateNonce );
+    ImportResult import(
+        bytesConstRef _tx, IfDropped _ik, bool _allowFutureQueue, u256 const& _stateNonce );
     ImportResult check_WITH_LOCK( h256 const& _h, IfDropped _ik );
     ImportResult manageImport_WITH_LOCK( h256 const& _h, Transaction const& _transaction,
         bool _allowFutureQueue, u256 const& _stateNonce );
