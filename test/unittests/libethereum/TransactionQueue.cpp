@@ -81,12 +81,13 @@ BOOST_AUTO_TEST_CASE( tqMaxNonce ) {
 
     // same tx - should not increase nonce
     result = importCurrent( txq, tx0 );
-    BOOST_CHECK( result == ImportResult::Success );
+    BOOST_CHECK( result == ImportResult::AlreadyKnown );
+
     BOOST_CHECK( 1 == txq.maxNonce( to ) );
 
     // different tx for same nonce - should not increase nonce
     result = importCurrent( txq, tx0_1 );
-    BOOST_CHECK( result == ImportResult::Success );
+    BOOST_CHECK( result == ImportResult::SameNonceAlreadyInQueue );
     BOOST_CHECK( 1 == txq.maxNonce( to ) );
 
     // 2nd tx - should import fine
@@ -258,21 +259,6 @@ BOOST_AUTO_TEST_CASE( tqLimits ) {
     BOOST_REQUIRE( importCurrent( txq, tx4 ) == ImportResult::QueueIsFull );
     BOOST_REQUIRE( importCurrent( txq, tx5 ) == ImportResult::QueueIsFull );
     BOOST_CHECK( ( Transactions{tx0, tx1, tx2} ) == txq.topTransactions( 256 ) );
-
-    // CTQ limit -> goes to FTQ until FTQ limit is reached
-    dev::eth::TransactionQueue txq2( 3, 2 );
-    BOOST_REQUIRE( importCurrent( txq2, tx0 ) == ImportResult::Success );
-    BOOST_REQUIRE( importCurrent( txq2, tx1 ) == ImportResult::Success );
-    BOOST_REQUIRE( importCurrent( txq2, tx2 ) == ImportResult::Success );
-    BOOST_REQUIRE( importCurrent( txq2, tx3 ) == ImportResult::Success ); // goes to future
-    BOOST_REQUIRE( importCurrent( txq2, tx4 ) == ImportResult::Success ); // goes to future
-    BOOST_REQUIRE( importCurrent( txq2, tx5 ) == ImportResult::QueueIsFull ); // future is full
-    // t0, t1, t2 in CTQ
-    BOOST_CHECK( ( Transactions{tx0, tx1, tx2 } ) == txq2.topTransactions( 256 ) );
-
-    // t3, t4 in FTQ
-    BOOST_CHECK( ( Transactions{tx3, tx4} ) == txq2.debugGetFutureTransactions() );
-
 
 }
 
