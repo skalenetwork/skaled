@@ -647,8 +647,6 @@ Json::Value Eth::eth_getBlockByNumber( string const& _blockNumber, bool _include
 #ifdef HISTORIC_STATE
         h256 bh = client()->hashFromNumber( h );
         return eth_getBlockByHash( "0x" + bh.hex(), _includeTransactions );
-    } catch ( const JsonRpcException& ) {
-        throw;
 #else
         BlockHeader blockInfo = client()->blockInfo( h );
         u256 baseFeePerGas = blockInfo.baseFeePerGas();
