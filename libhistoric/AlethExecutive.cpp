@@ -10,10 +10,10 @@
 #include "libethereum/Block.h"
 #include "libethereum/BlockChain.h"
 #include "libethereum/Interface.h"
-#include <libethereum/SchainPatch.h>
 #include "libevm/LegacyVM.h"
 #include "libevm/VMFactory.h"
 #include <libethashseal/Ethash.h>
+#include <libethereum/SchainPatch.h>
 #include <libhistoric/HistoricState.h>
 
 using namespace std;
@@ -454,8 +454,7 @@ bool AlethExecutive::finalize() {
             auto storageCell = m_t.getCTXRefundStorageCell();
             if ( storageCell.has_value() ) {
                 dev::u256 currentValue = m_s.storage( m_t.to(), storageCell.value() );
-                m_s.setStorage(
-                    m_t.to(), storageCell.value(), currentValue + remainingBalance );
+                m_s.setStorage( m_t.to(), storageCell.value(), currentValue + remainingBalance );
             }
             m_s.subBalance( m_t.sender(), remainingBalance );
             m_s.addBalance( m_t.to(), remainingBalance );
