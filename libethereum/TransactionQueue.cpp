@@ -37,6 +37,17 @@ using namespace dev::eth;
 
 namespace {
 constexpr size_t c_maxDroppedTransactionCount = 1024;
+
+Transaction decodeTransaction( bytesConstRef _transactionRLP ) {
+    return Transaction( _transactionRLP, CheckTransaction::Everything, false,
+        EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
+        InvalidTransactionFormatPatch::isEnabledInWorkingBlock()
+#ifdef BITE
+            ,
+        Bite2Patch::isEnabledInWorkingBlock()
+#endif  // BITE
+    );
+}
 }  // namespace
 
 TransactionQueue::TransactionQueue( unsigned _limit, unsigned _futureLimit,
@@ -55,35 +66,10 @@ TransactionQueue::TransactionQueue( unsigned _limit, unsigned _futureLimit,
 
 TransactionQueue::~TransactionQueue() {}
 
-ImportResult TransactionQueue::import(
-    bytesConstRef _transactionRLP, IfDropped _ik, bool _isFuture ) {
-    try {
-        Transaction t = Transaction( _transactionRLP, CheckTransaction::Everything, false,
-            EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
-            InvalidTransactionFormatPatch::isEnabledInWorkingBlock()
-#ifdef BITE
-                ,
-            Bite2Patch::isEnabledInWorkingBlock()
-#endif  // BITE
-        );
-        return import( t, _ik, _isFuture );
-    } catch ( Exception const& ) {
-        return ImportResult::Malformed;
-    }
-}
-
 ImportResult TransactionQueue::import( bytesConstRef _transactionRLP, IfDropped _ik,
     bool _allowFutureQueue, u256 const& _stateNonce ) {
     try {
-        Transaction t = Transaction( _transactionRLP, CheckTransaction::Everything, false,
-            EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
-            InvalidTransactionFormatPatch::isEnabledInWorkingBlock()
-#ifdef BITE
-                ,
-            Bite2Patch::isEnabledInWorkingBlock()
-#endif  // BITE
-        );
-        return import( t, _ik, _allowFutureQueue, _stateNonce );
+        return import( decodeTransaction( _transactionRLP ), _ik, _allowFutureQueue, _stateNonce );
     } catch ( Exception const& ) {
         return ImportResult::Malformed;
     }
@@ -97,55 +83,6 @@ ImportResult TransactionQueue::check_WITH_LOCK( h256 const& _h, IfDropped _ik ) 
         return ImportResult::AlreadyInChain;
 
     return ImportResult::Success;
-}
-
-ImportResult TransactionQueue::import(
-    Transaction const& _transaction, IfDropped _ik, bool _isFuture ) {
-    if ( _transaction.hasZeroSignature() )
-        return ImportResult::ZeroSignature;
-    // Check if we already know this transaction.
-    h256 h = _transaction.sha3( WithSignature );
-
-    ImportResult ret;
-    {
-        MICROPROFILE_SCOPEI( "TransactionQueue", "import", MP_THISTLE );
-        // WriteGuard l2( m_lock );
-        UpgradableGuard l( m_lock );
-
-        // HACK remove it from future and re-insert (allows to "push" stuck transaction)
-        auto fs = m_future.find( _transaction.from() );
-        if ( fs != m_future.end() ) {
-            auto t = fs->second.find( _transaction.nonce() );
-
-            // if transaction found:
-            if ( t != fs->second.end() ) {
-                UpgradeGuard ul( l );
-                --m_futureSize;
-                m_futureSizeBytes -= t->second.transaction.toBytes().size();
-                auto erasedHash = t->second.transaction.sha3();
-                BOOST_LOG( m_loggerTrace ) << "Re-inserting future transaction " << erasedHash;
-                m_known.erase( erasedHash );
-                fs->second.erase( t->second.transaction.nonce() );
-                if ( fs->second.empty() )
-                    m_future.erase( fs );
-            }  // if found
-        }      // if fs->second
-
-        auto ir = check_WITH_LOCK( h, _ik );
-        if ( ir != ImportResult::Success )
-            return ir;
-
-        {
-            _transaction.safeSender();  // Perform EC recovery outside of the write lock
-
-            UpgradeGuard ul( l );
-            ret = manageImport_WITH_LOCK( h, _transaction );
-
-            if ( _isFuture )
-                setFuture_WITH_LOCK( h );
-        }
-    }
-    return ret;
 }
 
 ImportResult TransactionQueue::import( Transaction const& _transaction, IfDropped _ik,
@@ -272,49 +209,6 @@ const h256Hash TransactionQueue::knownTransactions() const {
     return rv;
 }
 
-ImportResult TransactionQueue::manageImport_WITH_LOCK(
-    h256 const& _h, Transaction const& _transaction ) {
-    try {
-        assert( _h == _transaction.sha3() );
-        // Remove any prior transaction with the same nonce but a lower gas price.
-        // Bomb out if there's a prior transaction with higher gas price.
-        auto cs = m_currentByAddressAndNonce.find( _transaction.from() );
-        if ( cs != m_currentByAddressAndNonce.end() ) {
-            auto t = cs->second.find( _transaction.nonce() );
-            if ( t != cs->second.end() ) {
-                return ImportResult::SameNonceAlreadyInQueue;
-            }
-        }
-
-        auto fs = m_future.find( _transaction.from() );
-        if ( fs != m_future.end() ) {
-            auto t = fs->second.find( _transaction.nonce() );
-            if ( t != fs->second.end() ) {
-                return ImportResult::SameNonceAlreadyInQueue;
-            }  // if found
-        }      // if fs->second
-
-        ImportResult ret = insertCurrent_WITH_LOCK( make_pair( _h, _transaction ) );
-        if ( ret == ImportResult::Success ) {
-            BOOST_LOG( m_loggerTrace ) << "Queued vaguely legit-looking transaction " << _h;
-            m_onReady();
-        } else if ( ret == ImportResult::QueueIsFull ) {
-            BOOST_LOG( m_loggerWarning ) << "Transaction queue is full. Rejecting transaction "
-                                         << _h;
-        }
-        return ret;
-    } catch ( Exception const& _e ) {
-        BOOST_LOG( m_loggerTrace )
-            << "Ignoring invalid transaction: " << diagnostic_information( _e );
-        return ImportResult::Malformed;
-    } catch ( std::exception const& _e ) {
-        BOOST_LOG( m_loggerTrace ) << "Ignoring invalid transaction: " << _e.what();
-        return ImportResult::Malformed;
-    }
-
-    return ImportResult::Success;
-}
-
 ImportResult TransactionQueue::manageImport_WITH_LOCK( h256 const& _h,
     Transaction const& _transaction, bool _allowFutureQueue, u256 const& _stateNonce ) {
     try {
@@ -426,15 +320,23 @@ ImportResult TransactionQueue::insertCurrent_WITH_LOCK(
 ImportResult TransactionQueue::insertFuture_WITH_LOCK(
     std::pair< h256, Transaction > const& _p ) {
     Transaction const& t = _p.second;
-    size_t const transactionSizeBytes = t.toBytes().size();
-    if ( m_futureSize + 1 > m_futureLimit ||
-         m_futureSizeBytes + transactionSizeBytes > m_futureSizeBytesLimit )
-        return ImportResult::QueueIsFull;
-
     m_future[t.from()].emplace( t.nonce(), VerifiedTransaction( t ) );
     ++m_futureSize;
-    m_futureSizeBytes += transactionSizeBytes;
+    m_futureSizeBytes += t.toBytes().size();
     m_known.insert( _p.first );
+
+    while ( m_futureSize > m_futureLimit || m_futureSizeBytes > m_futureSizeBytesLimit ) {
+        // TODO: priority queue for future transactions
+        // For now just drop random chain end
+        --m_futureSize;
+        m_futureSizeBytes -= m_future.begin()->second.rbegin()->second.transaction.toBytes().size();
+        auto erasedHash = m_future.begin()->second.rbegin()->second.transaction.sha3();
+        BOOST_LOG( m_loggerTrace ) << "Dropping out of bounds future transaction " << erasedHash;
+        m_known.erase( erasedHash );
+        m_future.begin()->second.erase( --m_future.begin()->second.end() );
+        if ( m_future.begin()->second.empty() )
+            m_future.erase( m_future.begin() );
+    }
 
     return ImportResult::Success;
 }
