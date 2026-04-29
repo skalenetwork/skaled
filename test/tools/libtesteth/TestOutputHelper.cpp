@@ -20,9 +20,9 @@
  * Fixture class for boost output when running testeth
  */
 
-#include <libethereum/SchainPatch.h>
 #include <libethashseal/Ethash.h>
 #include <libethcore/BasicAuthority.h>
+#include <libethereum/SchainPatch.h>
 #include <test/tools/libtesteth/Options.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>
 
@@ -108,5 +108,5 @@ TestOutputHelperFixture::TestOutputHelperFixture() {
 TestOutputHelperFixture::~TestOutputHelperFixture() {
     TestOutputHelper::get().finishTest();
     // XXX used in Personal test. do it more nicely!
-    unsetenv("DATA_DIR");
+    unsetenv( "DATA_DIR" );
 }

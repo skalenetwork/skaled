@@ -60,7 +60,7 @@ public:
     int exportTest();
 #ifdef FAIR
     static int compareStatesFAIR( skale::State const& _stateExpect, skale::State const& _statePost,
-        std::unordered_set<Address> const& owners,
+        std::unordered_set< Address > const& owners,
         eth::AccountMaskMap const _expectedStateOptions = eth::AccountMaskMap(),
         WhenError _throw = WhenError::Throw );
 #endif
@@ -118,7 +118,7 @@ private:
     json_spirit::mObject const& m_testInputObject;
     json_spirit::mObject& m_testOutputObject;
 
-    Logger m_loggerInfo{createLogger( VerbosityInfo, "state" )};
+    Logger m_loggerInfo{ createLogger( VerbosityInfo, "state" ) };
 };
 
 template < class T >

@@ -113,7 +113,7 @@ void mine( BlockHeader& _bi, SealEngineFace* _sealer, bool _verify ) {
         _sealer->verify( JustSeal, _bi );
 }
 
-void simulateMining( Client& client, size_t numBlocks, const dev::Address &address ) {
+void simulateMining( Client& client, size_t numBlocks, dev::Address const& address ) {
     const auto balanceBefore = client.balanceAt( address );
     State state = client.state();
     u256 reward = 0;
@@ -122,15 +122,15 @@ void simulateMining( Client& client, size_t numBlocks, const dev::Address &addre
     }
     state.addBalance( address, reward );
     state.commit();
-    state.getOriginalDb()->createBlockSnap(1);
+    state.getOriginalDb()->createBlockSnap( 1 );
     const auto balanceAfter = client.balanceAt( address );
-    balanceAfter > balanceBefore; // make compiler happy
+    balanceAfter > balanceBefore;  // make compiler happy
     assert( balanceAfter > balanceBefore );
 }
 
-void simulateMining( Client& client, size_t numBlocks,  const bool waitForConsensusRotation ) {
+void simulateMining( Client& client, size_t numBlocks, const bool waitForConsensusRotation ) {
     const dev::Address address = client.author();
-    shared_ptr<SkaleHost> skaleHost = client.skaleHost();
+    shared_ptr< SkaleHost > skaleHost = client.skaleHost();
     simulateMining( client, numBlocks, address );
 }
 
@@ -175,13 +175,13 @@ string netIdToString( eth::Network _netId ) {
 
 eth::Network stringToNetId( string const& _netname ) {
     // Networks that used in .json tests
-    static vector< eth::Network > const networks{
-        {eth::Network::FrontierTest, eth::Network::HomesteadTest, eth::Network::EIP150Test,
-            eth::Network::EIP158Test, eth::Network::ByzantiumTest, eth::Network::ConstantinopleTest,
-            eth::Network::ConstantinopleFixTest, eth::Network::IstanbulTest,
-            eth::Network::FrontierToHomesteadAt5, eth::Network::HomesteadToDaoAt5,
-            eth::Network::HomesteadToEIP150At5, eth::Network::EIP158ToByzantiumAt5,
-            eth::Network::ByzantiumToConstantinopleFixAt5, eth::Network::TransitionnetTest}};
+    static vector< eth::Network > const networks{ { eth::Network::FrontierTest,
+        eth::Network::HomesteadTest, eth::Network::EIP150Test, eth::Network::EIP158Test,
+        eth::Network::ByzantiumTest, eth::Network::ConstantinopleTest,
+        eth::Network::ConstantinopleFixTest, eth::Network::IstanbulTest,
+        eth::Network::FrontierToHomesteadAt5, eth::Network::HomesteadToDaoAt5,
+        eth::Network::HomesteadToEIP150At5, eth::Network::EIP158ToByzantiumAt5,
+        eth::Network::ByzantiumToConstantinopleFixAt5, eth::Network::TransitionnetTest } };
 
     for ( auto const& net : networks )
         if ( netIdToString( net ) == _netname )
@@ -212,10 +212,10 @@ bool isDisabledNetwork( eth::Network _net ) {
 
 set< eth::Network > const& getNetworks() {
     // Networks for the test case execution when filling the tests
-    static set< eth::Network > const networks{
-        {eth::Network::FrontierTest, eth::Network::HomesteadTest, eth::Network::EIP150Test,
-            eth::Network::EIP158Test, eth::Network::ByzantiumTest, eth::Network::ConstantinopleTest,
-            eth::Network::ConstantinopleFixTest, eth::Network::IstanbulTest}};
+    static set< eth::Network > const networks{ { eth::Network::FrontierTest,
+        eth::Network::HomesteadTest, eth::Network::EIP150Test, eth::Network::EIP158Test,
+        eth::Network::ByzantiumTest, eth::Network::ConstantinopleTest,
+        eth::Network::ConstantinopleFixTest, eth::Network::IstanbulTest } };
     return networks;
 }
 
@@ -314,7 +314,7 @@ u256 toInt( json_spirit::mValue const& _v ) {
     return 0;
 }
 
-int64_t toPositiveInt64( const json_spirit::mValue& _v ) {
+int64_t toPositiveInt64( json_spirit::mValue const& _v ) {
     int64_t n = 0;
     switch ( _v.type() ) {
     case json_spirit::str_type:
@@ -328,7 +328,7 @@ int64_t toPositiveInt64( const json_spirit::mValue& _v ) {
     }
 
     if ( n < 0 )
-        throw std::out_of_range{"unexpected negative value: " + std::to_string( n )};
+        throw std::out_of_range{ "unexpected negative value: " + std::to_string( n ) };
 
     return n;
 }
@@ -392,9 +392,9 @@ string replaceCode( string const& _code ) {
 }
 
 void replaceCodeInState( json_spirit::mObject& _o ) {
-    json_spirit::mObject& fieldsObj = _o.count( "alloc" ) ?
-                                          _o["alloc"].get_obj() :
-                                          _o.count( "accounts" ) ? _o["accounts"].get_obj() : _o;
+    json_spirit::mObject& fieldsObj = _o.count( "alloc" )    ? _o["alloc"].get_obj() :
+                                      _o.count( "accounts" ) ? _o["accounts"].get_obj() :
+                                                               _o;
     for ( auto& account : fieldsObj ) {
         auto obj = account.second.get_obj();
         if ( obj.count( "code" ) && obj["code"].type() == json_spirit::str_type )
@@ -599,7 +599,7 @@ void requireJsonFields( json_spirit::mObject const& _o, string const& _section,
 }
 
 string prepareVersionString() {
-    return string{"testeth "} + skale_get_buildinfo()->project_version;
+    return string{ "testeth " } + skale_get_buildinfo()->project_version;
 }
 
 // A simple C++ implementation of the Levenshtein distance algorithm to measure the amount of
@@ -737,7 +737,6 @@ void Listener::notifySuiteStarted( string const& _name ) {
 }
 
 void Listener::notifyTestStarted( string const& _name ) {
-
     if ( g_listener )
         g_listener->testStarted( _name );
 }

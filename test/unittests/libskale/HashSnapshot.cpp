@@ -60,8 +60,7 @@ public:
             for ( size_t j = 0; j < _chainParams.sChain.t; ++j ) {
                 blsPrivateKeys_[i] =
                     blsPrivateKeys_[i] +
-                    coeffs[j] *
-                        libBLS::algebra::power( libBLS::algebra::FrScalar( i + 1 ), j );
+                    coeffs[j] * libBLS::algebra::power( libBLS::algebra::FrScalar( i + 1 ), j );
             }
         }
 
@@ -514,10 +513,9 @@ BOOST_AUTO_TEST_CASE( PositiveTest ) {
     std::vector< size_t > excpected = { 0, 1, 2 };
     BOOST_REQUIRE( res == excpected );
     BOOST_REQUIRE( test_agent.getVotedHash().first == hash );
-    BOOST_REQUIRE(
-        test_agent.getVotedHash().second ==
-        libBLS::Bls::Signing( libBLS::algebra::hashToG1( hash.asArray() ),
-            test_agent.secret_as_is ) );
+    BOOST_REQUIRE( test_agent.getVotedHash().second ==
+                   libBLS::Bls::Signing(
+                       libBLS::algebra::hashToG1( hash.asArray() ), test_agent.secret_as_is ) );
 }
 
 BOOST_AUTO_TEST_CASE( WrongHash ) {

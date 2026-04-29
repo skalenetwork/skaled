@@ -708,11 +708,11 @@ public:
 
 
 #ifdef HISTORIC_STATE
-    u256 historicStateBalanceAt( Address _a, BlockNumber _block ) const override;
-    u256 historicStateCountAt( Address _a, BlockNumber _block ) const override;
-    u256 historicStateAt( Address _a, u256 _l, BlockNumber _block ) const override;
-    h256 historicStateRootAt( Address _a, BlockNumber _block ) const override;
-    bytes historicStateCodeAt( Address _a, BlockNumber _block ) const override;
+    u256 historicStateBalanceAt( Address const& _a, BlockNumber _block ) const override;
+    u256 historicStateCountAt( Address const& _a, BlockNumber _block ) const override;
+    u256 historicStateAt( Address const& _a, u256 const& _l, BlockNumber _block ) const override;
+    h256 historicStateRootAt( Address const& _a, BlockNumber _block ) const override;
+    bytes historicStateCodeAt( Address const& _a, BlockNumber _block ) const override;
 #endif
     void initStateFromDiskOrGenesis();
     void populateNewChainStateFromGenesis();
