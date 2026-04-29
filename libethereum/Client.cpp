@@ -949,7 +949,7 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
                  << ":TXRS:" << TransactionReceipt::howMany() << ":BLCKS:" << Block::howMany()
                  << ":ACCS:" << Account::howMany() << ":BQS:" << BlockQueue::howMany()
                  << ":BDS:" << BlockDetails::howMany() << ":TSS:" << TransactionSkeleton::howMany()
-                 << ":UTX:" << TransactionQueue::UnverifiedTransaction::howMany()
+                 << ":UTX:" << 0
                  << ":VTX:" << TransactionQueue::VerifiedTransaction::howMany()
                  << ":CMM:" << bc().getTotalCacheMemory()
                  << ":KDS:" << db::LevelDB::getKeyDeletesStats();

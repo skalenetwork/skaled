@@ -28,8 +28,7 @@
 #include <libethcore/Exceptions.h>
 #include <libethereum/SchainPatch.h>
 
-#include <list>
-#include <thread>
+#include <algorithm>
 #include <vector>
 
 using namespace std;
@@ -37,7 +36,6 @@ using namespace dev;
 using namespace dev::eth;
 
 namespace {
-constexpr size_t c_maxVerificationQueueSize = 8192;
 constexpr size_t c_maxDroppedTransactionCount = 1024;
 }  // namespace
 
@@ -56,6 +54,23 @@ TransactionQueue::TransactionQueue( unsigned _limit, unsigned _futureLimit,
 }
 
 TransactionQueue::~TransactionQueue() {}
+
+ImportResult TransactionQueue::import(
+    bytesConstRef _transactionRLP, IfDropped _ik, bool _isFuture ) {
+    try {
+        Transaction t = Transaction( _transactionRLP, CheckTransaction::Everything, false,
+            EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
+            InvalidTransactionFormatPatch::isEnabledInWorkingBlock()
+#ifdef BITE
+                ,
+            Bite2Patch::isEnabledInWorkingBlock()
+#endif  // BITE
+        );
+        return import( t, _ik, _isFuture );
+    } catch ( Exception const& ) {
+        return ImportResult::Malformed;
+    }
+}
 
 ImportResult TransactionQueue::import( bytesConstRef _transactionRLP, IfDropped _ik,
     bool _allowFutureQueue, u256 const& _stateNonce ) {
@@ -84,6 +99,55 @@ ImportResult TransactionQueue::check_WITH_LOCK( h256 const& _h, IfDropped _ik ) 
     return ImportResult::Success;
 }
 
+ImportResult TransactionQueue::import(
+    Transaction const& _transaction, IfDropped _ik, bool _isFuture ) {
+    if ( _transaction.hasZeroSignature() )
+        return ImportResult::ZeroSignature;
+    // Check if we already know this transaction.
+    h256 h = _transaction.sha3( WithSignature );
+
+    ImportResult ret;
+    {
+        MICROPROFILE_SCOPEI( "TransactionQueue", "import", MP_THISTLE );
+        // WriteGuard l2( m_lock );
+        UpgradableGuard l( m_lock );
+
+        // HACK remove it from future and re-insert (allows to "push" stuck transaction)
+        auto fs = m_future.find( _transaction.from() );
+        if ( fs != m_future.end() ) {
+            auto t = fs->second.find( _transaction.nonce() );
+
+            // if transaction found:
+            if ( t != fs->second.end() ) {
+                UpgradeGuard ul( l );
+                --m_futureSize;
+                m_futureSizeBytes -= t->second.transaction.toBytes().size();
+                auto erasedHash = t->second.transaction.sha3();
+                BOOST_LOG( m_loggerTrace ) << "Re-inserting future transaction " << erasedHash;
+                m_known.erase( erasedHash );
+                fs->second.erase( t->second.transaction.nonce() );
+                if ( fs->second.empty() )
+                    m_future.erase( fs );
+            }  // if found
+        }      // if fs->second
+
+        auto ir = check_WITH_LOCK( h, _ik );
+        if ( ir != ImportResult::Success )
+            return ir;
+
+        {
+            _transaction.safeSender();  // Perform EC recovery outside of the write lock
+
+            UpgradeGuard ul( l );
+            ret = manageImport_WITH_LOCK( h, _transaction );
+
+            if ( _isFuture )
+                setFuture_WITH_LOCK( h );
+        }
+    }
+    return ret;
+}
+
 ImportResult TransactionQueue::import( Transaction const& _transaction, IfDropped _ik,
     bool _allowFutureQueue, u256 const& _stateNonce ) {
     if ( _transaction.hasZeroSignature() )
@@ -97,17 +161,35 @@ ImportResult TransactionQueue::import( Transaction const& _transaction, IfDroppe
         // WriteGuard l2( m_lock );
         UpgradableGuard l( m_lock );
 
-        if ( !isKnownFuture_WITH_LOCK( h, _transaction ) ) {
-            auto ir = check_WITH_LOCK( h, _ik );
-            if ( ir != ImportResult::Success )
-                return ir;
-        }
+        // HACK remove it from future and re-insert (allows to "push" stuck transaction)
+        auto fs = m_future.find( _transaction.from() );
+        if ( fs != m_future.end() ) {
+            auto t = fs->second.find( _transaction.nonce() );
+
+            // if transaction found:
+            if ( t != fs->second.end() ) {
+                UpgradeGuard ul( l );
+                --m_futureSize;
+                m_futureSizeBytes -= t->second.transaction.toBytes().size();
+                auto erasedHash = t->second.transaction.sha3();
+                BOOST_LOG( m_loggerTrace ) << "Re-inserting future transaction " << erasedHash;
+                m_known.erase( erasedHash );
+                fs->second.erase( t->second.transaction.nonce() );
+                if ( fs->second.empty() )
+                    m_future.erase( fs );
+            }  // if found
+        }      // if fs->second
+
+        auto ir = check_WITH_LOCK( h, _ik );
+        if ( ir != ImportResult::Success )
+            return ir;
 
         {
             _transaction.safeSender();  // Perform EC recovery outside of the write lock
 
             UpgradeGuard ul( l );
-            ret = manageImport_WITH_LOCK( h, _transaction, _allowFutureQueue, _stateNonce );
+            ret =
+                manageImport_WITH_LOCK( h, _transaction, _allowFutureQueue, _stateNonce );
         }
     }
     return ret;
@@ -190,8 +272,8 @@ const h256Hash TransactionQueue::knownTransactions() const {
     return rv;
 }
 
-ImportResult TransactionQueue::manageImport_WITH_LOCK( h256 const& _h,
-    Transaction const& _transaction, bool _allowFutureQueue, u256 const& _stateNonce ) {
+ImportResult TransactionQueue::manageImport_WITH_LOCK(
+    h256 const& _h, Transaction const& _transaction ) {
     try {
         assert( _h == _transaction.sha3() );
         // Remove any prior transaction with the same nonce but a lower gas price.
@@ -204,42 +286,75 @@ ImportResult TransactionQueue::manageImport_WITH_LOCK( h256 const& _h,
             }
         }
 
+        auto fs = m_future.find( _transaction.from() );
+        if ( fs != m_future.end() ) {
+            auto t = fs->second.find( _transaction.nonce() );
+            if ( t != fs->second.end() ) {
+                return ImportResult::SameNonceAlreadyInQueue;
+            }  // if found
+        }      // if fs->second
+
+        ImportResult ret = insertCurrent_WITH_LOCK( make_pair( _h, _transaction ) );
+        if ( ret == ImportResult::Success ) {
+            BOOST_LOG( m_loggerTrace ) << "Queued vaguely legit-looking transaction " << _h;
+            m_onReady();
+        } else if ( ret == ImportResult::QueueIsFull ) {
+            BOOST_LOG( m_loggerWarning ) << "Transaction queue is full. Rejecting transaction "
+                                         << _h;
+        }
+        return ret;
+    } catch ( Exception const& _e ) {
+        BOOST_LOG( m_loggerTrace )
+            << "Ignoring invalid transaction: " << diagnostic_information( _e );
+        return ImportResult::Malformed;
+    } catch ( std::exception const& _e ) {
+        BOOST_LOG( m_loggerTrace ) << "Ignoring invalid transaction: " << _e.what();
+        return ImportResult::Malformed;
+    }
+
+    return ImportResult::Success;
+}
+
+ImportResult TransactionQueue::manageImport_WITH_LOCK( h256 const& _h,
+    Transaction const& _transaction, bool _allowFutureQueue, u256 const& _stateNonce ) {
+    try {
+        assert( _h == _transaction.sha3() );
+        auto cs = m_currentByAddressAndNonce.find( _transaction.from() );
+        if ( cs != m_currentByAddressAndNonce.end() ) {
+            auto t = cs->second.find( _transaction.nonce() );
+            if ( t != cs->second.end() ) {
+                return ImportResult::SameNonceAlreadyInQueue;
+            }
+        }
+
+        auto fs = m_future.find( _transaction.from() );
+        if ( fs != m_future.end() ) {
+            auto t = fs->second.find( _transaction.nonce() );
+            if ( t != fs->second.end() ) {
+                return ImportResult::SameNonceAlreadyInQueue;
+            }  // if found
+        }      // if fs->second
+
         if ( _transaction.nonce() < _stateNonce )
             return ImportResult::AlreadyInChain;
 
         ImportResult ret = ImportResult::QueueIsFull;
-        bool const txNonceIsCompatibleWithCurrentQueue =
-            isCurrentNonceCompatible_WITH_LOCK( _transaction, _stateNonce );
-
-        if ( txNonceIsCompatibleWithCurrentQueue ) {
-            ret = tryInsertCurrent_WITH_LOCK( make_pair( _h, _transaction ) );
+        if ( isCurrentNonceCompatible_WITH_LOCK( _transaction, _stateNonce ) ) {
+            ret = insertCurrent_WITH_LOCK( make_pair( _h, _transaction ) );
             if ( ret == ImportResult::Success ) {
                 BOOST_LOG( m_loggerTrace ) << "Queued vaguely legit-looking transaction " << _h;
                 m_onReady();
-                return ret;
             }
-
-            // some error other than QueueIsFull happenned (should never happen)
-            if ( ret != ImportResult::QueueIsFull )
-                return ret;
+        } else if ( _allowFutureQueue && _transaction.nonce() > _stateNonce ) {
+            ret = insertFuture_WITH_LOCK( make_pair( _h, _transaction ) );
+            if ( ret == ImportResult::Success )
+                BOOST_LOG( m_loggerTrace ) << "Queued future transaction " << _h;
         }
 
-        // If transaction was not compatible with CTQ, meaning it was a future tx
-        // AND FTQ (future tx queue) is disabled
-        if ( !_allowFutureQueue ) {
-            BOOST_LOG( m_loggerWarning ) << "Transaction queue cannot accept transaction " << _h;
-            return ret;  // ret is QueueIsFull
+        if ( ret == ImportResult::QueueIsFull ) {
+            BOOST_LOG( m_loggerWarning ) << "Transaction queue is full. Rejecting transaction "
+                                         << _h;
         }
-
-        // If transaction was not compatible with CTQ, meaning it was a future tx
-        // AND FTQ is enabled -> try to add to FTQ
-        ret = tryInsertFuture_WITH_LOCK( make_pair( _h, _transaction ) );
-        if ( ret == ImportResult::Success )
-            BOOST_LOG( m_loggerTrace ) << "Queued future transaction " << _h;
-        else if ( ret == ImportResult::QueueIsFull )
-            BOOST_LOG( m_loggerWarning )
-                << "Future transaction queue is full. Dropping transaction " << _h;
-
         return ret;
     } catch ( Exception const& _e ) {
         BOOST_LOG( m_loggerTrace )
@@ -280,29 +395,16 @@ u256 TransactionQueue::maxCurrentNonce_WITH_LOCK( Address const& _a ) const {
     return ret;
 }
 
-ImportResult TransactionQueue::tryInsertCurrent_WITH_LOCK(
+ImportResult TransactionQueue::insertCurrent_WITH_LOCK(
     std::pair< h256, Transaction > const& _p ) {
-    const size_t transactionSizeBytes = _p.second.toBytes().size();
-
-    if ( m_current.size() + 1 > m_limit ||
-         m_currentSizeBytes + transactionSizeBytes > m_currentSizeBytesLimit ) {
-        return ImportResult::QueueIsFull;
-    }
-
     if ( m_currentByHash.count( _p.first ) ) {
         BOOST_LOG( m_loggerWarning ) << "Transaction hash" << _p.first << "already in current";
         return ImportResult::Success;
     }
 
-    // Defensive: compatibility was checked by the caller, but keep CTQ insertion self-contained.
     Transaction const& t = _p.second;
-    auto cs = m_currentByAddressAndNonce.find( t.from() );
-    if ( cs != m_currentByAddressAndNonce.end() &&
-         cs->second.find( t.nonce() ) != cs->second.end() ) {
-        return ImportResult::SameNonceAlreadyInQueue;
-    }
-
-    removeFuture_WITH_LOCK( t.from(), t.nonce() );
+    if ( !hasCurrentCapacity_WITH_LOCK( t ) )
+        return ImportResult::QueueIsFull;
 
     // Insert into current
     auto inserted = m_currentByAddressAndNonce[t.from()].insert(
@@ -313,81 +415,43 @@ ImportResult TransactionQueue::tryInsertCurrent_WITH_LOCK(
     inserted.first->second = handle;
     m_currentByHash[_p.first] = handle;
 #pragma GCC diagnostic pop
-    m_currentSizeBytes += transactionSizeBytes;
+    m_currentSizeBytes += t.toBytes().size();
 
     // Move following transactions from future to current
     makeCurrent_WITH_LOCK( t );
+    m_known.insert( _p.first );
+    return ImportResult::Success;
+}
+
+ImportResult TransactionQueue::insertFuture_WITH_LOCK(
+    std::pair< h256, Transaction > const& _p ) {
+    Transaction const& t = _p.second;
+    size_t const transactionSizeBytes = t.toBytes().size();
+    if ( m_futureSize + 1 > m_futureLimit ||
+         m_futureSizeBytes + transactionSizeBytes > m_futureSizeBytesLimit )
+        return ImportResult::QueueIsFull;
+
+    m_future[t.from()].emplace( t.nonce(), VerifiedTransaction( t ) );
+    ++m_futureSize;
+    m_futureSizeBytes += transactionSizeBytes;
     m_known.insert( _p.first );
 
     return ImportResult::Success;
 }
 
-ImportResult TransactionQueue::tryInsertFuture_WITH_LOCK(
-    std::pair< h256, Transaction > const& _p ) {
-    Transaction const& t = _p.second;
-    size_t const transactionSizeBytes = t.toBytes().size();
-    auto fs = m_future.find( t.from() );
-
-    if ( fs != m_future.end() ) {
-        auto existing = fs->second.find( t.nonce() );
-        if ( existing != fs->second.end() ) {
-            if ( existing->second.transaction.sha3() == _p.first )
-                return ImportResult::Success;  // tx already exists
-
-            // different tx with same nonce
-            return ImportResult::SameNonceAlreadyInQueue;
-        }
-    }
-
-    size_t const nextFutureSize = m_futureSize + 1;
-    size_t const nextFutureSizeBytes = m_futureSizeBytes + transactionSizeBytes;
-    if ( nextFutureSize > m_futureLimit || nextFutureSizeBytes > m_futureSizeBytesLimit )
-        return ImportResult::QueueIsFull;
-
-    ++m_futureSize;
-    m_futureSizeBytes += transactionSizeBytes;
-    m_future[t.from()].emplace( t.nonce(), VerifiedTransaction( t ) );
-    m_known.insert( _p.first );
-    return ImportResult::Success;
+bool TransactionQueue::hasCurrentCapacity_WITH_LOCK( Transaction const& _transaction ) const {
+    size_t const transactionSizeBytes = _transaction.toBytes().size();
+    return m_current.size() + 1 <= m_limit &&
+           m_currentSizeBytes + transactionSizeBytes <= m_currentSizeBytesLimit;
 }
 
 bool TransactionQueue::isCurrentNonceCompatible_WITH_LOCK(
     Transaction const& _transaction, u256 const& _stateNonce ) const {
     auto cs = m_currentByAddressAndNonce.find( _transaction.from() );
-
-    // no txs from same user in queue -> check if nonce is compatible with state nonce
     if ( cs == m_currentByAddressAndNonce.end() || cs->second.empty() )
         return _transaction.nonce() == _stateNonce;
 
-    // Some txs from same user in queue -> check if nonce is compatible with last tx from same user
-    // in queue
     return _transaction.nonce() == cs->second.rbegin()->first + 1;
-}
-
-bool TransactionQueue::isKnownFuture_WITH_LOCK(
-    h256 const& _h, Transaction const& _transaction ) const {
-    auto fs = m_future.find( _transaction.from() );
-    if ( fs == m_future.end() )
-        return false;
-    auto existing = fs->second.find( _transaction.nonce() );
-    return existing != fs->second.end() && existing->second.transaction.sha3() == _h;
-}
-
-void TransactionQueue::removeFuture_WITH_LOCK( Address const& _from, u256 const& _nonce ) {
-    auto fs = m_future.find( _from );
-    if ( fs == m_future.end() )
-        return;
-
-    auto existing = fs->second.find( _nonce );
-    if ( existing == fs->second.end() )
-        return;
-
-    m_futureSizeBytes -= existing->second.transaction.toBytes().size();
-    m_known.erase( existing->second.transaction.sha3() );
-    fs->second.erase( existing );
-    --m_futureSize;
-    if ( fs->second.empty() )
-        m_future.erase( fs );
 }
 
 bool TransactionQueue::remove_WITH_LOCK( h256 const& _txHash ) {
@@ -479,11 +543,8 @@ void TransactionQueue::makeCurrent_WITH_LOCK( Transaction const& _t ) {
         if ( fb != fs->second.end() ) {
             auto ft = fb;
             while ( ft != fs->second.end() && ft->second.transaction.nonce() == nonce ) {
-                size_t const transactionSizeBytes = ft->second.transaction.toBytes().size();
-                if ( m_current.size() + 1 > m_limit ||
-                     m_currentSizeBytes + transactionSizeBytes > m_currentSizeBytesLimit ) {
+                if ( !hasCurrentCapacity_WITH_LOCK( ft->second.transaction ) )
                     break;
-                }
 
                 auto inserted = m_currentByAddressAndNonce[_t.from()].insert(
                     std::make_pair( ft->second.transaction.nonce(), PriorityQueue::iterator() ) );
@@ -493,8 +554,8 @@ void TransactionQueue::makeCurrent_WITH_LOCK( Transaction const& _t ) {
                 inserted.first->second = handle;
                 m_currentByHash[( *handle ).transaction.sha3()] = handle;
 #pragma GCC diagnostic pop
-                m_futureSizeBytes -= transactionSizeBytes;
-                m_currentSizeBytes += transactionSizeBytes;
+                m_futureSizeBytes -= ( *handle ).transaction.toBytes().size();
+                m_currentSizeBytes += ( *handle ).transaction.toBytes().size();
                 --m_futureSize;
                 ++ft;
                 ++nonce;
@@ -565,7 +626,6 @@ void TransactionQueue::clear() {
     m_futureSize = 0;
     m_futureSizeBytes = 0;
 }
-
 
 Transactions TransactionQueue::debugGetFutureTransactions() const {
     Transactions res;

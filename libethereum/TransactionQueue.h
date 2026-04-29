@@ -34,12 +34,9 @@
 #include <libdevcore/Log.h>
 #include <libdevcore/LruCache.h>
 #include <libethcore/Common.h>
-#include <atomic>
-#include <condition_variable>
 #include <deque>
 #include <functional>
 #include <mutex>
-#include <thread>
 
 #ifdef BITE
 #include "BITE2TransactionQueue.h"
@@ -77,10 +74,12 @@ public:
     /// Verify and add transaction to the queue synchronously.
     /// @param _tx RLP encoded transaction data.
     /// @param _ik Set to Retry to force re-adding a transaction that was previously dropped.
-    /// @param _allowFutureQueue True if the future queue may be used when the transaction cannot be
-    /// put in the current queue.
-    /// @param _stateNonce Current committed nonce for the transaction sender.
+    /// @param _isFuture True if transaction should be put in future queue
     /// @returns Import result code.
+    ImportResult import(
+        bytes const& _tx, IfDropped _ik = IfDropped::Ignore, bool _isFuture = false ) {
+        return import( &_tx, _ik, _isFuture );
+    }
     ImportResult import(
         bytes const& _tx, IfDropped _ik, bool _allowFutureQueue, u256 const& _stateNonce ) {
         return import( &_tx, _ik, _allowFutureQueue, _stateNonce );
@@ -89,10 +88,10 @@ public:
     /// Verify and add transaction to the queue synchronously.
     /// @param _tx Transaction data.
     /// @param _ik Set to Retry to force re-adding a transaction that was previously dropped.
-    /// @param _allowFutureQueue True if the future queue may be used when the transaction cannot be
-    /// put in the current queue.
-    /// @param _stateNonce Current committed nonce for the transaction sender.
+    /// @param _isFuture True if transaction should be put in future queue
     /// @returns Import result code.
+    ImportResult import(
+        Transaction const& _tx, IfDropped _ik = IfDropped::Ignore, bool _isFuture = false );
     ImportResult import(
         Transaction const& _tx, IfDropped _ik, bool _allowFutureQueue, u256 const& _stateNonce );
 
@@ -182,13 +181,15 @@ public:
     struct Status {
         size_t current;
         size_t future;
+        size_t unverified;
         size_t dropped;
         size_t currentBytes;
         size_t futureBytes;
     };
     /// @returns the status of the transaction queue.
     Status status() const {
-        Status ret;
+        Status ret{};
+        ret.unverified = 0;
         ReadGuard l( m_lock );
         ret.dropped = m_dropped.size();
         ret.current = m_currentByHash.size();
@@ -259,33 +260,6 @@ public:
         static uint64_t howMany() { return Counter< VerifiedTransaction >::howMany(); }
     };
 
-    /// Transaction pending verification
-    struct UnverifiedTransaction {
-        UnverifiedTransaction() {}
-        UnverifiedTransaction( bytesConstRef const& _t, h512 const& _nodeId )
-            : transaction( _t.toBytes() ), nodeId( _nodeId ) {}
-        UnverifiedTransaction( UnverifiedTransaction&& _t )
-            : transaction( std::move( _t.transaction ) ), nodeId( std::move( _t.nodeId ) ) {}
-        UnverifiedTransaction& operator=( UnverifiedTransaction&& _other ) {
-            assert( &_other != this );
-
-            transaction = std::move( _other.transaction );
-            nodeId = std::move( _other.nodeId );
-            return *this;
-        }
-
-        UnverifiedTransaction( UnverifiedTransaction const& ) = delete;
-        UnverifiedTransaction& operator=( UnverifiedTransaction const& ) = delete;
-
-        bytes transaction;  ///< RLP encoded transaction data
-        h512 nodeId;        ///< Network Id of the peer transaction comes from
-
-        Counter< UnverifiedTransaction > c;
-
-    public:
-        static uint64_t howMany() { return Counter< UnverifiedTransaction >::howMany(); }
-    };
-
     // private:
     // HACK for IS-348
     struct PriorityCompare {
@@ -335,8 +309,11 @@ private:
     using PriorityQueue = boost::container::multiset< VerifiedTransaction, PriorityCompare >;
 
     ImportResult import(
+        bytesConstRef _tx, IfDropped _ik = IfDropped::Ignore, bool _isFuture = false );
+    ImportResult import(
         bytesConstRef _tx, IfDropped _ik, bool _allowFutureQueue, u256 const& _stateNonce );
     ImportResult check_WITH_LOCK( h256 const& _h, IfDropped _ik );
+    ImportResult manageImport_WITH_LOCK( h256 const& _h, Transaction const& _transaction );
     ImportResult manageImport_WITH_LOCK( h256 const& _h, Transaction const& _transaction,
         bool _allowFutureQueue, u256 const& _stateNonce );
 
@@ -346,17 +323,11 @@ private:
     Transactions topTransactions_WITH_LOCK( unsigned _limit, Pred _pred ) const;
     Transactions topTransactions_WITH_LOCK( unsigned _limit );
 
-    ImportResult tryInsertCurrent_WITH_LOCK( std::pair< h256, Transaction > const& _p );
-    ImportResult tryInsertFuture_WITH_LOCK( std::pair< h256, Transaction > const& _p );
+    ImportResult insertCurrent_WITH_LOCK( std::pair< h256, Transaction > const& _p );
+    ImportResult insertFuture_WITH_LOCK( std::pair< h256, Transaction > const& _p );
+    bool hasCurrentCapacity_WITH_LOCK( Transaction const& _transaction ) const;
     bool isCurrentNonceCompatible_WITH_LOCK(
         Transaction const& _transaction, u256 const& _stateNonce ) const;
-
-    /**
-     * Checks if a transaction is already present in Future queue.
-     * Uses tx from, nonce and hash for the check.
-     */
-    bool isKnownFuture_WITH_LOCK( h256 const& _h, Transaction const& _transaction ) const;
-    void removeFuture_WITH_LOCK( Address const& _from, u256 const& _nonce );
     void makeCurrent_WITH_LOCK( Transaction const& _t );
     bool remove_WITH_LOCK( h256 const& _txHash );
     u256 maxNonce_WITH_LOCK( Address const& _a ) const;
@@ -389,7 +360,8 @@ private:
                                                                   ///< result, transaction id an
                                                                   ///< node id. Be nice and exit
                                                                   ///< fast.
-    Signal< h256 const& > m_onReplaced;  ///< Called when a queued transaction is replaced.
+    Signal< h256 const& > m_onReplaced;  ///< Called when transaction is dropped during a call to
+                                         ///< import() to make room for another transaction.
     unsigned m_limit;                    ///< Max number of pending transactions
     unsigned m_futureLimit;              ///< Max number of future transactions
     unsigned m_futureSize = 0;           ///< Current number of future transactions
