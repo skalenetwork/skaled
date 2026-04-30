@@ -297,6 +297,8 @@ private:
     ImportResult check_WITH_LOCK( h256 const& _h, IfDropped _ik );
     ImportResult manageImport_WITH_LOCK( h256 const& _h, Transaction const& _transaction,
         bool _allowFutureQueue, u256 const& _stateNonce );
+    bool isExactFutureTransactionQueued_WITH_LOCK(
+        h256 const& _h, Transaction const& _transaction ) const;
 
     Transactions topTransactions_WITH_LOCK(
         unsigned _limit, h256Hash const& _avoid = h256Hash() ) const;
@@ -304,13 +306,28 @@ private:
     Transactions topTransactions_WITH_LOCK( unsigned _limit, Pred _pred ) const;
     Transactions topTransactions_WITH_LOCK( unsigned _limit );
 
+    /**
+     * Tries inserting a transaction into CTQ.
+     * @returns Success if tx was inserted, or there was already a tx with same hash.
+     *          QueueIsFull if tx is valid but there is no room in CTQ.
+     */
     ImportResult insertCurrent_WITH_LOCK( std::pair< h256, Transaction > const& _p );
+
+    /**
+     * Tries inserting a transaction into the future queue.
+     * @returns Success if tx was inserted, or there was already a tx with same hash.
+     *          QueueIsFull if tx is valid but there is no room in the future queue.
+     */
     ImportResult insertFuture_WITH_LOCK( std::pair< h256, Transaction > const& _p );
     bool hasCurrentCapacity_WITH_LOCK( Transaction const& _transaction ) const;
     bool isCurrentNonceCompatible_WITH_LOCK(
         Transaction const& _transaction, u256 const& _stateNonce ) const;
+    bool promoteFutureTransactions_WITH_LOCK( Address const& _from, u256 const& _nonce );
+    void retryBlockedPromotions_WITH_LOCK();
+    void invalidateBlockedPromotion_WITH_LOCK( Address const& _from, u256 const& _nonce );
     void makeCurrent_WITH_LOCK( Transaction const& _t );
     bool remove_WITH_LOCK( h256 const& _txHash );
+    bool removeFuture_WITH_LOCK( Transaction const& _transaction );
     u256 maxNonce_WITH_LOCK( Address const& _a ) const;
     u256 maxCurrentNonce_WITH_LOCK( Address const& _a ) const;
     void setFuture_WITH_LOCK( h256 const& _t );
@@ -333,6 +350,11 @@ private:
         m_currentByAddressAndNonce;  ///< Transactions grouped by account and nonce
     std::unordered_map< Address, std::map< u256, VerifiedTransaction > > m_future;  /// Future
                                                                                     /// transactions
+
+    // Holds the nonce of the first future tx that could not be promoted to CTQ due to capacity limits.
+    // whenever CTQ gets free space, we check this map and try to promote the blocked transaction and
+    // following ones if any.
+    std::unordered_map< Address, u256 > m_blockedPromotions;
 
     Signal<> m_onReady;  ///< Called when a subsequent call to import transactions will return a
                          ///< non-empty container. Be nice and exit fast.

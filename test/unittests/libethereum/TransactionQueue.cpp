@@ -268,6 +268,101 @@ BOOST_AUTO_TEST_CASE( tqCurrentFullDoesNotFallBackToFuture ) {
     BOOST_CHECK( ( Transactions{tx0} ) == tq.topTransactions( 256 ) );
 }
 
+BOOST_AUTO_TEST_CASE( tqCurrentGapCanBeFilled ) {
+    dev::eth::TransactionQueue tq;
+
+    const u256 gasCostMed = 20 * szabo;
+    const u256 gas = 25000;
+    Address dest = Address( "0x095e7baea6a6c7c4c2dfeb977efac326af552d87" );
+    Secret sender = Secret( "0x3333333333333333333333333333333333333333333333333333333333333333" );
+    Transaction tx0( 0, gasCostMed, gas, dest, bytes(), 0, sender );
+    Transaction tx1( 0, gasCostMed, gas, dest, bytes(), 1, sender );
+    Transaction tx2( 0, gasCostMed, gas, dest, bytes(), 2, sender );
+    Transaction tx3( 0, gasCostMed, gas, dest, bytes(), 3, sender );
+
+    BOOST_REQUIRE( tq.import( tx0, IfDropped::Ignore, false, 0 ) == ImportResult::Success );
+    BOOST_REQUIRE( tq.import( tx1, IfDropped::Ignore, false, 0 ) == ImportResult::Success );
+    BOOST_REQUIRE( tq.import( tx3, IfDropped::Ignore, false, 3 ) == ImportResult::Success );
+
+    BOOST_REQUIRE( tq.import( tx2, IfDropped::Ignore, false, 0 ) == ImportResult::Success );
+    BOOST_REQUIRE( tq.status().current == 4 );
+    BOOST_REQUIRE( tq.status().future == 0 );
+    BOOST_CHECK( ( Transactions{tx0, tx1, tx2, tx3} ) == tq.topTransactions( 256 ) );
+}
+
+BOOST_AUTO_TEST_CASE( tqBlockedFuturePromotionRetriesWhenCapacityFrees ) {
+    dev::eth::TransactionQueue tq( 1, 3 );
+
+    const u256 gasCostMed = 20 * szabo;
+    const u256 gas = 25000;
+    Address dest = Address( "0x095e7baea6a6c7c4c2dfeb977efac326af552d87" );
+    Secret sender1 = Secret( "0x3333333333333333333333333333333333333333333333333333333333333333" );
+    Secret sender2 = Secret( "0x4444444444444444444444444444444444444444444444444444444444444444" );
+    Transaction a0( 0, gasCostMed, gas, dest, bytes(), 0, sender1 );
+    Transaction a1( 0, gasCostMed, gas, dest, bytes(), 1, sender1 );
+    Transaction b0( 0, gasCostMed, gas, dest, bytes(), 0, sender2 );
+
+    BOOST_REQUIRE( tq.import( b0, IfDropped::Ignore, true, 0 ) == ImportResult::Success );
+    BOOST_REQUIRE( tq.import( a1, IfDropped::Ignore, true, 0 ) == ImportResult::Success );
+
+    tq.dropGood( a0 );
+    BOOST_REQUIRE( tq.status().current == 1 );
+    BOOST_REQUIRE( tq.status().future == 1 );
+    BOOST_CHECK( ( Transactions{b0} ) == tq.topTransactions( 256 ) );
+
+    tq.drop( b0.sha3() );
+    BOOST_REQUIRE( tq.status().current == 1 );
+    BOOST_REQUIRE( tq.status().future == 0 );
+    BOOST_CHECK( ( Transactions{a1} ) == tq.topTransactions( 256 ) );
+}
+
+BOOST_AUTO_TEST_CASE( tqBlockedFuturePromotionInvalidatesWhenPredecessorDrops ) {
+    dev::eth::TransactionQueue tq( 1, 3 );
+
+    const u256 gasCostMed = 20 * szabo;
+    const u256 gas = 25000;
+    Address dest = Address( "0x095e7baea6a6c7c4c2dfeb977efac326af552d87" );
+    Secret sender = Secret( "0x3333333333333333333333333333333333333333333333333333333333333333" );
+    Transaction tx0( 0, gasCostMed, gas, dest, bytes(), 0, sender );
+    Transaction tx1( 0, gasCostMed, gas, dest, bytes(), 1, sender );
+
+    BOOST_REQUIRE( tq.import( tx1, IfDropped::Ignore, true, 0 ) == ImportResult::Success );
+    BOOST_REQUIRE( tq.import( tx0, IfDropped::Ignore, false, 0 ) == ImportResult::Success );
+    BOOST_REQUIRE( tq.status().current == 1 );
+    BOOST_REQUIRE( tq.status().future == 1 );
+
+    tq.drop( tx0.sha3() );
+    BOOST_REQUIRE( tq.status().current == 0 );
+    BOOST_REQUIRE( tq.status().future == 1 );
+    BOOST_CHECK( tq.topTransactions( 256 ).empty() );
+}
+
+BOOST_AUTO_TEST_CASE( tqDropGoodRemovesBlockedFutureTransaction ) {
+    dev::eth::TransactionQueue tq( 1, 3 );
+
+    const u256 gasCostMed = 20 * szabo;
+    const u256 gas = 25000;
+    Address dest = Address( "0x095e7baea6a6c7c4c2dfeb977efac326af552d87" );
+    Secret sender1 = Secret( "0x3333333333333333333333333333333333333333333333333333333333333333" );
+    Secret sender2 = Secret( "0x4444444444444444444444444444444444444444444444444444444444444444" );
+    Transaction a1( 0, gasCostMed, gas, dest, bytes(), 1, sender1 );
+    Transaction b0( 0, gasCostMed, gas, dest, bytes(), 0, sender2 );
+
+    BOOST_REQUIRE( tq.import( b0, IfDropped::Ignore, true, 0 ) == ImportResult::Success );
+    BOOST_REQUIRE( tq.import( a1, IfDropped::Ignore, true, 0 ) == ImportResult::Success );
+    BOOST_REQUIRE( tq.import( a1, IfDropped::Ignore, false, 1 ) == ImportResult::QueueIsFull );
+
+    tq.dropGood( a1 );
+    BOOST_REQUIRE( tq.status().current == 1 );
+    BOOST_REQUIRE( tq.status().future == 0 );
+    BOOST_CHECK( ( Transactions{b0} ) == tq.topTransactions( 256 ) );
+
+    tq.drop( b0.sha3() );
+    BOOST_REQUIRE( tq.status().current == 0 );
+    BOOST_REQUIRE( tq.status().future == 0 );
+    BOOST_CHECK( tq.topTransactions( 256 ).empty() );
+}
+
 BOOST_AUTO_TEST_CASE( tqImport ) {
     TestTransaction testTransaction = TestTransaction::defaultTransaction();
     TransactionQueue tq;
@@ -431,6 +526,12 @@ BOOST_AUTO_TEST_CASE( dropFromFutureToCurrent ) {
     TransactionQueue::Status status = tq.status();
     BOOST_REQUIRE( status.current == 0 && status.future == 1 );
 
+    // Re-importing while it is still future should not remove it from FTQ.
+    ir1 = tq.import( tx1.transaction().toBytes(), IfDropped::Ignore, false, 0 );
+    BOOST_REQUIRE( ir1 == ImportResult::Success );
+    status = tq.status();
+    BOOST_REQUIRE( status.current == 0 && status.future == 1 );
+
     // push it to current and see it fall back from future to current
     ir1 = tq.import( tx1.transaction().toBytes(), IfDropped::Ignore, false, 1 );
     BOOST_REQUIRE( ir1 == ImportResult::Success );
@@ -453,13 +554,13 @@ BOOST_AUTO_TEST_CASE( tqImportFutureLimits ) {
 
     TestTransaction tx3 = TestTransaction::defaultTransaction(1);
     ImportResult ir = tq.import( tx3.transaction().toBytes(), IfDropped::Ignore, true, 0 );
-    BOOST_REQUIRE( ir == ImportResult::Success );
+    BOOST_REQUIRE( ir == ImportResult::QueueIsFull );
 
     waiting = tq.waiting(tx1.transaction().sender());
     BOOST_REQUIRE( waiting == 2 );
     known = tq.knownTransactions();
     BOOST_REQUIRE( known.size() == 2 );
-    BOOST_CHECK( ( h256Hash{ tx3.transaction().sha3(), tx2.transaction().sha3() } ) == known );
+    BOOST_CHECK( ( h256Hash{ tx1.transaction().sha3(), tx2.transaction().sha3() } ) == known );
 }
 
 BOOST_AUTO_TEST_CASE( tqImportFutureLimits2 ) {
@@ -493,7 +594,8 @@ BOOST_AUTO_TEST_CASE( tqImportFutureLimits2 ) {
     BOOST_REQUIRE( status.future == 2 );  
 
     TestTransaction tx2 = TestTransaction::defaultTransaction(2);
-    tq.import( tx2.transaction().toBytes(), IfDropped::Ignore, true, 0 );
+    ImportResult ir2 = tq.import( tx2.transaction().toBytes(), IfDropped::Ignore, true, 0 );
+    BOOST_REQUIRE( ir2 == ImportResult::QueueIsFull );
 
     waiting = tq.waiting(tx1.transaction().sender());
     BOOST_REQUIRE( waiting == 1 );
@@ -504,7 +606,7 @@ BOOST_AUTO_TEST_CASE( tqImportFutureLimits2 ) {
     status = tq.status();
     BOOST_REQUIRE( status.future == 2 );  
  
-    BOOST_CHECK( ( h256Hash{ tx0.sha3(), tx2.transaction().sha3() } ) == known );
+    BOOST_CHECK( ( h256Hash{ tx0.sha3(), tx1.transaction().sha3() } ) == known );
 }
 
 BOOST_AUTO_TEST_CASE( tqDrop ) {
@@ -575,7 +677,7 @@ BOOST_AUTO_TEST_CASE( tqLimitBytes ) {
 
     testTransaction = TestTransaction::defaultTransaction( 4 );
     res = tq.import( testTransaction.transaction(), IfDropped::Ignore, true, 0 );
-    BOOST_REQUIRE( res == ImportResult::Success );
+    BOOST_REQUIRE( res == ImportResult::QueueIsFull );
 
     BOOST_REQUIRE( tq.status().current == 0 );
 
