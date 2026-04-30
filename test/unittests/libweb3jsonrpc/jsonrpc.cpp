@@ -5359,6 +5359,7 @@ static std::string const c_BITEConfigString =
             "SingleStateCommitPerBlockPatchTimestamp": 1,)"
 #ifdef BITE
     R"(            "Bite2PatchTimestamp": 1,
+            "CtxRefundPatchTimestamp": 1,
             "currentBlockRandomPatchTimestamp": 1,)"
 #endif
     R"(            "nodeGroups": {
