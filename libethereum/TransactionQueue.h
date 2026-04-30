@@ -46,8 +46,13 @@ namespace dev {
 namespace eth {
 
 /**
- * @brief A queue of Transactions, each stored as RLP.
- * Maintains a transaction queue sorted by nonce diff and gas price.
+ * @brief Queue of verified transactions.
+ * Maintains a current transaction queue (CTQ) sorted by nonce distance and gas price, plus a
+ * future transaction queue (FTQ) for valid transactions whose nonce is not executable yet.
+ * Keeps track of a 'blockedPromotions' mapping used to keep track of txs that were tried
+ * to be promoted from FTQ to CTQ, but CTQ was full at the time.
+ * This is needed since we only promote FTQ txs from a specific sender that must be in CTQ.
+ * blockedPromotions solves the case where a FTQ that hasn't same sender in CTQ to be promoted.
  * @threadsafe
  */
 class TransactionQueue {
@@ -71,41 +76,45 @@ public:
               _l.currentLimit, _l.futureLimit, _l.currentLimitBytes, _l.futureLimitBytes ) {}
     ~TransactionQueue();
 
+    /// Import an RLP-encoded transaction.
+    /// @param _allowFutureQueue If true, valid future nonce transactions may be queued in FTQ.
+    /// @param _stateNonce Current nonce for the transaction sender according to chain state.
     ImportResult import(
         bytes const& _tx, IfDropped _ik, bool _allowFutureQueue, u256 const& _stateNonce ) {
         return import( &_tx, _ik, _allowFutureQueue, _stateNonce );
     }
 
+    /// Import a decoded transaction. See the RLP overload for queue placement parameters.
     ImportResult import(
         Transaction const& _tx, IfDropped _ik, bool _allowFutureQueue, u256 const& _stateNonce );
 
-    /// Remove transaction from the queue
+    /// Remove a transaction from the current queue by hash.
     /// @param _txHash Transaction hash
     void drop( h256 const& _txHash );
 
-    /// Remove many transactions from the queue at once
-    /// @param _txHash Transaction hash
+    /// Remove many transactions from the current queue by hash.
+    /// @param _txHashes Transaction hashes
     void dropMany( h256Hash const& _txHashes );
 
     /// Get number of pending transactions for account.
     /// @returns Pending transaction count.
     unsigned waiting( Address const& _a ) const;
 
-    /// Get top transactions from the queue. Returned transactions are not removed from the queue
+    /// Get top current transactions from the queue. Returned transactions are not removed
     /// automatically.
     /// @param _limit Max number of transactions to return.
     /// @param _avoid Transactions to avoid returning.
     /// @returns up to _limit transactions ordered by nonce and gas price.
     Transactions topTransactions( unsigned _limit, h256Hash const& _avoid = h256Hash() ) const;
 
-    // same with categories
+    /// Get top current transactions using the category-aware ordering path.
     Transactions topTransactions( unsigned _limit );
 
-    // generalization of previous
+    /// Get top current transactions that satisfy pred.
     template < class Pred >
     Transactions topTransactions( unsigned _limit, Pred pred ) const;
 
-    /// Synchronuous version of topTransactions
+    /// Synchronous version of topTransactions.
     template < class... Args >
     Transactions topTransactionsSync( unsigned _limit, Args... args ) const;
     template < class... Args >
@@ -113,30 +122,27 @@ public:
 
     Transactions debugGetFutureTransactions() const;
 
-    /// Get a hash set of transactions in the queue
-    /// @returns A hash set of all transactions in the queue
-    // this is really heavy operation and should be used with caution
+    /// Get hashes of all known transactions in current and future queues.
+    // This is a heavy operation and should be used with caution.
     const h256Hash knownTransactions() const;
 
-    // Check if transaction is in the queue
+    /// Check whether a transaction hash is known to the queue.
     bool isTransactionKnown( h256& _hash ) const;
 
-    /// Get max nonce for an account
-    /// @returns Max transaction nonce for account in the queue
+    /// Get one greater than the highest queued nonce for an account across CTQ and FTQ.
     u256 maxNonce( Address const& _a ) const;
 
-    /// Get max nonce from current queue for an account
-    /// @returns Max transaction nonce for account in the queue
+    /// Get one greater than the highest queued nonce for an account in CTQ only.
     u256 maxCurrentNonce( Address const& _a ) const;
 
-    /// Mark transaction as future. It wont be returned in topTransactions list until a transaction
-    /// with a preceeding nonce is imported or marked with dropGood
+    /// Move this transaction and any following same-sender current transactions to FTQ.
+    /// Moved transactions are not returned by topTransactions until their preceding nonces are
+    /// imported or marked with dropGood.
     /// @param _t Transaction hash
     void setFuture( h256 const& _t );
 
-    /// Drop a transaction from the list if exists and move following future transactions to current
-    /// (if any)
-    /// @param _t Transaction hash
+    /// Remove an accepted transaction and promote following future transactions when possible.
+    /// @param _t Accepted transaction
     void dropGood( Transaction const& _t );
 
 #ifdef BITE
@@ -217,9 +223,8 @@ public:
 public:
     /// Verified and imported transaction
     struct VerifiedTransaction {
-        // record object creation time. This is to make sure that
-        // transaction queue gives priority to transastions received earliest
-        // when everything else like gas price and height are the same
+        // Record creation time so transactions received earlier keep priority when nonce height and
+        // gas price are equal.
         uint64_t creationTimeMs;
 
         VerifiedTransaction( Transaction const& _t ) : transaction( _t ) {
@@ -232,8 +237,7 @@ public:
             creationTimeMs = _t.creationTimeMs;
         }
 
-        VerifiedTransaction( VerifiedTransaction const& ) = default;  // XXX removed "delete" for
-                                                                      // tricks with queue
+        VerifiedTransaction( VerifiedTransaction const& ) = default;  // Needed by queue operations.
         VerifiedTransaction& operator=( VerifiedTransaction const& ) = delete;
 
         Transaction transaction;  ///< Transaction data
@@ -276,32 +280,48 @@ public:
                 it2->second.begin()->first;
 
             if ( height1 != height2 ) {
-                // transactions with smaller nonce difference vs the current account nonce go first
+                // Prefer transactions closer to the sender's lowest current queued nonce.
                 return height1 < height2;
             }
 
-            // for the same height, transactions vs larger gas price go first
+            // For the same height, prefer transactions with larger gas price.
             if ( _first.transaction.gasPrice() != _second.transaction.gasPrice() ) {
                 return _first.transaction.gasPrice() > _second.transaction.gasPrice();
             }
 
-            // new - if the height and the gas price are the same, the earlier received transactions
-            // go first
+            // If height and gas price are equal, prefer the transaction received earlier.
 
             return _first.creationTimeMs < _second.creationTimeMs;
         }
     };
 
 private:
-    // Use a set with dynamic comparator for minmax priority queue. The comparator takes into
-    // account min account nonce. Updating it does not affect the order.
+    // Current transactions are stored in a set ordered by PriorityCompare. The comparator depends
+    // on each sender's lowest current nonce, so callers that change nonce ranges may need to
+    // refresh ordering explicitly.
     using PriorityQueue = boost::container::multiset< VerifiedTransaction, PriorityCompare >;
 
+    /**
+     * Decodes and imports a transaction using the caller-provided sender state nonce.
+     * @param _allowFutureQueue If true, valid future nonce transactions may be queued in FTQ.
+     * @param _stateNonce Current nonce for the transaction sender according to chain state.
+     */
     ImportResult import(
         bytesConstRef _tx, IfDropped _ik, bool _allowFutureQueue, u256 const& _stateNonce );
+
     ImportResult check_WITH_LOCK( h256 const& _h, IfDropped _ik );
+
+    /**
+     * Places a checked transaction in CTQ or FTQ, using _stateNonce to decide whether the nonce is
+     * current, future, or already in chain. Re-importing an exact FTQ transaction can promote it to
+     * CTQ once it becomes current-compatible.
+     */
     ImportResult manageImport_WITH_LOCK( h256 const& _h, Transaction const& _transaction,
         bool _allowFutureQueue, u256 const& _stateNonce );
+
+    /**
+     * Returns true when FTQ already contains this exact transaction at the same sender and nonce.
+     */
     bool isExactFutureTransactionQueued_WITH_LOCK(
         h256 const& _h, Transaction const& _transaction ) const;
 
@@ -312,27 +332,55 @@ private:
     Transactions topTransactions_WITH_LOCK( unsigned _limit );
 
     /**
-     * Tries inserting a transaction into CTQ.
-     * @returns Success if tx was inserted, or there was already a tx with same hash.
-     *          QueueIsFull if tx is valid but there is no room in CTQ.
+     * Inserts a current-compatible transaction into CTQ without evicting existing transactions.
+     * @returns Success if the transaction was inserted, or was already present by hash.
+     *          QueueIsFull when CTQ lacks count or byte capacity.
      */
     ImportResult insertCurrent_WITH_LOCK( std::pair< h256, Transaction > const& _p );
 
     /**
-     * Tries inserting a transaction into the future queue.
-     * @returns Success if tx was inserted, or there was already a tx with same hash.
-     *          QueueIsFull if tx is valid but there is no room in the future queue.
+     * Inserts a future nonce transaction into FTQ without evicting existing transactions.
+     * @returns Success if the transaction was inserted.
+     *          QueueIsFull when FTQ lacks count or byte capacity.
      */
     ImportResult insertFuture_WITH_LOCK( std::pair< h256, Transaction > const& _p );
+
+    /// Returns whether adding _transaction would fit within CTQ count and byte limits.
     bool hasCurrentCapacity_WITH_LOCK( Transaction const& _transaction ) const;
+
+    /**
+     * Returns whether _transaction is the next nonce CTQ can currently accept for its sender.
+     * The check starts at _stateNonce and walks the sender's contiguous CTQ nonce range, so gaps
+     * created by drops can be filled even when higher nonces are already queued.
+     */
     bool isCurrentNonceCompatible_WITH_LOCK(
         Transaction const& _transaction, u256 const& _stateNonce ) const;
+
+    /**
+     * Promotes the sender's contiguous FTQ range starting at _nonce into CTQ while capacity allows.
+     * If CTQ fills up, records the first nonce that could not be promoted in m_blockedPromotions.
+     * @returns true if at least one transaction was moved to CTQ.
+     */
     bool promoteFutureTransactions_WITH_LOCK( Address const& _from, u256 const& _nonce );
+
+    /// Retries cached FTQ-to-CTQ promotions after CTQ capacity may have been freed.
     void retryBlockedPromotions_WITH_LOCK();
+
+    /**
+     * Clears _from's cached promotion when dropping _nonce breaks the contiguous path to the cached
+     * future transaction.
+     */
     void invalidateBlockedPromotion_WITH_LOCK( Address const& _from, u256 const& _nonce );
+
+    /// Promotes future transactions that immediately follow the newly current transaction _t.
     void makeCurrent_WITH_LOCK( Transaction const& _t );
+
+    /// Removes a transaction from CTQ and its secondary indexes.
     bool remove_WITH_LOCK( h256 const& _txHash );
+
+    /// Removes an exact transaction from FTQ and clears any blocked promotion that depended on it.
     bool removeFuture_WITH_LOCK( Transaction const& _transaction );
+
     u256 maxNonce_WITH_LOCK( Address const& _a ) const;
     u256 maxCurrentNonce_WITH_LOCK( Address const& _a ) const;
     void setFuture_WITH_LOCK( h256 const& _t );
@@ -341,31 +389,29 @@ private:
     mutable boost::condition_variable_any m_cond;  // for wait/notify
     Handler<> m_readyCondNotifier;
 
-    h256Hash m_known;  ///< Headers of transactions in both sets.
+    h256Hash m_known;  ///< Hashes of transactions in CTQ and FTQ.
 
     std::unordered_map< h256, std::function< void( ImportResult ) > > m_callbacks;  ///< Called
                                                                                     ///< once.
     LruCache< h256, bool > m_dropped;  ///< Transactions that have previously been dropped
 
     PriorityQueue m_current;
-    std::unordered_map< h256, PriorityQueue::iterator > m_currentByHash;  ///< Transaction hash to
-                                                                          ///< set ref
+    std::unordered_map< h256, PriorityQueue::iterator > m_currentByHash;  ///< CTQ hash to iterator.
 
     std::unordered_map< Address, std::map< u256, PriorityQueue::iterator > >
-        m_currentByAddressAndNonce;  ///< Transactions grouped by account and nonce
-    std::unordered_map< Address, std::map< u256, VerifiedTransaction > > m_future;  /// Future
-                                                                                    /// transactions
+        m_currentByAddressAndNonce;  ///< CTQ transactions grouped by account and nonce.
+    std::unordered_map< Address, std::map< u256, VerifiedTransaction > >
+        m_future;  ///< FTQ transactions grouped by account and nonce.
 
-    // Holds the nonce of the first future tx that could not be promoted to CTQ due to capacity limits.
-    // whenever CTQ gets free space, we check this map and try to promote the blocked transaction and
-    // following ones if any.
+    // For each sender, stores the first FTQ nonce that was ready for CTQ but could not be promoted
+    // because CTQ was full. Entries are retried when CTQ capacity may have become available.
     std::unordered_map< Address, u256 > m_blockedPromotions;
 
     Signal<> m_onReady;  ///< Called when a subsequent call to import transactions will return a
                          ///< non-empty container. Be nice and exit fast.
     Signal< ImportResult, h256 const&, h512 const& > m_onImport;  ///< Called for each import
                                                                   ///< attempt. Arguments are
-                                                                  ///< result, transaction id an
+                                                                  ///< result, transaction id, and
                                                                   ///< node id. Be nice and exit
                                                                   ///< fast.
     Signal< h256 const& > m_onReplaced;  ///< Called when transaction is dropped during a call to
