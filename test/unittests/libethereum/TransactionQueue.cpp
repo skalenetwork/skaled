@@ -74,17 +74,17 @@ BOOST_AUTO_TEST_CASE( tqMaxNonce ) {
     Transaction tx2( 0, gasCost, gas, dest, bytes(), 2, sec );
     Transaction tx9( 0, gasCost, gas, dest, bytes(), 9, sec );
 
-    importCurrent( txq, tx0 );
+    BOOST_REQUIRE( importCurrent( txq, tx0 ) == ImportResult::Success );
     BOOST_CHECK( 1 == txq.maxNonce( to ) );
-    importCurrent( txq, tx0 );
+    BOOST_REQUIRE( importCurrent( txq, tx0 ) == ImportResult::AlreadyKnown );
     BOOST_CHECK( 1 == txq.maxNonce( to ) );
-    importCurrent( txq, tx0_1 );
+    BOOST_REQUIRE( importCurrent( txq, tx0_1 ) == ImportResult::SameNonceAlreadyInQueue );
     BOOST_CHECK( 1 == txq.maxNonce( to ) );
-    importCurrent( txq, tx1 );
+    BOOST_REQUIRE( importCurrent( txq, tx1 ) == ImportResult::Success );
     BOOST_CHECK( 2 == txq.maxNonce( to ) );
-    importCurrent( txq, tx9 );
+    BOOST_REQUIRE( txq.import( tx9, IfDropped::Ignore, true, 0 ) == ImportResult::Success );
     BOOST_CHECK( 10 == txq.maxNonce( to ) );
-    importCurrent( txq, tx2 );
+    BOOST_REQUIRE( txq.import( tx2, IfDropped::Ignore, false, 0 ) == ImportResult::Success );
     BOOST_CHECK( 10 == txq.maxNonce( to ) );
 }
 

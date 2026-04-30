@@ -261,14 +261,19 @@ public:
             else if ( !_first.transaction && !_second.transaction )
                 return false;
 
+            auto it1 = queue.m_currentByAddressAndNonce.find(_first.transaction.sender());
+            auto it2 = queue.m_currentByAddressAndNonce.find(_second.transaction.sender());
+
+            if (it1 == queue.m_currentByAddressAndNonce.end() || it2 == queue.m_currentByAddressAndNonce.end())
+                return _first.creationTimeMs < _second.creationTimeMs;
+
             u256 const& height1 =
                 _first.transaction.nonce() -
-                queue.m_currentByAddressAndNonce[_first.transaction.sender()].begin()->first;
+                it1->second.begin()->first;
 
             u256 const& height2 =
                 _second.transaction.nonce() -
-                queue.m_currentByAddressAndNonce[_second.transaction.sender()].begin()->first;
-
+                it2->second.begin()->first;
 
             if ( height1 != height2 ) {
                 // transactions with smaller nonce difference vs the current account nonce go first
