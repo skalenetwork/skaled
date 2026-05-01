@@ -1050,6 +1050,7 @@ std::vector< Transaction > SkaleHost::processRegularTransactions(
 ) {
     std::vector< Transaction > outTxns;
 #ifdef BITE
+    CHECK_EXPRESSION( _decryptedTransactions.regularTxsMap );
     auto regularTxnsIterator = _decryptedTransactions.regularTxsMap->begin();
 #endif
     size_t regularTxnsStartIndex = 0;
@@ -1113,6 +1114,7 @@ std::vector< Transaction > SkaleHost::processCTXTransactions(
     DecryptedTransactions _decryptedTransactions ) {
     std::vector< dev::h256 > ctxOrigins = m_tq.getNCTXOrigins( _approvedTransactions.sizeCTX() );
     std::vector< Transaction > outTxns;
+    CHECK_EXPRESSION( _decryptedTransactions.ctxTxsMap );
     auto ctxIterator = _decryptedTransactions.ctxTxsMap->begin();
     for ( size_t i = 0; i < _approvedTransactions.sizeCTX(); ++i ) {
         const bytes& data = _approvedTransactions.at( i );
