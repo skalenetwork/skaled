@@ -8183,10 +8183,16 @@ BOOST_AUTO_TEST_CASE( skip_invalid_transactions ) {
     pair< bool, Secret > ar4 = fixture.accountHolder->authenticate( ts4 );
     Transaction tx4( ts3, ar3.second );
 
+    // pause consensus to make sure all txs are imported at once, and 
+    // will all be placed in the same block
+    fixture.client->skaleHost()->pauseConsensus( true );
+
     h256 h4 = fixture.client->importTransaction( tx4 );  // ok
     h256 h2 = fixture.client->importTransaction( tx2 );  // invalid
     h256 h3 = fixture.client->importTransaction( tx3 );  // ok
     h256 h1 = fixture.client->importTransaction( tx1 );  // ok
+
+    fixture.client->skaleHost()->pauseConsensus( false );
 
     dev::eth::mineTransaction( *( fixture.client ), 1 );
     cout << "Balance3: "
