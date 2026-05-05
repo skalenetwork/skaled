@@ -195,6 +195,7 @@ public:
 
 #ifdef BITE
     const dev::eth::Client& client() const { return m_client; }
+    void setConsensusEpochId( uint64_t _epochId );
 #endif
 
 #ifdef FAIR

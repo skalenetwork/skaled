@@ -73,6 +73,9 @@ private:
     ConsensusExtFace& m_extFace;
     std::vector< u256 > block_gas_prices;
     bool need_exit = false;
+#ifdef BITE
+    uint64_t epochId = 0;
+#endif
 
 public:
     ConsensusTestStub( ConsensusExtFace& _extFace ) : m_extFace( _extFace ) {
@@ -155,6 +158,11 @@ public:
 
 #ifdef FAIR
     void updateLogger() const override {}
+#endif
+
+#ifdef BITE
+    void setEpochId( uint64_t _epochId ) override { epochId = _epochId; }
+    uint64_t getEpochId() const { return epochId; }
 #endif
 };
 

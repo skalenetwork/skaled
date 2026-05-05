@@ -606,8 +606,14 @@ size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
         BOOST_LOG( m_loggerWarning ) << "Warning: UnsafeRegion still active!";
 
 #ifndef FAIR
-    if ( chainParams().getNodeGroups().size() > 0 )
-        updateHistoricGroupIndex();
+    if ( chainParams().getNodeGroups().size() > 0 ) {
+        bool epochUpdated = updateHistoricGroupIndex();
+#ifdef BITE
+        if ( epochUpdated && m_skaleHost )
+            m_skaleHost->setConsensusEpochId( getCurrentEpochId() );
+#endif
+        (void)epochUpdated;
+    }
 #endif
 
 #ifdef FAIR
@@ -1442,10 +1448,12 @@ uint64_t Client::getGroupIndexForBlockNumber( uint64_t _blockNumber ) const {
 
     uint64_t currentBlockTimestamp = blockInfo( hashFromNumber( _blockNumber ) ).timestamp();
 
-    // always returns it != end() because current finish ts equals to uint64_t(-1)
+    // Always returns it != end() because current group finish ts equals uint64_t(-1).
+    // Runtime rotation advances on blockTs >= finishTs, so startup treats finishTs
+    // itself as the first timestamp of the next group.
     auto it = std::find_if( nodeGroups.begin(), nodeGroups.end(),
         [&currentBlockTimestamp](
-            const dev::eth::NodeGroup& ng ) { return currentBlockTimestamp <= ng.finishTs; } );
+            const dev::eth::NodeGroup& ng ) { return currentBlockTimestamp < ng.finishTs; } );
 
     if ( it == nodeGroups.end() ) {
         BOOST_THROW_EXCEPTION(
@@ -1484,6 +1492,15 @@ bool Client::updateHistoricGroupIndex() {
             "Assertion failed: historicGroupIndex >= chainParams().sChain.nodeGroups.size())" ) );
     }
     uint64_t blockTs = blockInfo( hashFromNumber( number() ) ).timestamp();
+
+    BOOST_LOG( m_loggerInfo )
+        << "BITE client epoch update: oldEpoch=" << historicGroupIndex
+        << " newEpoch=" << historicGroupIndex + 1
+        << " blockNumber=" << number()
+        << " blockTs=" << blockTs
+        << " finishTs=" << nodeGroups.at( historicGroupIndex ).finishTs;
+
+
     if ( blockTs >= nodeGroups.at( historicGroupIndex ).finishTs ) {
         BOOST_LOG( m_loggerInfo ) << "Updating historic group index to " << historicGroupIndex + 1;
         ++historicGroupIndex;

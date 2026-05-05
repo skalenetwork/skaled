@@ -107,6 +107,8 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
     this->fillRotationHistory( *consensusEnginePtr );
 
 #ifdef BITE
+    BOOST_LOG( m_loggerInfo ) << "BITE epoch passed to consensus at create: epochId=" << m_client.getCurrentEpochId()
+        << " blockNumber=" << m_client.number() << " latestBlockTs=" << nfo.timestamp();
     consensusEnginePtr->setEpochId( m_client.getCurrentEpochId() );
 #endif
     return consensusEnginePtr;
@@ -1231,6 +1233,15 @@ std::array< std::string, 4 > SkaleHost::getCurrentBLSPublicKey() const {
 }
 
 #ifdef BITE
+
+void SkaleHost::setConsensusEpochId( uint64_t _epochId ) {
+    if ( !m_consensus )
+        BOOST_THROW_EXCEPTION( std::runtime_error( "Consensus was not initialized" ) );
+
+    BOOST_LOG( m_loggerInfo ) << "BITE epoch passed to consensus at runtime: epochId=" << _epochId
+                              << " blockNumber=" << m_client.number();
+    m_consensus->setEpochId( _epochId );
+}
 
 void SkaleHost::resetEncryptionStateForBlock( uint64_t _blockID ) {
     constexpr bool _isCalledFromTxn = true;
