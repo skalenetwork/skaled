@@ -14,9 +14,13 @@ on:
         type: string
         description: 'Additional cmake options'
         required: false
-      build_type:
+      cmake_build_type:
         type: string
-        description: 'Build type of skaled binary'
+        description: 'CMake build type of skaled binary'
+        required: true
+      protocol_profile:
+        type: string
+        description: 'Protocol profile of skaled build'
         required: true
       node_type:
         type: string
@@ -26,10 +30,10 @@ on:
         type: string
         description: 'URL of the GitHub release associated with this build (if applicable)'
         required: false
-      use_plain_version:
-        type: boolean
-        description: 'Use only the image version without appending the build type suffix'
-        default: false
+      version_suffix_mode:
+        type: string
+        description: 'Docker image version suffix mode: none, protocol_profile_and_node_type, or cmake_build_type_protocol_profile_and_node_type'
+        default: cmake_build_type_protocol_profile_and_node_type
     secrets:
       DOCKER_USERNAME:
         required: true
@@ -49,64 +53,78 @@ jobs:
       CC: gcc-11
       CXX: g++-11
       BRANCH: ${{ inputs.branch_name }}
-      BUILD_TYPE: ${{ inputs.build_type }}
+      CMAKE_BUILD_TYPE: ${{ inputs.cmake_build_type }}
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-      PLAIN_VERSION: ${{ inputs.use_plain_version }}
+      VERSION_SUFFIX_MODE: ${{ inputs.version_suffix_mode }}
     steps:
+      - name: Prepare image version
+        run: |
+          if [[ "$CMAKE_BUILD_TYPE" = "Release" ]]; then
+            export CMAKE_BUILD_TYPE_SUFFIX=""
+          else
+            export CMAKE_BUILD_TYPE_SUFFIX="-$(echo "$CMAKE_BUILD_TYPE" | tr '[:upper:]' '[:lower:]')"
+          fi
+
+          case "${{ inputs.protocol_profile }}" in
+            core)
+              export PROTOCOL_PROFILE_SUFFIX=""
+              export BUILD_PROFILE="core"
+              ;;
+            bite)
+              export PROTOCOL_PROFILE_SUFFIX="-bite"
+              export BUILD_PROFILE="bite"
+              ;;
+            fair)
+              export PROTOCOL_PROFILE_SUFFIX="-fair"
+              export BUILD_PROFILE="fair"
+              ;;
+            *)
+              echo "Unsupported protocol_profile: ${{ inputs.protocol_profile }}"
+              exit 1
+              ;;
+          esac
+
+          case "${{ inputs.node_type }}" in
+            core)
+              export NODE_TYPE_SUFFIX=""
+              ;;
+            historic)
+              export NODE_TYPE_SUFFIX="-historic"
+              [[ "$BUILD_PROFILE" = "core" ]] && export BUILD_PROFILE="historic" || export BUILD_PROFILE="$BUILD_PROFILE-historic"
+              ;;
+            *)
+              echo "Unsupported node_type: ${{ inputs.node_type }}"
+              exit 1
+              ;;
+          esac
+
+          if [[ "$VERSION_SUFFIX_MODE" = "none" ]]; then
+            export VERSION=${{ inputs.image_version }}
+          elif [[ "$VERSION_SUFFIX_MODE" = "protocol_profile_and_node_type" ]]; then
+            export VERSION=${{ inputs.image_version }}$PROTOCOL_PROFILE_SUFFIX$NODE_TYPE_SUFFIX
+          elif [[ "$VERSION_SUFFIX_MODE" = "cmake_build_type_protocol_profile_and_node_type" ]]; then
+            export VERSION=${{ inputs.image_version }}$CMAKE_BUILD_TYPE_SUFFIX$PROTOCOL_PROFILE_SUFFIX$NODE_TYPE_SUFFIX
+          else
+            echo "Unsupported version_suffix_mode: $VERSION_SUFFIX_MODE"
+            exit 1
+          fi
+
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "BUILD_PROFILE=$BUILD_PROFILE" >> $GITHUB_ENV
+
       - name: Prepare workflow variables
-        if: inputs.node_type == 'core'
         run: |
-          export VERSION_SUFFIX=$(echo "$BUILD_TYPE" | tr '[:upper:]' '[:lower:]')
-          [[ $PLAIN_VERSION = "true" ]] && export VERSION=${{ inputs.image_version }} || \
-            export VERSION=${{ inputs.image_version }}-$VERSION_SUFFIX
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
           export CMAKE_OPTS="${{ inputs.cmake_options }}"
-          echo "CMAKE_OPTS=$CMAKE_OPTS" >> $GITHUB_ENV
-      - name: Prepare workflow variables (historic)
-        if: inputs.node_type == 'historic'
-        run: |
-          export VERSION_SUFFIX=$(echo "$BUILD_TYPE" | tr '[:upper:]' '[:lower:]')
-          [[ $PLAIN_VERSION = "true" ]] && export VERSION=${{ inputs.image_version }} || \
-            export VERSION=${{ inputs.image_version }}-$VERSION_SUFFIX-historic
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          export CMAKE_OPTS="-DHISTORIC_STATE=1 ${{ inputs.cmake_options }}"
-          echo "CMAKE_OPTS=$CMAKE_OPTS" >> $GITHUB_ENV
-      - name: Prepare workflow variables (BITE)
-        if: inputs.node_type == 'bite'
-        run: |
-          export VERSION_SUFFIX=$(echo "$BUILD_TYPE" | tr '[:upper:]' '[:lower:]')
-          [[ $PLAIN_VERSION = "true" ]] && export VERSION=${{ inputs.image_version }} || \
-            export VERSION=${{ inputs.image_version }}-$VERSION_SUFFIX
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          export CMAKE_OPTS="-DBITE=1 ${{ inputs.cmake_options }}"
-          echo "CMAKE_OPTS=$CMAKE_OPTS" >> $GITHUB_ENV
-      - name: Prepare workflow variables (BITE-HISTORIC)
-        if: inputs.node_type == 'bite-historic'
-        run: |
-          export VERSION_SUFFIX=$(echo "$BUILD_TYPE" | tr '[:upper:]' '[:lower:]')
-          [[ $PLAIN_VERSION = "true" ]] && export VERSION=${{ inputs.image_version }} || \
-            export VERSION=${{ inputs.image_version }}-$VERSION_SUFFIX
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          export CMAKE_OPTS="-DBITE=1 -DHISTORIC_STATE=1 ${{ inputs.cmake_options }}"
-          echo "CMAKE_OPTS=$CMAKE_OPTS" >> $GITHUB_ENV
-      - name: Prepare workflow variables (FAIR)
-        if: inputs.node_type == 'fair'
-        run: |
-          export VERSION_SUFFIX=$(echo "$BUILD_TYPE" | tr '[:upper:]' '[:lower:]')
-          [[ $PLAIN_VERSION = "true" ]] && export VERSION=${{ inputs.image_version }} || \
-            export VERSION=${{ inputs.image_version }}-$VERSION_SUFFIX
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          export CMAKE_OPTS="-DFAIR=1 ${{ inputs.cmake_options }}"
-          echo "CMAKE_OPTS=$CMAKE_OPTS" >> $GITHUB_ENV
-      - name: Prepare workflow variables (FAIR-HISTORIC)
-        if: inputs.node_type == 'fair-historic'
-        run: |
-          export VERSION_SUFFIX=$(echo "$BUILD_TYPE" | tr '[:upper:]' '[:lower:]')
-          [[ $PLAIN_VERSION = "true" ]] && export VERSION=${{ inputs.image_version }} || \
-            export VERSION=${{ inputs.image_version }}-$VERSION_SUFFIX
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          export CMAKE_OPTS="-DFAIR=1 -DHISTORIC_STATE=1 ${{ inputs.cmake_options }}"
+          if [[ "${{ inputs.protocol_profile }}" = "bite" ]]; then
+            export CMAKE_OPTS="-DBITE=1 $CMAKE_OPTS"
+          fi
+          if [[ "${{ inputs.protocol_profile }}" = "fair" ]]; then
+            export CMAKE_OPTS="-DFAIR=1 $CMAKE_OPTS"
+          fi
+          if [[ "${{ inputs.node_type }}" = "historic" ]]; then
+            export CMAKE_OPTS="-DHISTORIC_STATE=1 $CMAKE_OPTS"
+          fi
           echo "CMAKE_OPTS=$CMAKE_OPTS" >> $GITHUB_ENV
       - uses: actions/checkout@v6
         with:
@@ -126,7 +144,7 @@ jobs:
 
       - name: Build dependencies
         run: |
-          [[ $BUILD_TYPE = "Debug" ]] && export DEBUG_FLAG=1 || export DEBUG_FLAG=0
+          [[ $CMAKE_BUILD_TYPE = "Debug" ]] && export DEBUG_FLAG=1 || export DEBUG_FLAG=0
           cd deps
           ./build.sh PARALLEL_COUNT=$(nproc) DEBUG=$DEBUG_FLAG
           cd ..
@@ -135,21 +153,21 @@ jobs:
         uses: ./.github/actions/cmake-build
         with:
           build_dir: build
-          cmake_build_type: ${{ env.BUILD_TYPE }}
+          cmake_build_type: ${{ env.CMAKE_BUILD_TYPE }}
           cmake_args: ${{ env.CMAKE_OPTS }}
           make_target: skaled
           
       - name: Binary post-processing
         run: |
           cd build
-          if [[ "$BUILD_TYPE" = "Release" ]]; then
+          if [[ "$CMAKE_BUILD_TYPE" = "Release" ]]; then
               debug_wc=$(objdump -h skaled/skaled | grep -i debug | wc -l)
               sym_wc=$(readelf -s skaled/skaled | wc -l)
               if (( debug_wc != 0 || sym_wc > 10000 )); then
                   exit 1
               fi
           fi
-          if [[ "$BUILD_TYPE" = "RelWithDebInfo" ]]; then
+          if [[ "$CMAKE_BUILD_TYPE" = "RelWithDebInfo" ]]; then
               cp skaled/skaled skaled/skaled-debug
               strip --strip-all skaled/skaled
           fi
@@ -166,7 +184,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: inputs.release_url == ''
         with:
-          name: skaled-${{ inputs.node_type }}
+          name: skaled-${{ env.BUILD_PROFILE }}
           path: ./build/skaled/skaled
 
       - name: Upload skaled binary to Release
@@ -177,16 +195,16 @@ jobs:
         with:
           upload_url: ${{ inputs.release_url }}
           asset_path: ./build/skaled/skaled
-          asset_name: skaled-${{ inputs.node_type }}
+          asset_name: skaled-${{ env.BUILD_PROFILE }}
           asset_content_type: application/octet-stream
 
       - name: Upload debug binary to Release
-        if: inputs.release_url != '' && inputs.build_type == 'RelWithDebInfo'
+        if: inputs.release_url != '' && inputs.cmake_build_type == 'RelWithDebInfo'
         uses: actions/upload-release-asset@latest
         env: 
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ inputs.release_url }}
           asset_path: ./build/skaled/skaled-debug
-          asset_name: skaled-debug-${{ inputs.node_type }}
+          asset_name: skaled-debug-${{ env.BUILD_PROFILE }}
           asset_content_type: application/octet-stream

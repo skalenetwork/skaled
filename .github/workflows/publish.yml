@@ -17,11 +17,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version_orig: ${{ steps.set-version.outputs.version_orig }}
-      version_historic: ${{ steps.set-version.outputs.version_historic }}
-      version_fair: ${{ steps.set-version.outputs.version_fair }}
-      version_fair_historic: ${{ steps.set-version.outputs.version_fair_historic }}
-      version_bite: ${{ steps.set-version.outputs.version_bite }}
-      version_bite_historic: ${{ steps.set-version.outputs.version_bite_historic }}
       release_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
       - name: Checkout repository
@@ -39,17 +34,9 @@ jobs:
           echo "Calculated version: $VERSION"
 
           ( test "$BRANCH_NAME" = "stable" && export PRERELEASE=false ) || export PRERELEASE=true
-          echo "VERSION_ORIG=$VERSION" >> $GITHUB_ENV
-          echo "VERSION_HISTORIC=$VERSION-historic" >> $GITHUB_ENV
-          echo "VERSION_FAIR=$VERSION-fair" >> $GITHUB_ENV
           echo "PRERELEASE=$PRERELEASE" >> $GITHUB_ENV
 
           echo "::set-output name=version_orig::$VERSION"
-          echo "::set-output name=version_historic::$VERSION-historic"
-          echo "::set-output name=version_fair::$VERSION-fair"
-          echo "::set-output name=version_fair_historic::$VERSION-fair-historic"
-          echo "::set-output name=version_bite::$VERSION-bite"
-          echo "::set-output name=version_bite_historic::$VERSION-bite-historic"
           
       - name: Create GitHub Release
         id: create_release
@@ -68,10 +55,11 @@ jobs:
     with:
       branch_name: ${{ github.ref_name }}
       image_version: ${{ needs.configure.outputs.version_orig }}
-      build_type: "RelWithDebInfo"
+      cmake_build_type: "RelWithDebInfo"
+      protocol_profile: core
       node_type: core
       release_url: ${{ needs.configure.outputs.release_url }}
-      use_plain_version: true
+      version_suffix_mode: protocol_profile_and_node_type
     secrets: inherit
 
   build-historic:
@@ -79,11 +67,12 @@ jobs:
     uses: ./.github/workflows/setup-build-publish.yml
     with:
       branch_name: ${{ github.ref_name }}
-      image_version: ${{ needs.configure.outputs.version_historic }}
-      build_type: "RelWithDebInfo"
+      image_version: ${{ needs.configure.outputs.version_orig }}
+      cmake_build_type: "RelWithDebInfo"
+      protocol_profile: core
       node_type: historic
       release_url: ${{ needs.configure.outputs.release_url }}
-      use_plain_version: true
+      version_suffix_mode: protocol_profile_and_node_type
     secrets: inherit
   
   build-fair:
@@ -91,11 +80,12 @@ jobs:
     uses: ./.github/workflows/setup-build-publish.yml
     with:
       branch_name: ${{ github.ref_name }}
-      image_version: ${{ needs.configure.outputs.version_fair }}
-      build_type: "RelWithDebInfo"
-      node_type: fair
+      image_version: ${{ needs.configure.outputs.version_orig }}
+      cmake_build_type: "RelWithDebInfo"
+      protocol_profile: fair
+      node_type: core
       release_url: ${{ needs.configure.outputs.release_url }}
-      use_plain_version: true
+      version_suffix_mode: protocol_profile_and_node_type
     secrets: inherit
   
   build-fair-historic:
@@ -103,11 +93,12 @@ jobs:
     uses: ./.github/workflows/setup-build-publish.yml
     with:
       branch_name: ${{ github.ref_name }}
-      image_version: ${{ needs.configure.outputs.version_fair_historic }}
-      build_type: "RelWithDebInfo"
-      node_type: fair-historic
+      image_version: ${{ needs.configure.outputs.version_orig }}
+      cmake_build_type: "RelWithDebInfo"
+      protocol_profile: fair
+      node_type: historic
       release_url: ${{ needs.configure.outputs.release_url }}
-      use_plain_version: true
+      version_suffix_mode: protocol_profile_and_node_type
     secrets: inherit
   
   build-bite:
@@ -115,11 +106,12 @@ jobs:
     uses: ./.github/workflows/setup-build-publish.yml
     with:
       branch_name: ${{ github.ref_name }}
-      image_version: ${{ needs.configure.outputs.version_bite }}
-      build_type: "RelWithDebInfo"
-      node_type: bite
+      image_version: ${{ needs.configure.outputs.version_orig }}
+      cmake_build_type: "RelWithDebInfo"
+      protocol_profile: bite
+      node_type: core
       release_url: ${{ needs.configure.outputs.release_url }}
-      use_plain_version: true
+      version_suffix_mode: protocol_profile_and_node_type
     secrets: inherit
   
   build-bite-historic:
@@ -127,11 +119,12 @@ jobs:
     uses: ./.github/workflows/setup-build-publish.yml
     with:
       branch_name: ${{ github.ref_name }}
-      image_version: ${{ needs.configure.outputs.version_bite_historic }}
-      build_type: "RelWithDebInfo"
-      node_type: bite-historic
+      image_version: ${{ needs.configure.outputs.version_orig }}
+      cmake_build_type: "RelWithDebInfo"
+      protocol_profile: bite
+      node_type: historic
       release_url: ${{ needs.configure.outputs.release_url }}
-      use_plain_version: true
+      version_suffix_mode: protocol_profile_and_node_type
     secrets: inherit
   
   functional-tests:
