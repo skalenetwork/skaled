@@ -59,7 +59,7 @@ jobs:
       protocol_profile: core
       node_type: core
       release_url: ${{ needs.configure.outputs.release_url }}
-      version_suffix_mode: protocol_profile_and_node_type
+      version_suffix_mode: protocol_node
     secrets: inherit
 
   build-historic:
@@ -72,7 +72,7 @@ jobs:
       protocol_profile: core
       node_type: historic
       release_url: ${{ needs.configure.outputs.release_url }}
-      version_suffix_mode: protocol_profile_and_node_type
+      version_suffix_mode: protocol_node
     secrets: inherit
   
   build-fair:
@@ -85,7 +85,7 @@ jobs:
       protocol_profile: fair
       node_type: core
       release_url: ${{ needs.configure.outputs.release_url }}
-      version_suffix_mode: protocol_profile_and_node_type
+      version_suffix_mode: protocol_node
     secrets: inherit
   
   build-fair-historic:
@@ -98,7 +98,7 @@ jobs:
       protocol_profile: fair
       node_type: historic
       release_url: ${{ needs.configure.outputs.release_url }}
-      version_suffix_mode: protocol_profile_and_node_type
+      version_suffix_mode: protocol_node
     secrets: inherit
   
   build-bite:
@@ -111,7 +111,7 @@ jobs:
       protocol_profile: bite
       node_type: core
       release_url: ${{ needs.configure.outputs.release_url }}
-      version_suffix_mode: protocol_profile_and_node_type
+      version_suffix_mode: protocol_node
     secrets: inherit
   
   build-bite-historic:
@@ -124,7 +124,7 @@ jobs:
       protocol_profile: bite
       node_type: historic
       release_url: ${{ needs.configure.outputs.release_url }}
-      version_suffix_mode: protocol_profile_and_node_type
+      version_suffix_mode: protocol_node
     secrets: inherit
   
   functional-tests:

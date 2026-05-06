@@ -16,15 +16,15 @@ on:
         required: false
       cmake_build_type:
         type: string
-        description: 'CMake build type of skaled binary'
+        description: 'CMake build type of skaled binary: Debug, RelWithDebInfo, or Release'
         required: true
       protocol_profile:
         type: string
-        description: 'Protocol profile of skaled build'
+        description: 'Protocol profile of skaled build: core, bite, or fair'
         required: true
       node_type:
         type: string
-        description: 'Node type of skaled build'
+        description: 'Node type of skaled build: core or historic'
         required: true
       release_url:
         type: string
@@ -32,8 +32,8 @@ on:
         required: false
       version_suffix_mode:
         type: string
-        description: 'Docker image version suffix mode: none, protocol_profile_and_node_type, or cmake_build_type_protocol_profile_and_node_type'
-        default: cmake_build_type_protocol_profile_and_node_type
+        description: 'Docker image version suffix mode: none, protocol_node, or cmake_protocol_node'
+        default: cmake_protocol_node
     secrets:
       DOCKER_USERNAME:
         required: true
@@ -101,9 +101,9 @@ jobs:
 
           if [[ "$VERSION_SUFFIX_MODE" = "none" ]]; then
             export VERSION=${{ inputs.image_version }}
-          elif [[ "$VERSION_SUFFIX_MODE" = "protocol_profile_and_node_type" ]]; then
+          elif [[ "$VERSION_SUFFIX_MODE" = "protocol_node" ]]; then
             export VERSION=${{ inputs.image_version }}$PROTOCOL_PROFILE_SUFFIX$NODE_TYPE_SUFFIX
-          elif [[ "$VERSION_SUFFIX_MODE" = "cmake_build_type_protocol_profile_and_node_type" ]]; then
+          elif [[ "$VERSION_SUFFIX_MODE" = "cmake_protocol_node" ]]; then
             export VERSION=${{ inputs.image_version }}$CMAKE_BUILD_TYPE_SUFFIX$PROTOCOL_PROFILE_SUFFIX$NODE_TYPE_SUFFIX
           else
             echo "Unsupported version_suffix_mode: $VERSION_SUFFIX_MODE"

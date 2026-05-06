@@ -54,7 +54,7 @@ jobs:
       cmake_build_type: ${{ github.event.inputs.cmake_build_type }}
       protocol_profile: ${{ github.event.inputs.protocol_profile }}
       node_type: core
-      version_suffix_mode: cmake_build_type_protocol_profile_and_node_type
+      version_suffix_mode: cmake_protocol_node
     secrets:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
@@ -69,7 +69,7 @@ jobs:
       cmake_build_type: ${{ github.event.inputs.cmake_build_type }}
       protocol_profile: ${{ github.event.inputs.protocol_profile }}
       node_type: historic
-      version_suffix_mode: cmake_build_type_protocol_profile_and_node_type
+      version_suffix_mode: cmake_protocol_node
     secrets:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
