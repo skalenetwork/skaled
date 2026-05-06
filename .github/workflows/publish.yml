@@ -36,7 +36,7 @@ jobs:
           ( test "$BRANCH_NAME" = "stable" && export PRERELEASE=false ) || export PRERELEASE=true
           echo "PRERELEASE=$PRERELEASE" >> $GITHUB_ENV
 
-          echo "::set-output name=version_orig::$VERSION"
+          echo "version_orig=$VERSION" >> $GITHUB_OUTPUT
           
       - name: Create GitHub Release
         id: create_release
