@@ -1493,14 +1493,6 @@ bool Client::updateHistoricGroupIndex() {
     }
     uint64_t blockTs = blockInfo( hashFromNumber( number() ) ).timestamp();
 
-    BOOST_LOG( m_loggerInfo )
-        << "BITE client epoch update: oldEpoch=" << historicGroupIndex
-        << " newEpoch=" << historicGroupIndex + 1
-        << " blockNumber=" << number()
-        << " blockTs=" << blockTs
-        << " finishTs=" << nodeGroups.at( historicGroupIndex ).finishTs;
-
-
     if ( blockTs >= nodeGroups.at( historicGroupIndex ).finishTs ) {
         BOOST_LOG( m_loggerInfo ) << "Updating historic group index to " << historicGroupIndex + 1;
         ++historicGroupIndex;

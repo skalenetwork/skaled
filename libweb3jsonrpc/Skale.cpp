@@ -602,13 +602,6 @@ std::string Skale::oracle_checkResult( std::string& receipt ) {
 #ifdef BITE
 Json::Value Skale::bite_getCommitteesInfo() {
 
-    BOOST_LOG( m_loggerInfo )
-    << "bite_getCommitteesInfo: epochId="
-    << m_client.getCurrentEpochId()
-    << " blockNumber=" << m_client.number()
-    << " latestBlockTs=" << m_client.blockChain().info().timestamp();
-
-
     try {
         auto stringArrayToBLSPublicKey = []( const std::array< std::string, 4 >& publicKeyArray ) {
             libBLS::algebra::G2Point publicKeyG2 =
