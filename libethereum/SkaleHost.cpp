@@ -107,9 +107,10 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
     this->fillRotationHistory( *consensusEnginePtr );
 
 #ifdef BITE
-    BOOST_LOG( m_loggerInfo ) << "BITE epoch passed to consensus at startup: epochId=" << _epochId
+    const auto epochId = m_client.getCurrentEpochId();
+    BOOST_LOG( m_loggerInfo ) << "BITE epoch passed to consensus at startup: epochId=" << epochId
                               << " blockNumber=" << m_client.number();
-    consensusEnginePtr->setEpochId( m_client.getCurrentEpochId() );
+    consensusEnginePtr->setEpochId( epochId );
 #endif // BITE
     return consensusEnginePtr;
 #else
