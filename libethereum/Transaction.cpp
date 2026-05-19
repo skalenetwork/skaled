@@ -43,11 +43,23 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, ExecutionResult const& _
     return _out;
 }
 
-u256 Transaction::getEffectiveGasPrice( u256 const& _baseFeePerGas ) const {
+u256 Transaction::getEffectiveGasPrice( bool _isLondon, u256 const& _baseFeePerGas ) const {
+#ifndef FAIR
+    // Checked external-gas transactions are exempt from gas fees in non-FAIR builds:
+    // no upfront gas deduction, no refund credit, no author fee. The same zero must flow
+    // through both execution and receipt reconstruction, including under London.
+    if ( m_externalGasIsChecked && hasExternalGas() ) {
+        return 0;
+    }
+#endif
+    if ( !_isLondon ) {
+        // Pre-London: legacy gasPrice() for every tx type. For type-2 txs this is m_maxFeePerGas
+        // (TransactionBase aligns m_gasPrice to maxFeePerGas on parse).
+        return gasPrice();
+    }
     if ( txType() != TransactionType::Type2 ) {
         return gasPrice();
     }
-
     return std::min( maxFeePerGas(), _baseFeePerGas + maxPriorityFeePerGas() );
 }
 
@@ -260,6 +272,19 @@ u256 Transaction::getExternalGas() const {
     } else {
         return u256( 0 );
     }
+}
+
+u256 Transaction::externalGasOrZero() const {
+    // Safe to call before checkOutExternalGas(); returns 0 in that case.
+    if ( !m_externalGasIsChecked )
+        return 0;
+#ifdef BITE
+    if ( isCTX() )
+        return 0;
+#endif
+    if ( !m_externalGas.has_value() )
+        return 0;
+    return *m_externalGas;
 }
 #endif
 

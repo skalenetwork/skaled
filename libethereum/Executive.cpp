@@ -279,7 +279,12 @@ void Executive::initialize( Transaction const& _transaction ) {
         throw;
     }
 
-    m_effectiveGasPrice = m_t.getEffectiveGasPrice( m_envInfo.header().baseFeePerGas() );
+    // Effective gas price is gated by London activation. Pre-London, this returns legacy
+    // gasPrice() (for type-2 txs that is maxFeePerGas). Under London + type-2, this returns
+    // min(maxFeePerGas, baseFeePerGas + maxPriorityFeePerGas). Non-FAIR external-gas txs
+    // always get 0, so upfront cost, refund (in finalize()), and author fee all use 0 here.
+    const bool isLondon = LondonForkPatch::isEnabledWhen( m_envInfo.committedBlockTimestamp() );
+    m_effectiveGasPrice = m_t.getEffectiveGasPrice( isLondon, m_envInfo.header().baseFeePerGas() );
 
     bigint gasCost = ( bigint ) m_t.gas() * m_effectiveGasPrice;
     m_gasCost = ( u256 ) gasCost;
@@ -723,17 +728,23 @@ bool Executive::finalize() {
     }
 
     if ( m_t ) {
+        // SKALE fee policy: m_effectiveGasPrice already accounts for London (type-2 cap
+        // min(maxFee, baseFee + priority)) and for non-FAIR external-gas txs (forced to 0).
+        // SKALE does NOT implement Ethereum-style base-fee burn: the entire effective fee is
+        // available for the sender refund credit and the author reward below.
         m_s.addBalance( m_t.sender(), m_gas * m_effectiveGasPrice );
 
         u256 feesEarned = ( m_t.gas() - m_gas ) * m_effectiveGasPrice;
 #ifdef FAIR
         EVMSchedule currentBlockSchedule = m_chainParams.makeEvmSchedule(
             m_envInfo.committedBlockTimestamp(), m_envInfo.number() );
-        // calculate share of transaction fees to reward
-        // the rest is effectively burnt
+        // FAIR: apply shareOfTransactionFeeToRewardPromille to the whole effective fee. The
+        // remainder is effectively burnt — but this is a SKALE reward-share, NOT EIP-1559
+        // base-fee burn; the base-fee component is not separately destroyed.
         feesEarned = dev::calculateShareWithPrecision(
             feesEarned, currentBlockSchedule.shareOfTransactionFeeToRewardPromille );
 #endif
+        // Non-FAIR (above #ifdef): the full effective fee goes to the block author.
         m_s.addBalance( m_envInfo.author(), feesEarned );
     }
 

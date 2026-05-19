@@ -1099,6 +1099,11 @@ Json::Value Eth::eth_feeHistory( dev::u256 _blockCount, const std::string& _newe
 }
 
 std::string Eth::eth_maxPriorityFeePerGas() {
+    // SKALE intentionally returns 0x0 here. The chain does not require priority fees: under
+    // London the per-receipt effectiveGasPrice is computed independently from this RPC value,
+    // and exposing a non-zero hint here would push wallets to over-pay without affecting the
+    // amount actually charged. Receipt-level effectiveGasPrice tests (with non-zero priority
+    // fee) cover the execution-side behavior, so this RPC stays a wallet-compatibility stub.
     return "0x0";
 }
 

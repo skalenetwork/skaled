@@ -138,9 +138,13 @@ void BlockHeader::streamRLPFields( RLPStream& _s ) const {
 }
 
 void BlockHeader::streamRLP( RLPStream& _s, IncludeSeal _i ) const {
+    // Genesis (block 0) never carries baseFeePerGas in its RLP, even if its timestamp falls
+    // inside the London-active range. This keeps the genesis hash stable across London
+    // activation and matches the parser-side expectation in populate() below.
+    const bool london = LondonForkPatch::isEnabledWhen( static_cast< time_t >( timestamp() ) );
+    const bool writeBaseFee = london && number() > 0;
     if ( _i != OnlySeal ) {
-        const bool london = LondonForkPatch::isEnabledWhen( static_cast< time_t >( timestamp() ) );
-        _s.appendList( BlockHeader::BasicFields + ( london ? 1 : 0 ) +
+        _s.appendList( BlockHeader::BasicFields + ( writeBaseFee ? 1 : 0 ) +
                        ( _i == WithoutSeal ? 0 : m_seal.size() ) );
         BlockHeader::streamRLPFields( _s );
     }
@@ -148,7 +152,7 @@ void BlockHeader::streamRLP( RLPStream& _s, IncludeSeal _i ) const {
         for ( unsigned i = 0; i < m_seal.size(); ++i )
             _s.appendRaw( m_seal[i] );
     if ( _i != OnlySeal ) {
-        if ( LondonForkPatch::isEnabledWhen( static_cast< time_t >( timestamp() ) ) )
+        if ( writeBaseFee )
             _s << m_baseFeePerGas;
     }
 }
@@ -199,12 +203,34 @@ void BlockHeader::populate( RLP const& _header ) {
         const bool london = LondonForkPatch::isEnabledWhen( static_cast< time_t >( m_timestamp ) );
         // Genesis (block 0) never carries baseFeePerGas in its RLP regardless of London status.
         // All subsequent London blocks written by streamRLP() always include it as the last field.
-        const bool hasBaseFee = london && m_number > 0;
+        const bool expectBaseFee = london && m_number > 0;
         const unsigned totalItems = _header.itemCount();
-        const unsigned sealEnd = hasBaseFee ? totalItems - 1 : totalItems;
+        // SKALE uses Ethash exclusively (libethashseal/Ethash.h: sealFields() == 2). A sealed
+        // London header therefore has exactly 13 basic + 2 seal + 1 baseFee = 16 fields.
+        //
+        // We intentionally REJECT the 14-field "WithoutSeal" shape here even though it is what
+        // streamRLP(WithoutSeal) emits. WithoutSeal is only used internally for hashing — the
+        // bytes are sha3'd, never round-tripped through populate(). Accepting 14 fields would
+        // make a malformed full Ethash header with one seal field and missing baseFee
+        // (also 14 fields) indistinguishable from a legitimate WithoutSeal serialization,
+        // and the parser would silently consume the lone seal field as baseFeePerGas.
+        constexpr unsigned ETHASH_SEAL_FIELDS = 2;
+        if ( expectBaseFee ) {
+            const unsigned expected = 13 + ETHASH_SEAL_FIELDS + 1;  // 16
+            if ( totalItems != expected ) {
+                BOOST_THROW_EXCEPTION(
+                    InvalidBlockFormat()
+                    << errinfo_comment( "London block header has wrong field count "
+                                        "(expected exactly 16 for full Ethash header with "
+                                        "baseFeePerGas; missing baseFeePerGas, missing/extra "
+                                        "seal fields, or stripped/added trailing fields)" )
+                    << BadFieldError( 13, std::string( "<missing-or-misaligned>" ) ) );
+            }
+        }
+        const unsigned sealEnd = expectBaseFee ? totalItems - 1 : totalItems;
         for ( unsigned i = 13; i < sealEnd; ++i )
             m_seal.push_back( _header[i].data().toBytes() );
-        if ( hasBaseFee && totalItems > 13 ) {
+        if ( expectBaseFee ) {
             m_baseFeePerGas = _header[field = sealEnd].toInt< u256 >();
         }
     } catch ( Exception const& _e ) {

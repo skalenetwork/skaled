@@ -226,6 +226,15 @@ public:
     /// Force gas limit. This is used in tests
     void forceGasPrice( const u256& _gasPrice ) { m_gasPrice = _gasPrice; }
 
+#ifndef FAIR
+    /// Public, never-throw view onto external gas. Returns 0 when:
+    /// - the transaction has not yet been checked for external gas, or
+    /// - the transaction has no external gas, or
+    /// - this is a TransactionBase, not a Transaction (no override).
+    /// Used by SealEngine to skip London baseFee validation on external-gas txs.
+    virtual u256 externalGasOrZero() const { return 0; }
+#endif
+
 #ifdef BITE
 
     void setDecryptedFields( const std::shared_ptr< bytes >& _decryptedData,

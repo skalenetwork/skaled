@@ -163,12 +163,21 @@ public:
 
     u256 getExternalGas() const;
 
+    /// Public override of TransactionBase::externalGasOrZero(). Returns the checked external
+    /// gas if any, otherwise 0. Never throws (unlike hasExternalGas() / getExternalGas() which
+    /// require external gas to have been checked first).
+    u256 externalGasOrZero() const override;
+
     void checkOutExternalGas(
         const ChainParams& _cp, time_t _committedBlockTimestamp, uint64_t _committedBlockNumber );
 #endif
 
     u256 gasPrice() const;
-    u256 getEffectiveGasPrice( u256 const& _baseFeePerGas ) const;
+    /// Effective gas price actually charged for this transaction.
+    /// Pre-London (_isLondon == false): legacy gasPrice() for all tx types.
+    /// London + type-2: min(maxFeePerGas, baseFeePerGas + maxPriorityFeePerGas).
+    /// In non-FAIR builds, hasExternalGas() forces the result to 0 regardless of London or type.
+    u256 getEffectiveGasPrice( bool _isLondon, u256 const& _baseFeePerGas ) const;
 
 #ifndef FAIR
     void ignoreExternalGas() {

@@ -187,7 +187,15 @@ void SealEngineFace::verifyTransaction( ChainOperationParams const& _chainParams
     // Under London every tx type must pay at least baseFeePerGas: for type-2 txs the cap is
     // maxFeePerGas (TransactionBase stores it in m_gasPrice), for legacy / EIP-2930 txs the cap
     // is the explicit gasPrice. _t.gasPrice() returns the correct field in all cases.
-    if ( LondonForkPatch::isEnabledWhen( _committedBlockTimestamp ) ) {
+    //
+    // Non-FAIR checked external-gas txs are exempt from this check: their effectiveGasPrice is
+    // forced to 0 (see Transaction::getEffectiveGasPrice), so charging them against baseFee
+    // would be inconsistent with the zero upfront / zero refund / zero author-fee invariant.
+    if ( LondonForkPatch::isEnabledWhen( _committedBlockTimestamp )
+#ifndef FAIR
+         && _t.externalGasOrZero() == 0
+#endif
+    ) {
         u256 baseFee = _header.baseFeePerGas();
         if ( _t.gasPrice() < baseFee )
             BOOST_THROW_EXCEPTION( InvalidTransactionFormat()

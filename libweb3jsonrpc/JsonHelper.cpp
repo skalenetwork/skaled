@@ -142,8 +142,13 @@ Json::Value toJson( dev::eth::BlockHeader const& _bi, BlockDetails const& _bd,
         res["totalDifficulty"] = toJS( _bd.totalDifficulty );
         res["size"] = toJS( _bd.blockSizeBytes );
         res["uncles"] = Json::Value( Json::arrayValue );
-        if ( _bi.number() == 0 || _gasPrice > 0 ||
-             LondonForkPatch::isEnabledWhen( static_cast< time_t >( _bi.timestamp() ) ) )
+        // Genesis (block 0) intentionally has no baseFeePerGas — its header RLP omits the
+        // field (see BlockHeader::streamRLP) and the on-chain value is undefined regardless of
+        // whether London is active by genesis timestamp. Keep RPC consistent with that and only
+        // expose baseFeePerGas for non-genesis blocks under London (or when a synthetic value
+        // is supplied by callers that need it pre-activation).
+        if ( _bi.number() > 0 && ( _gasPrice > 0 || LondonForkPatch::isEnabledWhen(
+                                                       static_cast< time_t >( _bi.timestamp() ) ) ) )
             res["baseFeePerGas"] = toJS( _gasPrice );
         for ( h256 h : _us )
             res["uncles"].append( toJS( h ) );
@@ -162,8 +167,13 @@ Json::Value toJson( dev::eth::BlockHeader const& _bi, BlockDetails const& _bd,
         res["totalDifficulty"] = toJS( _bd.totalDifficulty );
         res["size"] = toJS( _bd.blockSizeBytes );
         res["uncles"] = Json::Value( Json::arrayValue );
-        if ( _bi.number() == 0 || _gasPrice > 0 ||
-             LondonForkPatch::isEnabledWhen( static_cast< time_t >( _bi.timestamp() ) ) )
+        // Genesis (block 0) intentionally has no baseFeePerGas — its header RLP omits the
+        // field (see BlockHeader::streamRLP) and the on-chain value is undefined regardless of
+        // whether London is active by genesis timestamp. Keep RPC consistent with that and only
+        // expose baseFeePerGas for non-genesis blocks under London (or when a synthetic value
+        // is supplied by callers that need it pre-activation).
+        if ( _bi.number() > 0 && ( _gasPrice > 0 || LondonForkPatch::isEnabledWhen(
+                                                       static_cast< time_t >( _bi.timestamp() ) ) ) )
             res["baseFeePerGas"] = toJS( _gasPrice );
         for ( h256 h : _us )
             res["uncles"].append( toJS( h ) );

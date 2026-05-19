@@ -13,6 +13,7 @@
 #include "libevm/LegacyVM.h"
 #include "libevm/VMFactory.h"
 #include <libethashseal/Ethash.h>
+#include <libethereum/SchainPatch.h>
 #include <libhistoric/HistoricState.h>
 
 using namespace std;
@@ -86,6 +87,12 @@ void AlethExecutive::initialize( Transaction const& _transaction ) {
         throw;
     }
 
+    // Use the same shared effective-gas-price helper as normal execution, so historic receipts
+    // (effectiveGasPrice, refund credit, author fee) agree with eth_getTransactionReceipt.
+    const bool isLondon =
+        LondonForkPatch::isEnabledWhen( m_envInfo.committedBlockTimestamp() );
+    m_effectiveGasPrice = m_t.getEffectiveGasPrice( isLondon, m_envInfo.header().baseFeePerGas() );
+
     if ( !m_t.hasZeroSignature() ) {
         // Avoid invalid transactions.
         u256 nonceReq;
@@ -105,14 +112,15 @@ void AlethExecutive::initialize( Transaction const& _transaction ) {
                 InvalidNonce() << RequirementError( ( bigint ) nonceReq, ( bigint ) m_t.nonce() ) );
         }
 
-        // Avoid unaffordable transactions.
-        bigint gasCost = ( bigint ) m_t.gas() * m_t.gasPrice();
+        // Avoid unaffordable transactions. Use the effective gas price so London type-2 txs are
+        // charged against min(maxFee, baseFee+priority) — matching normal execution.
+        bigint gasCost = ( bigint ) m_t.gas() * m_effectiveGasPrice;
         bigint totalCost = m_t.value() + gasCost;
         if ( m_s.balance( m_t.sender() ) < totalCost ) {
             BOOST_LOG( m_loggerDebug )
                 << "Not enough cash: Require > " << totalCost << " = " << m_t.gas() << " * "
-                << m_t.gasPrice() << " + " << m_t.value() << " Got" << m_s.balance( m_t.sender() )
-                << " for sender: " << m_t.sender();
+                << m_effectiveGasPrice << " + " << m_t.value() << " Got"
+                << m_s.balance( m_t.sender() ) << " for sender: " << m_t.sender();
             m_excepted = TransactionException::NotEnoughCash;
             BOOST_THROW_EXCEPTION( NotEnoughCash() << RequirementError( totalCost,
                                                           ( bigint ) m_s.balance( m_t.sender() ) )
@@ -125,10 +133,11 @@ void AlethExecutive::initialize( Transaction const& _transaction ) {
 bool AlethExecutive::execute() {
     // Entry point for a user-executed transaction.
 
-    // Pay...
+    // Pay using the effective gas price (London-aware, zero for external-gas) so historic
+    // re-execution charges the same amount the live execution charged.
     BOOST_LOG( m_loggerTrace ) << "Paying " << formatBalance( m_gasCost )
                                << " from sender for gas (" << m_t.gas() << " gas at "
-                               << formatBalance( m_t.gasPrice() ) << ")";
+                               << formatBalance( m_effectiveGasPrice ) << ")";
     m_s.subBalance( m_t.sender(), m_gasCost );
 
 #ifdef BITE
@@ -141,10 +150,10 @@ bool AlethExecutive::execute() {
 
     assert( m_t.gas() >= ( u256 ) m_baseGasRequired );
     if ( m_t.isCreation() )
-        return create( m_t.sender(), m_t.value(), m_t.gasPrice(),
+        return create( m_t.sender(), m_t.value(), m_effectiveGasPrice,
             m_t.gas() - ( u256 ) m_baseGasRequired, &dataToPassToEvm, m_t.sender() );
     else
-        return call( receiverAddressToPassToEvm, m_t.sender(), m_t.value(), m_t.gasPrice(),
+        return call( receiverAddressToPassToEvm, m_t.sender(), m_t.value(), m_effectiveGasPrice,
             bytesConstRef( &dataToPassToEvm ), m_t.gas() - ( u256 ) m_baseGasRequired );
 }
 
@@ -437,15 +446,33 @@ bool AlethExecutive::finalize() {
 
         // Refunds must be applied before the miner gets the fees.
         assert( m_ext->sub.refunds >= 0 );
+        // EIP-3529: refund cap is gasUsed / maxRefundQuotient (2 pre-London, 5 London+). Read
+        // the cap from the active schedule rather than hard-coding /2, so historic execution
+        // matches normal execution after London activation.
+        int64_t gasUsed = static_cast< int64_t >( m_t.gas() ) - static_cast< int64_t >( m_gas );
         int64_t maxRefund =
-            ( static_cast< int64_t >( m_t.gas() ) - static_cast< int64_t >( m_gas ) ) / 2;
+            gasUsed / static_cast< int64_t >( m_ext->evmSchedule().maxRefundQuotient );
         m_gas += min( maxRefund, m_ext->sub.refunds );
     }
 
     if ( m_t ) {
-        m_s.addBalance( m_t.sender(), m_gas * m_t.gasPrice() );
+        // Use the same effective gas price as live execution so historic receipts agree with
+        // the live receipt: sender refund credit and author fee both use this price.
+        // SKALE does not implement Ethereum-style base-fee burn — non-FAIR credits the full
+        // effective fee to the author; FAIR applies its reward-share to that same effective fee
+        // (the remainder is effectively burnt, mirroring libethereum/Executive.cpp::finalize).
+        m_s.addBalance( m_t.sender(), m_gas * m_effectiveGasPrice );
 
-        u256 feesEarned = ( m_t.gas() - m_gas ) * m_t.gasPrice();
+        u256 feesEarned = ( m_t.gas() - m_gas ) * m_effectiveGasPrice;
+#ifdef FAIR
+        // Mirror Executive::finalize so historic FAIR execution credits the same author fee as
+        // live FAIR execution. Without this, replaying a FAIR block via the historic path would
+        // credit a larger author balance than the live block did.
+        EVMSchedule currentBlockSchedule = m_chainParams.makeEvmSchedule(
+            m_envInfo.committedBlockTimestamp(), m_envInfo.number() );
+        feesEarned = dev::calculateShareWithPrecision(
+            feesEarned, currentBlockSchedule.shareOfTransactionFeeToRewardPromille );
+#endif
         m_s.addBalance( m_envInfo.author(), feesEarned );
     }
 
