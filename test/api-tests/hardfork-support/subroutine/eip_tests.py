@@ -1849,7 +1849,12 @@ def test_eip_1559_fee_history_float_percentiles(
 def test_eip_1559_max_priority_fee(
     w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000
 ) -> EIPTestResult:
-    """eth_maxPriorityFeePerGas should be available."""
+    """eth_maxPriorityFeePerGas should be available AND return 0x0 (SKALE-specific contract).
+
+    SKALE does not require priority fees. The RPC is a wallet-compatibility stub and must stay
+    at 0x0 so wallets do not over-pay; receipt-level effectiveGasPrice is computed independently
+    under London via min(maxFee, baseFee + priority).
+    """
     logger.info("=== EIP-1559 maxPriorityFeePerGas RPC test ===")
     response = w3.provider.make_request("eth_maxPriorityFeePerGas", [])
     if "error" in response:
@@ -1859,8 +1864,9 @@ def test_eip_1559_max_priority_fee(
             message=f"eth_maxPriorityFeePerGas failed: {response['error']}",
         )
 
-    value = _as_int(response.get("result"))
-    details = {"max_priority_fee_per_gas": value}
+    raw = response.get("result")
+    value = _as_int(raw)
+    details = {"max_priority_fee_per_gas": value, "raw": raw}
     if value is None:
         return EIPTestResult(
             eip="1559-max-priority-fee",
@@ -1868,10 +1874,65 @@ def test_eip_1559_max_priority_fee(
             message="eth_maxPriorityFeePerGas returned null result",
             details=details,
         )
+    if value != 0:
+        return EIPTestResult(
+            eip="1559-max-priority-fee",
+            passed=False,
+            message=(
+                f"eth_maxPriorityFeePerGas returned {value} (expected 0x0); "
+                "SKALE is required to return 0 here."
+            ),
+            details=details,
+        )
     return EIPTestResult(
         eip="1559-max-priority-fee",
         passed=True,
-        message=f"eth_maxPriorityFeePerGas returned {value}",
+        message="eth_maxPriorityFeePerGas returned 0x0 as required by SKALE policy",
+        details=details,
+    )
+
+
+def test_eip_1559_genesis_no_basefee(
+    w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000
+) -> EIPTestResult:
+    """Genesis (block 0) must not expose baseFeePerGas via RPC.
+
+    Per the action-plan policy decision: genesis carries no baseFeePerGas in its RLP — its
+    on-chain identity is independent of London activation. RPC must reflect that and omit the
+    field for block 0. eth_getBlockByNumber("0x0") therefore must not include a baseFeePerGas
+    key in the returned block object.
+    """
+    logger.info("=== EIP-1559 genesis baseFeePerGas absence test ===")
+    response = w3.provider.make_request("eth_getBlockByNumber", ["0x0", False])
+    if "error" in response:
+        return EIPTestResult(
+            eip="1559-genesis-no-basefee",
+            passed=False,
+            message=f"eth_getBlockByNumber(0x0) failed: {response['error']}",
+        )
+    block = response.get("result")
+    if not isinstance(block, dict):
+        return EIPTestResult(
+            eip="1559-genesis-no-basefee",
+            passed=False,
+            message="eth_getBlockByNumber(0x0) did not return a block object",
+            details={"result": block},
+        )
+    details = {"keys_present": sorted(block.keys())}
+    if "baseFeePerGas" in block:
+        return EIPTestResult(
+            eip="1559-genesis-no-basefee",
+            passed=False,
+            message=(
+                "Genesis block exposes baseFeePerGas via RPC "
+                f"(value={block['baseFeePerGas']}); it must be omitted."
+            ),
+            details=details,
+        )
+    return EIPTestResult(
+        eip="1559-genesis-no-basefee",
+        passed=True,
+        message="Genesis block has no baseFeePerGas field as required",
         details=details,
     )
 
@@ -2104,6 +2165,7 @@ EIP_TEST_MAP = {
     "1559-basefee-header": test_eip_1559_basefee_header,
     "1559-fee-history": test_eip_1559_fee_history,
     "1559-max-priority-fee": test_eip_1559_max_priority_fee,
+    "1559-genesis-no-basefee": test_eip_1559_genesis_no_basefee,
     "1559-block-hash-integrity": test_eip_1559_block_hash_integrity,
 }
 
@@ -2114,7 +2176,7 @@ ALL_EIPS = [
     "2565", "2565-formula", "2565-zero-exp",
     "3198", "3529", "3529-refund-cap", "3529-selfdestruct", "3541",
     "1559-effective-price", "1559-legacy-gasprice-eq-basefee", "1559-basefee-header",
-    "1559-fee-history", "1559-max-priority-fee",
+    "1559-fee-history", "1559-max-priority-fee", "1559-genesis-no-basefee",
     "1559-block-hash-integrity",
 ]
 
