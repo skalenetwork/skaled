@@ -205,25 +205,30 @@ void BlockHeader::populate( RLP const& _header ) {
         // All subsequent London blocks written by streamRLP() always include it as the last field.
         const bool expectBaseFee = london && m_number > 0;
         const unsigned totalItems = _header.itemCount();
-        // SKALE uses Ethash exclusively (libethashseal/Ethash.h: sealFields() == 2). A sealed
-        // London header therefore has exactly 13 basic + 2 seal + 1 baseFee = 16 fields.
+        // Accepted non-genesis London header shapes, by seal engine:
+        //   - NoProof (SKALE production, SealEngine::sealFields() == 0):
+        //       13 basic + 0 seal + 1 baseFee = 14 fields  ← the normal SKALE block
+        //   - Ethash (used by some unit tests, sealFields() == 2):
+        //       13 basic + 2 seal + 1 baseFee = 16 fields
+        // We can't query the seal engine from here (BlockHeader is engine-agnostic), so we
+        // accept either of these two shapes and reject anything else. In particular a 13-field
+        // header (no trailing baseFee at all) or a 15-field header (Ethash seal with baseFee
+        // stripped) is rejected rather than silently treating a seal/nonce field as baseFee.
         //
-        // We intentionally REJECT the 14-field "WithoutSeal" shape here even though it is what
-        // streamRLP(WithoutSeal) emits. WithoutSeal is only used internally for hashing — the
-        // bytes are sha3'd, never round-tripped through populate(). Accepting 14 fields would
-        // make a malformed full Ethash header with one seal field and missing baseFee
-        // (also 14 fields) indistinguishable from a legitimate WithoutSeal serialization,
-        // and the parser would silently consume the lone seal field as baseFeePerGas.
-        constexpr unsigned ETHASH_SEAL_FIELDS = 2;
+        // Residual ambiguity: a 14-field header could in theory be a malformed "13 basic + 1
+        // seal + 0 baseFee" instead of "13 basic + 0 seal + 1 baseFee". This cannot arise in
+        // SKALE because the only engine in use is NoProof (0 seal fields), so the 14-field
+        // shape is unambiguously baseFee-bearing here.
         if ( expectBaseFee ) {
-            const unsigned expected = 13 + ETHASH_SEAL_FIELDS + 1;  // 16
-            if ( totalItems != expected ) {
+            const unsigned noProofShape = 13 + 0 + 1;  // 14
+            const unsigned ethashShape = 13 + 2 + 1;   // 16
+            if ( totalItems != noProofShape && totalItems != ethashShape ) {
                 BOOST_THROW_EXCEPTION(
                     InvalidBlockFormat()
                     << errinfo_comment( "London block header has wrong field count "
-                                        "(expected exactly 16 for full Ethash header with "
-                                        "baseFeePerGas; missing baseFeePerGas, missing/extra "
-                                        "seal fields, or stripped/added trailing fields)" )
+                                        "(expected 14 for NoProof or 16 for Ethash, including "
+                                        "the trailing baseFeePerGas; it may be missing or the "
+                                        "seal length is wrong)" )
                     << BadFieldError( 13, std::string( "<missing-or-misaligned>" ) ) );
             }
         }
