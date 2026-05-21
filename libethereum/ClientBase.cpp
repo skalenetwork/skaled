@@ -515,7 +515,8 @@ LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(
             LondonForkPatch::isEnabledWhen( static_cast< time_t >( blkInfo.timestamp() ) );
 #ifndef FAIR
         // A tx rebuilt from RLP isn't external-gas-checked, so re-run checkOutExternalGas with the
-        // parent block's context (as live execution does) to recover the zero-fee verdict. See docs/london-notes.md #4.
+        // parent block's context (as live execution does) to recover the zero-fee verdict. See
+        // docs/london-notes.md #4.
         if ( bc().chainParams().getExternalGasDifficulty() > 0 && blockNumber > 0 ) {
             try {
                 const auto parentInfo = blockInfo( blockNumber - 1 );
