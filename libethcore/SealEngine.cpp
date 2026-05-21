@@ -193,7 +193,7 @@ void SealEngineFace::verifyTransaction( ChainOperationParams const& _chainParams
     // would be inconsistent with the zero upfront / zero refund / zero author-fee invariant.
     if ( LondonForkPatch::isEnabledWhen( _committedBlockTimestamp )
 #ifndef FAIR
-         && _t.externalGasOrZero() == 0
+         && _t.getExternalGas() == 0
 #endif
     ) {
         u256 baseFee = _header.baseFeePerGas();

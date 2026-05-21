@@ -1235,6 +1235,7 @@ BOOST_AUTO_TEST_CASE( eth_signTransaction ) {
 const string skaledConfigFileName = "../../test/historicstate/configs/basic_config.json";
 
 
+#ifndef FAIR  // eth_call gasPrice 0 < London baseFee in FAIR builds (London always active)
 BOOST_AUTO_TEST_CASE( simple_contract ) {
     JsonRpcFixture fixture;
     dev::eth::simulateMining( *( fixture.client ), 1 );
@@ -1325,6 +1326,7 @@ BOOST_AUTO_TEST_CASE( simple_contract ) {
     res = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE_EQUAL( res["status"], string( "0x1" ) );
 }
+#endif  // !FAIR
 
 BOOST_AUTO_TEST_CASE( deploy_contract_from_owner ) {
     JsonRpcFixture fixture( c_genesisConfigString );
@@ -2066,6 +2068,7 @@ BOOST_AUTO_TEST_CASE( call_with_error ) {
     }
 }
 
+#ifndef FAIR  // eth_call gasPrice 0 < London baseFee in FAIR builds (London always active)
 BOOST_AUTO_TEST_CASE( eth_call_create ) {
     JsonRpcFixture fixture;
     dev::eth::simulateMining( *( fixture.client ), 1 );
@@ -2120,6 +2123,7 @@ BOOST_AUTO_TEST_CASE( eth_call_create ) {
     // the runtime bytecode from eth_call should match the actually deployed code
     BOOST_REQUIRE_EQUAL( callResult, deployedCode );
 }
+#endif  // !FAIR
 
 BOOST_AUTO_TEST_CASE( estimate_gas_with_error ) {
     JsonRpcFixture fixture;
@@ -6211,6 +6215,7 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
 }
 #endif  // !FAIR
 
+#ifndef FAIR  // ConsensusStub gasPrice(1000) < London baseFee in FAIR builds
 BOOST_AUTO_TEST_CASE( submitCTXInContractConstructor ) {
     JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true, false, -1, {{ "contractStorageLimit", "100000"}} );
 
@@ -6398,6 +6403,7 @@ BOOST_AUTO_TEST_CASE( CTXTransactionAfterRevert ) {
 
     BOOST_REQUIRE_EQUAL( fixture.client->debugGetTransactionQueue()->pendingBITE2Transactions()->size(), 0 );
 }
+#endif  // !FAIR
 
 #ifndef FAIR  // ConsensusStub gasPrice(1000) < London baseFee in FAIR builds
 BOOST_AUTO_TEST_CASE( CTXOutOfBlockGasLimit ) {

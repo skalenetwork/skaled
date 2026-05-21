@@ -180,10 +180,8 @@ private:
     LogEntries m_logs;  ///< The log entries created by this transaction. Set by finalize().
 
     u256 m_gasCost;
-    /// Effective gas price for this transaction in the historic block. London-aware: pre-London
-    /// it is the legacy gasPrice(); London + type-2 uses min(maxFeePerGas, baseFee + priority);
-    /// non-FAIR external-gas is 0. Must match the same value used during the original execution
-    /// so receipts reconstructed here agree with eth_getTransactionReceipt.
+    /// Effective gas price (London-aware, 0 for non-FAIR external-gas); must match the value
+    /// used at original execution so reconstructed receipts agree with eth_getTransactionReceipt.
     u256 m_effectiveGasPrice;
     ChainOperationParams const& m_chainParams;
 

@@ -227,12 +227,7 @@ public:
     void forceGasPrice( const u256& _gasPrice ) { m_gasPrice = _gasPrice; }
 
 #ifndef FAIR
-    /// Public, never-throw view onto external gas. Returns 0 when:
-    /// - the transaction has not yet been checked for external gas, or
-    /// - the transaction has no external gas, or
-    /// - this is a TransactionBase, not a Transaction (no override).
-    /// Used by SealEngine to skip London baseFee validation on external-gas txs.
-    virtual u256 externalGasOrZero() const { return 0; }
+    virtual u256 getExternalGas() const { return 0; }
 #endif
 
 #ifdef BITE
@@ -451,17 +446,6 @@ protected:
 
     static bool isZeroSignature( u256 const& _r, u256 const& _s ) { return !_r && !_s; }
 
-#ifndef FAIR
-    /*
-     * this function is provided in order for aleth tests and utilities to compile.
-     * In will never be called in skaled since in skaled TransactionBase objects are never
-     * instantiated. Aleth tests and utilities  do instantiate TransactionBase
-     *
-     * The function always returns zero, which means no PoW.
-     */
-
-    virtual u256 getExternalGas() const { return 0; }
-#endif
 
     /// Clears the signature.
     void clearSignature() { m_vrs = SignatureStruct(); }

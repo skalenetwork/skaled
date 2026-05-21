@@ -161,12 +161,9 @@ public:
 #ifndef FAIR
     bool hasExternalGas() const;
 
-    u256 getExternalGas() const;
-
-    /// Public override of TransactionBase::externalGasOrZero(). Returns the checked external
-    /// gas if any, otherwise 0. Never throws (unlike hasExternalGas() / getExternalGas() which
-    /// require external gas to have been checked first).
-    u256 externalGasOrZero() const override;
+    /// Override of TransactionBase::getExternalGas(). Returns the checked external gas if any,
+    /// otherwise 0. Never throws (safe to call before checkOutExternalGas()).
+    u256 getExternalGas() const override;
 
     void checkOutExternalGas(
         const ChainParams& _cp, time_t _committedBlockTimestamp, uint64_t _committedBlockNumber );

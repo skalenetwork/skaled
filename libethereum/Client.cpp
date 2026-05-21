@@ -694,13 +694,6 @@ size_t Client::syncTransactions(
             baseFeePerGas = ( bn > 0 ) ? gasBidPrice( static_cast< unsigned >( bn ) ) : u256( 1 );
             if ( baseFeePerGas == 0 )
                 baseFeePerGas = 1;
-            // London separates two prices that used to be the same value:
-            //   - _gasPrice: the consensus-passed transaction floor (PriceDB[blockID-1]).
-            //     Stays as-is — the legacy tx admission floor must not silently become baseFee.
-            //   - baseFeePerGas: written to the header and used by EVM/RPC, computed
-            //     independently above. Passed to syncEveryone() as a separate argument.
-            // Previously _gasPrice was overwritten with baseFeePerGas, which conflated the two
-            // and broke admission for pre-London-priced legacy txs against London headers.
         }
 
         tie( newPendingReceipts, goodReceipts ) =

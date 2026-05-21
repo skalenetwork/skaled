@@ -163,10 +163,11 @@ BOOST_AUTO_TEST_CASE( londonHeaderWithoutSealStillIncludesBaseFee ) {
     BOOST_REQUIRE_EQUAL( rlp[BlockHeader::BasicFields].toInt< u256 >(), expectedBaseFee );
 }
 
-// P1#2 (NoProof shape accepted): SKALE's NoProof seal engine has 0 seal fields, so the normal
-// SKALE London header is 14 items (13 basic + 1 baseFee). populate() must accept it and read
-// the trailing field as baseFeePerGas.
-BOOST_AUTO_TEST_CASE( nonGenesisLondonHeaderNoProofShapeAccepted ) {
+// P1#2 (empty-seal shape accepted): SKALE blocks are committed via sealUnconditionally(), which
+// never populates seal fields, so a normal SKALE London header is 14 items (13 basic + 1 baseFee)
+// regardless of the configured seal engine (production uses Ethash). populate() must accept it and
+// read the trailing field as baseFeePerGas.
+BOOST_AUTO_TEST_CASE( nonGenesisLondonHeaderEmptySealShapeAccepted ) {
     SchainPatchGuard guard;
     enableLondonAtTimestampOne();
 
@@ -186,7 +187,7 @@ BOOST_AUTO_TEST_CASE( nonGenesisLondonHeaderNoProofShapeAccepted ) {
            << u256( 21000 )              // gasUsed
            << u256( 100 )                // timestamp (London-active)
            << bytes()                    // extraData
-           << expectedBaseFee;           // baseFeePerGas (NoProof: no seal precedes it)
+           << expectedBaseFee;           // baseFeePerGas (empty seal: no seal field precedes it)
 
     BlockHeader restored( stream.out(), HeaderData );
     BOOST_REQUIRE_EQUAL( restored.baseFeePerGas(), expectedBaseFee );

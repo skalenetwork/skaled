@@ -514,24 +514,19 @@ LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(
         const bool isLondon =
             LondonForkPatch::isEnabledWhen( static_cast< time_t >( blkInfo.timestamp() ) );
 #ifndef FAIR
-        // The Transaction reconstructed from RLP has m_externalGasIsChecked == false, so
-        // getEffectiveGasPrice would not honor the external-gas zero-fee invariant on the receipt
-        // path. Re-run checkOutExternalGas with the SAME context live execution used so the
-        // recheck matches the original verdict around patch activation boundaries
-        // (ExternalGasPatch / CorrectForkInPowPatch). Live calls in Block.cpp:372 and Block.cpp:910
-        // pass _bc.info().timestamp() and _bc.number() — i.e. the previously-committed block,
-        // which is the parent of the inclusion block (blockNumber - 1).
-        // Guard: chains that never configure ExternalGasDifficulty would assert inside
-        // checkOutExternalGas; skip the recheck in that case.
+        // A tx rebuilt from RLP isn't external-gas-checked, so re-run checkOutExternalGas with the
+        // parent block's context (as live execution does) to recover the zero-fee verdict. See docs/london-notes.md #4.
         if ( bc().chainParams().getExternalGasDifficulty() > 0 && blockNumber > 0 ) {
             try {
                 const auto parentInfo = blockInfo( blockNumber - 1 );
                 t.checkOutExternalGas( bc().chainParams(),
                     static_cast< time_t >( parentInfo.timestamp() ),
                     static_cast< uint64_t >( blockNumber - 1 ) );
-            } catch ( ... ) {
-                // External-gas recheck must never break receipt RPC; fall back to the
-                // non-external-gas formula if anything goes wrong.
+            } catch ( Exception const& _e ) {
+                // Only InvalidSignature is possible here and it can't fire for a committed tx;
+                // stay defensive so receipt RPC never fails. See docs/london-notes.md #4.
+                cwarn << "External-gas recheck failed for receipt of a tx in block " << blockNumber
+                      << ": " << _e.what();
             }
         }
 #endif

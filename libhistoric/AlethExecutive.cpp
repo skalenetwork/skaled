@@ -89,8 +89,7 @@ void AlethExecutive::initialize( Transaction const& _transaction ) {
 
     // Use the same shared effective-gas-price helper as normal execution, so historic receipts
     // (effectiveGasPrice, refund credit, author fee) agree with eth_getTransactionReceipt.
-    const bool isLondon =
-        LondonForkPatch::isEnabledWhen( m_envInfo.committedBlockTimestamp() );
+    const bool isLondon = LondonForkPatch::isEnabledWhen( m_envInfo.committedBlockTimestamp() );
     m_effectiveGasPrice = m_t.getEffectiveGasPrice( isLondon, m_envInfo.header().baseFeePerGas() );
 
     if ( !m_t.hasZeroSignature() ) {

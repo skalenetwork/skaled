@@ -123,6 +123,18 @@ def _as_int(value):
     return int(value)
 
 
+def _is_skaled(w3: Web3) -> bool:
+    """True if the connected node is skaled. Used to gate SKALE-specific policy assertions
+    (no priority fee, no genesis baseFeePerGas) that a standard Ethereum node (e.g. anvil)
+    is not expected to follow. skaled's web3_clientVersion is "skaled/<version>/..."."""
+    try:
+        resp = w3.provider.make_request("web3_clientVersion", [])
+        version = (resp.get("result") or "") if isinstance(resp, dict) else ""
+        return "skaled" in version.lower()
+    except Exception:
+        return False
+
+
 # ---------------------------------------------------------------------------
 # EIP-2929: cold vs warm storage access
 # ---------------------------------------------------------------------------
@@ -1866,12 +1878,22 @@ def test_eip_1559_max_priority_fee(
 
     raw = response.get("result")
     value = _as_int(raw)
-    details = {"max_priority_fee_per_gas": value, "raw": raw}
+    is_skaled = _is_skaled(w3)
+    details = {"max_priority_fee_per_gas": value, "raw": raw, "is_skaled": is_skaled}
     if value is None:
         return EIPTestResult(
             eip="1559-max-priority-fee",
             passed=False,
             message="eth_maxPriorityFeePerGas returned null result",
+            details=details,
+        )
+    # The 0x0 contract is SKALE-specific. A standard Ethereum node (e.g. anvil) legitimately
+    # returns a non-zero suggested priority fee, so only enforce 0 on skaled.
+    if not is_skaled:
+        return EIPTestResult(
+            eip="1559-max-priority-fee",
+            passed=True,
+            message=f"eth_maxPriorityFeePerGas returned {value} (non-skaled node; 0 not enforced)",
             details=details,
         )
     if value != 0:
@@ -1918,7 +1940,20 @@ def test_eip_1559_genesis_no_basefee(
             message="eth_getBlockByNumber(0x0) did not return a block object",
             details={"result": block},
         )
-    details = {"keys_present": sorted(block.keys())}
+    is_skaled = _is_skaled(w3)
+    details = {"keys_present": sorted(block.keys()), "is_skaled": is_skaled}
+    # Omitting genesis baseFeePerGas is a SKALE-specific policy. A standard Ethereum node
+    # (e.g. anvil) exposes baseFeePerGas on the genesis block, so only enforce omission on skaled.
+    if not is_skaled:
+        return EIPTestResult(
+            eip="1559-genesis-no-basefee",
+            passed=True,
+            message=(
+                "Genesis baseFeePerGas presence not enforced on non-skaled node "
+                f"(baseFeePerGas={'present' if 'baseFeePerGas' in block else 'absent'})"
+            ),
+            details=details,
+        )
     if "baseFeePerGas" in block:
         return EIPTestResult(
             eip="1559-genesis-no-basefee",

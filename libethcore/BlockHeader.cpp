@@ -205,30 +205,18 @@ void BlockHeader::populate( RLP const& _header ) {
         // All subsequent London blocks written by streamRLP() always include it as the last field.
         const bool expectBaseFee = london && m_number > 0;
         const unsigned totalItems = _header.itemCount();
-        // Accepted non-genesis London header shapes, by seal engine:
-        //   - NoProof (SKALE production, SealEngine::sealFields() == 0):
-        //       13 basic + 0 seal + 1 baseFee = 14 fields  ← the normal SKALE block
-        //   - Ethash (used by some unit tests, sealFields() == 2):
-        //       13 basic + 2 seal + 1 baseFee = 16 fields
-        // We can't query the seal engine from here (BlockHeader is engine-agnostic), so we
-        // accept either of these two shapes and reject anything else. In particular a 13-field
-        // header (no trailing baseFee at all) or a 15-field header (Ethash seal with baseFee
-        // stripped) is rejected rather than silently treating a seal/nonce field as baseFee.
-        //
-        // Residual ambiguity: a 14-field header could in theory be a malformed "13 basic + 1
-        // seal + 0 baseFee" instead of "13 basic + 0 seal + 1 baseFee". This cannot arise in
-        // SKALE because the only engine in use is NoProof (0 seal fields), so the 14-field
-        // shape is unambiguously baseFee-bearing here.
+        // Non-genesis London headers carry baseFee as the last field after 0 or 2 seal fields
+        // (14 or 16 total); reject other counts to avoid misreading a seal field. See docs/london-notes.md #5.
         if ( expectBaseFee ) {
-            const unsigned noProofShape = 13 + 0 + 1;  // 14
-            const unsigned ethashShape = 13 + 2 + 1;   // 16
-            if ( totalItems != noProofShape && totalItems != ethashShape ) {
+            const unsigned emptySealShape = 13 + 0 + 1;  // 14
+            const unsigned twoFieldSealShape = 13 + 2 + 1;  // 16
+            if ( totalItems != emptySealShape && totalItems != twoFieldSealShape ) {
                 BOOST_THROW_EXCEPTION(
                     InvalidBlockFormat()
                     << errinfo_comment( "London block header has wrong field count "
-                                        "(expected 14 for NoProof or 16 for Ethash, including "
-                                        "the trailing baseFeePerGas; it may be missing or the "
-                                        "seal length is wrong)" )
+                                        "(expected 14 for empty seal or 16 for a 2-field seal, "
+                                        "including the trailing baseFeePerGas; it may be missing "
+                                        "or the seal length is wrong)" )
                     << BadFieldError( 13, std::string( "<missing-or-misaligned>" ) ) );
             }
         }
