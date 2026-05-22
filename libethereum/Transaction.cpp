@@ -267,8 +267,6 @@ bool Transaction::hasExternalGas() const {
 }
 
 u256 Transaction::getExternalGas() const {
-    // Never throws: short-circuits to 0 when external gas hasn't been checked yet, and
-    // hasExternalGas() returns false (no throw) for checked-but-none and BITE CTX cases.
     if ( m_externalGasIsChecked && hasExternalGas() ) {
         return *m_externalGas;
     } else {

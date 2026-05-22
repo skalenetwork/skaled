@@ -143,8 +143,7 @@ Json::Value toJson( dev::eth::BlockHeader const& _bi, BlockDetails const& _bd,
         res["size"] = toJS( _bd.blockSizeBytes );
         res["uncles"] = Json::Value( Json::arrayValue );
         // Genesis (block 0) has no baseFeePerGas (omitted from its header RLP), so expose it via
-        // RPC only for non-genesis London blocks (or a synthetic value). See docs/london-notes.md
-        // #6.
+        // RPC only for non-genesis London blocks (or a synthetic value).
         if ( _bi.number() > 0 &&
              ( _gasPrice > 0 ||
                  LondonForkPatch::isEnabledWhen( static_cast< time_t >( _bi.timestamp() ) ) ) )
@@ -167,8 +166,7 @@ Json::Value toJson( dev::eth::BlockHeader const& _bi, BlockDetails const& _bd,
         res["size"] = toJS( _bd.blockSizeBytes );
         res["uncles"] = Json::Value( Json::arrayValue );
         // Genesis (block 0) has no baseFeePerGas (omitted from its header RLP), so expose it via
-        // RPC only for non-genesis London blocks (or a synthetic value). See docs/london-notes.md
-        // #6.
+        // RPC only for non-genesis London blocks (or a synthetic value).
         if ( _bi.number() > 0 &&
              ( _gasPrice > 0 ||
                  LondonForkPatch::isEnabledWhen( static_cast< time_t >( _bi.timestamp() ) ) ) )

@@ -515,8 +515,7 @@ LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(
             LondonForkPatch::isEnabledWhen( static_cast< time_t >( blkInfo.timestamp() ) );
 #ifndef FAIR
         // A tx rebuilt from RLP isn't external-gas-checked, so re-run checkOutExternalGas with the
-        // parent block's context (as live execution does) to recover the zero-fee verdict. See
-        // docs/london-notes.md #4.
+        // parent block's context (as live execution does) to recover the zero-fee verdict.
         if ( bc().chainParams().getExternalGasDifficulty() > 0 && blockNumber > 0 ) {
             try {
                 const auto parentInfo = blockInfo( blockNumber - 1 );
@@ -525,7 +524,7 @@ LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(
                     static_cast< uint64_t >( blockNumber - 1 ) );
             } catch ( Exception const& _e ) {
                 // Only InvalidSignature is possible here and it can't fire for a committed tx;
-                // stay defensive so receipt RPC never fails. See docs/london-notes.md #4.
+                // stay defensive so receipt RPC never fails.
                 cwarn << "External-gas recheck failed for receipt of a tx in block " << blockNumber
                       << ": " << _e.what();
             }

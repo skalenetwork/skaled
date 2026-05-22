@@ -681,7 +681,11 @@ size_t Client::syncTransactions(
     unsigned goodReceipts;
 
     DEV_WRITE_GUARDED( x_working ) {
-        assert( !m_working.isSealed() );
+        if ( LondonForkPatch::isEnabledWhen( static_cast< time_t >( _timestamp ) ) &&
+             m_working.isSealed() )
+            BOOST_THROW_EXCEPTION(
+                InvalidOperationOnSealedBlock() << errinfo_comment(
+                    "Client::syncTransactions: working block is still sealed after waiting" ) );
         u256 baseFeePerGas = 0;
 
 #ifdef HISTORIC_STATE

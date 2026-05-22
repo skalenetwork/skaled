@@ -206,8 +206,7 @@ void BlockHeader::populate( RLP const& _header ) {
         const bool expectBaseFee = london && m_number > 0;
         const unsigned totalItems = _header.itemCount();
         // Non-genesis London headers carry baseFee as the last field after 0 or 2 seal fields
-        // (14 or 16 total); reject other counts to avoid misreading a seal field. See
-        // docs/london-notes.md #5.
+        // (14 or 16 total); reject other counts to avoid misreading a seal field.
         if ( expectBaseFee ) {
             const unsigned emptySealShape = 13 + 0 + 1;     // 14
             const unsigned twoFieldSealShape = 13 + 2 + 1;  // 16

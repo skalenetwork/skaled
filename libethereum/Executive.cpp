@@ -719,7 +719,10 @@ bool Executive::finalize() {
 #endif
 
         // Refunds must be applied before the miner gets the fees.
-        assert( m_ext->sub.refunds >= 0 );
+        if ( LondonForkPatch::isEnabledWhen( m_envInfo.committedBlockTimestamp() ) &&
+             m_ext->sub.refunds < 0 )
+            BOOST_THROW_EXCEPTION( std::runtime_error(
+                "Executive::finalize: negative gas refund (internal invariant violation)" ) );
         // EIP-3529: refund cap is gasUsed / maxRefundQuotient (2 pre-London, 5 London+)
         int64_t gasUsed = static_cast< int64_t >( m_t.gas() ) - static_cast< int64_t >( m_gas );
         int64_t maxRefund =

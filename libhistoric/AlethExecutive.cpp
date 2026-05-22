@@ -147,7 +147,11 @@ bool AlethExecutive::execute() {
     Address receiverAddressToPassToEvm = m_t.receiveAddress();
 #endif
 
-    assert( m_t.gas() >= ( u256 ) m_baseGasRequired );
+    if ( LondonForkPatch::isEnabledWhen( m_envInfo.committedBlockTimestamp() ) &&
+         m_t.gas() < ( u256 ) m_baseGasRequired )
+        BOOST_THROW_EXCEPTION( OutOfGasIntrinsic() << errinfo_comment(
+                                   "AlethExecutive::execute: transaction gas below intrinsic base "
+                                   "gas" ) );
     if ( m_t.isCreation() )
         return create( m_t.sender(), m_t.value(), m_effectiveGasPrice,
             m_t.gas() - ( u256 ) m_baseGasRequired, &dataToPassToEvm, m_t.sender() );
@@ -444,7 +448,10 @@ bool AlethExecutive::finalize() {
 
 
         // Refunds must be applied before the miner gets the fees.
-        assert( m_ext->sub.refunds >= 0 );
+        if ( LondonForkPatch::isEnabledWhen( m_envInfo.committedBlockTimestamp() ) &&
+             m_ext->sub.refunds < 0 )
+            BOOST_THROW_EXCEPTION( std::runtime_error(
+                "AlethExecutive::finalize: negative gas refund (internal invariant violation)" ) );
         // EIP-3529: refund cap is gasUsed / maxRefundQuotient (2 pre-London, 5 London+). Read
         // the cap from the active schedule rather than hard-coding /2, so historic execution
         // matches normal execution after London activation.
@@ -455,18 +462,14 @@ bool AlethExecutive::finalize() {
     }
 
     if ( m_t ) {
-        // Use the same effective gas price as live execution so historic receipts agree with
-        // the live receipt: sender refund credit and author fee both use this price.
-        // SKALE does not implement Ethereum-style base-fee burn — non-FAIR credits the full
-        // effective fee to the author; FAIR applies its reward-share to that same effective fee
-        // (the remainder is effectively burnt, mirroring libethereum/Executive.cpp::finalize).
+        // Match live effective gas price for historic refund and author fee receipts.
+        // Non-FAIR credits the full fee; FAIR applies reward-share as in Executive::finalize.
         m_s.addBalance( m_t.sender(), m_gas * m_effectiveGasPrice );
 
         u256 feesEarned = ( m_t.gas() - m_gas ) * m_effectiveGasPrice;
 #ifdef FAIR
-        // Mirror Executive::finalize so historic FAIR execution credits the same author fee as
-        // live FAIR execution. Without this, replaying a FAIR block via the historic path would
-        // credit a larger author balance than the live block did.
+        // Mirror live FAIR author fee calculation during historic replay.
+        // Otherwise historic replay credits a larger author balance than the live block.
         EVMSchedule currentBlockSchedule = m_chainParams.makeEvmSchedule(
             m_envInfo.committedBlockTimestamp(), m_envInfo.number() );
         feesEarned = dev::calculateShareWithPrecision(
