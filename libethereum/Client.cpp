@@ -691,11 +691,9 @@ size_t Client::syncTransactions(
 #ifdef HISTORIC_STATE
         m_state.mutableHistoricState().rotateDbsIfNeeded( m_working.info().number() );
 #endif
-        // assert(m_state.m_db_write_lock.has_value());
 
         if ( LondonForkPatch::isEnabledWhen( static_cast< time_t >( _timestamp ) ) ) {
-            int64_t bn = m_working.info().number();
-            baseFeePerGas = ( bn > 0 ) ? gasBidPrice( static_cast< unsigned >( bn ) ) : u256( 1 );
+            baseFeePerGas = _gasPrice;
             if ( baseFeePerGas == 0 )
                 baseFeePerGas = 1;
         }
