@@ -369,6 +369,9 @@ bool AlethExecutive::go( OnOpFunc const& _onOp ) {
                 }
                 if ( out.size() > m_ext->evmSchedule().maxCodeSize )
                     BOOST_THROW_EXCEPTION( OutOfGas() );
+                // EIP-3541: reject contracts whose deployed code starts with 0xEF
+                else if ( m_ext->evmSchedule().eip3541Mode && !out.empty() && out[0] == 0xEF )
+                    BOOST_THROW_EXCEPTION( CodeStartsWith0xEF() );
                 else if ( out.size() * m_ext->evmSchedule().createDataGas <= m_gas ) {
                     if ( m_res )
                         m_res->codeDeposit = CodeDeposit::Success;
