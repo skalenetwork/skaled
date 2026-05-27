@@ -105,8 +105,7 @@ ImportResult TransactionQueue::import( Transaction const& _transaction, IfDroppe
             _transaction.safeSender();  // Perform EC recovery outside of the write lock
 
             UpgradeGuard ul( l );
-            ret =
-                manageImport_WITH_LOCK( h, _transaction, _allowFutureQueue, _stateNonce );
+            ret = manageImport_WITH_LOCK( h, _transaction, _allowFutureQueue, _stateNonce );
         }
     }
     return ret;
@@ -218,7 +217,6 @@ ImportResult TransactionQueue::manageImport_WITH_LOCK( h256 const& _h,
         if ( fs != m_future.end() ) {
             auto t = fs->second.find( _transaction.nonce() );
             if ( t != fs->second.end() ) {
-
                 // exact same tx already in future
                 if ( t->second.transaction.sha3() != _h )
                     return ImportResult::SameNonceAlreadyInQueue;
@@ -256,8 +254,7 @@ ImportResult TransactionQueue::manageImport_WITH_LOCK( h256 const& _h,
                 eraseFuture();
                 ImportResult ret = insertCurrent_WITH_LOCK( make_pair( _h, _transaction ) );
                 if ( ret == ImportResult::Success ) {
-                    BOOST_LOG( m_loggerTrace )
-                        << "Queued vaguely legit-looking transaction " << _h;
+                    BOOST_LOG( m_loggerTrace ) << "Queued vaguely legit-looking transaction " << _h;
                     m_onReady();
                 }
                 return ret;
@@ -279,7 +276,7 @@ ImportResult TransactionQueue::manageImport_WITH_LOCK( h256 const& _h,
                 BOOST_LOG( m_loggerTrace ) << "Queued vaguely legit-looking transaction " << _h;
                 m_onReady();
             }
-        // if future -> try insert in FTQ
+            // if future -> try insert in FTQ
         } else if ( _allowFutureQueue && _transaction.nonce() > _stateNonce ) {
             // may fail insertion if queue full
             ret = insertFuture_WITH_LOCK( make_pair( _h, _transaction ) );
@@ -288,8 +285,8 @@ ImportResult TransactionQueue::manageImport_WITH_LOCK( h256 const& _h,
         }
 
         if ( ret == ImportResult::QueueIsFull ) {
-            BOOST_LOG( m_loggerWarning ) << "Transaction queue is full. Rejecting transaction "
-                                         << _h;
+            BOOST_LOG( m_loggerWarning )
+                << "Transaction queue is full. Rejecting transaction " << _h;
         }
         return ret;
     } catch ( Exception const& _e ) {
@@ -331,8 +328,7 @@ u256 TransactionQueue::maxCurrentNonce_WITH_LOCK( Address const& _a ) const {
     return ret;
 }
 
-ImportResult TransactionQueue::insertCurrent_WITH_LOCK(
-    std::pair< h256, Transaction > const& _p ) {
+ImportResult TransactionQueue::insertCurrent_WITH_LOCK( std::pair< h256, Transaction > const& _p ) {
     if ( m_currentByHash.count( _p.first ) ) {
         BOOST_LOG( m_loggerWarning ) << "Transaction hash" << _p.first << "already in current";
         return ImportResult::Success;
@@ -359,8 +355,7 @@ ImportResult TransactionQueue::insertCurrent_WITH_LOCK(
     return ImportResult::Success;
 }
 
-ImportResult TransactionQueue::insertFuture_WITH_LOCK(
-    std::pair< h256, Transaction > const& _p ) {
+ImportResult TransactionQueue::insertFuture_WITH_LOCK( std::pair< h256, Transaction > const& _p ) {
     Transaction const& t = _p.second;
     size_t const transactionSizeBytes = t.toBytes().size();
 
@@ -516,7 +511,6 @@ void TransactionQueue::makeCurrent_WITH_LOCK( Transaction const& _t ) {
 
 bool TransactionQueue::promoteFutureTransactions_WITH_LOCK(
     Address const& _from, u256 const& _nonce ) {
-
     auto fs = m_future.find( _from );
     // no such sender in FTQ but in blocked promotions - remove from blocked promotions
     if ( fs == m_future.end() ) {
@@ -583,7 +577,6 @@ void TransactionQueue::retryBlockedPromotions_WITH_LOCK() {
         blockedPromotions.push_back( blockedPromotion );
 
     for ( auto const& blockedPromotion : blockedPromotions ) {
-
         // early exit if no capacity in CTQ
         if ( m_current.size() >= m_limit || m_currentSizeBytes >= m_currentSizeBytesLimit )
             return;

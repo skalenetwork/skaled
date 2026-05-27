@@ -47,13 +47,24 @@ namespace eth {
 
 /**
  * @brief Queue of verified transactions.
- * Maintains a current transaction queue (CTQ) sorted by nonce distance and gas price, plus a
- * future transaction queue (FTQ) for valid transactions whose nonce is not executable yet.
- * Keeps track of a 'blockedPromotions' mapping used to keep track of txs that were tried
- * to be promoted from FTQ to CTQ, but CTQ was full at the time.
- * This is needed since we only promote FTQ txs from a specific sender that must be in CTQ.
- * blockedPromotions solves the case where a FTQ that hasn't same sender in CTQ to be promoted.
- * @threadsafe
+ *
+ * Maintains two sub-queues:
+ *   - CTQ (current queue): transactions whose nonce equals the next expected nonce for their
+ *     sender, ordered by nonce distance and gas price.
+ *   - FTQ (future queue): transactions whose nonce is ahead of the next expected nonce and
+ *     therefore not yet executable. Requires allowFutureQueue to be enabled at import time.
+ *
+ * FTQ transactions are promoted to CTQ automatically once the preceding nonce becomes current
+ * (via makeCurrent_WITH_LOCK). However, if CTQ is at capacity when a promotion is attempted,
+ * the transaction stays in FTQ and the blocked nonce is recorded in m_blockedPromotions.
+ * Promotions for that sender are retried whenever CTQ capacity is freed (e.g. on drop or
+ * dropGood).
+ *
+ * Example: sender A has nonce 5 in FTQ. Transaction with nonce 4 is accepted (dropGood).
+ * makeCurrent_WITH_LOCK tries to promote nonce 5 to CTQ, but CTQ is full.
+ * m_blockedPromotions[A] = 5 is recorded. Later, an unrelated transaction is dropped from CTQ,
+ * freeing a slot. retryBlockedPromotions_WITH_LOCK fires and promotes nonce 5 successfully.
+ *
  */
 class TransactionQueue {
 public:
@@ -265,19 +276,16 @@ public:
             else if ( !_first.transaction && !_second.transaction )
                 return false;
 
-            auto it1 = queue.m_currentByAddressAndNonce.find(_first.transaction.sender());
-            auto it2 = queue.m_currentByAddressAndNonce.find(_second.transaction.sender());
+            auto it1 = queue.m_currentByAddressAndNonce.find( _first.transaction.sender() );
+            auto it2 = queue.m_currentByAddressAndNonce.find( _second.transaction.sender() );
 
-            if (it1 == queue.m_currentByAddressAndNonce.end() || it2 == queue.m_currentByAddressAndNonce.end())
+            if ( it1 == queue.m_currentByAddressAndNonce.end() ||
+                 it2 == queue.m_currentByAddressAndNonce.end() )
                 return _first.creationTimeMs < _second.creationTimeMs;
 
-            u256 const& height1 =
-                _first.transaction.nonce() -
-                it1->second.begin()->first;
+            u256 const& height1 = _first.transaction.nonce() - it1->second.begin()->first;
 
-            u256 const& height2 =
-                _second.transaction.nonce() -
-                it2->second.begin()->first;
+            u256 const& height2 = _second.transaction.nonce() - it2->second.begin()->first;
 
             if ( height1 != height2 ) {
                 // Prefer transactions closer to the sender's lowest current queued nonce.
@@ -400,8 +408,11 @@ private:
 
     std::unordered_map< Address, std::map< u256, PriorityQueue::iterator > >
         m_currentByAddressAndNonce;  ///< CTQ transactions grouped by account and nonce.
-    std::unordered_map< Address, std::map< u256, VerifiedTransaction > >
-        m_future;  ///< FTQ transactions grouped by account and nonce.
+    std::unordered_map< Address, std::map< u256, VerifiedTransaction > > m_future;  ///< FTQ
+                                                                                    ///< transactions
+                                                                                    ///< grouped by
+                                                                                    ///< account and
+                                                                                    ///< nonce.
 
     // For each sender, stores the first FTQ nonce that was ready for CTQ but could not be promoted
     // because CTQ was full. Entries are retried when CTQ capacity may have become available.
