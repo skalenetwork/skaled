@@ -408,11 +408,12 @@ private:
 
     std::unordered_map< Address, std::map< u256, PriorityQueue::iterator > >
         m_currentByAddressAndNonce;  ///< CTQ transactions grouped by account and nonce.
-    std::unordered_map< Address, std::map< u256, VerifiedTransaction > > m_future;  ///< FTQ
-                                                                                    ///< transactions
-                                                                                    ///< grouped by
-                                                                                    ///< account and
-                                                                                    ///< nonce.
+    std::unordered_map< Address, std::map< u256, VerifiedTransaction > >
+        m_future;  ///< FTQ
+                   ///< transactions
+                   ///< grouped by
+                   ///< account and
+                   ///< nonce.
 
     // For each sender, stores the first FTQ nonce that was ready for CTQ but could not be promoted
     // because CTQ was full. Entries are retried when CTQ capacity may have become available.
