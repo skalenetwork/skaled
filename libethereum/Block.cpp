@@ -529,8 +529,8 @@ tuple< TransactionReceipts, unsigned, Transactions > Block::syncEveryone( BlockC
         saveStateChanges( _bc, _transactions, context );
     }
 
-    return make_tuple(
-        context.receipts, context.receipts.size() - context.badCount, context.executedTransactions );
+    return make_tuple( context.receipts, context.receipts.size() - context.badCount,
+        context.executedTransactions );
 }
 
 std::pair< TransactionReceipts, unsigned > Block::recoverFromReceipts(
