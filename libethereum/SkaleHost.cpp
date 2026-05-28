@@ -673,6 +673,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::Transactions& _approvedTran
         checkStateRoot( _blockID, _winningNodeIndex, _stateRoot );
 
     std::vector< Transaction > outTxns;  // resultant Transaction vector
+    std::vector< Transaction > executedTxns;
 
     size_t n_succeeded;
 
@@ -728,7 +729,13 @@ void SkaleHost::createBlock( const ConsensusExtFace::Transactions& _approvedTran
 #ifdef FAIR
             _winningNodeIndex,
 #endif
-            _timeStamp );
+            _timeStamp, &executedTxns );
+
+        // remove txs from tx queue
+        for ( auto const& t : executedTxns ) {
+            m_debugTracer.tracepoint( "drop_good" );
+            m_tq.dropGood( t );
+        }
     }  // m_blockImportMutex
 
 #ifdef FAIR
@@ -1097,8 +1104,6 @@ std::vector< Transaction > SkaleHost::processRegularTransactions(
         }
 #endif
         outTxns.push_back( t );
-        m_debugTracer.tracepoint( "drop_good" );
-        m_tq.dropGood( t );
 #ifdef BITE
         if ( regularTxnsIterator != _decryptedTransactions.regularTxsMap->end() )
             ++regularTxnsIterator;
@@ -1144,8 +1149,6 @@ std::vector< Transaction > SkaleHost::processCTXTransactions(
 
         t.setCTXOrigin( ctxOrigins[i] );
         outTxns.push_back( t );
-        m_debugTracer.tracepoint( "drop_good" );
-        m_tq.dropGood( t );
         if ( ctxIterator != _decryptedTransactions.ctxTxsMap->end() )
             ++ctxIterator;
     }

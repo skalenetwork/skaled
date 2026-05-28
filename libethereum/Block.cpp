@@ -506,7 +506,7 @@ void Block::sanityCheckPartialTransactionReceipts( std::optional< BlockNumber > 
     }
 }
 
-tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _bc,
+tuple< TransactionReceipts, unsigned, Transactions > Block::syncEveryone( BlockChain const& _bc,
     const Transactions& _transactions, uint64_t _timestamp, u256 _gasPrice ) {
     if ( isSealed() )
         BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
@@ -518,7 +518,8 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
     context.singleCommitEnabled = SingleStateCommitPerBlockPatch::isEnabledInWorkingBlock();
 
     if ( context.singleCommitEnabled && isCurrentBlockCommitted() ) {
-        return recoverFromReceipts( _transactions, _timestamp );
+        auto recovered = recoverFromReceipts( _transactions, _timestamp );
+        return make_tuple( recovered.first, recovered.second, Transactions() );
     }
 
     prepareStateForSync( _timestamp, context );
@@ -528,7 +529,8 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
         saveStateChanges( _bc, _transactions, context );
     }
 
-    return make_tuple( context.receipts, context.receipts.size() - context.badCount );
+    return make_tuple(
+        context.receipts, context.receipts.size() - context.badCount, context.executedTransactions );
 }
 
 std::pair< TransactionReceipts, unsigned > Block::recoverFromReceipts(
@@ -630,6 +632,7 @@ void Block::executeTransactions( BlockChain const& _bc, const Transactions& _tra
                 // multiple commits mode
                 m_transactions.push_back( tr );
                 m_transactionSet.insert( tr.sha3() );
+                _context.executedTransactions.push_back( tr );
                 continue;
             }
 
@@ -687,6 +690,8 @@ std::optional< TransactionReceipt > Block::executeSingleTransaction( BlockChain 
     }
 
     ExecutionResult res = execute( _bc.lastBlockHashes(), _tx, _permanence, OnOpFunc(), _txIndex );
+    if ( res.excepted != TransactionException::WouldNotBeInBlock )
+        _context.executedTransactions.push_back( _tx );
 
 #ifdef BITE
     if ( res.excepted != TransactionException::None ) {

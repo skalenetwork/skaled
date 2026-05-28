@@ -560,7 +560,7 @@ size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
 #ifdef FAIR
     uint64_t _winningNodeIndex,
 #endif
-    uint64_t _timestamp ) {
+    uint64_t _timestamp, Transactions* _executedTransactions ) {
     // on schain creation, SnapshotAgent needs timestamp of block 1
     // so we use this HACK
     // pass block number 0 as for bigger BN it is initialized in init()
@@ -589,7 +589,7 @@ size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
 #endif
 
     size_t cntSucceeded = 0;
-    cntSucceeded = syncTransactions( _transactions, _gasPrice, _timestamp );
+    cntSucceeded = syncTransactions( _transactions, _gasPrice, _timestamp, _executedTransactions );
     sealUnconditionally( false );
     importWorkingBlock();
 
@@ -663,8 +663,8 @@ bool Client::updateGroupIfNeeded() {
 
 #endif  // BITE
 
-size_t Client::syncTransactions(
-    const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {
+size_t Client::syncTransactions( const Transactions& _transactions, u256 _gasPrice,
+    uint64_t _timestamp, Transactions* _executedTransactions ) {
     assert( m_skaleHost );
 
     while ( m_working.isSealed() ) {
@@ -678,6 +678,7 @@ size_t Client::syncTransactions(
 
     TransactionReceipts newPendingReceipts;
     unsigned goodReceipts;
+    Transactions executedTransactions;
 
     DEV_WRITE_GUARDED( x_working ) {
         assert( !m_working.isSealed() );
@@ -687,7 +688,7 @@ size_t Client::syncTransactions(
 #endif
         // assert(m_state.m_db_write_lock.has_value());
 
-        tie( newPendingReceipts, goodReceipts ) =
+        tie( newPendingReceipts, goodReceipts, executedTransactions ) =
             m_working.syncEveryone( bc(), _transactions, _timestamp, _gasPrice );
         m_state = m_state.createStateCopyAndClearCaches();
 #ifdef HISTORIC_STATE
@@ -700,6 +701,9 @@ size_t Client::syncTransactions(
     DEV_READ_GUARDED( x_working )
     DEV_WRITE_GUARDED( x_postSeal )
     m_postSeal = m_working;
+
+    if ( _executedTransactions )
+        *_executedTransactions = std::move( executedTransactions );
 
     // Tell farm about new transaction (i.e. restart mining).
     onPostStateChanged();

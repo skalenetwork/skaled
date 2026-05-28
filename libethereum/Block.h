@@ -266,7 +266,7 @@ public:
         BlockChain const& _bc, h256 const& _blockHash, BlockHeader const& _bi = BlockHeader() );
 
     /// Sync all transactions unconditionally
-    std::tuple< TransactionReceipts, unsigned > syncEveryone( BlockChain const& _bc,
+    std::tuple< TransactionReceipts, unsigned, Transactions > syncEveryone( BlockChain const& _bc,
         const Transactions& _transactions, uint64_t _timestamp, u256 _gasPrice );
 
     /// Execute all transactions within a given block.
@@ -346,6 +346,7 @@ private:
         bool singleCommitEnabled = false;
         TransactionReceipts receipts;
         TransactionReceipts receiptsOfCommitted;
+        Transactions executedTransactions;
         unsigned badCount = 0;
     };
 

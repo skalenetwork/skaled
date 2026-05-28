@@ -640,6 +640,8 @@ void TransactionQueue::dropGood( Transaction const& _t ) {
             removedCurrentInfo = true;
         }
         removedCurrent = remove_WITH_LOCK( _t.sha3() );
+        if ( !removedCurrent && !_t.isInvalid() )
+            removeFuture_WITH_LOCK( _t );
     }
 
     if ( !_t.isInvalid() ) {
