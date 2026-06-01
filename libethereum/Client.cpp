@@ -590,8 +590,7 @@ size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
 #endif
 
     size_t cntSucceeded = 0;
-    cntSucceeded = syncTransactions(
-        _transactions, _gasPrice, _timestamp, _onTransactionConsumed,
+    cntSucceeded = syncTransactions( _transactions, _gasPrice, _timestamp, _onTransactionConsumed,
         _needsQueueReadyNotification );
     sealUnconditionally( false );
     importWorkingBlock();
@@ -693,8 +692,8 @@ size_t Client::syncTransactions( const Transactions& _transactions, u256 _gasPri
         // assert(m_state.m_db_write_lock.has_value());
 
         tie( newPendingReceipts, goodReceipts, needsQueueReadyNotification ) =
-            m_working.syncEveryone( bc(), _transactions, _timestamp, _gasPrice,
-                _onTransactionConsumed );
+            m_working.syncEveryone(
+                bc(), _transactions, _timestamp, _gasPrice, _onTransactionConsumed );
         m_state = m_state.createStateCopyAndClearCaches();
 #ifdef HISTORIC_STATE
         // make sure the trie in new state object points to the new state root

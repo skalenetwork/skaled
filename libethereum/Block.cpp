@@ -85,8 +85,7 @@ bool notifyConsumedTransactions( Block::OnTransactionConsumed const& _onTransact
 
     bool needsQueueReadyNotification = false;
     for ( auto const& tx : _transactions )
-        needsQueueReadyNotification =
-            _onTransactionConsumed( tx ) || needsQueueReadyNotification;
+        needsQueueReadyNotification = _onTransactionConsumed( tx ) || needsQueueReadyNotification;
     return needsQueueReadyNotification;
 }
 
@@ -550,7 +549,7 @@ tuple< TransactionReceipts, unsigned, bool > Block::syncEveryone( BlockChain con
                 // so consumed CTXs are already absent. Only clean regular queues here.
                 if ( !_transactions[i].isCTX() )
 #endif
-                queueCleanupTransactions.push_back( _transactions[i] );
+                    queueCleanupTransactions.push_back( _transactions[i] );
             }
             cumulativeGas = recovered.first[i].cumulativeGasUsed();
         }
@@ -672,8 +671,7 @@ void Block::executeTransactions( BlockChain const& _bc, const Transactions& _tra
                 // multiple commits mode
                 m_transactions.push_back( tr );
                 m_transactionSet.insert( tr.sha3() );
-                u256 previousCumulativeGas =
-                    i == 0 ? 0 : savedReceipts[i - 1].cumulativeGasUsed();
+                u256 previousCumulativeGas = i == 0 ? 0 : savedReceipts[i - 1].cumulativeGasUsed();
                 if ( receiptAdvancedGas( savedReceipts[i], previousCumulativeGas ) )
                     _context.queueCleanupTransactions.push_back( tr );
                 continue;

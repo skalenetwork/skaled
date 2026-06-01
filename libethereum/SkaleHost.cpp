@@ -1120,7 +1120,6 @@ std::vector< Transaction > SkaleHost::processCTXTransactions(
     const ConsensusExtFace::Transactions& _approvedTransactions,
     [[maybe_unused]] const dev::eth::BlockHeader& latestInfo,
     DecryptedTransactions _decryptedTransactions ) {
-        
     CHECK_EXPRESSION( _decryptedTransactions.ctxTxsMap );
 
     std::vector< Transaction > outTxns;
@@ -1162,8 +1161,8 @@ std::vector< Transaction > SkaleHost::processCTXTransactions(
     if ( !ctxOrigins ) {
         BOOST_LOG( m_loggerError )
             << "Received CTX list that does not match next expected pending BITE2 CTXs";
-        BOOST_THROW_EXCEPTION(
-            std::runtime_error( "Block CTX list does not match next expected pending BITE2 CTXs" ) );
+        BOOST_THROW_EXCEPTION( std::runtime_error(
+            "Block CTX list does not match next expected pending BITE2 CTXs" ) );
     }
 
     for ( size_t i = 0; i < outTxns.size(); ++i )

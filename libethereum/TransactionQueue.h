@@ -163,8 +163,8 @@ public:
     /// Remove a transaction consumed by block execution and promote following future transactions
     /// when possible.
     /// @param _t Accepted transaction
-    DropGoodResult dropGood( Transaction const& _t,
-        ReadyNotification _notification = ReadyNotification::Notify );
+    DropGoodResult dropGood(
+        Transaction const& _t, ReadyNotification _notification = ReadyNotification::Notify );
 
     /// Notify ready listeners after a caller deferred queue-ready notification.
     void notifyReady();

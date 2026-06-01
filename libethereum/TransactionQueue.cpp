@@ -589,9 +589,9 @@ bool TransactionQueue::retryBlockedPromotions_WITH_LOCK() {
         auto current = m_blockedPromotions.find( blockedPromotion.first );
         if ( current == m_blockedPromotions.end() || current->second != blockedPromotion.second )
             continue;
-        readyChanged =
-            promoteFutureTransactions_WITH_LOCK( blockedPromotion.first, blockedPromotion.second ) ||
-            readyChanged;
+        readyChanged = promoteFutureTransactions_WITH_LOCK(
+                           blockedPromotion.first, blockedPromotion.second ) ||
+                       readyChanged;
     }
 
     return readyChanged;
