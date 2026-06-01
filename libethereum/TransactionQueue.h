@@ -37,6 +37,7 @@
 #include <deque>
 #include <functional>
 #include <mutex>
+#include <optional>
 
 #ifdef BITE
 #include "BITE2TransactionQueue.h"
@@ -68,6 +69,13 @@ namespace eth {
  */
 class TransactionQueue {
 public:
+    enum class ReadyNotification { Notify, Defer };
+
+    struct DropGoodResult {
+        bool removed = false;
+        bool readyChanged = false;
+    };
+
     struct Limits {
         size_t currentLimit;
         size_t futureLimit;
@@ -152,9 +160,14 @@ public:
     /// @param _t Transaction hash
     void setFuture( h256 const& _t );
 
-    /// Remove an accepted transaction and promote following future transactions when possible.
+    /// Remove a transaction consumed by block execution and promote following future transactions
+    /// when possible.
     /// @param _t Accepted transaction
-    void dropGood( Transaction const& _t );
+    DropGoodResult dropGood( Transaction const& _t,
+        ReadyNotification _notification = ReadyNotification::Notify );
+
+    /// Notify ready listeners after a caller deferred queue-ready notification.
+    void notifyReady();
 
 #ifdef BITE
     /// Get all pending BITE2 transactions. Returned transactions are not removed from the queue
@@ -173,6 +186,10 @@ public:
     void commitTempBITE2Transactions();
     /// Get origin for first N CTXs in queue
     std::vector< dev::h256 > getNCTXOrigins( size_t _n ) const;
+
+    /// Verifies CTXs exactly match the next expected pending BITE2 CTXs and returns their origins.
+    std::optional< std::vector< dev::h256 > > validateNextExpectedBITE2CTXsAndGetOrigins(
+        std::vector< Transaction > const& _ctxs ) const;
 
     void clearTempBITE2Transactions();
 
@@ -372,7 +389,8 @@ private:
     bool promoteFutureTransactions_WITH_LOCK( Address const& _from, u256 const& _nonce );
 
     /// Retries cached FTQ-to-CTQ promotions after CTQ capacity may have been freed.
-    void retryBlockedPromotions_WITH_LOCK();
+    /// @returns true if at least one transaction was moved to CTQ.
+    bool retryBlockedPromotions_WITH_LOCK();
 
     /**
      * Clears _from's cached promotion when dropping _nonce breaks the contiguous path to the cached
@@ -381,7 +399,10 @@ private:
     void invalidateBlockedPromotion_WITH_LOCK( Address const& _from, u256 const& _nonce );
 
     /// Promotes future transactions that immediately follow the newly current transaction _t.
-    void makeCurrent_WITH_LOCK( Transaction const& _t );
+    /// @returns true if at least one transaction was moved to CTQ.
+    bool makeCurrent_WITH_LOCK( Transaction const& _t );
+
+    DropGoodResult dropGood_WITH_LOCK( Transaction const& _t );
 
     /// Removes a transaction from CTQ and its secondary indexes.
     bool remove_WITH_LOCK( h256 const& _txHash );
@@ -391,7 +412,7 @@ private:
 
     u256 maxNonce_WITH_LOCK( Address const& _a ) const;
     u256 maxCurrentNonce_WITH_LOCK( Address const& _a ) const;
-    void setFuture_WITH_LOCK( h256 const& _t );
+    bool setFuture_WITH_LOCK( h256 const& _t );
 
     mutable SharedMutex m_lock;                    ///< General lock.
     mutable boost::condition_variable_any m_cond;  // for wait/notify

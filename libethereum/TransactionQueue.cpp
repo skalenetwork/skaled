@@ -450,10 +450,10 @@ unsigned TransactionQueue::waiting( Address const& _a ) const {
     return ret;
 }
 
-void TransactionQueue::setFuture_WITH_LOCK( h256 const& _txHash ) {
+bool TransactionQueue::setFuture_WITH_LOCK( h256 const& _txHash ) {
     auto it = m_currentByHash.find( _txHash );
     if ( it == m_currentByHash.end() )
-        return;
+        return false;
 
     VerifiedTransaction const& st = *( it->second );
 
@@ -494,19 +494,26 @@ void TransactionQueue::setFuture_WITH_LOCK( h256 const& _txHash ) {
     }
 
     if ( movedToFuture )
-        retryBlockedPromotions_WITH_LOCK();
+        return retryBlockedPromotions_WITH_LOCK();
+
+    return false;
 }
 
 // Note - this function is only used for tests
 void TransactionQueue::setFuture( h256 const& _txHash ) {
-    WriteGuard l( m_lock );
-    return setFuture_WITH_LOCK( _txHash );
+    bool readyChanged = false;
+    {
+        WriteGuard l( m_lock );
+        readyChanged = setFuture_WITH_LOCK( _txHash );
+    }
+    if ( readyChanged )
+        notifyReady();
 }
 
-void TransactionQueue::makeCurrent_WITH_LOCK( Transaction const& _t ) {
+bool TransactionQueue::makeCurrent_WITH_LOCK( Transaction const& _t ) {
     MICROPROFILE_SCOPEI( "TransactionQueue", "makeCurrent_WITH_LOCK", MP_DEEPSKYBLUE );
 
-    promoteFutureTransactions_WITH_LOCK( _t.from(), _t.nonce() + 1 );
+    return promoteFutureTransactions_WITH_LOCK( _t.from(), _t.nonce() + 1 );
 }
 
 bool TransactionQueue::promoteFutureTransactions_WITH_LOCK(
@@ -561,31 +568,33 @@ bool TransactionQueue::promoteFutureTransactions_WITH_LOCK(
             m_blockedPromotions.erase( blockedPromotion );
     }
 
-    if ( newCurrent )
-        m_onReady();
-
     return newCurrent;
 }
 
-void TransactionQueue::retryBlockedPromotions_WITH_LOCK() {
+bool TransactionQueue::retryBlockedPromotions_WITH_LOCK() {
     if ( m_blockedPromotions.empty() )
-        return;
+        return false;
 
     std::vector< std::pair< Address, u256 > > blockedPromotions;
     blockedPromotions.reserve( m_blockedPromotions.size() );
     for ( auto const& blockedPromotion : m_blockedPromotions )
         blockedPromotions.push_back( blockedPromotion );
 
+    bool readyChanged = false;
     for ( auto const& blockedPromotion : blockedPromotions ) {
         // early exit if no capacity in CTQ
         if ( m_current.size() >= m_limit || m_currentSizeBytes >= m_currentSizeBytesLimit )
-            return;
+            return readyChanged;
 
         auto current = m_blockedPromotions.find( blockedPromotion.first );
         if ( current == m_blockedPromotions.end() || current->second != blockedPromotion.second )
             continue;
-        promoteFutureTransactions_WITH_LOCK( blockedPromotion.first, blockedPromotion.second );
+        readyChanged =
+            promoteFutureTransactions_WITH_LOCK( blockedPromotion.first, blockedPromotion.second ) ||
+            readyChanged;
     }
+
+    return readyChanged;
 }
 
 void TransactionQueue::invalidateBlockedPromotion_WITH_LOCK(
@@ -596,38 +605,61 @@ void TransactionQueue::invalidateBlockedPromotion_WITH_LOCK(
 }
 
 void TransactionQueue::drop( h256 const& _txHash ) {
-    UpgradableGuard l( m_lock );
+    bool readyChanged = false;
+    {
+        UpgradableGuard l( m_lock );
 
-    if ( !m_known.count( _txHash ) )
-        return;
+        if ( !m_known.count( _txHash ) )
+            return;
 
-    UpgradeGuard ul( l );
-    m_dropped.insert( _txHash, true );
+        UpgradeGuard ul( l );
+        m_dropped.insert( _txHash, true );
 
-    auto current = m_currentByHash.find( _txHash );
-    if ( current != m_currentByHash.end() )
-        invalidateBlockedPromotion_WITH_LOCK(
-            ( *current->second ).transaction.from(), ( *current->second ).transaction.nonce() );
+        auto current = m_currentByHash.find( _txHash );
+        if ( current != m_currentByHash.end() )
+            invalidateBlockedPromotion_WITH_LOCK(
+                ( *current->second ).transaction.from(), ( *current->second ).transaction.nonce() );
 
-    if ( remove_WITH_LOCK( _txHash ) )
-        retryBlockedPromotions_WITH_LOCK();
+        if ( remove_WITH_LOCK( _txHash ) )
+            readyChanged = retryBlockedPromotions_WITH_LOCK();
+    }
+
+    if ( readyChanged )
+        notifyReady();
 }
 
-void TransactionQueue::dropGood( Transaction const& _t ) {
+TransactionQueue::DropGoodResult TransactionQueue::dropGood(
+    Transaction const& _t, ReadyNotification _notification ) {
     MICROPROFILE_SCOPEI( "TransactionQueue", "dropGood", MP_CORNSILK );
     MICROPROFILE_ENTERI( "TransactionQueue", "lock", MP_OLDLACE );
-    WriteGuard l( m_lock );
-    MICROPROFILE_LEAVE();
+    DropGoodResult result;
+    {
+        WriteGuard l( m_lock );
+        MICROPROFILE_LEAVE();
+        result = dropGood_WITH_LOCK( _t );
+    }
+
+    if ( result.readyChanged && _notification == ReadyNotification::Notify )
+        notifyReady();
+
+    return result;
+}
+
+TransactionQueue::DropGoodResult TransactionQueue::dropGood_WITH_LOCK( Transaction const& _t ) {
+    DropGoodResult result;
 
 #ifdef BITE
     // BITE transactions are stored separately
     // they are also stored in the strict order
     // delete and return
-    if ( m_bite2Queue.dropGood( _t ) )
-        return;
+    if ( m_bite2Queue.dropGood( _t ) ) {
+        result.removed = true;
+        return result;
+    }
 #endif
 
     bool removedCurrent = false;
+    bool removedFuture = false;
     Address removedFrom;
     u256 removedNonce;
     bool removedCurrentInfo = false;
@@ -641,39 +673,52 @@ void TransactionQueue::dropGood( Transaction const& _t ) {
         }
         removedCurrent = remove_WITH_LOCK( _t.sha3() );
         if ( !removedCurrent && !_t.isInvalid() )
-            removeFuture_WITH_LOCK( _t );
+            removedFuture = removeFuture_WITH_LOCK( _t );
     }
+    result.removed = removedCurrent || removedFuture;
 
     if ( !_t.isInvalid() ) {
         auto blockedPromotion = m_blockedPromotions.find( _t.from() );
         if ( blockedPromotion != m_blockedPromotions.end() &&
              blockedPromotion->second <= _t.nonce() )
             m_blockedPromotions.erase( blockedPromotion );
-        makeCurrent_WITH_LOCK( _t );
+        result.readyChanged = makeCurrent_WITH_LOCK( _t ) || result.readyChanged;
     } else if ( removedCurrentInfo )
         invalidateBlockedPromotion_WITH_LOCK( removedFrom, removedNonce );
 
     if ( removedCurrent )
-        retryBlockedPromotions_WITH_LOCK();
+        result.readyChanged = retryBlockedPromotions_WITH_LOCK() || result.readyChanged;
+
+    return result;
 }
 
 void TransactionQueue::dropMany( h256Hash const& _txHashes ) {
-    WriteGuard l( m_lock );
-
+    bool readyChanged = false;
     bool removedCurrent = false;
-    for ( auto&& _txHash : _txHashes ) {
-        if ( !m_known.count( _txHash ) )
-            continue;
-        m_dropped.insert( _txHash, true );
-        auto current = m_currentByHash.find( _txHash );
-        if ( current != m_currentByHash.end() )
-            invalidateBlockedPromotion_WITH_LOCK(
-                ( *current->second ).transaction.from(), ( *current->second ).transaction.nonce() );
-        removedCurrent = remove_WITH_LOCK( _txHash ) || removedCurrent;
+    {
+        WriteGuard l( m_lock );
+
+        for ( auto&& _txHash : _txHashes ) {
+            if ( !m_known.count( _txHash ) )
+                continue;
+            m_dropped.insert( _txHash, true );
+            auto current = m_currentByHash.find( _txHash );
+            if ( current != m_currentByHash.end() )
+                invalidateBlockedPromotion_WITH_LOCK( ( *current->second ).transaction.from(),
+                    ( *current->second ).transaction.nonce() );
+            removedCurrent = remove_WITH_LOCK( _txHash ) || removedCurrent;
+        }
+
+        if ( removedCurrent )
+            readyChanged = retryBlockedPromotions_WITH_LOCK();
     }
 
-    if ( removedCurrent )
-        retryBlockedPromotions_WITH_LOCK();
+    if ( readyChanged )
+        notifyReady();
+}
+
+void TransactionQueue::notifyReady() {
+    m_onReady();
 }
 
 void TransactionQueue::clear() {
@@ -728,6 +773,12 @@ void TransactionQueue::clearTempBITE2Transactions() {
 
 std::vector< dev::h256 > TransactionQueue::getNCTXOrigins( size_t _n ) const {
     return m_bite2Queue.getNCTXOrigins( _n );
+}
+
+std::optional< std::vector< dev::h256 > >
+TransactionQueue::validateNextExpectedBITE2CTXsAndGetOrigins(
+    std::vector< Transaction > const& _ctxs ) const {
+    return m_bite2Queue.validateNextExpectedCTXsAndGetOrigins( _ctxs );
 }
 
 void TransactionQueue::setBITE2QueueOnInit( std::deque< Transaction >&& _ctxQueue ) {

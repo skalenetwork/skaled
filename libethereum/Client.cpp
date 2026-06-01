@@ -560,7 +560,8 @@ size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
 #ifdef FAIR
     uint64_t _winningNodeIndex,
 #endif
-    uint64_t _timestamp, Transactions* _executedTransactions ) {
+    uint64_t _timestamp, Block::OnTransactionConsumed const& _onTransactionConsumed,
+    bool* _needsQueueReadyNotification ) {
     // on schain creation, SnapshotAgent needs timestamp of block 1
     // so we use this HACK
     // pass block number 0 as for bigger BN it is initialized in init()
@@ -589,7 +590,9 @@ size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
 #endif
 
     size_t cntSucceeded = 0;
-    cntSucceeded = syncTransactions( _transactions, _gasPrice, _timestamp, _executedTransactions );
+    cntSucceeded = syncTransactions(
+        _transactions, _gasPrice, _timestamp, _onTransactionConsumed,
+        _needsQueueReadyNotification );
     sealUnconditionally( false );
     importWorkingBlock();
 
@@ -664,7 +667,8 @@ bool Client::updateGroupIfNeeded() {
 #endif  // BITE
 
 size_t Client::syncTransactions( const Transactions& _transactions, u256 _gasPrice,
-    uint64_t _timestamp, Transactions* _executedTransactions ) {
+    uint64_t _timestamp, Block::OnTransactionConsumed const& _onTransactionConsumed,
+    bool* _needsQueueReadyNotification ) {
     assert( m_skaleHost );
 
     while ( m_working.isSealed() ) {
@@ -678,7 +682,7 @@ size_t Client::syncTransactions( const Transactions& _transactions, u256 _gasPri
 
     TransactionReceipts newPendingReceipts;
     unsigned goodReceipts;
-    Transactions executedTransactions;
+    bool needsQueueReadyNotification = false;
 
     DEV_WRITE_GUARDED( x_working ) {
         assert( !m_working.isSealed() );
@@ -688,8 +692,9 @@ size_t Client::syncTransactions( const Transactions& _transactions, u256 _gasPri
 #endif
         // assert(m_state.m_db_write_lock.has_value());
 
-        tie( newPendingReceipts, goodReceipts, executedTransactions ) =
-            m_working.syncEveryone( bc(), _transactions, _timestamp, _gasPrice );
+        tie( newPendingReceipts, goodReceipts, needsQueueReadyNotification ) =
+            m_working.syncEveryone( bc(), _transactions, _timestamp, _gasPrice,
+                _onTransactionConsumed );
         m_state = m_state.createStateCopyAndClearCaches();
 #ifdef HISTORIC_STATE
         // make sure the trie in new state object points to the new state root
@@ -702,8 +707,8 @@ size_t Client::syncTransactions( const Transactions& _transactions, u256 _gasPri
     DEV_WRITE_GUARDED( x_postSeal )
     m_postSeal = m_working;
 
-    if ( _executedTransactions )
-        *_executedTransactions = std::move( executedTransactions );
+    if ( _needsQueueReadyNotification )
+        *_needsQueueReadyNotification = needsQueueReadyNotification;
 
     // Tell farm about new transaction (i.e. restart mining).
     onPostStateChanged();

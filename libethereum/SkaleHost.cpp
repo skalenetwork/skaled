@@ -27,6 +27,7 @@
 #include <atomic>
 #include <chrono>
 #include <future>
+#include <stdexcept>
 #include <string>
 
 using namespace std;
@@ -673,7 +674,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::Transactions& _approvedTran
         checkStateRoot( _blockID, _winningNodeIndex, _stateRoot );
 
     std::vector< Transaction > outTxns;  // resultant Transaction vector
-    std::vector< Transaction > executedTxns;
+    bool needsQueueReadyNotification = false;
 
     size_t n_succeeded;
 
@@ -720,6 +721,11 @@ void SkaleHost::createBlock( const ConsensusExtFace::Transactions& _approvedTran
 
         m_debugTracer.tracepoint( "import_block" );
 
+        auto onTransactionConsumed = [this]( Transaction const& _tx ) {
+            m_debugTracer.tracepoint( "drop_good" );
+            return m_tq.dropGood( _tx, TransactionQueue::ReadyNotification::Defer ).readyChanged;
+        };
+
         n_succeeded = m_client.importTransactionsAsBlock( outTxns,
 
 #ifdef BITE
@@ -729,14 +735,11 @@ void SkaleHost::createBlock( const ConsensusExtFace::Transactions& _approvedTran
 #ifdef FAIR
             _winningNodeIndex,
 #endif
-            _timeStamp, &executedTxns );
-
-        // remove txs from tx queue
-        for ( auto const& t : executedTxns ) {
-            m_debugTracer.tracepoint( "drop_good" );
-            m_tq.dropGood( t );
-        }
+            _timeStamp, onTransactionConsumed, &needsQueueReadyNotification );
     }  // m_blockImportMutex
+
+    if ( needsQueueReadyNotification )
+        m_tq.notifyReady();
 
 #ifdef FAIR
     syncNodeGroups();
@@ -1117,9 +1120,12 @@ std::vector< Transaction > SkaleHost::processCTXTransactions(
     const ConsensusExtFace::Transactions& _approvedTransactions,
     [[maybe_unused]] const dev::eth::BlockHeader& latestInfo,
     DecryptedTransactions _decryptedTransactions ) {
-    std::vector< dev::h256 > ctxOrigins = m_tq.getNCTXOrigins( _approvedTransactions.sizeCTX() );
-    std::vector< Transaction > outTxns;
+        
     CHECK_EXPRESSION( _decryptedTransactions.ctxTxsMap );
+
+    std::vector< Transaction > outTxns;
+    outTxns.reserve( _approvedTransactions.sizeCTX() );
+
     auto ctxIterator = _decryptedTransactions.ctxTxsMap->begin();
     for ( size_t i = 0; i < _approvedTransactions.sizeCTX(); ++i ) {
         const bytes& data = _approvedTransactions.at( i );
@@ -1147,11 +1153,22 @@ std::vector< Transaction > SkaleHost::processCTXTransactions(
 
         // no POW for CTXs
 
-        t.setCTXOrigin( ctxOrigins[i] );
         outTxns.push_back( t );
         if ( ctxIterator != _decryptedTransactions.ctxTxsMap->end() )
             ++ctxIterator;
     }
+
+    auto ctxOrigins = m_tq.validateNextExpectedBITE2CTXsAndGetOrigins( outTxns );
+    if ( !ctxOrigins ) {
+        BOOST_LOG( m_loggerError )
+            << "Received CTX list that does not match next expected pending BITE2 CTXs";
+        BOOST_THROW_EXCEPTION(
+            std::runtime_error( "Block CTX list does not match next expected pending BITE2 CTXs" ) );
+    }
+
+    for ( size_t i = 0; i < outTxns.size(); ++i )
+        outTxns[i].setCTXOrigin( ( *ctxOrigins )[i] );
+
     return outTxns;
 }
 #endif
