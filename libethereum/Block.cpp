@@ -70,8 +70,19 @@ public:
     void clear() override {}
 };
 
-bool transactionWasConsumed( ExecutionResult const& _res ) {
-    return _res.excepted != TransactionException::WouldNotBeInBlock;
+bool shouldKeepRejectedTransactionQueued( Transaction const& _tx, State const& _state ) {
+    if ( _tx.isInvalid() || !_tx.hasSignature() || _tx.hasZeroSignature() )
+        return false;
+
+    return _tx.nonce() > _state.getNonce( _tx.safeSender() );
+}
+
+bool transactionNeedsQueueCleanup(
+    Transaction const& _tx, ExecutionResult const& _res, State const& _state ) {
+    if ( _res.excepted != TransactionException::WouldNotBeInBlock )
+        return true;
+
+    return !shouldKeepRejectedTransactionQueued( _tx, _state );
 }
 
 bool receiptAdvancedGas( TransactionReceipt const& _receipt, u256 const& _previousCumulativeGas ) {
@@ -729,8 +740,12 @@ std::optional< TransactionReceipt > Block::executeSingleTransaction( BlockChain 
                     nullReceipt.rlp(), info().number(), _txIndex );
             }
             ++_context.badCount;
+            if ( !shouldKeepRejectedTransactionQueued( _tx, m_state ) )
+                _context.queueCleanupTransactions.push_back( _tx );
             return nullReceipt;
         }
+        if ( !shouldKeepRejectedTransactionQueued( _tx, m_state ) )
+            _context.queueCleanupTransactions.push_back( _tx );
         return std::nullopt;
     }
 
@@ -749,7 +764,7 @@ std::optional< TransactionReceipt > Block::executeSingleTransaction( BlockChain 
     }
 #endif
 
-    if ( transactionWasConsumed( res ) )
+    if ( transactionNeedsQueueCleanup( _tx, res, m_state ) )
         _context.queueCleanupTransactions.push_back( _tx );
 
     if ( !_context.singleCommitEnabled && !m_receipts.empty() &&
