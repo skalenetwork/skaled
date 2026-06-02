@@ -413,7 +413,8 @@ Json::Value Eth::eth_inspectTransaction( std::string const& _rlp ) {
     try {
         return toJson( Transaction( jsToBytes( _rlp, OnFailed::Throw ),
             CheckTransaction::Everything, EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
-            InvalidTransactionFormatPatch::isEnabledInWorkingBlock() ) );
+            InvalidTransactionFormatPatch::isEnabledInWorkingBlock(),
+            BerlinForkPatch::isEnabledInWorkingBlock() ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
@@ -426,7 +427,8 @@ string Eth::eth_sendRawTransaction( std::string const& _rlp ) {
     // will be checked as a part of transaction import
     Transaction t( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::None, false,
         EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
-        InvalidTransactionFormatPatch::isEnabledInWorkingBlock()
+        InvalidTransactionFormatPatch::isEnabledInWorkingBlock(),
+        BerlinForkPatch::isEnabledInWorkingBlock()
 #ifdef BITE
             ,
         Bite2Patch::isEnabledInWorkingBlock()

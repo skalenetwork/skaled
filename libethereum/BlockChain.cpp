@@ -1875,7 +1875,8 @@ VerifiedBlockRef BlockChain::verifyBlock( bytesConstRef _block,
                         CheckTransaction::Everything :
                         CheckTransaction::None,
                     false, EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
-                    InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp )
+                    InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp ),
+                    BerlinForkPatch::isEnabledWhen( blockTimestamp )
 #ifdef BITE
                         ,
                     Bite2Patch::isEnabledWhen( blockTimestamp )
@@ -1937,6 +1938,7 @@ std::deque< Transaction > BlockChain::pendingCTXsList() const {
         Transaction tx( entry[0].data(), CheckTransaction::None, true,
             EIP1559TransactionsPatch::isEnabledWhen( prevBlockTimestamp ),
             InvalidTransactionFormatPatch::isEnabledWhen( prevBlockTimestamp ),
+            BerlinForkPatch::isEnabledWhen( prevBlockTimestamp ),
             Bite2Patch::isEnabledWhen( prevBlockTimestamp ) );
         tx.setCTXOrigin( entry[1].toHash< dev::h256 >() );
         ctxs.push_back( std::move( tx ) );
