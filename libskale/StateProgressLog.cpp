@@ -155,9 +155,10 @@ std::optional< CommittedProgressData > StateProgressLog::loadProgressData() cons
         for ( auto const& item : rlp[4] ) {
             CHECK_EXPRESSION( item.isList() && item.itemCount() == 2 );
             dev::eth::Transaction tx( item[0].data(), dev::eth::CheckTransaction::None, true,
-                EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
-                InvalidTransactionFormatPatch::isEnabledInWorkingBlock(),
-                BerlinForkPatch::isEnabledInWorkingBlock(), Bite2Patch::isEnabledInWorkingBlock() );
+                EIP1559TransactionsPatch::isEnabledWhen( data.timestamp ),
+                InvalidTransactionFormatPatch::isEnabledWhen( data.timestamp ),
+                BerlinForkPatch::isEnabledWhen( data.timestamp ),
+                Bite2Patch::isEnabledWhen( data.timestamp ) );
             tx.setCTXOrigin( item[1].toHash< dev::h256 >() );
             data.ctxsCreatedInBlock.push_back( std::move( tx ) );
         }

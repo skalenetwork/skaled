@@ -411,10 +411,16 @@ Json::Value Eth::setSchainExitTime( Json::Value const& /*_transaction*/ ) {
 
 Json::Value Eth::eth_inspectTransaction( std::string const& _rlp ) {
     try {
-        return toJson( Transaction( jsToBytes( _rlp, OnFailed::Throw ),
-            CheckTransaction::Everything, EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
-            InvalidTransactionFormatPatch::isEnabledInWorkingBlock(),
-            BerlinForkPatch::isEnabledInWorkingBlock() ) );
+        return toJson(
+            Transaction( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::Everything, false,
+                EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
+                InvalidTransactionFormatPatch::isEnabledInWorkingBlock(),
+                BerlinForkPatch::isEnabledInWorkingBlock()
+#ifdef BITE
+                    ,
+                Bite2Patch::isEnabledInWorkingBlock()
+#endif  // BITE
+                    ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
