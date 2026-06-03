@@ -157,8 +157,7 @@ std::optional< CommittedProgressData > StateProgressLog::loadProgressData() cons
             dev::eth::Transaction tx( item[0].data(), dev::eth::CheckTransaction::None, true,
                 EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
                 InvalidTransactionFormatPatch::isEnabledInWorkingBlock(),
-                BerlinForkPatch::isEnabledInWorkingBlock(),
-                Bite2Patch::isEnabledInWorkingBlock() );
+                BerlinForkPatch::isEnabledInWorkingBlock(), Bite2Patch::isEnabledInWorkingBlock() );
             tx.setCTXOrigin( item[1].toHash< dev::h256 >() );
             data.ctxsCreatedInBlock.push_back( std::move( tx ) );
         }

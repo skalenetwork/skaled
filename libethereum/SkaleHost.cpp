@@ -1122,8 +1122,7 @@ std::vector< Transaction > SkaleHost::processCTXTransactions(
         Transaction t( data, CheckTransaction::Everything, true,
             EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
             InvalidTransactionFormatPatch::isEnabledInWorkingBlock(),
-            BerlinForkPatch::isEnabledInWorkingBlock(),
-            Bite2Patch::isEnabledInWorkingBlock() );
+            BerlinForkPatch::isEnabledInWorkingBlock(), Bite2Patch::isEnabledInWorkingBlock() );
 
         if ( ctxIterator != _decryptedTransactions.ctxTxsMap->end() && ctxIterator->first == i ) {
             std::optional< DecryptedCTXArgs > decryptedArgs = ctxIterator->second;

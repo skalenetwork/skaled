@@ -243,8 +243,7 @@ void TransactionBase::fillFromBytesLegacy(
 }
 
 void TransactionBase::fillFromBytesType1( bytesConstRef _rlpData, CheckTransaction _checkSig,
-    bool _allowInvalid, bool _invalidTransactionFormatPatchEnabled,
-    bool _berlinForkPatchEnabled ) {
+    bool _allowInvalid, bool _invalidTransactionFormatPatchEnabled, bool _berlinForkPatchEnabled ) {
     bytes croppedRlp( _rlpData.begin() + 1, _rlpData.end() );
     RLP const rlp( croppedRlp );
     try {
@@ -310,8 +309,7 @@ void TransactionBase::fillFromBytesType1( bytesConstRef _rlpData, CheckTransacti
 }
 
 void TransactionBase::fillFromBytesType2( bytesConstRef _rlpData, CheckTransaction _checkSig,
-    bool _allowInvalid, bool _invalidTransactionFormatPatchEnabled,
-    bool _berlinForkPatchEnabled ) {
+    bool _allowInvalid, bool _invalidTransactionFormatPatchEnabled, bool _berlinForkPatchEnabled ) {
     bytes croppedRlp( _rlpData.begin() + 1, _rlpData.end() );
     RLP const rlp( croppedRlp );
     try {
@@ -441,9 +439,9 @@ TransactionType TransactionBase::getTransactionType( bytesConstRef _rlp ) {
                                toHex( bytes{ firstByte } ) ) );
 }
 
-TransactionBase::TransactionBase( bytesConstRef _rlpData, CheckTransaction _checkSig,
-    bool _allowInvalid, bool _eip1559Enabled, bool _invalidTransactionFormatPatchEnabled,
-    bool _berlinForkPatchEnabled
+TransactionBase::TransactionBase(
+    bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid, bool _eip1559Enabled,
+    bool _invalidTransactionFormatPatchEnabled, bool _berlinForkPatchEnabled
 #ifdef BITE
     ,
     bool _bite2PatchEnabled
