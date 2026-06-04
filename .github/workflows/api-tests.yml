@@ -69,7 +69,7 @@ jobs:
 
       - name: Prepare hardfork-compat binaries
         env:
-          HARDFORK_COMPAT_V510_BINARY_URL: ${{ vars.HARDFORK_COMPAT_V510_BINARY_URL }}
+          HARDFORK_COMPAT_V510_BINARY_URL: https://github.com/skalenetwork/skaled/releases/download/5.1.0-develop.35/skaled-core
           HARDFORK_COMPAT_DOWNLOAD_TOKEN: ${{ secrets.HARDFORK_COMPAT_DOWNLOAD_TOKEN }}
         run: |
           set -euo pipefail
