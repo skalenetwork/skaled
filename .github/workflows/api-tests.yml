@@ -10,6 +10,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 defaults:
   run:
     shell: bash
@@ -63,6 +66,38 @@ jobs:
           cmake_build_type: ${{ env.CMAKE_BUILD_TYPE }}
           cmake_args: ""
           make_target: skaled
+
+      - name: Prepare hardfork-compat binaries
+        env:
+          HARDFORK_COMPAT_V510_BINARY_URL: ${{ vars.HARDFORK_COMPAT_V510_BINARY_URL }}
+          HARDFORK_COMPAT_DOWNLOAD_TOKEN: ${{ secrets.HARDFORK_COMPAT_DOWNLOAD_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${HARDFORK_COMPAT_V510_BINARY_URL}" ]; then
+            echo "::error::HARDFORK_COMPAT_V510_BINARY_URL repository/org variable is not set"
+            exit 1
+          fi
+
+          curl_args=(--fail --location --retry 3 --retry-delay 5)
+          if [ -n "${HARDFORK_COMPAT_DOWNLOAD_TOKEN}" ]; then
+            curl_args+=(--header "Authorization: Bearer ${HARDFORK_COMPAT_DOWNLOAD_TOKEN}")
+          fi
+
+          curl "${curl_args[@]}" "${HARDFORK_COMPAT_V510_BINARY_URL}" --output bin-5-1-0
+          cp build/skaled/skaled bin-5-2-0
+
+          chmod +x bin-5-1-0 bin-5-2-0
+          file bin-5-1-0 bin-5-2-0
+
+      - name: API tests (hardfork-compat)
+        uses: ./.github/actions/api-tests-run
+        with:
+          suite: hardfork-compat
+          skaled_binary: build/skaled/skaled
+          build_skaled: "false"
+        env:
+          FUNC_TEST_PRIVATE_KEY: ${{ secrets.FUNC_TEST_PRIVATE_KEY }}
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
