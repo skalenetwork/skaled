@@ -132,7 +132,7 @@ BOOST_AUTO_TEST_CASE(
     Transaction tx( txRlp, CheckTransaction::None );
 
     // v field is 27 -> is a pre-EIP tx -> will not have the chainId field set
-    BOOST_REQUIRE_THROW( tx.checkChainId( 1234 ) , InvalidTransactionFormat);
+    BOOST_REQUIRE_THROW( tx.checkChainId( 1234 ), InvalidTransactionFormat );
 
     BOOST_REQUIRE( tx.toBytes() == txRlp );
 
@@ -417,7 +417,7 @@ BOOST_AUTO_TEST_CASE( transactionExceptionOutput ) {
         "Error output TransactionException::InvalidContractDeployer" );
     buffer.str( std::string() );
 
-#ifdef FAIR 
+#ifdef FAIR
     buffer << TransactionException::UnsupportedDencunOpcode;
     BOOST_CHECK_MESSAGE( buffer.str() == "UnsupportedDencunOpcode",
         "Error output TransactionException::UnsupportedDencunOpcode" );
@@ -512,12 +512,12 @@ BOOST_AUTO_TEST_CASE( CheckLowSForUnsignedTransactionThrows,
 dev::bytes createTestTransactionRlp( const dev::bytes& txnData, const dev::Address& toAddress ) {
     // create a legacy transaction
     RLPStream txnRlpStreamWithoutSignature( 6 );
-    txnRlpStreamWithoutSignature << 0;              // nonce
-    txnRlpStreamWithoutSignature << 100000;         // gasPrice
-    txnRlpStreamWithoutSignature << 100000;         // gasLimit
-    txnRlpStreamWithoutSignature << toAddress;   // to
-    txnRlpStreamWithoutSignature << 0;              // value
-    txnRlpStreamWithoutSignature << txnData;        // data
+    txnRlpStreamWithoutSignature << 0;          // nonce
+    txnRlpStreamWithoutSignature << 100000;     // gasPrice
+    txnRlpStreamWithoutSignature << 100000;     // gasLimit
+    txnRlpStreamWithoutSignature << toAddress;  // to
+    txnRlpStreamWithoutSignature << 0;          // value
+    txnRlpStreamWithoutSignature << txnData;    // data
 
     auto txnHashWithoutSignature = dev::sha3( txnRlpStreamWithoutSignature.out() );
 
@@ -526,16 +526,16 @@ dev::bytes createTestTransactionRlp( const dev::bytes& txnData, const dev::Addre
     SignatureStruct sigStruct = SignatureStruct( txnSignature );
 
     RLPStream txnRlp( 9 );
-    txnRlp << 0;              // nonce
-    txnRlp << 100000;         // gasPrice
-    txnRlp << 100000;         // gasLimit
-    txnRlp << toAddress;      // to
-    txnRlp << 0;              // value
-    txnRlp << txnData;        // data
+    txnRlp << 0;          // nonce
+    txnRlp << 100000;     // gasPrice
+    txnRlp << 100000;     // gasLimit
+    txnRlp << toAddress;  // to
+    txnRlp << 0;          // value
+    txnRlp << txnData;    // data
 
-    txnRlp << sigStruct.v + 27;        // v
-    txnRlp << u256(sigStruct.r);       // r
-    txnRlp << u256(sigStruct.s);       // s
+    txnRlp << sigStruct.v + 27;     // v
+    txnRlp << u256( sigStruct.r );  // r
+    txnRlp << u256( sigStruct.s );  // s
 
     auto rlpBytes = txnRlp.out();
     return dev::bytes( rlpBytes.begin(), rlpBytes.end() );
@@ -580,8 +580,9 @@ BOOST_AUTO_TEST_CASE( constructBITETxnFromRlp ) {
 
     // append random address to the end of the BITE transaction
     dev::bytes validBITETxnData = prepareBITEPayloadRlp( epochId, encryptedMessage.toBytes() );
-    
-    dev::Address biteAddress = dev::Address(std::string(BITE_ADDRESS_AS_STRING)); // BITE ADDRESS
+
+    dev::Address biteAddress =
+        dev::Address( std::string( BITE_ADDRESS_AS_STRING ) );  // BITE ADDRESS
     dev::bytes validBITETxnRlp = createTestTransactionRlp( validBITETxnData, biteAddress );
     Transaction validBITETxn(
         validBITETxnRlp, dev::eth::CheckTransaction::Everything, false, true, true );
@@ -593,8 +594,9 @@ BOOST_AUTO_TEST_CASE( constructBITETxnFromRlp ) {
     // change non-zero byte to non-zero byte in magicNumber and make the txn non-BITE
     dev::bytes validNonBITETxnData = prepareBITEPayloadRlp( epochId, encryptedMessage.toBytes() );
 
-    dev::Address toAddressNonBITE = dev::Address::random(); // non-BITE ADDRESS
-    dev::bytes validNonBITETxnRlp = createTestTransactionRlp( validNonBITETxnData, toAddressNonBITE );
+    dev::Address toAddressNonBITE = dev::Address::random();  // non-BITE ADDRESS
+    dev::bytes validNonBITETxnRlp =
+        createTestTransactionRlp( validNonBITETxnData, toAddressNonBITE );
     Transaction validNonBITETxn(
         validNonBITETxnRlp, dev::eth::CheckTransaction::Everything, false, true, true );
     BOOST_REQUIRE( !validNonBITETxn.isBite() );
@@ -607,18 +609,20 @@ BOOST_AUTO_TEST_CASE( constructBITETxnFromRlp ) {
 
     // wrong epochId
     BOOST_REQUIRE_THROW( validBITETxn.checkAndValidateBITETransaction( epochId + 1 ),
-                         dev::eth::InvalidBITETransaction );
+        dev::eth::InvalidBITETransaction );
 
     // Invalid ciphered key
-    encryptedMessage.keys = { libBLS::CipheredKey( libBLS::algebra::G2Point::random(), encryptedMessage.keys[0].V, libBLS::algebra::G1Point::random() ) };
+    encryptedMessage.keys = { libBLS::CipheredKey( libBLS::algebra::G2Point::random(),
+        encryptedMessage.keys[0].V, libBLS::algebra::G1Point::random() ) };
     auto invalidEncryptedAESKeyRaw = encryptedMessage.getKeys()[0].toBytes();
-    dev::bytes invalidEncryptedAESKey( invalidEncryptedAESKeyRaw.begin(), invalidEncryptedAESKeyRaw.end() );
+    dev::bytes invalidEncryptedAESKey(
+        invalidEncryptedAESKeyRaw.begin(), invalidEncryptedAESKeyRaw.end() );
     dev::bytes invalidBITETxnData = prepareBITEPayloadRlp( epochId, encryptedMessage.toBytes() );
     dev::bytes invalidBITETxnRlp = createTestTransactionRlp( invalidBITETxnData, biteAddress );
     Transaction invalidBITETxn(
         invalidBITETxnRlp, dev::eth::CheckTransaction::Everything, false, true, true );
-    BOOST_REQUIRE_THROW(
-        invalidBITETxn.checkAndValidateBITETransaction( epochId ), dev::eth::InvalidBITETransaction );
+    BOOST_REQUIRE_THROW( invalidBITETxn.checkAndValidateBITETransaction( epochId ),
+        dev::eth::InvalidBITETransaction );
 
     RLPStream tooShortRlp;
 
@@ -636,23 +640,21 @@ BOOST_AUTO_TEST_CASE( constructBITETxnFromRlp ) {
 
     // Empty ciphered key and data + missing to address
     tooShortRlp.appendList( 2 );
-    tooShortRlp << epochId << dev::bytes() ;
+    tooShortRlp << epochId << dev::bytes();
     invalidTooShortBITETxnData = tooShortRlp.out();
-    invalidTooShortBITETxnRlp =
-        createTestTransactionRlp( invalidTooShortBITETxnData, biteAddress );
+    invalidTooShortBITETxnRlp = createTestTransactionRlp( invalidTooShortBITETxnData, biteAddress );
     invalidTooShortBITETxn = Transaction(
         invalidTooShortBITETxnRlp, dev::eth::CheckTransaction::Everything, false, true, true );
     BOOST_REQUIRE_THROW( invalidTooShortBITETxn.checkAndValidateBITETransaction( epochId ),
         dev::eth::BITETransactionTooShort );
     tooShortRlp.clear();
-    
+
     // Missing data & To address
     encryptedMessage.data = std::make_shared< dev::bytes >();
     tooShortRlp.appendList( 2 );
     tooShortRlp << epochId << encryptedMessage.toBytes();
     invalidTooShortBITETxnData = tooShortRlp.out();
-    invalidTooShortBITETxnRlp =
-            createTestTransactionRlp( invalidTooShortBITETxnData, biteAddress );
+    invalidTooShortBITETxnRlp = createTestTransactionRlp( invalidTooShortBITETxnData, biteAddress );
     invalidTooShortBITETxn = Transaction(
         invalidTooShortBITETxnRlp, dev::eth::CheckTransaction::Everything, false, true, true );
     BOOST_REQUIRE_THROW( invalidTooShortBITETxn.checkAndValidateBITETransaction( epochId ),
@@ -675,7 +677,7 @@ BOOST_AUTO_TEST_CASE( constructBITETxnFromRlp ) {
 BOOST_AUTO_TEST_CASE( constructBITETxnWithTwoPayloads ) {
     uint64_t epochId1 = 5;
     uint64_t epochId2 = epochId1 + 1;
-    uint64_t currentEpochId = epochId1; // We'll validate against epochId1
+    uint64_t currentEpochId = epochId1;  // We'll validate against epochId1
 
     libBLS::init();
     libBLS::TEPublicKey publicKey1 = libBLS::TEPublicKey::random();
@@ -686,7 +688,8 @@ BOOST_AUTO_TEST_CASE( constructBITETxnWithTwoPayloads ) {
     std::string data = dev::h256::random().hex();
     dev::bytes messageBytes = prepareBITEDataRlp( toAddress, dev::fromHex( data ) );
 
-    auto encryptedMessage = libBLS::ThresholdEncryption::encrypt( messageBytes, { publicKey1, publicKey2 } );
+    auto encryptedMessage =
+        libBLS::ThresholdEncryption::encrypt( messageBytes, { publicKey1, publicKey2 } );
     auto encryptedBITEDataBytes = encryptedMessage.toBytes();
 
     // Create payload with 2 epoch ids
@@ -697,9 +700,11 @@ BOOST_AUTO_TEST_CASE( constructBITETxnWithTwoPayloads ) {
 
     auto rlpBytes = bitePayload.out();
     dev::bytes twoPayloadBITETxnData = dev::bytes( rlpBytes.begin(), rlpBytes.end() );
-    
-    dev::Address biteAddress = dev::Address(std::string(BITE_ADDRESS_AS_STRING)); // BITE ADDRESS
-    dev::bytes twoPayloadBITETxnRlp = createTestTransactionRlp( twoPayloadBITETxnData, biteAddress );
+
+    dev::Address biteAddress =
+        dev::Address( std::string( BITE_ADDRESS_AS_STRING ) );  // BITE ADDRESS
+    dev::bytes twoPayloadBITETxnRlp =
+        createTestTransactionRlp( twoPayloadBITETxnData, biteAddress );
     Transaction twoPayloadBITETxn(
         twoPayloadBITETxnRlp, dev::eth::CheckTransaction::Everything, false, true, true );
 
@@ -708,8 +713,9 @@ BOOST_AUTO_TEST_CASE( constructBITETxnWithTwoPayloads ) {
     BOOST_REQUIRE_NO_THROW( twoPayloadBITETxn.checkAndValidateBITETransaction( currentEpochId ) );
 
     // should throw because currentEpochId doesn't match
-    BOOST_REQUIRE_THROW( twoPayloadBITETxn.checkAndValidateBITETransaction( epochId1 + epochId2 + 1 ),
-                         dev::eth::InvalidBITETransaction );
+    BOOST_REQUIRE_THROW(
+        twoPayloadBITETxn.checkAndValidateBITETransaction( epochId1 + epochId2 + 1 ),
+        dev::eth::InvalidBITETransaction );
 
     BOOST_REQUIRE_NO_THROW( twoPayloadBITETxn.checkAndValidateBITETransaction( epochId2 ) );
 
@@ -721,20 +727,24 @@ BOOST_AUTO_TEST_CASE( constructBITETxnWithTwoPayloads ) {
     wrongNumberOfElementsPayload << encryptedBITEDataBytes;
 
     auto wrongNumberOfElementsRlpBytes = wrongNumberOfElementsPayload.out();
-    dev::bytes threeEpochBITETxnData = dev::bytes( wrongNumberOfElementsRlpBytes.begin(),
-                                                   wrongNumberOfElementsRlpBytes.end() );
+    dev::bytes threeEpochBITETxnData =
+        dev::bytes( wrongNumberOfElementsRlpBytes.begin(), wrongNumberOfElementsRlpBytes.end() );
 
-    dev::bytes wrongNumberOfElementsBITETxnRlp = createTestTransactionRlp( threeEpochBITETxnData,
-                                                                           biteAddress );
+    dev::bytes wrongNumberOfElementsBITETxnRlp =
+        createTestTransactionRlp( threeEpochBITETxnData, biteAddress );
     Transaction wrongNumberOfElementsBITETxn( wrongNumberOfElementsBITETxnRlp,
-                                   dev::eth::CheckTransaction::Everything, false, true, true );
+        dev::eth::CheckTransaction::Everything, false, true, true );
 
     BOOST_REQUIRE( wrongNumberOfElementsBITETxn.isBite() );
 
     // Should throw with any epochId - 3 elements is not allowed
-    BOOST_REQUIRE_THROW( wrongNumberOfElementsBITETxn.checkAndValidateBITETransaction( epochId1 ), dev::eth::InvalidBITETransaction );
-    BOOST_REQUIRE_THROW( wrongNumberOfElementsBITETxn.checkAndValidateBITETransaction( epochId2 ), dev::eth::InvalidBITETransaction );
-    BOOST_REQUIRE_THROW( wrongNumberOfElementsBITETxn.checkAndValidateBITETransaction( epochId1 + epochId2 + 1 ), dev::eth::InvalidBITETransaction );
+    BOOST_REQUIRE_THROW( wrongNumberOfElementsBITETxn.checkAndValidateBITETransaction( epochId1 ),
+        dev::eth::InvalidBITETransaction );
+    BOOST_REQUIRE_THROW( wrongNumberOfElementsBITETxn.checkAndValidateBITETransaction( epochId2 ),
+        dev::eth::InvalidBITETransaction );
+    BOOST_REQUIRE_THROW(
+        wrongNumberOfElementsBITETxn.checkAndValidateBITETransaction( epochId1 + epochId2 + 1 ),
+        dev::eth::InvalidBITETransaction );
 
     // epochId doesn't match and only 1 encrypted AES keys
     libBLS::TEPublicKey publicKey3 = libBLS::TEPublicKey::random();
@@ -749,7 +759,7 @@ BOOST_AUTO_TEST_CASE( constructBITETxnWithTwoPayloads ) {
 
     auto mismatchRlpBytes = mismatchPayload.out();
     dev::bytes mismatchBITETxnData = dev::bytes( mismatchRlpBytes.begin(), mismatchRlpBytes.end() );
-    
+
     dev::bytes mismatchBITETxnRlp = createTestTransactionRlp( mismatchBITETxnData, biteAddress );
     Transaction mismatchBITETxn(
         mismatchBITETxnRlp, dev::eth::CheckTransaction::Everything, false, true, true );
@@ -757,20 +767,18 @@ BOOST_AUTO_TEST_CASE( constructBITETxnWithTwoPayloads ) {
     BOOST_REQUIRE( mismatchBITETxn.isBite() );
 
     BOOST_REQUIRE_THROW( mismatchBITETxn.checkAndValidateBITETransaction( currentEpochId ),
-                         dev::eth::InvalidBITETransaction );
+        dev::eth::InvalidBITETransaction );
     // should not throw when validating against proper epochId
     BOOST_REQUIRE_NO_THROW( mismatchBITETxn.checkAndValidateBITETransaction( epochId2 ) );
 
     // 2 encrypted AES keys submitted, but one key is corrupt
-    auto corruptEncryptedMessage = libBLS::ThresholdEncryption::encrypt( messageBytes, { publicKey1, publicKey2 } );
-    
+    auto corruptEncryptedMessage =
+        libBLS::ThresholdEncryption::encrypt( messageBytes, { publicKey1, publicKey2 } );
+
     // Corrupt the first key by replacing it with a random one
-    corruptEncryptedMessage.keys[0] = libBLS::CipheredKey(
-        libBLS::algebra::G2Point::random(),
-        corruptEncryptedMessage.keys[0].V,
-        libBLS::algebra::G1Point::random()
-    );
-    
+    corruptEncryptedMessage.keys[0] = libBLS::CipheredKey( libBLS::algebra::G2Point::random(),
+        corruptEncryptedMessage.keys[0].V, libBLS::algebra::G1Point::random() );
+
     auto corruptEncryptedBITEDataBytes = corruptEncryptedMessage.toBytes();
 
     RLPStream corruptPayload;
@@ -780,18 +788,18 @@ BOOST_AUTO_TEST_CASE( constructBITETxnWithTwoPayloads ) {
 
     auto corruptRlpBytes = corruptPayload.out();
     dev::bytes corruptBITETxnData = dev::bytes( corruptRlpBytes.begin(), corruptRlpBytes.end() );
-    
+
     dev::bytes corruptBITETxnRlp = createTestTransactionRlp( corruptBITETxnData, biteAddress );
     Transaction corruptBITETxn(
         corruptBITETxnRlp, dev::eth::CheckTransaction::Everything, false, true, true );
 
     BOOST_REQUIRE( corruptBITETxn.isBite() );
-    
+
     // Should throw due to corrupt key in ciphertext
     BOOST_REQUIRE_THROW( corruptBITETxn.checkAndValidateBITETransaction( currentEpochId ),
-                         dev::eth::InvalidBITETransaction );
+        dev::eth::InvalidBITETransaction );
     BOOST_REQUIRE_THROW( corruptBITETxn.checkAndValidateBITETransaction( epochId2 ),
-                         dev::eth::InvalidBITETransaction );
+        dev::eth::InvalidBITETransaction );
 }
 #endif
 

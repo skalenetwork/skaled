@@ -43,9 +43,9 @@
 #include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
 
-#include <memory>
 #include <atomic>
 #include <limits>
+#include <memory>
 
 using namespace dev;
 using namespace dev::eth;
@@ -64,7 +64,7 @@ public:
 
     void runCommitteeRotationForConsensus() override { ++rotationCallCount; }
 
-    std::atomic< uint32_t > rotationCallCount{0};
+    std::atomic< uint32_t > rotationCallCount{ 0 };
 };
 #endif
 
@@ -170,8 +170,8 @@ public:
 
 // TODO Do not copy&paste from JsonRpcFixture
 struct SkaleHostFixture : public TestOutputHelperFixture {
-    SkaleHostFixture( const std::map< std::string, std::string >& params =
-                          std::map< std::string, std::string >(),
+    SkaleHostFixture(
+        const std::map< std::string, std::string >& params = std::map< std::string, std::string >(),
         bool mockCommitteeRotation = false ) {
         dev::p2p::NetworkPreferences nprefs;
         libBLS::init();
@@ -235,7 +235,8 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         ConsensusTestStubFactory test_stub_factory;
 #ifdef FAIR
         if ( mockCommitteeRotation ) {
-            auto mockHost = std::make_shared< MockRotationSkaleHost >( *client, &test_stub_factory );
+            auto mockHost =
+                std::make_shared< MockRotationSkaleHost >( *client, &test_stub_factory );
             skaleHost = mockHost;
             mockRotationHost = mockHost;
         } else
@@ -1657,7 +1658,7 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
                                         1,
                                         dev::ZeroAddress,
 #endif
-                                        true } );
+                                          true } );
     u256 blockRandom = skaleHost->getBlockRandom( 0, false );
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( res.second == toBigEndian( static_cast< u256 >( blockRandom ) ) );
@@ -1674,12 +1675,7 @@ BOOST_AUTO_TEST_CASE( getCurrentBLSPublicKey ) {
                                         { -1 },
                                         dev::h256::random(),
                                         0,
-                                        dev::ZeroAddress,
 #endif
-                                        true } );
-    std::array< std::string, 4 > imaBLSPublicKey = skaleHost->getCurrentBLSPublicKey();
-    BOOST_REQUIRE( res.first );
-    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( imaBLSPublicKey[0] ) ) +
                                      toBigEndian( dev::u256( imaBLSPublicKey[1] ) ) +
                                      toBigEndian( dev::u256( imaBLSPublicKey[2] ) ) +
                                      toBigEndian( dev::u256( imaBLSPublicKey[3] ) ) );
@@ -2567,7 +2563,7 @@ BOOST_AUTO_TEST_CASE( biteTransactions ) {
 #endif
 
 #ifdef FAIR
-BOOST_AUTO_TEST_CASE(syncNodeGroupsUpdatesEpochIdWithoutRotation) {
+BOOST_AUTO_TEST_CASE( syncNodeGroupsUpdatesEpochIdWithoutRotation ) {
     SkaleHostFixture fixture( {}, true );
 
     auto& client = fixture.client;
@@ -2575,40 +2571,29 @@ BOOST_AUTO_TEST_CASE(syncNodeGroupsUpdatesEpochIdWithoutRotation) {
 
     uint64_t currentTimestamp = static_cast< uint64_t >( utcTime() );
 
-    fixture.overwriteHistoricNodeGroups( {
-        {
-         {
-          GroupNode{ u256( 0 ), u256( 8 ),
-            "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea"
-            "10"
-            "5a3d21845e5660bc3d4e7c82e7af1daa3baad393b1521467",
-            Address( "0x08151B8F80bfa7dEa760e461412AF24348224edf" )
-         }
-        },
-        currentTimestamp,
-        {
-            "15959969554621958245201075983340071881770733084910870228938077786643587385029",
-            "7970122607051572307517094692346020360016825923464107614135327251488152616550",
-            "3371162264373897025322009434717052197952692496405149486989861571246537813591",
-            "13678625751515504401110635369790787716744686498431213713911601759809559919693" }
-        },
-        {
-        {
-             GroupNode{ u256( 0 ), u256( 8 ),
-                 "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea"
-                 "10"
-                 "5a3d21845e5660bc3d4e7c82e7af1daa3baad393b1521467",
-                 Address( "0x08151B8F80bfa7dEa760e461412AF24348224edf" )
-             }
-         },
-         std::numeric_limits<uint64_t>::max(), {
-                "3842742177969966091367527274107524613106077736353521259727282251005583743182",
-                "3497912824016228906558906422247670474553186446469877598411863912329082553081",
-                "8173996886448941320370434854289578123609627835954133538412363037981850950343",
-                "20979370720689475348670582375026949105497642726992863932315517524004804784155"
-        }
-        }
-    });
+    fixture.overwriteHistoricNodeGroups(
+        { { { GroupNode{ u256( 0 ), u256( 8 ),
+                "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea"
+                "10"
+                "5a3d21845e5660bc3d4e7c82e7af1daa3baad393b1521467",
+                Address( "0x08151B8F80bfa7dEa760e461412AF24348224edf" ) } },
+              currentTimestamp,
+              { "15959969554621958245201075983340071881770733084910870228938077786643587385029",
+                  "7970122607051572307517094692346020360016825923464107614135327251488152616550",
+                  "3371162264373897025322009434717052197952692496405149486989861571246537813591",
+                  "1367862575151550440111063536979078771674468649843121371391160175980955991969"
+                  "3" } },
+            { { GroupNode{ u256( 0 ), u256( 8 ),
+                  "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea"
+                  "10"
+                  "5a3d21845e5660bc3d4e7c82e7af1daa3baad393b1521467",
+                  Address( "0x08151B8F80bfa7dEa760e461412AF24348224edf" ) } },
+                std::numeric_limits< uint64_t >::max(),
+                { "3842742177969966091367527274107524613106077736353521259727282251005583743182",
+                    "3497912824016228906558906422247670474553186446469877598411863912329082553081",
+                    "8173996886448941320370434854289578123609627835954133538412363037981850950343",
+                    "2097937072068947534867058237502694910549764272699286393231551752400480478415"
+                    "5" } } } );
 
     BOOST_REQUIRE_EQUAL( client->getCurrentEpochId(), 0 );
 
@@ -2619,12 +2604,10 @@ BOOST_AUTO_TEST_CASE(syncNodeGroupsUpdatesEpochIdWithoutRotation) {
         ConsensusExtFace::Transactions{},
 #ifdef BITE
                                 DecryptedTransactions{
-#ifdef BITE
                                         std::make_shared< DecryptedCTXTxsMap >(),
-#endif  // BITE
                                         std::make_shared< DecryptedRegularTxsMap >()
                                     },
-#endif
+#endif // BITE
         blockTimestamp, blockId ) );
 
     BOOST_REQUIRE_EQUAL( client->getCurrentEpochId(), 1 );

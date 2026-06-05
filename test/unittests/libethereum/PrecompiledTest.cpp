@@ -23,10 +23,10 @@
 #include <libdevcore/FileSystem.h>
 #include <libdevcore/TransientDirectory.h>
 #include <libdevcrypto/Hash.h>
-#include <libethereum/Precompiled.h>
 #include <libethereum/ChainParams.h>
 #include <libethereum/Client.h>
 #include <libethereum/ClientTest.h>
+#include <libethereum/Precompiled.h>
 #include <libethereum/SkaleHost.h>
 #ifdef BITE
 #include <libconsensus/libBLS/threshold_encryption/ThresholdEncryption.h>
@@ -65,8 +65,8 @@ std::string stringToHex( std::string inputString ) {
 
 BOOST_FIXTURE_TEST_SUITE( PrecompiledTests, TestOutputHelperFixture )
 
-BOOST_AUTO_TEST_CASE( modexpFermatTheorem, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    modexpFermatTheorem, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "modexp" );
 
     bytes in = fromHex(
@@ -84,8 +84,8 @@ BOOST_AUTO_TEST_CASE( modexpFermatTheorem,
         res.second.begin(), res.second.end(), expected.begin(), expected.end() );
 }
 
-BOOST_AUTO_TEST_CASE( modexpZeroBase, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    modexpZeroBase, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "modexp" );
 
     bytes in = fromHex(
@@ -102,8 +102,8 @@ BOOST_AUTO_TEST_CASE( modexpZeroBase,
         res.second.begin(), res.second.end(), expected.begin(), expected.end() );
 }
 
-BOOST_AUTO_TEST_CASE( modexpExtraByteIgnored, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    modexpExtraByteIgnored, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "modexp" );
 
     bytes in = fromHex(
@@ -122,8 +122,8 @@ BOOST_AUTO_TEST_CASE( modexpExtraByteIgnored,
         res.second.begin(), res.second.end(), expected.begin(), expected.end() );
 }
 
-BOOST_AUTO_TEST_CASE( modexpRightPadding, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    modexpRightPadding, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "modexp" );
 
     bytes in = fromHex(
@@ -157,8 +157,8 @@ BOOST_AUTO_TEST_CASE( modexpMissingValues ) {
         res.second.begin(), res.second.end(), expected.begin(), expected.end() );
 }
 
-BOOST_AUTO_TEST_CASE( modexpEmptyValue, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    modexpEmptyValue, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "modexp" );
 
     bytes in = fromHex(
@@ -175,8 +175,8 @@ BOOST_AUTO_TEST_CASE( modexpEmptyValue,
         res.second.begin(), res.second.end(), expected.begin(), expected.end() );
 }
 
-BOOST_AUTO_TEST_CASE( modexpZeroPowerZero, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    modexpZeroPowerZero, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "modexp" );
 
     bytes in = fromHex(
@@ -194,8 +194,8 @@ BOOST_AUTO_TEST_CASE( modexpZeroPowerZero,
         res.second.begin(), res.second.end(), expected.begin(), expected.end() );
 }
 
-BOOST_AUTO_TEST_CASE( modexpZeroPowerZeroModZero, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    modexpZeroPowerZeroModZero, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "modexp" );
 
     bytes in = fromHex(
@@ -213,8 +213,8 @@ BOOST_AUTO_TEST_CASE( modexpZeroPowerZeroModZero,
         res.second.begin(), res.second.end(), expected.begin(), expected.end() );
 }
 
-BOOST_AUTO_TEST_CASE( modexpModLengthZero, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    modexpModLengthZero, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "modexp" );
 
     bytes in = fromHex(
@@ -229,8 +229,8 @@ BOOST_AUTO_TEST_CASE( modexpModLengthZero,
     BOOST_REQUIRE( res.second.empty() );
 }
 
-BOOST_AUTO_TEST_CASE( modexpCostFermatTheorem, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    modexpCostFermatTheorem, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledPricer cost = PrecompiledRegistrar::pricer( "modexp" );
 
     bytes in = fromHex(
@@ -245,8 +245,8 @@ BOOST_AUTO_TEST_CASE( modexpCostFermatTheorem,
     BOOST_REQUIRE_EQUAL( static_cast< int >( res ), 13056 );
 }
 
-BOOST_AUTO_TEST_CASE( modexpCostTooLarge, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    modexpCostTooLarge, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledPricer cost = PrecompiledRegistrar::pricer( "modexp" );
 
     bytes in = fromHex(
@@ -257,15 +257,13 @@ BOOST_AUTO_TEST_CASE( modexpCostTooLarge,
         "fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffd" );
     auto res = cost( ref( in ), {}, {} );
 
-    BOOST_REQUIRE_MESSAGE(
-        res ==
-            bigint{
-                "47428439751604713645494675459558567056699385719046375030561826409641217900517324"},
+    BOOST_REQUIRE_MESSAGE( res == bigint{ "47428439751604713645494675459558567056699385719046375030"
+                                          "561826409641217900517324" },
         "Got: " + toString( res ) );
 }
 
-BOOST_AUTO_TEST_CASE( modexpCostEmptyExponent, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    modexpCostEmptyExponent, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledPricer cost = PrecompiledRegistrar::pricer( "modexp" );
 
     bytes in = fromHex(
@@ -279,11 +277,11 @@ BOOST_AUTO_TEST_CASE( modexpCostEmptyExponent,
     );
     auto res = cost( ref( in ), {}, {} );
 
-    BOOST_REQUIRE_MESSAGE( res == bigint{"12"}, "Got: " + toString( res ) );
+    BOOST_REQUIRE_MESSAGE( res == bigint{ "12" }, "Got: " + toString( res ) );
 }
 
-BOOST_AUTO_TEST_CASE( modexpCostZeroExponent, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    modexpCostZeroExponent, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledPricer cost = PrecompiledRegistrar::pricer( "modexp" );
 
     bytes in = fromHex(
@@ -296,11 +294,11 @@ BOOST_AUTO_TEST_CASE( modexpCostZeroExponent,
     );
     auto res = cost( ref( in ), {}, {} );
 
-    BOOST_REQUIRE_MESSAGE( res == bigint{"5"}, "Got: " + toString( res ) );
+    BOOST_REQUIRE_MESSAGE( res == bigint{ "5" }, "Got: " + toString( res ) );
 }
 
-BOOST_AUTO_TEST_CASE( modexpCostApproximated, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    modexpCostApproximated, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledPricer cost = PrecompiledRegistrar::pricer( "modexp" );
 
     bytes in = fromHex(
@@ -313,11 +311,11 @@ BOOST_AUTO_TEST_CASE( modexpCostApproximated,
     );
     auto res = cost( ref( in ), {}, {} );
 
-    BOOST_REQUIRE_MESSAGE( res == bigint{"1315"}, "Got: " + toString( res ) );
+    BOOST_REQUIRE_MESSAGE( res == bigint{ "1315" }, "Got: " + toString( res ) );
 }
 
 BOOST_AUTO_TEST_CASE( modexpCostApproximatedPartialByte,
-    
+
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledPricer cost = PrecompiledRegistrar::pricer( "modexp" );
 
@@ -331,11 +329,11 @@ BOOST_AUTO_TEST_CASE( modexpCostApproximatedPartialByte,
     );
     auto res = cost( ref( in ), {}, {} );
 
-    BOOST_REQUIRE_MESSAGE( res == bigint{"1285"}, "Got: " + toString( res ) );
+    BOOST_REQUIRE_MESSAGE( res == bigint{ "1285" }, "Got: " + toString( res ) );
 }
 
-BOOST_AUTO_TEST_CASE( modexpCostApproximatedGhost, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    modexpCostApproximatedGhost, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledPricer cost = PrecompiledRegistrar::pricer( "modexp" );
 
     bytes in = fromHex(
@@ -348,11 +346,11 @@ BOOST_AUTO_TEST_CASE( modexpCostApproximatedGhost,
     );
     auto res = cost( ref( in ), {}, {} );
 
-    BOOST_REQUIRE_MESSAGE( res == bigint{"40"}, "Got: " + toString( res ) );
+    BOOST_REQUIRE_MESSAGE( res == bigint{ "40" }, "Got: " + toString( res ) );
 }
 
-BOOST_AUTO_TEST_CASE( modexpCostMidRange, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    modexpCostMidRange, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledPricer cost = PrecompiledRegistrar::pricer( "modexp" );
 
     bytes in = fromHex(
@@ -369,8 +367,8 @@ BOOST_AUTO_TEST_CASE( modexpCostMidRange,
         res == ( ( 74 * 74 / 4 + 96 * 74 - 3072 ) * 8 ) / 20, "Got: " + toString( res ) );
 }
 
-BOOST_AUTO_TEST_CASE( modexpCostHighRange, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    modexpCostHighRange, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledPricer cost = PrecompiledRegistrar::pricer( "modexp" );
 
     bytes in = fromHex(
@@ -401,10 +399,13 @@ struct PrecompiledTest {
 };
 
 constexpr PrecompiledTest ecrecoverTests[] = {
-    {"38d18acb67d25c8bb9942764b62f18e17054f66a817bd4295423adf9ed98873e00000000000000000000000000000"
-     "0000000000000000000000000000000001b38d18acb67d25c8bb9942764b62f18e17054f66a817bd4295423adf9ed"
-     "98873e789d1dd423d25f0772d2748d60f7e4b81bb14d086eba8e8e8efb6dcff8a4ae02",
-        "000000000000000000000000ceaccac640adf55b2028469bd36ba501f28b699d", ""}};
+    { "38d18acb67d25c8bb9942764b62f18e17054f66a817bd4295423adf9ed98873e0000000000000000000000000000"
+      "0"
+      "0000000000000000000000000000000001b38d18acb67d25c8bb9942764b62f18e17054f66a817bd4295423adf9e"
+      "d"
+      "98873e789d1dd423d25f0772d2748d60f7e4b81bb14d086eba8e8e8efb6dcff8a4ae02",
+        "000000000000000000000000ceaccac640adf55b2028469bd36ba501f28b699d", "" }
+};
 
 constexpr PrecompiledTest modexpTests[] = {
     {
@@ -911,15 +912,18 @@ constexpr PrecompiledTest modexpTests[] = {
         "4d11c9ebee1e1d3845099e55504446448027212616167eb36035726daa7698b075286f5379cd3e93cb3e0cf4f9"
         "cb8d017facbb5550ed32d5ec5400ae57e47e2bf78d1eaeff9480cc765ceff39db500",
         "nagydani-5-pow0x10001",
-    }};
+    }
+};
 
 constexpr PrecompiledTest bn256AddTests[] = {
-    {"18b18acfb4c2c30276db5411368e7185b311dd124691610c5d3b74034e093dc9063c909c4720840cb5134cb9f59fa"
-     "749755796819658d32efc0d288198f3726607c2b7f58a84bd6145f00c9c2bc0bb1a187f20ff2c92963a88019e7c6a"
-     "014eed06614e20c147e940f2d70da3f74c9a17df361706a4485c742bd6788478fa17d7",
+    { "18b18acfb4c2c30276db5411368e7185b311dd124691610c5d3b74034e093dc9063c909c4720840cb5134cb9f59f"
+      "a"
+      "749755796819658d32efc0d288198f3726607c2b7f58a84bd6145f00c9c2bc0bb1a187f20ff2c92963a88019e7c6"
+      "a"
+      "014eed06614e20c147e940f2d70da3f74c9a17df361706a4485c742bd6788478fa17d7",
         "2243525c5efd4b9c3d3c45ac0ca3fe4dd85e830a4ce6b65fa1eeaee202839703301d1d33be6da8e509df21cc35"
         "964723180eed7532537db9ae5e7d48f195c915",
-        "chfast1"},
+        "chfast1" },
     {
         "2243525c5efd4b9c3d3c45ac0ca3fe4dd85e830a4ce6b65fa1eeaee202839703301d1d33be6da8e509df21cc35"
         "964723180eed7532537db9ae5e7d48f195c91518b18acfb4c2c30276db5411368e7185b311dd124691610c5d3b"
@@ -1044,7 +1048,8 @@ constexpr PrecompiledTest bn256AddTests[] = {
         "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
         "00000000000000000000000000000000000000",
         "cdetrio14",
-    }};
+    }
+};
 
 constexpr PrecompiledTest bn256ScalarMulTests[] = {
     {
@@ -1190,7 +1195,8 @@ constexpr PrecompiledTest bn256ScalarMulTests[] = {
         "039730ea8dff1254c0fee9c0ea777d29a9c710b7e616683f194f18c43b43b869073a5ffcc6fc7a28c30723d6e5"
         "8ce577356982d65b833a5a5c15bf9024b43d98",
         "cdetrio15",
-    }};
+    }
+};
 
 // bn256PairingTests are the test and benchmark data for the bn256 pairing check
 // precompiled contract.
@@ -1483,77 +1489,77 @@ void benchmarkPrecompiled( char const name[], vector_ref< const PrecompiledTest 
 
 BOOST_AUTO_TEST_CASE( bench_ecrecover,
     *ut::label( "bench" ) * boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    vector_ref< const PrecompiledTest > tests{
-        ecrecoverTests, sizeof( ecrecoverTests ) / sizeof( ecrecoverTests[0] )};
+    vector_ref< const PrecompiledTest > tests{ ecrecoverTests,
+        sizeof( ecrecoverTests ) / sizeof( ecrecoverTests[0] ) };
     benchmarkPrecompiled( "ecrecover", tests, 100000 );
 }
 
 BOOST_AUTO_TEST_CASE( bench_modexp,
     *ut::label( "bench" ) * boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    vector_ref< const PrecompiledTest > tests{
-        modexpTests, sizeof( modexpTests ) / sizeof( modexpTests[0] )};
+    vector_ref< const PrecompiledTest > tests{ modexpTests,
+        sizeof( modexpTests ) / sizeof( modexpTests[0] ) };
     benchmarkPrecompiled( "modexp", tests, 10000 );
 }
 
 BOOST_AUTO_TEST_CASE( bench_bn256Add,
     *ut::label( "bench" ) * boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    vector_ref< const PrecompiledTest > tests{
-        bn256AddTests, sizeof( bn256AddTests ) / sizeof( bn256AddTests[0] )};
+    vector_ref< const PrecompiledTest > tests{ bn256AddTests,
+        sizeof( bn256AddTests ) / sizeof( bn256AddTests[0] ) };
     benchmarkPrecompiled( "alt_bn128_G1_add", tests, 1000000 );
 }
 
 BOOST_AUTO_TEST_CASE( bench_bn256ScalarMul,
     *ut::label( "bench" ) * boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    vector_ref< const PrecompiledTest > tests{
-        bn256ScalarMulTests, sizeof( bn256ScalarMulTests ) / sizeof( bn256ScalarMulTests[0] )};
+    vector_ref< const PrecompiledTest > tests{ bn256ScalarMulTests,
+        sizeof( bn256ScalarMulTests ) / sizeof( bn256ScalarMulTests[0] ) };
     benchmarkPrecompiled( "alt_bn128_G1_mul", tests, 10000 );
 }
 
 BOOST_AUTO_TEST_CASE( bench_bn256Pairing,
     *ut::label( "bench" ) * boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    vector_ref< const PrecompiledTest > tests{
-        bn256PairingTests, sizeof( bn256PairingTests ) / sizeof( bn256PairingTests[0] )};
+    vector_ref< const PrecompiledTest > tests{ bn256PairingTests,
+        sizeof( bn256PairingTests ) / sizeof( bn256PairingTests[0] ) };
     benchmarkPrecompiled( "alt_bn128_pairing_product", tests, 1000 );
 }
 
-BOOST_AUTO_TEST_CASE( ecaddCostBeforeIstanbul, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    ecaddCostBeforeIstanbul, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledPricer cost = PrecompiledRegistrar::pricer( "alt_bn128_G1_add" );
 
-    ChainParams chainParams{genesisInfo( eth::Network::IstanbulTransitionTest )};
+    ChainParams chainParams{ genesisInfo( eth::Network::IstanbulTransitionTest ) };
 
     auto res = cost( {}, chainParams, 1 );
 
     BOOST_REQUIRE_EQUAL( static_cast< int >( res ), 500 );
 }
 
-BOOST_AUTO_TEST_CASE( ecaddCostIstanbul, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    ecaddCostIstanbul, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledPricer cost = PrecompiledRegistrar::pricer( "alt_bn128_G1_add" );
 
-    ChainParams chainParams{genesisInfo( eth::Network::IstanbulTransitionTest )};
+    ChainParams chainParams{ genesisInfo( eth::Network::IstanbulTransitionTest ) };
 
     auto res = cost( {}, chainParams, 2 );
 
     BOOST_REQUIRE_EQUAL( static_cast< int >( res ), 150 );
 }
 
-BOOST_AUTO_TEST_CASE( ecmulBeforeIstanbul, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    ecmulBeforeIstanbul, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledPricer cost = PrecompiledRegistrar::pricer( "alt_bn128_G1_mul" );
 
-    ChainParams chainParams{genesisInfo( eth::Network::IstanbulTransitionTest )};
+    ChainParams chainParams{ genesisInfo( eth::Network::IstanbulTransitionTest ) };
 
     auto res = cost( {}, chainParams, 1 );
 
     BOOST_REQUIRE_EQUAL( static_cast< int >( res ), 40000 );
 }
 
-BOOST_AUTO_TEST_CASE( ecmulCostIstanbul, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    ecmulCostIstanbul, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledPricer cost = PrecompiledRegistrar::pricer( "alt_bn128_G1_mul" );
 
-    ChainParams chainParams{genesisInfo( eth::Network::IstanbulTransitionTest )};
+    ChainParams chainParams{ genesisInfo( eth::Network::IstanbulTransitionTest ) };
 
     auto res = cost( {}, chainParams, 2 );
 
@@ -1563,9 +1569,9 @@ BOOST_AUTO_TEST_CASE( ecmulCostIstanbul,
 BOOST_AUTO_TEST_CASE( ecpairingCost ) {
     PrecompiledPricer cost = PrecompiledRegistrar::pricer( "alt_bn128_pairing_product" );
 
-    ChainParams chainParams{genesisInfo( eth::Network::IstanbulTransitionTest )};
+    ChainParams chainParams{ genesisInfo( eth::Network::IstanbulTransitionTest ) };
 
-    bytes in{fromHex(
+    bytes in{ fromHex(
         "0x1c76476f4def4bb94541d57ebba1193381ffa7aa76ada664dd31c16024c43f593034dd2920f673e204fee281"
         "1c678745fc819b55d3e9d294e45c9b03a76aef41209dd15ebff5d46c4bd888e51a93cf99a7329636c63514396b"
         "4a452003a35bf704bf11ca01483bfa8b34b43561848d28905960114c8ac04049af4b6315a416782bb8324af6cf"
@@ -1574,7 +1580,7 @@ BOOST_AUTO_TEST_CASE( ecpairingCost ) {
         "2032c61a830e3c17286de9462bf242fca2883585b93870a73853face6a6bf411198e9393920d483a7260bfb731"
         "fb5d25f1aa493335a9e71297e485b7aef312c21800deef121f1e76426a00665e5c4479674322d4f75edadd46de"
         "bd5cd992f6ed090689d0585ff075ec9e99ad690c3395bc4b313370b38ef355acdadcd122975b12c85ea5db8c6d"
-        "eb4aab71808dcb408fe3d1e7690c43d37b4ce6cc0166fa7daa" )};
+        "eb4aab71808dcb408fe3d1e7690c43d37b4ce6cc0166fa7daa" ) };
 
     auto costBeforeIstanbul = cost( ref( in ), chainParams, 1 );
     BOOST_CHECK_EQUAL( static_cast< int >( costBeforeIstanbul ), in.size() / 192 * 80000 + 100000 );
@@ -1585,7 +1591,8 @@ BOOST_AUTO_TEST_CASE( ecpairingCost ) {
 
 static size_t rand_port = ( srand( time( nullptr ) ), 1024 + rand() % 64000 );
 
-static std::string const genesisInfoSkaleConfigTest = R"(
+static std::string const genesisInfoSkaleConfigTest =
+    R"(
 {
     "sealEngine": "Ethash",
     "params": {
@@ -1675,8 +1682,8 @@ static std::string const genesisInfoSkaleConfigTest = R"(
         },
         "nodes": [
           { "nodeID": 1112, "ip": "127.0.0.1", "basePort": )" +
-        std::to_string( rand_port ) +
-        R"(, "schainIndex" : 1, "publicKey": "0xfa", "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588"}
+    std::to_string( rand_port ) +
+    R"(, "schainIndex" : 1, "publicKey": "0xfa", "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588"}
         ]
     }
   },
@@ -1714,16 +1721,17 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     size_t _port = ( srand( time( nullptr ) ), 1024 + rand() % 64000 );
     chainParams->fillDefaultTestsParameters( _port );
 
-    dev::eth::g_configAccesssor.reset( new skutils::json_config_file_accessor( "../../test/unittests/libethereum/PrecompiledConfig.json" ) );
+    dev::eth::g_configAccesssor.reset( new skutils::json_config_file_accessor(
+        "../../test/unittests/libethereum/PrecompiledConfig.json" ) );
 
-    std::unique_ptr<dev::eth::Client> client;
+    std::unique_ptr< dev::eth::Client > client;
     dev::TransientDirectory m_tmpDir;
-    auto monitor = make_shared< InstanceMonitor >("test");
-    setenv("DATA_DIR", m_tmpDir.path().c_str(), 1);
+    auto monitor = make_shared< InstanceMonitor >( "test" );
+    setenv( "DATA_DIR", m_tmpDir.path().c_str(), 1 );
     client.reset( new eth::ClientTest( chainParams, ( int ) chainParams->getNetworkId(),
         shared_ptr< GasPricer >(), nullptr, monitor, m_tmpDir.path(), dev::WithExisting::Kill ) );
 
-    client->setAuthor( Address("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF") );
+    client->setAuthor( Address( "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF" ) );
 
     client->injectSkaleHost();
 #ifdef BITE
@@ -1735,8 +1743,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
 
     testClient->mineBlocks( 1 );
 
-    testClient->importTransactionsAsBlock(
-        dev::eth::Transactions(),
+    testClient->importTransactionsAsBlock( dev::eth::Transactions(),
 #ifdef BITE
         DecryptedTransactions{
 #ifdef BITE
@@ -1745,53 +1752,52 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
                 std::make_shared< DecryptedRegularTxsMap >()
             },
 #endif
-        1000,
-        4294967294 );
+        1000, 4294967294 );
 
     dev::eth::g_skaleHost = testClient->skaleHost();
 
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getConfigVariableUint256" );
     std::string input = stringToHex( "skaleConfig.sChain.nodes.0.id" );
-    input = input.substr(0, 58); // remove 0s in the end
+    input = input.substr( 0, 58 );  // remove 0s in the end
 
     bytes in = fromHex( numberToHex( 29 ) + input );
     auto res = exec( bytesConstRef( in.data(), in.size() ), defaultPrecompiledContext );
 
     BOOST_REQUIRE( res.first );
-    BOOST_REQUIRE( dev::fromBigEndian<dev::u256>( res.second ) == 30 );
+    BOOST_REQUIRE( dev::fromBigEndian< dev::u256 >( res.second ) == 30 );
 
     input = stringToHex( "skaleConfig.sChain.nodes.0.schainIndex" );
-    input = input.substr(0, 76); // remove 0s in the end
+    input = input.substr( 0, 76 );  // remove 0s in the end
     in = fromHex( numberToHex( 38 ) + input );
     res = exec( bytesConstRef( in.data(), in.size() ), defaultPrecompiledContext );
 
     BOOST_REQUIRE( res.first );
-    BOOST_REQUIRE( dev::fromBigEndian<dev::u256>( res.second ) == 13 );
+    BOOST_REQUIRE( dev::fromBigEndian< dev::u256 >( res.second ) == 13 );
 
     input = stringToHex( "skaleConfig.sChain.nodes.0.publicKey" );
-    input = input.substr(0, 72); // remove 0s in the end
+    input = input.substr( 0, 72 );  // remove 0s in the end
     in = fromHex( numberToHex( 36 ) + input );
     res = exec( bytesConstRef( in.data(), in.size() ), defaultPrecompiledContext );
 
     BOOST_REQUIRE( !res.first );
 
     input = stringToHex( "skaleConfig.sChain.nodes.0.unknownField" );
-    input = input.substr(0, 78); // remove 0s in the end
+    input = input.substr( 0, 78 );  // remove 0s in the end
     in = fromHex( numberToHex( 39 ) + input );
     res = exec( bytesConstRef( in.data(), in.size() ), defaultPrecompiledContext );
 
     BOOST_REQUIRE( !res.first );
 
     input = stringToHex( "skaleConfig.nodeInfo.wallets.ima.n" );
-    input = input.substr(0, 68); // remove 0s in the end
+    input = input.substr( 0, 68 );  // remove 0s in the end
     in = fromHex( numberToHex( 34 ) + input );
     res = exec( bytesConstRef( in.data(), in.size() ), defaultPrecompiledContext );
 
     BOOST_REQUIRE( res.first );
-    BOOST_REQUIRE( dev::fromBigEndian<dev::u256>( res.second ) == 1 );
+    BOOST_REQUIRE( dev::fromBigEndian< dev::u256 >( res.second ) == 1 );
 
     input = stringToHex( "skaleConfig.nodeInfo.wallets.ima.t" );
-    input = input.substr(0, 68); // remove 0s in the end
+    input = input.substr( 0, 68 );  // remove 0s in the end
     in = fromHex( numberToHex( 34 ) + input );
     res = exec( bytesConstRef( in.data(), in.size() ), defaultPrecompiledContext );
 
@@ -1800,15 +1806,17 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     exec = PrecompiledRegistrar::executor( "getConfigVariableString" );
 
     input = stringToHex( "skaleConfig.sChain.nodes.0.publicKey" );
-    input = input.substr(0, 72); // remove 0s in the end
+    input = input.substr( 0, 72 );  // remove 0s in the end
     in = fromHex( numberToHex( 36 ) + input );
     res = exec( bytesConstRef( in.data(), in.size() ), defaultPrecompiledContext );
 
     BOOST_REQUIRE( res.first );
-    BOOST_REQUIRE( res.second == fromHex("0x6180cde2cbbcc6b6a17efec4503a7d4316f8612f411ee171587089f770335f484003ad236c534b9afa82befc1f69533723abdb6ec2601e582b72dcfd7919338b") );
+    BOOST_REQUIRE( res.second ==
+                   fromHex( "0x6180cde2cbbcc6b6a17efec4503a7d4316f8612f411ee171587089f770335f484003"
+                            "ad236c534b9afa82befc1f69533723abdb6ec2601e582b72dcfd7919338b" ) );
 
     input = stringToHex( "skaleConfig.sChain.nodes.0.id" );
-    input = input.substr(0, 58); // remove 0s in the end
+    input = input.substr( 0, 58 );  // remove 0s in the end
 
     in = fromHex( numberToHex( 29 ) + input );
     res = exec( bytesConstRef( in.data(), in.size() ), defaultPrecompiledContext );
@@ -1816,14 +1824,14 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     BOOST_REQUIRE( !res.first );
 
     input = stringToHex( "skaleConfig.sChain.nodes.0.schainIndex" );
-    input = input.substr(0, 76); // remove 0s in the end
+    input = input.substr( 0, 76 );  // remove 0s in the end
     in = fromHex( numberToHex( 38 ) + input );
     res = exec( bytesConstRef( in.data(), in.size() ), defaultPrecompiledContext );
 
     BOOST_REQUIRE( !res.first );
 
     input = stringToHex( "skaleConfig.sChain.nodes.0.unknownField" );
-    input = input.substr(0, 78); // remove 0s in the end
+    input = input.substr( 0, 78 );  // remove 0s in the end
     in = fromHex( numberToHex( 39 ) + input );
     res = exec( bytesConstRef( in.data(), in.size() ), defaultPrecompiledContext );
 
@@ -2298,7 +2306,8 @@ BOOST_AUTO_TEST_CASE( calculateFileHash ) {
     std::string fileHashName = pathToFile.string() + "._hash";
 
     std::ofstream fileHash( fileHashName );
-    std::string relativePath = pathToFile.string().substr( pathToFile.string().find( "filestorage" ) );
+    std::string relativePath =
+        pathToFile.string().substr( pathToFile.string().find( "filestorage" ) );
     dev::h256 hash = dev::sha256( relativePath );
     fileHash << hash;
 

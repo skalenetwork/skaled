@@ -47,10 +47,10 @@
 #include <libweb3jsonrpc/AccountHolder.h>
 #include <libweb3jsonrpc/AdminEth.h>
 
-#include <libweb3jsonrpc/JsonHelper.h>
 #include "SkaledFixture.h"
 #include <libconsensus/SkaleCommon.h>
 #include <libconsensus/node/ConsensusInterface.h>
+#include <libweb3jsonrpc/JsonHelper.h>
 
 #ifndef FAIR
 #include <libconsensus/oracle/OracleRequestSpec.h>
@@ -134,8 +134,8 @@ static std::string const c_genesisConfigString = R"(
             "nodeName": "Node1",
             "nodeID": 1112,
             "bindIP": "127.0.0.1",
-            "basePort": )" +
-    std::to_string( rand_port ) + R"(,
+            "basePort": )" + std::to_string( rand_port ) +
+                                                 R"(,
             "logLevel": "trace",
             "logLevelProposal": "trace",
             "testSignatures": true
@@ -147,8 +147,8 @@ static std::string const c_genesisConfigString = R"(
             "nodeGroups": {},
             "nodes": [
                 { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )" +
-    std::to_string( rand_port ) +
-    R"(, "schainIndex" : 1, "publicKey": "0xfa"}
+                                                 std::to_string( rand_port ) +
+                                                 R"(, "schainIndex" : 1, "publicKey": "0xfa"}
             ]
         }
     },
@@ -157,7 +157,7 @@ static std::string const c_genesisConfigString = R"(
         "0000000000000000000000000000000000000002": { "precompiled": { "name": "sha256", "linear": { "base": 60, "word": 12 } } },
         "0000000000000000000000000000000000000003": { "precompiled": { "name": "ripemd160", "linear": { "base": 600, "word": 120 } } },
         "0000000000000000000000000000000000000004": { "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } } },)" +
-        R"( "0000000000000000000000000000000000000005": {
+                                                 R"( "0000000000000000000000000000000000000005": {
             "precompiled": {
                 "name": "createFile",
                 "linear": {
@@ -168,30 +168,30 @@ static std::string const c_genesisConfigString = R"(
             }
         },)" +
 
-    /*
-pragma solidity ^0.4.25;
-contract Caller {
-function call() public {
-bool status;
-string memory fileName = "test";
-address sender = 0x000000000000000000000000000000AA;
-assembly{
-let ptr := mload(0x40)
-mstore(ptr, sender)
-mstore(add(ptr, 0x20), 4)
-mstore(add(ptr, 0x40), mload(add(fileName, 0x20)))
-mstore(add(ptr, 0x60), 1)
-status := call(not(0), 0x05, 0, ptr, 0x80, ptr, 32)
-}
-}
+                                                 /*
+                                             pragma solidity ^0.4.25;
+                                             contract Caller {
+                                             function call() public {
+                                             bool status;
+                                             string memory fileName = "test";
+                                             address sender = 0x000000000000000000000000000000AA;
+                                             assembly{
+                                             let ptr := mload(0x40)
+                                             mstore(ptr, sender)
+                                             mstore(add(ptr, 0x20), 4)
+                                             mstore(add(ptr, 0x40), mload(add(fileName, 0x20)))
+                                             mstore(add(ptr, 0x60), 1)
+                                             status := call(not(0), 0x05, 0, ptr, 0x80, ptr, 32)
+                                             }
+                                             }
 
-function revertCall() public {
-call();
-revert();
-}
-}
-*/
-    R"("0000000000000000000000000000000000000006": {
+                                             function revertCall() public {
+                                             call();
+                                             revert();
+                                             }
+                                             }
+                                             */
+                                                 R"("0000000000000000000000000000000000000006": {
             "precompiled": {
                 "name": "addBalance",
                 "linear": {
@@ -308,8 +308,8 @@ static std::string const c_genesisConfigString =
                     "stakingContractAddress": "0x5C60C315985977b7a408eBF4256984Acdf949549",
                     "group": [
                   { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )" +
-        std::to_string( rand_port ) +
-        R"(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
+    std::to_string( rand_port ) +
+    R"(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
                     ]
                 },
                 "-1": {}
@@ -510,20 +510,23 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             // 615 + 1430 is experimentally-derived block size + average extras size
             chainParams->sChain.dbStorageLimit = 320.5 * ( 615 + 1430 );
 #ifdef FAIR
-            chainParams->sChain.nodeGroups =
-            {
-                        { { GroupNode{ u256( 0 ), u256( 8 ),
-                                       "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea",
-                                       Address( "0x08151B8F80bfa7dEa760e461412AF24348224edf" )
-                          } },
-                          uint64_t( -1 ),
-                          { "3842742177969966091367527274107524613106077736353521259727282251005583743182",
-                            "3497912824016228906558906422247670474553186446469877598411863912329082553081",
-                            "8173996886448941320370434854289578123609627835954133538412363037981850950343",
-                            "20979370720689475348670582375026949105497642726992863932315517524004804784155" }
-                          }
-            };
-            chainParams->sChain.nodes[0].owner = jsToAddress( "0x0E7d7F1D34a502bD609542576941C3FCc087c588" );
+            chainParams->sChain.nodeGroups = { {
+                { GroupNode {
+                    u256( 0 ),
+                    u256( 8 ),
+                    "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54"
+                    "ea",
+                    Address( "0x08151B8F80bfa7dEa760e461412AF24348224edf" )
+                } },
+                uint64_t( -1 ),
+                { "3842742177969966091367527274107524613106077736353521259727282251005583743182",
+                    "3497912824016228906558906422247670474553186446469877598411863912329082553081",
+                    "8173996886448941320370434854289578123609627835954133538412363037981850950343",
+                    "20979370720689475348670582375026949105497642726992863932315517524004804784155"
+                }
+            } };
+            chainParams->sChain.nodes[0].owner =
+                jsToAddress( "0x0E7d7F1D34a502bD609542576941C3FCc087c588" );
 #endif
 #ifndef FAIR
             chainParams->sChain
@@ -551,8 +554,10 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
 
             if ( params.count( "getLogsBlocksLimit" ) && stoi( params.at( "getLogsBlocksLimit" ) ) )
                 chainParams->logsBlocksLimit = stoi( params.at( "getLogsBlocksLimit" ) );
-            if ( params.count( "getResponseLogCountLimit" ) && stoi( params.at( "getResponseLogCountLimit" ) ) )
-                chainParams->responseLogCountLimit = stoi( params.at( "getResponseLogCountLimit" ) );
+            if ( params.count( "getResponseLogCountLimit" ) &&
+                 stoi( params.at( "getResponseLogCountLimit" ) ) )
+                chainParams->responseLogCountLimit =
+                    stoi( params.at( "getResponseLogCountLimit" ) );
         }
         chainParams->sChain.multiTransactionMode = _mtmEnabled;
         chainParams->nodeInfo.syncNode = _isSyncNode;
@@ -639,7 +644,8 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         // Make sure safe consensus is properly updated before exit (epoch id in particular).
         // Only related to FAIR
         const auto deadline = chrono::steady_clock::now() + chrono::seconds( 10 );
-        while ( client->skaleHost()->ignoreNewBlocksEnabled() && chrono::steady_clock::now() < deadline ) {
+        while ( client->skaleHost()->ignoreNewBlocksEnabled() &&
+                chrono::steady_clock::now() < deadline ) {
             usleep( 10 );
         }
         if ( client->skaleHost()->isConsesusUpdateHappened() )
@@ -781,7 +787,7 @@ std::string formBITEPayloadRlp( u256 _epochId, const dev::bytes& _encryptedBITED
     return dev::toHexPrefixed( rlpBytes );
 }
 
-#endif // BITE
+#endif  // BITE
 
 BOOST_AUTO_TEST_SUITE( JsonRpcSuite )
 
@@ -930,9 +936,9 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_validTransaction,
     // Mine to generate a non-zero account balance
     const int blocksToMine = 1;
 #ifdef FAIR
-    const u256 blockReward = fixture.client->chainParams().blockReward(
-                fixture.client->blockChain().info().timestamp(),
-                fixture.client->blockChain().info().number() );
+    const u256 blockReward =
+        fixture.client->chainParams().blockReward( fixture.client->blockChain().info().timestamp(),
+            fixture.client->blockChain().info().number() );
 #else
     const u256 blockReward = 2 * dev::eth::ether;
 #endif
@@ -975,9 +981,9 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorInvalidNonce,
     // Mine to generate a non-zero account balance
     const size_t blocksToMine = 1;
 #ifdef FAIR
-    const u256 blockReward = fixture.client->chainParams().blockReward(
-                fixture.client->blockChain().info().timestamp(),
-                fixture.client->blockChain().info().number() );
+    const u256 blockReward =
+        fixture.client->chainParams().blockReward( fixture.client->blockChain().info().timestamp(),
+            fixture.client->blockChain().info().number() );
 #else
     const u256 blockReward = 2 * dev::eth::ether;
 #endif
@@ -1017,9 +1023,9 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorInsufficientGas ) {
     // Mine to generate a non-zero account balance
     const int blocksToMine = 1;
 #ifdef FAIR
-    const u256 blockReward = fixture.client->chainParams().blockReward(
-                fixture.client->blockChain().info().timestamp(),
-                fixture.client->blockChain().info().number() );
+    const u256 blockReward =
+        fixture.client->chainParams().blockReward( fixture.client->blockChain().info().timestamp(),
+            fixture.client->blockChain().info().number() );
 #else
     const u256 blockReward = 2 * dev::eth::ether;
 #endif
@@ -1049,9 +1055,9 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorDuplicateTransaction ) {
     // Mine to generate a non-zero account balance
     const int blocksToMine = 1;
 #ifdef FAIR
-    const u256 blockReward = fixture.client->chainParams().blockReward(
-                fixture.client->blockChain().info().timestamp(),
-                fixture.client->blockChain().info().number() );
+    const u256 blockReward =
+        fixture.client->chainParams().blockReward( fixture.client->blockChain().info().timestamp(),
+            fixture.client->blockChain().info().number() );
 #else
     const u256 blockReward = 2 * dev::eth::ether;
 #endif
@@ -1093,9 +1099,9 @@ Json::Value buildSignedTransaction( JsonRpcFixture& fixture ) {
 
     // Mine to generate a non-zero account balance
     const size_t blocksToMine = 1;
-    const u256 blockReward = fixture.client->chainParams().blockReward(
-                fixture.client->blockChain().info().timestamp(),
-                fixture.client->blockChain().info().number() );
+    const u256 blockReward =
+        fixture.client->chainParams().blockReward( fixture.client->blockChain().info().timestamp(),
+            fixture.client->blockChain().info().number() );
     dev::eth::simulateMining( *( fixture.client ), blocksToMine );
     BOOST_CHECK_EQUAL( blockReward, fixture.client->balanceAt( senderAddress ) );
 
@@ -1153,15 +1159,11 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_rejectPreEIP155Txns_configFalse ) {
     auto signedTx = buildSignedTransaction( fixture );
 
     std::cout << "Raw transaction: " << signedTx["raw"].asString() << std::endl;
-    BOOST_REQUIRE_THROW(
-        fixture.rpcClient->eth_sendRawTransaction( signedTx["raw"].asString() ),
-        jsonrpc::JsonRpcException
-    );
+    BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendRawTransaction( signedTx["raw"].asString() ),
+        jsonrpc::JsonRpcException );
 }
 
 #endif
-
-
 
 
 BOOST_AUTO_TEST_CASE( send_raw_tx_sync ) {
@@ -1393,7 +1395,12 @@ BOOST_AUTO_TEST_CASE( deploy_contract_not_from_owner ) {
     BOOST_CHECK_EQUAL( receipt["status"], string( "0x1" ) );
     Json::Value code =
         fixture.rpcClient->eth_getCode( receipt["contractAddress"].asString(), "latest" );
-    BOOST_REQUIRE( code.asString() == "0x608060405260043610603f576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff168063b3de648b146044575b600080fd5b3415604e57600080fd5b606a600480360381019080803590602001909291905050506080565b6040518082815260200191505060405180910390f35b60006007820290509190505600a165627a7a72305820f294e834212334e2978c6dd090355312a3f0f9476b8eb98fb480406fc2728a960029" );
+    BOOST_REQUIRE( code.asString() ==
+                   "0x608060405260043610603f576000357c010000000000000000000000000000000000000000000"
+                   "0000000000000900463ffffffff168063b3de648b146044575b600080fd5b3415604e57600080fd"
+                   "5b606a600480360381019080803590602001909291905050506080565b604051808281526020019"
+                   "1505060405180910390f35b60006007820290509190505600a165627a7a72305820f294e8342123"
+                   "34e2978c6dd090355312a3f0f9476b8eb98fb480406fc2728a960029" );
 #else
     BOOST_CHECK_EQUAL( receipt["status"], string( "0x0" ) );
     Json::Value code =
@@ -1679,11 +1686,11 @@ BOOST_AUTO_TEST_CASE( push0_patch_activation ) {
     // historic call should fail before activation and succees after it
     callResult1 = fixture.rpcClient->eth_call( callObject, toJS( crossingBlockNumber - 1 ) );
     BOOST_REQUIRE_EQUAL( callResult1, string( "0x" ) );
-#endif // FAIR
+#endif  // FAIR
 
     callResult1 = fixture.rpcClient->eth_call( callObject, toJS( crossingBlockNumber ) );
     BOOST_REQUIRE_NE( callResult1, string( "0x" ) );
-#endif // HISTORIC_STATE
+#endif  // HISTORIC_STATE
 }
 
 BOOST_AUTO_TEST_CASE( eth_estimateGas ) {
@@ -2083,8 +2090,8 @@ BOOST_AUTO_TEST_CASE( eth_call_create ) {
     BOOST_REQUIRE( callResult != "0x" );
 
     // verify state was not modified by eth_call (nonce unchanged)
-    u256 nonceAfterCall = jsToU256(
-        fixture.rpcClient->eth_getTransactionCount( toJS( senderAddress ), "latest" ) );
+    u256 nonceAfterCall =
+        jsToU256( fixture.rpcClient->eth_getTransactionCount( toJS( senderAddress ), "latest" ) );
     BOOST_REQUIRE_EQUAL( nonceAfterCall, 0 );
 
     // now actually deploy via eth_sendTransaction and verify we get the same runtime bytecode
@@ -2522,8 +2529,8 @@ BOOST_AUTO_TEST_CASE( single_fs_commit_per_block_patch_before ) {
     };
 
     auto produceBlockWithFilestorageOperations = [&]() {
-        nextNonce = jsToU256( fixture.rpcClient->eth_getTransactionCount(
-            toJS( senderAddress ), "latest" ) );
+        nextNonce = jsToU256(
+            fixture.rpcClient->eth_getTransactionCount( toJS( senderAddress ), "latest" ) );
         executeFilestorageOperation();
         executeFilestorageOperation();
         dev::eth::mineTransaction( *( fixture.client ), 1 );
@@ -2575,8 +2582,8 @@ BOOST_AUTO_TEST_CASE( single_fs_commit_per_block_patch_after ) {
     };
 
     auto produceBlockWithFilestorageOperations = [&]() {
-        nextNonce = jsToU256( fixture.rpcClient->eth_getTransactionCount(
-            toJS( senderAddress ), "latest" ) );
+        nextNonce = jsToU256(
+            fixture.rpcClient->eth_getTransactionCount( toJS( senderAddress ), "latest" ) );
         executeFilestorageOperation();
         executeFilestorageOperation();
         dev::eth::mineTransaction( *( fixture.client ), 1 );
@@ -2870,9 +2877,9 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasPriceTooLow ) {
     // Mine to generate a non-zero account balance
     const int blocksToMine = 1;
 #ifdef FAIR
-    const u256 blockReward = fixture.client->chainParams().blockReward(
-                fixture.client->blockChain().info().timestamp(),
-                fixture.client->blockChain().info().number() );
+    const u256 blockReward =
+        fixture.client->chainParams().blockReward( fixture.client->blockChain().info().timestamp(),
+            fixture.client->blockChain().info().number() );
 #else
     const u256 blockReward = 2 * dev::eth::ether;
 #endif
@@ -2957,16 +2964,16 @@ BOOST_AUTO_TEST_CASE( logs ) {
 
 #ifdef FAIR
         std::string txHash;
-        if (i%2) {
+        if ( i % 2 ) {
             txHash = fixture.rpcClient->eth_sendTransaction( t );
-        }
-        else {
+        } else {
             std::string addrWithout0x = contractAddress.substr( 2 );
-            dev::bytes encryptedData = formEncryptedMessageMockup( dev::bytes(), dev::Address( addrWithout0x ) );
+            dev::bytes encryptedData =
+                formEncryptedMessageMockup( dev::bytes(), dev::Address( addrWithout0x ) );
             // account for the nonce 0 used for contract deployment
-            size_t nonce = static_cast<size_t>(i + 1);
-            std::string rlp = formTransactionRlp( fixture, t["from"].asString(),
-                dev::toHex( encryptedData ), nonce, addrWithout0x);
+            size_t nonce = static_cast< size_t >( i + 1 );
+            std::string rlp = formTransactionRlp(
+                fixture, t["from"].asString(), dev::toHex( encryptedData ), nonce, addrWithout0x );
             txHash = fixture.rpcClient->eth_sendRawTransaction( rlp );
         }
 #else
@@ -3110,7 +3117,7 @@ BOOST_AUTO_TEST_CASE( getLogs_limit ) {
     // push0Patch is enabled by default for FAIR
 #ifndef FAIR
     // wait for push0Patch to be activated
-    sleep(10);
+    sleep( 10 );
 
     // update block timestamp to activate patch
     Json::Value txRefill;
@@ -3123,17 +3130,17 @@ BOOST_AUTO_TEST_CASE( getLogs_limit ) {
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 #endif
 
-/*
-// SPDX-License-Identifier: None
-pragma solidity ^0.8;
-contract Logger{
-event DummyEvent(uint256, uint256);
-fallback() external payable {
-    for(uint i=0; i<100; ++i)
-        emit DummyEvent(block.number, i);
-}
-}
-*/
+    /*
+    // SPDX-License-Identifier: None
+    pragma solidity ^0.8;
+    contract Logger{
+    event DummyEvent(uint256, uint256);
+    fallback() external payable {
+        for(uint i=0; i<100; ++i)
+            emit DummyEvent(block.number, i);
+    }
+    }
+    */
 
     string bytecode =
         "6080604052348015600e575f80fd5b5060c080601a5f395ff3fe60806040525f5b6064811015604f577f907787"
@@ -3183,12 +3190,11 @@ fallback() external payable {
 
     // 3 11 blocks
     req["toBlock"] = 12;
-    BOOST_CHECK_EXCEPTION(
-        ( fixture.rpcClient->eth_getLogs( req ) ),
-        jsonrpc::JsonRpcException,
+    BOOST_CHECK_EXCEPTION( ( fixture.rpcClient->eth_getLogs( req ) ), jsonrpc::JsonRpcException,
         []( const jsonrpc::JsonRpcException& ex ) {
-            return ex.GetCode() == -32005 && std::string( ex.GetMessage() ).find( "Block range limit exceeded" ) !=
-                   std::string::npos;
+            return ex.GetCode() == -32005 &&
+                   std::string( ex.GetMessage() ).find( "Block range limit exceeded" ) !=
+                       std::string::npos;
         } );
 
     // 4 filter
@@ -3204,13 +3210,12 @@ fallback() external payable {
 
     req["toBlock"] = 50;
     filterId = fixture.rpcClient->eth_newFilter( req );
-    BOOST_CHECK_EXCEPTION(
-        ( fixture.rpcClient->eth_getFilterLogs( filterId ) ),
-        jsonrpc::JsonRpcException,
-        []( const jsonrpc::JsonRpcException& ex ) {
+    BOOST_CHECK_EXCEPTION( ( fixture.rpcClient->eth_getFilterLogs( filterId ) ),
+        jsonrpc::JsonRpcException, []( const jsonrpc::JsonRpcException& ex ) {
             std::cout << ex.GetCode() << " " << ex.GetMessage() << std::endl;
-            return ex.GetCode() == -32005 && std::string( ex.GetMessage() ).find( "Block range limit exceeded" ) !=
-                   std::string::npos;
+            return ex.GetCode() == -32005 &&
+                   std::string( ex.GetMessage() ).find( "Block range limit exceeded" ) !=
+                       std::string::npos;
         } );
 }
 
@@ -3271,12 +3276,11 @@ BOOST_AUTO_TEST_CASE( getResponseLogCountLimit ) {
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
     req["toBlock"] = fixture.client->number();
-    BOOST_CHECK_EXCEPTION(
-        ( fixture.rpcClient->eth_getLogs( req ) ),
-        jsonrpc::JsonRpcException,
+    BOOST_CHECK_EXCEPTION( ( fixture.rpcClient->eth_getLogs( req ) ), jsonrpc::JsonRpcException,
         []( const jsonrpc::JsonRpcException& ex ) {
-            return ex.GetCode() == -32005 && std::string( ex.GetMessage() ).find( "Response log count limit exceeded" ) !=
-                   std::string::npos;
+            return ex.GetCode() == -32005 &&
+                   std::string( ex.GetMessage() ).find( "Response log count limit exceeded" ) !=
+                       std::string::npos;
         } );
 }
 
@@ -4527,11 +4531,11 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     BOOST_REQUIRE( txHash == "0xd9463624627c7add3b3ac18a228569b3a9075cc05bec64db060ea8904f3c4288" );
     BOOST_REQUIRE(
         dev::toHexPrefixed( fixture.client->transactions( 4 )[0].toBytes() ) ==
-            "0x02f8c98197808504a817c8008504a817c801827530947d36af85a184e220a656525fcbb9a63b9ab3c12b018"
-            "0f85bf85994de0b295669a9fd93d5f28d9ec85e40f4cb697baef842a000000000000000000000000000000000"
-            "00000000000000000000000000000003a00000000000000000000000000000000000000000000000000000000"
-            "00000000780a0f000a16aeee9ac96602e8b179d39caca61f347a296e78ec9c57ec06c6e378422a02462cfad48"
-            "32a32ed8c55fddf8a033d4a73f62fed993de3687ba14902eaea2d4" );
+        "0x02f8c98197808504a817c8008504a817c801827530947d36af85a184e220a656525fcbb9a63b9ab3c12b018"
+        "0f85bf85994de0b295669a9fd93d5f28d9ec85e40f4cb697baef842a000000000000000000000000000000000"
+        "00000000000000000000000000000003a00000000000000000000000000000000000000000000000000000000"
+        "00000000780a0f000a16aeee9ac96602e8b179d39caca61f347a296e78ec9c57ec06c6e378422a02462cfad48"
+        "32a32ed8c55fddf8a033d4a73f62fed993de3687ba14902eaea2d4" );
 
     BOOST_REQUIRE( fixture.rpcClient->eth_getBalance(
                        "0x7D36aF85A184E220A656525fcBb9A63B9ab3C12b", "latest" ) == "0x1" );
@@ -4820,7 +4824,8 @@ BOOST_AUTO_TEST_CASE( InvalidTransactionFormatPatch ) {
 
 
 #ifndef FAIR
-    // send a txn with maxPriorityFeePerGas > maxFeePerGas before InvalidTransactionFormatPatchTimestamp
+    // send a txn with maxPriorityFeePerGas > maxFeePerGas before
+    // InvalidTransactionFormatPatchTimestamp
     txHash = fixture.rpcClient->eth_sendRawTransaction(
         "0x02f86d8197808504a817c8018504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b8080"
         "c001a0db2fe04a66fa54bfe9c6e0166d85a31b34cbff10dbde0e0584081aec6bb33c30a06b956a49c52f1460da"
@@ -5013,7 +5018,7 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
                                           1,
                                           dev::ZeroAddress,
 #endif
-                                          true );
+        true );
     auto blockRandomEarly = blockRandomExecutor( dev::bytesConstRef(), ctx );
 
     // wait till patch is activated
@@ -5021,26 +5026,52 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
     fixture.rpcClient->eth_sendTransaction( txRefill );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
-//    pragma solidity ^0.8.13;
+    //    pragma solidity ^0.8.13;
 
-//    contract GetBlockRandomPrecompiled {
-//        address public constant PRECOMPILE_0X08 = address(0x08);
-//        bytes32 lastBlockRandom;
+    //    contract GetBlockRandomPrecompiled {
+    //        address public constant PRECOMPILE_0X08 = address(0x08);
+    //        bytes32 lastBlockRandom;
 
-//        function getBlockRandom() public returns (bytes32) {
-//            (bool success, bytes memory result) = PRECOMPILE_0X08.staticcall("");
-//            require(success, "Call to precompile 0x06 failed");
-//            require(result.length >= 20, "Invalid result length");
-//            lastBlockRandom = bytes32(result);
+    //        function getBlockRandom() public returns (bytes32) {
+    //            (bool success, bytes memory result) = PRECOMPILE_0X08.staticcall("");
+    //            require(success, "Call to precompile 0x06 failed");
+    //            require(result.length >= 20, "Invalid result length");
+    //            lastBlockRandom = bytes32(result);
 
-//            return lastBlockRandom;
-//        }
+    //            return lastBlockRandom;
+    //        }
 
-//        function getLastBlockRandom() public view returns (bytes32) {
-//            return lastBlockRandom;
-//        }
-//    }
-    std::string bytecode = "6080604052348015600f57600080fd5b506104548061001f6000396000f3fe608060405234801561001057600080fd5b50600436106100415760003560e01c80633ec4b2de146100465780635e2e884d14610064578063dc031dfe14610082575b600080fd5b61004e6100a0565b60405161005b91906101fc565b60405180910390f35b61006c6100a5565b6040516100799190610230565b60405180910390f35b61008a6100ae565b6040516100979190610230565b60405180910390f35b600881565b60008054905090565b6000806000600873ffffffffffffffffffffffffffffffffffffffff166040516100d79061027c565b600060405180830381855afa9150503d8060008114610112576040519150601f19603f3d011682016040523d82523d6000602084013e610117565b606091505b50915091508161015c576040517f08c379a0000000000000000000000000000000000000000000000000000000008152600401610153906102ee565b60405180910390fd5b6014815110156101a1576040517f08c379a00000000000000000000000000000000000000000000000000000000081526004016101989061035a565b60405180910390fd5b806101ab906103b7565b6000819055506000549250505090565b600073ffffffffffffffffffffffffffffffffffffffff82169050919050565b60006101e6826101bb565b9050919050565b6101f6816101db565b82525050565b600060208201905061021160008301846101ed565b92915050565b6000819050919050565b61022a81610217565b82525050565b60006020820190506102456000830184610221565b92915050565b600081905092915050565b50565b600061026660008361024b565b915061027182610256565b600082019050919050565b600061028782610259565b9150819050919050565b600082825260208201905092915050565b7f43616c6c20746f20707265636f6d70696c652030783036206661696c65640000600082015250565b60006102d8601e83610291565b91506102e3826102a2565b602082019050919050565b60006020820190508181036000830152610307816102cb565b9050919050565b7f496e76616c696420726573756c74206c656e6774680000000000000000000000600082015250565b6000610344601583610291565b915061034f8261030e565b602082019050919050565b6000602082019050818103600083015261037381610337565b9050919050565b600081519050919050565b6000819050602082019050919050565b60006103a18251610217565b80915050919050565b600082821b905092915050565b60006103c28261037a565b826103cc84610385565b90506103d781610395565b92506020821015610417576104127fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff836020036008026103aa565b831692505b505091905056fea26469706673582212200547f4a1b7b525d8f531c7e991887fdca3437350b86fc09b06a1acaa83b5c3ad64736f6c634300081e0033";
+    //        function getLastBlockRandom() public view returns (bytes32) {
+    //            return lastBlockRandom;
+    //        }
+    //    }
+    std::string bytecode =
+        "6080604052348015600f57600080fd5b506104548061001f6000396000f3fe6080604052348015610010576000"
+        "80fd5b50600436106100415760003560e01c80633ec4b2de146100465780635e2e884d14610064578063dc031d"
+        "fe14610082575b600080fd5b61004e6100a0565b60405161005b91906101fc565b60405180910390f35b61006c"
+        "6100a5565b6040516100799190610230565b60405180910390f35b61008a6100ae565b60405161009791906102"
+        "30565b60405180910390f35b600881565b60008054905090565b6000806000600873ffffffffffffffffffffff"
+        "ffffffffffffffffff166040516100d79061027c565b600060405180830381855afa9150503d80600081146101"
+        "12576040519150601f19603f3d011682016040523d82523d6000602084013e610117565b606091505b50915091"
+        "508161015c576040517f08c379a000000000000000000000000000000000000000000000000000000000815260"
+        "0401610153906102ee565b60405180910390fd5b6014815110156101a1576040517f08c379a000000000000000"
+        "00000000000000000000000000000000000000000081526004016101989061035a565b60405180910390fd5b80"
+        "6101ab906103b7565b6000819055506000549250505090565b600073ffffffffffffffffffffffffffffffffff"
+        "ffffff82169050919050565b60006101e6826101bb565b9050919050565b6101f6816101db565b82525050565b"
+        "600060208201905061021160008301846101ed565b92915050565b6000819050919050565b61022a8161021756"
+        "5b82525050565b60006020820190506102456000830184610221565b92915050565b600081905092915050565b"
+        "50565b600061026660008361024b565b915061027182610256565b600082019050919050565b60006102878261"
+        "0259565b9150819050919050565b600082825260208201905092915050565b7f43616c6c20746f20707265636f"
+        "6d70696c652030783036206661696c65640000600082015250565b60006102d8601e83610291565b91506102e3"
+        "826102a2565b602082019050919050565b60006020820190508181036000830152610307816102cb565b905091"
+        "9050565b7f496e76616c696420726573756c74206c656e6774680000000000000000000000600082015250565b"
+        "6000610344601583610291565b915061034f8261030e565b602082019050919050565b60006020820190508181"
+        "03600083015261037381610337565b9050919050565b600081519050919050565b600081905060208201905091"
+        "9050565b60006103a18251610217565b80915050919050565b600082821b905092915050565b60006103c28261"
+        "037a565b826103cc84610385565b90506103d781610395565b92506020821015610417576104127fffffffffff"
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffff836020036008026103aa565b831692505b50"
+        "5091905056fea26469706673582212200547f4a1b7b525d8f531c7e991887fdca3437350b86fc09b06a1acaa83"
+        "b5c3ad64736f6c634300081e0033";
 
     // deploy contract
     Json::Value create;
@@ -5065,7 +5096,8 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
     callGetLast["to"] = contractAddress;
     callGetLast["data"] = "0x5e2e884d";
     callGetLast["from"] = toJS( senderAddress );
-    dev::bytes blockRandomFromContract = dev::fromHex( fixture.rpcClient->eth_call( callGetLast, "latest" ) );
+    dev::bytes blockRandomFromContract =
+        dev::fromHex( fixture.rpcClient->eth_call( callGetLast, "latest" ) );
 
     ctx = PrecompiledCallContext( fixture.client->number(),
 #ifdef BITE
@@ -5074,7 +5106,7 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
                                 1,
                                 dev::ZeroAddress,
 #endif
-                                true );
+        true );
     auto executionResult = blockRandomExecutor( dev::bytesConstRef(), ctx );
 
     BOOST_REQUIRE( executionResult.first );
@@ -5085,7 +5117,8 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
     fixture.rpcClient->eth_sendTransaction( txRefill );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
-    dev::bytes blockRandomFromHistoricCall = dev::fromHex( fixture.rpcClient->eth_call( callGetLast, toJS( fixture.client->number() - 1 ) ) );
+    dev::bytes blockRandomFromHistoricCall = dev::fromHex(
+        fixture.rpcClient->eth_call( callGetLast, toJS( fixture.client->number() - 1 ) ) );
     BOOST_REQUIRE( blockRandomFromHistoricCall == blockRandomFromContract );
 
     // ask for blockRandom for early block
@@ -5094,12 +5127,7 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
                                 0,
                                 dev::h256::random(),
                                 1,
-                                dev::ZeroAddress,
 #endif
-                                true );
-    auto blockRandomEarlyHistoric = blockRandomExecutor(dev::bytesConstRef(), ctx );
-    BOOST_REQUIRE( blockRandomEarlyHistoric.first );
-    BOOST_REQUIRE( blockRandomEarlyHistoric.second == blockRandomEarly.second );
 #endif
 }
 
@@ -5202,7 +5230,9 @@ static std::string const c_BITEConfigString =
                 {
                     "nodeID": 8,
                     "nodeName": "test_node",
-                    "basePort": )" + std::to_string( rand_port ) + R"(,
+                    "basePort": )" +
+    std::to_string( rand_port ) +
+    R"(,
                     "httpRpcPort": 9568,
                     "httpsRpcPort": 9573,
                     "wsRpcPort": 9567,
@@ -5399,7 +5429,9 @@ static std::string const c_BITEConfigString =
                         {
                             "nodeID": 8,
                             "nodeName": "test_node",
-                            "basePort": )" + std::to_string( rand_port ) + R"(,
+                            "basePort": )" +
+    std::to_string( rand_port ) +
+    R"(,
                             "httpRpcPort": 9568,
                             "httpsRpcPort": 9573,
                             "wsRpcPort": 9567,
@@ -5612,7 +5644,8 @@ static std::string const c_BITECommitteeRotationConfigString =
                         {
                             "nodeID": 8,
                             "nodeName": "test_node",
-                            "basePort": )" + std::to_string( rand_port ) + R"(,
+                            "basePort": )" +
+    std::to_string( rand_port ) + R"(,
                             "httpRpcPort": 9568,
                             "httpsRpcPort": 9573,
                             "wsRpcPort": 9567,
@@ -5649,7 +5682,9 @@ static std::string const c_BITECommitteeRotationConfigString =
                         {
                             "nodeID": 8,
                             "nodeName": "test_node",
-                            "basePort": )" + std::to_string( rand_port ) + R"(,
+                            "basePort": )" +
+    std::to_string( rand_port ) +
+    R"(,
                             "httpRpcPort": 9568,
                             "httpsRpcPort": 9573,
                             "wsRpcPort": 9567,
@@ -5748,7 +5783,7 @@ revert();
     }
 }
 )";
-#endif // #ifndef FAIR
+#endif  // #ifndef FAIR
 
 
 BOOST_AUTO_TEST_CASE( getCommonPublicKey ) {
@@ -5761,34 +5796,38 @@ BOOST_AUTO_TEST_CASE( getCommonPublicKey ) {
     uint64_t epochId = biteInfo[0]["epochId"].asUInt64();
 
     auto commonPublicKeyFromConfig = fixture.client->chainParams().getCommonBlsPublicKey();
-    libBLS::algebra::G2Point commonPublicKey = libBLS::algebra::G2Point::fromString( commonPublicKeyFromConfig, libBLS::Base::DEC );
+    libBLS::algebra::G2Point commonPublicKey =
+        libBLS::algebra::G2Point::fromString( commonPublicKeyFromConfig, libBLS::Base::DEC );
 
     BOOST_REQUIRE_EQUAL( blsPublicKey.size(), 256 );
-    BOOST_REQUIRE_EQUAL( libBLS::TEPublicKey( blsPublicKey, libBLS::Base::HEXA ).getPublicKeyRaw(), commonPublicKey );
+    BOOST_REQUIRE_EQUAL( libBLS::TEPublicKey( blsPublicKey, libBLS::Base::HEXA ).getPublicKeyRaw(),
+        commonPublicKey );
     BOOST_REQUIRE_EQUAL( epochId, fixture.client->getCurrentEpochId() );
 }
 
 #ifdef BITE
 
 // Helper function to build abi.encode(bytes[] args1, bytes[] args2)
-dev::bytes buildAbiEncodedArrays( const std::vector<dev::bytes>& args1Elements, const std::vector<dev::bytes>& args2Elements ) {
+dev::bytes buildAbiEncodedArrays( const std::vector< dev::bytes >& args1Elements,
+    const std::vector< dev::bytes >& args2Elements ) {
     // Validate that all args1 elements meet minimum length requirement
     for ( size_t i = 0; i < args1Elements.size(); ++i ) {
         if ( args1Elements[i].size() < BITE_CIPHERTEXT_MIN_LEN ) {
-            throw std::runtime_error( "buildAbiEncodedArrays: args1 element " + std::to_string(i) +
-                " is too short (" + std::to_string(args1Elements[i].size()) + " bytes), must be at least " +
-                std::to_string(BITE_CIPHERTEXT_MIN_LEN) + " bytes" );
+            throw std::runtime_error(
+                "buildAbiEncodedArrays: args1 element " + std::to_string( i ) + " is too short (" +
+                std::to_string( args1Elements[i].size() ) + " bytes), must be at least " +
+                std::to_string( BITE_CIPHERTEXT_MIN_LEN ) + " bytes" );
         }
     }
 
     dev::bytes result;
 
     // Calculate total size for args1 array data
-    size_t args1DataSize = 32;  // length field
+    size_t args1DataSize = 32;                   // length field
     args1DataSize += 32 * args1Elements.size();  // offsets for each element
     for ( const auto& elem : args1Elements ) {
-        args1DataSize += 32;  // length field for element
-        args1DataSize += (elem.size() + 31) / 32 * 32;  // padded element data
+        args1DataSize += 32;                              // length field for element
+        args1DataSize += ( elem.size() + 31 ) / 32 * 32;  // padded element data
     }
 
     // Write offsets to both arrays
@@ -5806,7 +5845,7 @@ dev::bytes buildAbiEncodedArrays( const std::vector<dev::bytes>& args1Elements, 
     for ( const auto& elem : args1Elements ) {
         dev::bytes elemOffset = dev::toBigEndian( dev::u256( currentOffset ) );
         result.insert( result.end(), elemOffset.begin(), elemOffset.end() );
-        currentOffset += 32 + (elem.size() + 31) / 32 * 32;  // length + padded data
+        currentOffset += 32 + ( elem.size() + 31 ) / 32 * 32;  // length + padded data
     }
 
     // Write args1 element data
@@ -5814,7 +5853,8 @@ dev::bytes buildAbiEncodedArrays( const std::vector<dev::bytes>& args1Elements, 
         dev::bytes elemLength = dev::toBigEndian( dev::u256( elem.size() ) );
         result.insert( result.end(), elemLength.begin(), elemLength.end() );
         result.insert( result.end(), elem.begin(), elem.end() );
-        while( result.size() % 32 != 0 ) result.push_back(0);
+        while ( result.size() % 32 != 0 )
+            result.push_back( 0 );
     }
 
     // Encode args2 array (same structure as args1)
@@ -5826,7 +5866,7 @@ dev::bytes buildAbiEncodedArrays( const std::vector<dev::bytes>& args1Elements, 
     for ( const auto& elem : args2Elements ) {
         dev::bytes elemOffset = dev::toBigEndian( dev::u256( currentOffset ) );
         result.insert( result.end(), elemOffset.begin(), elemOffset.end() );
-        currentOffset += 32 + (elem.size() + 31) / 32 * 32;
+        currentOffset += 32 + ( elem.size() + 31 ) / 32 * 32;
     }
 
     // Write args2 element data
@@ -5834,7 +5874,8 @@ dev::bytes buildAbiEncodedArrays( const std::vector<dev::bytes>& args1Elements, 
         dev::bytes elemLength = dev::toBigEndian( dev::u256( elem.size() ) );
         result.insert( result.end(), elemLength.begin(), elemLength.end() );
         result.insert( result.end(), elem.begin(), elem.end() );
-        while( result.size() % 32 != 0 ) result.push_back(0);
+        while ( result.size() % 32 != 0 )
+            result.push_back( 0 );
     }
 
     return result;
@@ -5852,8 +5893,468 @@ BOOST_AUTO_TEST_CASE( rejectExplicitCTXSubmission ) {
     BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendRawTransaction( dev::toHexPrefixed( t.toBytes() ) ), jsonrpc::JsonRpcException );
 }
 
+BOOST_AUTO_TEST_CASE( getRandomWalletAndSignatureForCTX ) {
+    JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true, false, -1,
+        { { "contractStorageLimit", "100000" } } );
+
+    dev::eth::g_skaleHost = fixture.client->skaleHost();
+
+    string senderAddress = toJS( fixture.coinbase.address() );
+
+    //    pragma solidity ^0.8.13;
+
+    //    contract Precompile0x06Caller {
+    //        address public lastGenerated;
+    //        address public preLastGenerated;
+    //        bytes public lastSignature;
+    //        bytes public preLastSignature;
+
+    //        function generateRandomWallet() public returns (address) {
+    //            uint256 randomNumber = uint256(keccak256(abi.encodePacked(block.timestamp,
+    //            block.number))); bytes[] memory args1 = new bytes[](2);
+    //            // args1 elements must be at least BITE_CIPHERTEXT_MIN_LEN bytes (276 bytes)
+    //            args1[0] = new bytes(276);
+    //            for (uint i = 0; i < 276; i++) {
+    //                args1[0][i] = 0x11;
+    //            }
+    //            args1[1] = new bytes(276);
+    //            for (uint i = 0; i < 276; i++) {
+    //                args1[1][i] = 0x22;
+    //            }
+    //            bytes[] memory args2 = new bytes[](2);
+    //            args2[0] = abi.encodePacked("plaintext1");
+    //            args2[1] = abi.encodePacked("plaintext2");
+    //            bytes memory randomBytes = abi.encode(args1, args2);
+    //            bytes memory input = abi.encode(address(this), randomNumber, randomBytes);
+
+    //            (bool success, bytes memory result) = address(0x06).staticcall(input);
+
+    //            preLastGenerated = lastGenerated;
+    //            preLastSignature = lastSignature;
+
+    //            address addr = address(bytes20(result));
+
+    //            bytes memory signature = new bytes(result.length - 20);
+    //            for (uint i = 0; i < result.length - 20; i++) {
+    //                signature[i] = result[i + 20];
+    //            }
+
+    //            lastGenerated = addr;
+    //            lastSignature = signature;
+
+    //            return addr;
+    //        }
+
+    //        function generateRandomWalletWithInput(bytes calldata input) public returns (address)
+    //        {
+    //            (bool success, bytes memory result) = address(0x06).staticcall(input);
+
+    //            preLastGenerated = lastGenerated;
+    //            preLastSignature = lastSignature;
+
+    //            address addr = address(bytes20(result));
+
+    //            bytes memory signature = new bytes(result.length - 20);
+    //            for (uint i = 0; i < result.length - 20; i++) {
+    //                signature[i] = result[i + 20];
+    //            }
+
+    //            lastGenerated = addr;
+    //            lastSignature = signature;
+
+    //            return addr;
+    //        }
+
+    //        function getLastGeneratedAddress() public view returns (address) {
+    //            return lastGenerated;
+    //        }
+
+    //        function getPreLastGeneratedAddress() public view returns (address) {
+    //            return preLastGenerated;
+    //        }
+
+    //        function getLastSignature() public view returns (bytes memory) {
+    //            return lastSignature;
+    //        }
+
+    //        function getPreLastSignature() public view returns (bytes memory) {
+    //            return preLastSignature;
+    //        }
+    //    }
+    std::string bytecode =
+        "6080604052348015600f57600080fd5b506117a78061001f6000396000f3fe6080604052348015610010576000"
+        "80fd5b506004361061009e5760003560e01c80638628f93a116100665780638628f93a146101395780638ee64f"
+        "3614610169578063c667882614610187578063cdf72f9e146101a5578063fcab457f146101c35761009e565b80"
+        "63041d5d7b146100a35780630c2dd5f4146100c15780632bbdbd7e146100df57806352c92885146100fd578063"
+        "8482f2461461011b575b600080fd5b6100ab6101e1565b6040516100b89190610cf6565b60405180910390f35b"
+        "6100c961020a565b6040516100d69190610cf6565b60405180910390f35b6100e7610230565b6040516100f491"
+        "90610da1565b60405180910390f35b6101056102be565b6040516101129190610cf6565b60405180910390f35b"
+        "610123610873565b6040516101309190610da1565b60405180910390f35b610153600480360381019061014e91"
+        "90610e32565b610905565b6040516101609190610cf6565b60405180910390f35b610171610b47565b60405161"
+        "017e9190610da1565b60405180910390f35b61018f610bd9565b60405161019c9190610da1565b604051809103"
+        "90f35b6101ad610c67565b6040516101ba9190610cf6565b60405180910390f35b6101cb610c8b565b60405161"
+        "01d89190610cf6565b60405180910390f35b60008060009054906101000a900473ffffffffffffffffffffffff"
+        "ffffffffffffffff16905090565b600160009054906101000a900473ffffffffffffffffffffffffffffffffff"
+        "ffffff1681565b6003805461023d90610eae565b80601f01602080910402602001604051908101604052809291"
+        "9081815260200182805461026990610eae565b80156102b65780601f1061028b57610100808354040283529160"
+        "2001916102b6565b820191906000526020600020905b8154815290600101906020018083116102995782900360"
+        "1f168201915b505050505081565b60008042436040516020016102d4929190610f0a565b604051602081830303"
+        "8152906040528051906020012060001c90506000600267ffffffffffffffff81111561030c5761030b610f3656"
+        "5b5b60405190808252806020026020018201604052801561033f57816020015b60608152602001906001900390"
+        "8161032a5790505b50905061011467ffffffffffffffff81111561035e5761035d610f36565b5b604051908082"
+        "5280601f01601f1916602001820160405280156103905781602001600182028036833780820191505090505b50"
+        "816000815181106103a5576103a4610f65565b5b602002602001018190525060005b61011481101561042c5760"
+        "1160f81b826000815181106103d6576103d5610f65565b5b602002602001015182815181106103f0576103ef61"
+        "0f65565b5b60200101907effffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff191690"
+        "8160001a90535080806001019150506103b3565b5061011467ffffffffffffffff81111561044957610448610f"
+        "36565b5b6040519080825280601f01601f19166020018201604052801561047b57816020016001820280368337"
+        "80820191505090505b50816001815181106104905761048f610f65565b5b602002602001018190525060005b61"
+        "011481101561051757602260f81b826001815181106104c1576104c0610f65565b5b6020026020010151828151"
+        "81106104db576104da610f65565b5b60200101907effffffffffffffffffffffffffffffffffffffffffffffff"
+        "ffffffffffffff1916908160001a905350808060010191505061049e565b506000600267ffffffffffffffff81"
+        "111561053557610534610f36565b5b60405190808252806020026020018201604052801561056857816020015b"
+        "60608152602001906001900390816105535790505b50905060405160200161057a90610feb565b604051602081"
+        "8303038152906040528160008151811061059d5761059c610f65565b5b60200260200101819052506040516020"
+        "016105b79061104c565b604051602081830303815290604052816001815181106105da576105d9610f65565b5b"
+        "6020026020010181905250600082826040516020016105fa92919061116d565b60405160208183030381529060"
+        "405290506000308583604051602001610622939291906111b3565b604051602081830303815290604052905060"
+        "0080600673ffffffffffffffffffffffffffffffffffffffff168360405161065c919061122d565b6000604051"
+        "80830381855afa9150503d8060008114610697576040519150601f19603f3d011682016040523d82523d600060"
+        "2084013e61069c565b606091505b509150915060008054906101000a900473ffffffffffffffffffffffffffff"
+        "ffffffffffff16600160006101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373"
+        "ffffffffffffffffffffffffffffffffffffffff160217905550600260039081610712919061141b565b506000"
+        "8161071f90611554565b60601c905060006014835161073491906115ea565b67ffffffffffffffff8111156107"
+        "4d5761074c610f36565b5b6040519080825280601f01601f19166020018201604052801561077f578160200160"
+        "0182028036833780820191505090505b50905060005b6014845161079391906115ea565b811015610813578360"
+        "14826107a8919061161e565b815181106107b9576107b8610f65565b5b602001015160f81c60f81b8282815181"
+        "106107d7576107d6610f65565b5b60200101907effffffffffffffffffffffffffffffffffffffffffffffffff"
+        "ffffffffffff1916908160001a9053508080600101915050610785565b50816000806101000a81548173ffffff"
+        "ffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff1602"
+        "1790555080600290816108639190611652565b5081995050505050505050505090565b60606002805461088290"
+        "610eae565b80601f01602080910402602001604051908101604052809291908181526020018280546108ae9061"
+        "0eae565b80156108fb5780601f106108d0576101008083540402835291602001916108fb565b82019190600052"
+        "6020600020905b8154815290600101906020018083116108de57829003601f168201915b505050505090509056"
+        "5b6000806000600673ffffffffffffffffffffffffffffffffffffffff16858560405161093292919061175856"
+        "5b600060405180830381855afa9150503d806000811461096d576040519150601f19603f3d011682016040523d"
+        "82523d6000602084013e610972565b606091505b509150915060008054906101000a900473ffffffffffffffff"
+        "ffffffffffffffffffffffff16600160006101000a81548173ffffffffffffffffffffffffffffffffffffffff"
+        "021916908373ffffffffffffffffffffffffffffffffffffffff1602179055506002600390816109e891906114"
+        "1b565b506000816109f590611554565b60601c9050600060148351610a0a91906115ea565b67ffffffffffffff"
+        "ff811115610a2357610a22610f36565b5b6040519080825280601f01601f191660200182016040528015610a55"
+        "5781602001600182028036833780820191505090505b50905060005b60148451610a6991906115ea565b811015"
+        "610ae95783601482610a7e919061161e565b81518110610a8f57610a8e610f65565b5b602001015160f81c60f8"
+        "1b828281518110610aad57610aac610f65565b5b60200101907effffffffffffffffffffffffffffffffffffff"
+        "ffffffffffffffffffffffff1916908160001a9053508080600101915050610a5b565b50816000806101000a81"
+        "548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffff"
+        "ffffffff1602179055508060029081610b399190611652565b508194505050505092915050565b606060038054"
+        "610b5690610eae565b80601f016020809104026020016040519081016040528092919081815260200182805461"
+        "0b8290610eae565b8015610bcf5780601f10610ba457610100808354040283529160200191610bcf565b820191"
+        "906000526020600020905b815481529060010190602001808311610bb257829003601f168201915b5050505050"
+        "905090565b60028054610be690610eae565b80601f016020809104026020016040519081016040528092919081"
+        "8152602001828054610c1290610eae565b8015610c5f5780601f10610c34576101008083540402835291602001"
+        "91610c5f565b820191906000526020600020905b815481529060010190602001808311610c4257829003601f16"
+        "8201915b505050505081565b60008054906101000a900473ffffffffffffffffffffffffffffffffffffffff16"
+        "81565b6000600160009054906101000a900473ffffffffffffffffffffffffffffffffffffffff16905090565b"
+        "600073ffffffffffffffffffffffffffffffffffffffff82169050919050565b6000610ce082610cb5565b9050"
+        "919050565b610cf081610cd5565b82525050565b6000602082019050610d0b6000830184610ce7565b92915050"
+        "565b600081519050919050565b600082825260208201905092915050565b60005b83811015610d4b5780820151"
+        "81840152602081019050610d30565b60008484015250505050565b6000601f19601f8301169050919050565b60"
+        "00610d7382610d11565b610d7d8185610d1c565b9350610d8d818560208601610d2d565b610d9681610d57565b"
+        "840191505092915050565b60006020820190508181036000830152610dbb8184610d68565b905092915050565b"
+        "600080fd5b600080fd5b600080fd5b600080fd5b600080fd5b60008083601f840112610df257610df1610dcd56"
+        "5b5b8235905067ffffffffffffffff811115610e0f57610e0e610dd2565b5b6020830191508360018202830111"
+        "15610e2b57610e2a610dd7565b5b9250929050565b60008060208385031215610e4957610e48610dc3565b5b60"
+        "0083013567ffffffffffffffff811115610e6757610e66610dc8565b5b610e7385828601610ddc565b92509250"
+        "509250929050565b7f4e487b710000000000000000000000000000000000000000000000000000000060005260"
+        "2260045260246000fd5b60006002820490506001821680610ec657607f821691505b602082108103610ed95761"
+        "0ed8610e7f565b5b50919050565b6000819050919050565b6000819050919050565b610f04610eff82610edf56"
+        "5b610ee9565b82525050565b6000610f168285610ef3565b602082019150610f268284610ef3565b6020820191"
+        "508190509392505050565b7f4e487b710000000000000000000000000000000000000000000000000000000060"
+        "0052604160045260246000fd5b7f4e487b71000000000000000000000000000000000000000000000000000000"
+        "00600052603260045260246000fd5b600081905092915050565b7f706c61696e74657874310000000000000000"
+        "0000000000000000000000000000600082015250565b6000610fd5600a83610f94565b9150610fe082610f9f56"
+        "5b600a82019050919050565b6000610ff682610fc8565b9150819050919050565b7f706c61696e746578743200"
+        "000000000000000000000000000000000000000000600082015250565b6000611036600a83610f94565b915061"
+        "104182611000565b600a82019050919050565b600061105782611029565b9150819050919050565b6000815190"
+        "50919050565b600082825260208201905092915050565b6000819050602082019050919050565b600082825260"
+        "208201905092915050565b60006110a982610d11565b6110b3818561108d565b93506110c3818560208601610d"
+        "2d565b6110cc81610d57565b840191505092915050565b60006110e3838361109e565b905092915050565b6000"
+        "602082019050919050565b600061110382611061565b61110d818561106c565b93508360208202850161111f85"
+        "61107d565b8060005b8581101561115b578484038952815161113c85826110d7565b9450611147836110eb565b"
+        "925060208a01995050600181019050611123565b50829750879550505050505092915050565b60006040820190"
+        "50818103600083015261118781856110f8565b9050818103602083015261119b81846110f8565b905093925050"
+        "50565b6111ad81610edf565b82525050565b60006060820190506111c86000830186610ce7565b6111d5602083"
+        "01856111a4565b81810360408301526111e78184610d68565b9050949350505050565b60008190509291505056"
+        "5b600061120782610d11565b61121181856111f1565b9350611221818560208601610d2d565b80840191505092"
+        "915050565b600061123982846111fc565b915081905092915050565b60008154905061125381610eae565b9050"
+        "919050565b60008190508160005260206000209050919050565b60008190508160005260206000209050919050"
+        "565b60006020601f8301049050919050565b600082821b905092915050565b6000600883026112d17fffffffff"
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffff82611294565b6112db8683611294565b95"
+        "508019841693508086168417925050509392505050565b6000819050919050565b600061131861131361130e84"
+        "610edf565b6112f3565b610edf565b9050919050565b6000819050919050565b611332836112fd565b61134661"
+        "133e8261131f565b8484546112a1565b825550505050565b600090565b61135b61134e565b6113668184846113"
+        "29565b505050565b5b8181101561138a5761137f600082611353565b60018101905061136c565b5050565b601f"
+        "8211156113cf576113a08161125a565b6113a984611284565b810160208510156113b8578190505b6113cc6113"
+        "c485611284565b83018261136b565b50505b505050565b600082821c905092915050565b60006113f260001984"
+        "6008026113d4565b1980831691505092915050565b600061140b83836113e1565b915082600202821790509291"
+        "5050565b818103611429575050611501565b61143282611244565b67ffffffffffffffff81111561144b576114"
+        "4a610f36565b5b6114558254610eae565b61146082828561138e565b6000601f83116001811461148f57600084"
+        "1561147d578287015490505b61148785826113ff565b8655506114fa565b601f19841661149d8761126f565b96"
+        "506114a88661125a565b60005b828110156114d057848901548255600182019150600185019450602081019050"
+        "6114ab565b868310156114ed57848901546114e9601f8916826113e1565b8355505b6001600288020188555050"
+        "505b5050505050505b565b6000819050602082019050919050565b60007fffffffffffffffffffffffffffffff"
+        "ffffffffff00000000000000000000000082169050919050565b600061154b8251611513565b80915050919050"
+        "565b600061155f82610d11565b8261156984611503565b90506115748161153f565b925060148210156115b457"
+        "6115af7fffffffffffffffffffffffffffffffffffffffff000000000000000000000000836014036008026112"
+        "94565b831692505b5050919050565b7f4e487b7100000000000000000000000000000000000000000000000000"
+        "000000600052601160045260246000fd5b60006115f582610edf565b915061160083610edf565b925082820390"
+        "5081811115611618576116176115bb565b5b92915050565b600061162982610edf565b915061163483610edf56"
+        "5b925082820190508082111561164c5761164b6115bb565b5b92915050565b61165b82610d11565b67ffffffff"
+        "ffffffff81111561167457611673610f36565b5b61167e8254610eae565b61168982828561138e565b60006020"
+        "9050601f8311600181146116bc57600084156116aa578287015190505b6116b485826113ff565b86555061171c"
+        "565b601f1984166116ca8661125a565b60005b828110156116f257848901518255600182019150602085019450"
+        "6020810190506116cd565b8683101561170f578489015161170b601f8916826113e1565b8355505b6001600288"
+        "020188555050505b505050505050565b82818337600083830152505050565b600061173f83856111f1565b9350"
+        "61174c838584611724565b82840190509392505050565b6000611765828486611733565b915081905093925050"
+        "5056fea26469706673582212207b6fd0a0d4cd02303d170f0a0bf04ef7650f8eb3e54238c2f571b99f020b2c86"
+        "64736f6c634300081e0033";
+
+    // deploy contract
+    Json::Value create;
+    create["from"] = toJS( senderAddress );
+    create["code"] = bytecode;
+    create["gas"] = "1500000";
+    create["nonce"] = 0;
+    string txHash = fixture.rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    auto txReceipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    std::string contractAddress = txReceipt["contractAddress"].asString();
+    BOOST_REQUIRE_EQUAL( txReceipt["status"], "0x1" );
+
+    // submit 2 transactions in different blocks
+    Json::Value txGenerate;
+    txGenerate["to"] = contractAddress;
+    txGenerate["gas"] = "1000000";
+    txGenerate["data"] = "0x52c92885";
+    txGenerate["from"] = toJS( senderAddress );
+    txGenerate["nonce"] = 1;
+
+    txHash = fixture.rpcClient->eth_sendTransaction( txGenerate );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    txReceipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE_EQUAL( txReceipt["status"], "0x1" );
+
+    txGenerate["nonce"] = 2;
+    txHash = fixture.rpcClient->eth_sendTransaction( txGenerate );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    txReceipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE_EQUAL( txReceipt["status"], "0x1" );
+
+    // read data from contract
+    Json::Value callGetLastAddress;
+    callGetLastAddress["to"] = contractAddress;
+    callGetLastAddress["data"] = "0x041d5d7b";
+    callGetLastAddress["from"] = toJS( senderAddress );
+    dev::Address randomAddress1( dev::unpadLeft(
+        dev::fromHex( fixture.rpcClient->eth_call( callGetLastAddress, "latest" ) ) ) );
+
+    Json::Value callGetPreLastAddress;
+    callGetPreLastAddress["to"] = contractAddress;
+    callGetPreLastAddress["data"] = "0xfcab457f";
+    callGetPreLastAddress["from"] = toJS( senderAddress );
+    dev::Address randomAddress2( dev::unpadLeft(
+        dev::fromHex( fixture.rpcClient->eth_call( callGetPreLastAddress, "latest" ) ) ) );
+
+    BOOST_REQUIRE_NE( randomAddress1, randomAddress2 );
+
+    Json::Value callGetLastSignature;
+    callGetLastSignature["to"] = contractAddress;
+    callGetLastSignature["data"] = "0x8482f246";
+    callGetLastSignature["from"] = toJS( senderAddress );
+    dev::bytes randomSignatureBytes =
+        dev::fromHex( fixture.rpcClient->eth_call( callGetLastSignature, "latest" ) );
+    dev::h256 rBytes( dev::bytes(
+        randomSignatureBytes.begin(), randomSignatureBytes.begin() + dev::h256::size ) );
+    dev::h256 sBytes( dev::bytes( randomSignatureBytes.begin() + dev::h256::size,
+        randomSignatureBytes.begin() + 2 * dev::h256::size ) );
+    dev::h256 vBytes( dev::bytes( randomSignatureBytes.begin() + 2 * dev::h256::size,
+        randomSignatureBytes.begin() + 3 * dev::h256::size ) );
+    dev::SignatureStruct randomSignature1(
+        rBytes, sBytes, dev::h256::Arith( vBytes ).convert_to< _byte_ >() );
+
+    Json::Value callGetPreLastSignature;
+    callGetPreLastSignature["to"] = contractAddress;
+    callGetPreLastSignature["data"] = "0x8ee64f36";
+    callGetPreLastSignature["from"] = toJS( senderAddress );
+    randomSignatureBytes =
+        dev::fromHex( fixture.rpcClient->eth_call( callGetPreLastSignature, "latest" ) );
+    rBytes = dev::h256( dev::bytes(
+        randomSignatureBytes.begin(), randomSignatureBytes.begin() + dev::h256::size ) );
+    sBytes = dev::h256( dev::bytes( randomSignatureBytes.begin() + dev::h256::size,
+        randomSignatureBytes.begin() + 2 * dev::h256::size ) );
+    vBytes = dev::h256( dev::bytes( randomSignatureBytes.begin() + 2 * dev::h256::size,
+        randomSignatureBytes.begin() + 3 * dev::h256::size ) );
+    dev::SignatureStruct randomSignature2(
+        rBytes, sBytes, dev::h256::Arith( vBytes ).convert_to< _byte_ >() );
+
+    BOOST_REQUIRE( randomSignature1 != randomSignature2 );
+
+    // submit 2 transactions in one block
+    fixture.rpcClient->debug_pauseConsensus( true );
+    txGenerate["nonce"] = 3;
+    fixture.rpcClient->eth_sendTransaction( txGenerate );
+
+    txGenerate["nonce"] = 4;
+    fixture.rpcClient->eth_sendTransaction( txGenerate );
+    fixture.rpcClient->debug_pauseConsensus( false );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    Json::Value latestBlock = fixture.rpcClient->eth_getBlockByNumber( "latest", "false" );
+    BOOST_REQUIRE_EQUAL( latestBlock["transactions"].size(), 2 );
+
+    // read data from contract again
+    dev::Address randomAddress3( dev::unpadLeft(
+        dev::fromHex( fixture.rpcClient->eth_call( callGetLastAddress, "latest" ) ) ) );
+    dev::Address randomAddress4( dev::unpadLeft(
+        dev::fromHex( fixture.rpcClient->eth_call( callGetPreLastAddress, "latest" ) ) ) );
+    BOOST_REQUIRE_NE( randomAddress1, randomAddress3 );
+    BOOST_REQUIRE_NE( randomAddress3, randomAddress4 );
+    randomSignatureBytes =
+        dev::fromHex( fixture.rpcClient->eth_call( callGetLastSignature, "latest" ) );
+    rBytes = dev::h256( dev::bytes(
+        randomSignatureBytes.begin(), randomSignatureBytes.begin() + dev::h256::size ) );
+    sBytes = dev::h256( dev::bytes( randomSignatureBytes.begin() + dev::h256::size,
+        randomSignatureBytes.begin() + 2 * dev::h256::size ) );
+    vBytes = dev::h256( dev::bytes( randomSignatureBytes.begin() + 2 * dev::h256::size,
+        randomSignatureBytes.begin() + 3 * dev::h256::size ) );
+    dev::SignatureStruct randomSignature3(
+        rBytes, sBytes, dev::h256::Arith( vBytes ).convert_to< _byte_ >() );
+    randomSignatureBytes =
+        dev::fromHex( fixture.rpcClient->eth_call( callGetPreLastSignature, "latest" ) );
+    rBytes = dev::h256( dev::bytes(
+        randomSignatureBytes.begin(), randomSignatureBytes.begin() + dev::h256::size ) );
+    sBytes = dev::h256( dev::bytes( randomSignatureBytes.begin() + dev::h256::size,
+        randomSignatureBytes.begin() + 2 * dev::h256::size ) );
+    vBytes = dev::h256( dev::bytes( randomSignatureBytes.begin() + 2 * dev::h256::size,
+        randomSignatureBytes.begin() + 3 * dev::h256::size ) );
+    dev::SignatureStruct randomSignature4(
+        rBytes, sBytes, dev::h256::Arith( vBytes ).convert_to< _byte_ >() );
+    BOOST_REQUIRE( randomSignature1 != randomSignature3 );
+    BOOST_REQUIRE( randomSignature3 != randomSignature4 );
+
+    // verify data is parsed correctly
+    dev::Address randomAddress = dev::Address::random();
+    dev::bytes randomAddressBytes = randomAddress.asBytes();
+    dev::bytes randomAddressLeftPadded( 32, 0 );
+    std::copy( randomAddressBytes.begin(), randomAddressBytes.end(),
+        randomAddressLeftPadded.begin() + 12 );
+    dev::u256 randomGasLimit = dev::h256::Arith( dev::h256::random() );
+    dev::bytes randomGasLimitBytes = dev::toBigEndian( randomGasLimit );
+
+    // Build abi.encode(bytes[] args1, bytes[] args2) with 2 elements each
+    // args1 elements must be at least BITE_CIPHERTEXT_MIN_LEN bytes (encrypted data)
+    std::vector< dev::bytes > args1 = {
+        dev::bytes( BITE_CIPHERTEXT_MIN_LEN, 0x11 ),  // First encrypted element (minimum length)
+        dev::bytes( BITE_CIPHERTEXT_MIN_LEN, 0x22 )   // Second encrypted element (slightly longer)
+    };
+    std::vector< dev::bytes > args2 = {
+        dev::fromHex( "706c61696e746578743122" ),  // "plaintext1"
+        dev::fromHex( "706c61696e746578743222" )   // "plaintext2"
+    };
+
+    dev::bytes randomData = buildAbiEncodedArrays( args1, args2 );
+
+    // Build ABI-encoded input: abi.encode(address, uint256, bytes)
+    // Format: address(32) + gasLimit(32) + offset_to_bytes(32) + bytes_length(32) + bytes_data
+    dev::bytes resultData;
+
+    // address value (left-padded to 32 bytes)
+    resultData.insert(
+        resultData.end(), randomAddressLeftPadded.begin(), randomAddressLeftPadded.end() );
+
+    // gasLimit value (32 bytes)
+    resultData.insert( resultData.end(), randomGasLimitBytes.begin(), randomGasLimitBytes.end() );
+
+    // offset to bytes data (points to position 96 = 3 * 32)
+    dev::bytes dataOffset = dev::toBigEndian( dev::u256( 96 ) );
+    resultData.insert( resultData.end(), dataOffset.begin(), dataOffset.end() );
+    // bytes data (length + content)
+    dev::bytes dataLength = dev::toBigEndian( dev::u256( randomData.size() ) );
+    resultData.insert( resultData.end(), dataLength.begin(), dataLength.end() );
+    resultData.insert( resultData.end(), randomData.begin(), randomData.end() );
+
+    txGenerate["to"] = contractAddress;
+    txGenerate["data"] = "0x8628f93a" + dev::toHex( dev::u256( 32 ) ) +
+                         dev::toHex( dev::u256( resultData.size() ) ) + dev::toHex( resultData );
+    txGenerate["from"] = toJS( senderAddress );
+    txGenerate["nonce"] = 5;
+    fixture.rpcClient->eth_sendTransaction( txGenerate );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    dev::Address randomAddress5( dev::unpadLeft(
+        dev::fromHex( fixture.rpcClient->eth_call( callGetLastAddress, "latest" ) ) ) );
+
+    PrecompiledExecutor randomWalletExecutor =
+        PrecompiledRegistrar::executor( "getRandomWalletAndSignatureForCTX" );
+    dev::eth::PrecompiledCallContext ctx( fixture.client->number(), 0, 1, true );
+
+    dev::bytesConstRef input( resultData.data(), resultData.size() );
+    auto res = randomWalletExecutor( input, ctx );
+    BOOST_REQUIRE( res.first );
+
+    dev::Address addressFromPrecompiled(
+        dev::bytes( res.second.begin(), res.second.begin() + dev::Address::size ) );
+    randomSignatureBytes = dev::bytes( res.second.begin() + dev::Address::size, res.second.end() );
+    rBytes = dev::h256( dev::bytes(
+        randomSignatureBytes.begin(), randomSignatureBytes.begin() + dev::h256::size ) );
+    sBytes = dev::h256( dev::bytes( randomSignatureBytes.begin() + dev::h256::size,
+        randomSignatureBytes.begin() + 2 * dev::h256::size ) );
+    vBytes = dev::h256( dev::bytes( randomSignatureBytes.begin() + 2 * dev::h256::size,
+        randomSignatureBytes.begin() + 3 * dev::h256::size ) );
+    dev::SignatureStruct signatureFromPrecompiled(
+        rBytes, sBytes, dev::h256::Arith( vBytes ).convert_to< _byte_ >() );
+
+    PrecompiledExecutor blockRandomExecutor = PrecompiledRegistrar::executor( "getBlockRandom" );
+    auto vrs = dev::makeSignature(
+        blockRandomExecutor( bytesConstRef(), ctx ).second, ctx.currentTxnIndex );
+    dev::u256 gasPrice = g_skaleHost->getGasPrice( ctx.blockNumber.convert_to< unsigned >() );
+
+    // Build expected RLP-encoded data: RLP(RLP(args1[0], args1[1]), RLP(args2[0], args2[1]))
+    RLPStream args1Stream;
+    args1Stream.appendList( args1.size() );
+    for ( const auto& elem : args1 ) {
+        args1Stream << elem;
+    }
+
+    RLPStream args2Stream;
+    args2Stream.appendList( args2.size() );
+    for ( const auto& elem : args2 ) {
+        args2Stream << elem;
+    }
+
+    RLPStream finalStream;
+    finalStream.appendList( 2 );
+    finalStream.appendRaw( args1Stream.out() );
+    finalStream.appendRaw( args2Stream.out() );
+
+    dev::bytes rlpEncodedData = finalStream.out();
+    rlpEncodedData.insert( rlpEncodedData.begin(), ON_DECRYPT_FUNCTION_SELECTOR.begin(),
+        ON_DECRYPT_FUNCTION_SELECTOR.end() );
+
+    // Create expected transaction for signature verification using RLP-encoded data
+    Transaction expectedTransaction(
+        0, gasPrice, randomGasLimit, randomAddress, rlpEncodedData, 0 );
+    dev::h256 expectedTxnHash = expectedTransaction.sha3( dev::eth::WithoutSignature );
+    dev::Public expectedPublicKey = recover( vrs, expectedTxnHash );
+    dev::Address expectedWalletAddress = dev::toAddress( expectedPublicKey );
+
+    BOOST_REQUIRE( signatureFromPrecompiled == vrs );
+    BOOST_REQUIRE_EQUAL( addressFromPrecompiled, expectedWalletAddress );
+    BOOST_REQUIRE_EQUAL( addressFromPrecompiled, randomAddress5 );
+}
+
 BOOST_AUTO_TEST_CASE( submitCTX ) {
-    JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true, false, -1, {{ "contractStorageLimit", "100000" }} );
+    JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true, false, -1,
+        { { "contractStorageLimit", "100000" } } );
 
     string senderAddress = toJS( fixture.coinbase.address() );
 
@@ -5973,9 +6474,9 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
     std::vector<dev::bytes> args1 = {
         encryptedArg1, encryptedArg2
     };
-    std::vector<dev::bytes> args2 = {
-        dev::fromHex("706c61696e746578743122"),  // "plaintext1"
-        dev::fromHex("706c61696e746578743222")   // "plaintext2"
+    std::vector< dev::bytes > args2 = {
+        dev::fromHex( "706c61696e746578743122" ),  // "plaintext1"
+        dev::fromHex( "706c61696e746578743222" )   // "plaintext2"
     };
 
     dev::bytes randomData = buildAbiEncodedArrays( args1, args2 );
@@ -5995,7 +6496,8 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
     resultData.insert( resultData.end(), randomData.begin(), randomData.end() );
 
     txGenerate["to"] = contractAddress;
-    txGenerate["data"] = "0x6040c1fb" + dev::toHex( dev::u256( 32 ) ) + dev::toHex( dev::u256( resultData.size() ) ) + dev::toHex( resultData );
+    txGenerate["data"] = "0x6040c1fb" + dev::toHex( dev::u256( 32 ) ) +
+                         dev::toHex( dev::u256( resultData.size() ) ) + dev::toHex( resultData );
     txGenerate["from"] = toJS( senderAddress );
     txGenerate["nonce"] = 2;
     std::string txGenerateHash = fixture.rpcClient->eth_sendTransaction( txGenerate );
@@ -6014,7 +6516,8 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
     dev::Address addressFromPrecompiled( dev::bytes( res.second.begin(), res.second.begin() + dev::Address::size ) );
 
     PrecompiledExecutor blockRandomExecutor = PrecompiledRegistrar::executor( "getBlockRandom" );
-    auto vrs = dev::makeSignature( blockRandomExecutor( bytesConstRef(), ctx ).second, ctx.currentTxnIndex );
+    auto vrs = dev::makeSignature(
+        blockRandomExecutor( bytesConstRef(), ctx ).second, ctx.currentTxnIndex );
     dev::u256 gasPrice = g_skaleHost->getGasPrice( ctx.blockNumber.convert_to< unsigned >() );
 
     // Build expected RLP-encoded data: RLP(RLP(args1[0], args1[1]), RLP(args2[0], args2[1]))
@@ -6042,7 +6545,8 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
         dev::bite::ON_DECRYPT_FUNCTION_SELECTOR.end() );
 
     // Create expected transaction for signature verification using RLP-encoded data
-    Transaction expectedTransaction( 0, gasPrice, randomGasLimit, dev::Address( contractAddress ), rlpEncodedData, 0 );
+    Transaction expectedTransaction(
+        0, gasPrice, randomGasLimit, dev::Address( contractAddress ), rlpEncodedData, 0 );
     dev::h256 expectedTxnHash = expectedTransaction.sha3( dev::eth::WithoutSignature );
     dev::Public expectedPublicKey = recover( vrs, expectedTxnHash );
     dev::Address expectedWalletAddress = dev::toAddress( expectedPublicKey );
@@ -6534,10 +7038,14 @@ BOOST_AUTO_TEST_CASE( getBLSPublicKey ) {
 
     Json::Value blsPublicKey = fixture.rpcClient->skale_getBLSPublicKey();
 
-    BOOST_REQUIRE_EQUAL( blsPublicKey["BLSPublicKey0"], "15959969554621958245201075983340071881770733084910870228938077786643587385029" );
-    BOOST_REQUIRE_EQUAL( blsPublicKey["BLSPublicKey1"], "7970122607051572307517094692346020360016825923464107614135327251488152616550" );
-    BOOST_REQUIRE_EQUAL( blsPublicKey["BLSPublicKey2"], "3371162264373897025322009434717052197952692496405149486989861571246537813591" );
-    BOOST_REQUIRE_EQUAL( blsPublicKey["BLSPublicKey3"], "13678625751515504401110635369790787716744686498431213713911601759809559919693" );
+    BOOST_REQUIRE_EQUAL( blsPublicKey["BLSPublicKey0"],
+        "15959969554621958245201075983340071881770733084910870228938077786643587385029" );
+    BOOST_REQUIRE_EQUAL( blsPublicKey["BLSPublicKey1"],
+        "7970122607051572307517094692346020360016825923464107614135327251488152616550" );
+    BOOST_REQUIRE_EQUAL( blsPublicKey["BLSPublicKey2"],
+        "3371162264373897025322009434717052197952692496405149486989861571246537813591" );
+    BOOST_REQUIRE_EQUAL( blsPublicKey["BLSPublicKey3"],
+        "13678625751515504401110635369790787716744686498431213713911601759809559919693" );
 }
 
 BOOST_AUTO_TEST_CASE( dencunOpcodesInConstructor ) {
@@ -6553,7 +7061,12 @@ BOOST_AUTO_TEST_CASE( dencunOpcodesInConstructor ) {
     //     }
     // }
 
-    string compiled = "6080604052348015600e575f5ffd5b505f5c805f555060ac8060205f395ff3fe6080604052348015600e575f5ffd5b50600436106026575f3560e01c80636d619daa14602a575b5f5ffd5b60306044565b604051603b9190605f565b60405180910390f35b5f5481565b5f819050919050565b6059816049565b82525050565b5f60208201905060705f8301846052565b9291505056fea26469706673582212201a73df3522b78621c03ab2198ced2428e80055f4b32dc9b71881cb75acf3788e64736f6c634300081e0033";
+    string compiled =
+        "6080604052348015600e575f5ffd5b505f5c805f555060ac8060205f395ff3fe6080604052348015600e575f5f"
+        "fd5b50600436106026575f3560e01c80636d619daa14602a575b5f5ffd5b60306044565b604051603b9190605f"
+        "565b60405180910390f35b5f5481565b5f819050919050565b6059816049565b82525050565b5f602082019050"
+        "60705f8301846052565b9291505056fea26469706673582212201a73df3522b78621c03ab2198ced2428e80055"
+        "f4b32dc9b71881cb75acf3788e64736f6c634300081e0033";
     auto senderAddress = fixture.coinbase.address();
 
     Json::Value create;
@@ -6567,12 +7080,16 @@ BOOST_AUTO_TEST_CASE( dencunOpcodesInConstructor ) {
         fixture.rpcClient->eth_estimateGas( create, "latest" );
     } catch ( jsonrpc::JsonRpcException& ex ) {
         BOOST_CHECK_EQUAL( ex.GetCode(), 3 );
-        BOOST_CHECK_EQUAL( ex.GetMessage(), "Contract uses unsupported Dencun opcode. Please ensure it is compiled for EVM <= Shanghai" );
+        BOOST_CHECK_EQUAL( ex.GetMessage(),
+            "Contract uses unsupported Dencun opcode. Please ensure it is compiled for EVM <= "
+            "Shanghai" );
     }
 
     auto txReceipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE_EQUAL( txReceipt["status"].asString(), std::string( "0x0" ) );
-    BOOST_REQUIRE_EQUAL( txReceipt["revertReason"].asString(), std::string( "Contract uses unsupported Dencun opcode. Please ensure it is compiled for EVM <= Shanghai" ) );
+    BOOST_REQUIRE_EQUAL( txReceipt["revertReason"].asString(),
+        std::string( "Contract uses unsupported Dencun opcode. Please ensure it is compiled for "
+                     "EVM <= Shanghai" ) );
 }
 
 BOOST_AUTO_TEST_CASE( dencunOpcodesInTransaction ) {
@@ -6609,7 +7126,25 @@ BOOST_AUTO_TEST_CASE( dencunOpcodesInTransaction ) {
     //     }
     // }
 
-    string compiled = "6080604052348015600e575f5ffd5b506102f58061001c5f395ff3fe608060405234801561000f575f5ffd5b506004361061003f575f3560e01c806325c696111461004357806329e99f07146100615780636d619daa1461007d575b5f5ffd5b61004b61009b565b60405161005891906101f3565b60405180910390f35b61007b6004803603810190610076919061023a565b6101ca565b005b6100856101d6565b60405161009291906101f3565b60405180910390f35b5f5f600367ffffffffffffffff8111156100b8576100b7610265565b5b6040519080825280602002602001820160405280156100e65781602001602082028036833780820191505090505b509050600a815f815181106100fe576100fd610292565b5b6020026020010181815250506014816001815181106101205761011f610292565b5b602002602001018181525050601e8160028151811061014257610141610292565b5b6020026020010181815250505f600367ffffffffffffffff81111561016a57610169610265565b5b6040519080825280602002602001820160405280156101985781602001602082028036833780820191505090505b50905060206003028060208401835e50805f815181106101bb576101ba610292565b5b60200260200101519250505090565b805f5d5f5c805f555050565b5f5481565b5f819050919050565b6101ed816101db565b82525050565b5f6020820190506102065f8301846101e4565b92915050565b5f5ffd5b610219816101db565b8114610223575f5ffd5b50565b5f8135905061023481610210565b92915050565b5f6020828403121561024f5761024e61020c565b5b5f61025c84828501610226565b91505092915050565b7f4e487b71000000000000000000000000000000000000000000000000000000005f52604160045260245ffd5b7f4e487b71000000000000000000000000000000000000000000000000000000005f52603260045260245ffdfea2646970667358221220879e6b5abbaea0d21b84075bdae00106284ac238ab5826f8e7e6519d744550b464736f6c634300081e0033";
+    string compiled =
+        "6080604052348015600e575f5ffd5b506102f58061001c5f395ff3fe608060405234801561000f575f5ffd5b50"
+        "6004361061003f575f3560e01c806325c696111461004357806329e99f07146100615780636d619daa1461007d"
+        "575b5f5ffd5b61004b61009b565b60405161005891906101f3565b60405180910390f35b61007b600480360381"
+        "0190610076919061023a565b6101ca565b005b6100856101d6565b60405161009291906101f3565b6040518091"
+        "0390f35b5f5f600367ffffffffffffffff8111156100b8576100b7610265565b5b604051908082528060200260"
+        "2001820160405280156100e65781602001602082028036833780820191505090505b509050600a815f81518110"
+        "6100fe576100fd610292565b5b6020026020010181815250506014816001815181106101205761011f61029256"
+        "5b5b602002602001018181525050601e8160028151811061014257610141610292565b5b602002602001018181"
+        "5250505f600367ffffffffffffffff81111561016a57610169610265565b5b6040519080825280602002602001"
+        "820160405280156101985781602001602082028036833780820191505090505b50905060206003028060208401"
+        "835e50805f815181106101bb576101ba610292565b5b60200260200101519250505090565b805f5d5f5c805f55"
+        "5050565b5f5481565b5f819050919050565b6101ed816101db565b82525050565b5f6020820190506102065f83"
+        "01846101e4565b92915050565b5f5ffd5b610219816101db565b8114610223575f5ffd5b50565b5f8135905061"
+        "023481610210565b92915050565b5f6020828403121561024f5761024e61020c565b5b5f61025c848285016102"
+        "26565b91505092915050565b7f4e487b7100000000000000000000000000000000000000000000000000000000"
+        "5f52604160045260245ffd5b7f4e487b7100000000000000000000000000000000000000000000000000000000"
+        "5f52603260045260245ffdfea2646970667358221220879e6b5abbaea0d21b84075bdae00106284ac238ab5826"
+        "f8e7e6519d744550b464736f6c634300081e0033";
     auto senderAddress = fixture.coinbase.address();
 
     Json::Value create;
@@ -6630,14 +7165,18 @@ BOOST_AUTO_TEST_CASE( dencunOpcodesInTransaction ) {
         fixture.rpcClient->eth_estimateGas( sampleTx, "latest" );
     } catch ( jsonrpc::JsonRpcException& ex ) {
         BOOST_CHECK_EQUAL( ex.GetCode(), 3 );
-        BOOST_CHECK_EQUAL( ex.GetMessage(), "Contract uses unsupported Dencun opcode. Please ensure it is compiled for EVM <= Shanghai" );
+        BOOST_CHECK_EQUAL( ex.GetMessage(),
+            "Contract uses unsupported Dencun opcode. Please ensure it is compiled for EVM <= "
+            "Shanghai" );
     }
 
     try {
         fixture.rpcClient->eth_call( sampleTx, "latest" );
     } catch ( jsonrpc::JsonRpcException& ex ) {
         BOOST_CHECK_EQUAL( ex.GetCode(), 3 );
-        BOOST_CHECK_EQUAL( ex.GetMessage(), "Contract uses unsupported Dencun opcode. Please ensure it is compiled for EVM <= Shanghai" );
+        BOOST_CHECK_EQUAL( ex.GetMessage(),
+            "Contract uses unsupported Dencun opcode. Please ensure it is compiled for EVM <= "
+            "Shanghai" );
     }
 
     txHash = fixture.rpcClient->eth_sendTransaction( sampleTx );
@@ -6645,7 +7184,9 @@ BOOST_AUTO_TEST_CASE( dencunOpcodesInTransaction ) {
 
     txReceipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE_EQUAL( txReceipt["status"].asString(), std::string( "0x0" ) );
-    BOOST_REQUIRE_EQUAL( txReceipt["revertReason"].asString(), std::string( "Contract uses unsupported Dencun opcode. Please ensure it is compiled for EVM <= Shanghai" ) );
+    BOOST_REQUIRE_EQUAL( txReceipt["revertReason"].asString(),
+        std::string( "Contract uses unsupported Dencun opcode. Please ensure it is compiled for "
+                     "EVM <= Shanghai" ) );
 
     // Call DencunContract.mcopyTest()
     sampleTx["data"] = "0x25c69611";
@@ -6654,10 +7195,12 @@ BOOST_AUTO_TEST_CASE( dencunOpcodesInTransaction ) {
 
     txReceipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE_EQUAL( txReceipt["status"].asString(), std::string( "0x0" ) );
-    BOOST_REQUIRE_EQUAL( txReceipt["revertReason"].asString(), std::string( "Contract uses unsupported Dencun opcode. Please ensure it is compiled for EVM <= Shanghai" ) );
+    BOOST_REQUIRE_EQUAL( txReceipt["revertReason"].asString(),
+        std::string( "Contract uses unsupported Dencun opcode. Please ensure it is compiled for "
+                     "EVM <= Shanghai" ) );
 }
 
-#endif // FAIR
+#endif  // FAIR
 
 BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     JsonRpcFixture fixture( c_BITEConfigString, false, false, true, true );
@@ -6677,8 +7220,8 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     auto blsPublicKey = biteInfo[0]["commonBLSPublicKey"].asString();
     u256 epochId = biteInfo[0]["epochId"].asUInt64();
 
-    auto encryptedMessage =
-        libBLS::ThresholdEncryption::encrypt( messageBytes, libBLS::TEPublicKey( blsPublicKey, libBLS::Base::HEXA ) );
+    auto encryptedMessage = libBLS::ThresholdEncryption::encrypt(
+        messageBytes, libBLS::TEPublicKey( blsPublicKey, libBLS::Base::HEXA ) );
     auto encryptedBytes = encryptedMessage.toBytes();
 
     auto dataField = formBITEPayloadRlp( epochId, encryptedBytes );
@@ -6728,9 +7271,8 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     tooShortRlp.appendList( 1 );
     tooShortRlp << epochId;
     dev::bytes invalidTooShortBITETxnData = tooShortRlp.out();
-    invalidBITETransactionRlp =
-        formTransactionRlp( fixture, senderAddress,
-                            dev::toHexPrefixed( invalidTooShortBITETxnData ), nonce, biteAddress );
+    invalidBITETransactionRlp = formTransactionRlp( fixture, senderAddress,
+        dev::toHexPrefixed( invalidTooShortBITETxnData ), nonce, biteAddress );
     BOOST_REQUIRE_THROW(
         fixture.client->importTransaction( Transaction(
             dev::jsToBytes( invalidBITETransactionRlp ), CheckTransaction::None, false ) ),
@@ -6745,9 +7287,8 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     tooShortRlp << epochId;
     tooShortRlp << encryptedMessage.toBytes();
     invalidTooShortBITETxnData = tooShortRlp.out();
-    invalidBITETransactionRlp =
-        formTransactionRlp( fixture, senderAddress,
-                            dev::toHexPrefixed( invalidTooShortBITETxnData ), nonce, biteAddress );
+    invalidBITETransactionRlp = formTransactionRlp( fixture, senderAddress,
+        dev::toHexPrefixed( invalidTooShortBITETxnData ), nonce, biteAddress );
     BOOST_REQUIRE_THROW(
         fixture.client->importTransaction( Transaction(
             dev::jsToBytes( invalidBITETransactionRlp ), CheckTransaction::None, false ) ),
@@ -6770,9 +7311,8 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     spoiledBITEDataRlp << spoiledMessageBytes;
     dev::bytes invalidBITETxnData = spoiledBITEDataRlp.out();
 
-    invalidBITETransactionRlp =
-        formTransactionRlp( fixture, senderAddress,
-                            dev::toHexPrefixed( invalidBITETxnData ), nonce, biteAddress );
+    invalidBITETransactionRlp = formTransactionRlp(
+        fixture, senderAddress, dev::toHexPrefixed( invalidBITETxnData ), nonce, biteAddress );
     BOOST_REQUIRE_THROW(
         fixture.client->importTransaction( Transaction(
             dev::jsToBytes( invalidBITETransactionRlp ), CheckTransaction::None, false ) ),
@@ -6793,9 +7333,8 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     spoiledBITEDataRlp << spoiledMessageBytes;
     invalidBITETxnData = spoiledBITEDataRlp.out();
 
-    invalidBITETransactionRlp =
-        formTransactionRlp( fixture, senderAddress,
-                            dev::toHexPrefixed( invalidBITETxnData ), nonce, biteAddress );
+    invalidBITETransactionRlp = formTransactionRlp(
+        fixture, senderAddress, dev::toHexPrefixed( invalidBITETxnData ), nonce, biteAddress );
     BOOST_REQUIRE_THROW(
         fixture.client->importTransaction( Transaction(
             dev::jsToBytes( invalidBITETransactionRlp ), CheckTransaction::None, false ) ),
@@ -6807,7 +7346,8 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     libBLS::TEPublicKey publicKey2 = libBLS::TEPublicKey::random();
     u256 epochId2 = epochId + 5;
 
-    encryptedMessage = libBLS::ThresholdEncryption::encrypt( messageBytes, { libBLS::TEPublicKey( blsPublicKey, libBLS::Base::HEXA ), publicKey2 } );
+    encryptedMessage = libBLS::ThresholdEncryption::encrypt(
+        messageBytes, { libBLS::TEPublicKey( blsPublicKey, libBLS::Base::HEXA ), publicKey2 } );
     auto encryptedBITEDataBytes = encryptedMessage.toBytes();
 
     // Create payload with 2 encrypted AES keys
@@ -6819,9 +7359,8 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     auto rlpBytes = bitePayload.out();
     dev::bytes twoPayloadBITETxnData = dev::bytes( rlpBytes.begin(), rlpBytes.end() );
 
-    validBITETransactionRlp =
-            formTransactionRlp( fixture, senderAddress,
-                                dev::toHexPrefixed( twoPayloadBITETxnData ), nonce, biteAddress );
+    validBITETransactionRlp = formTransactionRlp(
+        fixture, senderAddress, dev::toHexPrefixed( twoPayloadBITETxnData ), nonce, biteAddress );
     BOOST_REQUIRE_NO_THROW( fixture.rpcClient->eth_sendRawTransaction( validBITETransactionRlp ) );
 
     // 3 elements in payload is not allowed
@@ -6833,14 +7372,13 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     threeElementsPayload << encryptedBITEDataBytes;
 
     auto threeElementsRlpBytes = threeElementsPayload.out();
-    dev::bytes threeElementsBITETxnData = dev::bytes( threeElementsRlpBytes.begin(),
-                                                      threeElementsRlpBytes.end() );
+    dev::bytes threeElementsBITETxnData =
+        dev::bytes( threeElementsRlpBytes.begin(), threeElementsRlpBytes.end() );
 
-    std::string threeElementsBITETxnRlp =
-            formTransactionRlp( fixture, senderAddress,
-                                dev::toHexPrefixed( threeElementsBITETxnData ), nonce, biteAddress );
+    std::string threeElementsBITETxnRlp = formTransactionRlp( fixture, senderAddress,
+        dev::toHexPrefixed( threeElementsBITETxnData ), nonce, biteAddress );
     BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendRawTransaction( threeElementsBITETxnRlp ),
-                         jsonrpc::JsonRpcException );
+        jsonrpc::JsonRpcException );
 
     // epochId doesn't match and only 1 encrypted AES keys
     libBLS::TEPublicKey publicKey3 = libBLS::TEPublicKey::random();
@@ -6856,21 +7394,18 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     auto mismatchRlpBytes = mismatchPayload.out();
     dev::bytes mismatchBITETxnData = dev::bytes( mismatchRlpBytes.begin(), mismatchRlpBytes.end() );
 
-    std::string mismatchBITETxnRlp =
-            formTransactionRlp( fixture, senderAddress,
-                                dev::toHexPrefixed( mismatchBITETxnData ), nonce, biteAddress );
+    std::string mismatchBITETxnRlp = formTransactionRlp(
+        fixture, senderAddress, dev::toHexPrefixed( mismatchBITETxnData ), nonce, biteAddress );
     BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendRawTransaction( mismatchBITETxnRlp ),
-                         jsonrpc::JsonRpcException );
+        jsonrpc::JsonRpcException );
 
     // 2 encrypted AES keys submitted, but one key is corrupt
-    auto corruptEncryptedMessage = libBLS::ThresholdEncryption::encrypt( messageBytes, { libBLS::TEPublicKey( blsPublicKey, libBLS::Base::HEXA ), publicKey2 } );
+    auto corruptEncryptedMessage = libBLS::ThresholdEncryption::encrypt(
+        messageBytes, { libBLS::TEPublicKey( blsPublicKey, libBLS::Base::HEXA ), publicKey2 } );
 
     // Corrupt the first key by replacing it with a random one
-    corruptEncryptedMessage.keys[0] = libBLS::CipheredKey(
-        libBLS::algebra::G2Point::random(),
-        corruptEncryptedMessage.keys[0].V,
-        libBLS::algebra::G1Point::random()
-    );
+    corruptEncryptedMessage.keys[0] = libBLS::CipheredKey( libBLS::algebra::G2Point::random(),
+        corruptEncryptedMessage.keys[0].V, libBLS::algebra::G1Point::random() );
 
     auto corruptEncryptedBITEDataBytes = corruptEncryptedMessage.toBytes();
 
@@ -6882,11 +7417,10 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     auto corruptRlpBytes = corruptPayload.out();
     dev::bytes corruptBITETxnData = dev::bytes( corruptRlpBytes.begin(), corruptRlpBytes.end() );
 
-    std::string corruptBITETxnRlp =
-            formTransactionRlp( fixture, senderAddress,
-                                dev::toHexPrefixed( corruptBITETxnData ), nonce, biteAddress );
-    BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendRawTransaction( corruptBITETxnRlp ),
-                         jsonrpc::JsonRpcException );
+    std::string corruptBITETxnRlp = formTransactionRlp(
+        fixture, senderAddress, dev::toHexPrefixed( corruptBITETxnData ), nonce, biteAddress );
+    BOOST_REQUIRE_THROW(
+        fixture.rpcClient->eth_sendRawTransaction( corruptBITETxnRlp ), jsonrpc::JsonRpcException );
 }
 
 BOOST_AUTO_TEST_CASE( BITETransactionCouldNotBeDecrypted ) {
@@ -6904,7 +7438,8 @@ BOOST_AUTO_TEST_CASE( BITETransactionCouldNotBeDecrypted ) {
     // data must have the destination address and the original message
     RLPStream biteDataRlp( 2 );
     biteDataRlp << ( dev::h256::Arith ) h256::random();
-    biteDataRlp << ( dev::Address::Arith ) dev::Address( "0x7aa5e36aa15e93d10f4f26357c30f052dacdde5f" );
+    biteDataRlp << ( dev::Address::Arith ) dev::Address(
+        "0x7aa5e36aa15e93d10f4f26357c30f052dacdde5f" );
 
     auto messageBytes = biteDataRlp.out();
 
@@ -6912,8 +7447,8 @@ BOOST_AUTO_TEST_CASE( BITETransactionCouldNotBeDecrypted ) {
     auto blsPublicKey = biteInfo[0]["commonBLSPublicKey"].asString();
     u256 epochId = biteInfo[0]["epochId"].asUInt64();
 
-    auto ciphertext =
-        libBLS::ThresholdEncryption::encrypt( messageBytes, libBLS::TEPublicKey( blsPublicKey, libBLS::Base::HEXA ) );
+    auto ciphertext = libBLS::ThresholdEncryption::encrypt(
+        messageBytes, libBLS::TEPublicKey( blsPublicKey, libBLS::Base::HEXA ) );
     auto ciphertextBytes = ciphertext.toBytes();
 
     // spoil random element in decryptedData
@@ -6935,9 +7470,8 @@ BOOST_AUTO_TEST_CASE( BITETransactionCouldNotBeDecrypted ) {
 
     auto rlpBytes = bitePayloadRlp.out();
     std::string biteAddress = "0x" + std::string( BITE_ADDRESS_AS_STRING );
-    std::string txnRlp = formTransactionRlp(
-        fixture, "0x7aa5e36aa15e93d10f4f26357c30f052dacdde5f", dev::toHexPrefixed( rlpBytes ),
-                nonce, biteAddress );
+    std::string txnRlp = formTransactionRlp( fixture, "0x7aa5e36aa15e93d10f4f26357c30f052dacdde5f",
+        dev::toHexPrefixed( rlpBytes ), nonce, biteAddress );
 
     Transaction t( dev::fromHex( txnRlp ), dev::eth::CheckTransaction::None );
     auto minGasRequired = t.baseGasRequired( fixture.client->evmSchedule() );
@@ -6948,8 +7482,8 @@ BOOST_AUTO_TEST_CASE( BITETransactionCouldNotBeDecrypted ) {
 
     auto balanceAfter =
         fixture.rpcClient->eth_getBalance( "0x7aa5e36aa15e93d10f4f26357c30f052dacdde5f", "latest" );
-    BOOST_REQUIRE_EQUAL( balanceAfter,
-                   dev::toJS( balanceBeforeU256 - minGasRequired * dev::jsToU256( gasPrice ) ) );
+    BOOST_REQUIRE_EQUAL(
+        balanceAfter, dev::toJS( balanceBeforeU256 - minGasRequired * dev::jsToU256( gasPrice ) ) );
 
     try {
         fixture.rpcClient->bite_getDecryptedTransactionData( invalidTxnHash );
@@ -6981,7 +7515,8 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
 
     Json::FastWriter fastWriter;
     std::string config = fastWriter.write( ret );
-    JsonRpcFixture fixture( config, true, true, false, false, false, -1, {{ "contractStorageLimit", "1000000" }} );
+    JsonRpcFixture fixture(
+        config, true, true, false, false, false, -1, { { "contractStorageLimit", "1000000" } } );
 
     dev::eth::simulateMining( *( fixture.client ), 20 );
     string senderAddress = toJS( fixture.coinbase.address() );
@@ -6995,7 +7530,7 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     std::string plaintext =
         "0x6057361d0000000000000000000000000000000000000000000000000000000000000001";
     std::string encryptedDataPlusToAddressLegacy = dev::toHexPrefixed(
-                formEncryptedMessageMockup( dev::fromHex( plaintext ), originalToAddress ) );
+        formEncryptedMessageMockup( dev::fromHex( plaintext ), originalToAddress ) );
 
     // signal BITE tx
     legacyTx["to"] = toJS( "0x" + std::string( BITE_ADDRESS_AS_STRING ) );
@@ -7048,8 +7583,27 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     // since it differs each run, and the RLP-encoded tx was built outside this test case (via an
     // external script), we need to set this manually Note that the encryptedData includes the 'To'
     // address already
-    std::string encryptedDataPlusToAddressType1 = "0xf9015d80b901590192084354e0f043e108c255d159de7360e5a972bacdbaf3257420f66478d79b930000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005b87049973afc70916c3588f2e5bcdd65acdc73f544d201979b4ce8307815fda7281e032402b0e1d82ccc830046e5de0c7a2e8f9fd4ea6dcd9e85230a5f278373f5c873b1ed1bae995c74899927c92b8e2b41af3adfba46def6b857a4e74b7595e2bb9c84773ba4a1167fc73bd17ca65334d12eaf9401897";
-    std::string type1Tx = "0x01f901ca8197808504a817c800830138809442495445204d452049274d20454e43525950544480b90160f9015d80b901590192084354e0f043e108c255d159de7360e5a972bacdbaf3257420f66478d79b930000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005b87049973afc70916c3588f2e5bcdd65acdc73f544d201979b4ce8307815fda7281e032402b0e1d82ccc830046e5de0c7a2e8f9fd4ea6dcd9e85230a5f278373f5c873b1ed1bae995c74899927c92b8e2b41af3adfba46def6b857a4e74b7595e2bb9c84773ba4a1167fc73bd17ca65334d12eaf9401897c001a05b144ba5643c7ff31cfefdeaf4043e222c0c32f5c849c21598f89e82abdea07fa048762844d57807403777d655dec566230266759e173c187e4cecebfa4579ea66";
+    std::string encryptedDataPlusToAddressType1 =
+        "0xf9015d80b901590192084354e0f043e108c255d159de7360e5a972bacdbaf3257420f66478d79b9300000000"
+        "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        "00000000000000005b87049973afc70916c3588f2e5bcdd65acdc73f544d201979b4ce8307815fda7281e03240"
+        "2b0e1d82ccc830046e5de0c7a2e8f9fd4ea6dcd9e85230a5f278373f5c873b1ed1bae995c74899927c92b8e2b4"
+        "1af3adfba46def6b857a4e74b7595e2bb9c84773ba4a1167fc73bd17ca65334d12eaf9401897";
+    std::string type1Tx =
+        "0x01f901ca8197808504a817c800830138809442495445204d452049274d20454e43525950544480b90160f901"
+        "5d80b901590192084354e0f043e108c255d159de7360e5a972bacdbaf3257420f66478d79b9300000000000000"
+        "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        "00000000005b87049973afc70916c3588f2e5bcdd65acdc73f544d201979b4ce8307815fda7281e032402b0e1d"
+        "82ccc830046e5de0c7a2e8f9fd4ea6dcd9e85230a5f278373f5c873b1ed1bae995c74899927c92b8e2b41af3ad"
+        "fba46def6b857a4e74b7595e2bb9c84773ba4a1167fc73bd17ca65334d12eaf9401897c001a05b144ba5643c7f"
+        "f31cfefdeaf4043e222c0c32f5c849c21598f89e82abdea07fa048762844d57807403777d655dec56623026675"
+        "9e173c187e4cecebfa4579ea66";
 
     std::string type1Hash = fixture.rpcClient->eth_sendRawTransaction( type1Tx );
 
@@ -7083,7 +7637,18 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
 
     std::string originalToAddressType2 = originalToAddressType1;
     std::string encryptedDataPlusToAddressType2 = encryptedDataPlusToAddressType1;
-    std::string type2Tx = "0x02f901d08197018504a817c7ff8504a817c800830138809442495445204d452049274d20454e43525950544480b90160f9015d80b901590192084354e0f043e108c255d159de7360e5a972bacdbaf3257420f66478d79b930000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005b87049973afc70916c3588f2e5bcdd65acdc73f544d201979b4ce8307815fda7281e032402b0e1d82ccc830046e5de0c7a2e8f9fd4ea6dcd9e85230a5f278373f5c873b1ed1bae995c74899927c92b8e2b41af3adfba46def6b857a4e74b7595e2bb9c84773ba4a1167fc73bd17ca65334d12eaf9401897c080a0c8512955420b554abcde1ea13d67bef9a38bf541938a8b915c514722821481f2a03f3ca19e2513078f058462c622bd07ea0b6f15b5bc28998bcc79c59c3c0400db";
+    std::string type2Tx =
+        "0x02f901d08197018504a817c7ff8504a817c800830138809442495445204d452049274d20454e435259505444"
+        "80b90160f9015d80b901590192084354e0f043e108c255d159de7360e5a972bacdbaf3257420f66478d79b9300"
+        "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        "00000000000000000000005b87049973afc70916c3588f2e5bcdd65acdc73f544d201979b4ce8307815fda7281"
+        "e032402b0e1d82ccc830046e5de0c7a2e8f9fd4ea6dcd9e85230a5f278373f5c873b1ed1bae995c74899927c92"
+        "b8e2b41af3adfba46def6b857a4e74b7595e2bb9c84773ba4a1167fc73bd17ca65334d12eaf9401897c080a0c8"
+        "512955420b554abcde1ea13d67bef9a38bf541938a8b915c514722821481f2a03f3ca19e2513078f058462c622"
+        "bd07ea0b6f15b5bc28998bcc79c59c3c0400db";
     std::string type2Hash = fixture.rpcClient->eth_sendRawTransaction( type2Tx );
 
 
@@ -7173,7 +7738,8 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     // send txn to change state
     Json::Value store1;
     store1["to"] = toJS( "0x" + std::string( BITE_ADDRESS_AS_STRING ) );
-    store1["data"] = dev::toHexPrefixed( formEncryptedMessageMockup( dev::fromHex( dataStore1 ), dev::Address( contractAddressWithout0x ) ) );
+    store1["data"] = dev::toHexPrefixed( formEncryptedMessageMockup(
+        dev::fromHex( dataStore1 ), dev::Address( contractAddressWithout0x ) ) );
     store1["from"] = toJS( senderAddress );
     store1["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     store1["gas"] = "111000";
@@ -7192,7 +7758,8 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     // send invalid call to the contract - txn should fail
     Json::Value txInvalidContractCall;
     txInvalidContractCall["to"] = toJS( "0x" + std::string( BITE_ADDRESS_AS_STRING ) );
-    txInvalidContractCall["data"] = dev::toHexPrefixed( formEncryptedMessageMockup( dev::fromHex( dataStoreInvalid ), dev::Address( contractAddressWithout0x ) ) );
+    txInvalidContractCall["data"] = dev::toHexPrefixed( formEncryptedMessageMockup(
+        dev::fromHex( dataStoreInvalid ), dev::Address( contractAddressWithout0x ) ) );
     txInvalidContractCall["from"] = toJS( senderAddress );
     txInvalidContractCall["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txInvalidContractCall );
@@ -7236,7 +7803,7 @@ BOOST_AUTO_TEST_CASE( committeeRotation ) {
 
     ret["skaleConfig"]["sChain"]["nodeGroups"]["0"]["finish_ts"] = secondGroupTs;
 
-    auto blsPublicKeyStringToStringArray = [](const std::string& publicKeyStr) {
+    auto blsPublicKeyStringToStringArray = []( const std::string& publicKeyStr ) {
         libBLS::TEPublicKey publicKey( publicKeyStr, libBLS::Base::HEXA );
         auto rawPublicKey = publicKey.getPublicKeyRaw();
         return rawPublicKey.toStringArray( libBLS::Base::DEC );
@@ -7260,15 +7827,20 @@ BOOST_AUTO_TEST_CASE( committeeRotation ) {
 
     auto latestBlockTs = fixture.client->blockChain().info().timestamp();
     BOOST_REQUIRE( latestBlockTs < secondGroupTs && latestBlockTs > firstGroupTs );
-    BOOST_REQUIRE( fixture.client->chainParams().getCommonBlsPublicKey() == firstGroupCommonPublicKey );
+    BOOST_REQUIRE(
+        fixture.client->chainParams().getCommonBlsPublicKey() == firstGroupCommonPublicKey );
     BOOST_REQUIRE( fixture.client->isCommitteeRotationSoon() );
 
     auto biteInfo = fixture.rpcClient->bite_getCommitteesInfo();
     BOOST_REQUIRE( biteInfo.isArray() );
     BOOST_REQUIRE_EQUAL( biteInfo.size(), 2 );
-    BOOST_REQUIRE( blsPublicKeyStringToStringArray( biteInfo[0]["commonBLSPublicKey"].asString() ) == firstGroupCommonPublicKey );
+    BOOST_REQUIRE(
+        blsPublicKeyStringToStringArray( biteInfo[0]["commonBLSPublicKey"].asString() ) ==
+        firstGroupCommonPublicKey );
     BOOST_REQUIRE_EQUAL( biteInfo[0]["epochId"].asUInt64(), 0 );
-    BOOST_REQUIRE( blsPublicKeyStringToStringArray( biteInfo[1]["commonBLSPublicKey"].asString() ) == secondGroupCommonPublicKey );
+    BOOST_REQUIRE(
+        blsPublicKeyStringToStringArray( biteInfo[1]["commonBLSPublicKey"].asString() ) ==
+        secondGroupCommonPublicKey );
     BOOST_REQUIRE_EQUAL( biteInfo[1]["epochId"].asUInt64(), 1 );
 
     while ( latestBlockTs++ < secondGroupTs )
@@ -7281,11 +7853,14 @@ BOOST_AUTO_TEST_CASE( committeeRotation ) {
     BOOST_REQUIRE( receipt["status"] == std::string( "0x1" ) );
 
     BOOST_REQUIRE( latestBlockTs >= secondGroupTs );
-    BOOST_REQUIRE( fixture.client->chainParams().getCommonBlsPublicKey() == secondGroupCommonPublicKey );
+    BOOST_REQUIRE(
+        fixture.client->chainParams().getCommonBlsPublicKey() == secondGroupCommonPublicKey );
 
     biteInfo = fixture.rpcClient->bite_getCommitteesInfo();
     BOOST_REQUIRE_EQUAL( biteInfo.size(), 1 );
-    BOOST_REQUIRE( blsPublicKeyStringToStringArray( biteInfo[0]["commonBLSPublicKey"].asString() ) == secondGroupCommonPublicKey );
+    BOOST_REQUIRE(
+        blsPublicKeyStringToStringArray( biteInfo[0]["commonBLSPublicKey"].asString() ) ==
+        secondGroupCommonPublicKey );
     BOOST_REQUIRE_EQUAL( biteInfo[0]["epochId"].asUInt64(), 1 );
     BOOST_REQUIRE( !fixture.client->isCommitteeRotationSoon() );
 
@@ -7311,10 +7886,11 @@ BOOST_AUTO_TEST_CASE( fetchingBlockRewardBeneficiary ) {
     config = fastWriter.write( ret );
     JsonRpcFixture fixture( config, false, false, true );
 
-    Address rewardWalletAddress = fixture.client->chainParams().getNodeBeneficiaryInHistoricGroup( 0, 1 );
-    BOOST_REQUIRE( rewardWalletAddress == Address( "0x08151B8F80bfa7dEa760e461412AF24348224edf" )  );
+    Address rewardWalletAddress =
+        fixture.client->chainParams().getNodeBeneficiaryInHistoricGroup( 0, 1 );
+    BOOST_REQUIRE( rewardWalletAddress == Address( "0x08151B8F80bfa7dEa760e461412AF24348224edf" ) );
     rewardWalletAddress = fixture.client->chainParams().getNodeBeneficiaryInHistoricGroup( 1, 1 );
-    BOOST_REQUIRE( rewardWalletAddress == Address( "0x405c96D388cDFBa4f17493c875CCE9c680225276" )  );
+    BOOST_REQUIRE( rewardWalletAddress == Address( "0x405c96D388cDFBa4f17493c875CCE9c680225276" ) );
 }
 
 BOOST_AUTO_TEST_CASE( block_author_balance ) {
@@ -7351,7 +7927,8 @@ BOOST_AUTO_TEST_CASE( block_author_balance ) {
     dev::Address stakingContractAddress = fixture.client->chainParams().getStakingContractAddress();
     BOOST_REQUIRE_EQUAL( fixture.client->balanceAt( stakingContractAddress ), 0 );
 
-    // mine transaction not from testBlockRewardsActivationPatchAddress - block rewards should stay disabled
+    // mine transaction not from testBlockRewardsActivationPatchAddress - block rewards should stay
+    // disabled
     Json::Value silentTx;
     silentTx["value"] = 1;
     // address has preset balance in config
@@ -7362,10 +7939,11 @@ BOOST_AUTO_TEST_CASE( block_author_balance ) {
     silentTx["nonce"] = 0;
 
     auto silentTs = toTransactionSkeleton( silentTx );
-    auto silentT = dev::eth::Transaction(
-        silentTs, dev::Secret( "1c2cd4b70c2b8c6cd7144bbbfbd1e5c6eacb4a5efd9c86d0e29cbbec4e8483b9" ) );
+    auto silentT = dev::eth::Transaction( silentTs,
+        dev::Secret( "1c2cd4b70c2b8c6cd7144bbbfbd1e5c6eacb4a5efd9c86d0e29cbbec4e8483b9" ) );
 
-    std::string txHash = fixture.rpcClient->eth_sendRawTransaction( dev::toHex( silentT.toBytes() ) );
+    std::string txHash =
+        fixture.rpcClient->eth_sendRawTransaction( dev::toHex( silentT.toBytes() ) );
     BOOST_REQUIRE( !txHash.empty() );
 
     dev::eth::mineTransaction( *( fixture.client ), 1 );
@@ -7399,7 +7977,8 @@ BOOST_AUTO_TEST_CASE( block_author_balance ) {
 
     etherbaseBalance = fixture.client->balanceAt( jsToAddress( etherbase ) );
 
-    auto authorInitialBalance = fixture.client->balanceAt( jsToAddress( "0x0E7d7F1D34a502bD609542576941C3FCc087c588" ) );
+    auto authorInitialBalance =
+        fixture.client->balanceAt( jsToAddress( "0x0E7d7F1D34a502bD609542576941C3FCc087c588" ) );
     auto stakingContractInitialBalance = fixture.client->balanceAt( stakingContractAddress );
 
     auto initialBlockNumber = jsToU256( fixture.rpcClient->eth_blockNumber() );
@@ -7430,15 +8009,19 @@ BOOST_AUTO_TEST_CASE( block_author_balance ) {
 
     auto totalReward = fixture.client->chainParams().blockReward(
         fixture.client->latestBlock().info().timestamp(), fixture.client->number() );
-    auto blockAuthorReward = dev::calculateShareWithPrecision( totalReward, fixture.client->evmSchedule().shareOfBlockRewardToBlockAuthorPromille );
+    auto blockAuthorReward = dev::calculateShareWithPrecision(
+        totalReward, fixture.client->evmSchedule().shareOfBlockRewardToBlockAuthorPromille );
     auto stakingContractReward = totalReward - blockAuthorReward;
 
     auto feeForTx =
         jsToU256( sampleTx["gasPrice"].asString() ) * jsToU256( txData["gasUsed"].asString() );
-    feeForTx = dev::calculateShareWithPrecision( feeForTx, fixture.client->evmSchedule().shareOfTransactionFeeToRewardPromille );
+    feeForTx = dev::calculateShareWithPrecision(
+        feeForTx, fixture.client->evmSchedule().shareOfTransactionFeeToRewardPromille );
 
-    auto expectedAuthorBalanceChange = ( blockNumber - initialBlockNumber ) * blockAuthorReward + feeForTx;
-    auto expectedContractBalanceChange = ( blockNumber - initialBlockNumber ) * stakingContractReward;
+    auto expectedAuthorBalanceChange =
+        ( blockNumber - initialBlockNumber ) * blockAuthorReward + feeForTx;
+    auto expectedContractBalanceChange =
+        ( blockNumber - initialBlockNumber ) * stakingContractReward;
 
     BOOST_REQUIRE_EQUAL(
         fixture.client->balanceAt( jsToAddress( author.asString() ) ) - authorInitialBalance,
@@ -7458,7 +8041,8 @@ BOOST_AUTO_TEST_CASE( block_author_balance_reward_wallet ) {
     nlohmann::json configJson = nlohmann::json::parse( c_BITECommitteeRotationConfigString );
     // configJson["skaleConfig"]["sChain"]["nodeGroups"]["0"]["nodes"]["8"][3] = node_reward_wallet;
     configJson["skaleConfig"]["sChain"]["nodeGroups"]["1"]["nodes"]["8"][3] = node_reward_wallet;
-    // configJson["skaleConfig"]["sChain"]["node"]["1"]["group"][0]["rewardWalletAddress"] = node_reward_wallet;
+    // configJson["skaleConfig"]["sChain"]["node"]["1"]["group"][0]["rewardWalletAddress"] =
+    // node_reward_wallet;
 
     auto noRewardWalletAddressConfig = configJson.dump();
     JsonRpcFixture fixture( noRewardWalletAddressConfig, false, false, true );
@@ -7496,21 +8080,23 @@ BOOST_AUTO_TEST_CASE( block_author_balance_reward_wallet ) {
 
     auto totalReward = fixture.client->chainParams().blockReward(
         fixture.client->latestBlock().info().timestamp(), fixture.client->number() );
-    auto blockAuthorReward =
-            dev::calculateShareWithPrecision( totalReward,
-                fixture.client->evmSchedule().shareOfBlockRewardToBlockAuthorPromille );
+    auto blockAuthorReward = dev::calculateShareWithPrecision(
+        totalReward, fixture.client->evmSchedule().shareOfBlockRewardToBlockAuthorPromille );
 
-    auto feeForTx = jsToU256( sampleTx["gasPrice"].asString() ) * jsToU256( txData["gasUsed"].asString() );
-    feeForTx = dev::calculateShareWithPrecision( feeForTx, fixture.client->evmSchedule().shareOfTransactionFeeToRewardPromille );
-    auto expectedBalanceChange = ( blockNumber - initialBlockNumber ) * blockAuthorReward + feeForTx;
+    auto feeForTx =
+        jsToU256( sampleTx["gasPrice"].asString() ) * jsToU256( txData["gasUsed"].asString() );
+    feeForTx = dev::calculateShareWithPrecision(
+        feeForTx, fixture.client->evmSchedule().shareOfTransactionFeeToRewardPromille );
+    auto expectedBalanceChange =
+        ( blockNumber - initialBlockNumber ) * blockAuthorReward + feeForTx;
 
     BOOST_REQUIRE_EQUAL(
         fixture.client->balanceAt( jsToAddress( author.asString() ) ) - authorInitialBalance,
         expectedBalanceChange );
 }
-#endif // FAIR
+#endif  // FAIR
 
-#endif // #ifdef BITE
+#endif  // #ifdef BITE
 
 #ifndef FAIR
 BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {
@@ -7566,7 +8152,8 @@ BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {
     auto t = fixture.rpcClient->eth_getTransactionReceipt( txHash );
 #ifdef FAIR
     // reward goes to the node owner, not etherbase
-    BOOST_REQUIRE_EQUAL( fixture.client->balanceAt( jsToAddress( etherbase ) ), etherbaseBalance - u256( 1000000 ) );
+    BOOST_REQUIRE_EQUAL(
+        fixture.client->balanceAt( jsToAddress( etherbase ) ), etherbaseBalance - u256( 1000000 ) );
 #else
     BOOST_REQUIRE_EQUAL( fixture.client->balanceAt( jsToAddress( etherbase ) ),
         etherbaseBalance +
@@ -7604,12 +8191,12 @@ BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {
     t = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     etherbaseBalance = fixture.client->balanceAt( jsToAddress( etherbase ) );
 #ifdef FAIR
-// reward goes to the node owner, not etherbase
-    BOOST_REQUIRE_EQUAL(  etherbaseBalance, 0 );
+    // reward goes to the node owner, not etherbase
+    BOOST_REQUIRE_EQUAL( etherbaseBalance, 0 );
 #else
-    BOOST_REQUIRE_EQUAL(  etherbaseBalance,
-                          jsToU256( t["gasUsed"].asString() ) *
-                              jsToU256( partiallyRetrieveTx["gasPrice"].asString()  ));
+    BOOST_REQUIRE_EQUAL(
+        etherbaseBalance, jsToU256( t["gasUsed"].asString() ) *
+                              jsToU256( partiallyRetrieveTx["gasPrice"].asString() ) );
 #endif
     BOOST_REQUIRE_EQUAL(
         fixture.client->balanceAt( jsToAddress( "0x7aa5E36AA15E93D10F4F26357C30F052DacDde5F" ) ),
@@ -8678,9 +9265,9 @@ BOOST_AUTO_TEST_CASE( test_transactions ) {
 #endif
 
 #ifdef FAIR
-                                       1,
+        1,
 #endif
-                                       1 );
+        1 );
 
 #ifndef FAIR
     BOOST_REQUIRE_EQUAL( cache.realBlockTransactionCount( LatestBlock ), 2 );
@@ -8732,7 +9319,7 @@ BOOST_AUTO_TEST_CASE( test_exceptions ) {
 #endif
 
 #ifdef FAIR
-                                      1,
+        1,
 #endif
                                       1 );
     BOOST_REQUIRE_THROW( cache.realIndexFromGapped( LatestBlock, 1 ), std::out_of_range );
@@ -8749,4 +9336,3 @@ BOOST_AUTO_TEST_CASE( test_exceptions ) {
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE_END()
-

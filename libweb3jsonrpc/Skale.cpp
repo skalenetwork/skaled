@@ -872,7 +872,6 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
                                                                 << " " << s;
                     return false;
                 }
-                // size_t sizeArrived = joFragment["size"];
                 std::string strBase64orBinary = joFragment["data"];
 
                 buffer = skutils::tools::base64::decodeBin( strBase64orBinary );

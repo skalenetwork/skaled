@@ -55,7 +55,7 @@ TransactionQueue::TransactionQueue( unsigned _limit, unsigned _futureLimit,
         return;
     } );
 
-    unsigned verifierThreads = 0;  // std::max( thread::hardware_concurrency(), 3U ) - 2U;
+    unsigned verifierThreads = 0;
     for ( unsigned i = 0; i < verifierThreads; ++i )
         m_verifiers.emplace_back( [this, i]() {
             setThreadName( "txcheck" + toString( i ) );

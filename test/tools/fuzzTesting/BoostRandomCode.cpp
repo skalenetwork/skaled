@@ -55,13 +55,14 @@ BoostRandomCode::BoostRandomCode() {
 
 u256 BoostRandomCode::randomUniInt( u256 const& _minVal, u256 const& _maxVal ) {
     assert( _minVal <= _maxVal );
-    std::uniform_int_distribution< uint64_t > uint64Dist{0, std::numeric_limits< uint64_t >::max()};
+    std::uniform_int_distribution< uint64_t > uint64Dist{ 0,
+        std::numeric_limits< uint64_t >::max() };
     u256 value = _minVal + ( u256 ) uint64Dist( gen ) % ( _maxVal - _minVal );
     return value;
 }
 
 uint8_t BoostRandomCode::weightedOpcode( std::vector< int > const& _weights ) {
-    DescreteDistrib opCodeProbability = DescreteDistrib{_weights.begin(), _weights.end()};
+    DescreteDistrib opCodeProbability = DescreteDistrib{ _weights.begin(), _weights.end() };
     return opCodeProbability( gen );
 }
 }  // namespace test
