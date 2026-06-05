@@ -97,7 +97,8 @@ ImportResult TransactionQueue::import(
     try {
         Transaction t = Transaction( _transactionRLP, CheckTransaction::Everything, false,
             EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
-            InvalidTransactionFormatPatch::isEnabledInWorkingBlock()
+            InvalidTransactionFormatPatch::isEnabledInWorkingBlock(),
+            BerlinForkPatch::isEnabledInWorkingBlock()
 #ifdef BITE
                 ,
             Bite2Patch::isEnabledInWorkingBlock()
@@ -555,7 +556,8 @@ void TransactionQueue::verifierBody() {
         try {
             Transaction t( work.transaction, CheckTransaction::Cheap, false,
                 EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
-                InvalidTransactionFormatPatch::isEnabledInWorkingBlock()
+                InvalidTransactionFormatPatch::isEnabledInWorkingBlock(),
+                BerlinForkPatch::isEnabledInWorkingBlock()
 #ifdef BITE
                     ,
                 Bite2Patch::isEnabledInWorkingBlock()
