@@ -1043,6 +1043,7 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
         Transaction signedTransaction( signedTxnRlp, CheckTransaction::None, false,
             EIP1559TransactionsPatch::isEnabledWhen( _ctx.latestBlockTimestamp ),
             InvalidTransactionFormatPatch::isEnabledWhen( _ctx.latestBlockTimestamp ),
+            BerlinForkPatch::isEnabledWhen( _ctx.latestBlockTimestamp ),
             Bite2Patch::isEnabledWhen( _ctx.latestBlockTimestamp ) );
         signedTransaction.setBITE2EncryptedArgsSize( encryptedArgsCount );
 
