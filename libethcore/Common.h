@@ -128,7 +128,7 @@ enum class ImportResult {
     SameNonceAlreadyInQueue,
     BadChain,
     ZeroSignature,
-	InvalidNonce,
+    InvalidNonce,
     QueueIsFull
 };
 

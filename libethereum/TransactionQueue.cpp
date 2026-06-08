@@ -283,11 +283,10 @@ ImportResult TransactionQueue::manageImport_WITH_LOCK( h256 const& _h,
             ret = insertFuture_WITH_LOCK( make_pair( _h, _transaction ) );
             if ( ret == ImportResult::Success )
                 BOOST_LOG( m_loggerTrace ) << "Queued future transaction " << _h;
+        } else {
+            // nonce is not currently executable and cannot be queued as future
+            ret = ImportResult::InvalidNonce;
         }
-		else {
-			// nonce is not currently executable and cannot be queued as future
-			ret = ImportResult::InvalidNonce;
-		}
 
         if ( ret == ImportResult::QueueIsFull ) {
             BOOST_LOG( m_loggerWarning )
