@@ -1675,7 +1675,12 @@ BOOST_AUTO_TEST_CASE( getCurrentBLSPublicKey ) {
                                         { -1 },
                                         dev::h256::random(),
                                         0,
+                                        dev::ZeroAddress,
 #endif
+                                        true } );
+    std::array< std::string, 4 > imaBLSPublicKey = skaleHost->getCurrentBLSPublicKey();
+    BOOST_REQUIRE( res.first );
+    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( imaBLSPublicKey[0] ) ) +
                                      toBigEndian( dev::u256( imaBLSPublicKey[1] ) ) +
                                      toBigEndian( dev::u256( imaBLSPublicKey[2] ) ) +
                                      toBigEndian( dev::u256( imaBLSPublicKey[3] ) ) );
