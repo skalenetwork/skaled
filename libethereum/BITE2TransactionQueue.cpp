@@ -50,6 +50,9 @@ void BITE2TransactionQueue::addTemp( Transaction&& _t ) {
 
 std::vector< h256 > BITE2TransactionQueue::getTempHashes() const {
     CHECK_EXPRESSION( m_current );
+    if ( m_current->empty() )
+        return {};
+
     // if there are no committed transactions
     // we return hashes of all transactions in m_current
     if ( m_empty ) {

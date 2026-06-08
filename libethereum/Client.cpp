@@ -1245,6 +1245,8 @@ h256 Client::importTransaction( Transaction const& _t, TransactionBroadcast _txO
         BOOST_THROW_EXCEPTION( PendingTransactionAlreadyExists() );
     case ImportResult::AlreadyInChain:
         BOOST_THROW_EXCEPTION( TransactionAlreadyInChain() );
+	case ImportResult::InvalidNonce:
+		BOOST_THROW_EXCEPTION( InvalidNonce() );
     case ImportResult::QueueIsFull:
         BOOST_THROW_EXCEPTION( TransactionQueueIsFull() );
     default:

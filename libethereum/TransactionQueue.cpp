@@ -268,7 +268,7 @@ ImportResult TransactionQueue::manageImport_WITH_LOCK( h256 const& _h,
         if ( _transaction.nonce() < _stateNonce )
             return ImportResult::AlreadyInChain;
 
-        ImportResult ret = ImportResult::QueueIsFull;
+        ImportResult ret;
         // if compatible with CTQ - try insert in CTQ - may fail due to queue full
         if ( isCurrentNonceCompatible_WITH_LOCK( _transaction, _stateNonce ) ) {
             // may fail insertion if queue full
@@ -284,6 +284,10 @@ ImportResult TransactionQueue::manageImport_WITH_LOCK( h256 const& _h,
             if ( ret == ImportResult::Success )
                 BOOST_LOG( m_loggerTrace ) << "Queued future transaction " << _h;
         }
+		else {
+			// nonce is not currently executable and cannot be queued as future
+			ret = ImportResult::InvalidNonce;
+		}
 
         if ( ret == ImportResult::QueueIsFull ) {
             BOOST_LOG( m_loggerWarning )

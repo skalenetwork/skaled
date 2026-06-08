@@ -75,11 +75,11 @@ BOOST_AUTO_TEST_CASE( tempHashes ) {
         std::end( BITE2_FUNCTION_SELECTOR_AS_BYTE_ARRAY ) );
 
     Secret sec = Secret( "0x45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8" );
-    Transaction tx1( 0, 100, 21000, Address(), bytes(), 10, sec );
+    Transaction tx1( 0, 100, 21000, Address(), ctxData, 10, sec );
     tx1.checkIfCTXAndSet( ctxData );
-    Transaction tx2( 1, 100, 21000, Address(), bytes(), 10, sec );
+    Transaction tx2( 1, 100, 21000, Address(), ctxData, 10, sec );
     tx2.checkIfCTXAndSet( ctxData );
-    Transaction tx3( 2, 100, 21000, Address(), bytes(), 10, sec );
+    Transaction tx3( 2, 100, 21000, Address(), ctxData, 10, sec );
     tx3.checkIfCTXAndSet( ctxData );
 
     queue.addTemp( Transaction( tx1 ) );

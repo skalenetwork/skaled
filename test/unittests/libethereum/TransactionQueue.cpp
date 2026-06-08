@@ -539,6 +539,21 @@ BOOST_AUTO_TEST_CASE( dropFromFutureToCurrent ) {
     BOOST_REQUIRE( status.current == 1 && status.future == 0 );
 }
 
+BOOST_AUTO_TEST_CASE( tqImportFutureNonceWithFutureTxsDisabled ) {
+    TransactionQueue tq;
+    TestTransaction tx1 = TestTransaction::defaultTransaction( 1 );
+
+    ImportResult ir = tq.import( tx1.transaction().toBytes(), IfDropped::Ignore, false, 0 );
+    BOOST_REQUIRE( ir == ImportResult::InvalidNonce );
+
+    BOOST_REQUIRE( tq.waiting( tx1.transaction().sender() ) == 0 );
+    BOOST_REQUIRE( tq.knownTransactions().empty() );
+
+    TransactionQueue::Status status = tq.status();
+    BOOST_REQUIRE( status.current == 0 );
+    BOOST_REQUIRE( status.future == 0 );
+}
+
 BOOST_AUTO_TEST_CASE( tqImportFutureLimits ) {
     dev::eth::TransactionQueue tq( 1024, 2 );
     TestTransaction tx1 = TestTransaction::defaultTransaction(3);
