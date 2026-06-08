@@ -105,10 +105,8 @@ target_link_libraries(testeth PRIVATE
   jsoncpp
   ${DEPS_INSTALL_ROOT}/lib/libff.a
   ${DEPS_INSTALL_ROOT}/lib/libgmp.a
-  ${DEPS_INSTALL_ROOT}/lib/libcurl.a
   ${DEPS_INSTALL_ROOT}/lib/libssl.a
   ${DEPS_INSTALL_ROOT}/lib/libcrypto.a
-  idn2
   batched-io
 
   # conditional libs

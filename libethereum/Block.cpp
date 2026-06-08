@@ -999,9 +999,15 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
             throw;
         }
 
-        RLPStream receiptRLP;
-        m_receipts.back().streamRLP( receiptRLP );
-        receipts.push_back( receiptRLP.out() );
+        // EIP-2718: use typed receipt encoding for non-Legacy transactions.
+        if ( EIP1559TransactionsPatch::isEnabledInWorkingBlock() &&
+             m_receipts.back().txType() > 0 ) {
+            receipts.push_back( m_receipts.back().typedRlp() );
+        } else {
+            RLPStream receiptRLP;
+            m_receipts.back().streamRLP( receiptRLP );
+            receipts.push_back( receiptRLP.out() );
+        }
         ++i;
     }
 
@@ -1414,11 +1420,21 @@ void Block::commitToSeal(
         RLPStream k;
         k << i;
 
-        RLPStream receiptrlp;
-        receipt( i ).streamRLP( receiptrlp );
-        receiptsMap.insert( std::make_pair( k.out(), receiptrlp.out() ) );
+        // Since EIP-1559 API is enabled before Berlin fork,
+        // this part of EIP-2718 logic is activated depending on EIP1559TransactionsPatch
+        bytes receiptBytes;
+        if ( EIP1559TransactionsPatch::isEnabledInWorkingBlock() && receipt( i ).txType() > 0 ) {
+            receiptBytes = receipt( i ).typedRlp();
+        } else {
+            RLPStream receiptrlp;
+            receipt( i ).streamRLP( receiptrlp );
+            receiptBytes = receiptrlp.out();
+        }
+        receiptsMap.insert( std::make_pair( k.out(), receiptBytes ) );
 
         dev::bytes txOutput = m_transactions[i].toBytes();
+        // Same as receiptBytes creation:
+        // this part of EIP-2718 logic is activated depending on EIP1559TransactionsPatch
         if ( EIP1559TransactionsPatch::isEnabledInWorkingBlock() &&
              m_transactions[i].txType() != dev::eth::TransactionType::Legacy ) {
             RLPStream s;

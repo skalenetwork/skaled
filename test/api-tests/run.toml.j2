@@ -3,6 +3,7 @@
 # ==========================================================================
 #
 # Usage:  cd test/api-tests && python3 run.py [--config run.toml] [--suite bite-compat]
+#         cd test/api-tests && python3 run.py [--config run.toml] [--suite hardfork-support]
 #
 # Steps executed:
 #   1. Setup environment  (launch skaled(s) per config)
@@ -20,7 +21,7 @@
 [suite]
 # Which test suite to run.  Must match a subdirectory name under api-tests/
 # that contains a suite.py with deploy() and run_tests() entry points.
-# Available: "bite-compat"
+# Available: "bite-compat", "hardfork-support", "hardfork-compat"
 name = "bite-compat"
 
 # --------------------------------------------------------------------------

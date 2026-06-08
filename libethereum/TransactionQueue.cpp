@@ -61,7 +61,8 @@ ImportResult TransactionQueue::import( bytesConstRef _transactionRLP, IfDropped 
     try {
         Transaction t = Transaction( _transactionRLP, CheckTransaction::Everything, false,
             EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
-            InvalidTransactionFormatPatch::isEnabledInWorkingBlock()
+            InvalidTransactionFormatPatch::isEnabledInWorkingBlock(),
+            BerlinForkPatch::isEnabledInWorkingBlock()
 #ifdef BITE
                 ,
             Bite2Patch::isEnabledInWorkingBlock()

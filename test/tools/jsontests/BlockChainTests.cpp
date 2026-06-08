@@ -1011,6 +1011,14 @@ public:
     bcTransitionFixture() {
         test::TransitionTestsSuite suite;
         string const& casename = boost::unit_test::framework::current_test_case().p_name;
+#ifdef FAIR
+        // BerlinForkPatch is pre-enabled for FAIR, so transition tests whose
+        // pre-computed block RLPs assume pre-Berlin gas costs are invalid.
+        if ( casename == "bcByzantiumToConstantinopleFix" || casename == "bcEIP158ToByzantium" ) {
+            cnote << "Skipping " << casename << " (not applicable with pre-enabled BerlinForkPatch)\n";
+            return;
+        }
+#endif
         suite.runAllTestsInFolder( casename );
     }
 };

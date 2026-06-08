@@ -387,7 +387,8 @@ Transaction ClientBase::transaction( h256 _transactionHash ) const {
     auto blockTimestamp = blockInfo( numberFromHash( tl.first ) - 1 ).timestamp();
     return Transaction( bc().transaction( _transactionHash ), CheckTransaction::Cheap, true,
         EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
-        InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp )
+        InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp ),
+        BerlinForkPatch::isEnabledWhen( blockTimestamp )
 #ifdef BITE
             ,
         Bite2Patch::isEnabledWhen( blockTimestamp )
@@ -408,7 +409,8 @@ Transaction ClientBase::transaction( h256 _blockHash, unsigned _i ) const {
         // allow invalid
         return Transaction( b[1][_i].data(), CheckTransaction::Cheap, true,
             EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
-            InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp )
+            InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp ),
+            BerlinForkPatch::isEnabledWhen( blockTimestamp )
 #ifdef BITE
                 ,
             Bite2Patch::isEnabledWhen( blockTimestamp )
@@ -423,7 +425,8 @@ LocalisedTransaction ClientBase::localisedTransaction( h256 const& _blockHash, u
     // allow invalid
     Transaction t = Transaction( bc().transaction( _blockHash, _i ), CheckTransaction::Cheap, true,
         EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
-        InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp )
+        InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp ),
+        BerlinForkPatch::isEnabledWhen( blockTimestamp )
 #ifdef BITE
             ,
         Bite2Patch::isEnabledWhen( blockTimestamp )
@@ -447,7 +450,8 @@ LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(
         CheckTransaction::Cheap,                                                 // Check sig
         true,                                                                    // allow invalid
         EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
-        InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp )
+        InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp ),
+        BerlinForkPatch::isEnabledWhen( blockTimestamp )
 #ifdef BITE
             ,
         Bite2Patch::isEnabledWhen( blockTimestamp )
@@ -511,7 +515,8 @@ Transactions ClientBase::transactions( h256 _blockHash ) const {
         auto txRlp = b[1][i];
         res.emplace_back( bytesRefFromTransactionRlp( txRlp ), CheckTransaction::Cheap, true,
             EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
-            InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp )
+            InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp ),
+            BerlinForkPatch::isEnabledWhen( blockTimestamp )
 #ifdef BITE
                 ,
             Bite2Patch::isEnabledWhen( blockTimestamp )

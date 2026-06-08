@@ -64,6 +64,8 @@ ChainParams::ChainParams() {
     precompiled.insert( make_pair( Address( 4 ),
         PrecompiledContract( 15, 3, PrecompiledRegistrar::executor( "identity" ) ) ) );
 
+    rebuildPrecompiledAddresses();
+
     // fill empty stateRoot
     secp256k1_sha256_t ctx;
     secp256k1_sha256_initialize( &ctx );
@@ -177,6 +179,8 @@ void ChainParams::loadConfig( string const& _json, const boost::filesystem::path
 
     genesisState =
         jsonToAccountMap( genesisStateStr, accountStartNonce, nullptr, &precompiled, _configPath );
+
+    rebuildPrecompiledAddresses();
 }
 void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
     auto skaleObj = obj[c_skaleConfig].get_obj();
