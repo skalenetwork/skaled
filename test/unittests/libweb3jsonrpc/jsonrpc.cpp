@@ -6295,7 +6295,8 @@ BOOST_AUTO_TEST_CASE( getRandomWalletAndSignatureForCTX ) {
 
     PrecompiledExecutor randomWalletExecutor =
         PrecompiledRegistrar::executor( "getRandomWalletAndSignatureForCTX" );
-    dev::eth::PrecompiledCallContext ctx( fixture.client->number(), 0, 1, true );
+    dev::eth::PrecompiledCallContext ctx( fixture.client->number(), 0, dev::h256::random(), 1,
+                                          dev::ZeroAddress, true );
 
     dev::bytesConstRef input( resultData.data(), resultData.size() );
     auto res = randomWalletExecutor( input, ctx );
@@ -6337,8 +6338,8 @@ BOOST_AUTO_TEST_CASE( getRandomWalletAndSignatureForCTX ) {
     finalStream.appendRaw( args2Stream.out() );
 
     dev::bytes rlpEncodedData = finalStream.out();
-    rlpEncodedData.insert( rlpEncodedData.begin(), ON_DECRYPT_FUNCTION_SELECTOR.begin(),
-        ON_DECRYPT_FUNCTION_SELECTOR.end() );
+    rlpEncodedData.insert( rlpEncodedData.begin(), dev::bite::ON_DECRYPT_FUNCTION_SELECTOR.begin(),
+        dev::bite::ON_DECRYPT_FUNCTION_SELECTOR.end() );
 
     // Create expected transaction for signature verification using RLP-encoded data
     Transaction expectedTransaction(
