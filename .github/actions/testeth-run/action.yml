@@ -9,6 +9,10 @@ inputs:
   verbosity:
     required: true
     description: "1 | 4"
+  bite2_suites:
+    required: false
+    default: "false"
+    description: "include BITE2TransactionQueueSuite (true | false)"
 
 runs:
   using: composite
@@ -43,6 +47,10 @@ runs:
           SnapshotSigningTestSuite SkUtils BlockChainTestSuite TestHelperSuite LevelDBHashBase
           memDB OverlayDBTests AccountHolderTest ClientTests JsonRpcSuite SingleConsensusTests ConsensusTests
         )
+
+        if [[ "${{ inputs.bite2_suites }}" == "true" ]]; then
+          TEST_SUITES+=(BITE2TransactionQueueSuite)
+        fi
 
         if [[ "${{ inputs.verbosity }}" == "1" ]]; then
           mkdir -p /tmp/tests/

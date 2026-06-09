@@ -1211,7 +1211,7 @@ BOOST_AUTO_TEST_CASE( transactionDropReceive
 #endif
 
     // submit it!
-    tq->import( tx1 );
+    tq->import( tx1, IfDropped::Ignore, true, 0 );
 
     // 2nd tx
     u256 value2 = 20000 * dev::eth::szabo;
@@ -1289,7 +1289,7 @@ BOOST_AUTO_TEST_CASE(
 #endif
 
     // submit it!
-    tq->import( tx1 );
+    tq->import( tx1, IfDropped::Ignore, true, 0 );
 
     sleep( 1 );
     BOOST_REQUIRE_EQUAL( tq->knownTransactions().size(), 1 );
@@ -1365,7 +1365,7 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPrice
 #endif
 
     // submit it!
-    tq->import( tx1 );
+    tq->import( tx1, IfDropped::Ignore, true, 0 );
 
     sleep( 1 );
     BOOST_REQUIRE_EQUAL( tq->knownTransactions().size(), 1 );
@@ -2080,7 +2080,7 @@ BOOST_AUTO_TEST_CASE( encryptTE_invalidABIEncoding ) {
 
     // Verify failure with error code 5 (invalid data offset)
     BOOST_REQUIRE( !res.first );
-    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 5 ) ) );
+    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 4 ) ) );
 }
 
 BOOST_AUTO_TEST_CASE( encryptTE_dataLengthMismatch ) {
@@ -2100,7 +2100,7 @@ BOOST_AUTO_TEST_CASE( encryptTE_dataLengthMismatch ) {
 
     // Verify failure with error code 6 (data length mismatch)
     BOOST_REQUIRE( !res.first );
-    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 6 ) ) );
+    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 5 ) ) );
 }
 
 BOOST_AUTO_TEST_CASE( encryptTE_trailingPaddingNotZeros ) {
@@ -2123,7 +2123,7 @@ BOOST_AUTO_TEST_CASE( encryptTE_trailingPaddingNotZeros ) {
 
     // Verify failure with error code 7 (trailing padding not zeros)
     BOOST_REQUIRE( !res.first );
-    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 7 ) ) );
+    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 6 ) ) );
 }
 
 BOOST_AUTO_TEST_CASE( encryptTE_counter_reset_on_new_block ) {
