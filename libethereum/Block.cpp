@@ -912,8 +912,11 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
         }
 
         // EIP-2718: use typed receipt encoding for non-Legacy transactions.
-        if ( EIP1559TransactionsPatch::isEnabledInWorkingBlock() &&
-             m_receipts.back().txType() > 0 ) {
+        // Gated on BerlinForkPatch (not EIP1559TransactionsPatch): the EIP-1559
+        // transaction format is accepted before Berlin, but the typed-receipt
+        // encoding must only change at the coordinated Berlin fork so blocks
+        // produced before it keep their original receiptsRoot.
+        if ( BerlinForkPatch::isEnabledInWorkingBlock() && m_receipts.back().txType() > 0 ) {
             receipts.push_back( m_receipts.back().typedRlp() );
         } else {
             RLPStream receiptRLP;
@@ -1333,10 +1336,12 @@ void Block::commitToSeal(
         RLPStream k;
         k << i;
 
-        // Since EIP-1559 API is enabled before Berlin fork,
-        // this part of EIP-2718 logic is activated depending on EIP1559TransactionsPatch
+        // EIP-2718 typed-receipt encoding is gated on BerlinForkPatch (not
+        // EIP1559TransactionsPatch): the EIP-1559 transaction format is accepted
+        // before Berlin, but the receipt encoding must only change at the
+        // coordinated Berlin fork so pre-Berlin blocks keep their receiptsRoot.
         bytes receiptBytes;
-        if ( EIP1559TransactionsPatch::isEnabledInWorkingBlock() && receipt( i ).txType() > 0 ) {
+        if ( BerlinForkPatch::isEnabledInWorkingBlock() && receipt( i ).txType() > 0 ) {
             receiptBytes = receipt( i ).typedRlp();
         } else {
             RLPStream receiptrlp;
