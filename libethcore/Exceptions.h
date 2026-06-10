@@ -88,6 +88,7 @@ DEV_SIMPLE_EXCEPTION( PreEIP155LegacyTransactionNotAllowed );
 DEV_SIMPLE_EXCEPTION( PreEIP155ReplayProtectionViolation );
 DEV_SIMPLE_EXCEPTION( PendingTransactionAlreadyExists );
 DEV_SIMPLE_EXCEPTION( TransactionAlreadyInChain );
+DEV_SIMPLE_EXCEPTION( TransactionQueueIsFull );
 DEV_SIMPLE_EXCEPTION( BlockNotFound );
 DEV_SIMPLE_EXCEPTION( UnknownParent );
 DEV_SIMPLE_EXCEPTION( AddressAlreadyUsed );

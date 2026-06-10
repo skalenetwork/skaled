@@ -1272,12 +1272,12 @@ ETH_REGISTER_PRECOMPILED( encryptTE )
         bigint const dataOffset( parseBigEndianRightPadded( _in, 0, headFieldSizeBytes ) );
         const size_t expectedDataOffset = 32;
         if ( dataOffset != expectedDataOffset ) {
-            return { false, toBigEndian( dev::u256( 5 ) ) };  // error 5: invalid data offset
+            return { false, toBigEndian( dev::u256( 4 ) ) };  // error 4: invalid data offset
         }
 
         // Read data length at the data offset (position 32)
         if ( _in.size() < expectedDataOffset + headFieldSizeBytes ) {
-            return { false, toBigEndian( dev::u256( 6 ) ) };  // error 6: data length mismatch
+            return { false, toBigEndian( dev::u256( 5 ) ) };  // error 5: data length mismatch
         }
         bigint const dataLength(
             parseBigEndianRightPadded( _in, expectedDataOffset, headFieldSizeBytes ) );
@@ -1286,14 +1286,14 @@ ETH_REGISTER_PRECOMPILED( encryptTE )
         // Header is 64 bytes (offset + length field), so max data = MAX_SIZE_BYTES - 64
         static constexpr size_t HEADER_SIZE_BYTES = 64;
         if ( dataLength < 0 || dataLength > MAX_SIZE_BYTES - HEADER_SIZE_BYTES ) {
-            return { false, toBigEndian( dev::u256( 6 ) ) };  // error 6: data length mismatch
+            return { false, toBigEndian( dev::u256( 5 ) ) };  // error 5: data length mismatch
         }
         size_t dataLengthSafe = static_cast< size_t >( dataLength );
 
         // Calculate data start position and validate bounds
         size_t dataStart = expectedDataOffset + headFieldSizeBytes;
         if ( dataStart + dataLengthSafe > _in.size() ) {
-            return { false, toBigEndian( dev::u256( 6 ) ) };  // error 6: data length mismatch
+            return { false, toBigEndian( dev::u256( 5 ) ) };  // error 5: data length mismatch
         }
 
         // Extract data bytes (empty data is allowed)
@@ -1303,7 +1303,7 @@ ETH_REGISTER_PRECOMPILED( encryptTE )
         size_t dataEnd = dataStart + dataLengthSafe;
         if ( !std::all_of( _in.data() + dataEnd, _in.data() + _in.size(),
                  []( uint8_t b ) { return b == 0; } ) ) {
-            return { false, toBigEndian( dev::u256( 7 ) ) };  // error 7: trailing padding not zeros
+            return { false, toBigEndian( dev::u256( 6 ) ) };  // error 6: trailing padding not zeros
         }
 
         std::vector< libBLS::TEPublicKey > publicKeys;

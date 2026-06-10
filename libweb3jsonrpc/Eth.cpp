@@ -1210,6 +1210,8 @@ string dev::rpc::exceptionToErrorMessage() {
         ret = "Same transaction already exists in the pending transaction queue.";
     } catch ( TransactionAlreadyInChain const& ) {
         ret = "Transaction is already in the blockchain.";
+    } catch ( TransactionQueueIsFull const& ) {
+        ret = "Transaction queue is full.";
     } catch ( NotEnoughCash const& ) {
         ret = "Account balance is too low (balance < value + gas * gas price).";
     } catch ( InvalidSignature const& ) {

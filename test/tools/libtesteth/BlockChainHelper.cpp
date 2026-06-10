@@ -72,7 +72,7 @@ TestBlock::TestBlock( std::string const& _blockRLP ) : TestBlock() {
     for ( auto const& tr : root[1] ) {
         Transaction tx( tr.data(), CheckTransaction::Everything );
         TestTransaction testTx( tx );
-        m_transactionQueue.import( tx.toBytes() );
+        m_transactionQueue.import( tx, IfDropped::Ignore, false, tx.nonce() );
         m_testTransactions.push_back( testTx );
     }
 
@@ -125,7 +125,8 @@ void TestBlock::setState( State const& _state ) {
 
 void TestBlock::addTransaction( TestTransaction const& _tr ) {
     m_testTransactions.push_back( _tr );
-    if ( m_transactionQueue.import( _tr.transaction().toBytes() ) != ImportResult::Success )
+    if ( m_transactionQueue.import( _tr.transaction(), IfDropped::Ignore, false,
+             _tr.transaction().nonce() ) != ImportResult::Success )
         cnote << TestOutputHelper::get().testName() + " Test block failed importing transaction";
     recalcBlockHeaderBytes();
 }
@@ -215,7 +216,8 @@ void TestBlock::mine( TestBlockChain const& _bc ) {
         // renew the TestBlock transactions
         m_transactionQueue.clear();
         for ( size_t i = 0; i < block.pending().size(); i++ )
-            m_transactionQueue.import( block.pending()[i] );
+            m_transactionQueue.import(
+                block.pending()[i], IfDropped::Ignore, false, block.pending()[i].nonce() );
     } catch ( Exception const& _e ) {
         cnote << TestOutputHelper::get().testName() +
                      " block sync or mining did throw an exception: "
@@ -445,7 +447,7 @@ void TestBlock::populateFrom( TestBlock const& _original ) {
     m_transactionQueue.clear();
     TransactionQueue const& trQueue = _original.transactionQueue();
     for ( auto const& txi : trQueue.topTransactions( std::numeric_limits< unsigned >::max() ) )
-        m_transactionQueue.import( txi.toBytes() );
+        m_transactionQueue.import( txi, IfDropped::Ignore, false, txi.nonce() );
 
     m_uncles = _original.uncles();
     m_blockHeader = _original.blockHeader();
