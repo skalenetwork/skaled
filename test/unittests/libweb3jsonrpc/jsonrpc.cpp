@@ -5127,7 +5127,12 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
                                 0,
                                 dev::h256::random(),
                                 1,
+                                dev::ZeroAddress,
 #endif
+                                true );
+    auto blockRandomEarlyHistoric = blockRandomExecutor( dev::bytesConstRef(), ctx );
+    BOOST_REQUIRE( blockRandomEarlyHistoric.first );
+    BOOST_REQUIRE( blockRandomEarlyHistoric.second == blockRandomEarly.second );
 #endif
 }
 
