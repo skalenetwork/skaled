@@ -802,8 +802,7 @@ void BlockChain::insertTransactionsDetailsToDb(
                     dev::Address to =
                         dev::Address( txFields.to.data(), dev::Address::ConstructFromPointer );
                     DecryptedTransactionData txData( txFields.data, to );
-                    _extrasWriteBatch.insert(
-                        toSlice( txHash, ExtraTransactionDecryptedData ),
+                    _extrasWriteBatch.insert( toSlice( txHash, ExtraTransactionDecryptedData ),
                         ( db::Slice ) dev::ref( txData.rlp() ) );
                 }
                 ++regularTxnsIterator;
