@@ -1427,7 +1427,7 @@ void Block::commitToSeal(
         k << i;
 
         // EIP-2718 typed-receipt encoding is gated on BerlinForkPatch:
-		// the EIP-1559 transaction format is accepted
+        // the EIP-1559 transaction format is accepted
         // before Berlin, but the receipt encoding must only change at the
         // coordinated Berlin fork so pre-Berlin blocks keep their receiptsRoot.
         // The parent block timestamp is used (not the global committed-block
@@ -1447,7 +1447,7 @@ void Block::commitToSeal(
         // EIP-2718: typed transactions go into the transactions trie wrapped as an
         // RLP byte string. Unlike the receipt encoding above, this is gated on
         // EIP1559TransactionsPatch because typed transactions are accepted
-		// before Berlin.
+        // before Berlin.
         if ( EIP1559TransactionsPatch::isEnabledWhen( previousInfo().timestamp() ) &&
              m_transactions[i].txType() != dev::eth::TransactionType::Legacy ) {
             RLPStream s;
