@@ -1004,7 +1004,11 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
         // transaction format is accepted before Berlin, but the typed-receipt
         // encoding must only change at the coordinated Berlin fork so blocks
         // produced before it keep their original receiptsRoot.
-        if ( BerlinForkPatch::isEnabledInWorkingBlock() && m_receipts.back().txType() > 0 ) {
+        // The parent block timestamp is used (not the global committed-block
+        // timestamp) so the encoding is deterministic per block, including when
+        // a block is re-enacted out of order.
+        if ( BerlinForkPatch::isEnabledWhen( previousInfo().timestamp() ) &&
+             m_receipts.back().txType() > 0 ) {
             receipts.push_back( m_receipts.back().typedRlp() );
         } else {
             RLPStream receiptRLP;
@@ -1427,8 +1431,11 @@ void Block::commitToSeal(
         // EIP1559TransactionsPatch): the EIP-1559 transaction format is accepted
         // before Berlin, but the receipt encoding must only change at the
         // coordinated Berlin fork so pre-Berlin blocks keep their receiptsRoot.
+        // The parent block timestamp is used (not the global committed-block
+        // timestamp) so the encoding is deterministic per block and matches enact().
         bytes receiptBytes;
-        if ( BerlinForkPatch::isEnabledInWorkingBlock() && receipt( i ).txType() > 0 ) {
+        if ( BerlinForkPatch::isEnabledWhen( previousInfo().timestamp() ) &&
+             receipt( i ).txType() > 0 ) {
             receiptBytes = receipt( i ).typedRlp();
         } else {
             RLPStream receiptrlp;
@@ -1438,9 +1445,12 @@ void Block::commitToSeal(
         receiptsMap.insert( std::make_pair( k.out(), receiptBytes ) );
 
         dev::bytes txOutput = m_transactions[i].toBytes();
-        // Same as receiptBytes creation:
-        // this part of EIP-2718 logic is activated depending on EIP1559TransactionsPatch
-        if ( EIP1559TransactionsPatch::isEnabledInWorkingBlock() &&
+        // EIP-2718: typed transactions go into the transactions trie wrapped as an
+        // RLP byte string. Unlike the receipt encoding above, this is gated on
+        // EIP1559TransactionsPatch because typed transactions are accepted (and thus
+        // can appear in a block) as soon as that patch is active, before Berlin.
+        // The parent block timestamp keeps it deterministic per block.
+        if ( EIP1559TransactionsPatch::isEnabledWhen( previousInfo().timestamp() ) &&
              m_transactions[i].txType() != dev::eth::TransactionType::Legacy ) {
             RLPStream s;
             s.append( txOutput );
