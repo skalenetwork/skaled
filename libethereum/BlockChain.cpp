@@ -803,10 +803,10 @@ void BlockChain::insertTransactionsDetailsToDb(
                         dev::Address( txFields.to.data(), dev::Address::ConstructFromPointer );
                     DecryptedTransactionData txData( txFields.data, to );
                     _extrasWriteBatch.insert(
-                        toSlice( sha3( txBytes ), ExtraTransactionDecryptedData ),
+                        toSlice( txHash, ExtraTransactionDecryptedData ),
                         ( db::Slice ) dev::ref( txData.rlp() ) );
-                    ++regularTxnsIterator;
                 }
+                ++regularTxnsIterator;
             } else if ( _block.transactions.at( ta.index ).isCTX() &&
                         Bite2Patch::isEnabledInWorkingBlock() ) {
                 dev::h256 ctxOriginHash = _block.transactions[ta.index].getCTXOrigin();
