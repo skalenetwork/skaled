@@ -677,7 +677,7 @@ Json::Value Skale::bite_getCraftedCtxs( const std::string& _transactionHash ) {
         // skip invalid
         auto rcp = m_client.localisedTransactionReceipt( h );
         if ( rcp.gasUsed() == 0 )
-            return std::string();
+            return Json::Value( Json::arrayValue );
 #endif  // HISTORIC_STATE
 
         auto craftedCTXs = m_client.craftedCTXs( h );
