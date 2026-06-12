@@ -32,6 +32,7 @@
 #include <libethashseal/EthashClient.h>
 #include <libethcore/CommonJS.h>
 #include <libethereum/Client.h>
+#include <libethereum/SchainPatch.h>
 #include <libskale/SkipInvalidTransactionsPatch.h>
 #include <libweb3jsonrpc/JsonHelper.h>
 
@@ -420,7 +421,12 @@ string Eth::eth_sendRawTransaction( std::string const& _rlp ) {
     // will be checked as a part of transaction import
     Transaction t( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::None, false,
         EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
-        InvalidTransactionFormatPatch::isEnabledInWorkingBlock() );
+        InvalidTransactionFormatPatch::isEnabledInWorkingBlock()
+#ifdef BITE
+            ,
+        Bite2Patch::isEnabledInWorkingBlock()
+#endif  // BITE
+    );
     return toJS( client()->importTransaction( t, TransactionBroadcast::BroadcastToAll ) );
 }
 
@@ -1021,9 +1027,15 @@ Json::Value Eth::eth_feeHistory( dev::u256 _blockCount, const std::string& _newe
             throw std::runtime_error( "Reward percentiles must be a list" );
 
         for ( auto p : _rewardPercentiles ) {
-            if ( !p.isUInt() || p > 100 ) {
-                throw std::runtime_error( "Percentiles must be positive integers less then 100" );
-            }
+            double percentileValue;
+            if ( p.isUInt() )
+                percentileValue = static_cast< double >( p.asUInt() );
+            else if ( p.isDouble() )
+                percentileValue = p.asDouble();
+            else
+                throw std::runtime_error( "Percentiles must be integer or floating-point numbers" );
+            if ( percentileValue < 0.0 || percentileValue > 100.0 )
+                throw std::runtime_error( "Percentiles must be numbers between 0 and 100" );
         }
 
         if ( _blockCount > MAX_BLOCK_RANGE )
@@ -1195,7 +1207,7 @@ string dev::rpc::exceptionToErrorMessage() {
 #ifdef BITE
     // BITE exceptions
     catch ( InvalidBITETransaction const& _e ) {
-        ret = "Invalid BITE transaction format.";
+        ret = std::string( "Invalid BITE transaction format." ) + " " + _e.what();
     } catch ( BITETransactionTooShort const& _e ) {
         ret = "BITE transaction too short.";
     }

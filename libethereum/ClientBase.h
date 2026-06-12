@@ -147,8 +147,10 @@ public:
     BlockDetails pendingDetails() const override;
 
 #ifdef BITE
-    DecryptedTransactionData decryptedTransactionData( h256 const& _transactionHash ) const;
-#endif
+    DecryptedTransactionData decryptedTransactionData( const dev::h256& _transactionHash ) const;
+    dev::h256 ctxOrigin( const dev::h256& _ctxHash ) const;
+    std::vector< dev::h256 > craftedCTXs( const dev::h256& _transactionHash ) const;
+#endif  // BITE
 
     EVMSchedule evmSchedule() const override;
 

@@ -38,6 +38,7 @@
 #include "Options.h"
 #include "TestOutputHelper.h"
 #include "wast2wasm.h"
+#include "libdevcore/CommonData.h"
 
 using namespace std;
 using namespace dev::eth;
@@ -745,5 +746,46 @@ void Listener::notifyTestFinished( int64_t _gasUsed ) {
     if ( g_listener )
         g_listener->testFinished( _gasUsed );
 }
+
+// ============= Ciphertext Helpers ============= //
+
+bytes parseEpochedCiphertextBytes(const bytes &ciphertext, uint64_t expectedEpochId ) {
+    RLP rlp( ciphertext );
+    BOOST_REQUIRE( rlp.isList() );
+    BOOST_REQUIRE_EQUAL( rlp.itemCount(), 2 );
+    uint64_t epochId = rlp[0].toInt< uint64_t >();
+    BOOST_REQUIRE_EQUAL( epochId, expectedEpochId );
+    return rlp[1].toBytes();
+};
+
+h256 buildDeterministicRandomForEncryption( dev::u256 blockRandom, uint64_t counter ) {
+    bytes blockRandomBytes = toBigEndian( blockRandom );
+    bytes counterBytes = toBigEndian( dev::u256( counter ) );
+    bytes combined;
+    combined.insert( combined.end(), blockRandomBytes.begin(), blockRandomBytes.end() );
+    combined.insert( combined.end(), counterBytes.begin(), counterBytes.end() );
+    return dev::sha3( combined );
+};
+
+
+bytes buildDeterministicCiphertext( u256 blockRandom, uint64_t counter, 
+    std::vector< libBLS::TEPublicKey > const& publicKeys, bytes const& dataToEncrypt ) {
+    dev::h256 seedHash = test::buildDeterministicRandomForEncryption( blockRandom, counter );
+    bytes seedBytes = seedHash.asBytes();
+    std::array< uint8_t, libBLS::AES_256_KEY_SIZE_BYTES > seed;
+    std::copy_n( seedBytes.begin(), libBLS::AES_256_KEY_SIZE_BYTES, seed.begin() );
+
+    bytes scAddressBytes = dev::Address().asBytes();
+    libBLS::EncryptMetaData metaData;
+    metaData.seed = libBLS::Seed256{ seed };
+    metaData.associatedDataTE =
+        std::vector< uint8_t >( scAddressBytes.begin(), scAddressBytes.end() );
+
+    libBLS::Ciphertext ciphertext =
+        libBLS::ThresholdEncryption::encrypt( dataToEncrypt, publicKeys, metaData );
+    return ciphertext.toBytes();
+};
+
+
 }  // namespace test
 }  // namespace dev

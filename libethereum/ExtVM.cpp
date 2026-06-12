@@ -129,9 +129,9 @@ evmc_status_code transactionExceptionToEvmcStatusCode( TransactionException ex )
 
 CallResult ExtVM::call( CallParameters& _p ) {
     Executive e{ m_s, envInfo(), m_chainParams, 0, depth + 1, m_readOnly
-#ifdef BITE2
+#ifdef BITE
         ,
-        m_txnIndex
+        m_txnIndex, m_txnHash
 #endif
     };
     if ( !e.call( _p, gasPrice, origin ) ) {
@@ -161,12 +161,13 @@ CreateResult ExtVM::create( u256 _endowment, u256& io_gas, bytesConstRef _code, 
         ContractCreationReadOnlyPatch::isEnabledWhen( envInfo().committedBlockTimestamp() ) ?
             m_readOnly :
             true;
-    Executive e{ m_s, envInfo(), m_chainParams, 0, depth + 1, isReadOnly
-#ifdef BITE2
+    Executive e{ m_s, envInfo(), m_chainParams, 0, depth + 1
+#ifdef BITE
         ,
-        m_txnIndex
+        isReadOnly, m_txnIndex, m_txnHash
 #endif
     };
+    ( void ) isReadOnly;
     bool result = false;
     if ( _op == Instruction::CREATE )
         result = e.createOpcode( myAddress, _endowment, gasPrice, io_gas, _code, origin );

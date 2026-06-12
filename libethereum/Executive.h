@@ -106,9 +106,9 @@ public:
     /// Simple constructor; executive will operate on given state, with the given environment info.
     Executive( skale::State& _s, EnvInfo const& _envInfo, ChainOperationParams const& _chainParams,
         const u256& _gasPrice, unsigned _level, bool _readOnly = true
-#ifdef BITE2
+#ifdef BITE
         ,
-        const u256& _txnIndex = u256( -1 )
+        const u256& _txnIndex = u256( -1 ), const dev::h256& _txnHash = dev::h256( 0 )
 #endif
             )
         : m_s( _s ),
@@ -117,9 +117,10 @@ public:
           m_readOnly( _readOnly ),
           m_chainParams( _chainParams ),
           m_systemGasPrice( _gasPrice )
-#ifdef BITE2
+#ifdef BITE
           ,
-          m_txnIndex( _txnIndex )
+          m_txnIndex( _txnIndex ),
+          m_txnHash( _txnHash )
 #endif
     {
     }
@@ -256,8 +257,9 @@ private:
     Address m_newAddress;
     size_t m_savepoint = 0;
 
-#ifdef BITE2
+#ifdef BITE
     u256 m_txnIndex = u256( -1 );  ///< Index of transaction under execution. -1 for external calls
+    h256 m_txnHash = h256( 0 );    ///< hash of transaction under execution. 0 for external calls
 #endif
 
     Logger m_loggerDebug{ createLogger( VerbosityDebug, "Executive" ) };

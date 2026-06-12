@@ -45,6 +45,11 @@
 
 #include <skutils/console_colors.h>
 
+#ifdef BITE
+#include <libethereum/Precompiled.h>
+#include <libethereum/SkaleHost.h>
+#endif
+
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -106,6 +111,16 @@ Block::Block( const BlockChain& _bc, h256 const& _hash, const State& _state, Bas
         // Genesis required:
         // We know there are no transactions, so just populate directly.
         sync( _bc, _hash, bi );
+    } else {
+        auto parentHash = bi.parentHash();
+        if ( !_bc.isKnown( parentHash ) ) {
+            // Might be worth throwing here.
+            BOOST_LOG( m_loggerWarning )
+                << "Invalid parent hash given for population " << parentHash;
+            BOOST_THROW_EXCEPTION( BlockNotFound() << errinfo_target( parentHash ) );
+        }
+        auto pb = _bc.block( parentHash );
+        m_previousBlock = BlockHeader( pb );
     }
 }
 
@@ -119,7 +134,12 @@ Block::Block( Block const& _s )
       m_currentBlock( _s.m_currentBlock ),
       m_currentBytes( _s.m_currentBytes ),
       m_author( _s.m_author ),
-      m_sealEngine( _s.m_sealEngine ) {
+      m_sealEngine( _s.m_sealEngine )
+#ifdef BITE
+      ,
+      m_ctxHashesLists( _s.m_ctxHashesLists )
+#endif
+{
     m_committedToSeal = false;
 }
 
@@ -136,6 +156,10 @@ Block& Block::operator=( Block const& _s ) {
     m_currentBytes = _s.m_currentBytes;
     m_author = _s.m_author;
     m_sealEngine = _s.m_sealEngine;
+
+#ifdef BITE
+    m_ctxHashesLists = _s.m_ctxHashesLists;
+#endif
 
     m_precommit = m_state;
     m_committedToSeal = false;
@@ -164,6 +188,9 @@ void Block::resetCurrent( int64_t _timestamp ) {
     m_transactions.clear();
     m_receipts.clear();
     m_transactionSet.clear();
+#ifdef BITE
+    m_ctxHashesLists.clear();
+#endif
     m_currentBlock = BlockHeader();
     m_currentBlock.setAuthor( m_author );
     m_currentBlock.setTimestamp( _timestamp );  // max( m_previousBlock.timestamp() + 1, _timestamp
@@ -525,6 +552,11 @@ std::pair< TransactionReceipts, unsigned > Block::recoverFromReceipts(
         m_transactionSet.insert( tx.sha3() );
     }
     m_receipts = std::move( savedData->receipts );
+#ifdef BITE
+    // set CTXs from previous block to BITE2 queue
+    g_skaleHost->setBITE2QueueOnInit( std::move( savedData->ctxsCreatedInBlock ) );
+    m_pendingCtxs = g_skaleHost->pendingBITE2Transactions();
+#endif
 
     unsigned badCount = 0;
     u256 cumulativeGas = 0;
@@ -576,6 +608,10 @@ void Block::executeTransactions( BlockChain const& _bc, const Transactions& _tra
 
     TransactionReceipts savedReceipts = m_receipts;
 
+#ifdef BITE
+    m_ctxHashesLists.resize( _transactions.size() );
+#endif
+
     for ( unsigned i = 0; i < _transactions.size(); ++i ) {
         Transaction const& tr = _transactions[i];
         try {
@@ -602,6 +638,10 @@ void Block::executeTransactions( BlockChain const& _bc, const Transactions& _tra
             BOOST_LOG( m_loggerError ) << "FAILED transaction after consensus! " << ex.what();
         }
     }
+#ifdef BITE
+    // finalize BITE2 queue after executing all txns from current block
+    m_pendingCtxs = g_skaleHost->pendingBITE2Transactions();
+#endif
 }
 
 std::optional< TransactionReceipt > Block::executeSingleTransaction( BlockChain const& _bc,
@@ -638,6 +678,19 @@ std::optional< TransactionReceipt > Block::executeSingleTransaction( BlockChain 
     }
 
     ExecutionResult res = execute( _bc.lastBlockHashes(), _tx, _permanence, OnOpFunc(), _txIndex );
+
+#ifdef BITE
+    if ( res.excepted != TransactionException::None ) {
+        // clear all CTXs that were added by last tx
+        // because it was reverted
+        g_skaleHost->clearTempBITE2Transactions();
+    } else {
+        // get list of CTX hashes created by current txn
+        m_ctxHashesLists[_txIndex] = g_skaleHost->getBITE2HashesForCurrentTxn();
+        // commit CTXs from temporary to permanent
+        g_skaleHost->commitTempBITE2Transactions();
+    }
+#endif
 
     if ( !_context.singleCommitEnabled && !m_receipts.empty() &&
          !ClearPartialReceiptsPatch::isEnabledWhen( m_previousBlock.timestamp() ) ) {
@@ -701,8 +754,16 @@ void Block::saveStateChanges(
     createBlockSnapshot();
 
     if ( progressLog && _context.singleCommitEnabled ) {
+#ifdef BITE
+        CHECK_EXPRESSION( m_pendingCtxs );
+#endif
         progressLog->markBlockCommitCompleted(
-            m_currentBlock.number(), _context.receipts, m_currentBlock.timestamp() );
+            m_currentBlock.number(), _context.receipts, m_currentBlock.timestamp()
+#ifdef BITE
+                                                            ,
+            *m_pendingCtxs
+#endif
+        );
     }
 
     if ( !_context.singleCommitEnabled ) {
@@ -1015,7 +1076,6 @@ ExecutionResult Block::executeHistoricCall( LastBlockHashesFace const& _lh, Tran
             onOp = _tracer->functionToExecuteOnEachOperation();
         }
 
-
         if ( isSealed() )
             BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
 
@@ -1035,7 +1095,7 @@ ExecutionResult Block::executeHistoricCall( LastBlockHashesFace const& _lh, Tran
 
                 auto resultReceipt = m_state.mutableHistoricState().execute(
                     envInfo, m_sealEngine->chainParams(), _t, skale::Permanence::Uncommitted, onOp
-#ifdef BITE2
+#ifdef BITE
                     ,
                     _transactionIndex
 #endif
@@ -1055,7 +1115,7 @@ ExecutionResult Block::executeHistoricCall( LastBlockHashesFace const& _lh, Tran
         } else {
             auto resultReceipt = m_state.mutableHistoricState().execute(
                 envInfo, m_sealEngine->chainParams(), _t, skale::Permanence::Reverted, onOp
-#ifdef BITE2
+#ifdef BITE
                 ,
                 _transactionIndex
 #endif

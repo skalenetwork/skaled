@@ -41,9 +41,9 @@ public:
         Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice,
         bytesConstRef _data, bytesConstRef _code, h256 const& _codeHash, u256 const& _version,
         unsigned _depth, bool _isCreate, bool _staticCall, bool _readOnly = true
-#ifdef BITE2
+#ifdef BITE
         ,
-        const u256& _txnIndex = u256( -1 )
+        const u256& _txnIndex = u256( -1 ), const h256& _txnHash = h256( 0 )
 #endif
             )
         : ExtVMFace( _envInfo, _myAddress, _caller, _origin, _value, _gasPrice, _data,
@@ -52,9 +52,10 @@ public:
           m_chainParams( _chainParams ),
           m_evmSchedule( initEvmSchedule( _version ) ),
           m_readOnly( _readOnly )
-#ifdef BITE2
+#ifdef BITE
           ,
-          m_txnIndex( _txnIndex )
+          m_txnIndex( _txnIndex ),
+          m_txnHash( _txnHash )
 #endif
     {
         // Contract: processing account must exist. In case of CALL, the ExtVM
@@ -128,8 +129,9 @@ private:
     ChainOperationParams const& m_chainParams;
     EVMSchedule const m_evmSchedule;
     bool m_readOnly;
-#ifdef BITE2
+#ifdef BITE
     u256 m_txnIndex;
+    h256 m_txnHash;
 #endif
 };
 

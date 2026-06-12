@@ -79,7 +79,7 @@ void ConsensusStub::doWork() {
     static const unsigned wanted_txn_count = 10;
     //    static const unsigned max_sleep = 2000;
 
-    using transactions_vector = ConsensusExtFace::transactions_vector;
+    using transactions_vector = ConsensusExtFace::Transactions;
 
     transactions_vector txns = m_extFace.pendingTransactions( wanted_txn_count, stateRoot );
     // TODO Can return 0 on time-out. Needed for nice thread termination. Rethink this.
@@ -96,7 +96,7 @@ void ConsensusStub::doWork() {
     transactions_vector out_vector;
     auto it = txns.begin();
     for ( unsigned i = 0; i < txns_in_block; i++ ) {
-        out_vector.push_back( *it );
+        out_vector.pushBackRegular( *it );
         ++it;
     }
 
@@ -104,7 +104,7 @@ void ConsensusStub::doWork() {
         ++blockCounter;
         m_extFace.createBlock( out_vector,
 #ifdef BITE
-            shared_ptr< DecryptedTransactionFieldsMap >(),
+            DecryptedTransactions(),
 #endif
             time( NULL ), 0, blockCounter, getPriceForBlockId( blockCounter ), stateRoot, -1 );
         BOOST_LOG( m_loggerDebug ) << "createBlock"

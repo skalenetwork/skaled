@@ -48,6 +48,7 @@
 #include <test/tools/libtesteth/TestOutputHelper.h>
 #include <test/tools/libtesteth/TestSuite.h>
 #include <test/tools/libtestutils/Common.h>
+#include "libconsensus/libBLS/threshold_encryption/ThresholdEncryption.h"
 
 #pragma GCC diagnostic pop
 
@@ -154,6 +155,20 @@ std::vector< std::string > testSuggestions(
 // Fill Test Functions
 bool createRandomTest();  // returns true if succeed, false if there was an error;
 void doRlpTests( json_spirit::mValue const& _input );
+
+// ============== Ciphertext Helpers ============== //
+
+    // parse RLP(epochId, ciphertext) and return the ciphertext bytes only
+    bytes parseEpochedCiphertextBytes( const bytes& ciphertext, uint64_t expectedEpochId ); 
+
+    // Compute deterministic seed: Hash(blockRandom || counter)
+    h256 buildDeterministicRandomForEncryption( u256 blockRandom, uint64_t counter );
+
+    // Compute deterministic ciphertext for given blockRandom and counter
+    bytes buildDeterministicCiphertext( u256 blockRandom, uint64_t counter, 
+        std::vector< libBLS::TEPublicKey > const& publicKeys, bytes const& dataToEncrypt );
+
+
 
 /// Allows observing test execution process.
 /// This class also provides methods for registering and notifying the listener

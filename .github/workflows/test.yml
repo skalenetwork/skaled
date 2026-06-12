@@ -43,6 +43,7 @@ jobs:
             build_dir: build
             cmake_args: "-DFAIR=1"
             mode: full
+            bite2_suites: "true"
 
           - name: FAIR-historic
             build_dir: build
@@ -53,22 +54,13 @@ jobs:
             build_dir: build
             cmake_args: "-DBITE=1"
             mode: full
+            bite2_suites: "true"
 
           - name: BITE-historic
             build_dir: build
             cmake_args: "-DBITE=1 -DHISTORIC_STATE=1"
             mode: historic
             
-          - name: BITE2
-            build_dir: build
-            cmake_args: "-DBITE2=1"
-            mode: full
-
-          - name: BITE2-historic
-            build_dir: build
-            cmake_args: "-DBITE2=1 -DHISTORIC_STATE=1"
-            mode: historic
-
     steps:
       - uses: actions/checkout@v6
         with:
@@ -115,6 +107,7 @@ jobs:
           build_dir: ${{ matrix.build_dir }}
           mode: ${{ matrix.mode }}
           verbosity: "1"
+          bite2_suites: ${{ matrix.bite2_suites || 'false' }}
 
       - name: Testeth verbosity 4
         uses: ./.github/actions/testeth-run
@@ -122,3 +115,4 @@ jobs:
           build_dir: ${{ matrix.build_dir }}
           mode: ${{ matrix.mode }}
           verbosity: "4"
+          bite2_suites: ${{ matrix.bite2_suites || 'false' }}

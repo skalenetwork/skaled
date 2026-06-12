@@ -121,7 +121,8 @@ DEV_SIMPLE_EXCEPTION( LogCountLimitExceeded );
 #ifdef BITE
 DEV_SIMPLE_EXCEPTION( InvalidBITETransaction );
 DEV_SIMPLE_EXCEPTION( BITETransactionTooShort );
-#endif
+DEV_SIMPLE_EXCEPTION( IllegalCTXSubmission );
+#endif  // BITE
 
 }  // namespace eth
 }  // namespace dev

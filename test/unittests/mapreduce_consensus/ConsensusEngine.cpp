@@ -1,4 +1,3 @@
-
 /*
     Copyright (C) 2018-present, SKALE Labs
 
@@ -94,9 +93,9 @@ protected:
     std::shared_ptr< ConsensusEngine > m_consensus;
     std::thread m_consensusThread;
 
-    std::promise< transactions_vector > transaction_promise;
+    std::promise< ConsensusExtFace::Transactions > transaction_promise;
 
-    std::promise< std::tuple< const transactions_vector, uint64_t, uint32_t, uint64_t, u256 > >
+    std::promise< std::tuple< const ConsensusExtFace::Transactions, uint64_t, uint32_t, uint64_t, u256 > >
         block_promise;
 
 public:
@@ -129,18 +128,18 @@ public:
         } );
     }
 
-    virtual transactions_vector pendingTransactions(
+    virtual ConsensusExtFace::Transactions pendingTransactions(
         size_t /*_limit*/, u256& _stateRoot ) override {
         auto future = this->transaction_promise.get_future();
         future.wait();
-        transactions_vector buffer = future.get();
+        ConsensusExtFace::Transactions buffer = future.get();
         _stateRoot = 1;
         return buffer;
     }
 
-    virtual void createBlock( const transactions_vector& _approvedTransactions,
+    virtual void createBlock( const ConsensusExtFace::Transactions& _approvedTransactions,
 #ifdef BITE
-        shared_ptr< DecryptedTransactionFieldsMap > /*_decryptedTransactions*/,
+        DecryptedTransactions /*_decryptedTransactions*/,
 #endif
         uint64_t _timeStamp, uint32_t _timeStampMs, uint64_t _blockID, u256 _gasPrice,
         u256 /*_stateRoot*/, uint64_t /*_winningNodeIndex*/ ) override {
@@ -148,13 +147,13 @@ public:
 
         std::cerr << "Block arrived with " << _approvedTransactions.size() << " txns" << std::endl;
 
-        transactions_vector tmp_vec = _approvedTransactions;
+        ConsensusExtFace::Transactions tmp_vec = _approvedTransactions;
         block_promise.set_value(
             std::make_tuple( tmp_vec, _timeStamp, _timeStampMs, _blockID, _gasPrice ) );
     }
 
     virtual ~SingleNodeConsensusFixture() override {
-        transaction_promise.set_value( transactions_vector() );
+        transaction_promise.set_value( ConsensusExtFace::Transactions() );
         m_consensus->exitGracefully();
         m_consensusThread.join();
 
@@ -164,21 +163,13 @@ public:
         }
     }
 
-    std::tuple< transactions_vector, uint64_t, uint32_t, uint64_t, u256 > singleRun(
-        const ConsensusExtFace::transactions_vector& txns ) {
+    std::tuple< ConsensusExtFace::Transactions, uint64_t, uint32_t, uint64_t, u256 > singleRun(
+        const ConsensusExtFace::Transactions& txns ) {
         transaction_promise.set_value( txns );
         auto future = block_promise.get_future();
         future.wait();
         auto res = future.get();
         block_promise = decltype( block_promise )();
-
-        //        transactions_vector approvedTransactions = txns;
-        //        uint64_t timeStamp = 11;
-        //        uint32_t timeStampMs = 1;
-        //        uint64_t blockID = 1;
-        //        u256 gasPrice = 4000;
-
-        // return make_tuple( approvedTransactions, timeStamp, timeStampMs, blockID, gasPrice );
 
         return res;
     }
@@ -189,7 +180,7 @@ protected:
     std::shared_ptr< ConsensusEngine > m_consensus;
     std::thread m_consensusThread;
 
-    transactions_vector buffer;
+    ConsensusExtFace::Transactions buffer;
 
     std::mutex m_transactionsMutex;
     std::condition_variable m_transactionsCond;
@@ -258,10 +249,7 @@ public:
         chainParams->nodeInfo.name = "Node2";
         chainParams->resetJson();
 
-        //        web3.reset( new WebThreeDirect(
-        //            "eth tests", "", "", chainParams, WithExisting::Kill, {"eth"}, true ) );
-
-        auto monitor = make_shared< InstanceMonitor >( "test" );
+        auto monitor = make_shared< InstanceMonitor >("test");
 
         setenv( "DATA_DIR", m_tempDir.path().c_str(), 1 );
         client.reset( new eth::Client( chainParams, ( int ) chainParams->getNetworkId(),
@@ -293,7 +281,7 @@ public:
         rpcClient = unique_ptr< WebThreeStubClient >( new WebThreeStubClient( *client ) );
     }
 
-    virtual transactions_vector pendingTransactions(
+    virtual ConsensusExtFace::Transactions pendingTransactions(
         size_t _limit, u256& /*_stateRoot*/ ) override {
         if ( _limit < buffer.size() )
             assert( false );
@@ -303,14 +291,14 @@ public:
             m_transactionsCond.wait_for( lock, std::chrono::milliseconds( 100 ) );
         }
 
-        transactions_vector tmp;
-        buffer.swap( tmp );
+        ConsensusExtFace::Transactions tmp = std::move( buffer );
+        buffer = ConsensusExtFace::Transactions();
         return tmp;
     }
 
-    virtual void createBlock( const transactions_vector& _approvedTransactions,
+    virtual void createBlock( const ConsensusExtFace::Transactions& _approvedTransactions,
 #ifdef BITE
-        shared_ptr< DecryptedTransactionFieldsMap > _decryptedTransactions,
+        DecryptedTransactions _decryptedTransactions,
 #endif
         uint64_t _timeStamp, uint32_t /* timeStampMs */, uint64_t _blockID, u256 /*_gasPrice */,
         u256 /*_stateRoot*/, uint64_t /*_winningNodeIndex*/ ) override {
@@ -327,11 +315,11 @@ public:
         m_consensusThread.join();
     }
 
-    void pushTransactions( const Transactions& txns ) {
+    void pushTransactions( const dev::eth::Transactions& txns ) {
         assert( buffer.empty() );
 
         for ( const Transaction& txn : txns ) {
-            buffer.push_back( txn.toBytes() );
+            buffer.pushBackRegular( txn.toBytes() );
         }  // for
 
         m_transactionsCond.notify_one();
@@ -357,7 +345,7 @@ public:
         accountHolder->setAccounts( senders );
 
         try {
-            Transactions local_txns;
+            dev::eth::Transactions local_txns;
 
             for ( size_t i = 0; i < commands.size(); ++i ) {
                 t["from"] = toJS( senders[i].address() );
@@ -402,7 +390,7 @@ public:
 BOOST_FIXTURE_TEST_SUITE( SingleConsensusTests, SingleNodeConsensusFixture )
 
 BOOST_AUTO_TEST_CASE( gasPriceIncrease ) {
-    transactions_vector approvedTransactions;
+    ConsensusExtFace::Transactions approvedTransactions;
     uint64_t timeStamp;
     uint32_t timeStampMs;
     uint64_t blockID;
@@ -412,23 +400,25 @@ BOOST_AUTO_TEST_CASE( gasPriceIncrease ) {
 
     u256 price0 = m_consensus->getPriceForBlockId( 0 );
 
-    transactions_vector v( 1 );
-    v[0].push_back( 'a' );
-    std::tie( approvedTransactions, timeStamp, timeStampMs, blockID, gasPrice ) = singleRun( v );
+    {
+        ConsensusExtFace::Transactions v;
+        v.pushBackRegular( { 'a' } );
+        std::tie( approvedTransactions, timeStamp, timeStampMs, blockID, gasPrice ) = singleRun( v );
+    }
     BOOST_REQUIRE_EQUAL( gasPrice, price0 );
 
     u256 price1 = m_consensus->getPriceForBlockId( 1 );
 
     // block 2
 
-    v = transactions_vector( 9000 );
-    for ( auto& tx : v ) {
-        tx =
-            dev::eth::Transaction( 0, 0, 0, dev::Address(), dev::bytes(), 0, dev::Secret::random() )
-                .toBytes();
-    }  // for
+    {
+        ConsensusExtFace::Transactions v;
+        for (size_t i = 0; i < 9000; ++i) {
+            v.pushBackRegular( dev::eth::Transaction(0, 0, 0, dev::Address(), dev::bytes(), 0, dev::Secret::random() ).toBytes() );
+        }  // for
 
-    std::tie( approvedTransactions, timeStamp, timeStampMs, blockID, gasPrice ) = singleRun( v );
+        std::tie( approvedTransactions, timeStamp, timeStampMs, blockID, gasPrice ) = singleRun( v );
+    }
     BOOST_REQUIRE_EQUAL( gasPrice, price1 );
 
     u256 price2 = m_consensus->getPriceForBlockId( 2 );
@@ -442,9 +432,11 @@ BOOST_AUTO_TEST_CASE( gasPriceIncrease ) {
 
     // block 3
 
-    v = transactions_vector( 1 );
-    v[0].push_back( 'c' );
-    std::tie( approvedTransactions, timeStamp, timeStampMs, blockID, gasPrice ) = singleRun( v );
+    {
+        ConsensusExtFace::Transactions v;
+        v.pushBackRegular( { 'c' } );
+        std::tie( approvedTransactions, timeStamp, timeStampMs, blockID, gasPrice ) = singleRun( v );
+    }
     BOOST_REQUIRE_EQUAL( gasPrice, price2 );
     u256 price3 = m_consensus->getPriceForBlockId( 3 );
 
