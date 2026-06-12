@@ -55,9 +55,7 @@ ClientTest::~ClientTest() {
 }
 
 void ClientTest::withBlockImportBarrier( const std::function< void() >& _action ) {
-    DEV_GUARDED( m_blockImportMutex ) {
-        _action();
-    }
+    DEV_GUARDED( m_blockImportMutex ) { _action(); }
 }
 
 void ClientTest::modifyTimestamp( int64_t _timestamp ) {
