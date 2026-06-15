@@ -79,6 +79,12 @@ private:
     bytes m_bytes;
 };
 
+
+struct AccessSets {
+    std::set< Address > accessedAddresses;
+    std::set< std::pair< Address, u256 > > accessedStorageKeys;
+};
+
 struct SubState {
     std::set< Address > suicides;  ///< Any accounts that have suicided.
     LogEntries logs;               ///< Any logs.
@@ -229,6 +235,16 @@ public:
     /// Does the account exist?
     virtual bool exists( Address ) { return false; }
 
+    virtual bool accessAccount( Address const& _addr ) {
+        auto [_, present] = accessSets->accessedAddresses.insert( _addr );
+        return !present;  // true = was already present = warm
+    }
+
+    virtual bool accessStorageKey( Address const& _addr, u256 const& _key ) {
+        auto [_, present] = accessSets->accessedStorageKeys.insert( { _addr, _key } );
+        return !present;  // true = was already present = warm
+    }
+
     /// Suicide the associated contract and give proceeds to the given address.
     virtual void suicide( Address ) { sub.suicides.insert( myAddress ); }
 
@@ -263,12 +279,13 @@ public:
     Address origin;     ///< Original transactor.
     u256 value;         ///< Value (in Wei) that was passed to this address.
     u256 gasPrice;      ///< Price of gas (that we already paid).
-    bytesConstRef data;       ///< Current input data.
-    bytes code;               ///< Current code that is executing.
-    h256 codeHash;            ///< SHA3 hash of the executing code
-    u256 version;             ///< Version of the VM to execute code
-    u256 salt;                ///< Values used in new address construction by CREATE2
-    SubState sub;             ///< Sub-band VM state (suicides, refund counter, logs).
+    bytesConstRef data;  ///< Current input data.
+    bytes code;          ///< Current code that is executing.
+    h256 codeHash;       ///< SHA3 hash of the executing code
+    u256 version;        ///< Version of the VM to execute code
+    u256 salt;           ///< Values used in new address construction by CREATE2
+    SubState sub;        ///< Sub-band VM state (suicides, refund counter, logs).
+    std::shared_ptr< AccessSets > accessSets = std::make_shared< AccessSets >();
     unsigned depth = 0;       ///< Depth of the present call.
     bool isCreate = false;    ///< Is this a CREATE call?
     bool staticCall = false;  ///< Throw on state changing.

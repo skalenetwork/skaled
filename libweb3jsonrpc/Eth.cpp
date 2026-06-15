@@ -406,9 +406,16 @@ Json::Value Eth::setSchainExitTime( Json::Value const& /*_transaction*/ ) {
 
 Json::Value Eth::eth_inspectTransaction( std::string const& _rlp ) {
     try {
-        return toJson( Transaction( jsToBytes( _rlp, OnFailed::Throw ),
-            CheckTransaction::Everything, EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
-            InvalidTransactionFormatPatch::isEnabledInWorkingBlock() ) );
+        return toJson(
+            Transaction( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::Everything, false,
+                EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
+                InvalidTransactionFormatPatch::isEnabledInWorkingBlock(),
+                BerlinForkPatch::isEnabledInWorkingBlock()
+#ifdef BITE
+                    ,
+                Bite2Patch::isEnabledInWorkingBlock()
+#endif  // BITE
+                    ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
@@ -421,7 +428,8 @@ string Eth::eth_sendRawTransaction( std::string const& _rlp ) {
     // will be checked as a part of transaction import
     Transaction t( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::None, false,
         EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
-        InvalidTransactionFormatPatch::isEnabledInWorkingBlock()
+        InvalidTransactionFormatPatch::isEnabledInWorkingBlock(),
+        BerlinForkPatch::isEnabledInWorkingBlock()
 #ifdef BITE
             ,
         Bite2Patch::isEnabledInWorkingBlock()
@@ -1189,6 +1197,8 @@ string dev::rpc::exceptionToErrorMessage() {
         ret = "Same transaction already exists in the pending transaction queue.";
     } catch ( TransactionAlreadyInChain const& ) {
         ret = "Transaction is already in the blockchain.";
+    } catch ( TransactionQueueIsFull const& ) {
+        ret = "Transaction queue is full.";
     } catch ( NotEnoughCash const& ) {
         ret = "Account balance is too low (balance < value + gas * gas price).";
     } catch ( InvalidSignature const& ) {

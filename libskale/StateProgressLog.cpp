@@ -66,7 +66,9 @@ void StateProgressLog::writeProgressData( const CommittedProgressData& _data ) {
     dev::RLPStream receiptsStream;
     receiptsStream.appendList( _data.receipts.size() );
     for ( const auto& receipt : _data.receipts ) {
-        receiptsStream.appendRaw( receipt.rlp() );
+        // Store receipt bytes as an RLP data item so typed receipts (type || rlp(...))
+        // are preserved across crash recovery in single-commit mode.
+        receiptsStream << receipt.typedRlp();
     }
     rlpStream.appendRaw( receiptsStream.out() );
 
@@ -137,16 +139,26 @@ std::optional< CommittedProgressData > StateProgressLog::loadProgressData() cons
         data.timestamp = rlp[2].toInt< uint64_t >();
 
         for ( auto const& item : rlp[3] ) {
-            data.receipts.emplace_back( item.data() );
+            // Backward compatibility:
+            // - old format stored raw legacy receipt RLP (list item) via appendRaw(receipt.rlp()).
+            // - new format stores receipt bytes as an RLP data item via << receipt.typedRlp().
+            if ( item.isData() ) {
+                dev::bytes receiptBytes = item.toBytes();
+                data.receipts.emplace_back(
+                    dev::bytesConstRef( receiptBytes.data(), receiptBytes.size() ) );
+            } else {
+                data.receipts.emplace_back( item.data() );
+            }
         }
 
 #ifdef BITE
         for ( auto const& item : rlp[4] ) {
             CHECK_EXPRESSION( item.isList() && item.itemCount() == 2 );
             dev::eth::Transaction tx( item[0].data(), dev::eth::CheckTransaction::None, true,
-                EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
-                InvalidTransactionFormatPatch::isEnabledInWorkingBlock(),
-                Bite2Patch::isEnabledInWorkingBlock() );
+                EIP1559TransactionsPatch::isEnabledWhen( data.timestamp ),
+                InvalidTransactionFormatPatch::isEnabledWhen( data.timestamp ),
+                BerlinForkPatch::isEnabledWhen( data.timestamp ),
+                Bite2Patch::isEnabledWhen( data.timestamp ) );
             tx.setCTXOrigin( item[1].toHash< dev::h256 >() );
             data.ctxsCreatedInBlock.push_back( std::move( tx ) );
         }

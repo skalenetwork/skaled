@@ -43,12 +43,13 @@ runs:
         cd test/api-tests
         if ! uv run --project . run.py --config run.toml --suite "${{ inputs.suite }}"; then
           echo "::error::Test execution failed"
-          for log in logs/*.log; do
-            if [ -f "${log}" ]; then
+          for log_dir in logs */logs; do
+            [ -d "${log_dir}" ] || continue
+            find "${log_dir}" -maxdepth 1 -type f -name '*.log' | while read -r log; do
               echo "::group::${log}"
               cat "${log}"
               echo "::endgroup::"
-            fi
+            done
           done
           exit 1
         fi

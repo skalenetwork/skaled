@@ -204,6 +204,7 @@ void Executive::accrueSubState( SubState& _parentContext ) {
         _parentContext += m_ext->sub;
 }
 
+
 void Executive::verifyTransaction( Transaction const& _transaction, time_t _committedBlockTimestamp,
     BlockHeader const& _blockHeader, const State& _state,
     const eth::ChainOperationParams& _chainParams, u256 const& _gasUsed, const u256& _gasPrice,
@@ -325,12 +326,64 @@ bool Executive::execute() {
     Address receiverAddressToPassToEvm = m_t.receiveAddress();
 #endif
 
+    // EIP-2929 / EIP-2930: populate warm access sets before call()/create() so the snapshot
+    // taken inside call()/create() captures the initialized state.
+    EVMSchedule const& schedule =
+        m_chainParams.makeEvmSchedule( m_envInfo.committedBlockTimestamp(), m_envInfo.number() );
+    if ( schedule.eip2929Mode ) {
+        if ( m_t.isCreation() ) {
+            m_newAddress =
+                right160( sha3( rlpList( m_t.sender(), m_s.getNonce( m_t.sender() ) ) ) );
+        }
+        initAccessSets();
+    }
+
+    bool result;
     if ( m_t.isCreation() )
-        return create( m_t.sender(), m_t.value(), m_t.gasPrice(),
+        result = create( m_t.sender(), m_t.value(), m_t.gasPrice(),
             m_t.gas() - ( u256 ) m_baseGasRequired, &dataToPassToEvm, m_t.sender() );
     else
-        return call( receiverAddressToPassToEvm, m_t.sender(), m_t.value(), m_t.gasPrice(),
+        result = call( receiverAddressToPassToEvm, m_t.sender(), m_t.value(), m_t.gasPrice(),
             bytesConstRef( &dataToPassToEvm ), m_t.gas() - ( u256 ) m_baseGasRequired );
+
+    return result;
+}
+
+void Executive::initAccessSets() {
+    m_accessSets->accessedAddresses.insert( m_t.sender() );
+    if ( !m_t.isCreation() ) {
+#ifdef BITE
+        m_accessSets->accessedAddresses.insert( m_t.decryptedTo() );
+#else
+        m_accessSets->accessedAddresses.insert( m_t.receiveAddress() );
+#endif
+    } else {
+        m_accessSets->accessedAddresses.insert( m_newAddress );
+    }
+
+    for ( auto const& addr : m_chainParams.precompiledAddresses() ) {
+        m_accessSets->accessedAddresses.insert( addr );
+    }
+
+    if ( m_t.txType() != TransactionType::Legacy ) {
+        for ( auto const& entryRaw : m_t.accessList() ) {
+            RLP const entry( entryRaw );
+            if ( !entry.isList() || entry.itemCount() != 2 )
+                continue;
+
+            Address addr = entry[0].toHash< Address >();
+            m_accessSets->accessedAddresses.insert( addr );
+
+            if ( entry[1].isList() ) {
+                for ( size_t i = 0; i < entry[1].itemCount(); ++i ) {
+                    // Storage keys are 32-byte hashes (not canonical integers),
+                    // so decode as h256 to avoid BadCast on leading zeros.
+                    u256 key = u256( entry[1][i].toHash< h256 >() );
+                    m_accessSets->accessedStorageKeys.insert( { addr, key } );
+                }
+            }
+        }
+    }
 }
 
 bool Executive::call( Address const& _receiveAddress, Address const& _senderAddress,
@@ -355,6 +408,7 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
     }
 
     m_savepoint = m_s.savepoint();
+    m_accessSetsSnapshot = *m_accessSets;
 
     bool accessAsPrecompiled = m_chainParams.isPrecompiled( _p.codeAddress, m_envInfo.number() ) &&
                                m_chainParams.precompiledExecutionAllowedFrom(
@@ -366,7 +420,12 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
 #endif
     if ( accessAsPrecompiled ) {
         MICROPROFILE_SCOPEI( "Executive", "call-precompiled", MP_CYAN );
-        bigint g = m_chainParams.costOfPrecompiled( _p.codeAddress, _p.data, m_envInfo.number() );
+        PrecompiledCallContext ctx{ m_envInfo.number(), m_envInfo.committedBlockTimestamp(),
+#ifdef BITE
+            m_txnIndex, m_txnHash, _p.senderAddress,
+#endif
+            m_readOnly };
+        bigint g = m_chainParams.costOfPrecompiled( _p.codeAddress, _p.data, ctx );
         if ( _p.gas < g ) {
             m_excepted = TransactionException::OutOfGasBase;
             // Bail from exception.
@@ -386,9 +445,9 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
             m_gas = ( u256 )( _p.gas - g );
             bytes output;
             bool success;
-            PrecompiledCallContext ctx{ m_envInfo.number(),
+            PrecompiledCallContext ctx{ m_envInfo.number(), m_envInfo.committedBlockTimestamp(),
 #ifdef BITE
-                m_txnIndex, m_txnHash, m_envInfo.committedBlockTimestamp(), _p.senderAddress,
+                m_txnIndex, m_txnHash, _p.senderAddress,
 #endif
                 m_readOnly };
 #ifdef FAIR
@@ -423,6 +482,7 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
                 m_txnIndex, m_txnHash
 #endif
             );
+            m_ext->accessSets = m_accessSets;
         }
     }
 
@@ -466,6 +526,7 @@ bool Executive::executeCreate( Address const& _sender, u256 const& _endowment,
         m_s.incNonce( _sender );
 
     m_savepoint = m_s.savepoint();
+    m_accessSetsSnapshot = *m_accessSets;
 
     m_isCreation = true;
 
@@ -509,6 +570,7 @@ bool Executive::executeCreate( Address const& _sender, u256 const& _endowment,
             isReadOnly, m_txnIndex, m_txnHash
 #endif
         );
+        m_ext->accessSets = m_accessSets;
     } else
         // code stays empty, but we set the version
         m_s.setCode( m_newAddress, {}, _version );
@@ -696,4 +758,7 @@ void Executive::revert() {
     // Set result address to the null one.
     m_newAddress = {};
     m_s.rollback( m_savepoint );
+    // EIP-2929: restore the access sets to the state before this sub-call frame executed.
+    // Warmings added by opcodes inside this frame (SLOAD, CALL, etc.) are discarded.
+    *m_accessSets = m_accessSetsSnapshot;
 }

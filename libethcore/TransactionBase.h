@@ -25,6 +25,7 @@
 #include <libdevcrypto/Common.h>
 #include <libethcore/Common.h>
 #include <libethcore/Counter.h>
+#include <libethcore/EVMSchedule.h>
 
 #include <SkaleCommon.h>
 #ifdef BITE
@@ -34,8 +35,6 @@
 
 namespace dev {
 namespace eth {
-
-struct EVMSchedule;
 
 /// Named-boolean type to encode whether a signature be included in the serialisation process.
 enum IncludeSignature {
@@ -161,9 +160,9 @@ public:
           m_type( ContractCreation ) {}
 
     /// Constructs a transaction from the given RLP.
-    explicit TransactionBase(
-        bytesConstRef _rlp, CheckTransaction _checkSig, bool _allowInvalid = false,
-        bool _eip1559Enabled = false, bool _invalidTransactionFormatPatchEnabled = false
+    explicit TransactionBase( bytesConstRef _rlp, CheckTransaction _checkSig,
+        bool _allowInvalid = false, bool _eip1559Enabled = false,
+        bool _invalidTransactionFormatPatchEnabled = false, bool _berlinForkPatchEnabled = false
 #ifdef BITE
         ,
         bool _bite2PatchEnabled = false
@@ -171,16 +170,16 @@ public:
     );
 
     /// Constructs a transaction from the given RLP.
-    explicit TransactionBase(
-        bytes const& _rlp, CheckTransaction _checkSig, bool _allowInvalid = false,
-        bool _eip1559Enabled = false, bool _invalidTransactionFormatPatchEnabled = false
+    explicit TransactionBase( bytes const& _rlp, CheckTransaction _checkSig,
+        bool _allowInvalid = false, bool _eip1559Enabled = false,
+        bool _invalidTransactionFormatPatchEnabled = false, bool _berlinForkPatchEnabled = false
 #ifdef BITE
         ,
         bool _bite2PatchEnabled = false
 #endif
         )
         : TransactionBase( &_rlp, _checkSig, _allowInvalid, _eip1559Enabled,
-              _invalidTransactionFormatPatchEnabled
+              _invalidTransactionFormatPatchEnabled, _berlinForkPatchEnabled
 #ifdef BITE
               ,
               _bite2PatchEnabled
@@ -391,7 +390,7 @@ public:
     /// @returns amount of gas required for the basic payment.
     int64_t baseGasRequired( EVMSchedule const& _es ) const {
         CHECK_STATE2( !isInvalid(), "Transaction is invalid. Cannot get base gas required." );
-        return baseGasRequired( isCreation(), &m_data, _es
+        int64_t gasRequired = baseGasRequired( isCreation(), &m_data, _es
 #ifdef BITE
             ,
             m_isBITETxn
@@ -401,6 +400,9 @@ public:
             m_ctxEncryptedArgsSize
 #endif
         );
+        if ( _es.eip2930Mode && m_txType != TransactionType::Legacy )
+            gasRequired += accessListGasRequired( m_accessList, _es );
+        return gasRequired;
     }
 
     bool isInvalid() const { return m_type == Type::Invalid; }
@@ -425,6 +427,9 @@ public:
         std::optional< size_t > _bite2EncryptedArgsSize = std::nullopt
 #endif
     );
+
+    static int64_t accessListGasRequired(
+        std::vector< bytes > const& _accessList, EVMSchedule const& _es );
 
 protected:
     /// Type of transaction.
@@ -500,13 +505,14 @@ private:
 
     /// Constructs a transaction from the given RLP and transaction type.
     void fillFromBytesByType( bytesConstRef _rlpData, CheckTransaction _checkSig,
-        bool _allowInvalid, TransactionType _type, bool _invalidTransactionFormatPatchEnabled );
+        bool _allowInvalid, TransactionType _type, bool _invalidTransactionFormatPatchEnabled,
+        bool _berlinForkPatchEnabled );
     void fillFromBytesLegacy(
         bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid );
     void fillFromBytesType1( bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid,
-        bool _invalidTransactionFormatPatchEnabled );
+        bool _invalidTransactionFormatPatchEnabled, bool _berlinForkPatchEnabled );
     void fillFromBytesType2( bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid,
-        bool _invalidTransactionFormatPatchEnabled );
+        bool _invalidTransactionFormatPatchEnabled, bool _berlinForkPatchEnabled );
 
     void streamLegacyTransaction( RLPStream& _s, IncludeSignature _sig, bool _forEip155hash ) const;
     void streamType1Transaction( RLPStream& _s, IncludeSignature _sig ) const;

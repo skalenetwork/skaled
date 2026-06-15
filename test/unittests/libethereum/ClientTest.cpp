@@ -784,7 +784,11 @@ BOOST_AUTO_TEST_CASE( runsInterference ) {
                             GasEstimationCallback() )
                         .first;
 
+#ifdef FAIR
+    BOOST_CHECK_EQUAL( estimate, u256( 43524 ) );  // EIP-2929: +2100 cold SLOAD cost
+#else
     BOOST_CHECK_EQUAL( estimate, u256( 41424 ) );
+#endif
 }
 
 BOOST_AUTO_TEST_CASE( consumptionWithRefunds ) {
