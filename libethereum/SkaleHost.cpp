@@ -320,7 +320,6 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
                 << "TRACEPOINT " << name << " " << m_debugTracer.get_tracepoint_count( name );
         } );
 
-        // m_broadcaster.reset( new HttpBroadcaster( _client ) );
         m_broadcaster.reset( new ZmqBroadcaster( _client, *this ) );
 
         m_extFace.reset( new ConsensusExtImpl( *this ) );
@@ -912,10 +911,6 @@ void SkaleHost::startWorking() {
             return;
         }
 
-        // comment out as this hack is in consensus now
-        // HACK Prevent consensus from hanging up for emptyBlockIntervalMs at bootstrapAll()!
-        //        uint64_t tmp_interval = m_consensus->getEmptyBlockIntervalMs();
-        //        m_consensus->setEmptyBlockIntervalMs( 50 );
         try {
             static const char g_strThreadName[] = "bootStrapAll";
             dev::setThreadName( g_strThreadName );

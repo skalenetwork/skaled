@@ -9,7 +9,7 @@ BOOST_AUTO_TEST_SUITE( LevelDBHashBase )
 BOOST_AUTO_TEST_CASE( hash ) {
     dev::TransientDirectory td;
 
-    std::vector< std::pair< std::string, std::string > > randomKeysValues(123);
+    std::vector< std::pair< std::string, std::string > > randomKeysValues( 123 );
 
     dev::h256 hash;
     {
@@ -22,7 +22,7 @@ BOOST_AUTO_TEST_CASE( hash ) {
         for ( size_t i = 0; i < 123; ++i ) {
             std::string key = dev::h256::random().hex();
             std::string value = dev::h256::random().hex();
-            db->insert( dev::db::Slice(key), dev::db::Slice(value) );
+            db->insert( dev::db::Slice( key ), dev::db::Slice( value ) );
 
             randomKeysValues[i] = { key, value };
         }
@@ -41,7 +41,7 @@ BOOST_AUTO_TEST_CASE( hash ) {
         for ( size_t i = 0; i < 123; ++i ) {
             std::string key = randomKeysValues[i].first;
             std::string value = randomKeysValues[i].second;
-            db_copy->insert( dev::db::Slice(key), dev::db::Slice(value) );
+            db_copy->insert( dev::db::Slice( key ), dev::db::Slice( value ) );
         }
         db_copy->insert( dev::db::Slice( "PieceUsageBytes" ), dev::db::Slice( "123456789" ) );
         db_copy->insert( dev::db::Slice( "ppieceUsageBytes" ), dev::db::Slice( "123456789" ) );
@@ -63,7 +63,7 @@ BOOST_AUTO_TEST_CASE( hash ) {
             for ( size_t i = 0; i < 123; ++i ) {
                 std::string key = randomKeysValues[i].first;
                 std::string value = randomKeysValues[i].second;
-                db_copy->insert( dev::db::Slice(key), dev::db::Slice(value) );
+                db_copy->insert( dev::db::Slice( key ), dev::db::Slice( value ) );
             }
 
             db_copy->insert( dev::db::Slice( "PieceUsageBytes" ), dev::db::Slice( "123456789" ) );
@@ -82,7 +82,7 @@ BOOST_AUTO_TEST_CASE( hash ) {
                 dev::db::LevelDB::defaultSnapshotDBOptions()
             };
 
-            std::unique_ptr< dev::db::LevelDB > m_db( new dev::db::LevelDB( td.path(), options) );
+            std::unique_ptr< dev::db::LevelDB > m_db( new dev::db::LevelDB( td.path(), options ) );
 
             isContinue = m_db->hashBasePartially( &dbCtx, lastHashedKey );
         }
@@ -103,7 +103,7 @@ BOOST_AUTO_TEST_CASE( hash ) {
         for ( size_t i = 0; i < 123; ++i ) {
             std::string key = dev::h256::random().hex();
             std::string value = dev::h256::random().hex();
-            db_diff->insert( dev::db::Slice(key), dev::db::Slice(value) );
+            db_diff->insert( dev::db::Slice( key ), dev::db::Slice( value ) );
         }
 
         hash_diff = db_diff->hashBase();

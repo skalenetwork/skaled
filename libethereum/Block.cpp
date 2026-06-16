@@ -110,7 +110,6 @@ Block::Block( BlockChain const& _bc, boost::filesystem::path const& _dbPath,
     noteChain( _bc );
     m_previousBlock.clear();
     m_currentBlock.clear();
-    //	assert(m_state.root() == m_previousBlock.stateRoot());
 }
 
 Block::Block( const BlockChain& _bc, h256 const& _hash, const State& _state, BaseState /*_bs*/,
@@ -141,9 +140,6 @@ Block::Block( const BlockChain& _bc, h256 const& _hash, const State& _state, Bas
     if ( !bi.number() ) {
         // Genesis required:
         // We know there are no transactions, so just populate directly.
-
-        //        m_state = State(m_state.accountStartNonce(), m_state.db(),
-        //            BaseState::Empty);  // TODO: try with PreExisting.
         sync( _bc, _hash, bi );
     } else {
         auto parentHash = bi.parentHash();
@@ -298,8 +294,6 @@ PopulationStatistics Block::populateFromChain(
         // Genesis required:
         // We know there are no transactions, so just populate directly.
         std::logic_error( "Not implemented" );
-        //        m_state = State(m_state.accountStartNonce(), m_state.db(),
-        //            BaseState::Empty);  // TODO: try with PreExisting.
         sync( _bc, _h, bi );
     }
 
@@ -435,7 +429,6 @@ pair< TransactionReceipts, bool > Block::sync(
             if ( !m_transactionSet.count( t.sha3() ) ) {
                 try {
                     if ( t.gasPrice() >= _gp.ask( *this ) ) {
-                        //						Timer t;
                         execute( _bc.lastBlockHashes(), t, Permanence::Uncommitted );
 #ifdef FAIR
                         ret.first = m_receipts;
@@ -443,7 +436,6 @@ pair< TransactionReceipts, bool > Block::sync(
                         ret.first.push_back( m_receipts.back() );
 #endif
                         ++goodTxs;
-                        //						cnote << "TX took:" << t.elapsed() * 1000;
                     } else if ( t.gasPrice() < _gp.ask( *this ) * 9 / 10 ) {
                         BOOST_LOG( m_loggerDebug )
                             << t.sha3() << " Dropping El Cheapo transaction (<90% of ask price)";
@@ -479,7 +471,6 @@ pair< TransactionReceipts, bool > Block::sync(
                             << t.sha3()
                             << " Temporarily no gas left in current block (txs gas > "
                                "block's gas limit)";
-                        //_tq.drop(t.sha3());
                         // Temporarily no gas left in current block.
                         // OPTIMISE: could note this and then we don't evaluate until a block that
                         // does have the gas left. for now, just leave alone.
@@ -978,9 +969,6 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
     m_currentBlock.noteDirty();
     m_currentBlock = _block.info;
 
-    //	cnote << "playback begins:" << m_currentBlock.hash() << "(without: " <<
-    // m_currentBlock.hash(WithoutSeal) << ")"; 	cnote << m_state;
-
     RLP rlp( _block.block );
 
     vector< bytes > receipts;
@@ -1024,7 +1012,6 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
         InvalidReceiptsStateRoot ex;
         ex << Hash256RequirementError( m_currentBlock.receiptsRoot(), receiptsRoot );
         ex << errinfo_receipts( receipts );
-        //		ex << errinfo_vmtrace(vmTrace(_block.block, _bc, ImportRequirements::None));
         for ( auto const& receipt : m_receipts ) {
             if ( !receipt.hasStatusCode() ) {
                 BOOST_LOG( m_loggerWarning ) << "Skale does not support state root in receipt";
@@ -1153,16 +1140,6 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
     m_state.commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
                                           dev::eth::CommitBehaviour::KeepEmptyAccounts );
 
-    //    // Hash the state trie and check against the state_root hash in m_currentBlock.
-    //    if (m_currentBlock.stateRoot() != m_previousBlock.stateRoot() &&
-    //        m_currentBlock.stateRoot() != globalRoot())
-    //    {
-    //        auto r = globalRoot();
-    //        m_state.db().rollback();  // TODO: API in State for this?
-    //        BOOST_THROW_EXCEPTION(
-    //            InvalidStateRoot() << Hash256RequirementError(m_currentBlock.stateRoot(), r));
-    //    }
-
     return tdIncrease;
 }
 
@@ -1268,7 +1245,7 @@ ExecutionResult Block::execute( LastBlockHashesFace const& _lh, Transaction cons
 
         // use fake receipt created above if execution throws!!
     } catch ( const TransactionException& ex ) {
-        // shoul not happen as exception in execute() means that tx should not be in block
+        // should not happen as exception in execute() means that tx should not be in block
         BOOST_LOG( m_loggerError ) << DETAILED_ERROR;
         assert( false );
     } catch ( const std::exception& ex ) {
@@ -1414,7 +1391,7 @@ void Block::commitToSeal(
     unsigned unclesCount = 0;
 
     // here was code to handle 6 generations of uncles
-    // it was wtiting its results in two variables above
+    // it was waiting its results in two variables above
 
     BytesMap transactionsMap;
     BytesMap receiptsMap;
@@ -1517,8 +1494,6 @@ bool Block::sealBlock( bytesConstRef _header ) {
     ret.appendRaw( m_currentUncles );
     ret.swapOut( m_currentBytes );
     m_currentBlock = BlockHeader( _header, HeaderData );
-    //	cnote << "Mined " << m_currentBlock.hash() << "(parent: " << m_currentBlock.parentHash() <<
-    //")";
     // TODO: move into SealEngine
 
     m_state = m_precommit;

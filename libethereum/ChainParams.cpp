@@ -695,10 +695,6 @@ const std::string& ChainParams::getOriginalJson() const {
     params[c_tieBreakingGas] = tieBreakingGas;
     params[c_blockReward] = toHex( toBigEndian( blockReward( DefaultSchedule ) ) );
 
-    //    auto setOptionalU256Parameter = [&params](u256 &_destination, string const &_name) {
-    //        if (params.count(_name))
-    //            _destination = u256(fromBigEndian<u256>(fromHex(params.at(_name).get_str())));
-    //    };
     params[c_minGasLimit] = toHex( toBigEndian( minGasLimit ) );
     params[c_maxGasLimit] = toHex( toBigEndian( maxGasLimit ) );
     params[c_gasLimitBoundDivisor] = toHex( toBigEndian( gasLimitBoundDivisor ) );

@@ -181,15 +181,12 @@ static const EVMSchedule IstanbulSchedule = [] {
     schedule.extcodehashGas = 700;
     schedule.haveChainID = true;
     schedule.haveSelfbalance = true;
-    // schedule.eip2200Mode = true;
     schedule.sstoreUnchangedGas = 800;
     return schedule;
 }();
 
 static const EVMSchedule BerlinSchedule = [] {
     EVMSchedule schedule = IstanbulSchedule;
-    // schedule.precompileStaticCallGas = 40;
-    // schedule.callSelfGas = 40;
     return schedule;
 }();
 

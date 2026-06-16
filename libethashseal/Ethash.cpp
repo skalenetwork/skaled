@@ -43,9 +43,6 @@ Ethash::Ethash() {
     m_farm.setSealers( sealers );
     m_farm.onSolutionFound( [this]( EthashProofOfWork::Solution const& sol ) {
         std::unique_lock< Mutex > l( m_submitLock );
-        //        cdebug << m_farm.work().seedHash << m_farm.work().headerHash << sol.nonce <<
-        //        EthashAux::eval(m_farm.work().seedHash, m_farm.work().headerHash,
-        //        sol.nonce).value;
         setMixHash( m_sealing, sol.mixHash );
         setNonce( m_sealing, sol.nonce );
         if ( !quickVerifySeal( m_sealing ) )

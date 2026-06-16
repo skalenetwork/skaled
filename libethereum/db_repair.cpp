@@ -31,10 +31,6 @@ void dump_blocks_and_extras_db( const BlockChain& _bc, size_t _startBlock ) {
 
         LogBloom bloom = _bc.blockBloom( bn );
 
-        //        block_json["hash"] = "suppressed";
-        //        block_json["parentHash"] = "suppressed";
-        //        block_json["stateRoot"] = "suppressed";
-
         cdebug << "Block " << bn << "\n";
         if ( transaction_hashes.size() || header.timestamp() == prev_ts ) {
             cdebug << block_json << "\n";

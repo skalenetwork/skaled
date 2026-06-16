@@ -1270,7 +1270,6 @@ int main( int argc, char** argv ) {
         BOOST_LOG( loggerInfo ) << "Using " << std::to_string( nDispatchThreads )
                                 << " threads in task dispatcher";
         skutils::dispatch::default_domain( nDispatchThreads );
-        // skutils::dispatch::default_domain( 48 );
 
         bool chainConfigIsSet = false, chainConfigParsed = false;
         static nlohmann::json joConfig;
@@ -1772,7 +1771,6 @@ int main( int argc, char** argv ) {
 
         if ( vm.count( "sgx-url" ) ) {
             std::string strURL = vm["sgx-url"].as< string >();
-            // chainParams.nodeInfo.sgxServerUrl = strURL;
             skutils::url u( strURL );
             u.user_info( "" );
             u.user_name_and_password( "", "", true );
@@ -1928,13 +1926,6 @@ int main( int argc, char** argv ) {
 
         auto nodesState = contents( getDataDir() / fs::path( "network.rlp" ) );
         auto caps = set< string >{ "eth" };
-
-        //    dev::WebThreeDirect web3( WebThreeDirect::composeClientVersion( "skaled" ),
-        //    getDataDir(),
-        //    "",
-        //        chainParams, withExisting, nodeMode == NodeMode::Full ? caps : set< string >(),
-        //        false
-        //        );
 
         std::shared_ptr< GasPricer > gasPricer;
 

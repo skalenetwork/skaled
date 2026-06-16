@@ -29,7 +29,6 @@
 #include <boost/thread.hpp>
 
 #include "LastBlockHashesFace.h"
-
 #include "SchainPatch.h"
 
 using namespace dev;
