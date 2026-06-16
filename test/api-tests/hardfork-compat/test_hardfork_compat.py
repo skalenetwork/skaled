@@ -12,8 +12,9 @@ Test flow:
        - a factory whose constructor runs CREATE and CREATE2
   3. Launch the 5.2.0 sync node (syncNode=true, archiveMode=true)
   4. Wait for the sync node to catch up to the primary head
-  5. Compare the per-block stateRoot of every block (the primary assertion)
-  6. Compare per-block hashes as a diagnostic cross-check
+  5. Compare the per-block stateRoot of every block
+  6. Compare per-block hashes (covers receiptsRoot/transactionsRoot)
+  Both comparisons are hard assertions: any mismatch fails the test.
 
 Tests run in file order (sequential): the workload must complete before the
 sync node is launched and the comparison runs.
@@ -315,9 +316,13 @@ def test_sync_catchup_and_state_root_comparison(
         compare_bn = min(w3_primary.eth.block_number, w3_sync.eth.block_number)
         logger.info("Comparing stateRoot for blocks 0..%d (5.1.0 vs 5.2.0)", compare_bn)
 
-        # Run both comparisons before asserting so a single run reports every
-        # mismatch (stateRoot and block hash) rather than failing on the first.
+        # Run both comparisons before asserting so a failure reports the full
+        # picture (stateRoot and hash mismatches) in one go. The block hash
+        # embeds receiptsRoot/transactionsRoot, so it must fail the test just
+        # like a stateRoot mismatch.
         root_mismatches = compare_state_roots(w3_primary, w3_sync, compare_bn)
+        hash_mismatches = compare_block_hashes(w3_primary, w3_sync, compare_bn)
+
         if root_mismatches:
             logger.error(
                 "stateRoot mismatches between 5.1.0 and 5.2.0 at blocks: %s",
@@ -328,7 +333,6 @@ def test_sync_catchup_and_state_root_comparison(
                 "All %d block stateRoots match between 5.1.0 and 5.2.0", compare_bn + 1
             )
 
-        hash_mismatches = compare_block_hashes(w3_primary, w3_sync, compare_bn)
         if hash_mismatches:
             logger.error(
                 "Block hash mismatches between 5.1.0 and 5.2.0 at blocks: %s",
@@ -339,13 +343,13 @@ def test_sync_catchup_and_state_root_comparison(
                 "All %d block hashes match between 5.1.0 and 5.2.0", compare_bn + 1
             )
 
-        # The block hash embeds the stateRoot plus the transactions and receipts
-        # roots, so requiring it to match is a strictly stronger guarantee than
-        # stateRoot alone: it also catches typed-transaction (EIP-2718/2930/1559)
-        # encoding differences between the two binaries.
         assert not root_mismatches and not hash_mismatches, (
-            f"5.1.0 vs 5.2.0 mismatches -- "
-            f"stateRoot at blocks {root_mismatches}; block hash at blocks {hash_mismatches}"
+            f"5.1.0 vs 5.2.0 divergence: stateRoot mismatches at blocks "
+            f"{root_mismatches}, block hash mismatches at blocks {hash_mismatches}"
+        )
+        logger.info(
+            "All %d block stateRoots and hashes match between 5.1.0 and 5.2.0",
+            compare_bn + 1,
         )
     finally:
         _stop_node(proc, log_fd, "SYNC(5.2.0)")

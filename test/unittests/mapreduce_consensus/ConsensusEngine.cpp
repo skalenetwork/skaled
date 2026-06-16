@@ -41,8 +41,8 @@
 #include <libethereum/TransactionQueue.h>
 
 #include <libdevcore/CommonJS.h>
-#include <libethcore/SealEngine.h>
 #include <libdevcore/TransientDirectory.h>
+#include <libethcore/SealEngine.h>
 
 #include <boost/test/unit_test.hpp>
 
@@ -87,7 +87,6 @@ private:
 };
 
 class SingleNodeConsensusFixture : public ConsensusExtFace {
-
     TransientDirectory m_tempDir;
 
 protected:
@@ -112,18 +111,18 @@ public:
 
         //////////////////////////////////////////////
 
-        setenv("DATA_DIR", m_tempDir.path().c_str(), 1);
+        setenv( "DATA_DIR", m_tempDir.path().c_str(), 1 );
 
-        m_consensus.reset( new ConsensusEngine(
-            *this, 0, BlockHeader( chainParams.genesisBlock() ).timestamp(),
-            0,  std::map<std::string, std::uint64_t>() ) );
+        m_consensus.reset(
+            new ConsensusEngine( *this, 0, BlockHeader( chainParams.genesisBlock() ).timestamp(), 0,
+                std::map< std::string, std::uint64_t >() ) );
 #ifdef FAIR
         m_consensus->parseFullConfigAndCreateNode( chainParams.getConfigForConsensus(), "" );
 #else
         m_consensus->parseFullConfigAndCreateNode( chainParams.getOriginalJson(), "" );
 #endif
         m_consensusThread = std::thread( [this]() {
-            sleep(1);
+            sleep( 1 );
             m_consensus->startAll();
             m_consensus->bootStrapAll();
         } );
@@ -142,8 +141,8 @@ public:
 #ifdef BITE
         DecryptedTransactions /*_decryptedTransactions*/,
 #endif
-        uint64_t _timeStamp,
-        uint32_t _timeStampMs, uint64_t _blockID, u256 _gasPrice, u256 /*_stateRoot*/, uint64_t /*_winningNodeIndex*/ ) override {
+        uint64_t _timeStamp, uint32_t _timeStampMs, uint64_t _blockID, u256 _gasPrice,
+        u256 /*_stateRoot*/, uint64_t /*_winningNodeIndex*/ ) override {
         transaction_promise = decltype( transaction_promise )();
 
         std::cerr << "Block arrived with " << _approvedTransactions.size() << " txns" << std::endl;
@@ -159,7 +158,7 @@ public:
         m_consensusThread.join();
 
         while ( m_consensus->getStatus() != CONSENSUS_EXITED ) {
-            timespec ms100{0, 100000000};
+            timespec ms100{ 0, 100000000 };
             nanosleep( &ms100, nullptr );
         }
     }
@@ -200,11 +199,10 @@ protected:  // remote peer
     unique_ptr< WebThreeStubClient > rpcClient;
 
     unique_ptr< FixedAccountHolder > accountHolder;
-    dev::KeyPair coinbase{KeyPair::create()};
+    dev::KeyPair coinbase{ KeyPair::create() };
 
 public:
     ConsensusExtFaceFixture() {
-
         chainParams = std::make_shared< ChainParams >();
         chainParams->sealEngineName = NoProof::name();
         chainParams->allowFutureBlocks = true;
@@ -216,17 +214,24 @@ public:
 
 
 #ifdef FAIR
-        sChainNode node2{u256( 2 ), jsToAddress( "0x0000000000000000000000000000000000000000" ), jsToAddress( "0x0000000000000000000000000000000000000000" ), "127.0.0.12", u256( 11111 ), "::1", u256( 11111 ), u256( 1 ), "0xfa", {"0", "1", "0", "1"}};
+        sChainNode node2{ u256( 2 ), jsToAddress( "0x0000000000000000000000000000000000000000" ),
+            jsToAddress( "0x0000000000000000000000000000000000000000" ), "127.0.0.12",
+            u256( 11111 ), "::1", u256( 11111 ), u256( 1 ), "0xfa",
+            { "0",
+                "1",
+                "0",
+                "1" } };
 #else
-        sChainNode node2{u256( 2 ), "127.0.0.12", u256( 11111 ), "::1", u256( 11111 ), u256( 1 ), "0xfa", {"0", "1", "0", "1"}};
+        sChainNode node2{ u256( 2 ), "127.0.0.12", u256( 11111 ), "::1", u256( 11111 ), u256( 1 ),
+            "0xfa", { "0", "1", "0", "1" } };
 #endif
         chainParams->sChain.nodes.push_back( node2 );
         //////////////////////////////////////////////
 
 
-        m_consensus.reset( new ConsensusEngine(
-            *this, 0, BlockHeader( chainParams->genesisBlock() ).timestamp(), 0 ,
-            std::map<std::string, std::uint64_t>()));
+        m_consensus.reset(
+            new ConsensusEngine( *this, 0, BlockHeader( chainParams->genesisBlock() ).timestamp(),
+                0, std::map< std::string, std::uint64_t >() ) );
 #ifdef FAIR
         m_consensus->parseFullConfigAndCreateNode( chainParams->getConfigForConsensus(), "" );
 #else
@@ -246,10 +251,10 @@ public:
 
         auto monitor = make_shared< InstanceMonitor >("test");
 
-        setenv("DATA_DIR", m_tempDir.path().c_str(), 1);
-        client.reset(
-            new eth::Client( chainParams, ( int ) chainParams->getNetworkId(), shared_ptr< GasPricer >(),
-                NULL, monitor, m_tempDir.path().c_str(), WithExisting::Kill, TransactionQueue::Limits{100000, 1024} ) );
+        setenv( "DATA_DIR", m_tempDir.path().c_str(), 1 );
+        client.reset( new eth::Client( chainParams, ( int ) chainParams->getNetworkId(),
+            shared_ptr< GasPricer >(), NULL, monitor, m_tempDir.path().c_str(), WithExisting::Kill,
+            TransactionQueue::Limits{ 100000, 1024 } ) );
 
         client->injectSkaleHost();
         client->startWorking();
@@ -257,12 +262,12 @@ public:
         client->setAuthor( coinbase.address() );
 
         accountHolder.reset( new FixedAccountHolder( [&]() { return client.get(); }, {} ) );
-        accountHolder->setAccounts( {coinbase} );
+        accountHolder->setAccounts( { coinbase } );
 
         using FullServer = ModularServer< rpc::EthFace, rpc::SkaleFace, rpc::Web3Face,
             rpc::DebugFace, rpc::TestFace >;
 
-        auto ethFace = new rpc::Eth( std::string(""), *client, *accountHolder.get() );
+        auto ethFace = new rpc::Eth( std::string( "" ), *client, *accountHolder.get() );
 
         rpcServer.reset( new FullServer( ethFace, new rpc::Skale( *client ),
             new rpc::Web3( /*web3->clientVersion()*/ ), new rpc::Debug( *client ),  // TODO add
@@ -272,7 +277,7 @@ public:
         rpcServer->addConnector( ipcServer );
         ipcServer->StartListening();
 
-        auto client = new TestIpcClient{*ipcServer};
+        auto client = new TestIpcClient{ *ipcServer };
         rpcClient = unique_ptr< WebThreeStubClient >( new WebThreeStubClient( *client ) );
     }
 
@@ -295,8 +300,7 @@ public:
 #ifdef BITE
         DecryptedTransactions _decryptedTransactions,
 #endif
-                              uint64_t _timeStamp,
-        uint32_t /* timeStampMs */, uint64_t _blockID, u256 /*_gasPrice */,
+        uint64_t _timeStamp, uint32_t /* timeStampMs */, uint64_t _blockID, u256 /*_gasPrice */,
         u256 /*_stateRoot*/, uint64_t /*_winningNodeIndex*/ ) override {
         ( void ) _timeStamp;
         ( void ) _blockID;
@@ -453,17 +457,17 @@ BOOST_AUTO_TEST_CASE( OneTransaction,
 
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 
-BOOST_AUTO_TEST_CASE( TwoTransactions,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    TwoTransactions, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 
-BOOST_AUTO_TEST_CASE( DifferentTransactions,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    DifferentTransactions, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 
-BOOST_AUTO_TEST_CASE( MissingTransaction1,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    MissingTransaction1, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 
-BOOST_AUTO_TEST_CASE( MissingTransaction2,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    MissingTransaction2, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 
 BOOST_AUTO_TEST_SUITE_END()
 

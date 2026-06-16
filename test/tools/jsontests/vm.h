@@ -76,8 +76,8 @@ public:
     void reset( u256 _myBalance, u256 _myNonce, std::map< u256, u256 > const& _storage );
     u256 doPosts();
     json_spirit::mObject exportEnv();
-    static dev::eth::EnvInfo importEnv(
-        json_spirit::mObject const& _o, eth::LastBlockHashesFace const& _lastBlockHashes, time_t _committedBlockTimestamp );
+    static dev::eth::EnvInfo importEnv( json_spirit::mObject const& _o,
+        eth::LastBlockHashesFace const& _lastBlockHashes, time_t _committedBlockTimestamp );
     json_spirit::mObject exportState();
     void importState( json_spirit::mObject const& _object );
     json_spirit::mObject exportExec();
@@ -94,7 +94,7 @@ public:
     u256 gas;
     u256 execGas;
 
-    mutable Logger m_loggerTrace{createLogger( VerbosityTrace, "EVM" )};
+    mutable Logger m_loggerTrace{ createLogger( VerbosityTrace, "EVM" ) };
 };
 
 class VmTestSuite : public TestSuite {

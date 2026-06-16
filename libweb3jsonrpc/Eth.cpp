@@ -238,12 +238,7 @@ Json::Value Eth::eth_pendingTransactions() {
     // Return list of transaction that being sent by local accounts
     Transactions ours;
     for ( Transaction const& pending : client()->pending() ) {
-        // for ( Address const& account : m_ethAccounts.allAccounts() ) {
-        //    if ( pending.sender() == account ) {
         ours.push_back( pending );
-        //        break;
-        //    }
-        //}
     }
 
     return toJson( ours );
@@ -856,14 +851,6 @@ string Eth::eth_newFilter( Json::Value const& _json ) {
     }
 }
 
-// string Eth::eth_newFilterEx( Json::Value const& _json ) {
-//    try {
-//        return toJS( client()->installWatch( toLogFilter( _json ) ) );
-//    } catch ( ... ) {
-//        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
-//    }
-//}
-
 string Eth::eth_newBlockFilter() {
     h256 filter = dev::eth::ChainChangedFilter;
     return toJS( client()->installWatch( filter ) );
@@ -1213,6 +1200,8 @@ string dev::rpc::exceptionToErrorMessage() {
         ret = "Same transaction already exists in the pending transaction queue.";
     } catch ( TransactionAlreadyInChain const& ) {
         ret = "Transaction is already in the blockchain.";
+    } catch ( TransactionQueueIsFull const& ) {
+        ret = "Transaction queue is full.";
     } catch ( NotEnoughCash const& ) {
         ret = "Account balance is too low (balance < value + gas * gas price).";
     } catch ( InvalidSignature const& ) {

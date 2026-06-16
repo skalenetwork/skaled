@@ -97,7 +97,7 @@ public:
     unsigned installWatch( LogFilter const& _filter, Reaping _r = Reaping::Automatic,
         fnClientWatchHandlerMulti_t fnOnNewChanges = fnClientWatchHandlerMulti_t(),
         bool isWS = false ) override;
-    unsigned installWatch( h256 _filterId, Reaping _r = Reaping::Automatic,
+    unsigned installWatch( h256 const& _filterId, Reaping _r = Reaping::Automatic,
         fnClientWatchHandlerMulti_t fnOnNewChanges = fnClientWatchHandlerMulti_t(),
         bool isWS = false ) override;
     bool uninstallWatch( unsigned _watchId ) override;
@@ -111,28 +111,28 @@ public:
     using Interface::uncleHashes;
 
     h256 hashFromNumber( BlockNumber _number ) const override;
-    BlockNumber numberFromHash( h256 _blockHash ) const override;
-    int compareBlockHashes( h256 _h1, h256 _h2 ) const override;
-    BlockHeader blockInfo( h256 _hash ) const override;
-    BlockDetails blockDetails( h256 _hash ) const override;
-    Transaction transaction( h256 _transactionHash ) const override;
+    BlockNumber numberFromHash( h256 const& _blockHash ) const override;
+    int compareBlockHashes( h256 const& _h1, h256 const& _h2 ) const override;
+    BlockHeader blockInfo( h256 const& _hash ) const override;
+    BlockDetails blockDetails( h256 const& _hash ) const override;
+    Transaction transaction( h256 const& _transactionHash ) const override;
     LocalisedTransaction localisedTransaction( h256 const& _transactionHash ) const override;
-    Transaction transaction( h256 _blockHash, unsigned _i ) const override;
+    Transaction transaction( h256 const& _blockHash, unsigned _i ) const override;
     LocalisedTransaction localisedTransaction( h256 const& _blockHash, unsigned _i ) const override;
     TransactionReceipt transactionReceipt( h256 const& _transactionHash ) const override;
     LocalisedTransactionReceipt localisedTransactionReceipt(
         h256 const& _transactionHash ) const override;
     std::pair< h256, unsigned > transactionLocation( h256 const& _transactionHash ) const override;
-    Transactions transactions( h256 _blockHash ) const override;
+    Transactions transactions( h256 const& _blockHash ) const override;
     Transactions transactions( BlockNumber _block ) const override {
         if ( _block == PendingBlock )
             return postSeal().pending();
         return transactions( hashFromNumber( _block ) );
     }
-    TransactionHashes transactionHashes( h256 _blockHash ) const override;
-    BlockHeader uncle( h256 _blockHash, unsigned _i ) const override;
-    UncleHashes uncleHashes( h256 _blockHash ) const override;
-    unsigned transactionCount( h256 _blockHash ) const override;
+    TransactionHashes transactionHashes( h256 const& _blockHash ) const override;
+    BlockHeader uncle( h256 const& _blockHash, unsigned _i ) const override;
+    UncleHashes uncleHashes( h256 const& _blockHash ) const override;
+    unsigned transactionCount( h256 const& _blockHash ) const override;
     unsigned transactionCount( BlockNumber _block ) const override {
         if ( _block == PendingBlock ) {
             auto p = postSeal().pending();
@@ -140,14 +140,14 @@ public:
         }
         return transactionCount( hashFromNumber( _block ) );
     }
-    unsigned uncleCount( h256 _blockHash ) const override;
+    unsigned uncleCount( h256 const& _blockHash ) const override;
     unsigned number() const override;
     h256s pendingHashes() const override;
     BlockHeader pendingInfo() const override;
     BlockDetails pendingDetails() const override;
 
 #ifdef BITE
-    DecryptedTransactionData decryptedTransactionData( h256 _transactionHash ) const;
+    DecryptedTransactionData decryptedTransactionData( const dev::h256& _transactionHash ) const;
     dev::h256 ctxOrigin( const dev::h256& _ctxHash ) const;
     std::vector< dev::h256 > craftedCTXs( const dev::h256& _transactionHash ) const;
 #endif  // BITE
@@ -189,19 +189,19 @@ public:
 
     uint64_t chainId() const override;
 
-    u256 countAt( Address _a ) const override;
-    u256 balanceAt( Address _a ) const override;
-    u256 stateAt( Address _a, u256 _l ) const override;
-    bytes codeAt( Address _a ) const override;
-    h256 codeHashAt( Address _a ) const override;
-    std::map< h256, std::pair< u256, u256 > > storageAt( Address _a ) const override;
+    u256 countAt( Address const& _a ) const override;
+    u256 balanceAt( Address const& _a ) const override;
+    u256 stateAt( Address const& _a, u256 const& _l ) const override;
+    bytes codeAt( Address const& _a ) const override;
+    h256 codeHashAt( Address const& _a ) const override;
+    std::map< h256, std::pair< u256, u256 > > storageAt( Address const& _a ) const override;
 
     /// Estimate gas usage for call/create.
     /// @param _maxGas An upper bound value for estimation, if not provided default value of
     /// c_maxGasEstimate will be used.
     /// @param _callback Optional callback function for progress reporting
-    std::pair< u256, ExecutionResult > estimateGas( Address const& _from, u256 _value,
-        Address _dest, bytes const& _data, int64_t _maxGas, u256 _gasPrice,
+    std::pair< u256, ExecutionResult > estimateGas( Address const& _from, u256 const& _value,
+        Address const& _dest, bytes const& _data, int64_t _maxGas, u256 const& _gasPrice,
         GasEstimationCallback const& _callback = GasEstimationCallback() ) override;
 
 protected:

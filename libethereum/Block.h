@@ -24,6 +24,7 @@
 #pragma once
 
 #include <array>
+#include <functional>
 #include <optional>
 #include <unordered_map>
 
@@ -84,6 +85,8 @@ class Block {
     friend class BlockChain;
 
 public:
+    using OnTransactionConsumed = std::function< bool( Transaction const& ) >;
+
     // TODO: pass in ChainOperationParams rather than u256
 
     /// Default constructor; creates with a blank database prepopulated with the genesis block.
@@ -266,9 +269,10 @@ public:
         BlockChain const& _bc, h256 const& _blockHash, BlockHeader const& _bi = BlockHeader() );
 
     /// Sync all transactions unconditionally
-    std::tuple< TransactionReceipts, unsigned > syncEveryone( BlockChain const& _bc,
+    std::tuple< TransactionReceipts, unsigned, bool > syncEveryone( BlockChain const& _bc,
         const Transactions& _transactions, uint64_t _timestamp, u256 _gasPrice,
-        u256 _baseFeePerGas = 0 );
+        u256 _baseFeePerGas = 0,
+        OnTransactionConsumed const& _onTransactionConsumed = OnTransactionConsumed() );
 
     /// Execute all transactions within a given block.
     /// @returns the additional total difficulty.
@@ -334,7 +338,7 @@ public:
 
     const DecryptedTransactions& decryptedTransactions() const { return m_decryptedTransactions; }
 
-    const std::vector< std::vector< dev::h256 > > ctxHashesLists() const {
+    const std::vector< std::vector< dev::h256 > >& ctxHashesLists() const {
         return m_ctxHashesLists;
     }
 
@@ -349,6 +353,10 @@ private:
         bool singleCommitEnabled = false;
         TransactionReceipts receipts;
         TransactionReceipts receiptsOfCommitted;
+        // Holds transactions that were consumed by execution layer and need
+        // to be removed from transaction queue
+        Transactions queueCleanupTransactions;
+        bool needsQueueReadyNotification = false;
         unsigned badCount = 0;
     };
 
@@ -359,7 +367,8 @@ private:
 
     void prepareStateForSync( uint64_t _timestamp, u256 _baseFeePerGas, SyncContext& _context );
     void executeTransactions( BlockChain const& _bc, const Transactions& _transactions,
-        u256 _gasPrice, SyncContext& _context );
+        u256 _gasPrice, SyncContext& _context,
+        OnTransactionConsumed const& _onTransactionConsumed );
     std::optional< TransactionReceipt > executeSingleTransaction( BlockChain const& _bc,
         Transaction const& _tx, unsigned _txIndex, u256 _gasPrice, skale::Permanence _permanence,
         SyncContext& _context );

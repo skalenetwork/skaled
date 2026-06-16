@@ -116,8 +116,9 @@ public:
     /// @param _maxGas An upper bound value for estimation, if not provided default value of
     /// c_maxGasEstimate will be used.
     /// @param _callback Optional callback function for progress reporting
-    virtual std::pair< u256, ExecutionResult > estimateGas( Address const& _from, u256 _value,
-        Address _dest, bytes const& _data, int64_t _maxGas, u256 _gasPrice,
+    virtual std::pair< u256, ExecutionResult > estimateGas( Address const& _from,
+        u256 const& _value, Address const& _dest, bytes const& _data, int64_t _maxGas,
+        u256 const& _gasPrice,
         GasEstimationCallback const& _callback = GasEstimationCallback() ) = 0;
 
     // [STATE-QUERY API]
@@ -127,23 +128,23 @@ public:
         throw std::logic_error( "setDefault is not supported" );
     }
 
-    virtual u256 balanceAt( Address _a ) const = 0;
-    virtual u256 countAt( Address _a ) const = 0;
-    virtual u256 stateAt( Address _a, u256 _l ) const = 0;
-    virtual bytes codeAt( Address _a ) const = 0;
-    virtual h256 codeHashAt( Address _a ) const = 0;
+    virtual u256 balanceAt( Address const& _a ) const = 0;
+    virtual u256 countAt( Address const& _a ) const = 0;
+    virtual u256 stateAt( Address const& _a, u256 const& _l ) const = 0;
+    virtual bytes codeAt( Address const& _a ) const = 0;
+    virtual h256 codeHashAt( Address const& _a ) const = 0;
 
 
 #ifdef HISTORIC_STATE
-    virtual u256 historicStateBalanceAt( Address _a, BlockNumber _block ) const = 0;
-    virtual u256 historicStateCountAt( Address _a, BlockNumber _block ) const = 0;
-    virtual u256 historicStateAt( Address _a, u256 _l, BlockNumber _block ) const = 0;
-    virtual h256 historicStateRootAt( Address _a, BlockNumber _block ) const = 0;
-    virtual bytes historicStateCodeAt( Address _a, BlockNumber _block ) const = 0;
+    virtual u256 historicStateBalanceAt( Address const& _a, BlockNumber _block ) const = 0;
+    virtual u256 historicStateCountAt( Address const& _a, BlockNumber _block ) const = 0;
+    virtual u256 historicStateAt( Address const& _a, u256 const& _l, BlockNumber _block ) const = 0;
+    virtual h256 historicStateRootAt( Address const& _a, BlockNumber _block ) const = 0;
+    virtual bytes historicStateCodeAt( Address const& _a, BlockNumber _block ) const = 0;
 #endif
 
 
-    virtual std::map< h256, std::pair< u256, u256 > > storageAt( Address _a ) const = 0;
+    virtual std::map< h256, std::pair< u256, u256 > > storageAt( Address const& _a ) const = 0;
 
     // [LOGS API]
 
@@ -154,7 +155,7 @@ public:
     virtual unsigned installWatch( LogFilter const& _filter, Reaping _r = Reaping::Automatic,
         fnClientWatchHandlerMulti_t fnOnNewChanges = fnClientWatchHandlerMulti_t(),
         bool isWS = false ) = 0;
-    virtual unsigned installWatch( h256 _filterId, Reaping _r = Reaping::Automatic,
+    virtual unsigned installWatch( h256 const& _filterId, Reaping _r = Reaping::Automatic,
         fnClientWatchHandlerMulti_t fnOnNewChanges = fnClientWatchHandlerMulti_t(),
         bool isWS = false ) = 0;
     virtual bool uninstallWatch( unsigned _watchId ) = 0;
@@ -171,7 +172,7 @@ public:
 
     virtual bool isKnownTransaction( h256 const& _transactionHash ) const = 0;
     virtual bool isKnownTransaction( h256 const& _blockHash, unsigned _i ) const = 0;
-    virtual Transaction transaction( h256 _transactionHash ) const = 0;
+    virtual Transaction transaction( h256 const& _transactionHash ) const = 0;
     virtual LocalisedTransaction localisedTransaction( h256 const& _transactionHash ) const = 0;
     virtual TransactionReceipt transactionReceipt( h256 const& _transactionHash ) const = 0;
     virtual LocalisedTransactionReceipt localisedTransactionReceipt(
@@ -179,24 +180,24 @@ public:
     virtual std::pair< h256, unsigned > transactionLocation(
         h256 const& _transactionHash ) const = 0;
     virtual h256 hashFromNumber( BlockNumber _number ) const = 0;
-    virtual BlockNumber numberFromHash( h256 _blockHash ) const = 0;
-    virtual int compareBlockHashes( h256 _h1, h256 _h2 ) const = 0;
+    virtual BlockNumber numberFromHash( h256 const& _blockHash ) const = 0;
+    virtual int compareBlockHashes( h256 const& _h1, h256 const& _h2 ) const = 0;
 
     virtual bool isKnown( BlockNumber _block ) const = 0;
     virtual bool isKnown( h256 const& _hash ) const = 0;
-    virtual BlockHeader blockInfo( h256 _hash ) const = 0;
-    virtual BlockDetails blockDetails( h256 _hash ) const = 0;
-    virtual Transaction transaction( h256 _blockHash, unsigned _i ) const = 0;
+    virtual BlockHeader blockInfo( h256 const& _hash ) const = 0;
+    virtual BlockDetails blockDetails( h256 const& _hash ) const = 0;
+    virtual Transaction transaction( h256 const& _blockHash, unsigned _i ) const = 0;
     virtual LocalisedTransaction localisedTransaction(
         h256 const& _blockHash, unsigned _i ) const = 0;
-    virtual BlockHeader uncle( h256 _blockHash, unsigned _i ) const = 0;
-    virtual UncleHashes uncleHashes( h256 _blockHash ) const = 0;
-    virtual unsigned transactionCount( h256 _blockHash ) const = 0;
+    virtual BlockHeader uncle( h256 const& _blockHash, unsigned _i ) const = 0;
+    virtual UncleHashes uncleHashes( h256 const& _blockHash ) const = 0;
+    virtual unsigned transactionCount( h256 const& _blockHash ) const = 0;
     virtual unsigned transactionCount( BlockNumber _block ) const = 0;
-    virtual unsigned uncleCount( h256 _blockHash ) const = 0;
-    virtual Transactions transactions( h256 _blockHash ) const = 0;
+    virtual unsigned uncleCount( h256 const& _blockHash ) const = 0;
+    virtual Transactions transactions( h256 const& _blockHash ) const = 0;
     virtual Transactions transactions( BlockNumber _block ) const = 0;
-    virtual TransactionHashes transactionHashes( h256 _blockHash ) const = 0;
+    virtual TransactionHashes transactionHashes( h256 const& _blockHash ) const = 0;
 
     virtual BlockHeader pendingInfo() const { return BlockHeader(); }
     virtual BlockDetails pendingDetails() const { return BlockDetails(); }
@@ -316,7 +317,7 @@ class Watch : public boost::noncopyable {
 
 public:
     Watch() {}
-    Watch( Interface& _c, h256 _f ) : m_c( &_c ), m_id( _c.installWatch( _f ) ) {}
+    Watch( Interface& _c, h256 const& _f ) : m_c( &_c ), m_id( _c.installWatch( _f ) ) {}
     Watch( Interface& _c, LogFilter const& _tf ) : m_c( &_c ), m_id( _c.installWatch( _tf ) ) {}
     ~Watch() {
         if ( m_c )

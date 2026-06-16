@@ -17,8 +17,8 @@
     along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <libethereum/SchainPatch.h>
 #include <libethereum/LastBlockHashesFace.h>
+#include <libethereum/SchainPatch.h>
 #include <libevm/EVMC.h>
 #include <libevm/LegacyVM.h>
 #include <libskale-interpreter/interpreter.h>
@@ -51,7 +51,9 @@ BlockHeader initBlockHeader() {
 
 class Create2TestFixture : public TestOutputHelperFixture {
 public:
-    explicit Create2TestFixture( VMFace* _vm ) : vm{_vm} { state.addBalance( address, 1 * ether ); }
+    explicit Create2TestFixture( VMFace* _vm ) : vm{ _vm } {
+        state.addBalance( address, 1 * ether );
+    }
 
     virtual ~Create2TestFixture() { resetSchainPatchToDefault(); }
 
@@ -85,7 +87,7 @@ public:
     }
 
     void testCreate2doesntChangeContractIfAddressExists() {
-        state.setCode( expectedAddress, bytes{inputData}, 0 );
+        state.setCode( expectedAddress, bytes{ inputData }, 0 );
 
         ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice,
             ref( inputData ), ref( code ), sha3( code ), version, depth, isCreate, staticCall );
@@ -264,14 +266,15 @@ public:
     }
 
 
-    BlockHeader blockHeader{initBlockHeader()};
+    BlockHeader blockHeader{ initBlockHeader() };
     LastBlockHashes lastBlockHashes;
-    Address address{KeyPair::create().address()};
+    Address address{ KeyPair::create().address() };
     //        State state{0};
-    State state = State(0).createStateCopyAndClearCaches();
+    State state = State( 0 ).createStateCopyAndClearCaches();
     std::unique_ptr< SealEngineFace > se{
-        ChainParams( genesisInfo( Network::ConstantinopleTest ) ).createSealEngine()};
-    EnvInfo envInfo{blockHeader, lastBlockHashes, 1, 0, se->chainParams().getChainId()};
+        ChainParams( genesisInfo( Network::ConstantinopleTest ) ).createSealEngine()
+    };
+    EnvInfo envInfo{ blockHeader, lastBlockHashes, 1, 0, se->chainParams().getChainId() };
 
     u256 value = 0;
     u256 gasPrice = 1;
@@ -299,20 +302,20 @@ public:
 
 class LegacyVMCreate2TestFixture : public Create2TestFixture {
 public:
-    LegacyVMCreate2TestFixture() : Create2TestFixture{new LegacyVM} {}
+    LegacyVMCreate2TestFixture() : Create2TestFixture{ new LegacyVM } {}
 };
 
 class SkaleInterpreterCreate2TestFixture : public Create2TestFixture {
 public:
     SkaleInterpreterCreate2TestFixture()
-        : Create2TestFixture{new EVMC{evmc_create_interpreter()}} {}
+        : Create2TestFixture{ new EVMC{ evmc_create_interpreter() } } {}
 };
 
 class ExtcodehashTestFixture : public TestOutputHelperFixture {
 public:
-    explicit ExtcodehashTestFixture( VMFace* _vm ) : vm{_vm} {
+    explicit ExtcodehashTestFixture( VMFace* _vm ) : vm{ _vm } {
         state.addBalance( address, 1 * ether );
-        state.setCode( extAddress, bytes{extCode}, 0 );
+        state.setCode( extAddress, bytes{ extCode }, 0 );
     }
 
     void testExtcodehashWorksInConstantinople() {
@@ -360,7 +363,7 @@ public:
     }
 
     void testExtCodeHashOfNonContractAccount() {
-        Address addressWithEmptyCode{KeyPair::create().address()};
+        Address addressWithEmptyCode{ KeyPair::create().address() };
         state.addBalance( addressWithEmptyCode, 1 * ether );
 
         ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice,
@@ -374,7 +377,7 @@ public:
     }
 
     void testExtCodeHashOfNonExistentAccount() {
-        Address addressNonExisting{0x1234};
+        Address addressNonExisting{ 0x1234 };
 
         ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice,
             addressNonExisting.ref(), ref( code ), sha3( code ), version, depth, isCreate,
@@ -386,7 +389,7 @@ public:
     }
 
     void testExtCodeHashOfPrecomileZeroBalance() {
-        Address addressPrecompile{0x1};
+        Address addressPrecompile{ 0x1 };
 
         ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice,
             addressPrecompile.ref(), ref( code ), sha3( code ), version, depth, isCreate,
@@ -398,7 +401,7 @@ public:
     }
 
     void testExtCodeHashOfPrecomileNonZeroBalance() {
-        Address addressPrecompile{0x1};
+        Address addressPrecompile{ 0x1 };
         state.addBalance( addressPrecompile, 1 * ether );
 
         ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice,
@@ -420,7 +423,7 @@ public:
         code = fromHex( "60206000600037600051803f8060005260206000f35050" );
 
         bytes extAddressPrefixed =
-            bytes{1, 2, 3, 4, 5, 6, 7, 8, 9, 0xa, 0xb, 0xc} + extAddress.ref();
+            bytes{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 0xa, 0xb, 0xc } + extAddress.ref();
 
         ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice,
             ref( extAddressPrefixed ), ref( code ), sha3( code ), version, depth, isCreate,
@@ -431,14 +434,15 @@ public:
         BOOST_REQUIRE( ret.toBytes() == sha3( extCode ).asBytes() );
     }
 
-    BlockHeader blockHeader{initBlockHeader()};
+    BlockHeader blockHeader{ initBlockHeader() };
     LastBlockHashes lastBlockHashes;
-    Address address{KeyPair::create().address()};
-    Address extAddress{KeyPair::create().address()};
-    State state{0};
+    Address address{ KeyPair::create().address() };
+    Address extAddress{ KeyPair::create().address() };
+    State state{ 0 };
     std::unique_ptr< SealEngineFace > se{
-        ChainParams( genesisInfo( Network::ConstantinopleTest ) ).createSealEngine()};
-    EnvInfo envInfo{blockHeader, lastBlockHashes, 1, 0, se->chainParams().getChainId()};
+        ChainParams( genesisInfo( Network::ConstantinopleTest ) ).createSealEngine()
+    };
+    EnvInfo envInfo{ blockHeader, lastBlockHashes, 1, 0, se->chainParams().getChainId() };
 
     u256 value = 0;
     u256 gasPrice = 1;
@@ -464,24 +468,24 @@ public:
 
 class LegacyVMExtcodehashTestFixture : public ExtcodehashTestFixture {
 public:
-    LegacyVMExtcodehashTestFixture() : ExtcodehashTestFixture{new LegacyVM} {}
+    LegacyVMExtcodehashTestFixture() : ExtcodehashTestFixture{ new LegacyVM } {}
 };
 
 
 class SkaleInterpreterExtcodehashTestFixture : public ExtcodehashTestFixture {
 public:
     SkaleInterpreterExtcodehashTestFixture()
-        : ExtcodehashTestFixture{new EVMC{evmc_create_interpreter()}} {}
+        : ExtcodehashTestFixture{ new EVMC{ evmc_create_interpreter() } } {}
 };
 
 class SstoreTestFixture : public TestOutputHelperFixture {
 public:
-    explicit SstoreTestFixture( VMFace* _vm ) : vm{_vm} {
+    explicit SstoreTestFixture( VMFace* _vm ) : vm{ _vm } {
         state.addBalance( from, 1 * ether );
         state.addBalance( to, 1 * ether );
     }
 
-    virtual ~SstoreTestFixture() {  }
+    virtual ~SstoreTestFixture() {}
 
     void testEip1283Case1() {
 #ifdef FAIR
@@ -626,14 +630,14 @@ public:
     void testGasConsumed( std::string const& _codeStr, u256 const& _originalValue,
         u256 const& _expectedGasConsumed, u256 const& _expectedRefund ) {
 #ifndef FAIR
-        state.setStorageLimit(1000000000);
+        state.setStorageLimit( 1000000000 );
 #endif
         state.setStorage( to, 0, _originalValue );
         state.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts );
 
         bytes const code = fromHex( _codeStr );
-        ExtVM extVm( state, envInfo, se->chainParams(), to, from, from, value, gasPrice, inputData, ref( code ),
-            sha3( code ), version, depth, isCreate, staticCall );
+        ExtVM extVm( state, envInfo, se->chainParams(), to, from, from, value, gasPrice, inputData,
+            ref( code ), sha3( code ), version, depth, isCreate, staticCall );
 
         u256 gasBefore = gas;
         owning_bytes_ref ret = vm->exec( gas, extVm, OnOpFunc{} );
@@ -643,14 +647,16 @@ public:
     }
 
 
-    BlockHeader blockHeader{initBlockHeader()};
+    BlockHeader blockHeader{ initBlockHeader() };
     LastBlockHashes lastBlockHashes;
-    Address from{KeyPair::create().address()};
-    Address to{KeyPair::create().address()};
-    State state = State( 0, dev::TransientDirectory().path(), dev::h256() ).createStateCopyAndClearCaches();
+    Address from{ KeyPair::create().address() };
+    Address to{ KeyPair::create().address() };
+    State state =
+        State( 0, dev::TransientDirectory().path(), dev::h256() ).createStateCopyAndClearCaches();
     std::unique_ptr< SealEngineFace > se{
-        ChainParams( genesisInfo( Network::ConstantinopleTest ) ).createSealEngine()};
-    EnvInfo envInfo{blockHeader, lastBlockHashes, 1, 0, se->chainParams().getChainId()};
+        ChainParams( genesisInfo( Network::ConstantinopleTest ) ).createSealEngine()
+    };
+    EnvInfo envInfo{ blockHeader, lastBlockHashes, 1, 0, se->chainParams().getChainId() };
 
     u256 value = 0;
     u256 gasPrice = 1;
@@ -666,18 +672,19 @@ public:
 
 class LegacyVMSstoreTestFixture : public SstoreTestFixture {
 public:
-    LegacyVMSstoreTestFixture() : SstoreTestFixture{new LegacyVM} {}
+    LegacyVMSstoreTestFixture() : SstoreTestFixture{ new LegacyVM } {}
 };
-
 
 
 class ChainIDTestFixture : public TestOutputHelperFixture {
 public:
-    explicit ChainIDTestFixture( VMFace* _vm ) : vm{_vm} { state.addBalance( address, 1 * ether ); }
+    explicit ChainIDTestFixture( VMFace* _vm ) : vm{ _vm } {
+        state.addBalance( address, 1 * ether );
+    }
 
     void testChainIDWorksInIstanbul() {
-        ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice, {},
-            ref( code ), sha3( code ), version, depth, isCreate, staticCall );
+        ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice,
+            {}, ref( code ), sha3( code ), version, depth, isCreate, staticCall );
 
         owning_bytes_ref ret = vm->exec( gas, extVm, OnOpFunc{} );
 
@@ -685,8 +692,8 @@ public:
     }
 
     void testChainIDHasCorrectCost() {
-        ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice, {},
-            ref( code ), sha3( code ), version, depth, isCreate, staticCall );
+        ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice,
+            {}, ref( code ), sha3( code ), version, depth, isCreate, staticCall );
 
         bigint gasBefore;
         bigint gasAfter;
@@ -708,20 +715,21 @@ public:
         se.reset( ChainParams( genesisInfo( Network::ConstantinopleFixTest ) ).createSealEngine() );
         version = ConstantinopleFixSchedule.accountVersion;
 
-        ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice, {},
-            ref( code ), sha3( code ), version, depth, isCreate, staticCall );
+        ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice,
+            {}, ref( code ), sha3( code ), version, depth, isCreate, staticCall );
 
         BOOST_REQUIRE_THROW( vm->exec( gas, extVm, OnOpFunc{} ), BadInstruction );
     }
 
 
-    BlockHeader blockHeader{initBlockHeader()};
+    BlockHeader blockHeader{ initBlockHeader() };
     LastBlockHashes lastBlockHashes;
-    Address address{KeyPair::create().address()};
-    State state{0};
+    Address address{ KeyPair::create().address() };
+    State state{ 0 };
     std::unique_ptr< SealEngineFace > se{
-        ChainParams( genesisInfo( Network::IstanbulTest ) ).createSealEngine()};
-    EnvInfo envInfo{blockHeader, lastBlockHashes, 1, 0, se->chainParams().getChainId()};
+        ChainParams( genesisInfo( Network::IstanbulTest ) ).createSealEngine()
+    };
+    EnvInfo envInfo{ blockHeader, lastBlockHashes, 1, 0, se->chainParams().getChainId() };
 
     u256 value = 0;
     u256 gasPrice = 1;
@@ -741,29 +749,31 @@ public:
 
 class LegacyVMChainIDTestFixture : public ChainIDTestFixture {
 public:
-    LegacyVMChainIDTestFixture() : ChainIDTestFixture{new LegacyVM} {}
+    LegacyVMChainIDTestFixture() : ChainIDTestFixture{ new LegacyVM } {}
 };
 
 class SkaleInterpreterChainIDTestFixture : public ChainIDTestFixture {
 public:
     SkaleInterpreterChainIDTestFixture()
-        : ChainIDTestFixture{new EVMC{evmc_create_interpreter()}} {}
+        : ChainIDTestFixture{ new EVMC{ evmc_create_interpreter() } } {}
 };
 
 class BalanceFixture : public TestOutputHelperFixture {
 public:
-    explicit BalanceFixture( VMFace* _vm ) : vm{_vm} { state.addBalance( address, 1 * ether ); }
+    explicit BalanceFixture( VMFace* _vm ) : vm{ _vm } { state.addBalance( address, 1 * ether ); }
 
     void testSelfBalanceWorksInIstanbul() {
-        ExtVM extVmSelfBalance( state, envInfo, se->chainParams(), address, address, address, value, gasPrice, {},
-            ref( codeSelfBalance ), sha3( codeSelfBalance ), version, depth, isCreate, staticCall );
+        ExtVM extVmSelfBalance( state, envInfo, se->chainParams(), address, address, address, value,
+            gasPrice, {}, ref( codeSelfBalance ), sha3( codeSelfBalance ), version, depth, isCreate,
+            staticCall );
 
         owning_bytes_ref retSelfBalance = vm->exec( gas, extVmSelfBalance, OnOpFunc{} );
 
         BOOST_REQUIRE_EQUAL( fromBigEndian< u256 >( retSelfBalance ), 1 * ether );
 
-        ExtVM extVmBalance( state, envInfo, se->chainParams(), address, address, address, value, gasPrice, {},
-            ref( codeBalance ), sha3( codeBalance ), version, depth, isCreate, staticCall );
+        ExtVM extVmBalance( state, envInfo, se->chainParams(), address, address, address, value,
+            gasPrice, {}, ref( codeBalance ), sha3( codeBalance ), version, depth, isCreate,
+            staticCall );
 
         owning_bytes_ref retBalance = vm->exec( gas, extVmBalance, OnOpFunc{} );
 
@@ -772,8 +782,9 @@ public:
     }
 
     void testSelfBalanceHasCorrectCost() {
-        ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice, {},
-            ref( codeSelfBalance ), sha3( codeSelfBalance ), version, depth, isCreate, staticCall );
+        ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice,
+            {}, ref( codeSelfBalance ), sha3( codeSelfBalance ), version, depth, isCreate,
+            staticCall );
 
         bigint gasBefore;
         bigint gasAfter;
@@ -792,8 +803,8 @@ public:
     }
 
     void testBalanceHasCorrectCost() {
-        ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice, {},
-            ref( codeBalance ), sha3( codeBalance ), version, depth, isCreate, staticCall );
+        ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice,
+            {}, ref( codeBalance ), sha3( codeBalance ), version, depth, isCreate, staticCall );
 
         bigint gasBefore;
         bigint gasAfter;
@@ -821,20 +832,22 @@ public:
         se.reset( ChainParams( genesisInfo( Network::ConstantinopleFixTest ) ).createSealEngine() );
         version = ConstantinopleFixSchedule.accountVersion;
 
-        ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice, {},
-            ref( codeSelfBalance ), sha3( codeSelfBalance ), version, depth, isCreate, staticCall );
+        ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice,
+            {}, ref( codeSelfBalance ), sha3( codeSelfBalance ), version, depth, isCreate,
+            staticCall );
 
         BOOST_REQUIRE_THROW( vm->exec( gas, extVm, OnOpFunc{} ), BadInstruction );
     }
 
 
-    BlockHeader blockHeader{initBlockHeader()};
+    BlockHeader blockHeader{ initBlockHeader() };
     LastBlockHashes lastBlockHashes;
-    Address address{KeyPair::create().address()};
-    State state{0};
+    Address address{ KeyPair::create().address() };
+    State state{ 0 };
     std::unique_ptr< SealEngineFace > se{
-        ChainParams( genesisInfo( Network::IstanbulTest ) ).createSealEngine()};
-    EnvInfo envInfo{blockHeader, lastBlockHashes, 1, 0, se->chainParams().getChainId()};
+        ChainParams( genesisInfo( Network::IstanbulTest ) ).createSealEngine()
+    };
+    EnvInfo envInfo{ blockHeader, lastBlockHashes, 1, 0, se->chainParams().getChainId() };
 
     u256 value = 0;
     u256 gasPrice = 1;
@@ -860,35 +873,35 @@ public:
 
 class InstructionTestFixture : public TestOutputHelperFixture {
 public:
-    InstructionTestFixture() : vm{new LegacyVM()} {
+    InstructionTestFixture() : vm{ new LegacyVM() } {
         ChainParams cp( genesisInfo( Network::IstanbulTest ) );
 #ifndef FAIR
-        cp.sChain._patchTimestamps[static_cast<size_t>(SchainPatchEnum::PushZeroPatch)] = 1;
+        cp.sChain._patchTimestamps[static_cast< size_t >( SchainPatchEnum::PushZeroPatch )] = 1;
 #endif
-        SchainPatch::init(cp);
+        SchainPatch::init( cp );
 
-        se.reset(cp.createSealEngine());
-        envInfo = std::make_unique<EnvInfo> ( blockHeader, lastBlockHashes, 1, 0, cp.getChainId() );
+        se.reset( cp.createSealEngine() );
+        envInfo =
+            std::make_unique< EnvInfo >( blockHeader, lastBlockHashes, 1, 0, cp.getChainId() );
 
         state.addBalance( address, 1 * ether );
     }
 
     void testCode( std::string const& _codeStr ) {
-
         bytes const code = fromHex( _codeStr );
 
-        ExtVM extVm( state, *envInfo, se->chainParams(), address, address, address, value, gasPrice, {},
-                    ref( code ), sha3( code ), version, depth, isCreate, staticCall );
+        ExtVM extVm( state, *envInfo, se->chainParams(), address, address, address, value, gasPrice,
+            {}, ref( code ), sha3( code ), version, depth, isCreate, staticCall );
 
         owning_bytes_ref ret = vm->exec( gas, extVm, OnOpFunc{} );
     }
 
-    BlockHeader blockHeader{initBlockHeader()};
+    BlockHeader blockHeader{ initBlockHeader() };
     LastBlockHashes lastBlockHashes;
-    Address address{KeyPair::create().address()};
-    State state{0};
+    Address address{ KeyPair::create().address() };
+    State state{ 0 };
     std::unique_ptr< SealEngineFace > se;
-    std::unique_ptr<EnvInfo> envInfo;
+    std::unique_ptr< EnvInfo > envInfo;
 
     u256 value = 0;
     u256 gasPrice = 1;
@@ -903,12 +916,12 @@ public:
 
 class LegacyVMBalanceFixture : public BalanceFixture {
 public:
-    LegacyVMBalanceFixture() : BalanceFixture{new LegacyVM} {}
+    LegacyVMBalanceFixture() : BalanceFixture{ new LegacyVM } {}
 };
 
 class SkaleInterpreterBalanceFixture : public BalanceFixture {
 public:
-    SkaleInterpreterBalanceFixture() : BalanceFixture{new EVMC{evmc_create_interpreter()}} {}
+    SkaleInterpreterBalanceFixture() : BalanceFixture{ new EVMC{ evmc_create_interpreter() } } {}
 };
 }  // namespace
 
@@ -946,7 +959,7 @@ BOOST_AUTO_TEST_CASE( LegacyVMCreate2collisionWithNonEmptyStorage,
 // Disable this test since SKALE cleans the storage in a different way
 // There is now need to ALWAYS clean contract storage,
 // because the only case when a contract is created on non-empty
-//storage is create2 -> selfdestruct -> create2_with_the_same_sed
+// storage is create2 -> selfdestruct -> create2_with_the_same_sed
 // Note: the combination above will cease to exist in Shanhai fork because
 // there will be no selfdestruct
 BOOST_AUTO_TEST_CASE( LegacyVMCreate2collisionWithNonEmptyStorageEmptyInitCode ) {
@@ -1011,23 +1024,28 @@ BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_FIXTURE_TEST_SUITE( LegacyVMSstoreSuite, LegacyVMSstoreTestFixture )
 
-BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case1, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    LegacyVMSstoreEip1283Case1, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testEip1283Case1();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case2, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    LegacyVMSstoreEip1283Case2, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testEip1283Case2();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case3, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    LegacyVMSstoreEip1283Case3, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testEip1283Case3();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case4, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    LegacyVMSstoreEip1283Case4, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testEip1283Case4();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case5, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    LegacyVMSstoreEip1283Case5, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testEip1283Case5();
 }
 
@@ -1067,11 +1085,13 @@ BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case14, *boost::unit_test::disabled()
     testEip1283Case14();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case15, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    LegacyVMSstoreEip1283Case15, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testEip1283Case15();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case16, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    LegacyVMSstoreEip1283Case16, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testEip1283Case16();
 }
 
@@ -1087,7 +1107,8 @@ BOOST_AUTO_TEST_CASE( LegacyVMChainIDworksInIstanbul,
     testChainIDWorksInIstanbul();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMChainIDHasCorrectCost, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    LegacyVMChainIDHasCorrectCost, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testChainIDHasCorrectCost();
 }
 
@@ -1122,10 +1143,10 @@ BOOST_FIXTURE_TEST_SUITE( InstructionSuite, InstructionTestFixture )
 
 BOOST_AUTO_TEST_CASE( Push0 ) {
     string code = "5f";
-    BOOST_REQUIRE_NO_THROW( this->testCode(code) );
+    BOOST_REQUIRE_NO_THROW( this->testCode( code ) );
     u256s stack = vm->stack();
-    BOOST_REQUIRE_EQUAL(stack.size(), 1);
-    BOOST_REQUIRE_EQUAL(stack[0], u256());
+    BOOST_REQUIRE_EQUAL( stack.size(), 1 );
+    BOOST_REQUIRE_EQUAL( stack[0], u256() );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
