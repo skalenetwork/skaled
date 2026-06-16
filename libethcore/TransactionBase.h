@@ -521,7 +521,7 @@ private:
 #ifdef BITE
     // called in TransactionBase constructor
     // sets m_isBITETxn to true if a txn 'to' field
-    // maches BITE address
+    // matches BITE address
     void checkIfBITETxnAndSet( const Address& _to );
 #endif
 

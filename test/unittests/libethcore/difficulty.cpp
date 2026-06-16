@@ -162,8 +162,8 @@ BOOST_AUTO_TEST_CASE( difficultyTestsFrontier ) {
     testDifficulty( testFileFullName, sealEngine );
 }
 
-BOOST_AUTO_TEST_CASE( difficultyTestsRopsten, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    difficultyTestsRopsten, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     fs::path const testFileFullName =
         test::getTestPath() / fs::path( "BasicTests/difficultyRopsten.json" );
 
@@ -189,8 +189,8 @@ BOOST_AUTO_TEST_CASE( difficultyTestsHomestead ) {
     testDifficulty( testFileFullName, sealEngine );
 }
 
-BOOST_AUTO_TEST_CASE( difficultyByzantium, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    difficultyByzantium, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     fs::path const testFileFullName =
         test::getTestPath() / fs::path( "BasicTests/difficultyByzantium.json" );
 
@@ -203,8 +203,8 @@ BOOST_AUTO_TEST_CASE( difficultyByzantium,
     testDifficulty( testFileFullName, sealEngine );
 }
 
-BOOST_AUTO_TEST_CASE( difficultyTestsMainNetwork, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    difficultyTestsMainNetwork, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     fs::path const testFileFullName =
         test::getTestPath() / fs::path( "BasicTests/difficultyMainNetwork.json" );
 
@@ -226,10 +226,10 @@ BOOST_AUTO_TEST_CASE( difficultyTestsCustomMainNetwork ) {
 
     if ( dev::test::Options::get().filltests ) {
         int64_t byzantiumBlockNumber = 4370000;
-        std::vector< int64_t > blockNumberVector = {
-            byzantiumBlockNumber - 100000, byzantiumBlockNumber, byzantiumBlockNumber + 100000};
-        std::vector< u256 > parentDifficultyVector = {1000, 2048, 4000, 1000000};
-        std::vector< int > timestampDeltaVector = {0, 1, 8, 10, 13, 20, 100, 800, 1000, 1500};
+        std::vector< int64_t > blockNumberVector = { byzantiumBlockNumber - 100000,
+            byzantiumBlockNumber, byzantiumBlockNumber + 100000 };
+        std::vector< u256 > parentDifficultyVector = { 1000, 2048, 4000, 1000000 };
+        std::vector< int > timestampDeltaVector = { 0, 1, 8, 10, 13, 20, 100, 800, 1000, 1500 };
 
         int testN = 0;
         ostringstream finalTest;

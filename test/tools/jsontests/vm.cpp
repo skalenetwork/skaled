@@ -50,13 +50,13 @@ CreateResult FakeExtVM::create(
     u256 _endowment, u256& io_gas, bytesConstRef _init, Instruction, u256, OnOpFunc const& ) {
     Address address = right160( sha3( rlpList( myAddress, get< 1 >( addresses[myAddress] ) ) ) );
     callcreates.emplace_back( _endowment, gasPrice, io_gas, _init.toBytes() );
-    return {EVMC_SUCCESS, {}, address};
+    return { EVMC_SUCCESS, {}, address };
 }
 
 CallResult FakeExtVM::call( CallParameters& _p ) {
     Transaction t( _p.valueTransfer, gasPrice, _p.gas, _p.receiveAddress, _p.data.toVector() );
     callcreates.push_back( t );
-    return {EVMC_SUCCESS, {}};  // Return empty output.
+    return { EVMC_SUCCESS, {} };  // Return empty output.
 }
 
 h256 FakeExtVM::blockHash( u256 _number ) {
@@ -92,7 +92,8 @@ mObject FakeExtVM::exportEnv() {
     return ret;
 }
 
-EnvInfo FakeExtVM::importEnv( mObject const& _o, LastBlockHashesFace const& _lastBlockHashes, time_t _committedBlockTimestamp ) {
+EnvInfo FakeExtVM::importEnv( mObject const& _o, LastBlockHashesFace const& _lastBlockHashes,
+    time_t _committedBlockTimestamp ) {
     // cant use BOOST_REQUIRE, because this function is used outside boost test (createRandomTest)
     assert( _o.count( "currentGasLimit" ) > 0 );
     assert( _o.count( "currentDifficulty" ) > 0 );
@@ -227,67 +228,68 @@ void FakeExtVM::importCallCreates( mArray const& _callcreates ) {
 }
 
 eth::OnOpFunc FakeExtVM::simpleTrace() const {
-    return []( uint64_t steps, uint64_t pc, eth::Instruction inst, bigint newMemSize,
-               bigint gasCost, bigint gas, dev::eth::VMFace const* _vm,
-               dev::eth::ExtVMFace const* voidExt ) {
-        FakeExtVM const& ext = *static_cast< FakeExtVM const* >( voidExt );
-        auto const& vm = dynamic_cast< LegacyVM const& >( *_vm );
+    return
+        []( uint64_t steps, uint64_t pc, eth::Instruction inst, bigint newMemSize, bigint gasCost,
+            bigint gas, dev::eth::VMFace const* _vm, dev::eth::ExtVMFace const* voidExt ) {
+            FakeExtVM const& ext = *static_cast< FakeExtVM const* >( voidExt );
+            auto const& vm = dynamic_cast< LegacyVM const& >( *_vm );
 
-        std::ostringstream o;
-        o << "\n    STACK\n";
-        for ( auto i : vm.stack() )
-            o << ( h256 ) i << "\n";
-        o << "    MEMORY\n" << memDump( vm.memory() );
-        o << "    STORAGE\n";
+            std::ostringstream o;
+            o << "\n    STACK\n";
+            for ( auto i : vm.stack() )
+                o << ( h256 ) i << "\n";
+            o << "    MEMORY\n" << memDump( vm.memory() );
+            o << "    STORAGE\n";
 
-        for ( auto const& i : std::get< 2 >( ext.addresses.find( ext.myAddress )->second ) )
-            o << std::showbase << std::hex << i.first << ": " << i.second << "\n";
+            for ( auto const& i : std::get< 2 >( ext.addresses.find( ext.myAddress )->second ) )
+                o << std::showbase << std::hex << i.first << ": " << i.second << "\n";
 
-        BOOST_LOG( ext.m_loggerTrace ) << o.str();
-        BOOST_LOG( ext.m_loggerTrace ) << " | " << std::dec << ext.depth << " | " << ext.myAddress << " | #"
-                            << steps << " | " << std::hex << std::setw( 4 ) << std::setfill( '0' )
-                            << pc << " : " << instructionInfo( inst ).name << " | " << std::dec
-                            << gas << " | -" << std::dec << gasCost << " | " << newMemSize << "x32"
-                            << " ]";
+            BOOST_LOG( ext.m_loggerTrace ) << o.str();
+            BOOST_LOG( ext.m_loggerTrace )
+                << " | " << std::dec << ext.depth << " | " << ext.myAddress << " | #" << steps
+                << " | " << std::hex << std::setw( 4 ) << std::setfill( '0' ) << pc << " : "
+                << instructionInfo( inst ).name << " | " << std::dec << gas << " | -" << std::dec
+                << gasCost << " | " << newMemSize << "x32"
+                << " ]";
 
-        /*creates json stack trace*/
-        Object o_step;
+            /*creates json stack trace*/
+            Object o_step;
 
-        /*add the stack*/
-        Array a_stack;
-        for ( auto i : vm.stack() ) {
-            a_stack.push_back( i.str() );
-        }
+            /*add the stack*/
+            Array a_stack;
+            for ( auto i : vm.stack() ) {
+                a_stack.push_back( i.str() );
+            }
 
-        o_step.push_back( Pair( "stack", a_stack ) );
+            o_step.push_back( Pair( "stack", a_stack ) );
 
-        /*add the memory*/
-        Array a_mem;
-        for ( auto i : vm.memory() )
-            a_mem.push_back( i );
+            /*add the memory*/
+            Array a_mem;
+            for ( auto i : vm.memory() )
+                a_mem.push_back( i );
 
-        o_step.push_back( Pair( "memory", a_mem ) );
+            o_step.push_back( Pair( "memory", a_mem ) );
 
-        /*add the storage*/
-        Object storage;
-        for ( auto const& i : std::get< 2 >( ext.addresses.find( ext.myAddress )->second ) )
-            storage.push_back( Pair( i.first.str(), i.second.str() ) );
+            /*add the storage*/
+            Object storage;
+            for ( auto const& i : std::get< 2 >( ext.addresses.find( ext.myAddress )->second ) )
+                storage.push_back( Pair( i.first.str(), i.second.str() ) );
 
-        /*add all the other details*/
-        o_step.push_back( Pair( "storage", storage ) );
-        o_step.push_back( Pair( "depth", to_string( ext.depth ) ) );
-        o_step.push_back( Pair( "gas", gas.str() ) );
-        o_step.push_back( Pair( "address", toString( ext.myAddress ) ) );
-        o_step.push_back( Pair( "step", steps ) );
-        o_step.push_back( Pair( "pc", pc ) );
-        o_step.push_back( Pair( "opcode", instructionInfo( inst ).name ) );
+            /*add all the other details*/
+            o_step.push_back( Pair( "storage", storage ) );
+            o_step.push_back( Pair( "depth", to_string( ext.depth ) ) );
+            o_step.push_back( Pair( "gas", gas.str() ) );
+            o_step.push_back( Pair( "address", toString( ext.myAddress ) ) );
+            o_step.push_back( Pair( "step", steps ) );
+            o_step.push_back( Pair( "pc", pc ) );
+            o_step.push_back( Pair( "opcode", instructionInfo( inst ).name ) );
 
-        /*append the JSON object to the log file*/
-        Value v( o_step );
-        ofstream os( "./stackTrace.json", ofstream::app );
-        os << write_string( v, true ) << ",";
-        os.close();
-    };
+            /*append the JSON object to the log file*/
+            Value v( o_step );
+            ofstream os( "./stackTrace.json", ofstream::app );
+            os << write_string( v, true ) << ",";
+            os.close();
+        };
 }
 
 namespace dev {
@@ -313,7 +315,8 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
             BOOST_REQUIRE_MESSAGE( testInput.count( "expect" ) == 0, testname + " expect set!" );
 
         TestLastBlockHashes lastBlockHashes( h256s( 256, h256() ) );
-        eth::EnvInfo env = FakeExtVM::importEnv( testInput.at( "env" ).get_obj(), lastBlockHashes, 0 );
+        eth::EnvInfo env =
+            FakeExtVM::importEnv( testInput.at( "env" ).get_obj(), lastBlockHashes, 0 );
         FakeExtVM fev( env );
         fev.importState( testInput.at( "pre" ).get_obj() );
 
@@ -336,7 +339,7 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
             auto vm = eth::VMFactory::create();
             auto vmtrace = Options::get().vmtrace ? fev.simpleTrace() : OnOpFunc{};
             {
-                Listener::ExecTimeGuard guard{i.first};
+                Listener::ExecTimeGuard guard{ i.first };
                 auto gas = static_cast< int64_t >( fev.gas );
                 output = vm->exec( fev.gas, fev, vmtrace );
                 gas -= static_cast< int64_t >( fev.gas );
@@ -369,11 +372,11 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
                         testInput.count( "expect" ) == 1, testname + " multiple expect set!" );
                     State postState = State();
 #ifndef FAIR
-                    postState.setStorageLimit(1000000000);
+                    postState.setStorageLimit( 1000000000 );
 #endif
                     State expectState = State();
 #ifndef FAIR
-                    expectState.setStorageLimit(1000000000);
+                    expectState.setStorageLimit( 1000000000 );
 #endif
                     AccountMaskMap expectStateMap;
                     ImportTest::importState( mValue( fev.exportState() ).get_obj(), postState );
@@ -401,11 +404,11 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
 
                     State postState = State();
 #ifndef FAIR
-                    postState.setStorageLimit(1000000000);
+                    postState.setStorageLimit( 1000000000 );
 #endif
                     State expectState = State();
 #ifndef FAIR
-                    expectState.setStorageLimit(1000000000);
+                    expectState.setStorageLimit( 1000000000 );
 #endif
                     AccountMaskMap expectStateMap;
 
@@ -467,7 +470,8 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
                     testname + " logs field is not a string." );
 
                 // use all patches here ("1")
-                dev::test::FakeExtVM test( eth::EnvInfo{BlockHeader{}, lastBlockHashes, 1, 0, 0} );
+                dev::test::FakeExtVM test(
+                    eth::EnvInfo{ BlockHeader{}, lastBlockHashes, 1, 0, 0 } );
                 test.importState( testInput.at( "post" ).get_obj() );
                 test.importCallCreates( testInput.at( "callcreates" ).get_array() );
 
@@ -477,11 +481,11 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
 
                 State postState = State();
 #ifndef FAIR
-                postState.setStorageLimit(1000000000);
+                postState.setStorageLimit( 1000000000 );
 #endif
                 State expectState = State();
 #ifndef FAIR
-                expectState.setStorageLimit(1000000000);
+                expectState.setStorageLimit( 1000000000 );
 #endif
                 mObject mPostState = fev.exportState();
                 ImportTest::importState( mPostState, postState );
@@ -533,21 +537,20 @@ public:
 BOOST_FIXTURE_TEST_SUITE( VMTests, VmTestFixture )
 
 BOOST_AUTO_TEST_CASE( vmArithmeticTest ) {}
-BOOST_AUTO_TEST_CASE( vmBitwiseLogicOperation,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE( vmBlockInfoTest,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE( vmEnvironmentalInfo,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    vmBitwiseLogicOperation, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    vmBlockInfoTest, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    vmEnvironmentalInfo, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 BOOST_AUTO_TEST_CASE( vmIOandFlowOperations ) {}
 BOOST_AUTO_TEST_CASE( vmLogTest ) {}
-BOOST_AUTO_TEST_CASE( vmPerformance,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    vmPerformance, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 BOOST_AUTO_TEST_CASE( vmPushDupSwapTest ) {}
-BOOST_AUTO_TEST_CASE( vmRandomTest,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE( vmSha3Test,
-                      *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    vmRandomTest, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( vmSha3Test, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 BOOST_AUTO_TEST_CASE( vmSystemOperations ) {}
 BOOST_AUTO_TEST_CASE( vmTests ) {}
 
