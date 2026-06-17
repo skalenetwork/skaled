@@ -1619,6 +1619,12 @@ struct BITEHostGuard {
         dev::eth::g_skaleHost = m_client->skaleHost();
         dev::bite::isCiphertextValidationEnabled = true;
     }
+
+	BITEHostGuard( const BITEHostGuard& ) = delete;
+    BITEHostGuard& operator=( const BITEHostGuard& ) = delete;
+    BITEHostGuard( BITEHostGuard&& ) = delete;
+    BITEHostGuard& operator=( BITEHostGuard&& ) = delete;
+
     ~BITEHostGuard() {
         if ( m_client )
             m_client->stopWorking();
