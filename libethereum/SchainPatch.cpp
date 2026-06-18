@@ -55,6 +55,8 @@ SchainPatchEnum getEnumForPatchName( const std::string& _patchName ) {
 #ifdef BITE
     else if ( _patchName == "BITE2Patch" || _patchName == "Bite2Patch" )
         return SchainPatchEnum::Bite2Patch;
+	else if ( _patchName == "RefundCTXPatch" )
+        return SchainPatchEnum::RefundCTXPatch;
 #endif  // BITE
 #ifdef FAIR
     else if ( _patchName == "DisableSelfDestructPatch" )
@@ -113,6 +115,8 @@ std::string getPatchNameForEnum( SchainPatchEnum _enumValue ) {
 #ifdef BITE
     case SchainPatchEnum::Bite2Patch:
         return "Bite2Patch";
+    case SchainPatchEnum::RefundCTXPatch:
+        return "RefundCTXPatch";
 #endif  // BITE
 #ifdef FAIR
     case SchainPatchEnum::DisableSelfDestructPatch:

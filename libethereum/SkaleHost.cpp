@@ -1078,6 +1078,19 @@ std::vector< Transaction > SkaleHost::processRegularTransactions(
 #endif  // BITE
         );
 #ifdef BITE
+
+        // This check is a hardenning security added under refund CTX, since this patch introduces
+        // destructive actions for all `ctx.from` addresses that issued the transaction (ephemeral account) - 
+        // ephemeral accounts are deleted. We must be sure no regular tx issued by a user can ever
+        // be interpreted as CTX
+        if ( Bite2Patch::isEnabledInWorkingBlock() && 
+                RefundCTXPatch::isEnabledInWorkingBlock() && t.isCTX() ) {
+            BOOST_THROW_EXCEPTION(
+                IllegalCTXSubmission()
+                << errinfo_comment( "Illegal attempt to include CTX in regular transactions list" )
+            );
+        }
+
         if ( regularTxnsIterator != _decryptedTransactions.regularTxsMap->end() &&
              regularTxnsIterator->first == i ) {
             std::optional< DecryptedRegularTxFields > txFields = regularTxnsIterator->second;

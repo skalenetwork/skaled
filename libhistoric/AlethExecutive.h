@@ -194,6 +194,19 @@ private:
     Logger m_loggerTrace{ createLogger( VerbosityTrace, "AlethExecutive" ) };
     Logger m_loggerError{ createLogger( VerbosityError, "AlethExecutive" ) };
     Logger m_loggerInfo{ createLogger( VerbosityInfo, "AlethExecutive" ) };
+
+#ifdef BITE
+	/**
+	 * @brief Refund unused gas by CTX transactions to smart contract balance
+	 * that originated it ( `.to` field of CTX). Also sets nonce of ephemeral 
+     * CTX sender to 0.
+	 * This is done to avoid locking user funds in ephemeral CTX accounts,
+	 * as well as keeping storage of those accounts clean.
+	 * Valid under Bite2Patch
+	 */
+	void refundCTXAndResetEphemeralSenderNonce(); 
+#endif
+
 };
 
 }  // namespace eth

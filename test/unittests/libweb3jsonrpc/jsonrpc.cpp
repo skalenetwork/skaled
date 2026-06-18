@@ -5218,7 +5218,8 @@ static std::string const c_BITEConfigString =
             "SingleStateCommitPerBlockPatchTimestamp": 1,)"
 #ifdef BITE
     R"(            "Bite2PatchTimestamp": 1,
-            "currentBlockRandomPatchTimestamp": 1,)"
+            "currentBlockRandomPatchTimestamp": 1,
+            "RefundCTXPatchTimestamp": 1,)"
 #endif
     R"(            "nodeGroups": {
                 "0": {
@@ -5399,7 +5400,8 @@ static std::string const c_BITEConfigString =
             "ContractCreationReadOnlyPatchTimestamp": 1,
             "SingleStateCommitPerBlockPatchTimestamp": 1,)"
 #ifdef BITE
-    R"(            "Bite2PatchTimestamp": 1,
+    R"(     "Bite2PatchTimestamp": 1,
+            "RefundCTXPatchTimestamp": 1,
             "currentBlockRandomPatchTimestamp": 1,)"
 #endif
     R"(            "nodeGroups": {
@@ -5989,11 +5991,13 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
     std::string contractAddress = txReceipt["contractAddress"].asString();
     BOOST_REQUIRE( txReceipt["status"] == "0x1" );
 
-    // send a transaction -> BITE2 txn queue should become non-empty
+    // Step 1 -----------------------------------------------------------------
+    // send a transaction that calls 'submitCTX()' with random data set by test SC
+
     Json::Value txGenerate;
     txGenerate["to"] = contractAddress;
     txGenerate["gas"] = "1000000";
-    txGenerate["data"] = "0x7372aa26";
+    txGenerate["data"] = "0x7372aa26"; // submitCTX()
     txGenerate["from"] = toJS( senderAddress );
     txGenerate["nonce"] = 1;
 
@@ -6002,7 +6006,8 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
 
     txReceipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE( txReceipt["status"] == "0x1" );
-
+    
+    // confirm CTX is queued
     BOOST_REQUIRE( fixture.client->debugGetTransactionQueue()->pendingBITE2Transactions()->size() == 1 );
     auto bite2Txn = fixture.client->debugGetTransactionQueue()->pendingBITE2Transactions()->front();
     BOOST_REQUIRE( !bite2Txn.isInvalid() );
@@ -6010,32 +6015,38 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
     auto to = bite2Txn.to();
     BOOST_REQUIRE_EQUAL( to, dev::Address( contractAddress ) );
 
+    // Confirm that the transaction is associated with the correct CTX
     Json::Value craftedCTXs = fixture.rpcClient->bite_getCraftedCtxs( txHash );
     BOOST_REQUIRE_EQUAL( craftedCTXs.size(), 1 );
     BOOST_REQUIRE_EQUAL( craftedCTXs[0].asString(), bite2Txn.sha3().hex() );
+
+
+    // Step 2 -----------------------------------------------------------------
+    // send a transaction that calls 'submitCTXWithInput(bytes calldata input)'
+    // with custom data
 
     dev::u256 randomGasLimit = dev::h256::Arith( dev::h256::random() ) % 2500000 + 1000000;
     dev::bytes randomGasLimitBytes = dev::toBigEndian( randomGasLimit );
 
     std::vector< dev::bytes > originalValues{ dev::h256::random().asBytes(), dev::h256::random().asBytes() };
 
+    // Encoding 1: Actual encrypted data
+    // Build abi.encode(bytes[] encrypted, bytes[] plaintext) with 2 elements each
+    // encrypted elements must be at least BITE_CIPHERTEXT_MIN_LEN bytes
     dev::bytes encryptedArg1 = formEncryptedMessageMockup( originalValues[0], dev::Address( contractAddress ) );
     dev::bytes encryptedArg2 = formEncryptedMessageMockup( originalValues[1], dev::Address( contractAddress ) );
-
-    // Build abi.encode(bytes[] args1, bytes[] args2) with 2 elements each
-    // args1 elements must be at least BITE_CIPHERTEXT_MIN_LEN bytes (encrypted data)
-    std::vector<dev::bytes> args1 = {
+    std::vector<dev::bytes> encrypted = {
         encryptedArg1, encryptedArg2
     };
-    std::vector< dev::bytes > args2 = {
+    std::vector< dev::bytes > plaintext = {
         dev::fromHex( "706c61696e746578743122" ),  // "plaintext1"
         dev::fromHex( "706c61696e746578743222" )   // "plaintext2"
     };
+    dev::bytes randomData = buildAbiEncodedArrays( encrypted, plaintext );
 
-    dev::bytes randomData = buildAbiEncodedArrays( args1, args2 );
-
-    // Build ABI-encoded input: abi.encode(address, uint256, bytes)
-    // Format: gasLimit(32) + offset_to_bytes(32) + bytes_length(32) + bytes_data
+    // Encoding 2: Format expected by submitCTX precompile
+    // Build ABI-encoded input: abi.encode(uint256 gasLimit, bytes data)
+    // Format: gasLimit(32) | offset_to_bytes(32) | bytes_length(32) | bytes_data
     dev::bytes resultData;
     // gasLimit value (32 bytes)
     resultData.insert( resultData.end(), randomGasLimitBytes.begin(), randomGasLimitBytes.end() );
@@ -6048,9 +6059,14 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
     resultData.insert( resultData.end(), dataLength.begin(), dataLength.end() );
     resultData.insert( resultData.end(), randomData.begin(), randomData.end() );
 
-    txGenerate["to"] = contractAddress;
-    txGenerate["data"] = "0x6040c1fb" + dev::toHex( dev::u256( 32 ) ) +
+    // Encoding 3: Format expected by submitCTXWithInput(bytes calldata input) test SC call
+    // Format: functionSelector(4) | offsetToInput(32) | inputLength(32) | resultDataBytes
+    auto txData = "0x6040c1fb" + dev::toHex( dev::u256( 32 ) ) +
                          dev::toHex( dev::u256( resultData.size() ) ) + dev::toHex( resultData );
+
+    // build & mine tx
+    txGenerate["to"] = contractAddress;
+    txGenerate["data"] = txData; // submitCTXWithInput(bytes calldata resultData)
     txGenerate["from"] = toJS( senderAddress );
     txGenerate["nonce"] = 2;
     std::string txGenerateHash = fixture.rpcClient->eth_sendTransaction( txGenerate );
@@ -6058,6 +6074,8 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
     BOOST_REQUIRE_EQUAL( fixture.client->pending().size(), 1 );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
+    // call submitCTX directly (separate from test SC tx) with readOnly=true - CTX is not pushed.
+    // this call is usful for getting ephemeral address only
     PrecompiledExecutor submitCTXExecutor = PrecompiledRegistrar::executor( "submitCTX" );
     dev::eth::PrecompiledCallContext ctx( fixture.client->number(), 1, 1, dev::h256::random(),
                                           dev::Address( contractAddress ), true );
@@ -6068,28 +6086,32 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
 
     dev::Address addressFromPrecompiled( dev::bytes( res.second.begin(), res.second.begin() + dev::Address::size ) );
 
+    // Snapshot balances before CTX mines for RefundCTXPatch verification
+    u256 ephemeralBalanceBefore = fixture.client->balanceAt( addressFromPrecompiled );
+    u256 contractBalanceBefore = fixture.client->balanceAt( dev::Address( contractAddress ) );
+
     PrecompiledExecutor blockRandomExecutor = PrecompiledRegistrar::executor( "getBlockRandom" );
     auto vrs = dev::makeSignature(
         blockRandomExecutor( bytesConstRef(), ctx ).second, ctx.currentTxnIndex );
     dev::u256 gasPrice = g_skaleHost->getGasPrice( ctx.blockNumber.convert_to< unsigned >() );
 
     // Build expected RLP-encoded data: RLP(RLP(args1[0], args1[1]), RLP(args2[0], args2[1]))
-    RLPStream args1Stream;
-    args1Stream.appendList( args1.size() );
-    for ( const auto& elem : args1 ) {
-        args1Stream << elem;
+    RLPStream encryptedStream;
+    encryptedStream.appendList( encrypted.size() );
+    for ( const auto& elem : encrypted ) {
+        encryptedStream << elem;
     }
 
-    RLPStream args2Stream;
-    args2Stream.appendList( args2.size() );
-    for ( const auto& elem : args2 ) {
-        args2Stream << elem;
+    RLPStream plaintextStream;
+    plaintextStream.appendList( plaintext.size() );
+    for ( const auto& elem : plaintext ) {
+        plaintextStream << elem;
     }
 
     RLPStream finalStream;
     finalStream.appendList( 2 );
-    finalStream.appendRaw( args1Stream.out() );
-    finalStream.appendRaw( args2Stream.out() );
+    finalStream.appendRaw( encryptedStream.out() );
+    finalStream.appendRaw( plaintextStream.out() );
 
     dev::bytes rlpEncodedData = finalStream.out();
 
@@ -6160,6 +6182,17 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
     auto ctxOrigin = fixture.rpcClient->bite_getCtxOrigin( "0x" + ctxFromBlockchain.sha3().hex() );
     BOOST_REQUIRE_EQUAL( "0x" + ctxOrigin, txGenerateHash );
 
+    // Verify RefundCTXPatch: leftover ephemeral balance transferred to target contract,
+    // ephemeral account nonce reset to 0 (account effectively deleted)
+    Json::Value ctxReceipt =
+        fixture.rpcClient->eth_getTransactionReceipt( "0x" + ctxFromBlockchain.sha3().hex() );
+    u256 ctxGasUsed = jsToU256( ctxReceipt["gasUsed"].asString() );
+    BOOST_CHECK_EQUAL( fixture.client->balanceAt( addressFromPrecompiled ), u256( 0 ) );
+    BOOST_CHECK_EQUAL( fixture.client->countAt( addressFromPrecompiled ), u256( 0 ) );
+    BOOST_CHECK_EQUAL(
+        fixture.client->balanceAt( dev::Address( contractAddress ) ),
+        contractBalanceBefore + ephemeralBalanceBefore - ctxGasUsed * gasPrice );
+
     // call getDecrypted()
     result = dev::fromHex( fixture.rpcClient->eth_call( callDecrypted, "latest" ) );
     auto [rlpStreamDecrypted1, decryptedLength1] = dev::bite::parseAbiEncodedBytesArray( dev::bytesConstRef( result.data(), result.size() ), 32, "" );
@@ -6177,7 +6210,7 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
     BOOST_REQUIRE_EQUAL( plaintextLength1, pregeneratedPlaintextValues.size() );
     dev::RLP rlpPlaintext1( rlpStreamPlaintext1.out() );
     for (size_t i = 0; i < plaintextLength1; ++i) {
-        BOOST_REQUIRE_EQUAL( dev::toHex( rlpPlaintext1[i].toBytes() ), dev::toHex( args2[i] ) );
+        BOOST_REQUIRE_EQUAL( dev::toHex( rlpPlaintext1[i].toBytes() ), dev::toHex( plaintext[i] ) );
     }
 
     // test submitCTXWithInput with randomGasLimit >> lastBlockGasLimit
