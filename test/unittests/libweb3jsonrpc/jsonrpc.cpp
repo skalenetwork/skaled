@@ -457,10 +457,10 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
 #ifdef BITE
             if ( params.count( "BITE2PatchTimestamp" ) )
                 ret["skaleConfig"]["sChain"]["Bite2PatchTimestamp"] =
-                    std::stoi( params.at( "BITE2PatchTimestamp" ) );
+                    static_cast< Json::Int64 >( std::stoll( params.at( "BITE2PatchTimestamp" ) ) );
             if ( params.count( "RefundCTXPatchTimestamp" ) )
                 ret["skaleConfig"]["sChain"]["RefundCTXPatchTimestamp"] =
-                    std::stoi( params.at( "RefundCTXPatchTimestamp" ) );
+                    static_cast< Json::Int64 >( std::stoll( params.at( "RefundCTXPatchTimestamp" ) ) );
 #endif
         };
 
@@ -6125,7 +6125,7 @@ SubmitCTXRefundContext runSubmitCTXCraftAndMine(
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
     // call submitCTX directly (separate from test SC tx) with readOnly=true - CTX is not pushed.
-    // this call is usful for getting ephemeral address only
+    // this call is useful for getting ephemeral address only
     PrecompiledExecutor submitCTXExecutor = PrecompiledRegistrar::executor( "submitCTX" );
     dev::eth::PrecompiledCallContext ctx( fixture.client->number(), 1, 1, dev::h256::random(),
                                           dev::Address( contractAddress ), true );
@@ -6280,7 +6280,7 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
     assertRefundCTXEnabled( fixture, refundContext );
 }
 
-// Same CTX crafting flow but with RefundCTXPatch deferred to a future timestamp, so the
+// Same CTX crafting flow but with RefundCTXPatch disabled, so the
 // pre-patch (legacy) refund behavior is exercised.
 BOOST_AUTO_TEST_CASE( submitCTXRefundDisabledBeforePatch ) {
     JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true, false, -1,

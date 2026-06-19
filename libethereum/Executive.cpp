@@ -776,7 +776,7 @@ void Executive::revert() {
 void Executive::refundCTXAndResetEphemeralSenderNonce() {
     // Move leftover balance in ephemeral account back to target contract balance
     // Reset ephemeral account nonce to 0 - makes the account empty so its pruned
-    // at comit.
+    // at commit.
     Address ephemeral = m_t.sender();
     Address targetContract = m_t.decryptedTo();
     u256 ephemeralBalance = m_s.balance( ephemeral );
