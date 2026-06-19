@@ -5908,7 +5908,7 @@ dev::bytes buildAbiEncodedArrays( const std::vector< dev::bytes >& args1Elements
 }
 
 BOOST_AUTO_TEST_CASE( rejectExplicitCTXSubmission ) {
-    JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true, false, -1, { { "contractStorageLimit", "100000" } } );
+    JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true );
     string senderAddress = toJS( fixture.coinbase.address() );
     size_t nonce = 0;
     std::string onDecryptSelector = dev::toHexPrefixed( dev::bite::ON_DECRYPT_FUNCTION_SELECTOR );
@@ -6269,8 +6269,7 @@ SubmitCTXRefundContext runSubmitCTXCraftAndMine(
 // Full happy-path CTX crafting flow with RefundCTXPatch active (default config):
 // the ephemeral account is refunded to the target contract and reset.
 BOOST_AUTO_TEST_CASE( submitCTX ) {
-    JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true, false, -1,
-        { { "contractStorageLimit", "100000" } } );
+    JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true );
 
     string senderAddress = toJS( fixture.coinbase.address() );
     std::string contractAddress = deploySubmitCTXCaller( fixture, senderAddress );
@@ -6285,7 +6284,7 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
 // pre-patch (legacy) refund behavior is exercised.
 BOOST_AUTO_TEST_CASE( submitCTXRefundDisabledBeforePatch ) {
     JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true, false, -1,
-        { { "contractStorageLimit", "100000" }, { "RefundCTXPatchTimestamp", "0" } } );
+        { { "RefundCTXPatchTimestamp", "0" } } );
 
     string senderAddress = toJS( fixture.coinbase.address() );
     std::string contractAddress = deploySubmitCTXCaller( fixture, senderAddress );
@@ -6299,8 +6298,7 @@ BOOST_AUTO_TEST_CASE( submitCTXRefundDisabledBeforePatch ) {
 // A submitCTXWithInput call requesting a gas limit far above the block gas limit must
 // fail the calling transaction and leave no CTX queued.
 BOOST_AUTO_TEST_CASE( submitCTXRejectsGasLimitAboveBlockLimit ) {
-    JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true, false, -1,
-        { { "contractStorageLimit", "100000" } } );
+    JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true );
 
     string senderAddress = toJS( fixture.coinbase.address() );
     std::string contractAddress = deploySubmitCTXCaller( fixture, senderAddress );
@@ -6338,7 +6336,7 @@ BOOST_AUTO_TEST_CASE( submitCTXRejectsGasLimitAboveBlockLimit ) {
 }
 
 BOOST_AUTO_TEST_CASE( submitCTXInContractConstructor ) {
-    JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true, false, -1, {{ "contractStorageLimit", "100000"}} );
+    JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true );
 
     string senderAddress = toJS( fixture.coinbase.address() );
 
@@ -6397,7 +6395,7 @@ BOOST_AUTO_TEST_CASE( submitCTXInContractConstructor ) {
 }
 
 BOOST_AUTO_TEST_CASE( CTXTransactionAfterRevert ) {
-    JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true, false, -1, {{ "contractStorageLimit", "100000" }} );
+    JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true );
 
     string senderAddress = toJS( fixture.coinbase.address() );
 
@@ -6526,7 +6524,7 @@ BOOST_AUTO_TEST_CASE( CTXTransactionAfterRevert ) {
 }
 
 BOOST_AUTO_TEST_CASE( CTXOutOfBlockGasLimit ) {
-    JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true, false, -1, {{ "contractStorageLimit", "100000" }} );
+    JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true );
 
     dev::eth::g_skaleHost = fixture.client->skaleHost();
 
@@ -7176,8 +7174,7 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
 
     Json::FastWriter fastWriter;
     std::string config = fastWriter.write( ret );
-    JsonRpcFixture fixture(
-        config, true, true, false, false, false, -1, { { "contractStorageLimit", "1000000" } } );
+    JsonRpcFixture fixture( config );
 
     dev::eth::simulateMining( *( fixture.client ), 20 );
     string senderAddress = toJS( fixture.coinbase.address() );
