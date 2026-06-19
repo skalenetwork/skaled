@@ -277,15 +277,15 @@ private:
     Logger m_loggerWarning{ createLogger( VerbosityWarning, "Executive" ) };
 
 #ifdef BITE
-	/**
-	 * @brief Refund unused gas by CTX transactions to smart contract balance
-	 * that originated it ( `.to` field of CTX). Also sets nonce of ephemeral 
+    /**
+     * @brief Refund unused gas by CTX transactions to smart contract balance
+     * that originated it ( `.to` field of CTX). Also sets nonce of ephemeral
      * CTX sender to 0.
-	 * This is done to avoid locking user funds in ephemeral CTX accounts,
-	 * as well as keeping storage of those accounts clean.
-	 * Valid under Bite2Patch
-	 */
-	void refundCTXAndResetEphemeralSenderNonce(); 
+     * This is done to avoid locking user funds in ephemeral CTX accounts,
+     * as well as keeping storage of those accounts clean.
+     * Valid under Bite2Patch
+     */
+    void refundCTXAndResetEphemeralSenderNonce();
 #endif
 };
 

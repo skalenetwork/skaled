@@ -202,10 +202,10 @@ DEFINE_SIMPLE_PATCH( Bite2Patch );
 /*
  * Purpose: Refund unused gas by CTX transactions to smart contract balance
  * that originated it ( `.to` field of CTX).
- * This is done to avoid locking user funds in ephemeral CTX accounts, 
+ * This is done to avoid locking user funds in ephemeral CTX accounts,
  * as well as keeping storage of those accounts clean.
  * Valid under Bite2Patch
-*/
+ */
 DEFINE_SIMPLE_PATCH( RefundCTXPatch );
 #endif  // BITE
 

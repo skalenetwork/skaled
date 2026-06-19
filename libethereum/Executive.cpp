@@ -730,8 +730,8 @@ bool Executive::finalize() {
         m_s.addBalance( m_envInfo.author(), feesEarned );
 
 #ifdef BITE
-        // no need to put it under Bite2Patch - if isCTX() is true, then Bite2Patch must have been enabled,
-        // since CTXs are only supported in Bite2Patch
+        // no need to put it under Bite2Patch - if isCTX() is true, then Bite2Patch must have been
+        // enabled, since CTXs are only supported in Bite2Patch
         if ( m_t.isCTX() && RefundCTXPatch::isEnabledWhen( m_envInfo.committedBlockTimestamp() ) ) {
             refundCTXAndResetEphemeralSenderNonce();
         }
