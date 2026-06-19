@@ -7174,7 +7174,8 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
 
     Json::FastWriter fastWriter;
     std::string config = fastWriter.write( ret );
-    JsonRpcFixture fixture( config );
+    JsonRpcFixture fixture(
+        config, true, true, false, false, false, -1, { { "contractStorageLimit", "1000000" } } );
 
     dev::eth::simulateMining( *( fixture.client ), 20 );
     string senderAddress = toJS( fixture.coinbase.address() );
