@@ -1010,10 +1010,13 @@ BOOST_AUTO_TEST_CASE( consumptionWithReverts ) {
     while ( !CorrectForkInPowPatch::isEnabledInWorkingBlock() )
         usleep( 100 );
 
-    u256 estimate = testClient
-                        ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
-                            GasEstimationCallback() )
-                        .first;
+    u256 estimate;
+    testClient->withBlockImportBarrier( [&]() {
+        estimate = testClient
+                       ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
+                           GasEstimationCallback() )
+                       .first;
+    } );
 
     BOOST_CHECK_EQUAL( estimate, u256( maxGas ) );
 
@@ -1021,10 +1024,12 @@ BOOST_AUTO_TEST_CASE( consumptionWithReverts ) {
     data =
         jsToBytes( "0x20987767000000000000000000000000000000000000000000000000000000000000c350" );
 
-    estimate = testClient
-                   ->estimateGas(
-                       from, 0, contractAddress, data, maxGas, 1000000, GasEstimationCallback() )
-                   .first;
+    testClient->withBlockImportBarrier( [&]() {
+        estimate = testClient
+                       ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
+                           GasEstimationCallback() )
+                       .first;
+    } );
 
     BOOST_CHECK_EQUAL( estimate, u256( maxGas ) );
 
@@ -1032,10 +1037,12 @@ BOOST_AUTO_TEST_CASE( consumptionWithReverts ) {
     data =
         jsToBytes( "0xfdde8d66000000000000000000000000000000000000000000000000000000000000c350" );
 
-    estimate = testClient
-                   ->estimateGas(
-                       from, 0, contractAddress, data, maxGas, 1000000, GasEstimationCallback() )
-                   .first;
+    testClient->withBlockImportBarrier( [&]() {
+        estimate = testClient
+                       ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
+                           GasEstimationCallback() )
+                       .first;
+    } );
 
     BOOST_CHECK_EQUAL( estimate, u256( 121632 ) );
 }
