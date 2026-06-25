@@ -160,6 +160,16 @@ void ExtVM::setStore( u256 _n, u256 _v ) {
 CreateResult ExtVM::create( u256 _endowment, u256& io_gas, bytesConstRef _code, Instruction _op,
     u256 _salt, OnOpFunc const& _onOp ) {
     if ( evmSchedule().eip2929Mode ) {
+        // EIP-2681: an account nonce is capped at 2^64-1. If the creator's nonce is already at the
+        // maximum it cannot be incremented, so the CREATE/CREATE2 aborts immediately. This check
+        // must precede warming the would-be contract address (EIP-2929), matching go-ethereum's
+        // ordering (the nonce-overflow check runs before AddAddressToAccessList). Returning here
+        // with io_gas untouched leaves the address cold and refunds the forwarded gas to the
+        // caller, and the sender nonce is left unchanged.
+        static u256 const c_maxNonce = ( u256{ 1 } << 64 ) - 1;
+        if ( m_s.getNonce( myAddress ) >= c_maxNonce )
+            return { EVMC_FAILURE, {}, {} };
+
         Address createdAddress;
         if ( _op == Instruction::CREATE ) {
             u256 nonce = m_s.getNonce( myAddress );
