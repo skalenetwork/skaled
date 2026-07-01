@@ -2,6 +2,8 @@
 Hardfork-support test suite.
 
 Provides deploy() and run_tests() entry points called by the top-level run.py.
+Runs local EIP contract checks and, when configured, selected ethereum/execution-specs
+execute-remote workloads against each endpoint.
 """
 
 import logging
@@ -16,6 +18,7 @@ from result import TestResult
 logger = logging.getLogger("hardfork-support.suite")
 
 SUITE_DIR = Path(__file__).resolve().parent
+REPO_ROOT = SUITE_DIR.parent.parent.parent
 
 
 def _load_run_eip_tests():
@@ -29,6 +32,136 @@ def _load_run_eip_tests():
 
 
 run_eip_tests = _load_run_eip_tests()
+
+
+def _tail_file(path: Path, max_lines: int = 120) -> str:
+    try:
+        lines = path.read_text(errors="replace").splitlines()
+    except OSError as exc:
+        return f"<failed to read {path}: {exc}>"
+    return "\n".join(lines[-max_lines:])
+
+
+def _run_execution_specs(label: str, url: str, w3, private_key: str, cfg: dict) -> TestResult:
+    execution_cfg = cfg.get("execution_specs", {})
+    paths = [str(path) for path in execution_cfg.get("paths", [])]
+    test_name = f"execution-specs-{execution_cfg.get('fork', 'Berlin')}"
+
+    if not paths:
+        return TestResult(
+            name=test_name,
+            passed=False,
+            message="[execution_specs].paths must not be empty",
+        )
+    if not private_key:
+        return TestResult(
+            name=test_name,
+            passed=False,
+            message="private_key is required for execution-specs execute remote",
+        )
+
+    project_dir = REPO_ROOT / str(
+        execution_cfg.get("project_dir", "test/api-tests/execution-specs")
+    )
+    if not project_dir.is_dir():
+        return TestResult(
+            name=test_name,
+            passed=False,
+            message=(
+                f"execution-specs checkout not found: {project_dir}; "
+                "initialize submodules with git submodule update --init --recursive"
+            ),
+        )
+
+    fork = str(execution_cfg.get("fork", "Berlin"))
+    timeout_sec = int(execution_cfg.get("timeout_sec", 1200))
+    cmd = [
+        "uv", "run", "--locked", "--project", ".",
+        "execute", "remote",
+        "--fork", fork,
+        "--rpc-endpoint", url,
+        "--chain-id", str(w3.eth.chain_id),
+        "--tx-wait-timeout", str(int(execution_cfg.get("tx_wait_timeout", 120))),
+        "--max-tx-per-batch", str(int(execution_cfg.get("max_tx_per_batch", 50))),
+        "--default-max-fee-per-blob-gas",
+        str(int(execution_cfg.get("default_max_fee_per_blob_gas", 1))),
+    ]
+
+    max_gas_per_test = execution_cfg.get("max_gas_per_test")
+    if max_gas_per_test is not None:
+        cmd.extend(["--max-gas-per-test", str(int(max_gas_per_test))])
+
+    eoa_start = execution_cfg.get("eoa_start")
+    if eoa_start is not None:
+        cmd.extend(["--eoa-start", str(int(eoa_start))])
+
+    cmd.extend(str(arg) for arg in execution_cfg.get("extra_args", []))
+    cmd.extend(paths)
+
+    log_dir = SUITE_DIR / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    safe_label = label.replace("/", "_").replace(":", "_")
+    log_path = log_dir / f"execution-specs-{safe_label}.log"
+
+    logger.info(
+        "Running execution-specs against %s (%s, fork=%s, paths=%s)",
+        label, url, fork, paths,
+    )
+    run_env = os.environ.copy()
+    run_env["RPC_SEED_KEY"] = private_key
+    run_env.pop("UV_EXCLUDE_NEWER", None)
+    run_env.pop("UV_EXCLUDE_NEWER_PACKAGE", None)
+    run_env.pop("VIRTUAL_ENV", None)
+    run_env["UV_NO_CONFIG"] = "1"
+
+    with open(log_path, "w") as log_fd:
+        log_fd.write("$ " + " ".join(cmd) + "\n\n")
+        log_fd.flush()
+        try:
+            result = subprocess.run(
+                cmd,
+                cwd=project_dir,
+                stdout=log_fd,
+                stderr=subprocess.STDOUT,
+                text=True,
+                timeout=timeout_sec,
+                check=False,
+                env=run_env,
+            )
+        except FileNotFoundError:
+            return TestResult(
+                name=test_name,
+                passed=False,
+                message="uv executable not found; install uv to run execution-specs tests",
+            )
+        except subprocess.TimeoutExpired:
+            return TestResult(
+                name=test_name,
+                passed=False,
+                message=(
+                    f"execution-specs timed out after {timeout_sec}s; "
+                    f"log tail:\n{_tail_file(log_path)}"
+                ),
+                details={"log": str(log_path)},
+            )
+
+    if result.returncode != 0:
+        return TestResult(
+            name=test_name,
+            passed=False,
+            message=(
+                f"execution-specs failed with rc={result.returncode}; "
+                f"log tail:\n{_tail_file(log_path)}"
+            ),
+            details={"log": str(log_path)},
+        )
+
+    return TestResult(
+        name=test_name,
+        passed=True,
+        message=f"passed; log: {log_path}",
+        details={"log": str(log_path)},
+    )
 
 
 def deploy(cfg: dict, env):
@@ -91,6 +224,8 @@ def run_tests(cfg: dict, env) -> dict[str, list[TestResult]]:
     iterations = eip_cfg.get("iterations", 1)
     eips_raw = eip_cfg.get("eips", []) or None
     gas_limit = eip_cfg.get("gas_limit", 3_000_000)
+    execution_cfg = cfg.get("execution_specs", {})
+    execution_specs_enabled = bool(execution_cfg.get("enabled", False))
     private_key = cfg["type"].get("private_key", "")
     sol_dir = str(SUITE_DIR / "sol")
 
@@ -161,6 +296,24 @@ def run_tests(cfg: dict, env) -> dict[str, list[TestResult]]:
             except Exception as e:
                 logger.error("Error on %s: %s", label, e, exc_info=True)
                 endpoint_failed[label] = f"{type(e).__name__}: {e}"
+
+    if execution_specs_enabled:
+        logger.info("Running execution-specs workload")
+        for label, url in env.rpc_urls.items():
+            w3 = env.web3s.get(label)
+            if w3 is None:
+                tr = TestResult(
+                    name=f"execution-specs-{execution_cfg.get('fork', 'Berlin')}",
+                    passed=False,
+                    message=f"No Web3 connection for endpoint {label}",
+                )
+            else:
+                tr = _run_execution_specs(label, url, w3, private_key, cfg)
+
+            by_label_and_name.setdefault(label, {})[tr.name] = tr
+            logger.info(
+                "  %s: %s — %s", tr.name, "PASS" if tr.passed else "FAIL", tr.message,
+            )
 
     for label, err in endpoint_failed.items():
         label_results = by_label_and_name.setdefault(label, {})
