@@ -33,7 +33,7 @@ use_sgx = false
 #   git checkout v5.2.0 && cmake -H. -Bbuild-v520 -DCMAKE_BUILD_TYPE=Release \
 #     && cmake --build build-v520 --target skaled -- -j4
 v510_binary = "bin-5-1-0"
-v520_binary = "bin-5-2-0-fix-1"
+v520_binary = "bin-5-2-0"
 
 # Ports: 5.1.0 primary on 5334, 5.2.0 sync node on 5344.
 primary_http_port = 5334

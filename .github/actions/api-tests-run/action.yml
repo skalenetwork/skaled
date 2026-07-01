@@ -28,20 +28,27 @@ runs:
         set -euo pipefail
         uv sync --locked --project test/api-tests
 
+    - name: Sync execution-specs dependencies
+      if: ${{ inputs.suite == 'hardfork-support' }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        UV_NO_CONFIG=1 uv sync --locked --project test/api-tests/execution-specs
+
     - name: Render run.toml from template
       shell: bash
       env:
         FUNC_TEST_PRIVATE_KEY: ${{ env.FUNC_TEST_PRIVATE_KEY }}
         SKALED_BINARY: ${{ inputs.skaled_binary }}
         BUILD_SKALED: ${{ inputs.build_skaled }}
-      run: uv run --project test/api-tests python3 test/api-tests/render_config.py
+      run: uv run --locked --project test/api-tests python3 test/api-tests/render_config.py
 
     - name: Run API test suite
       shell: bash
       run: |
         set -euo pipefail
         cd test/api-tests
-        if ! uv run --project . run.py --config run.toml --suite "${{ inputs.suite }}"; then
+        if ! uv run --locked --project . run.py --config run.toml --suite "${{ inputs.suite }}"; then
           echo "::error::Test execution failed"
           for log_dir in logs */logs; do
             [ -d "${log_dir}" ] || continue
