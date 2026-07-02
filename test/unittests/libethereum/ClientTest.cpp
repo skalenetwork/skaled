@@ -108,7 +108,6 @@ struct FixtureCommon {
 class TestClientFixture : public TestOutputHelperFixture {
 public:
     TestClientFixture( const std::string& _config = "" ) try {
-
         std::shared_ptr< ChainParams > chainParams = std::make_shared< ChainParams >();
         if ( _config != "" ) {
             Json::Value ret;
@@ -119,8 +118,7 @@ public:
             Json::FastWriter fastWriter;
             std::string config = fastWriter.write( ret );
             chainParams->loadConfig( config );
-        }
-        else {
+        } else {
             chainParams->nodeInfo.port = chainParams->nodeInfo.port6 = rand_port;
             chainParams->sChain.nodes[0].port = chainParams->sChain.nodes[0].port6 = rand_port;
         }
@@ -136,30 +134,22 @@ public:
 
         auto nodesState = contents( m_tmpDir.path() / fs::path( "network.rlp" ) );
 
-        //        bool testingMode = true;
-        //        m_web3.reset( new dev::WebThreeDirect( WebThreeDirect::composeClientVersion( "eth"
-        //        ), dir,
-        //            dir, chainParams, WithExisting::Kill, {"eth"}, testingMode ) );
-
         auto monitor = make_shared< InstanceMonitor >( "test" );
 
-        setenv("DATA_DIR", m_tmpDir.path().c_str(), 1);
+        setenv( "DATA_DIR", m_tmpDir.path().c_str(), 1 );
         m_ethereum.reset( new eth::ClientTest( chainParams, ( int ) chainParams->getNetworkId(),
             shared_ptr< GasPricer >(), NULL, monitor, m_tmpDir.path(), WithExisting::Kill ) );
 
         m_ethereum->setAuthor( coinbase.address() );
 
-        //        m_ethereum.reset(
-        //            new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr<
-        //            GasPricer >(),
-        //                dir, dir, WithExisting::Kill, TransactionQueue::Limits{100000, 1024} ) );
-
-        // wait for 1st block - because it's always empty
         std::promise< void > block_promise;
         auto importHandler = m_ethereum->setOnBlockImport(
             [&block_promise]( BlockHeader const& ) { block_promise.set_value(); } );
 
         m_ethereum->injectSkaleHost();
+#ifdef BITE
+        dev::eth::g_skaleHost = m_ethereum->skaleHost();
+#endif
         m_ethereum->startWorking();
 
         block_promise.get_future().wait();
@@ -227,18 +217,26 @@ public:
         return Transaction( ts, ar.second );
     }
 
-#ifdef FAIR
     ~TestClientFixture() {
+#ifdef FAIR
         const auto deadline = chrono::steady_clock::now() + chrono::seconds( 10 );
-        while ( m_ethereum->skaleHost()->ignoreNewBlocksEnabled() && chrono::steady_clock::now() < deadline ) {
+        while ( m_ethereum->skaleHost()->ignoreNewBlocksEnabled() &&
+                chrono::steady_clock::now() < deadline ) {
             usleep( 10 );
         }
         if ( m_ethereum->skaleHost()->isConsesusUpdateHappened() )
             m_ethereum->skaleHost()->handleConsensusUpdate();
         accountHolder.reset();
+        if ( g_skaleHost )
+            g_skaleHost.reset();
         m_ethereum.reset();
+#else
+#ifdef BITE
+        if ( g_skaleHost )
+            g_skaleHost.reset();
+#endif   // BITE
+#endif   // FAIR
     }
-#endif
 
 private:
     TransientDirectory m_tmpDir;
@@ -302,14 +300,9 @@ public:
 
         auto monitor = make_shared< InstanceMonitor >( "test" );
 
-        setenv("DATA_DIR", m_tmpDir.path().c_str(), 1);
+        setenv( "DATA_DIR", m_tmpDir.path().c_str(), 1 );
         m_ethereum.reset( new eth::ClientTest( chainParams, ( int ) chainParams->getNetworkId(),
             shared_ptr< GasPricer >(), mgr, monitor, m_tmpDir.path(), WithExisting::Kill ) );
-
-        //        m_ethereum.reset(
-        //            new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr<
-        //            GasPricer >(),
-        //                dir, dir, WithExisting::Kill, TransactionQueue::Limits{100000, 1024} ) );
 
         // wait for 1st block - because it's always empty
         std::promise< void > block_promise;
@@ -317,6 +310,9 @@ public:
             [&block_promise]( BlockHeader const& ) { block_promise.set_value(); } );
 
         m_ethereum->injectSkaleHost();
+#ifdef BITE
+        dev::eth::g_skaleHost = m_ethereum->skaleHost();
+#endif
         m_ethereum->startWorking();
 
         block_promise.get_future().wait();
@@ -337,6 +333,10 @@ public:
     fs::path getTmpDataDir() { return m_tmpDir.path(); }
 
     ~TestClientSnapshotsFixture() {
+#ifdef BITE
+        if ( dev::eth::g_skaleHost )
+            dev::eth::g_skaleHost.reset();
+#endif
         m_ethereum.reset( 0 );
         const char* NC = getenv( "NC" );
         if ( NC )
@@ -436,7 +436,8 @@ static std::string const c_genesisInfoSkaleTest = std::string() +
       "nodeName": "Node1",
       "nodeID": 1112,
       "bindIP": "127.0.0.1",
-      "basePort": )E" + std::to_string( rand_port ) + R"E(,
+      "basePort": )E" + std::to_string( rand_port ) +
+                                                  R"E(,
       "logLevel": "trace",
       "logLevelProposal": "trace",
       "testSignatures": true
@@ -448,7 +449,9 @@ static std::string const c_genesisInfoSkaleTest = std::string() +
         "emptyBlockIntervalMs": -1,
         "correctForkInPowPatchTimestamp": 1,
         "nodes": [
-          { "nodeID": 1112, "ip": "127.0.0.1", "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "basePort": )E"+std::to_string( rand_port ) + R"E(, "schainIndex" : 1, "publicKey": "0xfa"}
+          { "nodeID": 1112, "ip": "127.0.0.1", "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "basePort": )E" +
+                                                  std::to_string( rand_port ) +
+                                                  R"E(, "schainIndex" : 1, "publicKey": "0xfa"}
         ]
     }
   },
@@ -471,8 +474,9 @@ static std::string const c_genesisInfoSkaleTest = std::string() +
 }
 )E";
 #else
-static std::string const c_genesisInfoSkaleTest = std::string() +
-                                                  R"E(
+static std::string const c_genesisInfoSkaleTest =
+    std::string() +
+    R"E(
 {
     "sealEngine": "Ethash",
     "params": {
@@ -512,8 +516,9 @@ static std::string const c_genesisInfoSkaleTest = std::string() +
       "nodeName": "Node1",
       "nodeID": 1112,
       "bindIP": "127.0.0.1",
-      "basePort": )E" + std::to_string( rand_port ) +
-                                                  R"E(,
+      "basePort": )E" +
+    std::to_string( rand_port ) +
+    R"E(,
       "logLevel": "trace",
       "logLevelProposal": "trace",
       "testSignatures": true
@@ -531,7 +536,7 @@ static std::string const c_genesisInfoSkaleTest = std::string() +
                         "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea105a3d21845e5660bc3d4e7c82e7af1daa3baad393b1521467"
                     ]
                 },
-                "finish_ts": 1,
+                "finish_ts": null,
                 "bls_public_key": {
                     "blsPublicKey0": "15959969554621958245201075983340071881770733084910870228938077786643587385029",
                     "blsPublicKey1": "7970122607051572307517094692346020360016825923464107614135327251488152616550",
@@ -567,8 +572,8 @@ static std::string const c_genesisInfoSkaleTest = std::string() +
             "2": {
                 "group": [
               { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )E" +
-                                                  std::to_string( rand_port ) +
-                                                  R"E(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
+    std::to_string( rand_port ) +
+    R"E(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
                 ]
             }
         }
@@ -1036,7 +1041,8 @@ BOOST_AUTO_TEST_SUITE_END()
 BOOST_AUTO_TEST_SUITE( getHistoricNodesData )
 
 #ifndef FAIR
-static std::string const c_genesisInfoSkaleIMABLSPublicKeyTest = std::string() + R"E(
+static std::string const c_genesisInfoSkaleIMABLSPublicKeyTest =
+    std::string() + R"E(
 {
     "sealEngine": "Ethash",
     "params": {
@@ -1075,7 +1081,8 @@ static std::string const c_genesisInfoSkaleIMABLSPublicKeyTest = std::string() +
       "nodeName": "Node1",
       "nodeID": 1112,
       "bindIP": "127.0.0.1",
-      "basePort": )E" + std::to_string( rand_port ) + R"E(,
+      "basePort": )E" +
+    std::to_string( rand_port ) + R"E(,
       "logLevel": "trace",
       "logLevelProposal": "trace",
       "testSignatures": true
@@ -1119,7 +1126,8 @@ static std::string const c_genesisInfoSkaleIMABLSPublicKeyTest = std::string() +
             }
         },
         "nodes": [
-          { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )E"+std::to_string( rand_port ) + R"E(, "schainIndex" : 1, "publicKey": "0xfa"}
+          { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )E" +
+    std::to_string( rand_port ) + R"E(, "schainIndex" : 1, "publicKey": "0xfa"}
         ]
     }
   },
@@ -1271,7 +1279,9 @@ BOOST_AUTO_TEST_CASE( initAndUpdateHistoricConfigFields ) {
     };
 
     BOOST_REQUIRE( testClient->getCurrentBLSPublicKey() == imaBLSPublicKeyOnStartUp );
-    BOOST_REQUIRE_EQUAL( testClient->getHistoricNodePublicKey( 0 ) , "0x3a581d62b12232dade30c3710215a271984841657449d1f474295a13737b778266f57e298f123ae80cbab7cc35ead1b62a387556f94b326d5c65d4a7aa2abcba" );
+    BOOST_REQUIRE_EQUAL( testClient->getHistoricNodePublicKey( 0 ),
+        "0x3a581d62b12232dade30c3710215a271984841657449d1f474295a13737b778266f57e298f123ae80cbab7cc"
+        "35ead1b62a387556f94b326d5c65d4a7aa2abcba" );
     BOOST_REQUIRE_EQUAL( testClient->getHistoricNodeId( 0 ), "26" );
     BOOST_REQUIRE_EQUAL( testClient->getHistoricNodeIndex( 0 ), "3" );
 
@@ -1284,7 +1294,10 @@ BOOST_AUTO_TEST_CASE( initAndUpdateHistoricConfigFields ) {
 
     testClient->importTransactionsAsBlock( Transactions(),
 #ifdef BITE
-    make_shared< DecryptedTransactionFieldsMap >(),
+       DecryptedTransactions{
+               std::make_shared< DecryptedCTXTxsMap >(),
+               std::make_shared< DecryptedRegularTxsMap >()
+           },
 #endif
         1000,
 #ifdef FAIR
@@ -1300,7 +1313,9 @@ BOOST_AUTO_TEST_CASE( initAndUpdateHistoricConfigFields ) {
     sleep( 3 );
 
     BOOST_REQUIRE( testClient->getCurrentBLSPublicKey() == imaBLSPublicKeyAfterBlock );
-    BOOST_REQUIRE_EQUAL( testClient->getHistoricNodePublicKey( 0 ), "0x6180cde2cbbcc6b6a17efec4503a7d4316f8612f411ee171587089f770335f484003ad236c534b9afa82befc1f69533723abdb6ec2601e582b72dcfd7919338b" );
+    BOOST_REQUIRE_EQUAL( testClient->getHistoricNodePublicKey( 0 ),
+        "0x6180cde2cbbcc6b6a17efec4503a7d4316f8612f411ee171587089f770335f484003ad236c534b9afa82befc"
+        "1f69533723abdb6ec2601e582b72dcfd7919338b" );
     BOOST_REQUIRE_EQUAL( testClient->getHistoricNodeId( 0 ), "30" );
     BOOST_REQUIRE_EQUAL( testClient->getHistoricNodeIndex( 0 ), "0" );
 }
@@ -1339,7 +1354,8 @@ static std::string const c_skaleConfigString =
             "nodeName": "TestNode",
             "nodeID": 1112,
             "bindIP": "127.0.0.1",
-            "basePort": )E" + std::to_string( rand_port ) + R"E(,
+            "basePort": )E" +
+    std::to_string( rand_port ) + R"E(,
             "testSignatures": true
         },
         "sChain": {
@@ -1348,7 +1364,9 @@ static std::string const c_skaleConfigString =
             "snapshotIntervalSec": 5,
             "emptyBlockIntervalMs": 4000,
             "nodes": [
-              { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )E"+std::to_string( rand_port ) + R"E(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
+              { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )E" +
+    std::to_string( rand_port ) +
+    R"E(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
             ]
         }
     },
@@ -1409,8 +1427,8 @@ static std::string const c_skaleConfigString =
                 "1": {
                     "group": [
                   { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )E" +
-        std::to_string( rand_port ) +
-        R"E(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
+    std::to_string( rand_port ) +
+    R"E(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
                     ]
                 },
                 "-1": {}

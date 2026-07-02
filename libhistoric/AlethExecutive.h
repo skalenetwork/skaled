@@ -48,7 +48,7 @@ public:
     /// Simple constructor; executive will operate on given state, with the given environment info.
     AlethExecutive( dev::eth::HistoricState& _s, EnvInfo const& _envInfo,
         ChainOperationParams const& _chainParams, unsigned _level = 0
-#ifdef BITE2
+#ifdef BITE
         ,
         const dev::u256& _txnIndex = dev::u256( -1 )
 #endif
@@ -57,7 +57,7 @@ public:
           m_envInfo( _envInfo ),
           m_depth( _level ),
           m_chainParams( _chainParams )
-#ifdef BITE2
+#ifdef BITE
           ,
           m_txnIndex( _txnIndex )
 #endif
@@ -186,7 +186,7 @@ private:
     Address m_newAddress;
     size_t m_savepoint = 0;
 
-#ifdef BITE2
+#ifdef BITE
     dev::u256 m_txnIndex = dev::u256( -1 );
 #endif
 

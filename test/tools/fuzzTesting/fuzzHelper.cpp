@@ -31,7 +31,7 @@
 
 using namespace dev;
 using namespace std;
-const static std::array< eth::Instruction, 47 > invalidOpcodes{{eth::Instruction::INVALID,
+const static std::array< eth::Instruction, 47 > invalidOpcodes{ { eth::Instruction::INVALID,
     eth::Instruction::PUSHC, eth::Instruction::JUMPC, eth::Instruction::JUMPCI,
     eth::Instruction::JUMPTO, eth::Instruction::JUMPIF, eth::Instruction::JUMPSUB,
     eth::Instruction::JUMPV, eth::Instruction::JUMPSUBV, eth::Instruction::BEGINSUB,
@@ -45,7 +45,7 @@ const static std::array< eth::Instruction, 47 > invalidOpcodes{{eth::Instruction
     eth::Instruction::XROR, eth::Instruction::XPUSH, eth::Instruction::XMLOAD,
     eth::Instruction::XMSTORE, eth::Instruction::XSLOAD, eth::Instruction::XSSTORE,
     eth::Instruction::XVTOWIDE, eth::Instruction::XWIDETOV, eth::Instruction::XPUT,
-    eth::Instruction::XGET, eth::Instruction::XSWIZZLE, eth::Instruction::XSHUFFLE}};
+    eth::Instruction::XGET, eth::Instruction::XSWIZZLE, eth::Instruction::XSHUFFLE } };
 
 namespace dev {
 namespace test {
@@ -227,7 +227,7 @@ std::string RandomCodeBase::generate( int _maxOpNumber, RandomCodeOptions const&
             opcode = makeOpcodeDefined( opcode );
             eth::Instruction inst = ( eth::Instruction ) opcode;
             eth::InstructionInfo info = eth::instructionInfo( inst );
-            if ( std::string{info.name}.find( "PUSH" ) != std::string::npos ) {
+            if ( std::string{ info.name }.find( "PUSH" ) != std::string::npos ) {
                 code += toCompactHex( opcode );
                 code += fillArguments( inst, _options );
             } else {

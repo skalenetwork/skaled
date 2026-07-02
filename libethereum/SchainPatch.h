@@ -185,6 +185,16 @@ DEFINE_SIMPLE_PATCH( CurrentBlockRandomPatch );
  */
 DEFINE_AMNESIC_PATCH( GroupIndexInitPatch );
 
+#ifdef BITE
+/*
+ * Purpose: gate BITE2 features (CTX precompileds and CTX transaction detection)
+ * behind a timestamp-controlled patch so nodes activate them synchronously.
+ * When not enabled: BITE2 precompileds (submitCTX, encryptTE, encryptECIES)
+ * return a revert and CTX status is not set in TransactionBase constructor.
+ */
+DEFINE_SIMPLE_PATCH( Bite2Patch );
+#endif  // BITE
+
 /*
  * Purpose: enable state mode so the database commit is executed only once per block.
  */

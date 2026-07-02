@@ -60,8 +60,7 @@ public:
             for ( size_t j = 0; j < _chainParams.sChain.t; ++j ) {
                 blsPrivateKeys_[i] =
                     blsPrivateKeys_[i] +
-                    coeffs[j] *
-                        libBLS::algebra::power( libBLS::algebra::FrScalar( i + 1 ), j );
+                    coeffs[j] * libBLS::algebra::power( libBLS::algebra::FrScalar( i + 1 ), j );
             }
         }
 
@@ -405,18 +404,15 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
             shared_ptr< GasPricer >(), NULL, monitor, boost::filesystem::path( BTRFS_DIR_PATH ),
             WithExisting::Kill ) );
 
-        //        client.reset(
-        //            new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr<
-        //            GasPricer >(),
-        //                tempDir.path(), "", WithExisting::Kill, TransactionQueue::Limits{100000,
-        //                1024} ) );
-
         // wait for 1st block to prevent race conditions in UnsafeRegion
         std::promise< void > block_promise;
         auto importHandler = client->setOnBlockImport(
             [&block_promise]( BlockHeader const& ) { block_promise.set_value(); } );
 
         client->injectSkaleHost();
+#ifdef BITE
+        dev::eth::g_skaleHost = client->skaleHost();
+#endif
         client->startWorking();
 
         block_promise.get_future().wait();
@@ -458,6 +454,10 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
             testIpcClient = nullptr;
         }
         rpcServer.reset();
+#ifdef BITE
+        if ( g_skaleHost )
+            g_skaleHost.reset();
+#endif
         client.reset();
 
         const char* NC = getenv( "NC" );
@@ -514,10 +514,9 @@ BOOST_AUTO_TEST_CASE( PositiveTest ) {
     std::vector< size_t > excpected = { 0, 1, 2 };
     BOOST_REQUIRE( res == excpected );
     BOOST_REQUIRE( test_agent.getVotedHash().first == hash );
-    BOOST_REQUIRE(
-        test_agent.getVotedHash().second ==
-        libBLS::Bls::Signing( libBLS::algebra::hashToG1( hash.asArray() ),
-            test_agent.secret_as_is ) );
+    BOOST_REQUIRE( test_agent.getVotedHash().second ==
+                   libBLS::Bls::Signing(
+                       libBLS::algebra::hashToG1( hash.asArray() ), test_agent.secret_as_is ) );
 }
 
 BOOST_AUTO_TEST_CASE( WrongHash ) {

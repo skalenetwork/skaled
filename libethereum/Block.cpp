@@ -45,6 +45,11 @@
 
 #include <skutils/console_colors.h>
 
+#ifdef BITE
+#include <libethereum/Precompiled.h>
+#include <libethereum/SkaleHost.h>
+#endif
+
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -75,7 +80,6 @@ Block::Block( BlockChain const& _bc, boost::filesystem::path const& _dbPath,
     noteChain( _bc );
     m_previousBlock.clear();
     m_currentBlock.clear();
-    //	assert(m_state.root() == m_previousBlock.stateRoot());
 }
 
 Block::Block( const BlockChain& _bc, h256 const& _hash, const State& _state, BaseState /*_bs*/,
@@ -106,10 +110,17 @@ Block::Block( const BlockChain& _bc, h256 const& _hash, const State& _state, Bas
     if ( !bi.number() ) {
         // Genesis required:
         // We know there are no transactions, so just populate directly.
-
-        //        m_state = State(m_state.accountStartNonce(), m_state.db(),
-        //            BaseState::Empty);  // TODO: try with PreExisting.
         sync( _bc, _hash, bi );
+    } else {
+        auto parentHash = bi.parentHash();
+        if ( !_bc.isKnown( parentHash ) ) {
+            // Might be worth throwing here.
+            BOOST_LOG( m_loggerWarning )
+                << "Invalid parent hash given for population " << parentHash;
+            BOOST_THROW_EXCEPTION( BlockNotFound() << errinfo_target( parentHash ) );
+        }
+        auto pb = _bc.block( parentHash );
+        m_previousBlock = BlockHeader( pb );
     }
 }
 
@@ -123,7 +134,12 @@ Block::Block( Block const& _s )
       m_currentBlock( _s.m_currentBlock ),
       m_currentBytes( _s.m_currentBytes ),
       m_author( _s.m_author ),
-      m_sealEngine( _s.m_sealEngine ) {
+      m_sealEngine( _s.m_sealEngine )
+#ifdef BITE
+      ,
+      m_ctxHashesLists( _s.m_ctxHashesLists )
+#endif
+{
     m_committedToSeal = false;
 }
 
@@ -140,6 +156,10 @@ Block& Block::operator=( Block const& _s ) {
     m_currentBytes = _s.m_currentBytes;
     m_author = _s.m_author;
     m_sealEngine = _s.m_sealEngine;
+
+#ifdef BITE
+    m_ctxHashesLists = _s.m_ctxHashesLists;
+#endif
 
     m_precommit = m_state;
     m_committedToSeal = false;
@@ -168,6 +188,9 @@ void Block::resetCurrent( int64_t _timestamp ) {
     m_transactions.clear();
     m_receipts.clear();
     m_transactionSet.clear();
+#ifdef BITE
+    m_ctxHashesLists.clear();
+#endif
     m_currentBlock = BlockHeader();
     m_currentBlock.setAuthor( m_author );
     m_currentBlock.setTimestamp( _timestamp );  // max( m_previousBlock.timestamp() + 1, _timestamp
@@ -241,8 +264,6 @@ PopulationStatistics Block::populateFromChain(
         // Genesis required:
         // We know there are no transactions, so just populate directly.
         std::logic_error( "Not implemented" );
-        //        m_state = State(m_state.accountStartNonce(), m_state.db(),
-        //            BaseState::Empty);  // TODO: try with PreExisting.
         sync( _bc, _h, bi );
     }
 
@@ -378,7 +399,6 @@ pair< TransactionReceipts, bool > Block::sync(
             if ( !m_transactionSet.count( t.sha3() ) ) {
                 try {
                     if ( t.gasPrice() >= _gp.ask( *this ) ) {
-                        //						Timer t;
                         execute( _bc.lastBlockHashes(), t, Permanence::Uncommitted );
 #ifdef FAIR
                         ret.first = m_receipts;
@@ -386,7 +406,6 @@ pair< TransactionReceipts, bool > Block::sync(
                         ret.first.push_back( m_receipts.back() );
 #endif
                         ++goodTxs;
-                        //						cnote << "TX took:" << t.elapsed() * 1000;
                     } else if ( t.gasPrice() < _gp.ask( *this ) * 9 / 10 ) {
                         BOOST_LOG( m_loggerDebug )
                             << t.sha3() << " Dropping El Cheapo transaction (<90% of ask price)";
@@ -422,7 +441,6 @@ pair< TransactionReceipts, bool > Block::sync(
                             << t.sha3()
                             << " Temporarily no gas left in current block (txs gas > "
                                "block's gas limit)";
-                        //_tq.drop(t.sha3());
                         // Temporarily no gas left in current block.
                         // OPTIMISE: could note this and then we don't evaluate until a block that
                         // does have the gas left. for now, just leave alone.
@@ -534,6 +552,11 @@ std::pair< TransactionReceipts, unsigned > Block::recoverFromReceipts(
         m_transactionSet.insert( tx.sha3() );
     }
     m_receipts = std::move( savedData->receipts );
+#ifdef BITE
+    // set CTXs from previous block to BITE2 queue
+    g_skaleHost->setBITE2QueueOnInit( std::move( savedData->ctxsCreatedInBlock ) );
+    m_pendingCtxs = g_skaleHost->pendingBITE2Transactions();
+#endif
 
     unsigned badCount = 0;
     u256 cumulativeGas = 0;
@@ -585,6 +608,10 @@ void Block::executeTransactions( BlockChain const& _bc, const Transactions& _tra
 
     TransactionReceipts savedReceipts = m_receipts;
 
+#ifdef BITE
+    m_ctxHashesLists.resize( _transactions.size() );
+#endif
+
     for ( unsigned i = 0; i < _transactions.size(); ++i ) {
         Transaction const& tr = _transactions[i];
         try {
@@ -611,6 +638,10 @@ void Block::executeTransactions( BlockChain const& _bc, const Transactions& _tra
             BOOST_LOG( m_loggerError ) << "FAILED transaction after consensus! " << ex.what();
         }
     }
+#ifdef BITE
+    // finalize BITE2 queue after executing all txns from current block
+    m_pendingCtxs = g_skaleHost->pendingBITE2Transactions();
+#endif
 }
 
 std::optional< TransactionReceipt > Block::executeSingleTransaction( BlockChain const& _bc,
@@ -647,6 +678,19 @@ std::optional< TransactionReceipt > Block::executeSingleTransaction( BlockChain 
     }
 
     ExecutionResult res = execute( _bc.lastBlockHashes(), _tx, _permanence, OnOpFunc(), _txIndex );
+
+#ifdef BITE
+    if ( res.excepted != TransactionException::None ) {
+        // clear all CTXs that were added by last tx
+        // because it was reverted
+        g_skaleHost->clearTempBITE2Transactions();
+    } else {
+        // get list of CTX hashes created by current txn
+        m_ctxHashesLists[_txIndex] = g_skaleHost->getBITE2HashesForCurrentTxn();
+        // commit CTXs from temporary to permanent
+        g_skaleHost->commitTempBITE2Transactions();
+    }
+#endif
 
     if ( !_context.singleCommitEnabled && !m_receipts.empty() &&
          !ClearPartialReceiptsPatch::isEnabledWhen( m_previousBlock.timestamp() ) ) {
@@ -710,8 +754,16 @@ void Block::saveStateChanges(
     createBlockSnapshot();
 
     if ( progressLog && _context.singleCommitEnabled ) {
+#ifdef BITE
+        CHECK_EXPRESSION( m_pendingCtxs );
+#endif
         progressLog->markBlockCommitCompleted(
-            m_currentBlock.number(), _context.receipts, m_currentBlock.timestamp() );
+            m_currentBlock.number(), _context.receipts, m_currentBlock.timestamp()
+#ifdef BITE
+                                                            ,
+            *m_pendingCtxs
+#endif
+        );
     }
 
     if ( !_context.singleCommitEnabled ) {
@@ -851,9 +903,6 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
     m_currentBlock.noteDirty();
     m_currentBlock = _block.info;
 
-    //	cnote << "playback begins:" << m_currentBlock.hash() << "(without: " <<
-    // m_currentBlock.hash(WithoutSeal) << ")"; 	cnote << m_state;
-
     RLP rlp( _block.block );
 
     vector< bytes > receipts;
@@ -885,7 +934,6 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
         InvalidReceiptsStateRoot ex;
         ex << Hash256RequirementError( m_currentBlock.receiptsRoot(), receiptsRoot );
         ex << errinfo_receipts( receipts );
-        //		ex << errinfo_vmtrace(vmTrace(_block.block, _bc, ImportRequirements::None));
         for ( auto const& receipt : m_receipts ) {
             if ( !receipt.hasStatusCode() ) {
                 BOOST_LOG( m_loggerWarning ) << "Skale does not support state root in receipt";
@@ -1014,16 +1062,6 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
     m_state.commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
                                           dev::eth::CommitBehaviour::KeepEmptyAccounts );
 
-    //    // Hash the state trie and check against the state_root hash in m_currentBlock.
-    //    if (m_currentBlock.stateRoot() != m_previousBlock.stateRoot() &&
-    //        m_currentBlock.stateRoot() != globalRoot())
-    //    {
-    //        auto r = globalRoot();
-    //        m_state.db().rollback();  // TODO: API in State for this?
-    //        BOOST_THROW_EXCEPTION(
-    //            InvalidStateRoot() << Hash256RequirementError(m_currentBlock.stateRoot(), r));
-    //    }
-
     return tdIncrease;
 }
 
@@ -1037,7 +1075,6 @@ ExecutionResult Block::executeHistoricCall( LastBlockHashesFace const& _lh, Tran
         if ( _tracer ) {
             onOp = _tracer->functionToExecuteOnEachOperation();
         }
-
 
         if ( isSealed() )
             BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
@@ -1058,7 +1095,7 @@ ExecutionResult Block::executeHistoricCall( LastBlockHashesFace const& _lh, Tran
 
                 auto resultReceipt = m_state.mutableHistoricState().execute(
                     envInfo, m_sealEngine->chainParams(), _t, skale::Permanence::Uncommitted, onOp
-#ifdef BITE2
+#ifdef BITE
                     ,
                     _transactionIndex
 #endif
@@ -1078,7 +1115,7 @@ ExecutionResult Block::executeHistoricCall( LastBlockHashesFace const& _lh, Tran
         } else {
             auto resultReceipt = m_state.mutableHistoricState().execute(
                 envInfo, m_sealEngine->chainParams(), _t, skale::Permanence::Reverted, onOp
-#ifdef BITE2
+#ifdef BITE
                 ,
                 _transactionIndex
 #endif
@@ -1130,7 +1167,7 @@ ExecutionResult Block::execute( LastBlockHashesFace const& _lh, Transaction cons
 
         // use fake receipt created above if execution throws!!
     } catch ( const TransactionException& ex ) {
-        // shoul not happen as exception in execute() means that tx should not be in block
+        // should not happen as exception in execute() means that tx should not be in block
         BOOST_LOG( m_loggerError ) << DETAILED_ERROR;
         assert( false );
     } catch ( const std::exception& ex ) {
@@ -1276,7 +1313,7 @@ void Block::commitToSeal(
     unsigned unclesCount = 0;
 
     // here was code to handle 6 generations of uncles
-    // it was wtiting its results in two variables above
+    // it was waiting its results in two variables above
 
     BytesMap transactionsMap;
     BytesMap receiptsMap;
@@ -1362,8 +1399,6 @@ bool Block::sealBlock( bytesConstRef _header ) {
     ret.appendRaw( m_currentUncles );
     ret.swapOut( m_currentBytes );
     m_currentBlock = BlockHeader( _header, HeaderData );
-    //	cnote << "Mined " << m_currentBlock.hash() << "(parent: " << m_currentBlock.parentHash() <<
-    //")";
     // TODO: move into SealEngine
 
     m_state = m_precommit;

@@ -52,7 +52,7 @@ void SnapshotAgent::init( unsigned _currentBlockNumber, int64_t _timestampOfBloc
         assert( _timestampOfBlock1 > 0 );        // we created snapshot somehow
 
         // whether it is local or downloaded - we shall ignore it's hash but use it's time
-        // see also how last_snapshoted_block_with_hash is updated in importTransactionsAsBlock
+        // see also how last_snapshotted_block_with_hash is updated in importTransactionsAsBlock
         // h256 h2 = this->hashFromNumber( latest_snapshots.second );
         // uint64_t time_of_second = blockInfo( h2 ).timestamp();
 

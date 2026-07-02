@@ -92,6 +92,11 @@ public:
         this->bindAndAddMethod( jsonrpc::Procedure( "debug_getPatchTimestamps",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, NULL ),
             &dev::rpc::DebugFace::debug_getPatchTimestampsI );
+#ifdef BITE
+        this->bindAndAddMethod( jsonrpc::Procedure( "debug_getPendingBITE2Transactions",
+                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
+            &dev::rpc::DebugFace::debug_getPendingBITE2TransactionsI );
+#endif
     }
     inline virtual void debug_accountRangeAtI( const Json::Value& request, Json::Value& response ) {
         response = this->debug_accountRangeAt( request[0u].asString(), request[1u].asInt(),
@@ -167,6 +172,13 @@ public:
         response = this->debug_getPatchTimestamps();
     }
 
+#ifdef BITE
+    inline virtual void debug_getPendingBITE2TransactionsI(
+        const Json::Value&, Json::Value& response ) {
+        response = this->debug_getPendingBITE2Transactions();
+    }
+#endif
+
     virtual Json::Value debug_accountRangeAt(
         const std::string& param1, int param2, const std::string& param3, int param4 ) = 0;
     virtual Json::Value debug_storageRangeAt( const std::string& param1, int param2,
@@ -191,6 +203,10 @@ public:
     virtual Json::Value debug_getFutureTransactions() = 0;
 
     virtual Json::Value debug_getPatchTimestamps() = 0;
+
+#ifdef BITE
+    virtual Json::Value debug_getPendingBITE2Transactions() = 0;
+#endif
 };
 
 }  // namespace rpc

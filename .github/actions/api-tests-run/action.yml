@@ -1,0 +1,54 @@
+name: api-tests-run
+description: Install and run skaled api test suite
+inputs:
+  suite:
+    required: true
+    description: "API test suite name (for example: bite compat)"
+  build_skaled:
+    required: false
+    default: "true"
+    description: "Whether run.py is allowed to build skaled if binary is missing"
+  skaled_binary:
+    required: false
+    default: ""
+    description: "Optional pre-built skaled binary path to inject into run.toml"
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - uses: astral-sh/setup-uv@v6
+
+    - name: Sync Python dependencies
+      shell: bash
+      run: |
+        set -euo pipefail
+        uv sync --locked --project test/api-tests
+
+    - name: Render run.toml from template
+      shell: bash
+      env:
+        FUNC_TEST_PRIVATE_KEY: ${{ env.FUNC_TEST_PRIVATE_KEY }}
+        SKALED_BINARY: ${{ inputs.skaled_binary }}
+        BUILD_SKALED: ${{ inputs.build_skaled }}
+      run: uv run --project test/api-tests python3 test/api-tests/render_config.py
+
+    - name: Run API test suite
+      shell: bash
+      run: |
+        set -euo pipefail
+        cd test/api-tests
+        if ! uv run --project . run.py --config run.toml --suite "${{ inputs.suite }}"; then
+          echo "::error::Test execution failed"
+          for log in logs/*.log; do
+            if [ -f "${log}" ]; then
+              echo "::group::${log}"
+              cat "${log}"
+              echo "::endgroup::"
+            fi
+          done
+          exit 1
+        fi

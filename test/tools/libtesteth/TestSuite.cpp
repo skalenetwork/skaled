@@ -143,7 +143,7 @@ void TestSuite::runAllTestsInFolder( string const& _testFolder ) const {
                               string() :
                               test::Options::get().singleTestName;
     vector< fs::path > const compiledFiles =
-        test::getFiles( getFullPath( _testFolder ), {".json", ".yml"}, filter );
+        test::getFiles( getFullPath( _testFolder ), { ".json", ".yml" }, filter );
     for ( auto const& file : compiledFiles ) {
         fs::path const expectedFillerName =
             getFullPathFiller( _testFolder ) /
@@ -177,36 +177,38 @@ void TestSuite::runAllTestsInFolder( string const& _testFolder ) const {
 
     // run all tests
     vector< fs::path > files = test::getFiles( getFullPathFiller( _testFolder ),
-        {".json", ".yml"}, filter.empty() ? filter : filter + "Filler" );
+        { ".json", ".yml" }, filter.empty() ? filter : filter + "Filler" );
 
     // Use FAIR_ test state file if FAIR_ is available
-    std:: string commonPrefix = "FAIR_";
+    std::string commonPrefix = "FAIR_";
     if ( filter.empty() ) {
-        std::unordered_map<std::string, std::vector<fs::path>> filesByPrefix;
-        for (auto const& file : files) {
+        std::unordered_map< std::string, std::vector< fs::path > > filesByPrefix;
+        for ( auto const& file : files ) {
             std::string fileName = file.stem().string();
             std::string prefix;
 
-            if ( fileName.size() > commonPrefix.size() && fileName.substr( 0, commonPrefix.size() ) == commonPrefix ) {
+            if ( fileName.size() > commonPrefix.size() &&
+                 fileName.substr( 0, commonPrefix.size() ) == commonPrefix ) {
                 prefix = fileName.substr( commonPrefix.size() );
             } else {
                 prefix = fileName;
             }
-            filesByPrefix[prefix].push_back(file);
+            filesByPrefix[prefix].push_back( file );
         }
 
-        std::vector<fs::path> filteredFiles;
-        for (auto const& entry : filesByPrefix) {
-            if (entry.second.size() == 1) {
-                filteredFiles.push_back(entry.second[0]);
+        std::vector< fs::path > filteredFiles;
+        for ( auto const& entry : filesByPrefix ) {
+            if ( entry.second.size() == 1 ) {
+                filteredFiles.push_back( entry.second[0] );
             } else {
                 // We have multiple files with the same prefix
                 bool hasFair = false;
                 fs::path fairFile;
                 fs::path nonFairFile;
-                for (auto const& file : entry.second) {
+                for ( auto const& file : entry.second ) {
                     std::string fileName = file.stem().string();
-                    if ( fileName.size() > commonPrefix.size() && fileName.substr( 0, commonPrefix.size() ) == commonPrefix ) {
+                    if ( fileName.size() > commonPrefix.size() &&
+                         fileName.substr( 0, commonPrefix.size() ) == commonPrefix ) {
                         hasFair = true;
                         fairFile = file;
                     } else {
@@ -214,16 +216,16 @@ void TestSuite::runAllTestsInFolder( string const& _testFolder ) const {
                     }
                 }
 
-                if (hasFair) {
-    #ifdef FAIR
-                    filteredFiles.push_back(fairFile);
-    #else
-                    filteredFiles.push_back(nonFairFile);
-    #endif
+                if ( hasFair ) {
+#ifdef FAIR
+                    filteredFiles.push_back( fairFile );
+#else
+                    filteredFiles.push_back( nonFairFile );
+#endif
                 } else {
                     // If no fair/non-fair distinction, add all files
-                    for (auto const& file : entry.second) {
-                        filteredFiles.push_back(file);
+                    for ( auto const& file : entry.second ) {
+                        filteredFiles.push_back( file );
                     }
                 }
             }

@@ -135,3 +135,9 @@ Json::Value Debug::debug_getPatchTimestamps() {
 
     return jsonResponse;
 }
+
+#ifdef BITE
+Json::Value Debug::debug_getPendingBITE2Transactions() {
+    return toJson( m_eth.debugGetPendingBITE2Transactions() );
+}
+#endif

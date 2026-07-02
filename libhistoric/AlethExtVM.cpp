@@ -123,7 +123,7 @@ evmc_status_code AlethExtVM::transactionExceptionToEvmcStatusCode( TransactionEx
 
 CallResult AlethExtVM::call( CallParameters& _p ) {
     dev::eth::AlethExecutive e{ m_s, envInfo(), m_chainParams, depth + 1
-#ifdef BITE2
+#ifdef BITE
         ,
         m_txnIndex
 #endif
@@ -152,7 +152,7 @@ void AlethExtVM::setStore( u256 _n, u256 _v ) {
 CreateResult AlethExtVM::create( u256 _endowment, u256& io_gas, bytesConstRef _code,
     Instruction _op, u256 _salt, OnOpFunc const& _onOp ) {
     AlethExecutive e{ m_s, envInfo(), m_chainParams, depth + 1
-#ifdef BITE2
+#ifdef BITE
         ,
         m_txnIndex
 #endif
@@ -211,7 +211,7 @@ h256 AlethExtVM::blockHash( u256 _number ) {
     ExecutionResult res;
     std::tie( res, std::ignore ) =
         m_s.execute( envInfo(), m_chainParams, tx, skale::Permanence::Reverted
-#ifdef BITE2
+#ifdef BITE
             ,
             OnOpFunc(), m_txnIndex.convert_to< int64_t >()
 #endif

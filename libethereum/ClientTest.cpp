@@ -112,7 +112,7 @@ h256 ClientTest::importRawBlock( const string& _blockRLP ) {
     if ( result != ImportResult::Success )
         BOOST_THROW_EXCEPTION( ImportBlockFailed() << errinfo_importResult( result ) );
 
-    // TOOD notify some sync component
+    // TODO notify some sync component
 
     bool moreToImport = true;
     while ( moreToImport ) {
