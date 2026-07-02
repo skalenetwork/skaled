@@ -24,59 +24,10 @@ REPO_ROOT = SUITE_DIR.parent.parent.parent
 NONCE_OVERFLOW_CREATE_STUB = "berlin_nonce_overflow_create"
 NONCE_OVERFLOW_CREATE2_STUB = "berlin_nonce_overflow_create2"
 NONCE_OVERFLOW_TEST = Path("tests/berlin/eip2929_gas_cost_increases/test_create.py")
+NONCE_OVERFLOW_PATCH = (
+    SUITE_DIR / "patches" / "execution-specs-berlin-nonce-overflow-stubs.patch"
+)
 NONCE_OVERFLOW_PATCH_MARKER = "NONCE_OVERFLOW_CREATE_STUB"
-
-NONCE_OVERFLOW_CONSTANTS_ORIGINAL = '''REFERENCE_SPEC_GIT_PATH = "EIPS/eip-2929.md"
-REFERENCE_SPEC_VERSION = "0e11417265a623adb680c527b15d0cb6701b870b"
-
-
-@pytest.mark.valid_from("Berlin")'''
-
-NONCE_OVERFLOW_CONSTANTS_PATCHED = '''REFERENCE_SPEC_GIT_PATH = "EIPS/eip-2929.md"
-REFERENCE_SPEC_VERSION = "0e11417265a623adb680c527b15d0cb6701b870b"
-
-NONCE_OVERFLOW_CREATE_STUB = "berlin_nonce_overflow_create"
-NONCE_OVERFLOW_CREATE2_STUB = "berlin_nonce_overflow_create2"
-
-
-def _has_stub(pre: Alloc, stub: str) -> bool:
-    """
-    Return True when execute/fill was configured with a matching address stub.
-
-    execute-remote cannot materialize arbitrary pre-state nonce values by
-    transaction, so a live-RPC run can preseed the account in genesis and pass
-    it as an address stub. Normal fillers keep using explicit alloc pre-state.
-    """
-    address_stubs = getattr(pre, "_address_stubs", None)
-    if address_stubs is not None and stub in address_stubs:
-        return True
-
-    stub_accounts = getattr(pre, "_stub_accounts", None)
-    return stub_accounts is not None and stub in stub_accounts
-
-
-@pytest.mark.valid_from("Berlin")'''
-
-NONCE_OVERFLOW_DEPLOY_ORIGINAL = '''    # Nonce at max value (2^64-1) causes CREATE to abort
-    creator_address = pre.deploy_contract(
-        creator_code, nonce=2**64 - 1, storage={0: 1}
-    )
-'''
-
-NONCE_OVERFLOW_DEPLOY_PATCHED = '''    # Nonce at max value (2^64-1) causes CREATE to abort. In execute-remote,
-    # use a genesis-preseeded stub because the live RPC setup path cannot set
-    # arbitrary account nonces by transaction.
-    creator_stub = (
-        NONCE_OVERFLOW_CREATE2_STUB
-        if create_opcode == Op.CREATE2
-        else NONCE_OVERFLOW_CREATE_STUB
-    )
-    deploy_kwargs = {"nonce": 2**64 - 1, "storage": {0: 1}}
-    if _has_stub(pre, creator_stub):
-        deploy_kwargs["stub"] = creator_stub
-
-    creator_address = pre.deploy_contract(creator_code, **deploy_kwargs)
-'''
 
 
 def _load_run_eip_tests():
@@ -102,28 +53,41 @@ def _tail_file(path: Path, max_lines: int = 120) -> str:
 
 def _ensure_nonce_overflow_stub_patch(project_dir: Path) -> bool:
     test_path = project_dir / NONCE_OVERFLOW_TEST
-    text = test_path.read_text()
-    if NONCE_OVERFLOW_PATCH_MARKER in text:
-        return True
+    if NONCE_OVERFLOW_PATCH_MARKER in test_path.read_text():
+        return False
 
-    if NONCE_OVERFLOW_CONSTANTS_ORIGINAL not in text or NONCE_OVERFLOW_DEPLOY_ORIGINAL not in text:
-        raise RuntimeError(f"execution-specs nonce-overflow patch does not match {test_path}")
+    result = subprocess.run(
+        ["git", "apply", "--check", str(NONCE_OVERFLOW_PATCH)],
+        cwd=project_dir,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(result.stderr.strip() or result.stdout.strip())
 
-    text = text.replace(NONCE_OVERFLOW_CONSTANTS_ORIGINAL, NONCE_OVERFLOW_CONSTANTS_PATCHED)
-    text = text.replace(NONCE_OVERFLOW_DEPLOY_ORIGINAL, NONCE_OVERFLOW_DEPLOY_PATCHED)
-    test_path.write_text(text)
+    subprocess.run(
+        ["git", "apply", str(NONCE_OVERFLOW_PATCH)],
+        cwd=project_dir,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
     return True
 
 
 def _restore_nonce_overflow_stub_patch(project_dir: Path) -> None:
     test_path = project_dir / NONCE_OVERFLOW_TEST
-    text = test_path.read_text()
-    if NONCE_OVERFLOW_PATCH_MARKER not in text:
+    if NONCE_OVERFLOW_PATCH_MARKER not in test_path.read_text():
         return
 
-    text = text.replace(NONCE_OVERFLOW_CONSTANTS_PATCHED, NONCE_OVERFLOW_CONSTANTS_ORIGINAL)
-    text = text.replace(NONCE_OVERFLOW_DEPLOY_PATCHED, NONCE_OVERFLOW_DEPLOY_ORIGINAL)
-    test_path.write_text(text)
+    subprocess.run(
+        ["git", "apply", "--reverse", str(NONCE_OVERFLOW_PATCH)],
+        cwd=project_dir,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
 
 
 def _execution_specs_config_for_label(execution_cfg: dict, label: str) -> dict:
@@ -262,7 +226,7 @@ def _run_execution_specs(label: str, url: str, w3, private_key: str, cfg: dict) 
         if nonce_patch_applied:
             try:
                 _restore_nonce_overflow_stub_patch(project_dir)
-            except OSError as exc:
+            except (OSError, subprocess.CalledProcessError) as exc:
                 logger.warning("Failed to restore execution-specs nonce-overflow patch: %s", exc)
 
     if result.returncode != 0:
