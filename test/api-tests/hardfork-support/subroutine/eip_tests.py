@@ -721,9 +721,9 @@ def test_eip_2929_create_aborted_stays_cold(
     executes warms it.
 
     The exact nonce-overflow trigger (sender nonce == 2^64-1) is not reachable
-    over RPC (there is no setNonce), so it is covered by the C++ unit test
-    VMTest::testNonceOverflowCreate{,2}LeavesAddressColdInBerlin. Here we use the
-    closest reachable abort (endowment > balance), which shares the ordering: it
+    by normal RPC transactions (there is no setNonce). The execution-specs
+    workload covers it with genesis-preseeded stubs; here we use the closest
+    normal-RPC abort (endowment > balance), which shares the ordering: it
     aborts before warming, so the same address is cold after the aborted CREATE
     and warm after the successful one.
     """

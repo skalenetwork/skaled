@@ -9,9 +9,9 @@ pragma solidity ^0.8.20;
  *         while a CREATE that actually executes leaves it WARM.
  *
  *         The exact EIP-2681 trigger (sender nonce == 2^64-1) cannot be reached
- *         over RPC — there is no setNonce — so it is covered by the C++ unit
- *         test VMTest::testNonceOverflowCreate{,2}LeavesAddressColdInBerlin.
- *         This contract exercises the closest reachable abort path: a CREATE
+ *         by normal RPC transactions — there is no setNonce. The execution-specs
+ *         workload covers it with genesis-preseeded stubs, while this contract
+ *         exercises the closest normal-RPC abort path: a CREATE
  *         whose endowment exceeds the creator's balance, which (like the nonce
  *         overflow) aborts before the address is added to the access set, so the
  *         creator's nonce is not consumed and the would-be address stays cold.
