@@ -706,6 +706,105 @@ def test_eip_2929_create_revert_preserves_address(
 
 
 # ---------------------------------------------------------------------------
+# EIP-2929 + EIP-2681: a CREATE aborted before warming leaves the address cold
+# ---------------------------------------------------------------------------
+
+def test_eip_2929_create_aborted_stays_cold(
+    w3: Web3,
+    deployer: LocalAccount,
+    sol_dir: str,
+    gas_limit: int = 3_000_000,
+) -> EIPTestResult:
+    """
+    EIP-2929 / EIP-2681 ordering: a CREATE aborted *before* the address-warming
+    step leaves the would-be contract address COLD, while a CREATE that actually
+    executes warms it.
+
+    The exact nonce-overflow trigger (sender nonce == 2^64-1) is not reachable
+    by normal RPC transactions (there is no setNonce). The execution-specs
+    workload covers it with genesis-preseeded stubs; here we use the closest
+    normal-RPC abort (endowment > balance), which shares the ordering: it
+    aborts before warming, so the same address is cold after the aborted CREATE
+    and warm after the successful one.
+    """
+    logger.info("=== EIP-2929 CREATE aborted-before-warming stays cold test ===")
+    abi, bytecode = _load_artifact(sol_dir, "EIP2929CreateColdTest")
+    addr = _deploy_contract(w3, deployer, abi, bytecode, gas_limit)
+    contract = w3.eth.contract(address=addr, abi=abi)
+
+    cold_ref = w3.to_checksum_address("0x" + "ef" * 20)
+    tx = contract.functions.measureCreateCold(cold_ref).build_transaction({
+        "from": deployer.address,
+        "gas": gas_limit,
+        "gasPrice": w3.eth.gas_price,
+        "chainId": w3.eth.chain_id,
+    })
+    receipt = _send_tx(w3, deployer, tx)
+    if receipt["status"] != 1:
+        return EIPTestResult(
+            eip="2929-create-cold",
+            passed=False,
+            message="measureCreateCold() transaction reverted",
+            details={"contract": addr},
+        )
+
+    logs = contract.events.CreateColdGasMeasured().process_receipt(receipt)
+    if not logs:
+        return EIPTestResult(
+            eip="2929-create-cold",
+            passed=False,
+            message="CreateColdGasMeasured event not found in receipt",
+            details={"contract": addr},
+        )
+
+    args = logs[0]["args"]
+    aborted_gas = args["abortedCreateBalanceGas"]
+    success_gas = args["successCreateBalanceGas"]
+    cold_gas    = args["coldRefBalanceGas"]
+
+    logger.info(
+        "Gas: abortedCreate=%d (expect cold), successCreate=%d (expect warm), coldRef=%d",
+        aborted_gas, success_gas, cold_gas,
+    )
+
+    details = {
+        "aborted_gas": aborted_gas,
+        "success_gas": success_gas,
+        "cold_gas": cold_gas,
+        "contract": addr,
+    }
+
+    errors = []
+    # A successful CREATE must warm the address (warm << cold reference).
+    if success_gas == 0 or cold_gas / success_gas < MIN_COLD_WARM_RATIO:
+        errors.append(
+            f"Address not warm after successful CREATE: "
+            f"success={success_gas}, coldRef={cold_gas}"
+        )
+    # The aborted CREATE must leave the SAME address cold (close to coldRef,
+    # far from the warm cost).
+    if success_gas == 0 or aborted_gas / max(success_gas, 1) < MIN_COLD_WARM_RATIO:
+        errors.append(
+            f"Aborted CREATE warmed the address (should stay cold): "
+            f"aborted={aborted_gas}, warm={success_gas}"
+        )
+
+    if errors:
+        return EIPTestResult(
+            eip="2929-create-cold", passed=False, message="; ".join(errors), details=details
+        )
+    return EIPTestResult(
+        eip="2929-create-cold",
+        passed=True,
+        message=(
+            f"Aborted CREATE cold ({aborted_gas}), successful CREATE warm "
+            f"({success_gas}), cold ref ({cold_gas})"
+        ),
+        details=details,
+    )
+
+
+# ---------------------------------------------------------------------------
 # EIP-2929 revert semantics: access sets restored on sub-call revert
 # ---------------------------------------------------------------------------
 
@@ -1241,6 +1340,7 @@ EIP_TEST_MAP = {
     "2929-extcode":     test_eip_2929_extcode_cold_warm,
     "2929-create-warm":   test_eip_2929_create_warms_address,
     "2929-create-revert": test_eip_2929_create_revert_preserves_address,
+    "2929-create-cold":   test_eip_2929_create_aborted_stays_cold,
     "2930":             test_eip_2930,
     "2930-gas-saving":  test_eip_2930_access_list_gas_saving,
     "2930-duplicates":  test_eip_2930_duplicate_items_charged,
@@ -1253,6 +1353,7 @@ EIP_TEST_MAP = {
 
 ALL_EIPS = [
     "2929", "2929-revert", "2929-sstore", "2929-extcode", "2929-create-warm", "2929-create-revert",
+    "2929-create-cold",
     "2930", "2930-gas-saving", "2930-duplicates",
     "2718-type2",
     "2565", "2565-formula", "2565-zero-exp",

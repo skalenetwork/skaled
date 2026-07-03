@@ -35,6 +35,8 @@ from _test_utils import (
 
 logger = logging.getLogger("hardfork-compat.test")
 
+SUITE_DIR = Path(__file__).resolve().parent
+
 # ---------------------------------------------------------------------------
 # Minimal contract bytecode (no Solidity compiler needed)
 #
