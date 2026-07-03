@@ -1605,6 +1605,37 @@ constexpr PrecompiledTest bn256PairingTests[] = {
 };
 
 namespace {
+#ifdef BITE
+// RAII guard for submitCTX/BITE precompiled tests. Wires up the process-wide
+// g_skaleHost and the BITE ciphertext validation flag in the constructor and
+// undoes them in the destructor.
+//
+// Teardown order is critical: the client's worker/consensus thread must be
+// stopped and joined BEFORE g_skaleHost is cleared. Otherwise the still-running
+// block-creation path (see Block::executeTransactions) may dereference a null
+// g_skaleHost and crash with a memory access violation.
+struct BITEHostGuard {
+    explicit BITEHostGuard( dev::eth::Client* _client ) : m_client( _client ) {
+        dev::eth::g_skaleHost = m_client->skaleHost();
+        dev::bite::isCiphertextValidationEnabled = true;
+    }
+
+	BITEHostGuard( const BITEHostGuard& ) = delete;
+    BITEHostGuard& operator=( const BITEHostGuard& ) = delete;
+    BITEHostGuard( BITEHostGuard&& ) = delete;
+    BITEHostGuard& operator=( BITEHostGuard&& ) = delete;
+
+    ~BITEHostGuard() {
+        if ( m_client )
+            m_client->stopWorking();
+        if ( dev::eth::g_skaleHost )
+            dev::eth::g_skaleHost.reset();
+        dev::bite::isCiphertextValidationEnabled = false;
+    }
+    dev::eth::Client* m_client;
+};
+#endif
+
 void benchmarkPrecompiled( char const name[], vector_ref< const PrecompiledTest > tests, int n ) {
     if ( !Options::get().all ) {
         std::cout << "Skipping benchmark test because --all option is not specified.\n";
@@ -2100,14 +2131,7 @@ BOOST_AUTO_TEST_CASE( submitCTX_validateBITECiphertext_Success ) {
     client->setAuthor( Address( "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF" ) );
 
     client.get()->injectSkaleHost();
-    dev::eth::g_skaleHost = client->skaleHost();
-    dev::bite::isCiphertextValidationEnabled = true;
-    struct Cleanup {
-        ~Cleanup() {
-            if ( dev::eth::g_skaleHost ) dev::eth::g_skaleHost.reset();
-            dev::bite::isCiphertextValidationEnabled = false;
-        }
-    } cleanup;
+    BITEHostGuard biteHostGuard( client.get() );
     client->startWorking();
 
     sleep( 2 );
@@ -2202,14 +2226,7 @@ BOOST_AUTO_TEST_CASE( submitCTX_validateBITECiphertext_Failure ) {
     client->setAuthor( Address( "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF" ) );
 
     client.get()->injectSkaleHost();
-    dev::eth::g_skaleHost = client->skaleHost();
-    dev::bite::isCiphertextValidationEnabled = true;
-    struct Cleanup {
-        ~Cleanup() {
-            if ( dev::eth::g_skaleHost ) dev::eth::g_skaleHost.reset();
-            dev::bite::isCiphertextValidationEnabled = false;
-        }
-    } cleanup;
+    BITEHostGuard biteHostGuard( client.get() );
     client->startWorking();
 
     sleep( 2 );

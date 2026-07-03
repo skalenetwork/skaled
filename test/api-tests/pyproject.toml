@@ -23,6 +23,14 @@ dev = [
 [project.scripts]
 api-test = "run:main"
 
+[tool.uv]
+# Pin an absolute cutoff so dependency resolution is deterministic and the
+# committed uv.lock stays valid under `uv sync --locked` (CI). Without this the
+# lock inherits a *relative* exclude-newer from the developer's global uv config
+# (e.g. "7 days"), which drifts daily and differs in environments that lack that
+# global setting, breaking `--locked`.
+exclude-newer = "2026-06-19T00:00:00Z"
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"
