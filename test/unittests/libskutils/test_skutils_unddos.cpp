@@ -40,13 +40,13 @@ static std::string get_test_unddos_settings() {
 	}
 )";
 
-  return test;
+    return test;
 }
 
 BOOST_AUTO_TEST_CASE( basic_counting ) {
     skutils::unddos::algorithm unddos;
-    auto test_settings =  get_test_unddos_settings();
-    nlohmann::json jsonObj = nlohmann::json::parse(test_settings);
+    auto test_settings = get_test_unddos_settings();
+    nlohmann::json jsonObj = nlohmann::json::parse( test_settings );
     unddos.load_settings_from_json( jsonObj );
     skutils::unddos::time_tick_mark ttmNow = skutils::unddos::now_tick_mark();
     BOOST_REQUIRE( unddos.register_call_from_origin( "11.11.11.11", ttmNow ) ==

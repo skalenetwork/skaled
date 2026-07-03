@@ -15,8 +15,8 @@ on:
         description: 'Additional cmake options'
         default: ''
         required: false
-      build_type:
-        description: 'Build type of skaled binary'
+      cmake_build_type:
+        description: 'CMake build type'
         type: choice
         required: true
         options: 
@@ -28,35 +28,48 @@ on:
         description: 'Node type'
         type: choice
         options: 
-          - Core
-          - Core+Historic
-          - Historic
+          - core
+          - core+historic
+          - historic
         required: false
-        default: Core
+        default: core
+      protocol_profile:
+        description: 'Protocol profile'
+        type: choice
+        options: 
+          - core
+          - bite
+          - fair
+        required: false
+        default: core
 
 jobs:
   core_build:
-    if: github.event.inputs.node_type != 'Historic'
+    if: github.event.inputs.node_type != 'historic'
     uses: ./.github/workflows/setup-build-publish.yml
     with:
       image_version: ${{ github.event.inputs.image_version }}
       branch_name: ${{ github.event.inputs.branch_name }}
       cmake_options: ${{ github.event.inputs.cmake_options }}
-      build_type: ${{ github.event.inputs.build_type }}
+      cmake_build_type: ${{ github.event.inputs.cmake_build_type }}
+      protocol_profile: ${{ github.event.inputs.protocol_profile }}
       node_type: core
+      version_suffix_mode: cmake_protocol_node
     secrets:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
   historic_build:
-    if: github.event.inputs.node_type != 'Core'
+    if: github.event.inputs.node_type != 'core'
     uses: ./.github/workflows/setup-build-publish.yml
     with:
       image_version: ${{ github.event.inputs.image_version }}
       branch_name: ${{ github.event.inputs.branch_name }}
       cmake_options: ${{ github.event.inputs.cmake_options }}
-      build_type: ${{ github.event.inputs.build_type }}
+      cmake_build_type: ${{ github.event.inputs.cmake_build_type }}
+      protocol_profile: ${{ github.event.inputs.protocol_profile }}
       node_type: historic
+      version_suffix_mode: cmake_protocol_node
     secrets:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}

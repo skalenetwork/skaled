@@ -323,16 +323,23 @@ public:
     void startReadState();
 
 #ifdef BITE
-    void setDecryptedTransactionDataFields(
-        const std::shared_ptr< DecryptedTransactionFieldsMap >& _decryptedTransactionDataFields ) {
-        CHECK_EXPRESSION( _decryptedTransactionDataFields );
-        m_decryptedTransactionDataFields = _decryptedTransactionDataFields;
+    void setDecryptedTransactionDataFields( DecryptedTransactions _decryptedTransactions ) {
+        CHECK_EXPRESSION( _decryptedTransactions.ctxTxsMap );
+        CHECK_EXPRESSION( _decryptedTransactions.regularTxsMap );
+        m_decryptedTransactions = _decryptedTransactions;
     }
 
-    const std::shared_ptr< DecryptedTransactionFieldsMap >& decryptedTransactionDataFields() const {
-        return m_decryptedTransactionDataFields;
+    const DecryptedTransactions& decryptedTransactions() const { return m_decryptedTransactions; }
+
+    const std::vector< std::vector< dev::h256 > >& ctxHashesLists() const {
+        return m_ctxHashesLists;
     }
-#endif
+
+    const std::shared_ptr< std::deque< dev::eth::Transaction > >& pendingCtxs() const {
+        CHECK_EXPRESSION( m_pendingCtxs );
+        return m_pendingCtxs;
+    }
+#endif  // BITE
 
 private:
     struct SyncContext {
@@ -416,9 +423,18 @@ private:
 #ifdef BITE
     // decrypted transaction data fields to be stored with the block and their indexes
     // only filled for a working block
-    std::shared_ptr< DecryptedTransactionFieldsMap > m_decryptedTransactionDataFields =
-        std::make_shared< DecryptedTransactionFieldsMap >();
-#endif
+    DecryptedTransactions m_decryptedTransactions =
+        DecryptedTransactions{ std::make_shared< DecryptedCTXTxsMap >(),
+            std::make_shared< DecryptedRegularTxsMap >() };
+
+    // list of ctx hashes crafted by every txn in block
+    // only filled for a working block
+    std::vector< std::vector< dev::h256 > > m_ctxHashesLists;
+    // list of pending ctxs
+    // only filled for a working block
+    std::shared_ptr< std::deque< Transaction > > m_pendingCtxs =
+        std::make_shared< std::deque< Transaction > >();
+#endif  // BITE
 
     Logger m_loggerDebug{ createLogger( VerbosityDebug, "block" ) };
     Logger m_loggerTrace{ createLogger( VerbosityTrace, "block" ) };

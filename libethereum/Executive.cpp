@@ -19,6 +19,7 @@
 
 #include "Executive.h"
 
+#include <algorithm>
 #include <numeric>
 
 #include <json/json.h>
@@ -37,6 +38,19 @@
 
 using namespace std;
 using namespace dev;
+
+#ifdef BITE
+namespace {
+bool isBite2OnlyPrecompiled( Address const& _addr ) {
+    static const std::array< Address, 3 > bite2Only = {
+        Address( "0x000000000000000000000000000000000000001B" ),  // submitCTX
+        Address( "0x000000000000000000000000000000000000001C" ),  // encryptECIES
+        Address( "0x000000000000000000000000000000000000001D" ),  // encryptTE
+    };
+    return std::find( bite2Only.begin(), bite2Only.end(), _addr ) != bite2Only.end();
+}
+}  // namespace
+#endif
 using namespace dev::eth;
 using skale::State;
 
@@ -342,9 +356,15 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
 
     m_savepoint = m_s.savepoint();
 
-    if ( m_chainParams.isPrecompiled( _p.codeAddress, m_envInfo.number() ) &&
-         m_chainParams.precompiledExecutionAllowedFrom(
-             _p.codeAddress, _p.senderAddress, m_readOnly ) ) {
+    bool accessAsPrecompiled = m_chainParams.isPrecompiled( _p.codeAddress, m_envInfo.number() ) &&
+                               m_chainParams.precompiledExecutionAllowedFrom(
+                                   _p.codeAddress, _p.senderAddress, m_readOnly );
+#ifdef BITE
+    if ( accessAsPrecompiled && !Bite2Patch::isEnabledInWorkingBlock() &&
+         isBite2OnlyPrecompiled( _p.codeAddress ) )
+        accessAsPrecompiled = false;
+#endif
+    if ( accessAsPrecompiled ) {
         MICROPROFILE_SCOPEI( "Executive", "call-precompiled", MP_CYAN );
         bigint g = m_chainParams.costOfPrecompiled( _p.codeAddress, _p.data, m_envInfo.number() );
         if ( _p.gas < g ) {
@@ -367,8 +387,8 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
             bytes output;
             bool success;
             PrecompiledCallContext ctx{ m_envInfo.number(),
-#ifdef BITE2
-                m_txnIndex, m_envInfo.committedBlockTimestamp(),
+#ifdef BITE
+                m_txnIndex, m_txnHash, m_envInfo.committedBlockTimestamp(), _p.senderAddress,
 #endif
                 m_readOnly };
 #ifdef FAIR
@@ -398,9 +418,9 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
             m_ext = make_shared< ExtVM >( m_s, m_envInfo, m_chainParams, _p.receiveAddress,
                 _p.senderAddress, _origin, _p.apparentValue, _gasPrice, _p.data, &c, codeHash,
                 version, m_depth, false, _p.staticCall, m_readOnly
-#ifdef BITE2
+#ifdef BITE
                 ,
-                m_txnIndex
+                m_txnIndex, m_txnHash
 #endif
             );
         }
@@ -483,10 +503,10 @@ bool Executive::executeCreate( Address const& _sender, u256 const& _endowment,
                 true;
         m_ext = make_shared< ExtVM >(
             m_s, m_envInfo, m_chainParams, m_newAddress, _sender, _origin, _endowment, _gasPrice,
-            bytesConstRef(), _init, sha3( _init ), _version, m_depth, true, false, isReadOnly
-#ifdef BITE2
+            bytesConstRef(), _init, sha3( _init ), _version, m_depth, true, false
+#ifdef BITE
             ,
-            m_txnIndex
+            isReadOnly, m_txnIndex, m_txnHash
 #endif
         );
     } else

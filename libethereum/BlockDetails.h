@@ -126,17 +126,20 @@ struct BlockReceipts {
     mutable unsigned size = 0;
 };
 
-struct BlockHash {
-    BlockHash() {}
-    BlockHash( h256 const& _h ) : value( _h ) {}
-    BlockHash( RLP const& _r ) { value = _r.toHash< h256 >(); }
-    BlockHash( const BlockHash& other ) = default;
-    BlockHash& operator=( const BlockHash& other ) = default;
+struct HashFactory {
+    HashFactory() {}
+    HashFactory( h256 const& _h ) : value( _h ) {}
+    HashFactory( RLP const& _r ) { value = _r.toHash< h256 >(); }
+    HashFactory( const HashFactory& other ) = default;
+    HashFactory& operator=( const HashFactory& other ) = default;
     bytes rlp() const { return dev::rlp( value ); }
 
     h256 value;
     static const unsigned size = 65;
 };
+
+struct BlockHash : public HashFactory {};
+struct TransactionHash : public HashFactory {};
 
 struct TransactionAddress {
     TransactionAddress() {}
@@ -179,7 +182,44 @@ struct DecryptedTransactionData {
     Address m_to;
     size_t size = -1;
 };
-#endif
+
+struct CreatedCTXs {
+    CreatedCTXs() {}
+    CreatedCTXs( const std::vector< std::vector< dev::h256 > >& _ctxHashesLists )
+        : m_ctxHashesLists( _ctxHashesLists ) {
+        for ( const auto& ctxHashesList : _ctxHashesLists )
+            size += ctxHashesList.size() * dev::h256::size;
+    }
+    CreatedCTXs( const CreatedCTXs& other ) = default;
+    CreatedCTXs& operator=( const CreatedCTXs& other ) = default;
+    CreatedCTXs( RLP const& _rlp ) {
+        m_ctxHashesLists = _rlp.toVector< std::vector< dev::h256 > >();
+        for ( const auto& ctxHashesList : m_ctxHashesLists )
+            size += ctxHashesList.size() * dev::h256::size;
+    }
+
+    bytes rlp() const {
+        RLPStream s;
+        s.append( m_ctxHashesLists );
+        return s.out();
+    }
+    explicit operator bool() const { return !m_ctxHashesLists.empty(); }
+    size_t count() const { return m_ctxHashesLists.size(); }
+    std::vector< dev::h256 > operator[]( size_t i ) const { return m_ctxHashesLists[i]; }
+    std::optional< size_t > find( const dev::h256& _ctxHash ) const {
+        for ( size_t i = 0; i < m_ctxHashesLists.size(); ++i ) {
+            auto it = std::find( m_ctxHashesLists[i].begin(), m_ctxHashesLists[i].end(), _ctxHash );
+            if ( it != m_ctxHashesLists[i].end() )
+                return i;
+        }
+        return std::nullopt;
+    }
+
+    std::vector< std::vector< dev::h256 > > m_ctxHashesLists;
+    size_t size = 0;
+};
+
+#endif  // BITE
 
 using BlockDetailsHash = std::unordered_map< h256, BlockDetails >;
 using BlockLogBloomsHash = std::unordered_map< h256, BlockLogBlooms >;
@@ -189,17 +229,21 @@ using BlockHashHash = std::map< uint64_t, BlockHash >;
 using BlocksBloomsHash = std::unordered_map< h256, BlocksBlooms >;
 #ifdef BITE
 using DecryptedTransactionDataHash = std::unordered_map< h256, DecryptedTransactionData >;
-#endif
+using CreatedCTXsByOrigin = std::unordered_map< h256, CreatedCTXs >;
+using CtxOrigin = std::unordered_map< h256, TransactionHash >;
+#endif  // BITE
 
 static const BlockDetails NullBlockDetails;
 static const BlockLogBlooms NullBlockLogBlooms;
 static const BlockReceipts NullBlockReceipts;
 static const TransactionAddress NullTransactionAddress;
 static const BlockHash NullBlockHash;
+static const TransactionHash NullTransactionHash;
 static const BlocksBlooms NullBlocksBlooms;
 #ifdef BITE
 static const DecryptedTransactionData NullDecryptedTransactionData;
-#endif
+static const CreatedCTXs NullCreatedCTXs;
+#endif  // BITE
 
 }  // namespace eth
 }  // namespace dev

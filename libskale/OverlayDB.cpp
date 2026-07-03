@@ -81,14 +81,6 @@ dev::db::Slice toSlice( std::string const& _s ) {
 OverlayDB::OverlayDB( std::unique_ptr< batched_io::db_face > _db_face )
     : m_db_face( _db_face.release(), []( batched_io::db_face* db ) { delete db; } ) {}
 
-// ClassicOverlayDB::ClassicOverlayDB( std::unique_ptr< batched_io::db_face > _db_face )
-//    : m_db_face( _db_face.release(), []( batched_io::db_face* db ) {
-//          // clog(dev::VerbosityDebug, "overlaydb") << "Closing state DB";
-//          //        std::cerr << "!!! Closing state DB !!!" << std::endl;
-//          //        std::cerr.flush();
-//          delete db;
-//      } ) {}
-
 dev::h256 OverlayDB::getLastExecutedTransactionHash() const {
     if ( lastExecutedTransactionHash.has_value() )
         return lastExecutedTransactionHash.value();
@@ -278,7 +270,6 @@ void OverlayDB::commit() {
 
     if ( m_db_face ) {
         for ( unsigned commitTry = 0; commitTry < 10; ++commitTry ) {
-//      cnote << "Committing nodes to disk DB:";
 #if DEV_GUARDED_DB
             DEV_READ_GUARDED( x_this )
 #endif

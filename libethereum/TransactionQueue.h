@@ -41,6 +41,10 @@
 #include <mutex>
 #include <thread>
 
+#ifdef BITE
+#include "BITE2TransactionQueue.h"
+#endif
+
 namespace dev {
 namespace eth {
 
@@ -153,13 +157,27 @@ public:
     /// @param _t Transaction hash
     void dropGood( Transaction const& _t );
 
-#ifdef BITE2
-    /// Inserts new CTX into separate queue. Always called from block-executing thread
-    void importBITE2Transaction( Transaction&& _t );
+#ifdef BITE
+    /// Get all pending BITE2 transactions. Returned transactions are not removed from the queue
+    /// automatically. For internal logic.
+    std::shared_ptr< std::deque< Transaction > > pendingBITE2Transactions() const;
 
     /// Get all pending BITE2 transactions. Returned transactions are not removed from the queue
-    /// automatically.
-    std::vector< Transaction > pendingBITE2Transactions() const;
+    /// automatically. For Debug/RPC.
+    std::deque< Transaction > debug_pendingBITE2Transactions() const;
+
+    /// Add BITE2 txn as temporary
+    void addTempBITE2Transaction( dev::eth::Transaction&& _transaction );
+    /// Get hashes of temporary CTXs in queue
+    std::vector< dev::h256 > getTempBITE2Hashes() const;
+    /// Move BITE2 txn from temporary to permanent
+    void commitTempBITE2Transactions();
+    /// Get origin for first N CTXs in queue
+    std::vector< dev::h256 > getNCTXOrigins( size_t _n ) const;
+
+    void clearTempBITE2Transactions();
+
+    void setBITE2QueueOnInit( std::deque< Transaction >&& _ctxQueue );
 #endif
 
     struct Status {
@@ -381,9 +399,8 @@ private:
     mutable Mutex x_queue;                             ///< Verification queue mutex
     std::atomic_bool m_aborting;                       ///< Exit condition for verifier.
 
-#ifdef BITE2
-    std::vector< Transaction > m_bite2Current;  ///< Only one thread at a time accesses it.
-                                                ///< therefore no need in extra synchronisation
+#ifdef BITE
+    BITE2TransactionQueue m_bite2Queue;
 #endif
 
     Logger m_loggerInfo{ createLogger( VerbosityInfo, "TransactionQueue" ) };

@@ -58,6 +58,7 @@ target_link_libraries( skutils
     "${DEPS_INSTALL_ROOT}/lib/libboost_context.a"
     "${DEPS_INSTALL_ROOT}/lib/libevent.a"
     "${DEPS_INSTALL_ROOT}/lib/libfmt${DEBUG_SUFFIX_D}.a"
+    "${DEPS_INSTALL_ROOT}/lib/libcurl.a"
     "${DEPS_INSTALL_ROOT}/lib/libdouble-conversion.a"
     "${DEPS_INSTALL_ROOT}/lib/libzstd.a"
     "${DEPS_INSTALL_ROOT}/lib/libzmq.a"

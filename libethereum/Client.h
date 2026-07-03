@@ -154,6 +154,12 @@ public:
 
     Transactions debugGetFutureTransactions() const { return m_tq.debugGetFutureTransactions(); }
 
+#ifdef BITE
+    std::deque< Transaction > debugGetPendingBITE2Transactions() const {
+        return m_tq.debug_pendingBITE2Transactions();
+    }
+#endif
+
     /// Queues a block for import.
     ImportResult queueBlock( bytes const& _block, bool _isSafe = false );
 
@@ -295,7 +301,7 @@ public:
     // main entry point after consensus
     size_t importTransactionsAsBlock( const Transactions& _transactions,
 #ifdef BITE
-        const std::shared_ptr< DecryptedTransactionFieldsMap >& _decryptedTransactionDataFields,
+        DecryptedTransactions _decryptedTransactions,
 #endif
         u256 _gasPrice,
 #ifdef FAIR
@@ -307,16 +313,16 @@ public:
         return m_snapshotAgent->createSnapshotFile( _blockNumber );
     }
 
+    uint64_t getGroupIndexForBlockNumber( uint64_t _blockNumber ) const;
+
 #ifdef BITE
     uint64_t getCurrentEpochId() const { return historicGroupIndex.load(); }
-#endif
+    bool isCommitteeRotationSoon() const;
+    std::pair< std::array< std::string, 4 >, uint64_t > getNextCommitteeBITEInfo() const;
+#endif  // BITE
 
 #ifdef FAIR
     bool updateGroupIfNeeded();
-
-    std::pair< std::array< std::string, 4 >, uint64_t > getNextCommitteeBITEInfo() const;
-
-    bool isCommitteeRotationSoon() const;
 #endif
 
     // set exiting time for node rotation
@@ -708,11 +714,11 @@ public:
 
 
 #ifdef HISTORIC_STATE
-    u256 historicStateBalanceAt( Address _a, BlockNumber _block ) const override;
-    u256 historicStateCountAt( Address _a, BlockNumber _block ) const override;
-    u256 historicStateAt( Address _a, u256 _l, BlockNumber _block ) const override;
-    h256 historicStateRootAt( Address _a, BlockNumber _block ) const override;
-    bytes historicStateCodeAt( Address _a, BlockNumber _block ) const override;
+    u256 historicStateBalanceAt( Address const& _a, BlockNumber _block ) const override;
+    u256 historicStateCountAt( Address const& _a, BlockNumber _block ) const override;
+    u256 historicStateAt( Address const& _a, u256 const& _l, BlockNumber _block ) const override;
+    h256 historicStateRootAt( Address const& _a, BlockNumber _block ) const override;
+    bytes historicStateCodeAt( Address const& _a, BlockNumber _block ) const override;
 #endif
     void initStateFromDiskOrGenesis();
     void populateNewChainStateFromGenesis();

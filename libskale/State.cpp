@@ -1127,12 +1127,16 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
     // transaction is bad in any way.
     // HACK 0 here is for gasPrice
     // TODO Not sure that 1st 0 as timestamp is acceptable here
+
+    // _t.sha3() is undefined for external calls
+    auto currentTxnHash = _transactionIndex == -1 ? dev::h256( 0 ) : _t.sha3();
     Executive e( *this, _envInfo, _chainParams, 0, 0, !isStateCommitting( _p )
-#ifdef BITE2
+#ifdef BITE
                                                           ,
-        dev::u256( _transactionIndex )
+        dev::u256( _transactionIndex ), currentTxnHash
 #endif
     );
+    ( void ) currentTxnHash;
     ExecutionResult res;
     e.setResultRecipient( res );
 

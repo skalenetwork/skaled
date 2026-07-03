@@ -41,30 +41,7 @@ std::string dumpStorage( AlethExtVM const& _ext ) {
     return o.str();
 };
 }  // namespace
-/*
-AlethExecutive::AlethExecutive(Block &_s, BlockChain const &_bc, unsigned _level)
-        : m_s(_s.mutableState().mutableHistoricState()),
-          m_envInfo(_s.info(), _bc.lastBlockHashes(), 0, _bc.chainID()),
-          m_depth(_level),
-          m_sealEngine(*_bc.sealEngine()) {
-}
 
-AlethExecutive::AlethExecutive(Block &_s, LastBlockHashesFace const &_lh, unsigned _level)
-        : m_s(_s.mutableState().mutableHistoricState()),
-          m_envInfo(_s.info(), _lh, 0, _s.sealEngine()->chainParams().chainID),
-          m_depth(_level),
-          m_sealEngine(*_s.sealEngine()) {
-}
-
-AlethExecutive::AlethExecutive(
-        dev::eth::HistoricState &io_s, Block const &_block, unsigned _txIndex, BlockChain const
-&_bc, unsigned _level) : m_s(createIntermediateState(io_s, _block, _txIndex, _bc)),
-          m_envInfo(_block.info(), _bc.lastBlockHashes(),
-                    _txIndex ? _block.receipt(_txIndex - 1).cumulativeGasUsed() : 0, _bc.chainID()),
-          m_depth(_level),
-          m_sealEngine(*_bc.sealEngine()) {
-}
-*/
 u256 AlethExecutive::gasUsed() const {
     return m_t.gas() - m_gas;
 }
@@ -192,8 +169,8 @@ bool AlethExecutive::call(
             bytes output;
             bool success;
             PrecompiledCallContext ctx{ m_envInfo.number(),
-#ifdef BITE2
-                m_txnIndex, m_envInfo.committedBlockTimestamp(),
+#ifdef BITE
+                m_txnIndex, m_t.sha3(), m_envInfo.committedBlockTimestamp(), _p.senderAddress,
 #endif
                 true };
             tie( success, output ) =
@@ -217,7 +194,7 @@ bool AlethExecutive::call(
             m_ext = make_shared< AlethExtVM >( m_s, m_envInfo, m_chainParams, _p.receiveAddress,
                 _p.senderAddress, _origin, _p.apparentValue, _gasPrice, _p.data, &c, codeHash,
                 version, m_depth, false, _p.staticCall
-#ifdef BITE2
+#ifdef BITE
                 ,
                 m_txnIndex
 #endif
@@ -307,7 +284,7 @@ bool AlethExecutive::executeCreate( Address const& _sender, u256 const& _endowme
         m_ext = make_shared< AlethExtVM >(
             m_s, m_envInfo, m_chainParams, m_newAddress, _sender, _origin, _endowment, _gasPrice,
             bytesConstRef(), _init, sha3( _init ), _version, m_depth, true, false
-#ifdef BITE2
+#ifdef BITE
             ,
             m_txnIndex
 #endif
