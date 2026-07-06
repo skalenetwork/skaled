@@ -40,12 +40,18 @@ public:
 
         header.clear();
         header.setGasLimit( 22000 );
+        // London base-fee check is always on under FAIR (LondonForkPatch is preEnabledForFAIR);
+        // BlockHeader::clear() leaves baseFeePerGas at 1, which would reject the zero-gasPrice
+        // unsigned tx used here. Force baseFee to 0 so the fixture represents an eth_call-style
+        // header that the baseFee check trivially passes.
+        header.setBaseFeePerGas( 0 );
     }
 
     ChainOperationParams params;
     Ethash ethash;
     BlockHeader header;
-    Transaction tx{0, 0, 21000, Address( "a94f5374fce5edbc8e2a8697c15331677e6ebf0b" ), bytes(), 0};
+    Transaction tx{ 0, 0, 21000, Address( "a94f5374fce5edbc8e2a8697c15331677e6ebf0b" ), bytes(),
+        0 };
 };
 }  // namespace
 
@@ -61,15 +67,15 @@ BOOST_AUTO_TEST_CASE( UnsignedTransactionIsValidBeforeExperimental,
 
     header.setNumber( 1 );
 
-    SealEngineFace::verifyTransaction( params, ImportRequirements::TransactionSignatures,
-                                       tx, 1, header, 0 );  // check that it doesn't throw
+    SealEngineFace::verifyTransaction( params, ImportRequirements::TransactionSignatures, tx, 1,
+        header, 0 );  // check that it doesn't throw
 }
 
 BOOST_AUTO_TEST_CASE( UnsignedTransactionIsValidInExperimental ) {
     header.setNumber( 0x1010 );
 
-    SealEngineFace::verifyTransaction( params, ImportRequirements::TransactionSignatures,
-                                       tx, 1, header, 0 );  // check that it doesn't throw
+    SealEngineFace::verifyTransaction( params, ImportRequirements::TransactionSignatures, tx, 1,
+        header, 0 );  // check that it doesn't throw
 }
 
 BOOST_AUTO_TEST_SUITE_END()

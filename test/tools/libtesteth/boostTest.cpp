@@ -43,9 +43,9 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include <thread>
 #include <utility>
 #include <vector>
-#include <thread>
 
 using namespace boost::unit_test;
 
@@ -92,8 +92,7 @@ public:
             std::cout << "  Failed/errored/aborted test cases (" << run.entries.size()
                       << "):" << std::endl;
             for ( auto const& entry : run.entries ) {
-                std::cout << "   - " << entry.name << " [" << statusToString( entry.status )
-                          << "]";
+                std::cout << "   - " << entry.name << " [" << statusToString( entry.status ) << "]";
                 if ( !entry.details.empty() )
                     std::cout << ": " << entry.details;
                 std::cout << std::endl;
@@ -109,7 +108,8 @@ private:
     };
 
     static Status classify( boost::unit_test::test_results const& results ) {
-        if ( results.aborted() || results.p_test_cases_aborted > 0 || results.p_test_cases_timed_out > 0 )
+        if ( results.aborted() || results.p_test_cases_aborted > 0 ||
+             results.p_test_cases_timed_out > 0 )
             return Status::Aborted;
         if ( results.p_assertions_failed > 0 )
             return Status::Failed;
@@ -155,7 +155,8 @@ private:
     };
 
     void storeAndPrintCurrentRun() {
-        RunSummary summary{mRunLabel.empty() ? std::string( "default-run" ) : mRunLabel, mEntries};
+        RunSummary summary{ mRunLabel.empty() ? std::string( "default-run" ) : mRunLabel,
+            mEntries };
         printSummary( summary );
         sRunSummaries.push_back( std::move( summary ) );
         mEntries.clear();
@@ -168,7 +169,8 @@ private:
             return;
         }
 
-        std::cout << "Failed/errored/aborted test cases (" << summary.entries.size() << "):" << std::endl;
+        std::cout << "Failed/errored/aborted test cases (" << summary.entries.size()
+                  << "):" << std::endl;
         for ( auto const& entry : summary.entries ) {
             std::cout << " - " << entry.name << " [" << statusToString( entry.status ) << "]";
             if ( !entry.details.empty() )
@@ -181,7 +183,8 @@ private:
     static std::vector< RunSummary > sRunSummaries;
 };
 
-std::unique_ptr< FailureSummaryObserver > gFailureSummaryObserver = std::make_unique< FailureSummaryObserver >();
+std::unique_ptr< FailureSummaryObserver > gFailureSummaryObserver =
+    std::make_unique< FailureSummaryObserver >();
 std::vector< FailureSummaryObserver::RunSummary > FailureSummaryObserver::sRunSummaries;
 
 }  // namespace
@@ -280,7 +283,7 @@ void setCLocale() {
 // Custom Boost Unit Test Main
 int main( int argc, const char* argv[] ) {
     MicroProfileSetEnableAllGroups( true );
-    UnsafeRegion::init(".");
+    UnsafeRegion::init( "." );
 
     std::string const dynamicTestSuiteName = "customTestSuite";
     setCLocale();
@@ -294,7 +297,8 @@ int main( int argc, const char* argv[] ) {
     }
 
     dev::test::Options const& opt = dev::test::Options::get();
-    std::string runLabel = opt.rCurrentTestSuite.empty() ? std::string( "full-workflow" ) : opt.rCurrentTestSuite;
+    std::string runLabel =
+        opt.rCurrentTestSuite.empty() ? std::string( "full-workflow" ) : opt.rCurrentTestSuite;
     if ( opt.singleTestFile.is_initialized() )
         runLabel += ":" + opt.singleTestFile.get();
     gFailureSummaryObserver->setRunLabel( runLabel );
@@ -303,7 +307,7 @@ int main( int argc, const char* argv[] ) {
         bool testSuiteFound = false;
         for ( int i = 0; i < argc; i++ ) {
             // replace test suite to custom tests
-            std::string arg = std::string{argv[i]};
+            std::string arg = std::string{ argv[i] };
             if ( arg == "-t" && i + 1 < argc ) {
                 testSuiteFound = true;
                 argv[i + 1] = ( char* ) dynamicTestSuiteName.c_str();
@@ -342,7 +346,7 @@ int main( int argc, const char* argv[] ) {
 
     std::cout << "Running tests using path: " << test::getTestPath() << std::endl;
     int result = 0;
-    auto fakeInit = []( int, char* [] ) -> boost::unit_test::test_suite* { return nullptr; };
+    auto fakeInit = []( int, char*[] ) -> boost::unit_test::test_suite* { return nullptr; };
     if ( opt.jsontrace || opt.vmtrace || opt.statediff ) {
         // Do not use travis '.' output thread if debug is defined
         result = unit_test_main( fakeInit, argc, const_cast< char** >( argv ) );
@@ -354,7 +358,7 @@ int main( int argc, const char* argv[] ) {
         return result;
     } else {
         // Initialize travis '.' output thread for log activity
-        std::atomic_bool stopTravisOut{false};
+        std::atomic_bool stopTravisOut{ false };
         std::thread outputThread( travisOut, &stopTravisOut );
         result = unit_test_main( fakeInit, argc, const_cast< char** >( argv ) );
         stopTravisOut = true;

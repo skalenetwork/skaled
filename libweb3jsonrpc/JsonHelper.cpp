@@ -142,8 +142,11 @@ Json::Value toJson( dev::eth::BlockHeader const& _bi, BlockDetails const& _bd,
         res["totalDifficulty"] = toJS( _bd.totalDifficulty );
         res["size"] = toJS( _bd.blockSizeBytes );
         res["uncles"] = Json::Value( Json::arrayValue );
-        if ( _gasPrice > 0 ||
-             LondonForkPatch::isEnabledWhen( static_cast< time_t >( _bi.timestamp() ) ) )
+        // Genesis (block 0) has no baseFeePerGas (omitted from its header RLP), so expose it via
+        // RPC only for non-genesis London blocks (or a synthetic value).
+        if ( _bi.number() > 0 &&
+             ( _gasPrice > 0 ||
+                 LondonForkPatch::isEnabledWhen( static_cast< time_t >( _bi.timestamp() ) ) ) )
             res["baseFeePerGas"] = toJS( _gasPrice );
         for ( h256 h : _us )
             res["uncles"].append( toJS( h ) );
@@ -162,8 +165,11 @@ Json::Value toJson( dev::eth::BlockHeader const& _bi, BlockDetails const& _bd,
         res["totalDifficulty"] = toJS( _bd.totalDifficulty );
         res["size"] = toJS( _bd.blockSizeBytes );
         res["uncles"] = Json::Value( Json::arrayValue );
-        if ( _gasPrice > 0 ||
-             LondonForkPatch::isEnabledWhen( static_cast< time_t >( _bi.timestamp() ) ) )
+        // Genesis (block 0) has no baseFeePerGas (omitted from its header RLP), so expose it via
+        // RPC only for non-genesis London blocks (or a synthetic value).
+        if ( _bi.number() > 0 &&
+             ( _gasPrice > 0 ||
+                 LondonForkPatch::isEnabledWhen( static_cast< time_t >( _bi.timestamp() ) ) ) )
             res["baseFeePerGas"] = toJS( _gasPrice );
         for ( h256 h : _us )
             res["uncles"].append( toJS( h ) );
@@ -188,7 +194,7 @@ Json::Value toJson( dev::eth::TransactionSkeleton const& _t ) {
 Json::Value toJson( dev::eth::TransactionReceipt const& _t ) {
     Json::Value res;
     if ( _t.hasStatusCode() )
-        res["status"] = toString0x< uint8_t >( _t.statusCode() );  // toString( _t.statusCode() );
+        res["status"] = toString0x< uint8_t >( _t.statusCode() );
     else
         res["stateRoot"] = toJS( _t.stateRoot() );
     res["gasUsed"] = toJS( _t.cumulativeGasUsed() );
@@ -226,7 +232,7 @@ Json::Value toJson( dev::eth::LocalisedTransactionReceipt const& _t ) {
     res["logs"] = dev::toJson( _t.localisedLogs() );
     res["logsBloom"] = toJS( _t.bloom() );
     if ( _t.hasStatusCode() )
-        res["status"] = toString0x< uint8_t >( _t.statusCode() );  // toString( _t.statusCode() );
+        res["status"] = toString0x< uint8_t >( _t.statusCode() );
     else
         res["stateRoot"] = toJS( _t.stateRoot() );
 

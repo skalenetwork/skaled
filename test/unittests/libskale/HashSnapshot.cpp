@@ -60,8 +60,7 @@ public:
             for ( size_t j = 0; j < _chainParams.sChain.t; ++j ) {
                 blsPrivateKeys_[i] =
                     blsPrivateKeys_[i] +
-                    coeffs[j] *
-                        libBLS::algebra::power( libBLS::algebra::FrScalar( i + 1 ), j );
+                    coeffs[j] * libBLS::algebra::power( libBLS::algebra::FrScalar( i + 1 ), j );
             }
         }
 
@@ -515,10 +514,9 @@ BOOST_AUTO_TEST_CASE( PositiveTest ) {
     std::vector< size_t > excpected = { 0, 1, 2 };
     BOOST_REQUIRE( res == excpected );
     BOOST_REQUIRE( test_agent.getVotedHash().first == hash );
-    BOOST_REQUIRE(
-        test_agent.getVotedHash().second ==
-        libBLS::Bls::Signing( libBLS::algebra::hashToG1( hash.asArray() ),
-            test_agent.secret_as_is ) );
+    BOOST_REQUIRE( test_agent.getVotedHash().second ==
+                   libBLS::Bls::Signing(
+                       libBLS::algebra::hashToG1( hash.asArray() ), test_agent.secret_as_is ) );
 }
 
 BOOST_AUTO_TEST_CASE( WrongHash ) {
@@ -603,15 +601,16 @@ BOOST_FIXTURE_TEST_CASE( SnapshotHashingTest, SnapshotHashingFixture,
     // Mine to generate a non-zero account balance
     const int blocksToMine = 1;
     dev::eth::simulateMining( *( client ), blocksToMine );
+    auto& clientTest = asClientTest( *client );
 
-    mgr->doSnapshot( 1 );
+    clientTest.withBlockImportBarrier( [&]() { mgr->doSnapshot( 1 ); } );
     mgr->computeSnapshotHash( 1 );
     BOOST_REQUIRE( mgr->checkSnapshotFolderAndSnapshotHash( 1 ) );
 
     BOOST_REQUIRE( client->number() == 1 );
     WAIT_FOR_THE_NEXT_BLOCK();
 
-    mgr->doSnapshot( 2 );
+    clientTest.withBlockImportBarrier( [&]() { mgr->doSnapshot( 2 ); } );
     mgr->computeSnapshotHash( 2 );
     BOOST_REQUIRE( mgr->checkSnapshotFolderAndSnapshotHash( 2 ) );
 
@@ -633,7 +632,7 @@ BOOST_FIXTURE_TEST_CASE( SnapshotHashingTest, SnapshotHashingFixture,
     BOOST_REQUIRE( client->number() == 3 );
     WAIT_FOR_THE_NEXT_BLOCK();
 
-    mgr->doSnapshot( 3 );
+    clientTest.withBlockImportBarrier( [&]() { mgr->doSnapshot( 3 ); } );
 
 #ifndef FAIR
     mgr->computeSnapshotHash( 3, true );

@@ -76,7 +76,11 @@ void StateProgressLog::writeProgressData( const CommittedProgressData& _data ) {
     dev::RLPStream ctxsStream;
     ctxsStream.appendList( _data.ctxsCreatedInBlock.size() );
     for ( const auto& ctx : _data.ctxsCreatedInBlock ) {
-        ctxsStream.appendRaw( ctx.toBytes() );
+        dev::RLPStream ctxEntry;
+        ctxEntry.appendList( 2 );
+        ctxEntry.appendRaw( ctx.toBytes() );
+        ctxEntry << ctx.getCTXOrigin();
+        ctxsStream.appendRaw( ctxEntry.out() );
     }
     rlpStream.appendRaw( ctxsStream.out() );
 #endif
@@ -149,10 +153,14 @@ std::optional< CommittedProgressData > StateProgressLog::loadProgressData() cons
 
 #ifdef BITE
         for ( auto const& item : rlp[4] ) {
-            data.ctxsCreatedInBlock.emplace_back( item.data(), dev::eth::CheckTransaction::None,
-                true, EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
-                InvalidTransactionFormatPatch::isEnabledInWorkingBlock(),
-                Bite2Patch::isEnabledInWorkingBlock() );
+            CHECK_EXPRESSION( item.isList() && item.itemCount() == 2 );
+            dev::eth::Transaction tx( item[0].data(), dev::eth::CheckTransaction::None, true,
+                EIP1559TransactionsPatch::isEnabledWhen( data.timestamp ),
+                InvalidTransactionFormatPatch::isEnabledWhen( data.timestamp ),
+                BerlinForkPatch::isEnabledWhen( data.timestamp ),
+                Bite2Patch::isEnabledWhen( data.timestamp ) );
+            tx.setCTXOrigin( item[1].toHash< dev::h256 >() );
+            data.ctxsCreatedInBlock.push_back( std::move( tx ) );
         }
 #endif
         return data;

@@ -43,9 +43,9 @@
 #include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
 
-#include <memory>
 #include <atomic>
 #include <limits>
+#include <memory>
 
 using namespace dev;
 using namespace dev::eth;
@@ -60,11 +60,11 @@ static size_t rand_port = 1024 + rand() % 64000;
 class MockRotationSkaleHost : public SkaleHost {
 public:
     MockRotationSkaleHost( Client& _client, ConsensusFactory* _factory )
-        : SkaleHost( _client, _factory ) {}
+        : SkaleHost( _client, _factory, nullptr, false ) {}
 
     void runCommitteeRotationForConsensus() override { ++rotationCallCount; }
 
-    std::atomic< uint32_t > rotationCallCount{0};
+    std::atomic< uint32_t > rotationCallCount{ 0 };
 };
 #endif
 
@@ -97,19 +97,30 @@ public:
 #ifdef BITE
         DecryptedTransactions _decryptedTransactions,
 #endif
-        uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice = 0, u256 _stateRoot = 0,
+        uint64_t _timeStamp, uint64_t _blockID,
+#ifdef FAIR
+        u256 _gasPrice = 1000,
+#else
+        u256 _gasPrice = 0,
+#endif
+        u256 _stateRoot = 0,
 #ifdef FAIR
         uint64_t _winningNodeIndex = 1
 #else
         uint64_t _winningNodeIndex = -1
 #endif
     ) {
+#ifdef FAIR
+        setPriceForBlockId( _blockID, _gasPrice );
+#endif
         m_extFace.createBlock( _approvedTransactions,
 #ifdef BITE
             _decryptedTransactions,
 #endif
             _timeStamp, 0, _blockID, _gasPrice, _stateRoot, _winningNodeIndex );
+#ifndef FAIR
         setPriceForBlockId( _blockID, _gasPrice );
+#endif
     }
 
     u256 getPriceForBlockId( uint64_t _blockId ) const override {
@@ -170,8 +181,8 @@ public:
 
 // TODO Do not copy&paste from JsonRpcFixture
 struct SkaleHostFixture : public TestOutputHelperFixture {
-    SkaleHostFixture( const std::map< std::string, std::string >& params =
-                          std::map< std::string, std::string >(),
+    SkaleHostFixture(
+        const std::map< std::string, std::string >& params = std::map< std::string, std::string >(),
         bool mockCommitteeRotation = false ) {
         dev::p2p::NetworkPreferences nprefs;
         libBLS::init();
@@ -235,15 +246,23 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         ConsensusTestStubFactory test_stub_factory;
 #ifdef FAIR
         if ( mockCommitteeRotation ) {
-            auto mockHost = std::make_shared< MockRotationSkaleHost >( *client, &test_stub_factory );
+            auto mockHost =
+                std::make_shared< MockRotationSkaleHost >( *client, &test_stub_factory );
             skaleHost = mockHost;
             mockRotationHost = mockHost;
         } else
-#endif
+        {
+            skaleHost = make_shared< SkaleHost >( *client, &test_stub_factory, nullptr, false );
+        }
+#else
         {
             skaleHost = make_shared< SkaleHost >( *client, &test_stub_factory );
         }
+#endif
         stub = test_stub_factory.result;
+#ifdef FAIR
+        stub->setPriceForBlockId( 0, 1000 );
+#endif
 
         client->injectSkaleHost( skaleHost );
         client->setGasPricer( make_shared< ConsensusGasPricer >( *skaleHost ) );
@@ -1083,7 +1102,11 @@ BOOST_DATA_TEST_CASE(
     json["to"] = toJS( receiver.address() );
     json["value"] = jsToDecimal( toJS( 10000 * dev::eth::szabo ) );
     json["nonce"] = 0;
+#ifdef FAIR
+    json["gasPrice"] = jsToDecimal( toJS( 1000 ) );
+#else
     json["gasPrice"] = 0;
+#endif
 
     Transaction tx1 = fixture.tx_from_json( json );
 
@@ -1133,7 +1156,11 @@ BOOST_DATA_TEST_CASE(
     }
 
     REQUIRE_NONCE_INCREASE( senderAddress, 1 );
+#ifdef FAIR
+    REQUIRE_BALANCE_DECREASE_GE( senderAddress, 10000 * dev::eth::szabo );
+#else
     REQUIRE_BALANCE_DECREASE( senderAddress, 10000 * dev::eth::szabo );  // only 1st!
+#endif
 }
 
 // Last transaction should be dropped from block proposal
@@ -1211,7 +1238,7 @@ BOOST_AUTO_TEST_CASE( transactionDropReceive
 #endif
 
     // submit it!
-    tq->import( tx1 );
+    tq->import( tx1, IfDropped::Ignore, true, 0 );
 
     // 2nd tx
     u256 value2 = 20000 * dev::eth::szabo;
@@ -1289,7 +1316,7 @@ BOOST_AUTO_TEST_CASE(
 #endif
 
     // submit it!
-    tq->import( tx1 );
+    tq->import( tx1, IfDropped::Ignore, true, 0 );
 
     sleep( 1 );
     BOOST_REQUIRE_EQUAL( tq->knownTransactions().size(), 1 );
@@ -1298,6 +1325,9 @@ BOOST_AUTO_TEST_CASE(
     u256 value2 = 8000 * dev::eth::szabo;
     json["value"] = jsToDecimal( toJS( value2 ) );
     json["nonce"] = 0;
+#ifdef FAIR
+    json["gasPrice"] = jsToDecimal( toJS( 1000 ) );
+#endif
 
     Transaction tx2 = fixture.tx_from_json( json );
 
@@ -1328,7 +1358,11 @@ BOOST_AUTO_TEST_CASE(
     REQUIRE_BLOCK_TRANSACTION( 1, 0, txHash2 );
 
     REQUIRE_NONCE_INCREASE( senderAddress, 1 );
+#ifdef FAIR
+    REQUIRE_BALANCE_DECREASE_GE( senderAddress, value2 );
+#else
     REQUIRE_BALANCE_DECREASE( senderAddress, value2 );
+#endif
 
     // should not be accessible from queue
     ConsensusExtFace::Transactions pendingTxns = stub->pendingTransactions( 1 );
@@ -1365,7 +1399,7 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPrice
 #endif
 
     // submit it!
-    tq->import( tx1 );
+    tq->import( tx1, IfDropped::Ignore, true, 0 );
 
     sleep( 1 );
     BOOST_REQUIRE_EQUAL( tq->knownTransactions().size(), 1 );
@@ -1654,9 +1688,10 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
                                         1,
 #ifdef BITE
                                         { 0 },
+                                        dev::h256::random(),
                                         dev::ZeroAddress,
 #endif
-                                        true } );
+                                          true } );
     u256 blockRandom = skaleHost->getBlockRandom( 0, false );
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( res.second == toBigEndian( static_cast< u256 >( blockRandom ) ) );
@@ -1672,6 +1707,7 @@ BOOST_AUTO_TEST_CASE( getCurrentBLSPublicKey ) {
                                         0,
 #ifdef BITE
                                         { -1 },
+                                        dev::h256::random(),
                                         dev::ZeroAddress,
 #endif
                                         true } );
@@ -1781,7 +1817,7 @@ BOOST_AUTO_TEST_CASE( encryptTE_success ) {
 
     // Call the precompiled contract
     auto res = exec( bytesConstRef( input.data(), input.size() ),
-        PrecompiledCallContext( 1, 0, 0, testScAddress, true ) );
+        PrecompiledCallContext( 1, 0, 0, dev::h256::random(), testScAddress, true ) );
 
     // Verify success
     BOOST_REQUIRE( res.first );
@@ -1861,9 +1897,9 @@ BOOST_AUTO_TEST_CASE( encryptTE_same_data ) {
     bool isReadOnly = true;
     // Call the precompiled contract twice - read only
     auto res1_ro = exec( bytesConstRef( input.data(), input.size() ),
-        PrecompiledCallContext( 1, 0, 0, dev::Address(), isReadOnly ) );
+        PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::Address(), isReadOnly ) );
     auto res2_ro = exec( bytesConstRef( input.data(), input.size() ),
-        PrecompiledCallContext( 1, 0, 0, dev::Address(), isReadOnly ) );
+        PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::Address(), isReadOnly ) );
 
     // Verify success
     BOOST_REQUIRE( res1_ro.first );
@@ -1878,9 +1914,9 @@ BOOST_AUTO_TEST_CASE( encryptTE_same_data ) {
     // simulate block commit -> resets counter before any tx in block is executed
     fixture.skaleHost->resetEncryptionStateForBlock( 1 );
     auto res1 = exec( bytesConstRef( input.data(), input.size() ),
-        PrecompiledCallContext( 1, 0, 0, dev::Address(), isReadOnly ) );
+        PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::Address(), isReadOnly ) );
     auto res2 = exec( bytesConstRef( input.data(), input.size() ),
-        PrecompiledCallContext( 1, 0, 0, dev::Address(), isReadOnly ) );
+        PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::Address(), isReadOnly ) );
 
     // Verify success
     BOOST_REQUIRE( res1.first );
@@ -1954,7 +1990,7 @@ BOOST_AUTO_TEST_CASE( encryptTE_rotation_soon ) {
 
     // Call the precompiled contract
     auto res = exec( bytesConstRef( input.data(), input.size() ),
-        PrecompiledCallContext( 1, 0, 0, dev::Address(), true ) );
+        PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::Address(), true ) );
 
     // Verify success
     BOOST_REQUIRE( res.first );
@@ -2028,7 +2064,7 @@ BOOST_AUTO_TEST_CASE( encryptTE_inputTooLarge ) {
     // Create input larger than 64KB
     bytes largeInput( 65 * 1024, 0x42 );  // 65KB of 'B's
     auto res = exec( bytesConstRef( largeInput.data(), largeInput.size() ),
-        PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+        PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::ZeroAddress, true ) );
 
     // Verify failure with error code 1 (input too large)
     BOOST_REQUIRE( !res.first );
@@ -2043,7 +2079,7 @@ BOOST_AUTO_TEST_CASE( encryptTE_inputTooSmall ) {
     // Call with input smaller than minimum (64 bytes for ABI format)
     bytes smallInput( 63, 0x42 );
     auto res = exec( bytesConstRef( smallInput.data(), smallInput.size() ),
-        PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+        PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::ZeroAddress, true ) );
 
     // Verify failure with error code 2 (input too small)
     BOOST_REQUIRE( !res.first );
@@ -2058,7 +2094,7 @@ BOOST_AUTO_TEST_CASE( encryptTE_inputNotAligned ) {
     // Build input that is not a multiple of 32 bytes (65 bytes)
     bytes input( 65, 0 );
 
-    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::ZeroAddress, true ) );
 
     // Verify failure with error code 3 (input not 32-byte aligned)
     BOOST_REQUIRE( !res.first );
@@ -2074,11 +2110,11 @@ BOOST_AUTO_TEST_CASE( encryptTE_invalidABIEncoding ) {
     bytes input( 64, 0 );
     input[31] = 64;  // Wrong data offset (should be 32)
 
-    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::ZeroAddress, true ) );
 
     // Verify failure with error code 5 (invalid data offset)
     BOOST_REQUIRE( !res.first );
-    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 5 ) ) );
+    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 4 ) ) );
 }
 
 BOOST_AUTO_TEST_CASE( encryptTE_dataLengthMismatch ) {
@@ -2094,11 +2130,11 @@ BOOST_AUTO_TEST_CASE( encryptTE_dataLengthMismatch ) {
     input[63] = 100;
     // actual data (64-95): only 32 bytes of zeros
 
-    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::ZeroAddress, true ) );
 
     // Verify failure with error code 6 (data length mismatch)
     BOOST_REQUIRE( !res.first );
-    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 6 ) ) );
+    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 5 ) ) );
 }
 
 BOOST_AUTO_TEST_CASE( encryptTE_trailingPaddingNotZeros ) {
@@ -2117,11 +2153,11 @@ BOOST_AUTO_TEST_CASE( encryptTE_trailingPaddingNotZeros ) {
     // trailing padding (65-95): should be zeros but we set one to non-zero
     input[95] = 0xFF;
 
-    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::ZeroAddress, true ) );
 
     // Verify failure with error code 7 (trailing padding not zeros)
     BOOST_REQUIRE( !res.first );
-    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 7 ) ) );
+    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( 6 ) ) );
 }
 
 BOOST_AUTO_TEST_CASE( encryptTE_counter_reset_on_new_block ) {
@@ -2156,14 +2192,14 @@ BOOST_AUTO_TEST_CASE( encryptTE_counter_reset_on_new_block ) {
     // simulate block 1 has been comitted
     fixture.skaleHost->resetEncryptionStateForBlock( 1 );
     auto res1 = exec( bytesConstRef( input.data(), input.size() ),
-        PrecompiledCallContext( 1, 0, 0, dev::Address(), false ) );
+        PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::Address(), false ) );
 
     BOOST_REQUIRE( res1.first );
 
     // Call the precompiled contract in block 2 context (simulating transaction execution)
     fixture.skaleHost->resetEncryptionStateForBlock( 2 );
     auto res2 = exec( bytesConstRef( input.data(), input.size() ),
-        PrecompiledCallContext( 2, 0, 0, dev::Address(), false ) );
+        PrecompiledCallContext( 2, 0, 0, dev::h256::random(), dev::Address(), false ) );
 
     BOOST_REQUIRE( res2.first );
 
@@ -2232,7 +2268,7 @@ BOOST_AUTO_TEST_CASE( encryptECIES_success ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptECIES" );
 
     // Call the precompiled contract
-    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::ZeroAddress, true ) );
 
     // Verify success
     BOOST_REQUIRE( res.first );
@@ -2288,9 +2324,9 @@ BOOST_AUTO_TEST_CASE( encryptECIES_deterministic ) {
     // not read only -> will increase counter
     bool isReadOnly = false;
     auto res1 = exec( bytesConstRef( input.data(), input.size() ),
-        PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, isReadOnly ) );
+        PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::ZeroAddress, isReadOnly ) );
     auto res2 = exec( bytesConstRef( input.data(), input.size() ),
-        PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, isReadOnly ) );
+        PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::ZeroAddress, isReadOnly ) );
     BOOST_REQUIRE( res1.first );
     BOOST_REQUIRE( res2.first );
 
@@ -2327,7 +2363,7 @@ BOOST_AUTO_TEST_CASE( encryptECIES_inputTooLarge ) {
 
     // Input larger than 64KB
     bytes largeInput( 65 * 1024, 0x42 );
-    auto res = exec( bytesConstRef( largeInput.data(), largeInput.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+    auto res = exec( bytesConstRef( largeInput.data(), largeInput.size() ), PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::ZeroAddress, true ) );
 
     // Verify failure with error code 1 (input too large)
     BOOST_REQUIRE( !res.first );
@@ -2341,7 +2377,7 @@ BOOST_AUTO_TEST_CASE( encryptECIES_inputTooSmall ) {
 
     // Input smaller than 128 bytes
     bytes smallInput( 64, 0x42 );
-    auto res = exec( bytesConstRef( smallInput.data(), smallInput.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+    auto res = exec( bytesConstRef( smallInput.data(), smallInput.size() ), PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::ZeroAddress, true ) );
 
     // Verify failure with error code 2 (input too small)
     BOOST_REQUIRE( !res.first );
@@ -2356,7 +2392,7 @@ BOOST_AUTO_TEST_CASE( encryptECIES_inputNotAligned ) {
     // Build input that is not a multiple of 32 bytes (129 bytes)
     bytes input( 129, 0 );
 
-    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::ZeroAddress, true ) );
 
     // Verify failure with error code 3 (input not 32-byte aligned)
     BOOST_REQUIRE( !res.first );
@@ -2372,7 +2408,7 @@ BOOST_AUTO_TEST_CASE( encryptECIES_invalidABIOffset ) {
     bytes input( 128, 0 );
     input[31] = 64;  // Wrong offset (should be 96)
 
-    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::ZeroAddress, true ) );
 
     // Verify failure with error code 4 (invalid data offset)
     BOOST_REQUIRE( !res.first );
@@ -2389,7 +2425,7 @@ BOOST_AUTO_TEST_CASE( encryptECIES_dataLengthMismatch ) {
     input[31] = 96;   // Correct offset
     input[127] = 100; // Claim 100 bytes of data, but none actually present
 
-    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::ZeroAddress, true ) );
 
     // Verify failure with error code 5 (data length mismatch)
     BOOST_REQUIRE( !res.first );
@@ -2424,7 +2460,7 @@ BOOST_AUTO_TEST_CASE( encryptECIES_emptyData ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptECIES" );
 
     // Call the precompiled contract
-    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::ZeroAddress, true ) );
 
     // Verify success - empty data encryption should succeed
     BOOST_REQUIRE( res.first );
@@ -2453,7 +2489,7 @@ BOOST_AUTO_TEST_CASE( encryptECIES_trailingPaddingNotZeros ) {
     // trailing padding (129-191): should be zeros but we set one to non-zero
     input[150] = 0xFF;
 
-    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::ZeroAddress, true ) );
 
     // Verify failure with error code 6 (trailing padding not zeros)
     BOOST_REQUIRE( !res.first );
@@ -2485,7 +2521,7 @@ BOOST_AUTO_TEST_CASE( encryptECIES_invalidPublicKey ) {
     input.insert( input.end(), paddingNeeded, 0 );
 
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "encryptECIES" );
-    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::ZeroAddress, true ) );
+    auto res = exec( bytesConstRef( input.data(), input.size() ), PrecompiledCallContext( 1, 0, 0, dev::h256::random(), dev::ZeroAddress, true ) );
 
     // Verify failure with error code 7 (invalid public key)
     BOOST_REQUIRE( !res.first );
@@ -2565,7 +2601,7 @@ BOOST_AUTO_TEST_CASE( biteTransactions ) {
 #endif
 
 #ifdef FAIR
-BOOST_AUTO_TEST_CASE(syncNodeGroupsUpdatesEpochIdWithoutRotation) {
+BOOST_AUTO_TEST_CASE( syncNodeGroupsUpdatesEpochIdWithoutRotation ) {
     SkaleHostFixture fixture( {}, true );
 
     auto& client = fixture.client;
@@ -2573,40 +2609,29 @@ BOOST_AUTO_TEST_CASE(syncNodeGroupsUpdatesEpochIdWithoutRotation) {
 
     uint64_t currentTimestamp = static_cast< uint64_t >( utcTime() );
 
-    fixture.overwriteHistoricNodeGroups( {
-        {
-         {
-          GroupNode{ u256( 0 ), u256( 8 ),
-            "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea"
-            "10"
-            "5a3d21845e5660bc3d4e7c82e7af1daa3baad393b1521467",
-            Address( "0x08151B8F80bfa7dEa760e461412AF24348224edf" )
-         }
-        },
-        currentTimestamp,
-        {
-            "15959969554621958245201075983340071881770733084910870228938077786643587385029",
-            "7970122607051572307517094692346020360016825923464107614135327251488152616550",
-            "3371162264373897025322009434717052197952692496405149486989861571246537813591",
-            "13678625751515504401110635369790787716744686498431213713911601759809559919693" }
-        },
-        {
-        {
-             GroupNode{ u256( 0 ), u256( 8 ),
-                 "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea"
-                 "10"
-                 "5a3d21845e5660bc3d4e7c82e7af1daa3baad393b1521467",
-                 Address( "0x08151B8F80bfa7dEa760e461412AF24348224edf" )
-             }
-         },
-         std::numeric_limits<uint64_t>::max(), {
-                "3842742177969966091367527274107524613106077736353521259727282251005583743182",
-                "3497912824016228906558906422247670474553186446469877598411863912329082553081",
-                "8173996886448941320370434854289578123609627835954133538412363037981850950343",
-                "20979370720689475348670582375026949105497642726992863932315517524004804784155"
-        }
-        }
-    });
+    fixture.overwriteHistoricNodeGroups(
+        { { { GroupNode{ u256( 0 ), u256( 8 ),
+                "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea"
+                "10"
+                "5a3d21845e5660bc3d4e7c82e7af1daa3baad393b1521467",
+                Address( "0x08151B8F80bfa7dEa760e461412AF24348224edf" ) } },
+              currentTimestamp,
+              { "15959969554621958245201075983340071881770733084910870228938077786643587385029",
+                  "7970122607051572307517094692346020360016825923464107614135327251488152616550",
+                  "3371162264373897025322009434717052197952692496405149486989861571246537813591",
+                  "1367862575151550440111063536979078771674468649843121371391160175980955991969"
+                  "3" } },
+            { { GroupNode{ u256( 0 ), u256( 8 ),
+                  "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea"
+                  "10"
+                  "5a3d21845e5660bc3d4e7c82e7af1daa3baad393b1521467",
+                  Address( "0x08151B8F80bfa7dEa760e461412AF24348224edf" ) } },
+                std::numeric_limits< uint64_t >::max(),
+                { "3842742177969966091367527274107524613106077736353521259727282251005583743182",
+                    "3497912824016228906558906422247670474553186446469877598411863912329082553081",
+                    "8173996886448941320370434854289578123609627835954133538412363037981850950343",
+                    "2097937072068947534867058237502694910549764272699286393231551752400480478415"
+                    "5" } } } );
 
     BOOST_REQUIRE_EQUAL( client->getCurrentEpochId(), 0 );
 
@@ -2617,12 +2642,10 @@ BOOST_AUTO_TEST_CASE(syncNodeGroupsUpdatesEpochIdWithoutRotation) {
         ConsensusExtFace::Transactions{},
 #ifdef BITE
                                 DecryptedTransactions{
-#ifdef BITE
                                         std::make_shared< DecryptedCTXTxsMap >(),
-#endif  // BITE
                                         std::make_shared< DecryptedRegularTxsMap >()
                                     },
-#endif
+#endif // BITE
         blockTimestamp, blockId ) );
 
     BOOST_REQUIRE_EQUAL( client->getCurrentEpochId(), 1 );
@@ -2634,6 +2657,7 @@ struct dummy {};
 // Test behavior of MTM if tx with big nonce was already mined as erroneous
 BOOST_FIXTURE_TEST_CASE(
     mtmAfterBigNonceMined, dummy, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+
     SkaleHostFixture fixture(
         std::map< std::string, std::string >( { { "multiTransactionMode", "1" } } ) );
 

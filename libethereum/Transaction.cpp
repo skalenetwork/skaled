@@ -30,6 +30,7 @@
 #include <libethcore/Exceptions.h>
 #include <libethereum/SchainPatch.h>
 #include <libevm/VMFace.h>
+#include <algorithm>
 
 using namespace std;
 using namespace dev;
@@ -40,6 +41,26 @@ using namespace dev::eth;
 std::ostream& dev::eth::operator<<( std::ostream& _out, ExecutionResult const& _er ) {
     _out << "{" << _er.gasUsed << ", " << _er.newAddress << ", " << toHex( _er.output ) << "}";
     return _out;
+}
+
+u256 Transaction::getEffectiveGasPrice( bool _isLondon, u256 const& _baseFeePerGas ) const {
+#ifndef FAIR
+    // Checked external-gas transactions are exempt from gas fees in non-FAIR builds:
+    // no upfront gas deduction, no refund credit, no author fee. The same zero must flow
+    // through both execution and receipt reconstruction, including under London.
+    if ( m_externalGasIsChecked && hasExternalGas() ) {
+        return 0;
+    }
+#endif
+    if ( !_isLondon ) {
+        // Pre-London: legacy gasPrice() for every tx type. For type-2 txs this is m_maxFeePerGas
+        // (TransactionBase aligns m_gasPrice to maxFeePerGas on parse).
+        return gasPrice();
+    }
+    if ( txType() != TransactionType::Type2 ) {
+        return gasPrice();
+    }
+    return std::min( maxFeePerGas(), _baseFeePerGas + maxPriorityFeePerGas() );
 }
 
 TransactionException dev::eth::toTransactionException( Exception const& _e ) {
@@ -62,6 +83,8 @@ TransactionException dev::eth::toTransactionException( Exception const& _e ) {
     if ( !!dynamic_cast< AddressAlreadyUsed const* >( &_e ) )
         return TransactionException::AddressAlreadyUsed;
     // VM execution exceptions
+    if ( !!dynamic_cast< CodeStartsWith0xEF const* >( &_e ) )
+        return TransactionException::CodeStartsWith0xEF;
     if ( !!dynamic_cast< BadInstruction const* >( &_e ) )
         return TransactionException::BadInstruction;
     if ( !!dynamic_cast< BadJumpDestination const* >( &_e ) )
@@ -137,6 +160,9 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, TransactionException con
     case TransactionException::AddressAlreadyUsed:
         _out << "AddressAlreadyUsed";
         break;
+    case TransactionException::CodeStartsWith0xEF:
+        _out << "CodeStartsWith0xEF";
+        break;
     case TransactionException::WouldNotBeInBlock:
         _out << "WouldNotBeInBlock";
         break;
@@ -195,14 +221,14 @@ Transaction::Transaction( const u256& _value, const u256& _gasPrice, const u256&
     : TransactionBase( _value, _gasPrice, _gas, _data, _nonce ) {}
 
 Transaction::Transaction( bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid,
-    bool _eip1559Enabled, bool _invalidTransactionFormatPatchEnabled
+    bool _eip1559Enabled, bool _invalidTransactionFormatPatchEnabled, bool _berlinForkPatchEnabled
 #ifdef BITE
     ,
     bool _bite2PatchEnabled
 #endif
     )
-    : TransactionBase(
-          _rlpData, _checkSig, _allowInvalid, _eip1559Enabled, _invalidTransactionFormatPatchEnabled
+    : TransactionBase( _rlpData, _checkSig, _allowInvalid, _eip1559Enabled,
+          _invalidTransactionFormatPatchEnabled, _berlinForkPatchEnabled
 #ifdef BITE
           ,
           _bite2PatchEnabled
@@ -211,14 +237,14 @@ Transaction::Transaction( bytesConstRef _rlpData, CheckTransaction _checkSig, bo
 }
 
 Transaction::Transaction( const bytes& _rlp, CheckTransaction _checkSig, bool _allowInvalid,
-    bool _eip1559Enabled, bool _invalidTransactionFormatPatchEnabled
+    bool _eip1559Enabled, bool _invalidTransactionFormatPatchEnabled, bool _berlinForkPatchEnabled
 #ifdef BITE
     ,
     bool _bite2PatchEnabled
 #endif
     )
-    : Transaction(
-          &_rlp, _checkSig, _allowInvalid, _eip1559Enabled, _invalidTransactionFormatPatchEnabled
+    : Transaction( &_rlp, _checkSig, _allowInvalid, _eip1559Enabled,
+          _invalidTransactionFormatPatchEnabled, _berlinForkPatchEnabled
 #ifdef BITE
           ,
           _bite2PatchEnabled
@@ -228,6 +254,12 @@ Transaction::Transaction( const bytes& _rlp, CheckTransaction _checkSig, bool _a
 
 #ifndef FAIR
 bool Transaction::hasExternalGas() const {
+#ifdef BITE
+    // POW is disabled for CTXs
+    if ( isCTX() ) {
+        return false;
+    }
+#endif
     if ( !m_externalGasIsChecked ) {
         throw ExternalGasException();
     }
@@ -261,6 +293,12 @@ void Transaction::checkOutExternalGas(
     u256 const& difficulty = _cp.getExternalGasDifficulty();
     assert( difficulty > 0 );
     if ( !isInvalid() ) {
+#ifdef BITE
+        // POW is disabled for CTXs
+        if ( isCTX() ) {
+            return;
+        }
+#endif
         h256 hash;
         if ( !ExternalGasPatch::isEnabledWhen( _committedBlockTimestamp ) ) {
             hash = dev::sha3( sender().ref() ) ^ dev::sha3( nonce() ) ^ dev::sha3( gasPrice() );

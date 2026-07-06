@@ -27,6 +27,7 @@
 #include <atomic>
 #include <chrono>
 #include <future>
+#include <stdexcept>
 #include <string>
 
 using namespace std;
@@ -293,10 +294,12 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
 #ifndef FAIR
     const std::string& _gethURL,
 #endif
-    [[maybe_unused]] bool _broadcastEnabled )
+    bool _broadcastEnabled )
     : m_client( _client ),
       m_tq( _client.m_tq ),
       m_instanceMonitor( _instanceMonitor ),
+      //  disabled only for tests
+      m_broadcastEnabled( _broadcastEnabled ),
       total_sent( 0 ),
       total_arrived( 0 ),
       latestBlockTime( boost::chrono::high_resolution_clock::time_point() ) {
@@ -319,13 +322,14 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
                 << "TRACEPOINT " << name << " " << m_debugTracer.get_tracepoint_count( name );
         } );
 
-        // m_broadcaster.reset( new HttpBroadcaster( _client ) );
         m_broadcaster.reset( new ZmqBroadcaster( _client, *this ) );
 
         m_extFace.reset( new ConsensusExtImpl( *this ) );
 
 #ifdef BITE
-        dev::bite::isCiphertextValidationEnabled = !_client.chainParams().getSgxServerUrl().empty();
+        dev::bite::isCiphertextValidationEnabled =
+            _client.chainParams().isSyncNode() ? !_client.chainParams().isTestSignaturesEnabled() :
+                                                 !_client.chainParams().getSgxServerUrl().empty();
 #endif
 
     } catch ( const std::exception& e ) {
@@ -382,6 +386,9 @@ void SkaleHost::logState() {
 constexpr uint64_t MAX_BROADCAST_QUEUE_SIZE = 2048;
 
 void SkaleHost::pushToBroadcastQueue( const Transaction& _t ) {
+    if ( !m_broadcastEnabled )
+        return;
+
     {
         std::lock_guard< std::mutex > lock( m_broadcastQueueMutex );
         this->m_broadcastQueue.push_back( _t );
@@ -417,6 +424,10 @@ void SkaleHost::clearTempBITE2Transactions() {
 std::shared_ptr< std::deque< Transaction > > SkaleHost::pendingBITE2Transactions() const {
     return m_tq.pendingBITE2Transactions();
 }
+
+void SkaleHost::setBITE2QueueOnInit( std::deque< dev::eth::Transaction >&& _ctxs ) {
+    return m_tq.setBITE2QueueOnInit( std::move( _ctxs ) );
+}
 #endif
 
 h256 SkaleHost::receiveTransaction( const std::string& _rlp ) {
@@ -429,7 +440,8 @@ h256 SkaleHost::receiveTransaction( const std::string& _rlp ) {
 
     Transaction transaction( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::None, false,
         EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
-        InvalidTransactionFormatPatch::isEnabledInWorkingBlock()
+        InvalidTransactionFormatPatch::isEnabledInWorkingBlock(),
+        BerlinForkPatch::isEnabledInWorkingBlock()
 #ifdef BITE
             ,
         Bite2Patch::isEnabledInWorkingBlock()
@@ -502,13 +514,18 @@ ConsensusExtFace::Transactions SkaleHost::pendingTransactions( size_t _limit, u2
 
     int counter = 0;
     BlockHeader latestInfo = static_cast< const Interface& >( m_client ).blockInfo( LatestBlock );
+    u256 blockGasLimit = this->m_client.chainParams().getGasLimit();
 
 #ifdef BITE
     auto bite2Transactions = m_tq.pendingBITE2Transactions();
     u256 gasAccByCTXs = 0;
-    // CTXs are not the subject for block gas limit
+    // limit CTXs by block gas limit
     for ( const auto& ctx : *bite2Transactions ) {
         gasAccByCTXs += ctx.gas();
+        if ( gasAccByCTXs > blockGasLimit ) {
+            // we should skip regular txns until we process all CTXs in queue
+            break;
+        }
         out_vector.pushBackCTX( ctx.toBytes() );
         m_debugTracer.tracepoint( "sent_txn" );
         BOOST_LOG( m_loggerTrace ) << "Sent CTX";
@@ -545,7 +562,6 @@ ConsensusExtFace::Transactions SkaleHost::pendingTransactions( size_t _limit, u2
     std::lock_guard< std::recursive_mutex > lock( m_pending_createMutex, std::adopt_lock );
 
     // drop by block gas limit
-    u256 blockGasLimit = this->m_client.chainParams().getGasLimit();
     u256 gasAcc = 0;
 #ifdef BITE
     gasAcc = gasAccByCTXs;
@@ -663,6 +679,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::Transactions& _approvedTran
         checkStateRoot( _blockID, _winningNodeIndex, _stateRoot );
 
     std::vector< Transaction > outTxns;  // resultant Transaction vector
+    bool needsQueueReadyNotification = false;
 
     size_t n_succeeded;
 
@@ -709,6 +726,11 @@ void SkaleHost::createBlock( const ConsensusExtFace::Transactions& _approvedTran
 
         m_debugTracer.tracepoint( "import_block" );
 
+        auto onTransactionConsumed = [this]( Transaction const& _tx ) {
+            m_debugTracer.tracepoint( "drop_good" );
+            return m_tq.dropGood( _tx, TransactionQueue::ReadyNotification::Defer ).readyChanged;
+        };
+
         n_succeeded = m_client.importTransactionsAsBlock( outTxns,
 
 #ifdef BITE
@@ -718,8 +740,11 @@ void SkaleHost::createBlock( const ConsensusExtFace::Transactions& _approvedTran
 #ifdef FAIR
             _winningNodeIndex,
 #endif
-            _timeStamp );
+            _timeStamp, onTransactionConsumed, &needsQueueReadyNotification );
     }  // m_blockImportMutex
+
+    if ( needsQueueReadyNotification )
+        m_tq.notifyReady();
 
 #ifdef FAIR
     syncNodeGroups();
@@ -867,18 +892,20 @@ void SkaleHost::startWorking() {
     // recursively calls this func - so working is still false!)
     working = true;
 
-    try {
-        m_broadcaster->startService();
-    } catch ( const Broadcaster::StartupException& ) {
-        working = false;
-        std::throw_with_nested( SkaleHost::CreationException() );
-    } catch ( ... ) {
-        working = false;
-        std::throw_with_nested( std::runtime_error( "Error in starting broadcaster service" ) );
-    }
+    if ( m_broadcastEnabled ) {
+        try {
+            m_broadcaster->startService();
+        } catch ( const Broadcaster::StartupException& ) {
+            working = false;
+            std::throw_with_nested( SkaleHost::CreationException() );
+        } catch ( ... ) {
+            working = false;
+            std::throw_with_nested( std::runtime_error( "Error in starting broadcaster service" ) );
+        }
 
-    auto broadcastFunction = std::bind( &SkaleHost::broadcastFunc, this );
-    m_broadcastThread = std::thread( broadcastFunction );
+        auto broadcastFunction = std::bind( &SkaleHost::broadcastFunc, this );
+        m_broadcastThread = std::thread( broadcastFunction );
+    }
 
     auto consensusFunction = [&]() {
         try {
@@ -886,15 +913,12 @@ void SkaleHost::startWorking() {
         } catch ( ... ) {
             // cleanup
             m_exitNeeded = true;
-            m_broadcastThread.join();
+            if ( m_broadcastThread.joinable() )
+                m_broadcastThread.join();
             ExitHandler::exitHandler( -1, ExitHandler::ec_termninated_by_signal );
             return;
         }
 
-        // comment out as this hack is in consensus now
-        // HACK Prevent consensus from hanging up for emptyBlockIntervalMs at bootstrapAll()!
-        //        uint64_t tmp_interval = m_consensus->getEmptyBlockIntervalMs();
-        //        m_consensus->setEmptyBlockIntervalMs( 50 );
         try {
             static const char g_strThreadName[] = "bootStrapAll";
             dev::setThreadName( g_strThreadName );
@@ -1040,6 +1064,7 @@ std::vector< Transaction > SkaleHost::processRegularTransactions(
 ) {
     std::vector< Transaction > outTxns;
 #ifdef BITE
+    CHECK_EXPRESSION( _decryptedTransactions.regularTxsMap );
     auto regularTxnsIterator = _decryptedTransactions.regularTxsMap->begin();
 #endif
     size_t regularTxnsStartIndex = 0;
@@ -1053,7 +1078,8 @@ std::vector< Transaction > SkaleHost::processRegularTransactions(
 
         Transaction t( data, CheckTransaction::Everything, true,
             EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
-            InvalidTransactionFormatPatch::isEnabledInWorkingBlock()
+            InvalidTransactionFormatPatch::isEnabledInWorkingBlock(),
+            BerlinForkPatch::isEnabledInWorkingBlock()
 #ifdef BITE
                 ,
             Bite2Patch::isEnabledInWorkingBlock()
@@ -1086,8 +1112,6 @@ std::vector< Transaction > SkaleHost::processRegularTransactions(
         }
 #endif
         outTxns.push_back( t );
-        m_debugTracer.tracepoint( "drop_good" );
-        m_tq.dropGood( t );
 #ifdef BITE
         if ( regularTxnsIterator != _decryptedTransactions.regularTxsMap->end() )
             ++regularTxnsIterator;
@@ -1101,7 +1125,11 @@ std::vector< Transaction > SkaleHost::processCTXTransactions(
     const ConsensusExtFace::Transactions& _approvedTransactions,
     [[maybe_unused]] const dev::eth::BlockHeader& latestInfo,
     DecryptedTransactions _decryptedTransactions ) {
+    CHECK_EXPRESSION( _decryptedTransactions.ctxTxsMap );
+
     std::vector< Transaction > outTxns;
+    outTxns.reserve( _approvedTransactions.sizeCTX() );
+
     auto ctxIterator = _decryptedTransactions.ctxTxsMap->begin();
     for ( size_t i = 0; i < _approvedTransactions.sizeCTX(); ++i ) {
         const bytes& data = _approvedTransactions.at( i );
@@ -1111,7 +1139,7 @@ std::vector< Transaction > SkaleHost::processCTXTransactions(
         Transaction t( data, CheckTransaction::Everything, true,
             EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
             InvalidTransactionFormatPatch::isEnabledInWorkingBlock(),
-            Bite2Patch::isEnabledInWorkingBlock() );
+            BerlinForkPatch::isEnabledInWorkingBlock(), Bite2Patch::isEnabledInWorkingBlock() );
 
         if ( ctxIterator != _decryptedTransactions.ctxTxsMap->end() && ctxIterator->first == i ) {
             std::optional< DecryptedCTXArgs > decryptedArgs = ctxIterator->second;
@@ -1127,27 +1155,24 @@ std::vector< Transaction > SkaleHost::processCTXTransactions(
             ExitHandler::exitHandler( -1, ExitHandler::ec_state_root_mismatch );
         }
 
-#ifndef FAIR
-        t.checkOutExternalGas( m_client.chainParams(), latestInfo.timestamp(), m_client.number() );
-
-        if ( !ExternalGasPatch::isEnabledWhen( latestInfo.timestamp() ) ) {
-            auto hash = t.sha3();
-            if ( m_client.m_tq.isTransactionKnown( hash ) ) {
-                // if a transaction is in the pending queue
-                // do checkOutExternal gas twice to repeat incorrect behavior that
-                // existed before the patch
-                t.checkOutExternalGas(
-                    m_client.chainParams(), latestInfo.timestamp(), m_client.number() );
-            }
-        }
-#endif
+        // no POW for CTXs
 
         outTxns.push_back( t );
-        m_debugTracer.tracepoint( "drop_good" );
-        m_tq.dropGood( t );
         if ( ctxIterator != _decryptedTransactions.ctxTxsMap->end() )
             ++ctxIterator;
     }
+
+    auto ctxOrigins = m_tq.validateNextExpectedBITE2CTXsAndGetOrigins( outTxns );
+    if ( !ctxOrigins ) {
+        BOOST_LOG( m_loggerError )
+            << "Received CTX list that does not match next expected pending BITE2 CTXs";
+        BOOST_THROW_EXCEPTION( std::runtime_error(
+            "Block CTX list does not match next expected pending BITE2 CTXs" ) );
+    }
+
+    for ( size_t i = 0; i < outTxns.size(); ++i )
+        outTxns[i].setCTXOrigin( ( *ctxOrigins )[i] );
+
     return outTxns;
 }
 #endif
@@ -1307,6 +1332,9 @@ void SkaleHost::forceEmptyBlock() {
 }
 
 void SkaleHost::forcedBroadcast( const Transaction& _txn ) {
+    if ( !m_broadcastEnabled )
+        return;
+
     m_broadcaster->broadcast( toJS( _txn.toBytes() ) );
 }
 

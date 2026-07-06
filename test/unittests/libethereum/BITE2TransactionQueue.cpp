@@ -69,10 +69,18 @@ BOOST_AUTO_TEST_CASE( addCommitClear ) {
 
 BOOST_AUTO_TEST_CASE( tempHashes ) {
     BITE2TransactionQueue queue;
+
+    bytes ctxData;
+    ctxData.insert( ctxData.end(), std::begin( BITE2_FUNCTION_SELECTOR_AS_BYTE_ARRAY ),
+        std::end( BITE2_FUNCTION_SELECTOR_AS_BYTE_ARRAY ) );
+
     Secret sec = Secret( "0x45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8" );
-    Transaction tx1( 0, 100, 21000, Address(), bytes(), 10, sec );
-    Transaction tx2( 1, 100, 21000, Address(), bytes(), 10, sec );
-    Transaction tx3( 2, 100, 21000, Address(), bytes(), 10, sec );
+    Transaction tx1( 0, 100, 21000, Address(), ctxData, 10, sec );
+    tx1.checkIfCTXAndSet( ctxData );
+    Transaction tx2( 1, 100, 21000, Address(), ctxData, 10, sec );
+    tx2.checkIfCTXAndSet( ctxData );
+    Transaction tx3( 2, 100, 21000, Address(), ctxData, 10, sec );
+    tx3.checkIfCTXAndSet( ctxData );
 
     queue.addTemp( Transaction( tx1 ) );
 
@@ -133,7 +141,7 @@ BOOST_AUTO_TEST_CASE( dropGood ) {
     BOOST_REQUIRE( queue.dropGood( txCtx ) );
     BOOST_REQUIRE( queue.dropGood( txCtx2 ) );
 
-    queue.addTemp( Transaction( txNormal ) );
+    BOOST_REQUIRE_THROW( queue.addTemp( Transaction( txNormal ) ), std::invalid_argument );
     queue.commitTemp();
 
     BOOST_REQUIRE( !queue.dropGood( txNormal ) );

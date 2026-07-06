@@ -968,7 +968,7 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
 
         // Extract gas limit from first 32 bytes
         bigint const gas( parseBigEndianRightPadded( _in, 0, dev::h256::size ) );
-        if ( gas <= 0 )
+        if ( gas <= 0 || gas > g_skaleHost->client().chainParams().getGasLimit() )
             return { false, toBigEndian( dev::u256( SubmitCTXStatus::INVALID_GAS_LIMIT ) ) };
 
         // Read offset to data from second 32 bytes
@@ -1040,23 +1040,52 @@ ETH_REGISTER_PRECOMPILED( submitCTX )( bytesConstRef _in, const PrecompiledCallC
         dev::bytes signedTxnRlp = rlpStream.out();
 
         // Construct transaction from RLP
-        Transaction signedTransaction( signedTxnRlp, CheckTransaction::None );
+        Transaction signedTransaction( signedTxnRlp, CheckTransaction::None, false,
+            EIP1559TransactionsPatch::isEnabledWhen( _ctx.latestBlockTimestamp ),
+            InvalidTransactionFormatPatch::isEnabledWhen( _ctx.latestBlockTimestamp ),
+            BerlinForkPatch::isEnabledWhen( _ctx.latestBlockTimestamp ),
+            Bite2Patch::isEnabledWhen( _ctx.latestBlockTimestamp ) );
         signedTransaction.setBITE2EncryptedArgsSize( encryptedArgsCount );
 
         if ( signedTransaction.isInvalid() )
             return { false, toBigEndian( dev::u256( SubmitCTXStatus::INVALID_TRANSACTION ) ) };
 
+        try {
+            // verify transaction signature and gas limit are valid
+            BlockNumber blockNumber = _ctx.blockNumber > g_skaleHost->client().number() ?
+                                          _ctx.blockNumber.convert_to< BlockNumber >() - 1 :
+                                          g_skaleHost->client().number();
+            g_skaleHost->client().blockChain().sealEngine()->verifyTransaction(
+                g_skaleHost->client().chainParams(), ImportRequirements::Everything,
+                signedTransaction, _ctx.latestBlockTimestamp,
+                g_skaleHost->client().blockInfo( blockNumber ), 0 );
+        } catch ( std::exception& ex ) {
+            std::string strError = ex.what();
+            if ( strError.empty() )
+                strError = "exception without description";
+            BOOST_LOG( getLogger( VerbosityError ) )
+                << "Exception in precompiled/submitCTX/verifyTransaction(): " << strError << "\n";
+            return { false,
+                toBigEndian( dev::u256( SubmitCTXStatus::COULD_NOT_VERIFY_TRANSACTION ) ) };
+        } catch ( ... ) {
+            BOOST_LOG( getLogger( VerbosityError ) )
+                << "Unknown exception in precompiled/submitCTX/verifyTransaction()\n";
+            return { false,
+                toBigEndian( dev::u256( SubmitCTXStatus::COULD_NOT_VERIFY_TRANSACTION ) ) };
+        }
+
         // Get sender address before moving the transaction
         dev::Address senderAddress = signedTransaction.sender();
 
         // state must not be changed as a result of executing external calls
-        // (e.g. eth_call, eth_estimateGasm, debug_traceBlock)
+        // (e.g. eth_call, eth_estimateGas, debug_traceBlock)
         // skip adding CTX to BITE2 queue for external calls
         bytes response = senderAddress.asBytes();
         if ( _ctx.isReadOnly ) {
             return { true, response };
         } else {
             // push txn to BITE2 queue
+            signedTransaction.setCTXOrigin( _ctx.currentTxnHash );
             g_skaleHost->addTempBITE2Transaction( std::move( signedTransaction ) );
         }
 
@@ -1243,12 +1272,12 @@ ETH_REGISTER_PRECOMPILED( encryptTE )
         bigint const dataOffset( parseBigEndianRightPadded( _in, 0, headFieldSizeBytes ) );
         const size_t expectedDataOffset = 32;
         if ( dataOffset != expectedDataOffset ) {
-            return { false, toBigEndian( dev::u256( 5 ) ) };  // error 5: invalid data offset
+            return { false, toBigEndian( dev::u256( 4 ) ) };  // error 4: invalid data offset
         }
 
         // Read data length at the data offset (position 32)
         if ( _in.size() < expectedDataOffset + headFieldSizeBytes ) {
-            return { false, toBigEndian( dev::u256( 6 ) ) };  // error 6: data length mismatch
+            return { false, toBigEndian( dev::u256( 5 ) ) };  // error 5: data length mismatch
         }
         bigint const dataLength(
             parseBigEndianRightPadded( _in, expectedDataOffset, headFieldSizeBytes ) );
@@ -1257,14 +1286,14 @@ ETH_REGISTER_PRECOMPILED( encryptTE )
         // Header is 64 bytes (offset + length field), so max data = MAX_SIZE_BYTES - 64
         static constexpr size_t HEADER_SIZE_BYTES = 64;
         if ( dataLength < 0 || dataLength > MAX_SIZE_BYTES - HEADER_SIZE_BYTES ) {
-            return { false, toBigEndian( dev::u256( 6 ) ) };  // error 6: data length mismatch
+            return { false, toBigEndian( dev::u256( 5 ) ) };  // error 5: data length mismatch
         }
         size_t dataLengthSafe = static_cast< size_t >( dataLength );
 
         // Calculate data start position and validate bounds
         size_t dataStart = expectedDataOffset + headFieldSizeBytes;
         if ( dataStart + dataLengthSafe > _in.size() ) {
-            return { false, toBigEndian( dev::u256( 6 ) ) };  // error 6: data length mismatch
+            return { false, toBigEndian( dev::u256( 5 ) ) };  // error 5: data length mismatch
         }
 
         // Extract data bytes (empty data is allowed)
@@ -1274,7 +1303,7 @@ ETH_REGISTER_PRECOMPILED( encryptTE )
         size_t dataEnd = dataStart + dataLengthSafe;
         if ( !std::all_of( _in.data() + dataEnd, _in.data() + _in.size(),
                  []( uint8_t b ) { return b == 0; } ) ) {
-            return { false, toBigEndian( dev::u256( 7 ) ) };  // error 7: trailing padding not zeros
+            return { false, toBigEndian( dev::u256( 6 ) ) };  // error 6: trailing padding not zeros
         }
 
         std::vector< libBLS::TEPublicKey > publicKeys;

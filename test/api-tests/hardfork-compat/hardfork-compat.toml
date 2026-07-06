@@ -1,0 +1,81 @@
+# ==========================================================================
+# hardfork-compat suite -- test parameters
+# ==========================================================================
+# Merged on top of run.toml at runtime by the test runner.
+#
+# Purpose: confirm that the 5.2.0 skaled binary derives byte-identical state
+# from a chain produced by the 5.1.0 binary.  A 5.1.0 node (primary) produces
+# blocks with a mixed transaction workload; a 5.2.0 node (sync) replays every
+# block as an archive/sync node and recomputes its own state.  The suite then
+# compares the per-block stateRoot of every block between the two binaries.
+
+# --------------------------------------------------------------------------
+# Environment type override
+# --------------------------------------------------------------------------
+[type]
+# "delegated" tells the framework to skip auto-launching any nodes.
+# The hardfork-compat suite manages its own primary + sync node lifecycle.
+env_type = "delegated"
+
+# --------------------------------------------------------------------------
+# Suite configuration
+# --------------------------------------------------------------------------
+[hardfork_compat]
+use_sgx = false
+
+# Binaries to compare (relative to repo root, or absolute).
+# Local/CI callers can override these without editing TOML via:
+#   HARDFORK_COMPAT_V510_BINARY=/path/to/v5.1.0/skaled
+#   HARDFORK_COMPAT_V520_BINARY=/path/to/v5.2.0/skaled
+# Build each version into its own build dir beforehand, e.g.:
+#   git checkout v5.1.0 && cmake -H. -Bbuild-v510 -DCMAKE_BUILD_TYPE=Release \
+#     && cmake --build build-v510 --target skaled -- -j4
+#   git checkout v5.2.0 && cmake -H. -Bbuild-v520 -DCMAKE_BUILD_TYPE=Release \
+#     && cmake --build build-v520 --target skaled -- -j4
+v510_binary = "bin-5-1-0"
+v520_binary = "bin-5-2-0"
+
+# Ports: 5.1.0 primary on 5334, 5.2.0 sync node on 5344.
+primary_http_port = 5334
+sync_http_port    = 5344
+
+# --------------------------------------------------------------------------
+# Patch timestamps that must be identical in both the 5.1.0 primary config
+# and the 5.2.0 sync config. These are also present in the base template, but
+# listing them here makes the suite's intended cross-version execution schedule
+# explicit and keeps both generated configs aligned.
+# --------------------------------------------------------------------------
+[hardfork_compat.common_patches]
+pushZeroPatchTimestamp            = 1
+EIP1559TransactionsPatchTimestamp = 1
+flexibleDeploymentPatchTimestamp  = 1
+
+# Patch timestamps injected only into the 5.2.0 sync config right before
+# launching the sync node. The Berlin (EIP-2718/2930/2929/2565) and London
+# (EIP-1559 baseFee, EIP-3198 BASEFEE opcode) fork timestamps are added here
+# so they are recognised only by the 5.2.0 binary -- the 5.1.0 release predates
+# these config fields and rejects them as unknown.
+#
+# Both forks are scheduled one hour into the future (relative to sync launch,
+# i.e. after the 5.1.0 primary has already produced the whole workload). This
+# reproduces the real upgrade "gap period": the new 5.2.0 container is running
+# but the fork has not activated yet, so it must re-execute the pre-fork
+# transactions byte-for-byte like 5.1.0. Because every replayed/compared block
+# predates the fork timestamp, both stateRoot AND block hash must match. Both
+# forks share the same timestamp so they activate together.
+# Supports absolute integers and relative expressions: "now", "now+300", "now+5m".
+# --------------------------------------------------------------------------
+[hardfork_compat.patches]
+berlinForkPatchTimestamp                = "now+1h"
+londonForkPatchTimestamp                = "now+1h"
+singleStateCommitPerBlockPatchTimestamp = 1
+snapshotIntervalSec                     = 0
+
+# --------------------------------------------------------------------------
+# Timeouts
+# --------------------------------------------------------------------------
+[hardfork_compat.timeouts]
+rpc_up        = 360  # seconds to wait for RPC to become available
+block_produce = 60   # seconds to wait for new blocks after launch
+tx_mine       = 120  # seconds to wait for a sent transaction to be mined
+sync_catchup  = 300  # seconds to wait for the 5.2.0 sync node to catch up

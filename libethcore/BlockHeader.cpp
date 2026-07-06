@@ -135,20 +135,26 @@ void BlockHeader::streamRLPFields( RLPStream& _s ) const {
     _s << m_parentHash << m_sha3Uncles << m_author << m_stateRoot << m_transactionsRoot
        << m_receiptsRoot << m_logBloom << m_difficulty << m_number << m_gasLimit << m_gasUsed
        << ( useTimestampHack ? ( m_number + 1 ) : m_timestamp ) << m_extraData;
-    if ( LondonForkPatch::isEnabledWhen( static_cast< time_t >( timestamp() ) ) )
-        _s << m_baseFeePerGas;
 }
 
 void BlockHeader::streamRLP( RLPStream& _s, IncludeSeal _i ) const {
+    // Genesis (block 0) never carries baseFeePerGas in its RLP, even if its timestamp falls
+    // inside the London-active range. This keeps the genesis hash stable across London
+    // activation and matches the parser-side expectation in populate() below.
+    const bool london = LondonForkPatch::isEnabledWhen( static_cast< time_t >( timestamp() ) );
+    const bool writeBaseFee = london && number() > 0;
     if ( _i != OnlySeal ) {
-        const bool london = LondonForkPatch::isEnabledWhen( static_cast< time_t >( timestamp() ) );
-        _s.appendList( BlockHeader::BasicFields + ( london ? 1 : 0 ) +
+        _s.appendList( BlockHeader::BasicFields + ( writeBaseFee ? 1 : 0 ) +
                        ( _i == WithoutSeal ? 0 : m_seal.size() ) );
         BlockHeader::streamRLPFields( _s );
     }
     if ( _i != WithoutSeal )
         for ( unsigned i = 0; i < m_seal.size(); ++i )
             _s.appendRaw( m_seal[i] );
+    if ( _i != OnlySeal ) {
+        if ( writeBaseFee )
+            _s << m_baseFeePerGas;
+    }
 }
 
 h256 BlockHeader::headerHashFromBlock( bytesConstRef _block ) {
@@ -193,21 +199,33 @@ void BlockHeader::populate( RLP const& _header ) {
         m_timestamp = _header[field = 11].toPositiveInt64();
         m_extraData = _header[field = 12].toBytes();
         m_seal.clear();
-        unsigned sealStart = 13;
-        m_baseFeePerGas = 0;  // default for RLP without baseFeePerGas field
-        // Detect London's baseFeePerGas at field 13.  Ethash genesis blocks have
-        // mixHash (exactly 32 bytes) at the same position.  In RLP both look like
-        // "int" to isInt(), so we additionally require the payload to be shorter than
-        // 32 bytes — no realistic baseFeePerGas can be that large, while mixHash is
-        // always exactly 32 bytes.
-        if ( LondonForkPatch::isEnabledWhen( static_cast< time_t >( m_timestamp ) ) &&
-             _header.itemCount() > 13 && _header[13].isInt() &&
-             _header[13].payload().size() < h256::size ) {
-            m_baseFeePerGas = _header[field = 13].toInt< u256 >();
-            sealStart = 14;
+        m_baseFeePerGas = 0;
+        const bool london = LondonForkPatch::isEnabledWhen( static_cast< time_t >( m_timestamp ) );
+        // Genesis (block 0) never carries baseFeePerGas in its RLP regardless of London status.
+        // All subsequent London blocks written by streamRLP() always include it as the last field.
+        const bool expectBaseFee = london && m_number > 0;
+        const unsigned totalItems = _header.itemCount();
+        // Non-genesis London headers carry baseFee as the last field after 0 or 2 seal fields
+        // (14 or 16 total); reject other counts to avoid misreading a seal field.
+        if ( expectBaseFee ) {
+            const unsigned emptySealShape = 13 + 0 + 1;     // 14
+            const unsigned twoFieldSealShape = 13 + 2 + 1;  // 16
+            if ( totalItems != emptySealShape && totalItems != twoFieldSealShape ) {
+                BOOST_THROW_EXCEPTION(
+                    InvalidBlockFormat()
+                    << errinfo_comment( "London block header has wrong field count "
+                                        "(expected 14 for empty seal or 16 for a 2-field seal, "
+                                        "including the trailing baseFeePerGas; it may be missing "
+                                        "or the seal length is wrong)" )
+                    << BadFieldError( 13, std::string( "<missing-or-misaligned>" ) ) );
+            }
         }
-        for ( unsigned i = sealStart; i < _header.itemCount(); ++i )
+        const unsigned sealEnd = expectBaseFee ? totalItems - 1 : totalItems;
+        for ( unsigned i = 13; i < sealEnd; ++i )
             m_seal.push_back( _header[i].data().toBytes() );
+        if ( expectBaseFee ) {
+            m_baseFeePerGas = _header[field = sealEnd].toInt< u256 >();
+        }
     } catch ( Exception const& _e ) {
         _e << errinfo_name( "invalid block header format" )
            << BadFieldError( field, toHex( _header[field].data().toBytes() ) );

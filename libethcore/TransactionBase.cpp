@@ -52,7 +52,7 @@ const dev::Address TransactionBase::BITE_ADDRESS =
     dev::Address( std::string( BITE_ADDRESS_AS_STRING ) );
 #endif
 
-std::vector< bytes > validateAccessListRLP( const RLP& _data ) {
+std::vector< bytes > validateAccessListRLP( const RLP& _data, bool _berlinForkPatchEnabled ) {
     if ( !_data.isList() )
         BOOST_THROW_EXCEPTION( InvalidTransactionFormat()
                                << errinfo_comment( "transaction accessList RLP must be a list" ) );
@@ -74,8 +74,10 @@ std::vector< bytes > validateAccessListRLP( const RLP& _data ) {
             BOOST_THROW_EXCEPTION(
                 InvalidTransactionFormat() << errinfo_comment(
                     "transaction accessList RLP must be a list of byte array and a list" ) );
-        // EIP-2930: address must be exactly 20 bytes.
-        if ( accessList[0].size() != 20 )
+        // EIP-2930: address must be exactly 20 bytes, storage key must be exactly 32 bytes.
+        // Gated by BerlinForkPatch to preserve pre-fork acceptance of non-conforming RLP
+        // (e.g. addresses encoded as integers with stripped leading zeros).
+        if ( _berlinForkPatchEnabled && accessList[0].size() != 20 )
             BOOST_THROW_EXCEPTION(
                 InvalidTransactionFormat()
                 << errinfo_comment( "transaction accessList address must be exactly 20 bytes" ) );
@@ -84,8 +86,7 @@ std::vector< bytes > validateAccessListRLP( const RLP& _data ) {
                 BOOST_THROW_EXCEPTION(
                     InvalidTransactionFormat() << errinfo_comment(
                         "transaction storageKeys RLP must be a list of byte array" ) );
-            // EIP-2930: storage key must be exactly 32 bytes.
-            if ( k.size() != 32 )
+            if ( _berlinForkPatchEnabled && k.size() != 32 )
                 BOOST_THROW_EXCEPTION(
                     InvalidTransactionFormat() << errinfo_comment(
                         "transaction accessList storage key must be exactly 32 bytes" ) );
@@ -242,7 +243,7 @@ void TransactionBase::fillFromBytesLegacy(
 }
 
 void TransactionBase::fillFromBytesType1( bytesConstRef _rlpData, CheckTransaction _checkSig,
-    bool _allowInvalid, bool _invalidTransactionFormatPatchEnabled ) {
+    bool _allowInvalid, bool _invalidTransactionFormatPatchEnabled, bool _berlinForkPatchEnabled ) {
     bytes croppedRlp( _rlpData.begin() + 1, _rlpData.end() );
     RLP const rlp( croppedRlp );
     try {
@@ -269,14 +270,11 @@ void TransactionBase::fillFromBytesType1( bytesConstRef _rlpData, CheckTransacti
 
         m_data = rlp[6].toBytes();
 
-        m_accessList = validateAccessListRLP( rlp[7] );
+        m_accessList = validateAccessListRLP( rlp[7], _berlinForkPatchEnabled );
 
         bool const yParity = rlp[8].toInt< uint8_t >();
-        // EIP-2930: r and s may be encoded as fixed-width 32-byte values with
-        // leading zeros (not valid as strict RLP integers), or as compact values
-        // shorter than 32 bytes. Decode as h256 with Strict (allows short, rejects long).
-        h256 const r = rlp[9].toHash< h256 >( RLP::Strict );
-        h256 const s = rlp[10].toHash< h256 >( RLP::Strict );
+        h256 const r = rlp[9].toInt< u256 >();
+        h256 const s = rlp[10].toInt< u256 >();
 
         m_vrs = SignatureStruct{ r, s, yParity };
 
@@ -311,7 +309,7 @@ void TransactionBase::fillFromBytesType1( bytesConstRef _rlpData, CheckTransacti
 }
 
 void TransactionBase::fillFromBytesType2( bytesConstRef _rlpData, CheckTransaction _checkSig,
-    bool _allowInvalid, bool _invalidTransactionFormatPatchEnabled ) {
+    bool _allowInvalid, bool _invalidTransactionFormatPatchEnabled, bool _berlinForkPatchEnabled ) {
     bytes croppedRlp( _rlpData.begin() + 1, _rlpData.end() );
     RLP const rlp( croppedRlp );
     try {
@@ -330,7 +328,7 @@ void TransactionBase::fillFromBytesType2( bytesConstRef _rlpData, CheckTransacti
             BOOST_THROW_EXCEPTION( InvalidTransactionFormat() << errinfo_comment(
                                        "maxFeePerGas cannot be less than maxPriorityFeePerGas (The "
                                        "total must be the larger of the two)" ) );
-        // set m_gasPrice as SKALE ignores priority fees
+        // Keep gasPrice aligned with the maxFeePerGas.
         m_gasPrice = m_maxFeePerGas;
         m_gas = rlp[4].toInt< u256 >();
 
@@ -348,14 +346,11 @@ void TransactionBase::fillFromBytesType2( bytesConstRef _rlpData, CheckTransacti
 
         m_data = rlp[7].toBytes();
 
-        m_accessList = validateAccessListRLP( rlp[8] );
+        m_accessList = validateAccessListRLP( rlp[8], _berlinForkPatchEnabled );
 
         bool const yParity = rlp[9].toInt< uint8_t >();
-        // EIP-1559: r and s may be encoded as fixed-width 32-byte values with
-        // leading zeros (not valid as strict RLP integers), or as compact values
-        // shorter than 32 bytes. Decode as h256 with Strict (allows short, rejects long).
-        h256 const r = rlp[10].toHash< h256 >( RLP::Strict );
-        h256 const s = rlp[11].toHash< h256 >( RLP::Strict );
+        h256 const r = rlp[10].toInt< u256 >();
+        h256 const s = rlp[11].toInt< u256 >();
 
         m_vrs = SignatureStruct{ r, s, yParity };
 
@@ -390,18 +385,19 @@ void TransactionBase::fillFromBytesType2( bytesConstRef _rlpData, CheckTransacti
 }
 
 void TransactionBase::fillFromBytesByType( bytesConstRef _rlpData, CheckTransaction _checkSig,
-    bool _allowInvalid, TransactionType _type, bool _invalidTransactionFormatPatchEnabled ) {
+    bool _allowInvalid, TransactionType _type, bool _invalidTransactionFormatPatchEnabled,
+    bool _berlinForkPatchEnabled ) {
     switch ( _type ) {
     case TransactionType::Legacy:
         fillFromBytesLegacy( _rlpData, _checkSig, _allowInvalid );
         break;
     case TransactionType::Type1:
-        fillFromBytesType1(
-            _rlpData, _checkSig, _allowInvalid, _invalidTransactionFormatPatchEnabled );
+        fillFromBytesType1( _rlpData, _checkSig, _allowInvalid,
+            _invalidTransactionFormatPatchEnabled, _berlinForkPatchEnabled );
         break;
     case TransactionType::Type2:
-        fillFromBytesType2(
-            _rlpData, _checkSig, _allowInvalid, _invalidTransactionFormatPatchEnabled );
+        fillFromBytesType2( _rlpData, _checkSig, _allowInvalid,
+            _invalidTransactionFormatPatchEnabled, _berlinForkPatchEnabled );
         break;
     default:
         BOOST_THROW_EXCEPTION(
@@ -443,8 +439,9 @@ TransactionType TransactionBase::getTransactionType( bytesConstRef _rlp ) {
                                toHex( bytes{ firstByte } ) ) );
 }
 
-TransactionBase::TransactionBase( bytesConstRef _rlpData, CheckTransaction _checkSig,
-    bool _allowInvalid, bool _eip1559Enabled, bool _invalidTransactionFormatPatchEnabled
+TransactionBase::TransactionBase(
+    bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid, bool _eip1559Enabled,
+    bool _invalidTransactionFormatPatchEnabled, bool _berlinForkPatchEnabled
 #ifdef BITE
     ,
     bool _bite2PatchEnabled
@@ -455,7 +452,7 @@ TransactionBase::TransactionBase( bytesConstRef _rlpData, CheckTransaction _chec
         if ( _eip1559Enabled ) {
             TransactionType txnType = getTransactionType( _rlpData );
             fillFromBytesByType( _rlpData, _checkSig, _allowInvalid, txnType,
-                _invalidTransactionFormatPatchEnabled );
+                _invalidTransactionFormatPatchEnabled, _berlinForkPatchEnabled );
         } else {
             fillFromBytesLegacy( _rlpData, _checkSig, _allowInvalid );
         }
@@ -669,7 +666,7 @@ int64_t TransactionBase::baseGasRequired(
 #endif
 
 #ifdef BITE
-    // BITE transaction - charge for every encrypted payload
+    // BITE2 transaction - charge for every encrypted payload
     if ( _bite2EncryptedArgsSize.has_value() ) {
         // Check for multiplication overflow
         if ( _bite2EncryptedArgsSize.value() > 0 &&

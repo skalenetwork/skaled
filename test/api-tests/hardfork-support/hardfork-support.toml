@@ -75,6 +75,37 @@ eips = []
 gas_limit = 3000000
 
 # --------------------------------------------------------------------------
+# ethereum/execution-specs workload (Step 3, after EIP tests)
+# --------------------------------------------------------------------------
+[execution_specs]
+enabled = true
+project_dir = "test/api-tests/execution-specs"
+fork = "Berlin"
+timeout_sec = 3600
+tx_wait_timeout = 120
+max_tx_per_batch = 50
+max_gas_per_test = 30000000
+# Skaled 5.1.0 does not expose eth_blobBaseFee; Berlin tests do not use blobs,
+# but the current execution-specs execute plugin still has a blob-fee fixture.
+default_max_fee_per_blob_gas = 1
+eoa_start = 100000
+extra_args = []
+paths = [
+  "tests/berlin",
+]
+
+# Skaled genesis pre-seeds these contracts at nonce 2^64-1 so execute-remote
+# can run the nonce-overflow CREATE/CREATE2 cases without mutating live state.
+[execution_specs.address_stubs]
+berlin_nonce_overflow_create = { addr = "0x0000000000000000000000000000000000002929" }
+berlin_nonce_overflow_create2 = { addr = "0x0000000000000000000000000000000000002930" }
+
+# Anvil is launched with its stock genesis and is only a comparator for the
+# local EIP contract checks; skip the heavier execution-specs workload there.
+[execution_specs.endpoint_overrides.anvil]
+enabled = false
+
+# --------------------------------------------------------------------------
 # Block-hash comparison (Step 4 — background, "two" mode only)
 # --------------------------------------------------------------------------
 [hash_check]

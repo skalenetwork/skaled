@@ -590,7 +590,6 @@ std::string Skale::oracle_checkResult( std::string& receipt ) {
             throw jsonrpc::JsonRpcException(
                 status, skutils::tools::format( "Oracle request failed with status %zu", status ) );
         }
-        BOOST_LOG( m_loggerDebug ) << result;
         return result;
     } catch ( jsonrpc::JsonRpcException const& e ) {
         throw e;
@@ -678,7 +677,7 @@ Json::Value Skale::bite_getCraftedCtxs( const std::string& _transactionHash ) {
         // skip invalid
         auto rcp = m_client.localisedTransactionReceipt( h );
         if ( rcp.gasUsed() == 0 )
-            return std::string();
+            return Json::Value( Json::arrayValue );
 #endif  // HISTORIC_STATE
 
         auto craftedCTXs = m_client.craftedCTXs( h );
@@ -873,7 +872,6 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
                                                                 << " " << s;
                     return false;
                 }
-                // size_t sizeArrived = joFragment["size"];
                 std::string strBase64orBinary = joFragment["data"];
 
                 buffer = skutils::tools::base64::decodeBin( strBase64orBinary );

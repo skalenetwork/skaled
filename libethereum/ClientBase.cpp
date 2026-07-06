@@ -41,6 +41,19 @@ using namespace dev::eth;
 using skale::Permanence;
 using skale::State;
 
+u256 ClientBase::getBaseFeeValue( BlockHeader const& _header ) const {
+    if ( _header.baseFeePerGas() != 0 || _header.number() == 0 ||
+         !LondonForkPatch::isEnabledWhen( static_cast< time_t >( _header.timestamp() ) ) )
+        return _header.baseFeePerGas();
+
+    try {
+        return gasBidPrice( static_cast< unsigned >( _header.number() ) );
+    } catch ( std::invalid_argument const& ) {
+        BOOST_THROW_EXCEPTION(
+            std::runtime_error( "Historical baseFeePerGas is unavailable for London block " +
+                                toString( _header.number() ) ) );
+    }
+}
 
 static const int64_t c_maxGasEstimate = 50000000;
 
@@ -115,9 +128,9 @@ std::pair< bool, ExecutionResult > ClientBase::estimateGasStep( int64_t _gas, Bl
     }
 }
 
-std::pair< u256, ExecutionResult > ClientBase::estimateGas( Address const& _from, u256 _value,
-    Address _dest, bytes const& _data, int64_t _maxGas, u256 _gasPrice,
-    GasEstimationCallback const& _callback ) {
+std::pair< u256, ExecutionResult > ClientBase::estimateGas( Address const& _from,
+    u256 const& _value, Address const& _dest, bytes const& _data, int64_t _maxGas,
+    u256 const& _gasPrice, GasEstimationCallback const& _callback ) {
     try {
         int64_t upperBound = _maxGas;
         if ( upperBound == Invalid256 || upperBound > c_maxGasEstimate )
@@ -316,7 +329,7 @@ unsigned ClientBase::installWatch(
 }
 
 unsigned ClientBase::installWatch(
-    h256 _h, Reaping _r, fnClientWatchHandlerMulti_t fnOnNewChanges, bool isWS ) {
+    h256 const& _h, Reaping _r, fnClientWatchHandlerMulti_t fnOnNewChanges, bool isWS ) {
     unsigned ret;
     {
         Guard l( x_filtersWatches );
@@ -371,23 +384,27 @@ LocalisedLogEntries ClientBase::checkWatch( unsigned _watchId ) {
     return ret;
 }
 
-BlockHeader ClientBase::blockInfo( h256 _hash ) const {
+BlockHeader ClientBase::blockInfo( h256 const& _hash ) const {
     if ( _hash == PendingBlockHash )
         return preSeal().info();
-    return BlockHeader( bc().block( _hash ) );
+
+    BlockHeader blockInfo( bc().block( _hash ) );
+    blockInfo.setBaseFeePerGas( getBaseFeeValue( blockInfo ) );
+    return blockInfo;
 }
 
-BlockDetails ClientBase::blockDetails( h256 _hash ) const {
+BlockDetails ClientBase::blockDetails( h256 const& _hash ) const {
     return bc().details( _hash );
 }
 
-Transaction ClientBase::transaction( h256 _transactionHash ) const {
+Transaction ClientBase::transaction( h256 const& _transactionHash ) const {
     // allow invalid!
     auto tl = bc().transactionLocation( _transactionHash );
     auto blockTimestamp = blockInfo( numberFromHash( tl.first ) - 1 ).timestamp();
     return Transaction( bc().transaction( _transactionHash ), CheckTransaction::Cheap, true,
         EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
-        InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp )
+        InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp ),
+        BerlinForkPatch::isEnabledWhen( blockTimestamp )
 #ifdef BITE
             ,
         Bite2Patch::isEnabledWhen( blockTimestamp )
@@ -400,7 +417,7 @@ LocalisedTransaction ClientBase::localisedTransaction( h256 const& _transactionH
     return localisedTransaction( tl.first, tl.second );
 }
 
-Transaction ClientBase::transaction( h256 _blockHash, unsigned _i ) const {
+Transaction ClientBase::transaction( h256 const& _blockHash, unsigned _i ) const {
     auto bl = bc().block( _blockHash );
     RLP b( bl );
     auto blockTimestamp = blockInfo( numberFromHash( _blockHash ) - 1 ).timestamp();
@@ -408,7 +425,8 @@ Transaction ClientBase::transaction( h256 _blockHash, unsigned _i ) const {
         // allow invalid
         return Transaction( b[1][_i].data(), CheckTransaction::Cheap, true,
             EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
-            InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp )
+            InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp ),
+            BerlinForkPatch::isEnabledWhen( blockTimestamp )
 #ifdef BITE
                 ,
             Bite2Patch::isEnabledWhen( blockTimestamp )
@@ -423,7 +441,8 @@ LocalisedTransaction ClientBase::localisedTransaction( h256 const& _blockHash, u
     // allow invalid
     Transaction t = Transaction( bc().transaction( _blockHash, _i ), CheckTransaction::Cheap, true,
         EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
-        InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp )
+        InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp ),
+        BerlinForkPatch::isEnabledWhen( blockTimestamp )
 #ifdef BITE
             ,
         Bite2Patch::isEnabledWhen( blockTimestamp )
@@ -447,7 +466,8 @@ LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(
         CheckTransaction::Cheap,                                                 // Check sig
         true,                                                                    // allow invalid
         EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
-        InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp )
+        InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp ),
+        BerlinForkPatch::isEnabledWhen( blockTimestamp )
 #ifdef BITE
             ,
         Bite2Patch::isEnabledWhen( blockTimestamp )
@@ -494,12 +514,27 @@ LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(
     int txType{ t.txType() };
     dev::u256 effectiveGasPrice{ 0 };
     if ( !t.isInvalid() ) {
-        if ( t.txType() == 2 && LondonForkPatch::isEnabledWhen( blockTimestamp ) ) {
-            dev::u256 baseFee = bc().info( blockHash ).baseFeePerGas();
-            effectiveGasPrice = std::min( t.maxFeePerGas(), baseFee + t.maxPriorityFeePerGas() );
-        } else {
-            effectiveGasPrice = t.gasPrice();
+        const auto blkInfo = blockInfo( blockHash );
+        const bool isLondon =
+            LondonForkPatch::isEnabledWhen( static_cast< time_t >( blkInfo.timestamp() ) );
+#ifndef FAIR
+        // A tx rebuilt from RLP isn't external-gas-checked, so re-run checkOutExternalGas with the
+        // parent block's context (as live execution does) to recover the zero-fee verdict.
+        if ( bc().chainParams().getExternalGasDifficulty() > 0 && blockNumber > 0 ) {
+            try {
+                const auto parentInfo = blockInfo( blockNumber - 1 );
+                t.checkOutExternalGas( bc().chainParams(),
+                    static_cast< time_t >( parentInfo.timestamp() ),
+                    static_cast< uint64_t >( blockNumber - 1 ) );
+            } catch ( Exception const& _e ) {
+                // Only InvalidSignature is possible here and it can't fire for a committed tx;
+                // stay defensive so receipt RPC never fails.
+                cwarn << "External-gas recheck failed for receipt of a tx in block " << blockNumber
+                      << ": " << _e.what();
+            }
         }
+#endif
+        effectiveGasPrice = t.getEffectiveGasPrice( isLondon, blkInfo.baseFeePerGas() );
     }
 
     return LocalisedTransactionReceipt( receipt, txHash, blockHash, blockNumber, transactionIdx,
@@ -510,7 +545,7 @@ pair< h256, unsigned > ClientBase::transactionLocation( h256 const& _transaction
     return bc().transactionLocation( _transactionHash );
 }
 
-Transactions ClientBase::transactions( h256 _blockHash ) const {
+Transactions ClientBase::transactions( h256 const& _blockHash ) const {
     auto bl = bc().block( _blockHash );
     RLP b( bl );
     Transactions res;
@@ -519,7 +554,8 @@ Transactions ClientBase::transactions( h256 _blockHash ) const {
         auto txRlp = b[1][i];
         res.emplace_back( bytesRefFromTransactionRlp( txRlp ), CheckTransaction::Cheap, true,
             EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
-            InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp )
+            InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp ),
+            BerlinForkPatch::isEnabledWhen( blockTimestamp )
 #ifdef BITE
                 ,
             Bite2Patch::isEnabledWhen( blockTimestamp )
@@ -529,12 +565,13 @@ Transactions ClientBase::transactions( h256 _blockHash ) const {
     return res;
 }
 
-TransactionHashes ClientBase::transactionHashes( h256 _blockHash ) const {
+TransactionHashes ClientBase::transactionHashes( h256 const& _blockHash ) const {
     return bc().transactionHashes( _blockHash );
 }
 
 #ifdef BITE
-DecryptedTransactionData ClientBase::decryptedTransactionData( h256 _transactionHash ) const {
+DecryptedTransactionData ClientBase::decryptedTransactionData(
+    h256 const& _transactionHash ) const {
     return bc().decryptedTransactionData( _transactionHash );
 }
 
@@ -542,29 +579,19 @@ dev::h256 ClientBase::ctxOrigin( const dev::h256& _ctxHash ) const {
     auto tx = transaction( _ctxHash );
     if ( !tx.isCTX() )
         throw std::logic_error( "Trying to get ctxOrigin for non-CTX" );
-    auto block = bc().transactionLocation( _ctxHash ).first;
-    auto prevBlock = bc().info( block ).parentHash();
-    CtxOrigin ctxHashesLists = bc().ctxHashesForBlock( prevBlock );
-    std::optional< size_t > originIndex = ctxHashesLists.find( _ctxHash );
-    if ( originIndex != std::nullopt ) {
-        auto prevBlockTxnHashes = bc().transactionHashes( prevBlock );
-        if ( *originIndex < prevBlockTxnHashes.size() ) {
-            return prevBlockTxnHashes[*originIndex];
-        }
-    }
-    return dev::h256();
+    return bc().ctxOrigin( _ctxHash ).value;
 }
 
 std::vector< dev::h256 > ClientBase::craftedCTXs( const dev::h256& _transactionHash ) const {
     auto tl = bc().transactionLocation( _transactionHash );
-    CtxOrigin ctxHashesLists = bc().ctxHashesForBlock( tl.first );
+    CreatedCTXs ctxHashesLists = bc().ctxHashesForBlock( tl.first );
     if ( ctxHashesLists.count() < tl.second + 1 )
         return {};
     return ctxHashesLists[tl.second];
 }
 #endif  // BITE
 
-BlockHeader ClientBase::uncle( h256 _blockHash, unsigned _i ) const {
+BlockHeader ClientBase::uncle( h256 const& _blockHash, unsigned _i ) const {
     auto bl = bc().block( _blockHash );
     RLP b( bl );
     if ( _i < b[2].itemCount() )
@@ -573,17 +600,17 @@ BlockHeader ClientBase::uncle( h256 _blockHash, unsigned _i ) const {
         return BlockHeader();
 }
 
-UncleHashes ClientBase::uncleHashes( h256 _blockHash ) const {
+UncleHashes ClientBase::uncleHashes( h256 const& _blockHash ) const {
     return bc().uncleHashes( _blockHash );
 }
 
-unsigned ClientBase::transactionCount( h256 _blockHash ) const {
+unsigned ClientBase::transactionCount( h256 const& _blockHash ) const {
     auto bl = bc().block( _blockHash );
     RLP b( bl );
     return b[1].itemCount();
 }
 
-unsigned ClientBase::uncleCount( h256 _blockHash ) const {
+unsigned ClientBase::uncleCount( h256 const& _blockHash ) const {
     auto bl = bc().block( _blockHash );
     RLP b( bl );
     return b[2].itemCount();
@@ -628,7 +655,7 @@ h256 ClientBase::hashFromNumber( BlockNumber _number ) const {
     return bc().numberHash( _number );
 }
 
-BlockNumber ClientBase::numberFromHash( h256 _blockHash ) const {
+BlockNumber ClientBase::numberFromHash( h256 const& _blockHash ) const {
     if ( _blockHash == PendingBlockHash )
         return bc().number() + 1;
     else if ( _blockHash == LatestBlockHash )
@@ -638,7 +665,7 @@ BlockNumber ClientBase::numberFromHash( h256 _blockHash ) const {
     return bc().number( _blockHash );
 }
 
-int ClientBase::compareBlockHashes( h256 _h1, h256 _h2 ) const {
+int ClientBase::compareBlockHashes( h256 const& _h1, h256 const& _h2 ) const {
     BlockNumber n1 = numberFromHash( _h1 );
     BlockNumber n2 = numberFromHash( _h2 );
 
@@ -691,26 +718,26 @@ uint64_t ClientBase::chainId() const {
 }
 
 
-u256 ClientBase::countAt( Address _a ) const {
+u256 ClientBase::countAt( Address const& _a ) const {
     return getReadOnlyLatestBlockCopy().state().getNonce( _a );
 }
 
-u256 ClientBase::balanceAt( Address _a ) const {
+u256 ClientBase::balanceAt( Address const& _a ) const {
     return getReadOnlyLatestBlockCopy().state().balance( _a );
 }
 
-u256 ClientBase::stateAt( Address _a, u256 _l ) const {
+u256 ClientBase::stateAt( Address const& _a, u256 const& _l ) const {
     return getReadOnlyLatestBlockCopy().state().storage( _a, _l );
 }
 
-bytes ClientBase::codeAt( Address _a ) const {
+bytes ClientBase::codeAt( Address const& _a ) const {
     return getReadOnlyLatestBlockCopy().state().code( _a );
 }
 
-h256 ClientBase::codeHashAt( Address _a ) const {
+h256 ClientBase::codeHashAt( Address const& _a ) const {
     return getReadOnlyLatestBlockCopy().state().codeHash( _a );
 }
 
-map< h256, pair< u256, u256 > > ClientBase::storageAt( Address _a ) const {
+map< h256, pair< u256, u256 > > ClientBase::storageAt( Address const& _a ) const {
     return getReadOnlyLatestBlockCopy().state().storage( _a );
 }

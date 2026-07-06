@@ -188,8 +188,7 @@ void Client::stopWorking() {
 
     m_signalled.notify_all();  // to wake up the thread from Client::doWork()
 
-    m_tq.HandleDestruction();  // l_sergiy: destroy transaction queue earlier
-    m_bq.stop();               // l_sergiy: added to stop block queue processing
+    m_bq.stop();  // l_sergiy: added to stop block queue processing
 
     m_bc.close();
     BOOST_LOG( m_loggerInfo ) << "Blockchain is closed";
@@ -329,11 +328,6 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
 
     m_gp->update( bc() );
 
-#ifdef BITE
-    if ( SingleStateCommitPerBlockPatch::isEnabledInWorkingBlock() )
-        m_tq.setBITE2QueueOnInit( bc().pendingCTXsList() );
-#endif
-
     if ( m_dbPath.size() )
         Defaults::setDBPath( m_dbPath );
 
@@ -362,6 +356,11 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     AmsterdamFixPatch::isEnabled( *this );
 #ifdef FAIR
     BlockRewardsActivationPatch::init( this );
+#endif
+
+#ifdef BITE
+    if ( SingleStateCommitPerBlockPatch::isEnabledInWorkingBlock() )
+        m_tq.setBITE2QueueOnInit( bc().pendingCTXsList() );
 #endif
 
     initCPUUSage();
@@ -561,7 +560,8 @@ size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
 #ifdef FAIR
     uint64_t _winningNodeIndex,
 #endif
-    uint64_t _timestamp ) {
+    uint64_t _timestamp, Block::OnTransactionConsumed const& _onTransactionConsumed,
+    bool* _needsQueueReadyNotification ) {
     // on schain creation, SnapshotAgent needs timestamp of block 1
     // so we use this HACK
     // pass block number 0 as for bigger BN it is initialized in init()
@@ -590,7 +590,8 @@ size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
 #endif
 
     size_t cntSucceeded = 0;
-    cntSucceeded = syncTransactions( _transactions, _gasPrice, _timestamp );
+    cntSucceeded = syncTransactions( _transactions, _gasPrice, _timestamp, _onTransactionConsumed,
+        _needsQueueReadyNotification );
     sealUnconditionally( false );
     importWorkingBlock();
 
@@ -664,8 +665,9 @@ bool Client::updateGroupIfNeeded() {
 
 #endif  // BITE
 
-size_t Client::syncTransactions(
-    const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {
+size_t Client::syncTransactions( const Transactions& _transactions, u256 _gasPrice,
+    uint64_t _timestamp, Block::OnTransactionConsumed const& _onTransactionConsumed,
+    bool* _needsQueueReadyNotification ) {
     assert( m_skaleHost );
 
     while ( m_working.isSealed() ) {
@@ -679,17 +681,29 @@ size_t Client::syncTransactions(
 
     TransactionReceipts newPendingReceipts;
     unsigned goodReceipts;
+    bool needsQueueReadyNotification = false;
 
     DEV_WRITE_GUARDED( x_working ) {
-        assert( !m_working.isSealed() );
+        if ( LondonForkPatch::isEnabledWhen( static_cast< time_t >( _timestamp ) ) &&
+             m_working.isSealed() )
+            BOOST_THROW_EXCEPTION(
+                InvalidOperationOnSealedBlock() << errinfo_comment(
+                    "Client::syncTransactions: working block is still sealed after waiting" ) );
+        u256 baseFeePerGas = 0;
 
 #ifdef HISTORIC_STATE
         m_state.mutableHistoricState().rotateDbsIfNeeded( m_working.info().number() );
 #endif
-        // assert(m_state.m_db_write_lock.has_value());
 
-        tie( newPendingReceipts, goodReceipts ) =
-            m_working.syncEveryone( bc(), _transactions, _timestamp, _gasPrice );
+        if ( LondonForkPatch::isEnabledWhen( static_cast< time_t >( _timestamp ) ) ) {
+            baseFeePerGas = _gasPrice;
+            if ( baseFeePerGas == 0 )
+                baseFeePerGas = 1;
+        }
+
+        tie( newPendingReceipts, goodReceipts, needsQueueReadyNotification ) =
+            m_working.syncEveryone(
+                bc(), _transactions, _timestamp, _gasPrice, baseFeePerGas, _onTransactionConsumed );
         m_state = m_state.createStateCopyAndClearCaches();
 #ifdef HISTORIC_STATE
         // make sure the trie in new state object points to the new state root
@@ -701,6 +715,9 @@ size_t Client::syncTransactions(
     DEV_READ_GUARDED( x_working )
     DEV_WRITE_GUARDED( x_postSeal )
     m_postSeal = m_working;
+
+    if ( _needsQueueReadyNotification )
+        *_needsQueueReadyNotification = needsQueueReadyNotification;
 
     // Tell farm about new transaction (i.e. restart mining).
     onPostStateChanged();
@@ -724,11 +741,10 @@ void Client::onDeadBlocks( h256s const& _blocks, h256Hash& io_changed ) {
     for ( auto const& h : _blocks ) {
         BOOST_LOG( m_loggerTrace ) << "Dead block: " << h;
         for ( auto const& t : bc().transactions( h ) ) {
-            BOOST_LOG( m_loggerTrace ) << "Resubmitting dead-block transaction "
-                                       << Transaction( t, CheckTransaction::None );
-            BOOST_LOG( m_loggerTrace ) << "Resubmitting dead-block transaction "
-                                       << Transaction( t, CheckTransaction::None );
-            m_tq.import( t, IfDropped::Retry );
+            Transaction tx( t, CheckTransaction::None );
+            BOOST_LOG( m_loggerTrace ) << "Resubmitting dead-block transaction " << tx;
+            m_tq.import( tx, IfDropped::Retry, chainParams().isMultiTransactionModeEnabled(),
+                state().getNonce( tx.sender() ) );
         }
     }
 
@@ -771,8 +787,8 @@ void Client::restartMining() {
         if ( !m_postSeal.isSealed() || m_postSeal.info().hash() != newPreMine.info().parentHash() )
             for ( auto const& t : m_postSeal.pending() ) {
                 BOOST_LOG( m_loggerTrace ) << "Resubmitting post-seal transaction " << t;
-                //                      ctrace << "Resubmitting post-seal transaction " << t;
-                auto ir = m_tq.import( t, IfDropped::Retry );
+                auto ir = m_tq.import( t, IfDropped::Retry,
+                    chainParams().isMultiTransactionModeEnabled(), state().getNonce( t.sender() ) );
                 if ( ir != ImportResult::Success )
                     onTransactionQueueReady();
             }
@@ -950,8 +966,7 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
                  << ":TXRS:" << TransactionReceipt::howMany() << ":BLCKS:" << Block::howMany()
                  << ":ACCS:" << Account::howMany() << ":BQS:" << BlockQueue::howMany()
                  << ":BDS:" << BlockDetails::howMany() << ":TSS:" << TransactionSkeleton::howMany()
-                 << ":UTX:" << TransactionQueue::UnverifiedTransaction::howMany()
-                 << ":VTX:" << TransactionQueue::VerifiedTransaction::howMany()
+                 << ":UTX:" << 0 << ":VTX:" << TransactionQueue::VerifiedTransaction::howMany()
                  << ":CMM:" << bc().getTotalCacheMemory()
                  << ":KDS:" << db::LevelDB::getKeyDeletesStats();
     if ( number() % 1000 == 0 ) {
@@ -1028,13 +1043,6 @@ void Client::doWork( bool _doWait ) {
     bool isSealed = false;
     DEV_READ_GUARDED( x_working )
     isSealed = m_working.isSealed();
-    //    if (!isSealed && !isMajorSyncing() && !m_remoteWorking &&
-    //    m_syncTransactionQueue.compare_exchange_strong(t, false))
-    //        syncTransactionQueue();
-
-    // TEMPRORARY FIX!
-    // TODO: REVIEW
-    // tick();
 
     // SKALE Mine only empty blocks! (for tests passing/account balancing)
     rejigSealing();
@@ -1224,13 +1232,9 @@ h256 Client::importTransaction( Transaction const& _t, TransactionBroadcast _txO
 #endif  // BITE
 
     ImportResult res;
-    if ( chainParams().isMultiTransactionModeEnabled() &&
-         state.getNonce( _t.sender() ) < _t.nonce() &&
-         m_tq.maxCurrentNonce( _t.sender() ) != _t.nonce() ) {
-        res = m_tq.import( _t, IfDropped::Ignore, true );
-    } else {
-        res = m_tq.import( _t );
-    }
+    auto stateNonce = state.getNonce( _t.sender() );
+    bool const allowFutureQueue = chainParams().isMultiTransactionModeEnabled();
+    res = m_tq.import( _t, IfDropped::Ignore, allowFutureQueue, stateNonce );
 
     switch ( res ) {
     case ImportResult::Success:
@@ -1243,6 +1247,10 @@ h256 Client::importTransaction( Transaction const& _t, TransactionBroadcast _txO
         BOOST_THROW_EXCEPTION( PendingTransactionAlreadyExists() );
     case ImportResult::AlreadyInChain:
         BOOST_THROW_EXCEPTION( TransactionAlreadyInChain() );
+    case ImportResult::InvalidNonce:
+        BOOST_THROW_EXCEPTION( InvalidNonce() );
+    case ImportResult::QueueIsFull:
+        BOOST_THROW_EXCEPTION( TransactionQueueIsFull() );
     default:
         BOOST_THROW_EXCEPTION( UnknownTransactionValidationError() );
     }
@@ -1391,7 +1399,7 @@ Json::Value Client::traceBlock( BlockNumber _blockNumber, Json::Value const& _js
 
         auto traceOptions = TraceOptions::make( _jsonTraceConfig );
 
-        // cache results for better peformance
+        // cache results for better performance
         string key = to_string( _blockNumber ) + traceOptions.toString();
 
         auto cachedResult = m_blockTraceCache.getIfExists( key );
@@ -1579,7 +1587,7 @@ const dev::h256 Client::empty_str_hash =
 
 
 #ifdef HISTORIC_STATE
-u256 Client::historicStateBalanceAt( Address _a, BlockNumber _block ) const {
+u256 Client::historicStateBalanceAt( Address const& _a, BlockNumber _block ) const {
     auto block = blockByNumber( _block );
 
     auto aState = block.mutableState().mutableHistoricState();
@@ -1587,19 +1595,19 @@ u256 Client::historicStateBalanceAt( Address _a, BlockNumber _block ) const {
     return aState.balance( _a );
 }
 
-u256 Client::historicStateCountAt( Address _a, BlockNumber _block ) const {
+u256 Client::historicStateCountAt( Address const& _a, BlockNumber _block ) const {
     return blockByNumber( _block ).mutableState().mutableHistoricState().getNonce( _a );
 }
 
-u256 Client::historicStateAt( Address _a, u256 _l, BlockNumber _block ) const {
+u256 Client::historicStateAt( Address const& _a, u256 const& _l, BlockNumber _block ) const {
     return blockByNumber( _block ).mutableState().mutableHistoricState().storage( _a, _l );
 }
 
-h256 Client::historicStateRootAt( Address _a, BlockNumber _block ) const {
+h256 Client::historicStateRootAt( Address const& _a, BlockNumber _block ) const {
     return blockByNumber( _block ).mutableState().mutableHistoricState().storageRoot( _a );
 }
 
-bytes Client::historicStateCodeAt( Address _a, BlockNumber _block ) const {
+bytes Client::historicStateCodeAt( Address const& _a, BlockNumber _block ) const {
     return blockByNumber( _block ).mutableState().mutableHistoricState().code( _a );
 }
 #endif

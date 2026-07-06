@@ -48,8 +48,17 @@ enum class TransactionWait { WAIT_FOR_COMPLETION, DONT_WAIT_FOR_COMPLETION };
 enum class TransferType { NATIVE, ERC20 };
 
 enum class CallType {
-    TRANSACTION_COUNT, BALANCE, BLOCK_BY_NUMBER, BLOCK_NUMBER, CHAIN_ID, NET_VERSION, GAS_PRICE,
-    HASH_RATE, MINING, SYNCING, WEB3_CLIENT_VERSION
+    TRANSACTION_COUNT,
+    BALANCE,
+    BLOCK_BY_NUMBER,
+    BLOCK_NUMBER,
+    CHAIN_ID,
+    NET_VERSION,
+    GAS_PRICE,
+    HASH_RATE,
+    MINING,
+    SYNCING,
+    WEB3_CLIENT_VERSION
 };
 
 class SkaledAccount {
@@ -101,9 +110,7 @@ public:
     }
 
 
-    string getAddressAsString() const {
-        return addressAsString;
-    }
+    string getAddressAsString() const { return addressAsString; }
 
 
     const Secret& getKey() const;
@@ -197,7 +204,6 @@ public:
     void doRequestResponseAndCheckForError( std::string jsonPayload, Json::Value& response );
 
 
-
     string eth_getLatestBlock();
 
     string eth_blockNumber();
@@ -246,7 +252,7 @@ public:
 
     void doOneTinyTransfersIteration( TransferType _transferType );
 
-    void doOneReadCallIteration( CallType _transferType,  string _callName );
+    void doOneReadCallIteration( CallType _transferType, string _callName );
 
     void mintAllKeysWithERC20();
 

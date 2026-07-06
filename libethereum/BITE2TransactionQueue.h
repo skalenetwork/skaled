@@ -27,6 +27,7 @@
 #include <libdevcore/Log.h>
 
 #include <deque>
+#include <optional>
 
 namespace dev {
 namespace eth {
@@ -58,6 +59,12 @@ public:
 
     /// Set the queue on startup with CTXs that were created in the previous block
     void setQueueOnInit( std::deque< Transaction >&& _ctxQueue );
+
+    std::vector< dev::h256 > getNCTXOrigins( size_t _n ) const;
+
+    /// Verifies _ctxs exactly match the next expected pending CTXs and returns their origins.
+    std::optional< std::vector< dev::h256 > > validateNextExpectedCTXsAndGetOrigins(
+        std::vector< Transaction > const& _ctxs ) const;
 
 private:
     std::shared_ptr< std::deque< Transaction > > m_current =

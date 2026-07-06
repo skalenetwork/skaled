@@ -108,7 +108,6 @@ struct FixtureCommon {
 class TestClientFixture : public TestOutputHelperFixture {
 public:
     TestClientFixture( const std::string& _config = "" ) try {
-
         std::shared_ptr< ChainParams > chainParams = std::make_shared< ChainParams >();
         if ( _config != "" ) {
             Json::Value ret;
@@ -119,8 +118,7 @@ public:
             Json::FastWriter fastWriter;
             std::string config = fastWriter.write( ret );
             chainParams->loadConfig( config );
-        }
-        else {
+        } else {
             chainParams->nodeInfo.port = chainParams->nodeInfo.port6 = rand_port;
             chainParams->sChain.nodes[0].port = chainParams->sChain.nodes[0].port6 = rand_port;
         }
@@ -138,7 +136,7 @@ public:
 
         auto monitor = make_shared< InstanceMonitor >( "test" );
 
-        setenv("DATA_DIR", m_tmpDir.path().c_str(), 1);
+        setenv( "DATA_DIR", m_tmpDir.path().c_str(), 1 );
         m_ethereum.reset( new eth::ClientTest( chainParams, ( int ) chainParams->getNetworkId(),
             shared_ptr< GasPricer >(), NULL, monitor, m_tmpDir.path(), WithExisting::Kill ) );
 
@@ -222,7 +220,8 @@ public:
     ~TestClientFixture() {
 #ifdef FAIR
         const auto deadline = chrono::steady_clock::now() + chrono::seconds( 10 );
-        while ( m_ethereum->skaleHost()->ignoreNewBlocksEnabled() && chrono::steady_clock::now() < deadline ) {
+        while ( m_ethereum->skaleHost()->ignoreNewBlocksEnabled() &&
+                chrono::steady_clock::now() < deadline ) {
             usleep( 10 );
         }
         if ( m_ethereum->skaleHost()->isConsesusUpdateHappened() )
@@ -301,7 +300,7 @@ public:
 
         auto monitor = make_shared< InstanceMonitor >( "test" );
 
-        setenv("DATA_DIR", m_tmpDir.path().c_str(), 1);
+        setenv( "DATA_DIR", m_tmpDir.path().c_str(), 1 );
         m_ethereum.reset( new eth::ClientTest( chainParams, ( int ) chainParams->getNetworkId(),
             shared_ptr< GasPricer >(), mgr, monitor, m_tmpDir.path(), WithExisting::Kill ) );
 
@@ -437,7 +436,8 @@ static std::string const c_genesisInfoSkaleTest = std::string() +
       "nodeName": "Node1",
       "nodeID": 1112,
       "bindIP": "127.0.0.1",
-      "basePort": )E" + std::to_string( rand_port ) + R"E(,
+      "basePort": )E" + std::to_string( rand_port ) +
+                                                  R"E(,
       "logLevel": "trace",
       "logLevelProposal": "trace",
       "testSignatures": true
@@ -449,7 +449,9 @@ static std::string const c_genesisInfoSkaleTest = std::string() +
         "emptyBlockIntervalMs": -1,
         "correctForkInPowPatchTimestamp": 1,
         "nodes": [
-          { "nodeID": 1112, "ip": "127.0.0.1", "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "basePort": )E"+std::to_string( rand_port ) + R"E(, "schainIndex" : 1, "publicKey": "0xfa"}
+          { "nodeID": 1112, "ip": "127.0.0.1", "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "basePort": )E" +
+                                                  std::to_string( rand_port ) +
+                                                  R"E(, "schainIndex" : 1, "publicKey": "0xfa"}
         ]
     }
   },
@@ -472,8 +474,9 @@ static std::string const c_genesisInfoSkaleTest = std::string() +
 }
 )E";
 #else
-static std::string const c_genesisInfoSkaleTest = std::string() +
-                                                  R"E(
+static std::string const c_genesisInfoSkaleTest =
+    std::string() +
+    R"E(
 {
     "sealEngine": "Ethash",
     "params": {
@@ -513,8 +516,9 @@ static std::string const c_genesisInfoSkaleTest = std::string() +
       "nodeName": "Node1",
       "nodeID": 1112,
       "bindIP": "127.0.0.1",
-      "basePort": )E" + std::to_string( rand_port ) +
-                                                  R"E(,
+      "basePort": )E" +
+    std::to_string( rand_port ) +
+    R"E(,
       "logLevel": "trace",
       "logLevelProposal": "trace",
       "testSignatures": true
@@ -568,8 +572,8 @@ static std::string const c_genesisInfoSkaleTest = std::string() +
             "2": {
                 "group": [
               { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )E" +
-                                                  std::to_string( rand_port ) +
-                                                  R"E(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
+    std::to_string( rand_port ) +
+    R"E(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
                 ]
             }
         }
@@ -595,6 +599,14 @@ static std::string const c_genesisInfoSkaleTest = std::string() +
 )E";
 #endif
 
+static u256 estimateGasPrice( ClientTest* _client ) {
+#ifdef FAIR
+    return std::max( u256( 1000000 ), _client->gasBidPrice() );
+#else
+    ( void ) _client;
+    return u256( 1000000 );
+#endif
+}
 
 BOOST_AUTO_TEST_SUITE( EstimateGas )
 
@@ -610,7 +622,7 @@ BOOST_AUTO_TEST_CASE( transactionWithData ) {
     while ( !CorrectForkInPowPatch::isEnabledInWorkingBlock() )
         usleep( 100 );
     u256 estimate =
-        testClient->estimateGas( addr, 0, addr, data, 10000000, 1000000, GasEstimationCallback() )
+        testClient->estimateGas( addr, 0, addr, data, 10000000, estimateGasPrice( testClient ), GasEstimationCallback() )
             .first;
     BOOST_CHECK_EQUAL( estimate, u256( 21000 + 7 * 16 + 3 * 4 ) );
 }
@@ -650,7 +662,7 @@ BOOST_AUTO_TEST_CASE( constantConsumption ) {
         usleep( 100 );
 
     u256 estimate = testClient
-                        ->estimateGas( from, 0, contractAddress, data, 10000000, 1000000,
+                        ->estimateGas( from, 0, contractAddress, data, 10000000, estimateGasPrice( testClient ),
                             GasEstimationCallback() )
                         .first;
 
@@ -692,7 +704,7 @@ BOOST_AUTO_TEST_CASE( linearConsumption ) {
         usleep( 100 );
 
     u256 estimate = testClient
-                        ->estimateGas( from, 0, contractAddress, data, 10000000, 1000000,
+                        ->estimateGas( from, 0, contractAddress, data, 10000000, estimateGasPrice( testClient ),
                             GasEstimationCallback() )
                         .first;
 
@@ -736,7 +748,7 @@ BOOST_AUTO_TEST_CASE( exceedsGasLimit ) {
         usleep( 100 );
 
     u256 estimate = testClient
-                        ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
+                        ->estimateGas( from, 0, contractAddress, data, maxGas, estimateGasPrice( testClient ),
                             GasEstimationCallback() )
                         .first;
 
@@ -776,7 +788,7 @@ BOOST_AUTO_TEST_CASE( runsInterference ) {
         usleep( 100 );
 
     u256 estimate = testClient
-                        ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
+                        ->estimateGas( from, 0, contractAddress, data, maxGas, estimateGasPrice( testClient ),
                             GasEstimationCallback() )
                         .first;
 
@@ -824,7 +836,7 @@ BOOST_AUTO_TEST_CASE( consumptionWithRefunds ) {
         usleep( 100 );
 
     u256 estimate = testClient
-                        ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
+                        ->estimateGas( from, 0, contractAddress, data, maxGas, estimateGasPrice( testClient ),
                             GasEstimationCallback() )
                         .first;
 
@@ -886,7 +898,7 @@ BOOST_AUTO_TEST_CASE( consumptionWithRefunds2 ) {
         usleep( 100 );
 
     u256 estimate = testClient
-                        ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
+                        ->estimateGas( from, 0, contractAddress, data, maxGas, estimateGasPrice( testClient ),
                             GasEstimationCallback() )
                         .first;
 
@@ -935,7 +947,7 @@ BOOST_AUTO_TEST_CASE( nonLinearConsumption ) {
     while ( !CorrectForkInPowPatch::isEnabledInWorkingBlock() )
         usleep( 100 );
     u256 estimate = testClient
-                        ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
+                        ->estimateGas( from, 0, contractAddress, data, maxGas, estimateGasPrice( testClient ),
                             GasEstimationCallback() )
                         .first;
 
@@ -944,7 +956,7 @@ BOOST_AUTO_TEST_CASE( nonLinearConsumption ) {
     maxGas = 50000;
     estimate = testClient
                    ->estimateGas(
-                       from, 0, contractAddress, data, maxGas, 1000000, GasEstimationCallback() )
+                       from, 0, contractAddress, data, maxGas, estimateGasPrice( testClient ), GasEstimationCallback() )
                    .first;
 
     BOOST_CHECK_EQUAL( estimate, u256( maxGas ) );
@@ -952,7 +964,7 @@ BOOST_AUTO_TEST_CASE( nonLinearConsumption ) {
     maxGas = 200000;
     estimate = testClient
                    ->estimateGas(
-                       from, 0, contractAddress, data, maxGas, 1000000, GasEstimationCallback() )
+                       from, 0, contractAddress, data, maxGas, estimateGasPrice( testClient ), GasEstimationCallback() )
                    .first;
 
     BOOST_CHECK_EQUAL( estimate, u256( maxGas ) );
@@ -1006,10 +1018,13 @@ BOOST_AUTO_TEST_CASE( consumptionWithReverts ) {
     while ( !CorrectForkInPowPatch::isEnabledInWorkingBlock() )
         usleep( 100 );
 
-    u256 estimate = testClient
-                        ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
-                            GasEstimationCallback() )
-                        .first;
+    u256 estimate;
+    testClient->withBlockImportBarrier( [&]() {
+        estimate = testClient
+                       ->estimateGas( from, 0, contractAddress, data, maxGas, estimateGasPrice( testClient ),
+                           GasEstimationCallback() )
+                       .first;
+    } );
 
     BOOST_CHECK_EQUAL( estimate, u256( maxGas ) );
 
@@ -1017,10 +1032,12 @@ BOOST_AUTO_TEST_CASE( consumptionWithReverts ) {
     data =
         jsToBytes( "0x20987767000000000000000000000000000000000000000000000000000000000000c350" );
 
-    estimate = testClient
-                   ->estimateGas(
-                       from, 0, contractAddress, data, maxGas, 1000000, GasEstimationCallback() )
-                   .first;
+    testClient->withBlockImportBarrier( [&]() {
+        estimate = testClient
+                       ->estimateGas( from, 0, contractAddress, data, maxGas, estimateGasPrice( testClient ),
+                           GasEstimationCallback() )
+                       .first;
+    } );
 
     BOOST_CHECK_EQUAL( estimate, u256( maxGas ) );
 
@@ -1028,10 +1045,12 @@ BOOST_AUTO_TEST_CASE( consumptionWithReverts ) {
     data =
         jsToBytes( "0xfdde8d66000000000000000000000000000000000000000000000000000000000000c350" );
 
-    estimate = testClient
-                   ->estimateGas(
-                       from, 0, contractAddress, data, maxGas, 1000000, GasEstimationCallback() )
-                   .first;
+    testClient->withBlockImportBarrier( [&]() {
+        estimate = testClient
+                       ->estimateGas( from, 0, contractAddress, data, maxGas, estimateGasPrice( testClient ),
+                           GasEstimationCallback() )
+                       .first;
+    } );
 
     BOOST_CHECK_EQUAL( estimate, u256( 121632 ) );
 }
@@ -1041,7 +1060,8 @@ BOOST_AUTO_TEST_SUITE_END()
 BOOST_AUTO_TEST_SUITE( getHistoricNodesData )
 
 #ifndef FAIR
-static std::string const c_genesisInfoSkaleIMABLSPublicKeyTest = std::string() + R"E(
+static std::string const c_genesisInfoSkaleIMABLSPublicKeyTest =
+    std::string() + R"E(
 {
     "sealEngine": "Ethash",
     "params": {
@@ -1080,7 +1100,8 @@ static std::string const c_genesisInfoSkaleIMABLSPublicKeyTest = std::string() +
       "nodeName": "Node1",
       "nodeID": 1112,
       "bindIP": "127.0.0.1",
-      "basePort": )E" + std::to_string( rand_port ) + R"E(,
+      "basePort": )E" +
+    std::to_string( rand_port ) + R"E(,
       "logLevel": "trace",
       "logLevelProposal": "trace",
       "testSignatures": true
@@ -1124,7 +1145,8 @@ static std::string const c_genesisInfoSkaleIMABLSPublicKeyTest = std::string() +
             }
         },
         "nodes": [
-          { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )E"+std::to_string( rand_port ) + R"E(, "schainIndex" : 1, "publicKey": "0xfa"}
+          { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )E" +
+    std::to_string( rand_port ) + R"E(, "schainIndex" : 1, "publicKey": "0xfa"}
         ]
     }
   },
@@ -1276,7 +1298,9 @@ BOOST_AUTO_TEST_CASE( initAndUpdateHistoricConfigFields ) {
     };
 
     BOOST_REQUIRE( testClient->getCurrentBLSPublicKey() == imaBLSPublicKeyOnStartUp );
-    BOOST_REQUIRE_EQUAL( testClient->getHistoricNodePublicKey( 0 ) , "0x3a581d62b12232dade30c3710215a271984841657449d1f474295a13737b778266f57e298f123ae80cbab7cc35ead1b62a387556f94b326d5c65d4a7aa2abcba" );
+    BOOST_REQUIRE_EQUAL( testClient->getHistoricNodePublicKey( 0 ),
+        "0x3a581d62b12232dade30c3710215a271984841657449d1f474295a13737b778266f57e298f123ae80cbab7cc"
+        "35ead1b62a387556f94b326d5c65d4a7aa2abcba" );
     BOOST_REQUIRE_EQUAL( testClient->getHistoricNodeId( 0 ), "26" );
     BOOST_REQUIRE_EQUAL( testClient->getHistoricNodeIndex( 0 ), "3" );
 
@@ -1308,7 +1332,9 @@ BOOST_AUTO_TEST_CASE( initAndUpdateHistoricConfigFields ) {
     sleep( 3 );
 
     BOOST_REQUIRE( testClient->getCurrentBLSPublicKey() == imaBLSPublicKeyAfterBlock );
-    BOOST_REQUIRE_EQUAL( testClient->getHistoricNodePublicKey( 0 ), "0x6180cde2cbbcc6b6a17efec4503a7d4316f8612f411ee171587089f770335f484003ad236c534b9afa82befc1f69533723abdb6ec2601e582b72dcfd7919338b" );
+    BOOST_REQUIRE_EQUAL( testClient->getHistoricNodePublicKey( 0 ),
+        "0x6180cde2cbbcc6b6a17efec4503a7d4316f8612f411ee171587089f770335f484003ad236c534b9afa82befc"
+        "1f69533723abdb6ec2601e582b72dcfd7919338b" );
     BOOST_REQUIRE_EQUAL( testClient->getHistoricNodeId( 0 ), "30" );
     BOOST_REQUIRE_EQUAL( testClient->getHistoricNodeIndex( 0 ), "0" );
 }
@@ -1347,7 +1373,8 @@ static std::string const c_skaleConfigString =
             "nodeName": "TestNode",
             "nodeID": 1112,
             "bindIP": "127.0.0.1",
-            "basePort": )E" + std::to_string( rand_port ) + R"E(,
+            "basePort": )E" +
+    std::to_string( rand_port ) + R"E(,
             "testSignatures": true
         },
         "sChain": {
@@ -1356,7 +1383,9 @@ static std::string const c_skaleConfigString =
             "snapshotIntervalSec": 5,
             "emptyBlockIntervalMs": 4000,
             "nodes": [
-              { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )E"+std::to_string( rand_port ) + R"E(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
+              { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )E" +
+    std::to_string( rand_port ) +
+    R"E(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
             ]
         }
     },
@@ -1417,8 +1446,8 @@ static std::string const c_skaleConfigString =
                 "1": {
                     "group": [
                   { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )E" +
-        std::to_string( rand_port ) +
-        R"E(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
+    std::to_string( rand_port ) +
+    R"E(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
                     ]
                 },
                 "-1": {}

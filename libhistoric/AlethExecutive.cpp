@@ -13,6 +13,7 @@
 #include "libevm/LegacyVM.h"
 #include "libevm/VMFactory.h"
 #include <libethashseal/Ethash.h>
+#include <libethereum/SchainPatch.h>
 #include <libhistoric/HistoricState.h>
 
 using namespace std;
@@ -41,30 +42,7 @@ std::string dumpStorage( AlethExtVM const& _ext ) {
     return o.str();
 };
 }  // namespace
-/*
-AlethExecutive::AlethExecutive(Block &_s, BlockChain const &_bc, unsigned _level)
-        : m_s(_s.mutableState().mutableHistoricState()),
-          m_envInfo(_s.info(), _bc.lastBlockHashes(), 0, _bc.chainID()),
-          m_depth(_level),
-          m_sealEngine(*_bc.sealEngine()) {
-}
 
-AlethExecutive::AlethExecutive(Block &_s, LastBlockHashesFace const &_lh, unsigned _level)
-        : m_s(_s.mutableState().mutableHistoricState()),
-          m_envInfo(_s.info(), _lh, 0, _s.sealEngine()->chainParams().chainID),
-          m_depth(_level),
-          m_sealEngine(*_s.sealEngine()) {
-}
-
-AlethExecutive::AlethExecutive(
-        dev::eth::HistoricState &io_s, Block const &_block, unsigned _txIndex, BlockChain const
-&_bc, unsigned _level) : m_s(createIntermediateState(io_s, _block, _txIndex, _bc)),
-          m_envInfo(_block.info(), _bc.lastBlockHashes(),
-                    _txIndex ? _block.receipt(_txIndex - 1).cumulativeGasUsed() : 0, _bc.chainID()),
-          m_depth(_level),
-          m_sealEngine(*_bc.sealEngine()) {
-}
-*/
 u256 AlethExecutive::gasUsed() const {
     return m_t.gas() - m_gas;
 }
@@ -86,6 +64,11 @@ void AlethExecutive::initialize( Transaction const& _transaction ) {
         throw;
     }
 
+    // Use the same shared effective-gas-price helper as normal execution, so historic receipts
+    // (effectiveGasPrice, refund credit, author fee) agree with eth_getTransactionReceipt.
+    const bool isLondon = LondonForkPatch::isEnabledWhen( m_envInfo.committedBlockTimestamp() );
+    m_effectiveGasPrice = m_t.getEffectiveGasPrice( isLondon, m_envInfo.header().baseFeePerGas() );
+
     if ( !m_t.hasZeroSignature() ) {
         // Avoid invalid transactions.
         u256 nonceReq;
@@ -105,14 +88,15 @@ void AlethExecutive::initialize( Transaction const& _transaction ) {
                 InvalidNonce() << RequirementError( ( bigint ) nonceReq, ( bigint ) m_t.nonce() ) );
         }
 
-        // Avoid unaffordable transactions.
-        bigint gasCost = ( bigint ) m_t.gas() * m_t.gasPrice();
+        // Avoid unaffordable transactions. Use the effective gas price so London type-2 txs are
+        // charged against min(maxFee, baseFee+priority) — matching normal execution.
+        bigint gasCost = ( bigint ) m_t.gas() * m_effectiveGasPrice;
         bigint totalCost = m_t.value() + gasCost;
         if ( m_s.balance( m_t.sender() ) < totalCost ) {
             BOOST_LOG( m_loggerDebug )
                 << "Not enough cash: Require > " << totalCost << " = " << m_t.gas() << " * "
-                << m_t.gasPrice() << " + " << m_t.value() << " Got" << m_s.balance( m_t.sender() )
-                << " for sender: " << m_t.sender();
+                << m_effectiveGasPrice << " + " << m_t.value() << " Got"
+                << m_s.balance( m_t.sender() ) << " for sender: " << m_t.sender();
             m_excepted = TransactionException::NotEnoughCash;
             BOOST_THROW_EXCEPTION( NotEnoughCash() << RequirementError( totalCost,
                                                           ( bigint ) m_s.balance( m_t.sender() ) )
@@ -125,10 +109,11 @@ void AlethExecutive::initialize( Transaction const& _transaction ) {
 bool AlethExecutive::execute() {
     // Entry point for a user-executed transaction.
 
-    // Pay...
+    // Pay using the effective gas price (London-aware, zero for external-gas) so historic
+    // re-execution charges the same amount the live execution charged.
     BOOST_LOG( m_loggerTrace ) << "Paying " << formatBalance( m_gasCost )
                                << " from sender for gas (" << m_t.gas() << " gas at "
-                               << formatBalance( m_t.gasPrice() ) << ")";
+                               << formatBalance( m_effectiveGasPrice ) << ")";
     m_s.subBalance( m_t.sender(), m_gasCost );
 
 #ifdef BITE
@@ -139,12 +124,16 @@ bool AlethExecutive::execute() {
     Address receiverAddressToPassToEvm = m_t.receiveAddress();
 #endif
 
-    assert( m_t.gas() >= ( u256 ) m_baseGasRequired );
+    if ( LondonForkPatch::isEnabledWhen( m_envInfo.committedBlockTimestamp() ) &&
+         m_t.gas() < ( u256 ) m_baseGasRequired )
+        BOOST_THROW_EXCEPTION( OutOfGasIntrinsic() << errinfo_comment(
+                                   "AlethExecutive::execute: transaction gas below intrinsic base "
+                                   "gas" ) );
     if ( m_t.isCreation() )
-        return create( m_t.sender(), m_t.value(), m_t.gasPrice(),
+        return create( m_t.sender(), m_t.value(), m_effectiveGasPrice,
             m_t.gas() - ( u256 ) m_baseGasRequired, &dataToPassToEvm, m_t.sender() );
     else
-        return call( receiverAddressToPassToEvm, m_t.sender(), m_t.value(), m_t.gasPrice(),
+        return call( receiverAddressToPassToEvm, m_t.sender(), m_t.value(), m_effectiveGasPrice,
             bytesConstRef( &dataToPassToEvm ), m_t.gas() - ( u256 ) m_baseGasRequired );
 }
 
@@ -183,7 +172,7 @@ bool AlethExecutive::call(
 
         PrecompiledCallContext ctx{ m_envInfo.number(), m_envInfo.committedBlockTimestamp(),
 #ifdef BITE
-            m_txnIndex, _p.senderAddress,
+            m_txnIndex, m_t.sha3(), _p.senderAddress,
 #endif
             true };
         bigint g = m_chainParams.costOfPrecompiled( _p.codeAddress, _p.data, ctx );
@@ -196,6 +185,11 @@ bool AlethExecutive::call(
             m_gas = ( u256 )( _p.gas - g );
             bytes output;
             bool success;
+            PrecompiledCallContext ctx{ m_envInfo.number(), m_envInfo.committedBlockTimestamp(),
+#ifdef BITE
+                m_txnIndex, m_t.sha3(), _p.senderAddress,
+#endif
+                true };
             tie( success, output ) =
                 m_chainParams.executePrecompiled( _p.codeAddress, _p.data, ctx );
             size_t outputSize = output.size();
@@ -352,6 +346,9 @@ bool AlethExecutive::go( OnOpFunc const& _onOp ) {
                 }
                 if ( out.size() > m_ext->evmSchedule().maxCodeSize )
                     BOOST_THROW_EXCEPTION( OutOfGas() );
+                // EIP-3541: reject contracts whose deployed code starts with 0xEF
+                else if ( m_ext->evmSchedule().eip3541Mode && !out.empty() && out[0] == 0xEF )
+                    BOOST_THROW_EXCEPTION( CodeStartsWith0xEF() );
                 else if ( out.size() * m_ext->evmSchedule().createDataGas <= m_gas ) {
                     if ( m_res )
                         m_res->codeDeposit = CodeDeposit::Success;
@@ -431,16 +428,33 @@ bool AlethExecutive::finalize() {
 
 
         // Refunds must be applied before the miner gets the fees.
-        assert( m_ext->sub.refunds >= 0 );
+        if ( LondonForkPatch::isEnabledWhen( m_envInfo.committedBlockTimestamp() ) &&
+             m_ext->sub.refunds < 0 )
+            BOOST_THROW_EXCEPTION( std::runtime_error(
+                "AlethExecutive::finalize: negative gas refund (internal invariant violation)" ) );
+        // EIP-3529: refund cap is gasUsed / maxRefundQuotient (2 pre-London, 5 London+). Read
+        // the cap from the active schedule rather than hard-coding /2, so historic execution
+        // matches normal execution after London activation.
+        int64_t gasUsed = static_cast< int64_t >( m_t.gas() ) - static_cast< int64_t >( m_gas );
         int64_t maxRefund =
-            ( static_cast< int64_t >( m_t.gas() ) - static_cast< int64_t >( m_gas ) ) / 2;
+            gasUsed / static_cast< int64_t >( m_ext->evmSchedule().maxRefundQuotient );
         m_gas += min( maxRefund, m_ext->sub.refunds );
     }
 
     if ( m_t ) {
-        m_s.addBalance( m_t.sender(), m_gas * m_t.gasPrice() );
+        // Match live effective gas price for historic refund and author fee receipts.
+        // Non-FAIR credits the full fee; FAIR applies reward-share as in Executive::finalize.
+        m_s.addBalance( m_t.sender(), m_gas * m_effectiveGasPrice );
 
-        u256 feesEarned = ( m_t.gas() - m_gas ) * m_t.gasPrice();
+        u256 feesEarned = ( m_t.gas() - m_gas ) * m_effectiveGasPrice;
+#ifdef FAIR
+        // Mirror live FAIR author fee calculation during historic replay.
+        // Otherwise historic replay credits a larger author balance than the live block.
+        EVMSchedule currentBlockSchedule = m_chainParams.makeEvmSchedule(
+            m_envInfo.committedBlockTimestamp(), m_envInfo.number() );
+        feesEarned = dev::calculateShareWithPrecision(
+            feesEarned, currentBlockSchedule.shareOfTransactionFeeToRewardPromille );
+#endif
         m_s.addBalance( m_envInfo.author(), feesEarned );
     }
 

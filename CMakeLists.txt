@@ -186,7 +186,6 @@ endif()
 if (FAIR)
     set(BITE "1")
     add_definitions(-DBITE=1)
-    add_definitions(-DBITE2=1)
     add_definitions(-DFAIR=1)
 endif()
 
@@ -253,7 +252,7 @@ if ( CONSENSUS )
     set( SKALED_LATEST_STANDARD ON CACHE BOOL "Use latest standards" ) # depricated option. TODO: remove from consensus
     set( BUILD_TESTS OFF CACHE BOOL "Build tests" ) # do not build libbls tests
     add_subdirectory( libconsensus EXCLUDE_FROM_ALL)
-    target_compile_options( consensus PRIVATE -Wno-unused-variable ) # silence libff warnings
+    target_compile_options( consensus PRIVATE -Wno-unused-variable -Wno-ignored-attributes ) # silence libff/pclose warnings
     target_compile_options( bls PRIVATE -Wno-unused-variable) # silence libff warnings
     target_compile_options( consensus PRIVATE -Wno-error=ignored-attributes )
 else()

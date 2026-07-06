@@ -123,6 +123,18 @@ def _as_int(value):
     return int(value)
 
 
+def _is_skaled(w3: Web3) -> bool:
+    """True if the connected node is skaled. Used to gate SKALE-specific policy assertions
+    (no priority fee, no genesis baseFeePerGas) that a standard Ethereum node (e.g. anvil)
+    is not expected to follow. skaled's web3_clientVersion is "skaled/<version>/..."."""
+    try:
+        resp = w3.provider.make_request("web3_clientVersion", [])
+        version = (resp.get("result") or "") if isinstance(resp, dict) else ""
+        return "skaled" in version.lower()
+    except Exception:
+        return False
+
+
 # ---------------------------------------------------------------------------
 # EIP-2929: cold vs warm storage access
 # ---------------------------------------------------------------------------
@@ -727,6 +739,105 @@ def test_eip_2929_create_revert_preserves_address(
             f"({inner_gas}), cold ref ({cold_gas})"
         ),
         details={"created_gas": created_gas, "inner_gas": inner_gas, "cold_gas": cold_gas},
+    )
+
+
+# ---------------------------------------------------------------------------
+# EIP-2929 + EIP-2681: a CREATE aborted before warming leaves the address cold
+# ---------------------------------------------------------------------------
+
+def test_eip_2929_create_aborted_stays_cold(
+    w3: Web3,
+    deployer: LocalAccount,
+    sol_dir: str,
+    gas_limit: int = 3_000_000,
+) -> EIPTestResult:
+    """
+    EIP-2929 / EIP-2681 ordering: a CREATE aborted *before* the address-warming
+    step leaves the would-be contract address COLD, while a CREATE that actually
+    executes warms it.
+
+    The exact nonce-overflow trigger (sender nonce == 2^64-1) is not reachable
+    by normal RPC transactions (there is no setNonce). The execution-specs
+    workload covers it with genesis-preseeded stubs; here we use the closest
+    normal-RPC abort (endowment > balance), which shares the ordering: it
+    aborts before warming, so the same address is cold after the aborted CREATE
+    and warm after the successful one.
+    """
+    logger.info("=== EIP-2929 CREATE aborted-before-warming stays cold test ===")
+    abi, bytecode = _load_artifact(sol_dir, "EIP2929CreateColdTest")
+    addr = _deploy_contract(w3, deployer, abi, bytecode, gas_limit)
+    contract = w3.eth.contract(address=addr, abi=abi)
+
+    cold_ref = w3.to_checksum_address("0x" + "ef" * 20)
+    tx = contract.functions.measureCreateCold(cold_ref).build_transaction({
+        "from": deployer.address,
+        "gas": gas_limit,
+        "gasPrice": w3.eth.gas_price,
+        "chainId": w3.eth.chain_id,
+    })
+    receipt = _send_tx(w3, deployer, tx)
+    if receipt["status"] != 1:
+        return EIPTestResult(
+            eip="2929-create-cold",
+            passed=False,
+            message="measureCreateCold() transaction reverted",
+            details={"contract": addr},
+        )
+
+    logs = contract.events.CreateColdGasMeasured().process_receipt(receipt)
+    if not logs:
+        return EIPTestResult(
+            eip="2929-create-cold",
+            passed=False,
+            message="CreateColdGasMeasured event not found in receipt",
+            details={"contract": addr},
+        )
+
+    args = logs[0]["args"]
+    aborted_gas = args["abortedCreateBalanceGas"]
+    success_gas = args["successCreateBalanceGas"]
+    cold_gas    = args["coldRefBalanceGas"]
+
+    logger.info(
+        "Gas: abortedCreate=%d (expect cold), successCreate=%d (expect warm), coldRef=%d",
+        aborted_gas, success_gas, cold_gas,
+    )
+
+    details = {
+        "aborted_gas": aborted_gas,
+        "success_gas": success_gas,
+        "cold_gas": cold_gas,
+        "contract": addr,
+    }
+
+    errors = []
+    # A successful CREATE must warm the address (warm << cold reference).
+    if success_gas == 0 or cold_gas / success_gas < MIN_COLD_WARM_RATIO:
+        errors.append(
+            f"Address not warm after successful CREATE: "
+            f"success={success_gas}, coldRef={cold_gas}"
+        )
+    # The aborted CREATE must leave the SAME address cold (close to coldRef,
+    # far from the warm cost).
+    if success_gas == 0 or aborted_gas / max(success_gas, 1) < MIN_COLD_WARM_RATIO:
+        errors.append(
+            f"Aborted CREATE warmed the address (should stay cold): "
+            f"aborted={aborted_gas}, warm={success_gas}"
+        )
+
+    if errors:
+        return EIPTestResult(
+            eip="2929-create-cold", passed=False, message="; ".join(errors), details=details
+        )
+    return EIPTestResult(
+        eip="2929-create-cold",
+        passed=True,
+        message=(
+            f"Aborted CREATE cold ({aborted_gas}), successful CREATE warm "
+            f"({success_gas}), cold ref ({cold_gas})"
+        ),
+        details=details,
     )
 
 
@@ -1580,12 +1691,10 @@ def test_eip_1559_effective_price(
 
     latest = w3.eth.get_block("latest")
     base_fee = _as_int(latest.get("baseFeePerGas")) or 0
-    # Use non-zero, EIP-1559-style fee fields so helper-side fee-floor normalization
-    # does not rewrite the tx into edge-case values on Anvil.
-    # max_fee == base_fee + max_priority ensures min(max_fee, base_fee+max_priority) == max_fee,
-    # keeping GASPRICE opcode (= maxFeePerGas on SKALE) consistent with receipt effectiveGasPrice.
     max_priority = 10**9  # 1 gwei tip
-    max_fee = base_fee + max_priority
+    # Keep maxFeePerGas comfortably above baseFeePerGas + maxPriorityFeePerGas so the
+    # effective price should follow the London formula rather than the fee cap.
+    max_fee = base_fee + max_priority * 100
 
     tx = contract.functions.reportGasPrice().build_transaction(
         {
@@ -1667,6 +1776,80 @@ def test_eip_1559_effective_price(
             f"GASPRICE opcode={reported_gas_price}, "
             f"receipt.effectiveGasPrice={receipt_effective}, "
             f"formula min({max_fee}, {inclusion_base_fee}+{max_priority})={expected_effective}"
+        ),
+        details=details,
+    )
+
+
+def test_eip_1559_legacy_gasprice_equals_basefee(
+    w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000
+) -> EIPTestResult:
+    """Legacy tx with gasPrice == baseFeePerGas: effectiveGasPrice must equal baseFee."""
+    logger.info("=== EIP-1559 legacy gasPrice == baseFee test ===")
+
+    latest = w3.eth.get_block("latest")
+    base_fee = _as_int(latest.get("baseFeePerGas"))
+    logger.info("BASE FEE for LEGACY GAS PRICE %s", base_fee)
+
+    if base_fee is None or base_fee == 0:
+        return EIPTestResult(
+            eip="1559-legacy-gasprice-eq-basefee",
+            passed=False,
+            message="baseFeePerGas missing or zero in latest block",
+            details={"base_fee": base_fee},
+        )
+
+    # Send a simple value transfer with gasPrice set exactly to baseFee.
+    tx_dict = {
+        "from": deployer.address,
+        "to": deployer.address,
+        "value": 0,
+        "gas": 21_000,
+        "gasPrice": base_fee,
+        "chainId": w3.eth.chain_id,
+        "nonce": w3.eth.get_transaction_count(deployer.address),
+    }
+    signed = deployer.sign_transaction(tx_dict)
+    tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
+    receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=300)
+
+    inclusion_block = w3.eth.get_block(receipt["blockNumber"])
+    inclusion_base_fee = _as_int(inclusion_block.get("baseFeePerGas")) or 0
+    receipt_effective = _as_int(receipt.get("effectiveGasPrice"))
+
+    details = {
+        "gas_price_sent": base_fee,
+        "inclusion_base_fee": inclusion_base_fee,
+        "receipt_effective_gas_price": receipt_effective,
+        "status": receipt["status"],
+    }
+
+    if receipt["status"] != 1:
+        return EIPTestResult(
+            eip="1559-legacy-gasprice-eq-basefee",
+            passed=False,
+            message="Legacy tx with gasPrice==baseFee reverted",
+            details=details,
+        )
+
+    # For legacy txs, effectiveGasPrice == gasPrice.
+    if receipt_effective is not None and receipt_effective != base_fee:
+        return EIPTestResult(
+            eip="1559-legacy-gasprice-eq-basefee",
+            passed=False,
+            message=(
+                f"effectiveGasPrice={receipt_effective} != gasPrice={base_fee} "
+                f"(baseFee={inclusion_base_fee})"
+            ),
+            details=details,
+        )
+
+    return EIPTestResult(
+        eip="1559-legacy-gasprice-eq-basefee",
+        passed=True,
+        message=(
+            f"Legacy tx accepted with gasPrice==baseFee={base_fee}, "
+            f"effectiveGasPrice={receipt_effective}"
         ),
         details=details,
     )
@@ -1777,7 +1960,12 @@ def test_eip_1559_fee_history_float_percentiles(
 def test_eip_1559_max_priority_fee(
     w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000
 ) -> EIPTestResult:
-    """eth_maxPriorityFeePerGas should be available."""
+    """eth_maxPriorityFeePerGas should be available AND return 0x0 (SKALE-specific contract).
+
+    SKALE does not require priority fees. The RPC is a wallet-compatibility stub and must stay
+    at 0x0 so wallets do not over-pay; receipt-level effectiveGasPrice is computed independently
+    under London via min(maxFee, baseFee + priority).
+    """
     logger.info("=== EIP-1559 maxPriorityFeePerGas RPC test ===")
     response = w3.provider.make_request("eth_maxPriorityFeePerGas", [])
     if "error" in response:
@@ -1787,8 +1975,10 @@ def test_eip_1559_max_priority_fee(
             message=f"eth_maxPriorityFeePerGas failed: {response['error']}",
         )
 
-    value = _as_int(response.get("result"))
-    details = {"max_priority_fee_per_gas": value}
+    raw = response.get("result")
+    value = _as_int(raw)
+    is_skaled = _is_skaled(w3)
+    details = {"max_priority_fee_per_gas": value, "raw": raw, "is_skaled": is_skaled}
     if value is None:
         return EIPTestResult(
             eip="1559-max-priority-fee",
@@ -1796,10 +1986,87 @@ def test_eip_1559_max_priority_fee(
             message="eth_maxPriorityFeePerGas returned null result",
             details=details,
         )
+    # The 0x0 contract is SKALE-specific. A standard Ethereum node (e.g. anvil) legitimately
+    # returns a non-zero suggested priority fee, so only enforce 0 on skaled.
+    if not is_skaled:
+        return EIPTestResult(
+            eip="1559-max-priority-fee",
+            passed=True,
+            message=f"eth_maxPriorityFeePerGas returned {value} (non-skaled node; 0 not enforced)",
+            details=details,
+        )
+    if value != 0:
+        return EIPTestResult(
+            eip="1559-max-priority-fee",
+            passed=False,
+            message=(
+                f"eth_maxPriorityFeePerGas returned {value} (expected 0x0); "
+                "SKALE is required to return 0 here."
+            ),
+            details=details,
+        )
     return EIPTestResult(
         eip="1559-max-priority-fee",
         passed=True,
-        message=f"eth_maxPriorityFeePerGas returned {value}",
+        message="eth_maxPriorityFeePerGas returned 0x0 as required by SKALE policy",
+        details=details,
+    )
+
+
+def test_eip_1559_genesis_no_basefee(
+    w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000
+) -> EIPTestResult:
+    """Genesis (block 0) must not expose baseFeePerGas via RPC.
+
+    Per the action-plan policy decision: genesis carries no baseFeePerGas in its RLP — its
+    on-chain identity is independent of London activation. RPC must reflect that and omit the
+    field for block 0. eth_getBlockByNumber("0x0") therefore must not include a baseFeePerGas
+    key in the returned block object.
+    """
+    logger.info("=== EIP-1559 genesis baseFeePerGas absence test ===")
+    response = w3.provider.make_request("eth_getBlockByNumber", ["0x0", False])
+    if "error" in response:
+        return EIPTestResult(
+            eip="1559-genesis-no-basefee",
+            passed=False,
+            message=f"eth_getBlockByNumber(0x0) failed: {response['error']}",
+        )
+    block = response.get("result")
+    if not isinstance(block, dict):
+        return EIPTestResult(
+            eip="1559-genesis-no-basefee",
+            passed=False,
+            message="eth_getBlockByNumber(0x0) did not return a block object",
+            details={"result": block},
+        )
+    is_skaled = _is_skaled(w3)
+    details = {"keys_present": sorted(block.keys()), "is_skaled": is_skaled}
+    # Omitting genesis baseFeePerGas is a SKALE-specific policy. A standard Ethereum node
+    # (e.g. anvil) exposes baseFeePerGas on the genesis block, so only enforce omission on skaled.
+    if not is_skaled:
+        return EIPTestResult(
+            eip="1559-genesis-no-basefee",
+            passed=True,
+            message=(
+                "Genesis baseFeePerGas presence not enforced on non-skaled node "
+                f"(baseFeePerGas={'present' if 'baseFeePerGas' in block else 'absent'})"
+            ),
+            details=details,
+        )
+    if "baseFeePerGas" in block:
+        return EIPTestResult(
+            eip="1559-genesis-no-basefee",
+            passed=False,
+            message=(
+                "Genesis block exposes baseFeePerGas via RPC "
+                f"(value={block['baseFeePerGas']}); it must be omitted."
+            ),
+            details=details,
+        )
+    return EIPTestResult(
+        eip="1559-genesis-no-basefee",
+        passed=True,
+        message="Genesis block has no baseFeePerGas field as required",
         details=details,
     )
 
@@ -2104,6 +2371,7 @@ EIP_TEST_MAP = {
     "2929-extcode":     test_eip_2929_extcode_cold_warm,
     "2929-create-warm":   test_eip_2929_create_warms_address,
     "2929-create-revert": test_eip_2929_create_revert_preserves_address,
+    "2929-create-cold":   test_eip_2929_create_aborted_stays_cold,
     "2930":             test_eip_2930,
     "2930-gas-saving":  test_eip_2930_access_list_gas_saving,
     "2930-duplicates":  test_eip_2930_duplicate_items_charged,
@@ -2118,9 +2386,11 @@ EIP_TEST_MAP = {
     "3529-selfdestruct": test_eip_3529_selfdestruct,
     "3541":             test_eip_3541,
     "1559-effective-price": test_eip_1559_effective_price,
+    "1559-legacy-gasprice-eq-basefee": test_eip_1559_legacy_gasprice_equals_basefee,
     "1559-basefee-header": test_eip_1559_basefee_header,
     "1559-fee-history": test_eip_1559_fee_history,
     "1559-max-priority-fee": test_eip_1559_max_priority_fee,
+    "1559-genesis-no-basefee": test_eip_1559_genesis_no_basefee,
     "1559-block-hash-integrity": test_eip_1559_block_hash_integrity,
     "3675":                    test_eip_3675,
     "4399":                    test_eip_4399,
@@ -2128,12 +2398,13 @@ EIP_TEST_MAP = {
 
 ALL_EIPS = [
     "2929", "2929-revert", "2929-sstore", "2929-extcode", "2929-create-warm", "2929-create-revert",
+    "2929-create-cold",
     "2930", "2930-gas-saving", "2930-duplicates",
     "2718-type2",
     "2565", "2565-formula", "2565-zero-exp",
     "3198", "3529", "3529-refund-cap", "3529-selfdestruct", "3541",
-    "1559-effective-price", "1559-basefee-header",
-    "1559-fee-history", "1559-max-priority-fee",
+    "1559-effective-price", "1559-legacy-gasprice-eq-basefee", "1559-basefee-header",
+    "1559-fee-history", "1559-max-priority-fee", "1559-genesis-no-basefee",
     "1559-block-hash-integrity",
     "3675", "4399",
 ]

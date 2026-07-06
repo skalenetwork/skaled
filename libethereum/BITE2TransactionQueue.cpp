@@ -43,12 +43,16 @@ std::shared_ptr< std::deque< Transaction > > BITE2TransactionQueue::pendingBITE2
 void BITE2TransactionQueue::addTemp( Transaction&& _t ) {
     WriteGuard l( m_lock );
     CHECK_EXPRESSION( m_current );
+    CHECK_EXPRESSION( _t.isCTX() );
     BOOST_LOG( m_loggerTrace ) << "BITE2 txn arrived";
     m_current->push_back( std::move( _t ) );
 }
 
 std::vector< h256 > BITE2TransactionQueue::getTempHashes() const {
     CHECK_EXPRESSION( m_current );
+    if ( m_current->empty() )
+        return {};
+
     // if there are no committed transactions
     // we return hashes of all transactions in m_current
     if ( m_empty ) {
@@ -59,11 +63,11 @@ std::vector< h256 > BITE2TransactionQueue::getTempHashes() const {
         return res;
     }
 
-    if ( m_currentHeadIndex == m_current->size() )
+    if ( m_currentHeadIndex == m_current->size() - 1 )
         return {};
 
     std::vector< h256 > res;
-    res.reserve( m_current->size() - m_currentHeadIndex );
+    res.reserve( m_current->size() - 1 - m_currentHeadIndex );
     // m_currentHeadIndex always points to the last committed CTX,
     // so we return hashes of all CTXs starting after m_currentHeadIndex
     for ( size_t i = m_currentHeadIndex + 1; i < m_current->size(); ++i ) {
@@ -125,6 +129,41 @@ void BITE2TransactionQueue::setQueueOnInit( std::deque< Transaction >&& _ctxQueu
     m_currentHeadIndex = m_current->empty() ? 0 : m_current->size() - 1;
     m_empty = m_current->empty();
     BOOST_LOG( m_loggerInfo ) << "BITE2 queue initialized with " << m_current->size() << " CTXs";
+}
+
+std::vector< dev::h256 > BITE2TransactionQueue::getNCTXOrigins( size_t _n ) const {
+    CHECK_EXPRESSION( _n <= m_current->size() );
+    std::vector< dev::h256 > res;
+    res.reserve( _n );
+
+    for ( size_t i = 0; i < _n; ++i ) {
+        res.push_back( m_current->at( i ).getCTXOrigin() );
+    }
+
+    return res;
+}
+
+std::optional< std::vector< dev::h256 > >
+BITE2TransactionQueue::validateNextExpectedCTXsAndGetOrigins(
+    std::vector< Transaction > const& _ctxs ) const {
+    ReadGuard l( m_lock );
+    if ( !m_current || _ctxs.size() > m_current->size() )
+        return std::nullopt;
+
+    std::vector< dev::h256 > origins;
+    origins.reserve( _ctxs.size() );
+
+    // advance pending CTXs 1 by 1 & check that they match the provided CTXs
+    auto pending = m_current->begin();
+    for ( auto const& ctx : _ctxs ) {
+        if ( !ctx.isCTX() || ctx.sha3() != pending->sha3() )
+            return std::nullopt;
+
+        origins.push_back( pending->getCTXOrigin() );
+        ++pending;
+    }
+
+    return origins;
 }
 
 #endif  // BITE

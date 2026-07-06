@@ -306,6 +306,56 @@ BOOST_AUTO_TEST_CASE( accessList ) {
         Transaction( txRlp, CheckTransaction::None, false, true ), InvalidTransactionFormat );
 }
 
+// P1#1: Pre-London type-2 effectiveGasPrice must follow LEGACY behavior — returning the
+// transaction's gasPrice() (which for type-2 is maxFeePerGas), independent of baseFee. This
+// guards against the prior unconditional London formula leaking back into pre-London receipts.
+//
+// P1#1 (London side): Once London is active, type-2 returns min(maxFee, baseFee + priority).
+//
+// Test uses the same type-2 RLP as accessList(): maxPriorityFeePerGas=0, maxFeePerGas=0x4a817c800,
+// chainId=151. We avoid spinning up a chain and call getEffectiveGasPrice directly.
+BOOST_AUTO_TEST_CASE( EffectiveGasPriceGatedByLondon ) {
+    auto txRlp = fromHex(
+        "0x01f8c38197018504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b0180f85bf85994de"
+        "0b295669a9fd93d5f28d9ec85e40f4cb697baef842a00000000000000000000000000000000000000000000000"
+        "000000000000000003a0000000000000000000000000000000000000000000000000000000000000000780a0b0"
+        "3eaf481958e22fc39bd1d526eb9255be1e6625614f02ca939e51c3d7e64bcaa05f675640c04bb050d27bd1f39c"
+        "07b6ff742311b04dab760bb3bc206054332879" );
+    Transaction tx( txRlp, CheckTransaction::None, false, true );
+
+    // The first RLP above is type-1 (EIP-2930). Use the next one which is type-2.
+    auto type2Rlp = fromHex(
+        "0x02f8c98197808504a817c8008504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b0180"
+        "f85bf85994de0b295669a9fd93d5f28d9ec85e40f4cb697baef842a00000000000000000000000000000000000"
+        "000000000000000000000000000003a00000000000000000000000000000000000000000000000000000000000"
+        "00000780a0f1a407dfc1a9f782001d89f617e9b3a2f295378533784fb39960dea60beea2d0a05ac3da2946554b"
+        "a3d5721850f4f89ee7a0c38e4acab7130908e7904d13174388" );
+    Transaction t2( type2Rlp, CheckTransaction::None, false, true );
+    BOOST_REQUIRE( t2.txType() == TransactionType::Type2 );
+
+    // The RLP above has maxFee == maxPriority, which is degenerate for this test: both pre-London
+    // and London branches collapse to the same value. Force distinct fee fields so the two
+    // branches are observably different. Choose maxFee much larger than baseFee + maxPriority so
+    // the London min(...) formula doesn't clip to maxFee.
+    const u256 maxFee = u256( 100 ) * u256( 1'000'000'000 );      // 100 gwei
+    const u256 maxPriority = u256( 2 ) * u256( 1'000'000'000 );   // 2 gwei
+    const u256 baseFee = u256( 7 ) * u256( 1'000'000'000 );       // 7 gwei
+    t2.forceType2Fees( maxFee, maxPriority );
+    // TransactionBase::gasPrice() returns m_gasPrice, which for type-2 is aligned with maxFee
+    // by the RLP parser. Keep that alignment so the pre-London branch returns maxFee, not the
+    // stale m_gasPrice from the original RLP.
+    t2.forceGasPrice( maxFee );
+
+    // Pre-London (_isLondon=false): legacy — gasPrice() (== maxFeePerGas for type-2).
+    BOOST_REQUIRE_EQUAL( t2.getEffectiveGasPrice( false, baseFee ), maxFee );
+
+    // London (_isLondon=true): min(maxFee, baseFee + priority). Here baseFee + priority = 9 gwei,
+    // which is strictly less than maxFee = 100 gwei, so the London formula clips to 9 gwei.
+    const u256 expectedLondon = baseFee + maxPriority;
+    BOOST_REQUIRE_LT( expectedLondon, maxFee );  // sanity: the two branches must differ
+    BOOST_REQUIRE_EQUAL( t2.getEffectiveGasPrice( true, baseFee ), expectedLondon );
+}
+
 BOOST_AUTO_TEST_CASE( InvaidTransaction ) {
     // transaction has maxFeePerGas < maxPriorityFeePerGas, that is the transaction is invalid
     auto txRlp = fromHex(

@@ -160,9 +160,9 @@ public:
           m_type( ContractCreation ) {}
 
     /// Constructs a transaction from the given RLP.
-    explicit TransactionBase(
-        bytesConstRef _rlp, CheckTransaction _checkSig, bool _allowInvalid = false,
-        bool _eip1559Enabled = false, bool _invalidTransactionFormatPatchEnabled = false
+    explicit TransactionBase( bytesConstRef _rlp, CheckTransaction _checkSig,
+        bool _allowInvalid = false, bool _eip1559Enabled = false,
+        bool _invalidTransactionFormatPatchEnabled = false, bool _berlinForkPatchEnabled = false
 #ifdef BITE
         ,
         bool _bite2PatchEnabled = false
@@ -170,16 +170,16 @@ public:
     );
 
     /// Constructs a transaction from the given RLP.
-    explicit TransactionBase(
-        bytes const& _rlp, CheckTransaction _checkSig, bool _allowInvalid = false,
-        bool _eip1559Enabled = false, bool _invalidTransactionFormatPatchEnabled = false
+    explicit TransactionBase( bytes const& _rlp, CheckTransaction _checkSig,
+        bool _allowInvalid = false, bool _eip1559Enabled = false,
+        bool _invalidTransactionFormatPatchEnabled = false, bool _berlinForkPatchEnabled = false
 #ifdef BITE
         ,
         bool _bite2PatchEnabled = false
 #endif
         )
         : TransactionBase( &_rlp, _checkSig, _allowInvalid, _eip1559Enabled,
-              _invalidTransactionFormatPatchEnabled
+              _invalidTransactionFormatPatchEnabled, _berlinForkPatchEnabled
 #ifdef BITE
               ,
               _bite2PatchEnabled
@@ -226,6 +226,10 @@ public:
     /// Force gas limit. This is used in tests
     void forceGasPrice( const u256& _gasPrice ) { m_gasPrice = _gasPrice; }
 
+#ifndef FAIR
+    virtual u256 getExternalGas() const { return 0; }
+#endif
+
 #ifdef BITE
 
     void setDecryptedFields( const std::shared_ptr< bytes >& _decryptedData,
@@ -254,6 +258,12 @@ public:
     void checkIfCTXAndSet( const dev::bytes& _data );
 
     void setDecryptedArgsCTX( const DecryptedCTXArgs& _decryptedCTXArgs );
+
+    void setBITE2EncryptedArgsSize( size_t _s ) { m_ctxEncryptedArgsSize = _s; }
+
+    void setCTXOrigin( const dev::h256& _txHash ) { m_ctxOrigin = _txHash; }
+
+    dev::h256 getCTXOrigin() const { return m_ctxOrigin; }
 
 #endif  // BITE
 
@@ -425,10 +435,6 @@ public:
     static int64_t accessListGasRequired(
         std::vector< bytes > const& _accessList, EVMSchedule const& _es );
 
-#ifdef BITE
-    void setBITE2EncryptedArgsSize( size_t _s ) { m_ctxEncryptedArgsSize = _s; }
-#endif
-
 protected:
     /// Type of transaction.
     enum Type {
@@ -440,17 +446,6 @@ protected:
 
     static bool isZeroSignature( u256 const& _r, u256 const& _s ) { return !_r && !_s; }
 
-#ifndef FAIR
-    /*
-     * this function is provided in order for aleth tests and utilities to compile.
-     * In will never be called in skaled since in skaled TransactionBase objects are never
-     * instantiated. Aleth tests and utilities  do instantiate TransactionBase
-     *
-     * The function always returns zero, which means no PoW.
-     */
-
-    virtual u256 getExternalGas() const { return 0; }
-#endif
 
     /// Clears the signature.
     void clearSignature() { m_vrs = SignatureStruct(); }
@@ -458,7 +453,8 @@ protected:
     u256 m_nonce;  ///< The transaction-count of the sender.
     u256 m_value;  ///< The amount of ETH to be transferred by this transaction. Called 'endowment'
     ///< for contract-creation transactions.
-    u256 m_gasPrice;  ///< The base fee and thus the implied exchange rate of ETH to GAS.
+    u256 m_gasPrice;  ///< The base fee and thus the implied exchange rate of ETH to GAS. Equals to
+                      ///< maxFeePerGas for type >= 2
     u256 m_gas;  ///< The total gas to convert, paid for from sender's account. Any unused gas gets
     ///< refunded once the contract is ended.
     bytes m_data;  ///< The data associated with the transaction, or the initialiser if it's a
@@ -481,9 +477,9 @@ protected:
     bool m_isBITETxn = false;  ///< Is this a BITE transaction
 
     static const Address BITE_ADDRESS;
-#endif
 
-#ifdef BITE
+    dev::h256 m_ctxOrigin = dev::h256( 0 );  ///< Txn that initiated submitCTX call
+
     std::optional< size_t > m_ctxEncryptedArgsSize = std::nullopt;
     bool m_isCTX = false;
 #endif
@@ -503,13 +499,14 @@ private:
 
     /// Constructs a transaction from the given RLP and transaction type.
     void fillFromBytesByType( bytesConstRef _rlpData, CheckTransaction _checkSig,
-        bool _allowInvalid, TransactionType _type, bool _invalidTransactionFormatPatchEnabled );
+        bool _allowInvalid, TransactionType _type, bool _invalidTransactionFormatPatchEnabled,
+        bool _berlinForkPatchEnabled );
     void fillFromBytesLegacy(
         bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid );
     void fillFromBytesType1( bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid,
-        bool _invalidTransactionFormatPatchEnabled );
+        bool _invalidTransactionFormatPatchEnabled, bool _berlinForkPatchEnabled );
     void fillFromBytesType2( bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid,
-        bool _invalidTransactionFormatPatchEnabled );
+        bool _invalidTransactionFormatPatchEnabled, bool _berlinForkPatchEnabled );
 
     void streamLegacyTransaction( RLPStream& _s, IncludeSignature _sig, bool _forEip155hash ) const;
     void streamType1Transaction( RLPStream& _s, IncludeSignature _sig ) const;
@@ -518,7 +515,7 @@ private:
 #ifdef BITE
     // called in TransactionBase constructor
     // sets m_isBITETxn to true if a txn 'to' field
-    // maches BITE address
+    // matches BITE address
     void checkIfBITETxnAndSet( const Address& _to );
 #endif
 

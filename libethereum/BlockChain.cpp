@@ -32,7 +32,6 @@
 #include <libdevcore/Assertions.h>
 #include <libdevcore/Common.h>
 
-// #include <libdevcore/DBImpl.h>
 #include <libdevcore/ManuallyRotatingLevelDB.h>
 
 #include <libdevcore/FileSystem.h>
@@ -266,8 +265,6 @@ void BlockChain::open( fs::path const& _path, bool _applyPatches, WithExisting _
         m_db_splitter = std::make_unique< batched_io::db_splitter >( m_db );
         m_blocksDB = m_db_splitter->new_interface();
         m_extrasDB = m_db_splitter->new_interface();
-        // m_blocksDB.reset( new db::DBImpl( chainPath / fs::path( "blocks" ) ) );
-        // m_extrasDB.reset( new db::DBImpl( extrasPath / fs::path( "extras" ) ) );
     } catch ( db::DatabaseError const& ex ) {
         // Check the exact reason of errror, in case of IOError we can display user-friendly message
         if ( *boost::get_error_info< db::errinfo_dbStatusCode >( ex ) !=
@@ -332,8 +329,6 @@ void BlockChain::open( fs::path const& _path, bool _applyPatches, WithExisting _
 
     BOOST_LOG( m_loggerDebug ) << "Opened blockchain DB. Latest: " << currentHash() << ' '
                                << m_lastBlockNumber;
-
-    //    dump_blocks_and_extras_db( *this, 0 );
 
     if ( _applyPatches && TotalStorageUsedPatch::isInitOnChainNeeded( *m_db ) )
         TotalStorageUsedPatch::initOnChain( *this );
@@ -424,8 +419,6 @@ tuple< ImportRoute, bool, unsigned > BlockChain::sync(
     BlockQueue& _bq, State& _state, unsigned _max ) {
     MICROPROFILE_SCOPEI( "BlockChain", "sync many blocks", MP_LIGHTGOLDENROD );
 
-    //  _bq.tick(*this);
-
     VerifiedBlocks blocks;
     _bq.drain( blocks, _max );
 
@@ -454,10 +447,7 @@ tuple< ImportRoute, bool, unsigned > BlockChain::sync(
                 continue;
             } catch ( dev::eth::UnknownParent const& ) {
                 BOOST_LOG( m_loggerWarning )
-                    << "ODD: Import queue contains block with unknown parent.";  // <<
-                                                                                 // LogTag::Error
-                // <<
-                // boost::current_exception_diagnostic_information();
+                    << "ODD: Import queue contains block with unknown parent.";
                 // NOTE: don't reimport since the queue should guarantee everything in the right
                 // order. Can't continue - chain bad.
                 badBlocks.push_back( block.verified.info.hash() );
@@ -776,15 +766,20 @@ void BlockChain::insertTransactionsDetailsToDb(
 
 #ifdef BITE
         if ( Bite2Patch::isEnabledInWorkingBlock() ) {
-            CtxOrigin ctxOrigin( _block.ctxHashesLists );
-            _extrasWriteBatch.insert( toSlice( _block.info.hash(), ExtraCtxOrigin ),
+            CreatedCTXs ctxOrigin( _block.ctxHashesLists );
+            _extrasWriteBatch.insert( toSlice( _block.info.hash(), ExtraCreatedCTXs ),
                 ( db::Slice ) dev::ref( ctxOrigin.rlp() ) );
 
             CHECK_EXPRESSION( _block.pendingCtxs );
             RLPStream s;
             s.appendList( _block.pendingCtxs->size() );
-            for ( const auto& ctx : *_block.pendingCtxs )
-                s.appendRaw( ctx.toBytes() );
+            for ( const auto& ctx : *_block.pendingCtxs ) {
+                RLPStream ctxEntry;
+                ctxEntry.appendList( 2 );
+                ctxEntry.appendRaw( ctx.toBytes() );
+                ctxEntry << ctx.getCTXOrigin();
+                s.appendRaw( ctxEntry.out() );
+            }
             dev::bytes ctxListRlp = s.out();
             _extrasWriteBatch.insert(
                 db::Slice( "pendingCTXs" ), ( db::Slice ) dev::ref( ctxListRlp ) );
@@ -792,13 +787,13 @@ void BlockChain::insertTransactionsDetailsToDb(
         CHECK_EXPRESSION( _block.decryptedTransactions.regularTxsMap );
         auto regularTxnsIterator = _block.decryptedTransactions.regularTxsMap->begin();
 #endif  // BITE
-        for ( RLP::iterator it = txns_rlp.begin(); it != txns_rlp.end(); ++it ) {
+        for ( RLP::iterator it = txns_rlp.begin(); it != txns_rlp.end(); ++it, ++ta.index ) {
             MICROPROFILE_SCOPEI( "insertBlockAndExtras", "for2", MP_HONEYDEW );
 
             auto txBytes = bytesRefFromTransactionRlp( *it );
-            _extrasWriteBatch.insert( toSlice( sha3( txBytes ), ExtraTransactionAddress ),
-                ( db::Slice ) dev::ref( ta.rlp() ) );
-
+            auto txHash = sha3( txBytes );
+            _extrasWriteBatch.insert(
+                toSlice( txHash, ExtraTransactionAddress ), ( db::Slice ) dev::ref( ta.rlp() ) );
 #ifdef BITE
             if ( regularTxnsIterator != _block.decryptedTransactions.regularTxsMap->end() &&
                  regularTxnsIterator->first == ta.index ) {
@@ -807,15 +802,18 @@ void BlockChain::insertTransactionsDetailsToDb(
                     dev::Address to =
                         dev::Address( txFields.to.data(), dev::Address::ConstructFromPointer );
                     DecryptedTransactionData txData( txFields.data, to );
-                    _extrasWriteBatch.insert(
-                        toSlice( sha3( txBytes ), ExtraTransactionDecryptedData ),
+                    _extrasWriteBatch.insert( toSlice( txHash, ExtraTransactionDecryptedData ),
                         ( db::Slice ) dev::ref( txData.rlp() ) );
-                    ++regularTxnsIterator;
                 }
+                ++regularTxnsIterator;
+            } else if ( _block.transactions.at( ta.index ).isCTX() &&
+                        Bite2Patch::isEnabledInWorkingBlock() ) {
+                dev::h256 ctxOriginHash = _block.transactions[ta.index].getCTXOrigin();
+                CHECK_EXPRESSION( ctxOriginHash != dev::h256( 0 ) );
+                _extrasWriteBatch.insert( toSlice( txHash, ExtraCtxOrigin ),
+                    ( db::Slice ) dev::ref( TransactionHash( ctxOriginHash ).rlp() ) );
             }
 #endif
-
-            ++ta.index;
         }
     }
 }
@@ -832,7 +830,7 @@ void BlockChain::insertBloomsDetailsToDb(
         //
         // We need to compute log blooms directly here without using Block::logBloom()
         // method because _receipts may contain extra receipt items corresponding to
-        // partially cought-up transactions
+        // partially caught-up transactions
         //
         // old code was: // LogBloom blockBloom = tbi.logBloom();
         //
@@ -861,7 +859,6 @@ void BlockChain::insertBloomsDetailsToDb(
         noteUsed( h, ExtraBlocksBlooms );
 
     // Update database with them.
-    // ReadGuard l1( x_blocksBlooms );
     WriteGuard l1( x_blocksBlooms );
     {
         MICROPROFILE_SCOPEI( "insertBlockAndExtras", "insert_to_extras", MP_LIGHTSKYBLUE );
@@ -874,7 +871,7 @@ void BlockChain::insertBloomsDetailsToDb(
     }
 }
 
-// TOOD ACHTUNG This function must be kept in sync with the next one!
+// TODO ACHTUNG This function must be kept in sync with the next one!
 size_t BlockChain::prepareDbDataAndReturnSize( VerifiedBlockRef const& _block,
     bytesConstRef _receipts, u256 const& _totalDifficulty, const LogBloom* pLogBloomFull,
     ImportPerformanceLogger& _performanceLogger ) {
@@ -899,7 +896,7 @@ size_t BlockChain::prepareDbDataAndReturnSize( VerifiedBlockRef const& _block,
     return writeSize;
 }
 
-// TOOD ACHTUNG This function must be kept in sync with prepareDbDataAndReturnSize defined above!!
+// TODO ACHTUNG This function must be kept in sync with prepareDbDataAndReturnSize defined above!!
 // TODO move it to TotalStorageUsedPatch!
 void BlockChain::recomputeExistingOccupiedSpaceForBlockRotation() try {
     unsigned number = this->number();
@@ -1193,8 +1190,6 @@ void BlockChain::rescue( State const& /*_state*/ ) {
             details( h );
             BOOST_LOG( m_loggerInfo ) << "state..." << flush;
             BOOST_LOG( m_loggerInfo ) << "STATE VALIDITY CHECK IS NOT SUPPORTED" << flush;
-            //            if (_db.exists(bi.stateRoot()))
-            //                break;
         } catch ( ... ) {
         }
     }
@@ -1369,8 +1364,12 @@ void BlockChain::updateStats() const {
             getApproximateHashSize( m_decryptedTransactionsData );
     }
     {
+        DEV_READ_GUARDED( x_createdCTXs )
+        m_lastStats.memCreatedCTXs = getApproximateHashSize( m_createdCTXs );
+    }
+    {
         DEV_READ_GUARDED( x_ctxOrigin )
-        m_lastStats.memCtxOrigin = getApproximateHashSize( m_ctxOrigin );
+        m_lastStats.memCtxOrigin = m_ctxOrigin.size() * ( dev::h256::size + TransactionHash::size );
     }
 #endif  // BITE
 }
@@ -1388,10 +1387,9 @@ void BlockChain::garbageCollect( bool _force ) {
     if ( m_lastStats.memTotal() < c_minCacheSize )
         return;
 
-
     m_lastCollection = chrono::system_clock::now();
 
-    // We subtract memory that blockhashes occupy because it is treated sepaparately
+    // We subtract memory that blockhashes occupy because it is treated separately
     while ( m_lastStats.memTotal() - m_lastStats.memBlockHashes >= c_maxCacheSize ) {
         Guard l( x_cacheUsage );
         for ( CacheID const& id : m_cacheUsage.back() ) {
@@ -1439,6 +1437,11 @@ void BlockChain::garbageCollect( bool _force ) {
             case ExtraTransactionDecryptedData: {
                 WriteGuard l( x_decryptedTransactionsData );
                 m_decryptedTransactionsData.erase( id.first );
+                break;
+            }
+            case ExtraCreatedCTXs: {
+                WriteGuard l( x_createdCTXs );
+                m_createdCTXs.erase( id.first );
                 break;
             }
             case ExtraCtxOrigin: {
@@ -1511,6 +1514,10 @@ void BlockChain::clearCaches() {
         m_decryptedTransactionsData.clear();
     }
     {
+        WriteGuard l( x_createdCTXs );
+        m_createdCTXs.clear();
+    }
+    {
         WriteGuard l( x_ctxOrigin );
         m_ctxOrigin.clear();
     }
@@ -1563,6 +1570,8 @@ void BlockChain::clearCachesDuringChainReversion( unsigned _firstInvalid ) {
 #ifdef BITE
     DEV_WRITE_GUARDED( x_decryptedTransactionsData )
     m_decryptedTransactionsData.clear();
+    DEV_WRITE_GUARDED( x_createdCTXs )
+    m_createdCTXs.clear();
     DEV_WRITE_GUARDED( x_ctxOrigin )
     m_ctxOrigin.clear();
 #endif  // BITE
@@ -1583,9 +1592,6 @@ static inline unsigned upow( unsigned a, unsigned b ) {
 static inline unsigned ceilDiv( unsigned n, unsigned d ) {
     return ( n + d - 1 ) / d;
 }
-// static inline unsigned floorDivPow(unsigned n, unsigned a, unsigned b) { return n / upow(a,
-// b); } static inline unsigned ceilDivPow(unsigned n, unsigned a, unsigned b) { return
-// ceilDiv(n, upow(a, b)); }
 
 // Level 1
 // [xxx.            ]
@@ -1852,7 +1858,8 @@ VerifiedBlockRef BlockChain::verifyBlock( bytesConstRef _block,
                         CheckTransaction::Everything :
                         CheckTransaction::None,
                     false, EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
-                    InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp )
+                    InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp ),
+                    BerlinForkPatch::isEnabledWhen( blockTimestamp )
 #ifdef BITE
                         ,
                     Bite2Patch::isEnabledWhen( blockTimestamp )
@@ -1909,11 +1916,15 @@ std::deque< Transaction > BlockChain::pendingCTXsList() const {
     RLP rlp( lastBlockCTXs );
     std::deque< Transaction > ctxs;
     uint64_t prevBlockTimestamp = info().timestamp();
-    for ( auto const& txRlp : rlp ) {
-        ctxs.push_back( Transaction( txRlp.data(), CheckTransaction::None, true,
+    for ( auto const& entry : rlp ) {
+        CHECK_EXPRESSION( entry.isList() && entry.itemCount() == 2 );
+        Transaction tx( entry[0].data(), CheckTransaction::None, true,
             EIP1559TransactionsPatch::isEnabledWhen( prevBlockTimestamp ),
             InvalidTransactionFormatPatch::isEnabledWhen( prevBlockTimestamp ),
-            Bite2Patch::isEnabledWhen( prevBlockTimestamp ) ) );
+            BerlinForkPatch::isEnabledWhen( prevBlockTimestamp ),
+            Bite2Patch::isEnabledWhen( prevBlockTimestamp ) );
+        tx.setCTXOrigin( entry[1].toHash< dev::h256 >() );
+        ctxs.push_back( std::move( tx ) );
     }
     return ctxs;
 }
