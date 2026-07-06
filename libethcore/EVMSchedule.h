@@ -47,6 +47,9 @@ struct EVMSchedule {
     bool haveChainID = false;
     bool haveSelfbalance = false;
     bool havePush0 = false;
+    bool eip2929Mode = false;
+    bool eip2930Mode = false;
+    bool eip2565Mode = false;
     std::array< unsigned, 8 > tierStepGas;
     unsigned expGas = 10;
     unsigned expByteGas = 10;
@@ -81,6 +84,11 @@ struct EVMSchedule {
     unsigned extcodecopyGas = 20;
     unsigned extcodehashGas = 400;
     unsigned balanceGas = 20;
+    unsigned warmStorageReadCost = 100;
+    unsigned coldSloadCost = 2100;
+    unsigned coldAccountAccessCost = 2600;
+    unsigned txAccessListAddressGas = 2400;
+    unsigned txAccessListStorageKeyGas = 1900;
     unsigned suicideGas = 0;
     unsigned blockhashGas = 20;
     unsigned maxCodeSize = unsigned( -1 );

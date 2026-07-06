@@ -33,7 +33,16 @@ using namespace dev::eth;
 volatile bool TransactionReceipt::g_bEnableRevertReasonPersistence = true;
 
 TransactionReceipt::TransactionReceipt( bytesConstRef _rlp ) {
-    RLP r( _rlp );
+    // EIP-2718: detect typed receipt by checking first byte.
+    // If first byte is < 0x7f, it's a typed receipt: type_byte || rlp([...]).
+    // Otherwise it's a legacy receipt starting with an RLP list (>= 0xc0).
+    bytesConstRef rlpData = _rlp;
+    if ( !_rlp.empty() && _rlp[0] <= 0x7f ) {
+        m_txType = _rlp[0];
+        rlpData = _rlp.cropped( 1 );
+    }
+
+    RLP r( rlpData );
     if ( !r.isList() )
         BOOST_THROW_EXCEPTION( InvalidTransactionReceiptFormat() );
     if ( g_bEnableRevertReasonPersistence ) {

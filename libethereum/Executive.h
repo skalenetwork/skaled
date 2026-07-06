@@ -193,6 +193,9 @@ public:
     /// Finalise an operation through accruing the substate into the parent context.
     void accrueSubState( SubState& _parentContext );
 
+    /// EIP-2929: share the transaction-global access sets with this executive's child context.
+    void setAccessSets( std::shared_ptr< AccessSets > _sets ) { m_accessSets = std::move( _sets ); }
+
     /// Executes (or continues execution of) the VM.
     /// @returns false iff go() must be called again to finish the transaction.
     bool go( OnOpFunc const& _onOp = OnOpFunc() );
@@ -222,6 +225,8 @@ public:
         const bool _allowFuture = false );
 
 private:
+    void initAccessSets();
+
     /// @returns false iff go() must be called (and thus a VM execution in required).
     bool executeCreate( Address const& _txSender, u256 const& _endowment, u256 const& _gasPrice,
         u256 const& _gas, bytesConstRef _code, Address const& _originAddress,
@@ -256,6 +261,11 @@ private:
     bool m_isCreation = false;
     Address m_newAddress;
     size_t m_savepoint = 0;
+
+    std::shared_ptr< AccessSets > m_accessSets = std::make_shared< AccessSets >();
+    /// Snapshot of access sets taken at savepoint; restored in revert() to roll back
+    /// any warmings that occurred inside this sub-call frame.
+    AccessSets m_accessSetsSnapshot;
 
 #ifdef BITE
     u256 m_txnIndex = u256( -1 );  ///< Index of transaction under execution. -1 for external calls

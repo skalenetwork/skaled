@@ -70,6 +70,36 @@ public:
     void clear() override {}
 };
 
+bool shouldKeepRejectedTransactionQueued( Transaction const& _tx, State const& _state ) {
+    if ( _tx.isInvalid() || !_tx.hasSignature() || _tx.hasZeroSignature() )
+        return false;
+
+    return _tx.nonce() > _state.getNonce( _tx.safeSender() );
+}
+
+bool transactionNeedsQueueCleanup(
+    Transaction const& _tx, ExecutionResult const& _res, State const& _state ) {
+    if ( _res.excepted != TransactionException::WouldNotBeInBlock )
+        return true;
+
+    return !shouldKeepRejectedTransactionQueued( _tx, _state );
+}
+
+bool receiptAdvancedGas( TransactionReceipt const& _receipt, u256 const& _previousCumulativeGas ) {
+    return _receipt.cumulativeGasUsed() != _previousCumulativeGas;
+}
+
+bool notifyConsumedTransactions( Block::OnTransactionConsumed const& _onTransactionConsumed,
+    Transactions const& _transactions ) {
+    if ( !_onTransactionConsumed )
+        return false;
+
+    bool needsQueueReadyNotification = false;
+    for ( auto const& tx : _transactions )
+        needsQueueReadyNotification = _onTransactionConsumed( tx ) || needsQueueReadyNotification;
+    return needsQueueReadyNotification;
+}
+
 }  // namespace
 
 Block::Block( BlockChain const& _bc, boost::filesystem::path const& _dbPath,
@@ -497,8 +527,9 @@ void Block::sanityCheckPartialTransactionReceipts( std::optional< BlockNumber > 
     }
 }
 
-tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _bc,
-    const Transactions& _transactions, uint64_t _timestamp, u256 _gasPrice ) {
+tuple< TransactionReceipts, unsigned, bool > Block::syncEveryone( BlockChain const& _bc,
+    const Transactions& _transactions, uint64_t _timestamp, u256 _gasPrice,
+    OnTransactionConsumed const& _onTransactionConsumed ) {
     if ( isSealed() )
         BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
 
@@ -509,17 +540,38 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
     context.singleCommitEnabled = SingleStateCommitPerBlockPatch::isEnabledInWorkingBlock();
 
     if ( context.singleCommitEnabled && isCurrentBlockCommitted() ) {
-        return recoverFromReceipts( _transactions, _timestamp );
+        auto recovered = recoverFromReceipts( _transactions, _timestamp );
+        bool needsQueueReadyNotification = false;
+        Transactions queueCleanupTransactions;
+        u256 cumulativeGas = 0;
+        for ( unsigned i = 0; i < recovered.first.size() && i < _transactions.size(); ++i ) {
+            if ( receiptAdvancedGas( recovered.first[i], cumulativeGas ) ) {
+#ifdef BITE
+                // recoverFromReceipts() restored the post-block BITE queue from the progress log,
+                // so consumed CTXs are already absent. Only clean regular queues here.
+                if ( !_transactions[i].isCTX() )
+#endif
+                    queueCleanupTransactions.push_back( _transactions[i] );
+            }
+            cumulativeGas = recovered.first[i].cumulativeGasUsed();
+        }
+        needsQueueReadyNotification =
+            notifyConsumedTransactions( _onTransactionConsumed, queueCleanupTransactions );
+#ifdef BITE
+        m_pendingCtxs = g_skaleHost->pendingBITE2Transactions();
+#endif
+        return make_tuple( recovered.first, recovered.second, needsQueueReadyNotification );
     }
 
     prepareStateForSync( _timestamp, context );
-    executeTransactions( _bc, _transactions, _gasPrice, context );
+    executeTransactions( _bc, _transactions, _gasPrice, context, _onTransactionConsumed );
 
     if ( !context.singleCommitEnabled || !isCurrentBlockCommitted() ) {
         saveStateChanges( _bc, _transactions, context );
     }
 
-    return make_tuple( context.receipts, context.receipts.size() - context.badCount );
+    return make_tuple( context.receipts, context.receipts.size() - context.badCount,
+        context.needsQueueReadyNotification );
 }
 
 std::pair< TransactionReceipts, unsigned > Block::recoverFromReceipts(
@@ -602,7 +654,7 @@ void Block::prepareStateForSync( uint64_t _timestamp, SyncContext& _context ) {
 }
 
 void Block::executeTransactions( BlockChain const& _bc, const Transactions& _transactions,
-    u256 _gasPrice, SyncContext& _context ) {
+    u256 _gasPrice, SyncContext& _context, OnTransactionConsumed const& _onTransactionConsumed ) {
     const Permanence permanence =
         _context.singleCommitEnabled ? Permanence::BlockCommitted : Permanence::Committed;
 
@@ -621,6 +673,9 @@ void Block::executeTransactions( BlockChain const& _bc, const Transactions& _tra
                 // multiple commits mode
                 m_transactions.push_back( tr );
                 m_transactionSet.insert( tr.sha3() );
+                u256 previousCumulativeGas = i == 0 ? 0 : savedReceipts[i - 1].cumulativeGasUsed();
+                if ( receiptAdvancedGas( savedReceipts[i], previousCumulativeGas ) )
+                    _context.queueCleanupTransactions.push_back( tr );
                 continue;
             }
 
@@ -638,6 +693,10 @@ void Block::executeTransactions( BlockChain const& _bc, const Transactions& _tra
             BOOST_LOG( m_loggerError ) << "FAILED transaction after consensus! " << ex.what();
         }
     }
+
+    _context.needsQueueReadyNotification =
+        notifyConsumedTransactions( _onTransactionConsumed, _context.queueCleanupTransactions ) ||
+        _context.needsQueueReadyNotification;
 #ifdef BITE
     // finalize BITE2 queue after executing all txns from current block
     m_pendingCtxs = g_skaleHost->pendingBITE2Transactions();
@@ -672,8 +731,12 @@ std::optional< TransactionReceipt > Block::executeSingleTransaction( BlockChain 
                     nullReceipt.rlp(), info().number(), _txIndex );
             }
             ++_context.badCount;
+            if ( !shouldKeepRejectedTransactionQueued( _tx, m_state ) )
+                _context.queueCleanupTransactions.push_back( _tx );
             return nullReceipt;
         }
+        if ( !shouldKeepRejectedTransactionQueued( _tx, m_state ) )
+            _context.queueCleanupTransactions.push_back( _tx );
         return std::nullopt;
     }
 
@@ -691,6 +754,9 @@ std::optional< TransactionReceipt > Block::executeSingleTransaction( BlockChain 
         g_skaleHost->commitTempBITE2Transactions();
     }
 #endif
+
+    if ( transactionNeedsQueueCleanup( _tx, res, m_state ) )
+        _context.queueCleanupTransactions.push_back( _tx );
 
     if ( !_context.singleCommitEnabled && !m_receipts.empty() &&
          !ClearPartialReceiptsPatch::isEnabledWhen( m_previousBlock.timestamp() ) ) {
@@ -921,9 +987,21 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
             throw;
         }
 
-        RLPStream receiptRLP;
-        m_receipts.back().streamRLP( receiptRLP );
-        receipts.push_back( receiptRLP.out() );
+        // The EIP-1559
+        // transaction format is accepted before Berlin, but the typed-receipt
+        // encoding must only change at the coordinated Berlin fork so blocks
+        // produced before it keep their original receiptsRoot.
+        // The parent block timestamp is used (not the global committed-block
+        // timestamp) so the encoding is deterministic per block, including when
+        // a block is re-enacted out of order.
+        if ( BerlinForkPatch::isEnabledWhen( previousInfo().timestamp() ) &&
+             m_receipts.back().txType() > 0 ) {
+            receipts.push_back( m_receipts.back().typedRlp() );
+        } else {
+            RLPStream receiptRLP;
+            m_receipts.back().streamRLP( receiptRLP );
+            receipts.push_back( receiptRLP.out() );
+        }
         ++i;
     }
 
@@ -1325,12 +1403,29 @@ void Block::commitToSeal(
         RLPStream k;
         k << i;
 
-        RLPStream receiptrlp;
-        receipt( i ).streamRLP( receiptrlp );
-        receiptsMap.insert( std::make_pair( k.out(), receiptrlp.out() ) );
+        // EIP-2718 typed-receipt encoding is gated on BerlinForkPatch:
+        // the EIP-1559 transaction format is accepted
+        // before Berlin, but the receipt encoding must only change at the
+        // coordinated Berlin fork so pre-Berlin blocks keep their receiptsRoot.
+        // The parent block timestamp is used (not the global committed-block
+        // timestamp) so the encoding is deterministic per block and matches enact().
+        bytes receiptBytes;
+        if ( BerlinForkPatch::isEnabledWhen( previousInfo().timestamp() ) &&
+             receipt( i ).txType() > 0 ) {
+            receiptBytes = receipt( i ).typedRlp();
+        } else {
+            RLPStream receiptrlp;
+            receipt( i ).streamRLP( receiptrlp );
+            receiptBytes = receiptrlp.out();
+        }
+        receiptsMap.insert( std::make_pair( k.out(), receiptBytes ) );
 
         dev::bytes txOutput = m_transactions[i].toBytes();
-        if ( EIP1559TransactionsPatch::isEnabledInWorkingBlock() &&
+        // EIP-2718: typed transactions go into the transactions trie wrapped as an
+        // RLP byte string. Unlike the receipt encoding above, this is gated on
+        // EIP1559TransactionsPatch because typed transactions are accepted
+        // before Berlin.
+        if ( EIP1559TransactionsPatch::isEnabledWhen( previousInfo().timestamp() ) &&
              m_transactions[i].txType() != dev::eth::TransactionType::Legacy ) {
             RLPStream s;
             s.append( txOutput );

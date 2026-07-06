@@ -25,6 +25,7 @@
 
 #include <exception>
 
+#include <libevm/VMFace.h>
 #include <boost/thread.hpp>
 
 #include "LastBlockHashesFace.h"
@@ -134,6 +135,7 @@ CallResult ExtVM::call( CallParameters& _p ) {
         m_txnIndex, m_txnHash
 #endif
     };
+    e.setAccessSets( accessSets );
     if ( !e.call( _p, gasPrice, origin ) ) {
         go( depth, e, _p.onOp );
         e.accrueSubState( sub );
@@ -157,6 +159,26 @@ void ExtVM::setStore( u256 _n, u256 _v ) {
 
 CreateResult ExtVM::create( u256 _endowment, u256& io_gas, bytesConstRef _code, Instruction _op,
     u256 _salt, OnOpFunc const& _onOp ) {
+    if ( evmSchedule().eip2929Mode ) {
+        // EIP-2681: an account nonce is capped at 2^64-1. If the creator's nonce is already at the
+        // maximum it cannot be incremented, so the CREATE/CREATE2 aborts immediately.
+        static u256 const c_maxNonce = ( u256{ 1 } << 64 ) - 1;
+        if ( m_s.getNonce( myAddress ) >= c_maxNonce )
+            return { EVMC_FAILURE, {}, {} };
+
+        Address createdAddress;
+        if ( _op == Instruction::CREATE ) {
+            u256 nonce = m_s.getNonce( myAddress );
+            createdAddress = right160( sha3( rlpList( myAddress, nonce ) ) );
+        } else {
+            if ( _op != Instruction::CREATE2 )
+                BOOST_THROW_EXCEPTION( BadInstruction() );
+            createdAddress = right160( sha3(
+                bytes{ 0xff } + myAddress.asBytes() + toBigEndian( _salt ) + sha3( _code ) ) );
+        }
+        accessAccount( createdAddress );
+    }
+
     bool isReadOnly =
         ContractCreationReadOnlyPatch::isEnabledWhen( envInfo().committedBlockTimestamp() ) ?
             m_readOnly :
@@ -167,15 +189,20 @@ CreateResult ExtVM::create( u256 _endowment, u256& io_gas, bytesConstRef _code, 
         isReadOnly, m_txnIndex, m_txnHash
 #endif
     };
+    e.setAccessSets( accessSets );
+
     ( void ) isReadOnly;
+
     bool result = false;
     if ( _op == Instruction::CREATE )
         result = e.createOpcode( myAddress, _endowment, gasPrice, io_gas, _code, origin );
     else {
-        assert( _op == Instruction::CREATE2 );
+        // Before BerlinForkPatch, the guard was an assert (disabled in release) — preserve that
+        // silent behavior for pre-Berlin blocks so we don't change consensus for old transactions.
+        if ( BerlinForkPatch::isEnabledInWorkingBlock() && _op != Instruction::CREATE2 )
+            BOOST_THROW_EXCEPTION( BadInstruction() );
         result = e.create2Opcode( myAddress, _endowment, gasPrice, io_gas, _code, origin, _salt );
     }
-
     if ( !result ) {
         go( depth, e, _onOp );
         e.accrueSubState( sub );
