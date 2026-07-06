@@ -50,6 +50,9 @@ void BITE2TransactionQueue::addTemp( Transaction&& _t ) {
 
 std::vector< h256 > BITE2TransactionQueue::getTempHashes() const {
     CHECK_EXPRESSION( m_current );
+    if ( m_current->empty() )
+        return {};
+
     // if there are no committed transactions
     // we return hashes of all transactions in m_current
     if ( m_empty ) {
@@ -138,6 +141,29 @@ std::vector< dev::h256 > BITE2TransactionQueue::getNCTXOrigins( size_t _n ) cons
     }
 
     return res;
+}
+
+std::optional< std::vector< dev::h256 > >
+BITE2TransactionQueue::validateNextExpectedCTXsAndGetOrigins(
+    std::vector< Transaction > const& _ctxs ) const {
+    ReadGuard l( m_lock );
+    if ( !m_current || _ctxs.size() > m_current->size() )
+        return std::nullopt;
+
+    std::vector< dev::h256 > origins;
+    origins.reserve( _ctxs.size() );
+
+    // advance pending CTXs 1 by 1 & check that they match the provided CTXs
+    auto pending = m_current->begin();
+    for ( auto const& ctx : _ctxs ) {
+        if ( !ctx.isCTX() || ctx.sha3() != pending->sha3() )
+            return std::nullopt;
+
+        origins.push_back( pending->getCTXOrigin() );
+        ++pending;
+    }
+
+    return origins;
 }
 
 #endif  // BITE

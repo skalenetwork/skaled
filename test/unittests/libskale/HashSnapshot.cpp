@@ -601,15 +601,16 @@ BOOST_FIXTURE_TEST_CASE( SnapshotHashingTest, SnapshotHashingFixture,
     // Mine to generate a non-zero account balance
     const int blocksToMine = 1;
     dev::eth::simulateMining( *( client ), blocksToMine );
+    auto& clientTest = asClientTest( *client );
 
-    mgr->doSnapshot( 1 );
+    clientTest.withBlockImportBarrier( [&]() { mgr->doSnapshot( 1 ); } );
     mgr->computeSnapshotHash( 1 );
     BOOST_REQUIRE( mgr->checkSnapshotFolderAndSnapshotHash( 1 ) );
 
     BOOST_REQUIRE( client->number() == 1 );
     WAIT_FOR_THE_NEXT_BLOCK();
 
-    mgr->doSnapshot( 2 );
+    clientTest.withBlockImportBarrier( [&]() { mgr->doSnapshot( 2 ); } );
     mgr->computeSnapshotHash( 2 );
     BOOST_REQUIRE( mgr->checkSnapshotFolderAndSnapshotHash( 2 ) );
 
@@ -631,7 +632,7 @@ BOOST_FIXTURE_TEST_CASE( SnapshotHashingTest, SnapshotHashingFixture,
     BOOST_REQUIRE( client->number() == 3 );
     WAIT_FOR_THE_NEXT_BLOCK();
 
-    mgr->doSnapshot( 3 );
+    clientTest.withBlockImportBarrier( [&]() { mgr->doSnapshot( 3 ); } );
 
 #ifndef FAIR
     mgr->computeSnapshotHash( 3, true );

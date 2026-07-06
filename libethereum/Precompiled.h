@@ -53,42 +53,52 @@ extern std::shared_ptr< SkaleHost > g_skaleHost;
 struct PrecompiledCallContext {
     PrecompiledCallContext()
         : blockNumber( 0 ),
+          latestBlockTimestamp( 0 ),
 #ifdef BITE
           currentTxnIndex( -1 ),
           currentTxnHash( dev::h256( 0 ) ),
-          latestBlockTimestamp( 0 ),
           from( dev::ZeroAddress ),
 #endif
           isReadOnly( true ) {
     }
-    PrecompiledCallContext( const dev::u256& _bn,
+    PrecompiledCallContext( const dev::u256& _bn, int64_t _latestBlockTimestamp,
 #ifdef BITE
         const dev::u256& _currentTxnIndex, const dev::h256& _currentTxnHash,
-        int64_t _latestBlockTimestamp, const dev::Address& _from,
+        const dev::Address& _from,
 #endif
         bool _readOnly )
         : blockNumber( _bn ),
+          latestBlockTimestamp( _latestBlockTimestamp ),
 #ifdef BITE
           currentTxnIndex( _currentTxnIndex ),
           currentTxnHash( _currentTxnHash ),
-          latestBlockTimestamp( _latestBlockTimestamp ),
           from( _from ),
 #endif
           isReadOnly( _readOnly ) {
     }
+#ifdef BITE
+    // Convenience 3-arg constructor for BITE builds (BITE fields use defaults)
+    PrecompiledCallContext( const dev::u256& _bn, int64_t _latestBlockTimestamp, bool _readOnly )
+        : blockNumber( _bn ),
+          latestBlockTimestamp( _latestBlockTimestamp ),
+          currentTxnIndex( -1 ),
+          currentTxnHash( dev::h256( 0 ) ),
+          from( dev::ZeroAddress ),
+          isReadOnly( _readOnly ) {}
+#endif
     dev::u256 blockNumber;
+    int64_t latestBlockTimestamp;
 #ifdef BITE
     dev::u256 currentTxnIndex;
     dev::h256 currentTxnHash;
-    int64_t latestBlockTimestamp;
     dev::Address from;
 #endif
     bool isReadOnly;
 };
 
-inline PrecompiledCallContext defaultPrecompiledContext = { 1,
+inline PrecompiledCallContext defaultPrecompiledContext = { 1, 0,
 #ifdef BITE
-    0, dev::h256( 0 ), 1, dev::ZeroAddress,
+    0, dev::h256( 0 ), dev::ZeroAddress,
 #endif
     true };
 
@@ -131,8 +141,8 @@ private:
 #endif
 };
 
-using PrecompiledPricer = std::function< bigint(
-    bytesConstRef _in, ChainOperationParams const& _chainParams, u256 const& _blockNumber ) >;
+using PrecompiledPricer = std::function< bigint( bytesConstRef _in,
+    ChainOperationParams const& _chainParams, PrecompiledCallContext const& _ctx ) >;
 
 DEV_SIMPLE_EXCEPTION( ExecutorNotFound );
 DEV_SIMPLE_EXCEPTION( PricerNotFound );
@@ -208,12 +218,12 @@ private:
     static std::pair< bool, bytes > __eth_registerPrecompiledFunction##Name
 #endif
 
-#define ETH_REGISTER_PRECOMPILED_PRICER( Name )                                                  \
-    static bigint __eth_registerPricerFunction##Name(                                            \
-        bytesConstRef _in, ChainOperationParams const& _chainParams, u256 const& _blockNumber ); \
-    static PrecompiledPricer __eth_registerPricerFactory##Name =                                 \
-        ::dev::eth::PrecompiledRegistrar::registerPricer(                                        \
-            #Name, &__eth_registerPricerFunction##Name );                                        \
+#define ETH_REGISTER_PRECOMPILED_PRICER( Name )                                         \
+    static bigint __eth_registerPricerFunction##Name( bytesConstRef _in,                \
+        ChainOperationParams const& _chainParams, PrecompiledCallContext const& _ctx ); \
+    static PrecompiledPricer __eth_registerPricerFactory##Name =                        \
+        ::dev::eth::PrecompiledRegistrar::registerPricer(                               \
+            #Name, &__eth_registerPricerFunction##Name );                               \
     static bigint __eth_registerPricerFunction##Name
 
 static constexpr size_t UINT256_SIZE = 32;

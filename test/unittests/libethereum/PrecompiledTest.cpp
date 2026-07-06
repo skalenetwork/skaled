@@ -76,8 +76,14 @@ BOOST_AUTO_TEST_CASE(
         "03"
         "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e"
         "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f" );
-    auto res = exec( bytesConstRef( in.data(), in.size() ), defaultPrecompiledContext );
-
+    auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+                                                              0,
+#ifdef BITE
+                                                              0,
+                                                              dev::h256( 0 ),
+                                                              dev::ZeroAddress,
+#endif
+                                                                true } );
     BOOST_REQUIRE( res.first );
     bytes expected = fromHex( "0000000000000000000000000000000000000000000000000000000000000001" );
     BOOST_REQUIRE_EQUAL_COLLECTIONS(
@@ -94,7 +100,14 @@ BOOST_AUTO_TEST_CASE(
         "0000000000000000000000000000000000000000000000000000000000000020"
         "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e"
         "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f" );
-    auto res = exec( bytesConstRef( in.data(), in.size() ), defaultPrecompiledContext );
+    auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+                                                              0,
+#ifdef BITE
+                                                              0,
+                                                              dev::h256( 0 ),
+                                                              dev::ZeroAddress,
+#endif
+                                                                true } );
 
     BOOST_REQUIRE( res.first );
     bytes expected = fromHex( "0000000000000000000000000000000000000000000000000000000000000000" );
@@ -114,7 +127,14 @@ BOOST_AUTO_TEST_CASE(
         "ffff"
         "8000000000000000000000000000000000000000000000000000000000000000"
         "07" );
-    auto res = exec( bytesConstRef( in.data(), in.size() ), defaultPrecompiledContext );
+    auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+                                                              0,
+#ifdef BITE
+                                                              0,
+                                                              dev::h256( 0 ),
+                                                              dev::ZeroAddress,
+#endif
+                                                                true } );
 
     BOOST_REQUIRE( res.first );
     bytes expected = fromHex( "3b01b01ac41f2d6e917c6d6a221ce793802469026d9ab7578fa2e79e4da6aaab" );
@@ -133,7 +153,14 @@ BOOST_AUTO_TEST_CASE(
         "03"
         "ffff"
         "80" );
-    auto res = exec( bytesConstRef( in.data(), in.size() ), defaultPrecompiledContext );
+    auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+                                                              0,
+#ifdef BITE
+                                                              0,
+                                                              dev::h256( 0 ),
+                                                              dev::ZeroAddress,
+#endif
+                                                                true } );
 
     BOOST_REQUIRE( res.first );
     bytes expected = fromHex( "3b01b01ac41f2d6e917c6d6a221ce793802469026d9ab7578fa2e79e4da6aaab" );
@@ -149,7 +176,14 @@ BOOST_AUTO_TEST_CASE( modexpMissingValues ) {
         "0000000000000000000000000000000000000000000000000000000000000002"
         "0000000000000000000000000000000000000000000000000000000000000020"
         "03" );
-    auto res = exec( bytesConstRef( in.data(), in.size() ), defaultPrecompiledContext );
+    auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+                                                              0,
+#ifdef BITE
+                                                              0,
+                                                              dev::h256( 0 ),
+                                                              dev::ZeroAddress,
+#endif
+                                                                true } );
 
     BOOST_REQUIRE( res.first );
     bytes expected = fromHex( "0000000000000000000000000000000000000000000000000000000000000000" );
@@ -167,8 +201,14 @@ BOOST_AUTO_TEST_CASE(
         "0000000000000000000000000000000000000000000000000000000000000020"
         "03"
         "8000000000000000000000000000000000000000000000000000000000000000" );
-    auto res = exec( bytesConstRef( in.data(), in.size() ), defaultPrecompiledContext );
-
+    auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+                                                              0,
+#ifdef BITE
+                                                              0,
+                                                              dev::h256( 0 ),
+                                                              dev::ZeroAddress,
+#endif
+                                                                true } );
     BOOST_REQUIRE( res.first );
     bytes expected = fromHex( "0000000000000000000000000000000000000000000000000000000000000001" );
     BOOST_REQUIRE_EQUAL_COLLECTIONS(
@@ -186,7 +226,14 @@ BOOST_AUTO_TEST_CASE(
         "00"
         "00"
         "80" );
-    auto res = exec( bytesConstRef( in.data(), in.size() ), defaultPrecompiledContext );
+    auto res = exec( bytesConstRef( in.data(), in.size() ), { 2,
+                                                              0,
+#ifdef BITE
+                                                              0,
+                                                              dev::h256( 0 ),
+                                                              dev::ZeroAddress,
+#endif
+                                                                true } );
 
     BOOST_REQUIRE( res.first );
     bytes expected = fromHex( "0000000000000000000000000000000000000000000000000000000000000001" );
@@ -205,8 +252,14 @@ BOOST_AUTO_TEST_CASE(
         "00"
         "00"
         "00" );
-    auto res = exec( bytesConstRef( in.data(), in.size() ), defaultPrecompiledContext );
-
+    auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+                                                              0,
+#ifdef BITE
+                                                              0,
+                                                              dev::h256( 0 ),
+                                                              dev::ZeroAddress,
+#endif
+                                                                true } );
     BOOST_REQUIRE( res.first );
     bytes expected = fromHex( "0000000000000000000000000000000000000000000000000000000000000000" );
     BOOST_REQUIRE_EQUAL_COLLECTIONS(
@@ -223,7 +276,14 @@ BOOST_AUTO_TEST_CASE(
         "0000000000000000000000000000000000000000000000000000000000000000"
         "01"
         "01" );
-    auto res = exec( bytesConstRef( in.data(), in.size() ), defaultPrecompiledContext );
+    auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+                                                              0,
+#ifdef BITE
+                                                              0,
+                                                              dev::h256( 0 ),
+                                                              dev::ZeroAddress,
+#endif
+                                                                true } );
 
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( res.second.empty() );
@@ -243,6 +303,37 @@ BOOST_AUTO_TEST_CASE(
     auto res = cost( ref( in ), {}, {} );
 
     BOOST_REQUIRE_EQUAL( static_cast< int >( res ), 13056 );
+}
+
+BOOST_AUTO_TEST_CASE(
+    modexpCostEIP2565, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+    struct PatchableChainParams : public ChainOperationParams {
+        void setPatchTimestamp( SchainPatchEnum _patch, time_t _timestamp ) {
+            sChain._patchTimestamps[static_cast< size_t >( _patch )] = _timestamp;
+        }
+    };
+
+    PrecompiledPricer cost = PrecompiledRegistrar::pricer( "modexp" );
+    bytes in = fromHex(
+        "0000000000000000000000000000000000000000000000000000000000000001"
+        "0000000000000000000000000000000000000000000000000000000000000020"
+        "0000000000000000000000000000000000000000000000000000000000000020"
+        "03"
+        "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2e"
+        "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f" );
+
+    PatchableChainParams disabledPatchParams;
+    SchainPatch::init( disabledPatchParams );
+    bigint oldFormulaCost = cost( ref( in ), disabledPatchParams, PrecompiledCallContext{0, 0, false} );
+    BOOST_REQUIRE_EQUAL( oldFormulaCost, bigint( 13056 ) );
+
+    PatchableChainParams enabledPatchParams;
+    enabledPatchParams.setPatchTimestamp( SchainPatchEnum::BerlinForkPatch, 1 );
+    SchainPatch::init( enabledPatchParams );
+    bigint eip2565Cost = cost( ref( in ), enabledPatchParams, PrecompiledCallContext{0, 100, false} );
+    BOOST_REQUIRE_EQUAL( eip2565Cost, bigint( 1360 ) );
+
+    SchainPatch::init( disabledPatchParams );
 }
 
 BOOST_AUTO_TEST_CASE(
@@ -915,6 +1006,64 @@ constexpr PrecompiledTest modexpTests[] = {
     }
 };
 
+// EIP-2565: verify all 15 nagydani test vectors against the new gas formula.
+BOOST_AUTO_TEST_CASE( modexpCostEIP2565NagydaniVectors,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+    struct PatchableChainParams : public ChainOperationParams {
+        void setPatchTimestamp( SchainPatchEnum _patch, time_t _timestamp ) {
+            sChain._patchTimestamps[static_cast< size_t >( _patch )] = _timestamp;
+        }
+    };
+
+    PrecompiledPricer cost = PrecompiledRegistrar::pricer( "modexp" );
+
+    PatchableChainParams enabledPatchParams;
+    enabledPatchParams.setPatchTimestamp( SchainPatchEnum::BerlinForkPatch, 1 );
+    SchainPatch::init( enabledPatchParams );
+
+    // EIP-2565 spec table expected gas costs.
+    struct NagydaniGasVector {
+        const char* name;
+        bigint eip2565Gas;
+    };
+    NagydaniGasVector vectors[] = {
+        { "nagydani-1-square", 200 },
+        { "nagydani-1-qube", 200 },
+        { "nagydani-1-pow0x10001", 341 },
+        { "nagydani-2-square", 200 },
+        { "nagydani-2-qube", 200 },
+        { "nagydani-2-pow0x10001", 1365 },
+        { "nagydani-3-square", 341 },
+        { "nagydani-3-qube", 341 },
+        { "nagydani-3-pow0x10001", 5461 },
+        { "nagydani-4-square", 1365 },
+        { "nagydani-4-qube", 1365 },
+        { "nagydani-4-pow0x10001", 21845 },
+        { "nagydani-5-square", 5461 },
+        { "nagydani-5-qube", 5461 },
+        { "nagydani-5-pow0x10001", 87381 },
+    };
+
+    for ( auto const& vec : vectors ) {
+        bool found = false;
+        for ( auto const& test : modexpTests ) {
+            if ( std::string( test.name ) == vec.name ) {
+                bytes in = fromHex( test.input );
+                bigint actualGas = cost( ref( in ), enabledPatchParams, PrecompiledCallContext{0, 100, false} );
+                BOOST_CHECK_MESSAGE( actualGas == vec.eip2565Gas,
+                    "EIP-2565 gas mismatch for " << vec.name << ": expected " << vec.eip2565Gas
+                                                 << " got " << actualGas );
+                found = true;
+                break;
+            }
+        }
+        BOOST_CHECK_MESSAGE( found, "nagydani test vector not found: " << vec.name );
+    }
+
+    PatchableChainParams disabledPatchParams;
+    SchainPatch::init( disabledPatchParams );
+}
+
 constexpr PrecompiledTest bn256AddTests[] = {
     { "18b18acfb4c2c30276db5411368e7185b311dd124691610c5d3b74034e093dc9063c909c4720840cb5134cb9f59f"
       "a"
@@ -1456,6 +1605,37 @@ constexpr PrecompiledTest bn256PairingTests[] = {
 };
 
 namespace {
+#ifdef BITE
+// RAII guard for submitCTX/BITE precompiled tests. Wires up the process-wide
+// g_skaleHost and the BITE ciphertext validation flag in the constructor and
+// undoes them in the destructor.
+//
+// Teardown order is critical: the client's worker/consensus thread must be
+// stopped and joined BEFORE g_skaleHost is cleared. Otherwise the still-running
+// block-creation path (see Block::executeTransactions) may dereference a null
+// g_skaleHost and crash with a memory access violation.
+struct BITEHostGuard {
+    explicit BITEHostGuard( dev::eth::Client* _client ) : m_client( _client ) {
+        dev::eth::g_skaleHost = m_client->skaleHost();
+        dev::bite::isCiphertextValidationEnabled = true;
+    }
+
+	BITEHostGuard( const BITEHostGuard& ) = delete;
+    BITEHostGuard& operator=( const BITEHostGuard& ) = delete;
+    BITEHostGuard( BITEHostGuard&& ) = delete;
+    BITEHostGuard& operator=( BITEHostGuard&& ) = delete;
+
+    ~BITEHostGuard() {
+        if ( m_client )
+            m_client->stopWorking();
+        if ( dev::eth::g_skaleHost )
+            dev::eth::g_skaleHost.reset();
+        dev::bite::isCiphertextValidationEnabled = false;
+    }
+    dev::eth::Client* m_client;
+};
+#endif
+
 void benchmarkPrecompiled( char const name[], vector_ref< const PrecompiledTest > tests, int n ) {
     if ( !Options::get().all ) {
         std::cout << "Skipping benchmark test because --all option is not specified.\n";
@@ -1469,13 +1649,27 @@ void benchmarkPrecompiled( char const name[], vector_ref< const PrecompiledTest 
         bytes input = fromHex( test.input );
         bytesConstRef inputRef = &input;
 
-        auto res = exec( inputRef, defaultPrecompiledContext );
+        auto res = exec( inputRef, { 1,
+                                     0,
+#ifdef BITE
+                                     0,
+                                     dev::h256( 0 ),
+                                     dev::ZeroAddress,
+#endif
+                                       true } );
         BOOST_REQUIRE_MESSAGE( res.first, test.name );
         BOOST_REQUIRE_EQUAL( toHex( res.second ), test.expected );
 
         timer.restart();
         for ( int i = 0; i < n; ++i )
-            exec( inputRef, defaultPrecompiledContext );
+            exec( inputRef, { 1,
+                              0,
+#ifdef BITE
+                              0,
+                              dev::h256( 0 ),
+                              dev::ZeroAddress,
+#endif
+                                true } );
         auto d = timer.duration() / n;
 
         auto t = std::chrono::duration_cast< std::chrono::nanoseconds >( d ).count();
@@ -1528,7 +1722,7 @@ BOOST_AUTO_TEST_CASE(
 
     ChainParams chainParams{ genesisInfo( eth::Network::IstanbulTransitionTest ) };
 
-    auto res = cost( {}, chainParams, 1 );
+    auto res = cost( {}, chainParams, PrecompiledCallContext{1, 0, false} );
 
     BOOST_REQUIRE_EQUAL( static_cast< int >( res ), 500 );
 }
@@ -1539,7 +1733,7 @@ BOOST_AUTO_TEST_CASE(
 
     ChainParams chainParams{ genesisInfo( eth::Network::IstanbulTransitionTest ) };
 
-    auto res = cost( {}, chainParams, 2 );
+    auto res = cost( {}, chainParams, PrecompiledCallContext{2, 0, false} );
 
     BOOST_REQUIRE_EQUAL( static_cast< int >( res ), 150 );
 }
@@ -1550,7 +1744,7 @@ BOOST_AUTO_TEST_CASE(
 
     ChainParams chainParams{ genesisInfo( eth::Network::IstanbulTransitionTest ) };
 
-    auto res = cost( {}, chainParams, 1 );
+    auto res = cost( {}, chainParams, PrecompiledCallContext{1, 0, false} );
 
     BOOST_REQUIRE_EQUAL( static_cast< int >( res ), 40000 );
 }
@@ -1561,7 +1755,7 @@ BOOST_AUTO_TEST_CASE(
 
     ChainParams chainParams{ genesisInfo( eth::Network::IstanbulTransitionTest ) };
 
-    auto res = cost( {}, chainParams, 2 );
+    auto res = cost( {}, chainParams, PrecompiledCallContext{2, 0, false} );
 
     BOOST_REQUIRE_EQUAL( static_cast< int >( res ), 6000 );
 }
@@ -1582,10 +1776,10 @@ BOOST_AUTO_TEST_CASE( ecpairingCost ) {
         "bd5cd992f6ed090689d0585ff075ec9e99ad690c3395bc4b313370b38ef355acdadcd122975b12c85ea5db8c6d"
         "eb4aab71808dcb408fe3d1e7690c43d37b4ce6cc0166fa7daa" ) };
 
-    auto costBeforeIstanbul = cost( ref( in ), chainParams, 1 );
+    auto costBeforeIstanbul = cost( ref( in ), chainParams, PrecompiledCallContext{1, 0, false} );
     BOOST_CHECK_EQUAL( static_cast< int >( costBeforeIstanbul ), in.size() / 192 * 80000 + 100000 );
 
-    auto costIstanbul = cost( ref( in ), chainParams, 2 );
+    auto costIstanbul = cost( ref( in ), chainParams, PrecompiledCallContext{2, 0, false} );
     BOOST_CHECK_EQUAL( static_cast< int >( costIstanbul ), in.size() / 192 * 34000 + 45000 );
 }
 
@@ -1683,7 +1877,8 @@ static std::string const genesisInfoSkaleConfigTest =
         "nodes": [
           { "nodeID": 1112, "ip": "127.0.0.1", "basePort": )" +
     std::to_string( rand_port ) +
-    R"(, "schainIndex" : 1, "publicKey": "0xfa", "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588"}
+    R"(, "schainIndex" : 1, "publicKey": "0xfa",
+             "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588"}
         ]
     }
   },
@@ -1761,7 +1956,14 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     input = input.substr( 0, 58 );  // remove 0s in the end
 
     bytes in = fromHex( numberToHex( 29 ) + input );
-    auto res = exec( bytesConstRef( in.data(), in.size() ), defaultPrecompiledContext );
+    auto res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+                                                              0,
+#ifdef BITE
+                                                              { -1 },
+                                                              dev::h256( 0 ),
+                                                              dev::ZeroAddress,
+#endif
+                                                                true } );
 
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( dev::fromBigEndian< dev::u256 >( res.second ) == 30 );
@@ -1769,29 +1971,55 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     input = stringToHex( "skaleConfig.sChain.nodes.0.schainIndex" );
     input = input.substr( 0, 76 );  // remove 0s in the end
     in = fromHex( numberToHex( 38 ) + input );
-    res = exec( bytesConstRef( in.data(), in.size() ), defaultPrecompiledContext );
-
+    res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+                                                         0,
+#ifdef BITE
+                                                         { -1 },
+                                                         dev::h256( 0 ),
+                                                         dev::ZeroAddress,
+#endif
+                                                           true } );
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( dev::fromBigEndian< dev::u256 >( res.second ) == 13 );
 
     input = stringToHex( "skaleConfig.sChain.nodes.0.publicKey" );
     input = input.substr( 0, 72 );  // remove 0s in the end
     in = fromHex( numberToHex( 36 ) + input );
-    res = exec( bytesConstRef( in.data(), in.size() ), defaultPrecompiledContext );
+    res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+                                                         0,
+#ifdef BITE
+                                                         { -1 },
+                                                         dev::h256( 0 ),
+                                                         dev::ZeroAddress,
+#endif
+                                                           true } );
 
     BOOST_REQUIRE( !res.first );
 
     input = stringToHex( "skaleConfig.sChain.nodes.0.unknownField" );
     input = input.substr( 0, 78 );  // remove 0s in the end
     in = fromHex( numberToHex( 39 ) + input );
-    res = exec( bytesConstRef( in.data(), in.size() ), defaultPrecompiledContext );
-
+    res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+                                                         0,
+#ifdef BITE
+                                                         { -1 },
+                                                         dev::h256( 0 ),
+                                                         dev::ZeroAddress,
+#endif
+                                                           true } );
     BOOST_REQUIRE( !res.first );
 
     input = stringToHex( "skaleConfig.nodeInfo.wallets.ima.n" );
     input = input.substr( 0, 68 );  // remove 0s in the end
     in = fromHex( numberToHex( 34 ) + input );
-    res = exec( bytesConstRef( in.data(), in.size() ), defaultPrecompiledContext );
+    res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+                                                         0,
+#ifdef BITE
+                                                         { -1 },
+                                                         dev::h256( 0 ),
+                                                         dev::ZeroAddress,
+#endif
+                                                           true } );
 
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( dev::fromBigEndian< dev::u256 >( res.second ) == 1 );
@@ -1799,7 +2027,14 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     input = stringToHex( "skaleConfig.nodeInfo.wallets.ima.t" );
     input = input.substr( 0, 68 );  // remove 0s in the end
     in = fromHex( numberToHex( 34 ) + input );
-    res = exec( bytesConstRef( in.data(), in.size() ), defaultPrecompiledContext );
+    res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+                                                         0,
+#ifdef BITE
+                                                         { -1 },
+                                                         dev::h256( 0 ),
+                                                         dev::ZeroAddress,
+#endif
+                                                           true } );
 
     BOOST_REQUIRE( !res.first );
 
@@ -1808,7 +2043,14 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     input = stringToHex( "skaleConfig.sChain.nodes.0.publicKey" );
     input = input.substr( 0, 72 );  // remove 0s in the end
     in = fromHex( numberToHex( 36 ) + input );
-    res = exec( bytesConstRef( in.data(), in.size() ), defaultPrecompiledContext );
+    res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+                                                         0,
+#ifdef BITE
+                                                         { -1 },
+                                                         dev::h256( 0 ),
+                                                         dev::ZeroAddress,
+#endif
+                                                           true } );
 
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( res.second ==
@@ -1819,21 +2061,40 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     input = input.substr( 0, 58 );  // remove 0s in the end
 
     in = fromHex( numberToHex( 29 ) + input );
-    res = exec( bytesConstRef( in.data(), in.size() ), defaultPrecompiledContext );
-
+    res = exec( bytesConstRef( in.data(), in.size() ), { 2,
+                                                         0,
+#ifdef BITE
+                                                         { -1 },
+                                                         dev::h256( 0 ),
+                                                         dev::ZeroAddress,
+#endif
+                                                           true } );
     BOOST_REQUIRE( !res.first );
 
     input = stringToHex( "skaleConfig.sChain.nodes.0.schainIndex" );
     input = input.substr( 0, 76 );  // remove 0s in the end
     in = fromHex( numberToHex( 38 ) + input );
-    res = exec( bytesConstRef( in.data(), in.size() ), defaultPrecompiledContext );
-
+    res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+                                                         0,
+#ifdef BITE
+                                                         { -1 },
+                                                         dev::h256( 0 ),
+                                                         dev::ZeroAddress,
+#endif
+                                                           true } );
     BOOST_REQUIRE( !res.first );
 
     input = stringToHex( "skaleConfig.sChain.nodes.0.unknownField" );
     input = input.substr( 0, 78 );  // remove 0s in the end
     in = fromHex( numberToHex( 39 ) + input );
-    res = exec( bytesConstRef( in.data(), in.size() ), defaultPrecompiledContext );
+    res = exec( bytesConstRef( in.data(), in.size() ), { 1,
+                                                         0,
+#ifdef BITE
+                                                         { -1 },
+                                                         dev::h256( 0 ),
+                                                         dev::ZeroAddress,
+#endif
+                                                           true } );
 
     BOOST_REQUIRE( !res.first );
 
@@ -1845,7 +2106,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
 
 #ifdef BITE
 
-BOOST_AUTO_TEST_CASE( submitCTX_validateBITECiphertext_Success ) {    
+BOOST_AUTO_TEST_CASE( submitCTX_validateBITECiphertext_Success ) {
     Json::Value ret;
     Json::Reader().parse( genesisInfoSkaleConfigTest, ret );
 #ifndef FAIR
@@ -1870,14 +2131,7 @@ BOOST_AUTO_TEST_CASE( submitCTX_validateBITECiphertext_Success ) {
     client->setAuthor( Address( "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF" ) );
 
     client.get()->injectSkaleHost();
-    dev::eth::g_skaleHost = client->skaleHost();
-    dev::bite::isCiphertextValidationEnabled = true;
-    struct Cleanup {
-        ~Cleanup() {
-            if ( dev::eth::g_skaleHost ) dev::eth::g_skaleHost.reset();
-            dev::bite::isCiphertextValidationEnabled = false;
-        }
-    } cleanup;
+    BITEHostGuard biteHostGuard( client.get() );
     client->startWorking();
 
     sleep( 2 );
@@ -1886,13 +2140,13 @@ BOOST_AUTO_TEST_CASE( submitCTX_validateBITECiphertext_Success ) {
     Address destination = Address( "0x1111111111111111111111111111111111111111" );
     libBLS::init();
     libBLS::TEPublicKey publicKey = libBLS::TEPublicKey::random();
-    
+
     dev::bytes messageBytes(32, 'a');
     libBLS::EncryptMetaData metadata;
     metadata.associatedDataTE = destination.asBytes();
     auto encryptedMessage = libBLS::ThresholdEncryption::encrypt( messageBytes, publicKey, metadata );
     uint64_t epochId = g_skaleHost->client().getCurrentEpochId();
-    
+
     // Prepare BITE Payload RLP: [epochId, encryptedData]
     RLPStream bitePayloadRlp( 2 );
     bitePayloadRlp << epochId << encryptedMessage.toBytes();
@@ -1905,7 +2159,7 @@ BOOST_AUTO_TEST_CASE( submitCTX_validateBITECiphertext_Success ) {
         if (rem != 0) out.insert(out.end(), 32 - rem, 0);
         return out;
     };
-    
+
     // Construct EncryptedArgs Array (bytes[])
     // 1 element: validBiteCiphertext
     bytes encArr;
@@ -1925,23 +2179,23 @@ BOOST_AUTO_TEST_CASE( submitCTX_validateBITECiphertext_Success ) {
     txnData += toBigEndian( u256( 64 + encArr.size() ) ); // offset to plainArr
     txnData += encArr;
     txnData += plainArr;
-    
+
     // Now construct full input: submitCTX(uint256 gasLimit, bytes memory data)
     // 0: gasLimit
     // 32: offset to data = 64
     // 64: length of data
-    // 96: data... 
-    
+    // 96: data...
+
     bytes input;
     input += toBigEndian( u256( 1000000 ) );
     input += toBigEndian( u256( 64 ) ); // offset to txnData
     input += toBigEndian( u256( txnData.size() ) );
-    input += txnData; 
-    
+    input += txnData;
+
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "submitCTX" );
-    PrecompiledCallContext ctx = { 2, u256( 0 ), dev::h256::random(), 1, destination, true };
+    PrecompiledCallContext ctx = { 2, 1, u256( 0 ), dev::h256::random(), destination, true };
     auto res = exec( bytesConstRef( input.data(), input.size() ), ctx );
-    
+
     // Error 6 is ABI_TO_RLP_CONVERSION_FAILED which happens if validation fails.
     // We expect verification to PASS, so check that we DO NOT get error 6.
     BOOST_REQUIRE_NE( dev::fromBigEndian< dev::u256 >( res.second ), dev::u256( 6 ) );
@@ -1972,14 +2226,7 @@ BOOST_AUTO_TEST_CASE( submitCTX_validateBITECiphertext_Failure ) {
     client->setAuthor( Address( "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF" ) );
 
     client.get()->injectSkaleHost();
-    dev::eth::g_skaleHost = client->skaleHost();
-    dev::bite::isCiphertextValidationEnabled = true;
-    struct Cleanup {
-        ~Cleanup() {
-            if ( dev::eth::g_skaleHost ) dev::eth::g_skaleHost.reset();
-            dev::bite::isCiphertextValidationEnabled = false;
-        }
-    } cleanup;
+    BITEHostGuard biteHostGuard( client.get() );
     client->startWorking();
 
     sleep( 2 );
@@ -1991,7 +2238,7 @@ BOOST_AUTO_TEST_CASE( submitCTX_validateBITECiphertext_Failure ) {
     // elem0 offset = 32 (0x20)
     // elem0 length = 1 (too short)
     // elem0 data = 0xAA (padded to 32)
-    
+
     bytes encArr;
     encArr += toBigEndian( u256( 1 ) ); // length
     encArr += toBigEndian( u256( 32 ) ); // offset elem0
@@ -2008,17 +2255,17 @@ BOOST_AUTO_TEST_CASE( submitCTX_validateBITECiphertext_Failure ) {
     txnData += toBigEndian( u256( 64 + encArr.size() ) );
     txnData += encArr;
     txnData += plainArr;
-    
+
     bytes input;
     input += toBigEndian( u256( 1000000 ) );
     input += toBigEndian( u256( 64 ) ); // offset to txnData
     input += toBigEndian( u256( txnData.size() ) );
-    input += txnData; 
-    
+    input += txnData;
+
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "submitCTX" );
-    PrecompiledCallContext ctx = { 2, u256( 0 ), dev::h256::random(), 1, destination, true };
+    PrecompiledCallContext ctx = { 2, 1, u256( 0 ), dev::h256::random(), destination, true };
     auto res = exec( bytesConstRef( input.data(), input.size() ), ctx );
-    
+
     BOOST_REQUIRE( !res.first );
     // Check against SubmitCTXStatus::ABI_TO_RLP_CONVERSION_FAILED
     BOOST_REQUIRE_EQUAL( dev::fromBigEndian< dev::u256 >( res.second ), dev::bite::SubmitCTXStatus::ABI_TO_RLP_CONVERSION_FAILED );
@@ -2035,14 +2282,14 @@ BOOST_AUTO_TEST_CASE( submitCTX_validateBITECiphertext_Failure ) {
     // Create valid BITE ciphertext, but without AAD TE
     libBLS::init();
     libBLS::TEPublicKey publicKey = libBLS::TEPublicKey::random();
-    
+
     dev::bytes messageBytes(32, 'a');
     libBLS::EncryptMetaData metadata;
     // metadata.associatedDataTE is empty by default
 
     auto encryptedMessage = libBLS::ThresholdEncryption::encrypt( messageBytes, publicKey, metadata );
     uint64_t epochId = g_skaleHost->client().getCurrentEpochId();
-    
+
     // Prepare BITE Payload RLP: [epochId, encryptedData]
     RLPStream bitePayloadRlp( 2 );
     bitePayloadRlp << epochId << encryptedMessage.toBytes();
@@ -2064,10 +2311,10 @@ BOOST_AUTO_TEST_CASE( submitCTX_validateBITECiphertext_Failure ) {
     input += toBigEndian( u256( 1000000 ) );
     input += toBigEndian( u256( 64 ) ); // offset to txnData
     input += toBigEndian( u256( txnData.size() ) );
-    input += txnData; 
+    input += txnData;
 
     res = exec( bytesConstRef( input.data(), input.size() ), ctx );
-    
+
     BOOST_REQUIRE( !res.first );
     BOOST_REQUIRE_EQUAL( dev::fromBigEndian< dev::u256 >( res.second ), dev::bite::SubmitCTXStatus::ABI_TO_RLP_CONVERSION_FAILED );
 
@@ -2095,10 +2342,10 @@ BOOST_AUTO_TEST_CASE( submitCTX_validateBITECiphertext_Failure ) {
     input += toBigEndian( u256( 1000000 ) );
     input += toBigEndian( u256( 64 ) ); // offset to txnData
     input += toBigEndian( u256( txnData.size() ) );
-    input += txnData; 
+    input += txnData;
 
     res = exec( bytesConstRef( input.data(), input.size() ), ctx );
-    
+
     BOOST_REQUIRE( !res.first );
     BOOST_REQUIRE_EQUAL( dev::fromBigEndian< dev::u256 >( res.second ), dev::bite::SubmitCTXStatus::ABI_TO_RLP_CONVERSION_FAILED );
 }

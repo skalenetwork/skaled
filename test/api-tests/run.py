@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
 """
-Functional test runner.
+API/functional test runner.
 
 Reads run.toml, sets up the environment, then delegates to the selected
 test suite (a subdirectory with a suite.py).
 
 Usage:
   python3 run.py [--config run.toml] [--suite bite-compat]
+  python3 run.py [--config run.toml] [--suite hardfork-support]
 
 Steps:
-  1. Setup environment  (suite manages its own lifecycle for delegated suites)
-  2. Deploy contracts   (suite.deploy)
-  3. Run tests          (suite.run_tests)
+  0. Launch SGX wallet        (optional — suites that need SGX)
+  1. Setup environment        (launch skaled(s) and/or anvil, or delegate to suite)
+  2. Deploy contracts         (suite.deploy)
+  3. Run tests                (suite.run_tests; anvil mode compares outputs)
+  4. Background hash comparison (two-node skaled mode)
 """
 
 import argparse
@@ -24,11 +27,13 @@ import re
 import signal
 import subprocess
 import sys
+import threading
 import time
 import tomllib
 from pathlib import Path
 from typing import Any, Optional, TextIO
 
+from web3 import Web3
 from result import TestResult
 
 logger = logging.getLogger("api-tests.run")
@@ -79,11 +84,7 @@ def load_suite_config(suite_name: str) -> dict:
 # =========================================================================
 
 def _wait_for_sgx_port(url: str, timeout_s: int = 360) -> bool:
-    """Poll the SGX wallet TCP port until it accepts connections.
-
-    Uses a raw socket connect rather than HTTP so it works for gRPC
-    (HTTP/2) servers that don't speak plain HTTP/1.1.
-    """
+    """Poll the SGX wallet TCP port until it accepts connections."""
     import socket
     from urllib.parse import urlparse
     parsed = urlparse(url)
@@ -109,44 +110,30 @@ def _log_sgx_wallet_tail(log_path: Path, max_lines: int = 200):
     if not log_path.is_file():
         logger.error("SGX wallet log file not found: %s", log_path)
         return
-
     try:
         with open(log_path, "r", errors="replace") as f:
             lines = f.readlines()
     except Exception as exc:
         logger.error("Failed reading SGX wallet log file %s: %s", log_path, exc)
         return
-
     tail = lines[-max_lines:]
     if not tail:
         logger.error("SGX wallet log file is empty: %s", log_path)
         return
-
-    logger.error(
-        "SGX wallet log tail (%s, last %d lines):",
-        log_path,
-        len(tail),
-    )
+    logger.error("SGX wallet log tail (%s, last %d lines):", log_path, len(tail))
     for line in tail:
         logger.error("[sgxwallet] %s", line.rstrip("\n"))
 
 
 def generate_sgx_keys(sgx_url: str, keys_file: Path) -> dict:
-    """Generate ECDSA and BLS keys in the SGX wallet.
-
-    Delegates to scripts/run_with_sgx/utils/sgx_import.py.
-    Keys are always regenerated because the SGX wallet container is
-    ephemeral (--rm) and loses all stored keys on every restart.
-    The generated keys are saved to *keys_file* for reference.
-    Returns a dict of sgx_* template variables ready for config rendering.
-    """
+    """Generate ECDSA and BLS keys in the SGX wallet."""
     sgx_import = REPO_ROOT / "scripts" / "run_with_sgx" / "utils" / "sgx_import.py"
     if not sgx_import.is_file():
         raise RunnerError(f"sgx_import.py not found: {sgx_import}")
     logger.info("Generating SGX keys via %s ...", sgx_import)
     result = subprocess.run(
         [sys.executable, str(sgx_import), "--sgx-url", sgx_url],
-        cwd=str(sgx_import.parent.parent),  # scripts/run_with_sgx/
+        cwd=str(sgx_import.parent.parent),
         capture_output=True,
         text=True,
     )
@@ -182,11 +169,7 @@ def generate_sgx_keys(sgx_url: str, keys_file: Path) -> dict:
 
 
 def apply_sgx_config(config_path: str, sgx_context: dict):
-    """Patch a rendered skaled JSON config with SGX key values.
-
-    Sets ecdsaKeyName, wallets.ima, nodeGroups BLS/ECDSA keys, and
-    blsPublicKey fields in sChain.nodes from *sgx_context*.
-    """
+    """Patch a rendered skaled JSON config with SGX key values."""
     with open(config_path) as f:
         cfg = json.load(f)
 
@@ -194,8 +177,6 @@ def apply_sgx_config(config_path: str, sgx_context: dict):
     schain    = cfg["skaleConfig"]["sChain"]
 
     node_info["ecdsaKeyName"] = sgx_context["sgx_ecdsa_key_name"]
-    # testSignatures=true causes skaled to skip reading ecdsaKeyName from config.
-    # Must be false when using a real SGX wallet.
     node_info["testSignatures"] = False
 
     ima = node_info.setdefault("wallets", {}).setdefault("ima", {})
@@ -222,13 +203,8 @@ def apply_sgx_config(config_path: str, sgx_context: dict):
     logger.info("Applied SGX keys to %s", config_path)
 
 
-def setup_sgx(cfg: dict, _log_dir: Path) -> "Optional[Environment.ManagedProcess]":
-    """Launch the SGX wallet container and generate keys.
-
-    Writes the generated sgx_* vars into cfg["sgx"]["template_context"] so
-    suite.py can use them for config rendering.
-    Returns the ManagedProcess for the container so the caller can clean it up.
-    """
+def setup_sgx(cfg: dict, _log_dir: Path) -> "Environment.ManagedProcess":
+    """Launch the SGX wallet container and generate keys."""
     sgx_cfg = cfg.get("sgx", {})
     url            = sgx_cfg.get("url", "http://127.0.0.1:1029")
     image          = sgx_cfg.get("image", "skalenetwork/sgxwallet_sim:e548b375cae741af8fd11db54d6925c27a947af9")
@@ -264,8 +240,6 @@ def setup_sgx(cfg: dict, _log_dir: Path) -> "Optional[Environment.ManagedProcess
     if not _wait_for_sgx_port(url, startup_timeout_sec):
         log_fd.flush()
         _log_sgx_wallet_tail(log_file)
-        # Clean up the container before raising so main() doesn't receive a
-        # partially-started process it cannot know about.
         proc.send_signal(signal.SIGTERM)
         try:
             proc.wait(timeout=15)
@@ -348,14 +322,12 @@ def ensure_genesis_balance(config_path: str, private_key: str):
     cfg = _load_skaled_config(config_path)
     accounts = cfg.get("accounts", {})
 
-    # Check case-insensitive (addresses may differ in checksum casing)
     addr_lower = addr.lower()
     for existing in accounts:
         if existing.lower() == addr_lower:
             logger.info("Account %s already in genesis of %s", addr, config_path)
             return
 
-    # 1 billion ETH in wei
     balance = "1000000000000000000000000000000"
     accounts[addr] = {"balance": balance}
     cfg["accounts"] = accounts
@@ -435,10 +407,7 @@ def _save_skaled_config(config_path: str, cfg: dict):
 
 
 def _update_node_groups(schain: dict, kept_nodes: list[dict]):
-    """Rewrite nodeGroups to contain only the kept schain nodes.
-
-    nodeGroups entries are: { "nodeID": [schainIndex, nodeID, pubkey], ... }
-    """
+    """Rewrite nodeGroups to contain only the kept schain nodes."""
     kept_ids = {n["nodeID"] for n in kept_nodes}
     node_groups = schain.get("nodeGroups", {})
     for _gid, group in node_groups.items():
@@ -446,11 +415,10 @@ def _update_node_groups(schain: dict, kept_nodes: list[dict]):
         new_nodes = {}
         new_idx = 0
         for _nid, ndata in old_nodes.items():
-            # ndata is [schainIndex, nodeID, pubkey]
             if isinstance(ndata, list) and len(ndata) >= 2:
                 node_id = ndata[1]
                 if node_id in kept_ids:
-                    ndata[0] = new_idx + 1  # update schainIndex (1-based)
+                    ndata[0] = new_idx + 1  # schainIndex is 1-based
                     new_nodes[str(node_id)] = ndata
                     new_idx += 1
             elif isinstance(ndata, dict):
@@ -464,11 +432,7 @@ def _update_node_groups(schain: dict, kept_nodes: list[dict]):
 
 
 def configure_single_node_skaled(config_path: str, node_index: int = 0):
-    """Rewrite a skaled config to single-node mode.
-
-    Keeps only schain node at *node_index*, updates nodeGroups and
-    nodeInfo to match.
-    """
+    """Rewrite a skaled config to single-node mode."""
     cfg = _load_skaled_config(config_path)
     schain = cfg.get("skaleConfig", {}).get("sChain", {})
     nodes = schain.get("nodes", [])
@@ -478,8 +442,7 @@ def configure_single_node_skaled(config_path: str, node_index: int = 0):
         return
 
     if node_index >= len(nodes):
-        logger.warning("node_index %d out of range (%d nodes), using 0",
-                        node_index, len(nodes))
+        logger.warning("node_index %d out of range (%d nodes), using 0", node_index, len(nodes))
         node_index = 0
 
     kept = nodes[node_index]
@@ -487,7 +450,6 @@ def configure_single_node_skaled(config_path: str, node_index: int = 0):
     schain["nodes"] = [kept]
     _update_node_groups(schain, [kept])
 
-    # Align nodeInfo with the kept node
     node_info = cfg.get("skaleConfig", {}).get("nodeInfo", {})
     node_info["nodeID"] = kept["nodeID"]
     node_info["basePort"] = kept.get("basePort", node_info.get("basePort"))
@@ -498,12 +460,176 @@ def configure_single_node_skaled(config_path: str, node_index: int = 0):
     logger.info("Configured %s as single-node (nodeID=%s)", config_path, kept["nodeID"])
 
 
+def configure_two_node_skaled(config_paths: list[str], nodes_cfg: dict[int, dict]):
+    """Rewrite skaled configs for two-node mode."""
+    cfg0 = _load_skaled_config(config_paths[0])
+    schain = cfg0.get("skaleConfig", {}).get("sChain", {})
+    schain_nodes = schain.get("nodes", [])
+
+    if len(schain_nodes) < 2:
+        logger.warning("Template config has < 2 schain nodes; two-node setup may be incomplete.")
+        return
+
+    for i, snode in enumerate(schain_nodes[:2]):
+        if i in nodes_cfg:
+            ncfg = nodes_cfg[i]
+            snode["ip"] = "127.0.0.1"
+            snode["publicIP"] = "127.0.0.1"
+            snode["httpRpcPort"] = ncfg["http_port"]
+            snode["basePort"] = ncfg["http_port"] - 3
+            snode["schainIndex"] = i + 1
+
+    schain["nodes"] = schain_nodes[:2]
+    _update_node_groups(schain, schain_nodes[:2])
+
+    for i, config_path in enumerate(config_paths):
+        cfg = _load_skaled_config(config_path)
+        cfg["skaleConfig"]["sChain"] = schain
+
+        node_info = cfg.get("skaleConfig", {}).get("nodeInfo", {})
+        node_info["nodeID"] = schain_nodes[i]["nodeID"]
+        node_info["basePort"] = schain_nodes[i].get("basePort", node_info.get("basePort"))
+        cfg["skaleConfig"]["nodeInfo"] = node_info
+
+        _save_skaled_config(config_path, cfg)
+        logger.info("Configured %s for two-node mode (nodeID=%s)",
+                    config_path, schain_nodes[i]["nodeID"])
+
+
+def make_web3(host: str, port: int) -> Web3:
+    return Web3(Web3.HTTPProvider(
+        f"http://{host}:{port}", request_kwargs={"timeout": 10}
+    ))
+
+
+def wait_for_rpc(w3: Web3, label: str, timeout_s: int = 120) -> bool:
+    deadline = time.time() + timeout_s
+    last_error: Optional[Exception] = None
+    logger.info("Waiting for RPC (%s) ...", label)
+    while time.time() < deadline:
+        try:
+            bn = w3.eth.block_number
+            logger.info("RPC %s UP (block=%d)", label, bn)
+            return True
+        except Exception as e:
+            last_error = e
+        time.sleep(5)
+    logger.error("TIMEOUT: RPC %s not available (last error: %s)", label, last_error)
+    return False
+
+
+def build_skaled_binary(binary_cfg: str, build_enabled: bool = True) -> str:
+    if binary_cfg and os.path.isfile(binary_cfg):
+        logger.info("Using pre-built skaled: %s", binary_cfg)
+        return binary_cfg
+
+    build_dir = REPO_ROOT / "build"
+    skaled_bin = build_dir / "skaled" / "skaled"
+
+    if skaled_bin.is_file():
+        logger.info("Found existing build: %s", skaled_bin)
+        return str(skaled_bin)
+
+    if not build_enabled:
+        raise RunnerError(
+            "skaled build is disabled, and no pre-built binary was found. "
+            "Set [skaled].binary to an existing binary path or enable build."
+        )
+
+    logger.info("Building skaled from source ...")
+    subprocess.run(
+        ["cmake", "-H.", f"-B{build_dir}", "-DCMAKE_BUILD_TYPE=Release"],
+        cwd=REPO_ROOT, check=True,
+    )
+    subprocess.run(
+        ["cmake", "--build", str(build_dir), "--target", "skaled", "--", "-j4"],
+        cwd=REPO_ROOT, check=True,
+    )
+    if not skaled_bin.is_file():
+        raise RunnerError(f"Build failed: no binary at {skaled_bin}")
+    return str(skaled_bin)
+
+
+def launch_skaled_node(binary: str, ncfg: dict, log_dir: Path) -> "Environment.ManagedProcess":
+    http_port = ncfg["http_port"]
+    cmd = [
+        binary,
+        "--config", ncfg["config"],
+        "--http-port", str(http_port),
+        "--ws-port", str(http_port - 1),
+        "-v", "9",
+        "--web3-trace",
+        "--enable-debug-behavior-apis",
+        "-d", ncfg["datadir"],
+    ]
+    log_file = log_dir / f"skaled-{http_port}.log"
+    logger.info("Launching skaled (http=%d) -> %s", http_port, log_file)
+    log_fd = open(log_file, "w")
+    proc = subprocess.Popen(cmd, stdout=log_fd, stderr=subprocess.STDOUT, cwd=REPO_ROOT)
+    return Environment.ManagedProcess(proc=proc, log_fd=log_fd)
+
+
+def launch_anvil(anvil_cfg: dict, log_dir: Path) -> "Environment.ManagedProcess":
+    image = anvil_cfg.get("image", "ghcr.io/foundry-rs/foundry:rc-3")
+    extra = anvil_cfg.get("extra_args", [])
+    container_name = anvil_cfg.get("container_name") or f"skaled-api-tests-anvil-{os.getpid()}"
+    log_file = log_dir / f"{container_name}.log"
+    cmd = [
+        "docker", "run", "--rm",
+        "--name", container_name,
+        "--network", "host",
+        image, "anvil",
+        "--host", "0.0.0.0",
+    ] + extra
+    logger.info("Launching anvil container '%s' -> %s", container_name, log_file)
+    log_fd = open(log_file, "w")
+    proc = subprocess.Popen(cmd, stdout=log_fd, stderr=subprocess.STDOUT)
+    return Environment.ManagedProcess(
+        proc=proc,
+        log_fd=log_fd,
+        docker_container_name=container_name,
+    )
+
+
+def _prepare_btrfs_datadir(datadir: str, node_idx: int):
+    """Create a btrfs loopback volume for one node's datadir."""
+    import shutil
+
+    image = f"{datadir}.img"
+    size_bytes = 3 * 1024 * 1024 * 1024  # 3 GB
+
+    if os.path.ismount(datadir):
+        subprocess.run(["sudo", "umount", datadir], check=False)
+    if os.path.isdir(datadir):
+        shutil.rmtree(datadir, ignore_errors=True)
+    if os.path.exists(image):
+        result = subprocess.run(
+            ["losetup", "-j", image], capture_output=True, text=True, check=False,
+        )
+        for line in (result.stdout or "").strip().splitlines():
+            dev = line.split(":")[0]
+            subprocess.run(["sudo", "losetup", "-d", dev], check=False)
+        os.remove(image)
+
+    with open(image, "wb") as f:
+        f.truncate(size_bytes)
+
+    result = subprocess.run(["losetup", "-f"], capture_output=True, text=True, check=True)
+    loop_dev = result.stdout.strip()
+    subprocess.run(["sudo", "losetup", loop_dev, image], check=True)
+    subprocess.run(["sudo", "mkfs.btrfs", "-f", loop_dev], check=True)
+    os.makedirs(datadir, exist_ok=True)
+    subprocess.run(["sudo", "mount", loop_dev, datadir], check=True)
+    subprocess.run(["sudo", "chmod", "777", datadir], check=True)
+    logger.info("btrfs volume ready: %s -> %s", loop_dev, datadir)
+
+
 # =========================================================================
 # Environment management (Step 1)
 # =========================================================================
 
 class Environment:
-    """Holds launched processes."""
+    """Holds launched processes and web3 connections."""
 
     @dataclass
     class ManagedProcess:
@@ -513,6 +639,13 @@ class Environment:
 
     def __init__(self):
         self.processes: list[Environment.ManagedProcess] = []
+        self.web3s: dict[str, Web3] = {}
+        self.rpc_urls: dict[str, str] = {}
+
+    def add(self, label: str, managed: ManagedProcess, w3: Web3, url: str):
+        self.processes.append(managed)
+        self.web3s[label] = w3
+        self.rpc_urls[label] = url
 
     def cleanup(self):
         for managed in self.processes:
@@ -550,11 +683,179 @@ class Environment:
 
 
 def setup_environment(cfg: dict, env_type: str) -> Environment:
-    """Step 1: suite manages its own node lifecycle (delegated mode)."""
-    if env_type == "none":
-        logger.warning("env_type='none' is deprecated; use env_type='delegated'")
-    logger.info("env_type='%s': suite manages its own node lifecycle.", env_type)
-    return Environment()
+    """Step 1: launch processes according to env_type.
+
+    "delegated" / "none" — suite manages its own node lifecycle.
+    "single"              — one skaled node.
+    "two"                 — two connected skaled nodes.
+    "anvil"               — skaled + anvil side-by-side.
+    """
+    if env_type in ("none", "delegated"):
+        if env_type == "none":
+            logger.warning("env_type='none' is deprecated; use env_type='delegated'")
+        logger.info("env_type='%s': suite manages its own node lifecycle.", env_type)
+        return Environment()
+
+    env = Environment()
+    log_dir = FUNC_TESTS_DIR / "logs"
+    log_dir.mkdir(exist_ok=True)
+
+    skaled_cfg = cfg.get("skaled", {})
+    template_cfg = skaled_cfg.get("template", {})
+    template_context = template_cfg.get("context", {})
+    if not isinstance(template_context, dict):
+        raise RunnerError("[skaled.template.context] must be a table/object")
+
+    nodes_raw = skaled_cfg.get("nodes", {})
+    patches_cfg = skaled_cfg.get("patches", {})
+    patch_ts = patches_cfg.get("timestamps", {})
+    apply_to = patches_cfg.get("apply_to", [])
+
+    # Resolve node paths relative to repo root
+    nodes: dict[int, dict] = {}
+    for idx_str, ncfg in nodes_raw.items():
+        idx = int(idx_str)
+        config_path = resolve_repo_path(ncfg["config"]) if ncfg.get("config") else ""
+        config_template = ncfg.get("config_template", "")
+        if config_template and config_path:
+            template_path = resolve_repo_path(config_template)
+            try:
+                render_template_file(template_path, config_path, template_context)
+            except Exception as e:
+                raise RunnerError(f"Failed to render template for node {idx}: {e}") from e
+
+        nodes[idx] = {
+            "config": config_path,
+            "datadir": resolve_repo_path(ncfg["datadir"]) if ncfg.get("datadir") else "",
+            "http_port": ncfg["http_port"],
+        }
+
+    # Ensure deployer account has genesis balance
+    private_key = cfg.get("type", {}).get("private_key", "")
+    for idx, ncfg in nodes.items():
+        if ncfg["config"]:
+            ensure_genesis_balance(ncfg["config"], private_key)
+
+    # Inject patch timestamps
+    if patch_ts:
+        for idx, ncfg in nodes.items():
+            if ncfg["config"] and (not apply_to or idx in apply_to):
+                inject_patches(ncfg["config"], patch_ts)
+
+    # Configure schain node topology based on env_type
+    if env_type in ("single", "anvil"):
+        if 0 in nodes and nodes[0]["config"]:
+            configure_single_node_skaled(nodes[0]["config"], node_index=0)
+    elif env_type == "two":
+        if 0 in nodes and 1 in nodes:
+            configure_two_node_skaled(
+                [nodes[0]["config"], nodes[1]["config"]], nodes
+            )
+
+    # Prepare datadirs
+    use_btrfs = cfg.get("type", {}).get("use_btrfs", False)
+    if not use_btrfs:
+        snapshot_override = {"snapshotIntervalSec": 0}
+        for idx, ncfg in nodes.items():
+            if ncfg["config"]:
+                inject_patches(ncfg["config"], snapshot_override)
+
+    indices_map: dict[str, list[int]] = {"single": [0], "two": [0, 1], "anvil": [0]}
+    indices = indices_map.get(env_type, [0])
+
+    for idx in indices:
+        if idx not in nodes:
+            raise RunnerError(f"Missing [skaled.nodes.{idx}] in config")
+        datadir = nodes[idx]["datadir"]
+        if use_btrfs:
+            logger.info("Preparing btrfs loopback for node %d ...", idx)
+            _prepare_btrfs_datadir(datadir, idx)
+        else:
+            snapshot_cfg = skaled_cfg.get("snapshot", {})
+            if not snapshot_cfg.get("path"):
+                if os.path.isdir(datadir):
+                    import shutil
+                    logger.info("Clearing datadir %s for fresh genesis", datadir)
+                    shutil.rmtree(datadir)
+            os.makedirs(datadir, exist_ok=True)
+            logger.info("Using plain datadir: %s", datadir)
+
+    binary = build_skaled_binary(
+        skaled_cfg.get("binary", ""),
+        skaled_cfg.get("build", True),
+    )
+    set_ulimit()
+
+    for idx in indices:
+        ncfg = nodes[idx]
+        managed = launch_skaled_node(binary, ncfg, log_dir)
+        w3 = make_web3("127.0.0.1", ncfg["http_port"])
+        url = f"http://127.0.0.1:{ncfg['http_port']}"
+        env.add(f"skaled-{idx}", managed, w3, url)
+
+    if env_type == "anvil":
+        acfg = cfg.get("anvil", {})
+        aport = acfg.get("port", 8545)
+        managed = launch_anvil(acfg, log_dir)
+        w3 = make_web3("127.0.0.1", aport)
+        env.add("anvil", managed, w3, f"http://127.0.0.1:{aport}")
+
+    rpc_timeout = cfg.get("type", {}).get("rpc_up_timeout", 120)
+    all_up = all(wait_for_rpc(w3, lbl, rpc_timeout) for lbl, w3 in env.web3s.items())
+    if not all_up:
+        env.cleanup()
+        raise RunnerError("Not all RPC endpoints came up.")
+
+    logger.info("All endpoints UP:")
+    for lbl, url in env.rpc_urls.items():
+        logger.info("  %s -> %s", lbl, url)
+
+    return env
+
+
+# =========================================================================
+# Block-hash comparison (Step 4 — background thread)
+# =========================================================================
+
+class HashChecker(threading.Thread):
+    """Periodically compares block hashes across two skaled nodes."""
+
+    def __init__(self, w3_list: list[Web3], interval: int, timeout: int):
+        super().__init__(daemon=True)
+        self.w3s = w3_list
+        self.interval = interval
+        self.timeout = timeout
+        self.next_block = 0
+        self.mismatches = 0
+        self.running = True
+
+    def stop(self):
+        self.running = False
+
+    def run(self):
+        last_progress = time.time()
+        while self.running:
+            try:
+                heads = [w3.eth.block_number for w3 in self.w3s]
+                latest = min(heads)
+                prev = self.next_block
+
+                for bn in range(self.next_block, latest + 1):
+                    hashes = [w3.eth.get_block(bn)["hash"].hex() for w3 in self.w3s]
+                    if len(set(hashes)) != 1:
+                        self.mismatches += 1
+                        logger.error("HASH MISMATCH block %d: %s", bn, hashes)
+                self.next_block = latest + 1
+
+                if self.next_block > prev:
+                    last_progress = time.time()
+                elif time.time() - last_progress > self.timeout:
+                    logger.error("No new blocks for %ds — hash checker stopping", self.timeout)
+                    return
+            except Exception as e:
+                logger.warning("Hash check error: %s", e)
+
+            time.sleep(self.interval)
 
 
 # =========================================================================
@@ -574,6 +875,34 @@ def load_suite(suite_name: str):
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
+
+
+# =========================================================================
+# Anvil output comparison
+# =========================================================================
+
+def compare_anvil_results(all_results: dict[str, list[TestResult]]):
+    skaled = {r.name: r for r in all_results.get("skaled-0", [])}
+    anvil = {r.name: r for r in all_results.get("anvil", [])}
+
+    logger.info("=" * 60)
+    logger.info("Anvil comparison:")
+    logger.info("=" * 60)
+
+    for name in sorted(set(skaled) | set(anvil)):
+        s, a = skaled.get(name), anvil.get(name)
+        if s and a:
+            match = s.passed == a.passed
+            logger.info("  %s: skaled=%s anvil=%s %s",
+                        name,
+                        "PASS" if s.passed else "FAIL",
+                        "PASS" if a.passed else "FAIL",
+                        "MATCH" if match else "MISMATCH")
+            if not match:
+                logger.warning("    skaled: %s", s.message)
+                logger.warning("    anvil:  %s", a.message)
+        else:
+            logger.warning("  %s: missing from %s", name, "anvil" if not a else "skaled")
 
 
 # =========================================================================
@@ -603,7 +932,7 @@ def print_summary(all_results: dict[str, list[TestResult]]) -> bool:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="API test runner for skaled")
+    parser = argparse.ArgumentParser(description="API/functional test runner for skaled")
     parser.add_argument("--config", default=str(FUNC_TESTS_DIR / "run.toml"),
                         help="Path to run.toml")
     parser.add_argument("--suite", default=None,
@@ -632,6 +961,7 @@ def main():
 
     env: Optional[Environment] = None
     sgx_managed: Optional[Environment.ManagedProcess] = None
+    hash_checker: Optional[HashChecker] = None
 
     log_dir = FUNC_TESTS_DIR / "logs"
     log_dir.mkdir(exist_ok=True)
@@ -639,8 +969,6 @@ def main():
     try:
         # ---- Step 0: Launch SGX wallet (optional) ----
         launch_sgx = bool(cfg.get("sgx", {}).get("enabled"))
-        # Allow the suite's own config section to override the global SGX flag.
-        # Convention: a suite named "foo-bar" may set use_sgx under [foo_bar].
         suite_section = cfg.get(suite_name.replace("-", "_"), {})
         if "use_sgx" in suite_section:
             launch_sgx = bool(suite_section["use_sgx"])
@@ -659,6 +987,17 @@ def main():
         logger.info("=" * 60)
         env = setup_environment(cfg, env_type)
 
+        # ---- Step 4 (background): Hash checker for two-node mode ----
+        if env_type == "two" and len(env.web3s) >= 2:
+            hc = cfg.get("hash_check", {})
+            hash_checker = HashChecker(
+                list(env.web3s.values()),
+                interval=hc.get("interval_sec", 30),
+                timeout=hc.get("no_blocks_timeout_sec", 300),
+            )
+            hash_checker.start()
+            logger.info("Background hash checker started.")
+
         # ---- Step 2: Deploy contracts ----
         logger.info("=" * 60)
         logger.info("STEP 2: Deploying contracts (%s)", suite_name)
@@ -671,7 +1010,22 @@ def main():
         logger.info("=" * 60)
         all_results: dict[str, list[TestResult]] = suite.run_tests(cfg, env)
 
+        # Anvil comparison
+        if env_type == "anvil":
+            compare_anvil_results(all_results)
+
         success = print_summary(all_results)
+
+        # Hash checker report
+        if hash_checker:
+            hash_checker.stop()
+            hash_checker.join(timeout=5)
+            if hash_checker.mismatches > 0:
+                logger.error("Hash checker: %d mismatches!", hash_checker.mismatches)
+                success = False
+            else:
+                logger.info("Hash checker: all blocks matched.")
+
         sys.exit(0 if success else 1)
 
     except RunnerError as e:
@@ -680,6 +1034,8 @@ def main():
     except KeyboardInterrupt:
         logger.info("Interrupted by user.")
     finally:
+        if hash_checker:
+            hash_checker.stop()
         if env:
             env.cleanup()
         if sgx_managed:
