@@ -244,6 +244,85 @@ public:
         BOOST_REQUIRE_EQUAL( gasBeforeBalance - gasAfterBalance, 100 );
     }
 
+    // EIP-2681: a CREATE2 by a sender whose nonce is already at the max (2^64-1) aborts because the
+    // nonce cannot be incremented. The abort happens before the would-be address is warmed
+    // (EIP-2929), so a subsequent BALANCE on that address is cold (2600), not warm (100).
+    void testNonceOverflowCreate2LeavesAddressColdInBerlin() {
+        enableBerlinForkPatch();
+        state.setNonce( address, ( u256{ 1 } << 64 ) - 1 );
+        BlockHeader berlinHeader = blockHeader;
+        berlinHeader.setTimestamp( 1 );
+        EnvInfo berlinEnvInfo{
+            berlinHeader, lastBlockHashes, 1, 0, se->chainParams().getChainId() };
+
+        bytes create2ThenBalance = fromHex( "368060006000376101238160006000f55050" );
+        create2ThenBalance.push_back( 0x73 );  // PUSH20
+        bytes expectedAddressBytes = expectedAddress.asBytes();
+        create2ThenBalance.insert(
+            create2ThenBalance.end(), expectedAddressBytes.begin(), expectedAddressBytes.end() );
+        create2ThenBalance.push_back( 0x31 );  // BALANCE
+        create2ThenBalance.push_back( 0x50 );  // POP
+        create2ThenBalance.push_back( 0x00 );  // STOP
+
+        ExtVM extVm( state, berlinEnvInfo, se->chainParams(), address, address, address, value,
+            gasPrice, ref( inputData ), ref( create2ThenBalance ), sha3( create2ThenBalance ),
+            version, depth, isCreate, staticCall );
+
+        bigint gasBeforeBalance = 0;
+        bigint gasAfterBalance = 0;
+        auto onOp = [&gasBeforeBalance, &gasAfterBalance]( uint64_t /*steps*/, uint64_t /* PC */,
+                        Instruction _instr, bigint /*newMemSize*/, bigint /*gasCost*/, bigint _gas,
+                        VMFace const*, ExtVMFace const* ) {
+            if ( _instr == Instruction::BALANCE )
+                gasBeforeBalance = _gas;
+            else if ( gasBeforeBalance != 0 && gasAfterBalance == 0 )
+                gasAfterBalance = _gas;
+        };
+
+        vm->exec( gas, extVm, onOp );
+        BOOST_REQUIRE_EQUAL( gasBeforeBalance - gasAfterBalance, 2600 );
+    }
+
+    // EIP-2681: same as above but for CREATE (address derived from the max sender nonce).
+    void testNonceOverflowCreateLeavesAddressColdInBerlin() {
+        enableBerlinForkPatch();
+        state.setNonce( address, ( u256{ 1 } << 64 ) - 1 );
+        BlockHeader berlinHeader = blockHeader;
+        berlinHeader.setTimestamp( 1 );
+        EnvInfo berlinEnvInfo{
+            berlinHeader, lastBlockHashes, 1, 0, se->chainParams().getChainId() };
+
+        u256 senderNonce = state.getNonce( address );
+        Address expectedCreateAddress = right160( sha3( rlpList( address, senderNonce ) ) );
+
+        bytes createThenBalance = fromHex( "368060006000378060006000f05050" );
+        createThenBalance.push_back( 0x73 );  // PUSH20
+        bytes expectedAddressBytes = expectedCreateAddress.asBytes();
+        createThenBalance.insert(
+            createThenBalance.end(), expectedAddressBytes.begin(), expectedAddressBytes.end() );
+        createThenBalance.push_back( 0x31 );  // BALANCE
+        createThenBalance.push_back( 0x50 );  // POP
+        createThenBalance.push_back( 0x00 );  // STOP
+
+        ExtVM extVm( state, berlinEnvInfo, se->chainParams(), address, address, address, value,
+            gasPrice, ref( inputData ), ref( createThenBalance ), sha3( createThenBalance ),
+            version, depth, isCreate, staticCall );
+
+        bigint gasBeforeBalance = 0;
+        bigint gasAfterBalance = 0;
+        auto onOp = [&gasBeforeBalance, &gasAfterBalance]( uint64_t /*steps*/, uint64_t /* PC */,
+                        Instruction _instr, bigint /*newMemSize*/, bigint /*gasCost*/, bigint _gas,
+                        VMFace const*, ExtVMFace const* ) {
+            if ( _instr == Instruction::BALANCE )
+                gasBeforeBalance = _gas;
+            else if ( gasBeforeBalance != 0 && gasAfterBalance == 0 )
+                gasAfterBalance = _gas;
+        };
+
+        vm->exec( gas, extVm, onOp );
+        BOOST_REQUIRE_EQUAL( gasBeforeBalance - gasAfterBalance, 2600 );
+    }
+
     void enableBerlinForkPatch() {
         struct PatchableChainParams : public ChainParams {
             using ChainParams::ChainParams;
@@ -974,6 +1053,14 @@ BOOST_AUTO_TEST_CASE( LegacyVMCreatefailedCreateLeavesAddressWarmInBerlin ) {
     testFailedCreateLeavesAddressWarmInBerlin();
 }
 
+BOOST_AUTO_TEST_CASE( LegacyVMCreate2nonceOverflowLeavesAddressColdInBerlin ) {
+    testNonceOverflowCreate2LeavesAddressColdInBerlin();
+}
+
+BOOST_AUTO_TEST_CASE( LegacyVMCreatenonceOverflowLeavesAddressColdInBerlin ) {
+    testNonceOverflowCreateLeavesAddressColdInBerlin();
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_FIXTURE_TEST_SUITE( LegacyVMExtcodehashSuite, LegacyVMExtcodehashTestFixture )
@@ -1183,6 +1270,11 @@ BOOST_AUTO_TEST_CASE( SkaleInterpreterCreate2collisionWithNonEmptyStorage,
 BOOST_AUTO_TEST_CASE( SkaleInterpreterCreate2collisionWithNonEmptyStorageEmptyInitCode ) {
     testCreate2collisionWithNonEmptyStorageEmptyInitCode();
 }
+
+// Note: the nonce-overflow / warm-vs-cold CREATE tests rely on the per-instruction
+// OnOpFunc gas callback, which only LegacyVM invokes; the EVMC skale-interpreter does
+// not, so those cases live in the LegacyVM suite only (see LegacyVMCreate2Suite). The
+// fix they exercise is in the shared ExtVM::create, which both interpreters use.
 
 BOOST_AUTO_TEST_SUITE_END()
 

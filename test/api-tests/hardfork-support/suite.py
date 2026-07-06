@@ -2,8 +2,11 @@
 Hardfork-support test suite.
 
 Provides deploy() and run_tests() entry points called by the top-level run.py.
+Runs local EIP contract checks and, when configured, selected ethereum/execution-specs
+execute-remote workloads against each endpoint.
 """
 
+import json
 import logging
 import os
 import shlex
@@ -16,6 +19,15 @@ from result import TestResult
 logger = logging.getLogger("hardfork-support.suite")
 
 SUITE_DIR = Path(__file__).resolve().parent
+REPO_ROOT = SUITE_DIR.parent.parent.parent
+
+NONCE_OVERFLOW_CREATE_STUB = "berlin_nonce_overflow_create"
+NONCE_OVERFLOW_CREATE2_STUB = "berlin_nonce_overflow_create2"
+NONCE_OVERFLOW_TEST = Path("tests/berlin/eip2929_gas_cost_increases/test_create.py")
+NONCE_OVERFLOW_PATCH = (
+    SUITE_DIR / "patches" / "execution-specs-berlin-nonce-overflow-stubs.patch"
+)
+NONCE_OVERFLOW_PATCH_MARKER = "NONCE_OVERFLOW_CREATE_STUB"
 
 
 def _load_run_eip_tests():
@@ -29,6 +41,211 @@ def _load_run_eip_tests():
 
 
 run_eip_tests = _load_run_eip_tests()
+
+
+def _tail_file(path: Path, max_lines: int = 120) -> str:
+    try:
+        lines = path.read_text(errors="replace").splitlines()
+    except OSError as exc:
+        return f"<failed to read {path}: {exc}>"
+    return "\n".join(lines[-max_lines:])
+
+
+def _ensure_nonce_overflow_stub_patch(project_dir: Path) -> bool:
+    test_path = project_dir / NONCE_OVERFLOW_TEST
+    if NONCE_OVERFLOW_PATCH_MARKER in test_path.read_text():
+        return False
+
+    result = subprocess.run(
+        ["git", "apply", "--check", str(NONCE_OVERFLOW_PATCH)],
+        cwd=project_dir,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(result.stderr.strip() or result.stdout.strip())
+
+    subprocess.run(
+        ["git", "apply", str(NONCE_OVERFLOW_PATCH)],
+        cwd=project_dir,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return True
+
+
+def _restore_nonce_overflow_stub_patch(project_dir: Path) -> None:
+    test_path = project_dir / NONCE_OVERFLOW_TEST
+    if NONCE_OVERFLOW_PATCH_MARKER not in test_path.read_text():
+        return
+
+    subprocess.run(
+        ["git", "apply", "--reverse", str(NONCE_OVERFLOW_PATCH)],
+        cwd=project_dir,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+
+def _execution_specs_config_for_label(execution_cfg: dict, label: str) -> dict:
+    label_cfg = dict(execution_cfg)
+    endpoint_overrides = execution_cfg.get("endpoint_overrides", {})
+    if isinstance(endpoint_overrides, dict):
+        label_cfg.update(endpoint_overrides.get(label, {}))
+    return label_cfg
+
+
+def _run_execution_specs(label: str, url: str, w3, private_key: str, cfg: dict) -> TestResult:
+    execution_cfg = _execution_specs_config_for_label(cfg.get("execution_specs", {}), label)
+    paths = [str(path) for path in execution_cfg.get("paths", [])]
+    test_name = f"execution-specs-{execution_cfg.get('fork', 'Berlin')}"
+
+    if not paths:
+        return TestResult(
+            name=test_name,
+            passed=False,
+            message="[execution_specs].paths must not be empty",
+        )
+    if not private_key:
+        return TestResult(
+            name=test_name,
+            passed=False,
+            message="private_key is required for execution-specs execute remote",
+        )
+
+    project_dir = REPO_ROOT / str(
+        execution_cfg.get("project_dir", "test/api-tests/execution-specs")
+    )
+    if not project_dir.is_dir():
+        return TestResult(
+            name=test_name,
+            passed=False,
+            message=(
+                f"execution-specs checkout not found: {project_dir}; "
+                "initialize submodules with git submodule update --init --recursive"
+            ),
+        )
+
+    nonce_patch_applied = False
+    address_stubs = execution_cfg.get("address_stubs")
+    if address_stubs and {
+        NONCE_OVERFLOW_CREATE_STUB,
+        NONCE_OVERFLOW_CREATE2_STUB,
+    }.issubset(address_stubs):
+        try:
+            nonce_patch_applied = _ensure_nonce_overflow_stub_patch(project_dir)
+        except (OSError, RuntimeError) as exc:
+            return TestResult(
+                name=test_name,
+                passed=False,
+                message=f"failed to patch execution-specs nonce-overflow stubs: {exc}",
+            )
+
+    fork = str(execution_cfg.get("fork", "Berlin"))
+    timeout_sec = int(execution_cfg.get("timeout_sec", 1200))
+    cmd = [
+        "uv", "run", "--locked", "--project", ".",
+        "execute", "remote",
+        "--fork", fork,
+        "--rpc-endpoint", url,
+        "--chain-id", str(w3.eth.chain_id),
+        "--tx-wait-timeout", str(int(execution_cfg.get("tx_wait_timeout", 120))),
+        "--max-tx-per-batch", str(int(execution_cfg.get("max_tx_per_batch", 50))),
+        "--default-max-fee-per-blob-gas",
+        str(int(execution_cfg.get("default_max_fee_per_blob_gas", 1))),
+    ]
+
+    max_gas_per_test = execution_cfg.get("max_gas_per_test")
+    if max_gas_per_test is not None:
+        cmd.extend(["--max-gas-per-test", str(int(max_gas_per_test))])
+
+    eoa_start = execution_cfg.get("eoa_start")
+    if eoa_start is not None:
+        cmd.extend(["--eoa-start", str(int(eoa_start))])
+
+    if address_stubs:
+        cmd.extend([
+            "--address-stubs",
+            json.dumps(address_stubs, separators=(",", ":")),
+        ])
+
+    cmd.extend(str(arg) for arg in execution_cfg.get("extra_args", []))
+    cmd.extend(paths)
+
+    log_dir = SUITE_DIR / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    safe_label = label.replace("/", "_").replace(":", "_")
+    log_path = log_dir / f"execution-specs-{safe_label}.log"
+
+    logger.info(
+        "Running execution-specs against %s (%s, fork=%s, paths=%s)",
+        label, url, fork, paths,
+    )
+    run_env = os.environ.copy()
+    run_env["RPC_SEED_KEY"] = private_key
+    run_env.pop("UV_EXCLUDE_NEWER", None)
+    run_env.pop("UV_EXCLUDE_NEWER_PACKAGE", None)
+    run_env.pop("VIRTUAL_ENV", None)
+    run_env["UV_NO_CONFIG"] = "1"
+
+    try:
+        with open(log_path, "w") as log_fd:
+            log_fd.write("$ " + " ".join(cmd) + "\n\n")
+            log_fd.flush()
+            try:
+                result = subprocess.run(
+                    cmd,
+                    cwd=project_dir,
+                    stdout=log_fd,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    timeout=timeout_sec,
+                    check=False,
+                    env=run_env,
+                )
+            except FileNotFoundError:
+                return TestResult(
+                    name=test_name,
+                    passed=False,
+                    message="uv executable not found; install uv to run execution-specs tests",
+                )
+            except subprocess.TimeoutExpired:
+                return TestResult(
+                    name=test_name,
+                    passed=False,
+                    message=(
+                        f"execution-specs timed out after {timeout_sec}s; "
+                        f"log tail:\n{_tail_file(log_path)}"
+                    ),
+                    details={"log": str(log_path)},
+                )
+    finally:
+        if nonce_patch_applied:
+            try:
+                _restore_nonce_overflow_stub_patch(project_dir)
+            except (OSError, subprocess.CalledProcessError) as exc:
+                logger.warning("Failed to restore execution-specs nonce-overflow patch: %s", exc)
+
+    if result.returncode != 0:
+        return TestResult(
+            name=test_name,
+            passed=False,
+            message=(
+                f"execution-specs failed with rc={result.returncode}; "
+                f"log tail:\n{_tail_file(log_path)}"
+            ),
+            details={"log": str(log_path)},
+        )
+
+    return TestResult(
+        name=test_name,
+        passed=True,
+        message=f"passed; log: {log_path}",
+        details={"log": str(log_path)},
+    )
 
 
 def deploy(cfg: dict, env):
@@ -91,6 +308,8 @@ def run_tests(cfg: dict, env) -> dict[str, list[TestResult]]:
     iterations = eip_cfg.get("iterations", 1)
     eips_raw = eip_cfg.get("eips", []) or None
     gas_limit = eip_cfg.get("gas_limit", 3_000_000)
+    execution_cfg = cfg.get("execution_specs", {})
+    execution_specs_enabled = bool(execution_cfg.get("enabled", False))
     private_key = cfg["type"].get("private_key", "")
     sol_dir = str(SUITE_DIR / "sol")
 
@@ -161,6 +380,33 @@ def run_tests(cfg: dict, env) -> dict[str, list[TestResult]]:
             except Exception as e:
                 logger.error("Error on %s: %s", label, e, exc_info=True)
                 endpoint_failed[label] = f"{type(e).__name__}: {e}"
+
+    if execution_specs_enabled:
+        logger.info("Running execution-specs workload")
+        for label, url in env.rpc_urls.items():
+            label_execution_cfg = _execution_specs_config_for_label(execution_cfg, label)
+            test_name = f"execution-specs-{label_execution_cfg.get('fork', 'Berlin')}"
+            if not bool(label_execution_cfg.get("enabled", True)):
+                tr = TestResult(
+                    name=test_name,
+                    passed=True,
+                    message=f"skipped for endpoint {label} by execution_specs endpoint override",
+                )
+            else:
+                w3 = env.web3s.get(label)
+                if w3 is None:
+                    tr = TestResult(
+                        name=test_name,
+                        passed=False,
+                        message=f"No Web3 connection for endpoint {label}",
+                    )
+                else:
+                    tr = _run_execution_specs(label, url, w3, private_key, cfg)
+
+            by_label_and_name.setdefault(label, {})[tr.name] = tr
+            logger.info(
+                "  %s: %s — %s", tr.name, "PASS" if tr.passed else "FAIL", tr.message,
+            )
 
     for label, err in endpoint_failed.items():
         label_results = by_label_and_name.setdefault(label, {})
