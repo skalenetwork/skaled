@@ -1037,7 +1037,7 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
     u256 tdIncrease = m_currentBlock.difficulty();
 
     // Check uncles & apply their rewards to state.
-    if ( ParisForkPatch::isEnabledInWorkingBlock() ) {
+    if ( ParisForkPatch::isEnabledWhen( previousInfo().timestamp() ) ) {
         if ( rlp[2].itemCount() > 0 ) {
             TooManyUncles ex;
             ex << errinfo_max( 0 );

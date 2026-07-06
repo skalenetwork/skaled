@@ -1,34 +1,33 @@
 """
-hardfork-compat: cross-version state-root equality across a 5.1.0 -> 5.2.0 upgrade.
+hardfork-compat: Paris fork replay compatibility across a London -> current upgrade.
 
 Test flow:
-  1. Verify the 5.1.0 primary RPC is up and producing blocks
-  2. Run a mixed transaction workload on the 5.1.0 primary:
-       - legacy value transfers
-       - Type1 (EIP-2930 access list) transactions
-       - Type2 (EIP-1559) transactions
-       - a London-fork deploy exercising the EIP-3198 BASEFEE opcode
-       - a contract deploy (SSTORE in constructor)
-       - a factory whose constructor runs CREATE and CREATE2
-  3. Launch the 5.2.0 sync node (syncNode=true, archiveMode=true)
-  4. Wait for the sync node to catch up to the primary head
-  5. Compare the per-block stateRoot of every block
-  6. Compare per-block hashes (covers receiptsRoot/transactionsRoot)
-  Both comparisons are hard assertions: any mismatch fails the test.
-
-Tests run in file order (sequential): the workload must complete before the
-sync node is launched and the comparison runs.
+  1. Start the primary node with the London-capable binary.
+  2. Produce a pre-upgrade London workload:
+       - native token transfers
+       - basic ERC20 deploy/mint/transfer
+       - a DIFFICULTY/PREVRANDAO opcode transaction
+  3. Restart the same primary node/datadir on the current binary and inject a
+     future ParisForkPatch timestamp.
+  4. Produce the same essential workload before Paris activation.
+  5. Wait until the Paris timestamp is active and produce the workload again.
+  6. Launch a current-version sync node with archiveMode=true and verify that
+     replaying the whole chain has no per-block stateRoot or block-hash
+     mismatches.
 """
 
+import json
 import logging
 from pathlib import Path
 
+import pytest
 from eth_account import Account
 from web3 import Web3
 
 from _test_utils import (
     compare_block_hashes,
     compare_state_roots,
+    wait_for_block_timestamp,
     wait_for_new_block,
     wait_for_sync_catchup,
     wait_for_tx,
@@ -37,133 +36,295 @@ from _test_utils import (
 logger = logging.getLogger("hardfork-compat.test")
 
 SUITE_DIR = Path(__file__).resolve().parent
-
-# ---------------------------------------------------------------------------
-# Minimal contract bytecode (no Solidity compiler needed)
-#
-# Constructor:  PUSH1 42, PUSH1 0, SSTORE  -- writes 42 to slot 0
-# Then copies 1-byte runtime (STOP) to memory and RETURNs it.
-# Hex: 602a6000556001601160003960016000f300
-# ---------------------------------------------------------------------------
-_SIMPLE_STORAGE_BYTECODE = "0x602a6000556001601160003960016000f300"
-
-# ---------------------------------------------------------------------------
-# Factory bytecode that exercises CREATE and CREATE2 during its own
-# construction, deploying two minimal child contracts (empty runtime).
-# Mirrors the berlin-compat factory so both opcodes touch state.
-# ---------------------------------------------------------------------------
-_CREATE_FACTORY_BYTECODE = (
-    "0x6460006000f36000526005601b6000f05060006005601b6000f5"
-    "50600060205360016020f3"
+ERC20_BYTECODE_PATH = (
+    SUITE_DIR.parent.parent / "unittests/libweb3jsonrpc/contracts/ERC20_bytecode.txt"
 )
 
-# ---------------------------------------------------------------------------
-# London-fork bytecode that exercises the EIP-3198 BASEFEE opcode (0x48).
-#
-# Constructor:  BASEFEE, PUSH1 0, SSTORE  -- writes the block base fee to slot 0
-# Then RETURNs an empty (zero-length) runtime.
-# Hex: 4860005560006000f3
-#
-# BASEFEE is only a valid opcode once the London fork is active; on a binary
-# without London support the EVM treats 0x48 as invalid and the deploy reverts.
-# Either way both binaries behave identically, so the per-block stateRoot
-# comparison -- the suite's real assertion -- still holds.
-# ---------------------------------------------------------------------------
-_BASEFEE_BYTECODE = "0x4860005560006000f3"
+# ERC20 from test/unittests/libweb3jsonrpc/contracts/ERC20.sol.  It exposes
+# mint(address,uint256), transfer(address,uint256), and balanceOf(address).
+_ERC20_BYTECODE = "0x" + ERC20_BYTECODE_PATH.read_text().strip()
+
+# Constructor: DIFFICULTY/PREVRANDAO, PUSH1 0, SSTORE, then empty runtime.
+# This exercises EIP-4399 in a state-changing transaction post-Paris.
+_PREVRANDAO_RECORDER_BYTECODE = "0x4460005560006000f3"
+
+_ERC20_MINT_SELECTOR = "40c10f19"
+_ERC20_TRANSFER_SELECTOR = "a9059cbb"
+_ERC20_BALANCE_OF_SELECTOR = "70a08231"
 
 
 # ---------------------------------------------------------------------------
-# Helpers for sending transactions
+# Transaction helpers
 # ---------------------------------------------------------------------------
+
+def _raw_signed_transaction(signed) -> bytes:
+    if hasattr(signed, "raw_transaction"):
+        return signed.raw_transaction
+    return signed.rawTransaction
+
+
+def _legacy_gas_price(w3: Web3) -> int:
+    return max(int(w3.eth.gas_price), 1)
+
+
+def _type2_fee_cap(w3: Web3) -> int:
+    gas_price = _legacy_gas_price(w3)
+    latest = w3.eth.get_block("latest")
+    base_fee = int(latest.get("baseFeePerGas") or gas_price)
+    return max(gas_price * 2, base_fee + gas_price)
+
+
+def _send_raw_tx(w3: Web3, private_key: str, tx: dict, timeout_s: int, label: str):
+    account = Account.from_key(private_key)
+    tx = dict(tx)
+    tx.setdefault("chainId", w3.eth.chain_id)
+    tx.setdefault("nonce", w3.eth.get_transaction_count(account.address))
+
+    signed = Account.sign_transaction(tx, private_key)
+    tx_hash = w3.eth.send_raw_transaction(_raw_signed_transaction(signed))
+    logger.info("Sent %s tx: %s", label, tx_hash.hex())
+    receipt = wait_for_tx(w3, tx_hash, timeout_s)
+    assert receipt is not None, f"{label} tx not mined within {timeout_s}s"
+    logger.info(
+        "%s tx mined: block=%d status=%s gasUsed=%d",
+        label, receipt["blockNumber"], receipt.get("status"), receipt["gasUsed"],
+    )
+    return receipt
+
 
 def _send_legacy_transfer(
     w3: Web3, private_key: str, recipient: str, value: int, timeout_s: int,
-) -> dict:
-    account = Account.from_key(private_key)
-    tx = {
-        "chainId": w3.eth.chain_id,
-        "nonce": w3.eth.get_transaction_count(account.address),
-        "to": recipient,
-        "value": value,
-        "gas": 21000,
-        "gasPrice": w3.eth.gas_price,
-    }
-    signed = Account.sign_transaction(tx, private_key)
-    tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
-    logger.info("Sent legacy transfer tx: %s", tx_hash.hex())
-    return wait_for_tx(w3, tx_hash, timeout_s)
+):
+    return _send_raw_tx(
+        w3,
+        private_key,
+        {
+            "to": recipient,
+            "value": value,
+            "gas": 21000,
+            "gasPrice": _legacy_gas_price(w3),
+        },
+        timeout_s,
+        "legacy native transfer",
+    )
 
 
-def _send_type1_tx(
+def _send_type2_transfer(
     w3: Web3, private_key: str, recipient: str, value: int, timeout_s: int,
-) -> dict:
-    """Send a Type 1 (EIP-2930 access list) transaction and return the receipt."""
+):
+    return _send_raw_tx(
+        w3,
+        private_key,
+        {
+            "type": 2,
+            "to": recipient,
+            "value": value,
+            "gas": 30000,
+            "maxFeePerGas": _type2_fee_cap(w3),
+            "maxPriorityFeePerGas": 0,
+        },
+        timeout_s,
+        "type2 native transfer",
+    )
+
+
+def _deploy(w3: Web3, private_key: str, bytecode: str, gas: int, timeout_s: int, label: str):
+    return _send_raw_tx(
+        w3,
+        private_key,
+        {
+            "gas": gas,
+            "gasPrice": _legacy_gas_price(w3),
+            "data": bytecode,
+        },
+        timeout_s,
+        label,
+    )
+
+
+def _address_word(address: str) -> str:
+    raw = address[2:] if address.startswith("0x") else address
+    assert len(raw) == 40, f"Bad address length for {address}"
+    return raw.lower().rjust(64, "0")
+
+
+def _uint_word(value: int) -> str:
+    return int(value).to_bytes(32, "big").hex()
+
+
+def _erc20_call_data(selector: str, address: str, amount: int | None = None) -> str:
+    data = selector + _address_word(address)
+    if amount is not None:
+        data += _uint_word(amount)
+    return "0x" + data
+
+
+def _send_contract_call(
+    w3: Web3, private_key: str, to: str, data: str, gas: int, timeout_s: int, label: str,
+):
+    return _send_raw_tx(
+        w3,
+        private_key,
+        {
+            "to": to,
+            "gas": gas,
+            "gasPrice": _legacy_gas_price(w3),
+            "data": data,
+        },
+        timeout_s,
+        label,
+    )
+
+
+def _erc20_balance_of(w3: Web3, token: str, address: str) -> int:
+    result = w3.eth.call({"to": token, "data": _erc20_call_data(_ERC20_BALANCE_OF_SELECTOR, address)})
+    return int.from_bytes(bytes(result), "big")
+
+
+def _erc20_mint(w3: Web3, private_key: str, token: str, to: str, amount: int, timeout_s: int):
+    receipt = _send_contract_call(
+        w3,
+        private_key,
+        token,
+        _erc20_call_data(_ERC20_MINT_SELECTOR, to, amount),
+        120_000,
+        timeout_s,
+        "ERC20 mint",
+    )
+    assert receipt["status"] == 1, "ERC20 mint reverted"
+    return receipt
+
+
+def _erc20_transfer(
+    w3: Web3, private_key: str, token: str, recipient: str, amount: int, timeout_s: int,
+):
+    sender = Account.from_key(private_key).address
+    balance = _erc20_balance_of(w3, token, sender)
+    assert balance >= amount, f"ERC20 sender balance too low: {balance} < {amount}"
+
+    receipt = _send_contract_call(
+        w3,
+        private_key,
+        token,
+        _erc20_call_data(_ERC20_TRANSFER_SELECTOR, recipient, amount),
+        120_000,
+        timeout_s,
+        "ERC20 transfer",
+    )
+    assert receipt["status"] == 1, "ERC20 transfer reverted"
+    assert _erc20_balance_of(w3, token, recipient) >= amount, "ERC20 recipient balance not updated"
+    return receipt
+
+
+def _deploy_erc20(w3: Web3, private_key: str, timeout_s: int) -> str:
+    receipt = _deploy(w3, private_key, _ERC20_BYTECODE, 2_500_000, timeout_s, "ERC20 deploy")
+    assert receipt["status"] == 1, "ERC20 deploy reverted"
+    token = receipt["contractAddress"]
+    assert token, "ERC20 deploy did not return a contract address"
+    logger.info("ERC20 deployed at %s", token)
+    return token
+
+
+def _deploy_prevrandao_recorder(w3: Web3, private_key: str, timeout_s: int):
+    receipt = _deploy(
+        w3,
+        private_key,
+        _PREVRANDAO_RECORDER_BYTECODE,
+        100_000,
+        timeout_s,
+        "PREVRANDAO recorder deploy",
+    )
+    assert receipt["status"] == 1, "PREVRANDAO recorder deploy reverted"
+    return receipt
+
+
+def _read_schain_value(config_path: Path, key: str):
+    with open(config_path) as f:
+        cfg = json.load(f)
+    return cfg["skaleConfig"]["sChain"].get(key)
+
+
+def _assert_receipts_before_timestamp(w3: Web3, receipts: list, timestamp: int, label: str) -> None:
+    for receipt in receipts:
+        block = w3.eth.get_block(receipt["blockNumber"])
+        assert int(block["timestamp"]) < timestamp, (
+            f"{label} receipt landed after Paris activation: "
+            f"block={block['number']} timestamp={block['timestamp']} activation={timestamp}"
+        )
+
+
+def _assert_receipts_after_paris(w3: Web3, receipts: list, timestamp: int, label: str) -> None:
+    for receipt in receipts:
+        block = w3.eth.get_block(receipt["blockNumber"])
+        assert int(block["timestamp"]) >= timestamp, (
+            f"{label} receipt landed before Paris activation: "
+            f"block={block['number']} timestamp={block['timestamp']} activation={timestamp}"
+        )
+        assert int(block["difficulty"]) == 0, (
+            f"Post-Paris block {block['number']} has non-zero difficulty {block['difficulty']}"
+        )
+
+
+def _run_paris_workload_phase(
+    w3: Web3,
+    private_key: str,
+    timeouts: dict,
+    workload_state: dict,
+    phase: str,
+    *,
+    deploy_token: bool = False,
+) -> list:
+    """Run the minimal Paris-compat workload and return all receipts."""
+    timeout = timeouts.get("tx_mine", 120)
     account = Account.from_key(private_key)
-    tx = {
-        "type": 1,
-        "chainId": w3.eth.chain_id,
-        "nonce": w3.eth.get_transaction_count(account.address),
-        "to": recipient,
-        "value": value,
-        "gas": 30000,
-        "gasPrice": w3.eth.gas_price,
-        "accessList": [{"address": recipient, "storageKeys": []}],
-    }
-    signed = Account.sign_transaction(tx, private_key)
-    tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
-    logger.info("Sent Type1 tx: %s", tx_hash.hex())
-    return wait_for_tx(w3, tx_hash, timeout_s)
+    receipts = []
 
+    logger.info("=== Paris hardfork-compat workload phase: %s ===", phase)
 
-def _send_type2_tx(
-    w3: Web3, private_key: str, recipient: str, value: int, timeout_s: int,
-) -> dict:
-    """Send a Type 2 (EIP-1559) transaction and return the receipt."""
-    account = Account.from_key(private_key)
-    tx = {
-        "type": 2,
-        "chainId": w3.eth.chain_id,
-        "nonce": w3.eth.get_transaction_count(account.address),
-        "to": recipient,
-        "value": value,
-        "gas": 30000,
-        "maxFeePerGas": w3.eth.gas_price * 2,
-        "maxPriorityFeePerGas": 0,
-    }
-    signed = Account.sign_transaction(tx, private_key)
-    tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
-    logger.info("Sent Type2 tx: %s", tx_hash.hex())
-    return wait_for_tx(w3, tx_hash, timeout_s)
+    receipts.append(
+        _send_legacy_transfer(
+            w3, private_key, Account.create().address, 100 + len(phase), timeout,
+        )
+    )
+    assert receipts[-1]["status"] == 1, f"{phase}: legacy native transfer reverted"
 
+    receipts.append(
+        _send_type2_transfer(
+            w3, private_key, Account.create().address, 200 + len(phase), timeout,
+        )
+    )
+    assert receipts[-1]["status"] == 1, f"{phase}: type2 native transfer reverted"
 
-def _deploy(w3: Web3, private_key: str, bytecode: str, gas: int, timeout_s: int) -> dict:
-    account = Account.from_key(private_key)
-    tx = {
-        "chainId": w3.eth.chain_id,
-        "nonce": w3.eth.get_transaction_count(account.address),
-        "gas": gas,
-        "gasPrice": w3.eth.gas_price,
-        "data": bytecode,
-    }
-    signed = Account.sign_transaction(tx, private_key)
-    tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
-    logger.info("Sent deploy tx: %s", tx_hash.hex())
-    return wait_for_tx(w3, tx_hash, timeout_s)
+    if deploy_token or "erc20" not in workload_state:
+        token = _deploy_erc20(w3, private_key, timeout)
+        workload_state["erc20"] = token
+        receipts.append(_erc20_mint(w3, private_key, token, account.address, 1_000_000, timeout))
+    token = workload_state["erc20"]
+    receipts.append(
+        _erc20_transfer(
+            w3, private_key, token, Account.create().address, 10 + len(phase), timeout,
+        )
+    )
+
+    receipts.append(_deploy_prevrandao_recorder(w3, private_key, timeout))
+
+    logger.info("Completed workload phase %s with %d transactions", phase, len(receipts))
+    return receipts
 
 
 # ---------------------------------------------------------------------------
 # Tests (ordered by file position)
 # ---------------------------------------------------------------------------
 
-def test_primary_rpc_up(w3_primary: Web3):
-    """Verify the 5.1.0 primary node RPC is reachable."""
+def test_london_primary_rpc_up(w3_primary: Web3):
+    """Verify the London primary node RPC is reachable."""
     bn = w3_primary.eth.block_number
-    assert bn >= 0, "Primary (5.1.0) RPC is not responding"
-    logger.info("Primary (5.1.0) RPC is up at block %d", bn)
+    assert bn >= 0, "London primary RPC is not responding"
+    logger.info("London primary RPC is up at block %d", bn)
 
 
-def test_primary_block_production(w3_primary: Web3, timeouts: dict):
-    """Verify the 5.1.0 primary node is producing blocks."""
+def test_london_primary_block_production(w3_primary: Web3, timeouts: dict):
+    """Verify the London primary node is producing blocks."""
     start = w3_primary.eth.block_number
     timeout = timeouts.get("block_produce", 60)
     new_bn = wait_for_new_block(w3_primary, start, timeout)
@@ -173,91 +334,101 @@ def test_primary_block_production(w3_primary: Web3, timeouts: dict):
     logger.info("Block %d produced (was %d)", new_bn, start)
 
 
-def test_workload_legacy_transfers(w3_primary: Web3, private_key: str, timeouts: dict):
-    """Send several legacy value transfers on the 5.1.0 primary."""
-    timeout = timeouts.get("tx_mine", 120)
-    for i in range(3):
-        recipient = Account.create().address
-        receipt = _send_legacy_transfer(w3_primary, private_key, recipient, 1 + i, timeout)
-        assert receipt is not None, f"Legacy transfer {i} not mined within {timeout}s"
-        assert receipt["status"] == 1, f"Legacy transfer {i} reverted (status=0)"
-    logger.info("Legacy transfers mined on 5.1.0 primary")
+def test_london_pre_upgrade_workload(
+    w3_primary: Web3, private_key: str, timeouts: dict, workload_state: dict,
+):
+    """Run native/ERC20/PREVRANDAO workload before the binary upgrade."""
+    receipts = _run_paris_workload_phase(
+        w3_primary,
+        private_key,
+        timeouts,
+        workload_state,
+        "london-pre-upgrade",
+        deploy_token=True,
+    )
+    assert receipts, "No pre-upgrade receipts produced"
 
 
-def test_workload_type1_tx(w3_primary: Web3, private_key: str, timeouts: dict):
-    """Send a Type1 (EIP-2930 access list) transaction on the 5.1.0 primary."""
-    timeout = timeouts.get("tx_mine", 120)
-    recipient = Account.create().address
-    receipt = _send_type1_tx(w3_primary, private_key, recipient, 1, timeout)
-    assert receipt is not None, "Type1 tx not mined"
-    assert receipt["status"] == 1, "Type1 tx reverted (status=0)"
+def test_upgrade_primary_to_current_with_paris_timestamp(
+    primary_node, current_binary: Path, hardfork_cfg: dict, timeouts: dict, workload_state: dict,
+):
+    """Restart primary on current binary with a future ParisForkPatch timestamp."""
+    if not current_binary.is_file():
+        pytest.fail(
+            f"Current skaled binary not found: {current_binary}\n"
+            "Set HARDFORK_COMPAT_CURRENT_BINARY or [hardfork_compat].current_binary."
+        )
+
+    before_bn = primary_node.w3.eth.block_number
+    logger.info("Primary at block %d before current-binary upgrade", before_bn)
+
+    primary_node.upgrade_to_current(
+        binary=current_binary,
+        patches=hardfork_cfg.get("patches", {}),
+        timeout_s=timeouts.get("rpc_up", 360),
+    )
+
+    activation = _read_schain_value(primary_node.cfg_path, "parisForkPatchTimestamp")
+    assert isinstance(activation, int) and activation > 0, (
+        "[hardfork_compat.patches].parisForkPatchTimestamp must resolve to a positive integer"
+    )
+    workload_state["paris_activation_timestamp"] = activation
+
+    latest = primary_node.w3.eth.get_block("latest")
+    assert int(latest["timestamp"]) < activation, (
+        "Paris activation timestamp must be in the future at upgrade time so the suite can "
+        f"run a pre-activation workload (latest={latest['timestamp']}, activation={activation})"
+    )
     logger.info(
-        "Type1 tx mined: block=%d gasUsed=%d", receipt["blockNumber"], receipt["gasUsed"]
+        "Primary upgraded to current binary at block=%d timestamp=%d; Paris activates at %d",
+        latest["number"], latest["timestamp"], activation,
     )
 
 
-def test_workload_type2_tx(w3_primary: Web3, private_key: str, timeouts: dict):
-    """Send a Type2 (EIP-1559) transaction on the 5.1.0 primary."""
-    timeout = timeouts.get("tx_mine", 120)
-    recipient = Account.create().address
-    receipt = _send_type2_tx(w3_primary, private_key, recipient, 1, timeout)
-    assert receipt is not None, "Type2 tx not mined"
-    assert receipt["status"] == 1, "Type2 tx reverted (status=0)"
-    logger.info(
-        "Type2 tx mined: block=%d gasUsed=%d", receipt["blockNumber"], receipt["gasUsed"]
+def test_current_pre_paris_workload(
+    w3_primary: Web3, private_key: str, timeouts: dict, workload_state: dict,
+):
+    """Run another workload on current binary before Paris activation."""
+    activation = workload_state["paris_activation_timestamp"]
+    latest = w3_primary.eth.get_block("latest")
+    assert int(latest["timestamp"]) < activation, (
+        "Paris activated before the current-version pre-activation workload could start"
     )
 
-
-def test_workload_london_basefee(w3_primary: Web3, private_key: str, timeouts: dict):
-    """Deploy a London-fork contract that uses the EIP-3198 BASEFEE opcode.
-
-    On a London-capable binary the constructor stores the block base fee to
-    slot 0 and the deploy succeeds; on a pre-London binary opcode 0x48 is
-    invalid and the deploy reverts. Both binaries behave identically, so the
-    transaction is recorded the same way on the primary and the sync node and
-    the per-block stateRoot comparison still passes. The assertion therefore
-    only requires the tx to be mined and included in a block.
-    """
-    timeout = timeouts.get("tx_mine", 120)
-    receipt = _deploy(w3_primary, private_key, _BASEFEE_BYTECODE, 100_000, timeout)
-    assert receipt is not None, "BASEFEE deploy not mined"
-    assert receipt["blockNumber"] is not None, "BASEFEE deploy not included in a block"
-    logger.info(
-        "London BASEFEE deploy mined: block=%d status=%d gasUsed=%d",
-        receipt["blockNumber"], receipt["status"], receipt["gasUsed"],
+    receipts = _run_paris_workload_phase(
+        w3_primary, private_key, timeouts, workload_state, "current-pre-paris",
     )
+    _assert_receipts_before_timestamp(w3_primary, receipts, activation, "current-pre-paris")
 
 
-def test_workload_contract_deploy(w3_primary: Web3, private_key: str, timeouts: dict):
-    """Deploy a contract (SSTORE in constructor) on the 5.1.0 primary."""
-    timeout = timeouts.get("tx_mine", 120)
-    receipt = _deploy(w3_primary, private_key, _SIMPLE_STORAGE_BYTECODE, 100_000, timeout)
-    assert receipt is not None, "Contract deploy not mined"
-    assert receipt["status"] == 1, "Contract deploy reverted (status=0)"
-    assert receipt["contractAddress"] is not None, "No contract address in receipt"
-    logger.info(
-        "Contract deployed: addr=%s block=%d", receipt["contractAddress"], receipt["blockNumber"]
+def test_wait_for_paris_activation(w3_primary: Web3, timeouts: dict, workload_state: dict):
+    """Wait until the chain timestamp reaches ParisForkPatch activation."""
+    activation = workload_state["paris_activation_timestamp"]
+    timeout = timeouts.get("paris_activation", 180)
+    activation_block = wait_for_block_timestamp(w3_primary, activation, timeout)
+    assert activation_block is not None, (
+        f"No block reached Paris activation timestamp {activation} within {timeout}s"
     )
+    workload_state["paris_activation_block"] = activation_block
+    logger.info("Paris active at block %d (timestamp >= %d)", activation_block, activation)
 
 
-def test_workload_create_create2_factory(w3_primary: Web3, private_key: str, timeouts: dict):
-    """Deploy a factory whose constructor runs CREATE and CREATE2 on the 5.1.0 primary."""
-    timeout = timeouts.get("tx_mine", 120)
-    receipt = _deploy(w3_primary, private_key, _CREATE_FACTORY_BYTECODE, 300_000, timeout)
-    assert receipt is not None, "Factory deploy not mined"
-    assert receipt["status"] == 1, "Factory deploy reverted (status=0)"
-    assert receipt["contractAddress"] is not None, "No contract address in receipt"
-    logger.info(
-        "CREATE/CREATE2 factory deployed: addr=%s block=%d",
-        receipt["contractAddress"], receipt["blockNumber"],
+def test_current_post_paris_workload(
+    w3_primary: Web3, private_key: str, timeouts: dict, workload_state: dict,
+):
+    """Run the workload after Paris activation; block difficulty must be zero."""
+    activation = workload_state["paris_activation_timestamp"]
+    receipts = _run_paris_workload_phase(
+        w3_primary, private_key, timeouts, workload_state, "current-post-paris",
     )
+    _assert_receipts_after_paris(w3_primary, receipts, activation, "current-post-paris")
 
 
 def test_sync_catchup_and_state_root_comparison(
     w3_primary: Web3, primary_cfg_path, sync_binary: Path,
     hardfork_cfg: dict, timeouts: dict,
 ):
-    """Launch the 5.2.0 sync node, wait for catch-up, compare per-block stateRoot."""
+    """Launch current archive sync node, catch up, compare state roots and hashes."""
     from conftest import (
         _launch_node,
         _resolve,
@@ -266,16 +437,12 @@ def test_sync_catchup_and_state_root_comparison(
         make_sync_config,
         SUITE_DIR,
     )
-    from run import inject_patches, set_ulimit
+    from run import set_ulimit
 
     if not sync_binary.is_file():
-        import pytest
         pytest.fail(
-            f"5.2.0 skaled binary not found: {sync_binary}\n"
-            "Set HARDFORK_COMPAT_V520_BINARY or [hardfork_compat].v520_binary, "
-            "or build with:\n"
-            "  git checkout v5.2.0 && cmake -H. -Bbuild-v520 -DCMAKE_BUILD_TYPE=Release "
-            "&& cmake --build build-v520 --target skaled -- -j4"
+            f"Current sync skaled binary not found: {sync_binary}\n"
+            "Set HARDFORK_COMPAT_CURRENT_BINARY or [hardfork_compat].current_binary."
         )
 
     sync_http_port = int(hardfork_cfg.get("sync_http_port", 5344))
@@ -285,11 +452,9 @@ def test_sync_catchup_and_state_root_comparison(
     )
 
     primary_bn = w3_primary.eth.block_number
-    logger.info("Primary (5.1.0) at block %d before 5.2.0 sync launch", primary_bn)
+    logger.info("Primary at block %d before archive sync launch", primary_bn)
 
     make_sync_config(Path(str(primary_cfg_path)), sync_cfg_out, sync_http_port)
-    inject_patches(str(sync_cfg_out), hardfork_cfg.get("common_patches", {}))
-    inject_patches(str(sync_cfg_out), hardfork_cfg.get("patches", {}))
 
     set_ulimit()
     log_dir = SUITE_DIR / "logs"
@@ -297,7 +462,7 @@ def test_sync_catchup_and_state_root_comparison(
 
     proc, log_fd = _launch_node(
         sync_binary, sync_cfg_out, sync_http_port, sync_datadir,
-        log_dir / "skaled-sync-v520.log", "SYNC(5.2.0)",
+        log_dir / "skaled-sync-current.log", "SYNC(current archive)",
     )
 
     w3_sync = Web3(Web3.HTTPProvider(
@@ -306,52 +471,40 @@ def test_sync_catchup_and_state_root_comparison(
 
     try:
         rpc_timeout = timeouts.get("rpc_up", 360)
-        _wait_for_rpc(w3_sync, rpc_timeout, "SYNC(5.2.0)")
+        _wait_for_rpc(w3_sync, rpc_timeout, "SYNC(current archive)")
 
         sync_timeout = timeouts.get("sync_catchup", 300)
         caught_up = wait_for_sync_catchup(w3_primary, w3_sync, sync_timeout)
         assert caught_up, (
-            f"5.2.0 sync node did not catch up within {sync_timeout}s "
+            f"Current archive sync node did not catch up within {sync_timeout}s "
             f"(primary={w3_primary.eth.block_number}, sync={w3_sync.eth.block_number})"
         )
 
         compare_bn = min(w3_primary.eth.block_number, w3_sync.eth.block_number)
-        logger.info("Comparing stateRoot for blocks 0..%d (5.1.0 vs 5.2.0)", compare_bn)
+        logger.info("Comparing stateRoot and block hash for blocks 0..%d", compare_bn)
 
         # Run both comparisons before asserting so a failure reports the full
-        # picture (stateRoot and hash mismatches) in one go. The block hash
-        # embeds receiptsRoot/transactionsRoot, so it must fail the test just
-        # like a stateRoot mismatch.
+        # picture (stateRoot and hash mismatches) in one go.
         root_mismatches = compare_state_roots(w3_primary, w3_sync, compare_bn)
         hash_mismatches = compare_block_hashes(w3_primary, w3_sync, compare_bn)
 
         if root_mismatches:
-            logger.error(
-                "stateRoot mismatches between 5.1.0 and 5.2.0 at blocks: %s",
-                root_mismatches,
-            )
+            logger.error("stateRoot mismatches at blocks: %s", root_mismatches)
         else:
-            logger.info(
-                "All %d block stateRoots match between 5.1.0 and 5.2.0", compare_bn + 1
-            )
+            logger.info("All %d block stateRoots match", compare_bn + 1)
 
         if hash_mismatches:
-            logger.error(
-                "Block hash mismatches between 5.1.0 and 5.2.0 at blocks: %s",
-                hash_mismatches,
-            )
+            logger.error("Block hash mismatches at blocks: %s", hash_mismatches)
         else:
-            logger.info(
-                "All %d block hashes match between 5.1.0 and 5.2.0", compare_bn + 1
-            )
+            logger.info("All %d block hashes match", compare_bn + 1)
 
         assert not root_mismatches and not hash_mismatches, (
-            f"5.1.0 vs 5.2.0 divergence: stateRoot mismatches at blocks "
+            f"Paris hardfork replay divergence: stateRoot mismatches at blocks "
             f"{root_mismatches}, block hash mismatches at blocks {hash_mismatches}"
         )
         logger.info(
-            "All %d block stateRoots and hashes match between 5.1.0 and 5.2.0",
+            "All %d block stateRoots and hashes match after London->Paris replay",
             compare_bn + 1,
         )
     finally:
-        _stop_node(proc, log_fd, "SYNC(5.2.0)")
+        _stop_node(proc, log_fd, "SYNC(current archive)")

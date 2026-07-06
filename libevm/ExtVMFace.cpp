@@ -133,7 +133,7 @@ evmc_tx_context EvmCHost::get_tx_context() noexcept {
     result.block_number = envInfo.number();
     result.block_timestamp = envInfo.timestamp();
     result.block_gas_limit = static_cast< int64_t >( envInfo.gasLimit() );
-    if ( ParisForkPatch::isEnabledInWorkingBlock() ) {
+    if ( ParisForkPatch::isEnabledWhen( envInfo.committedBlockTimestamp() ) ) {
         // EIP-4399: DIFFICULTY opcode returns prevRandao. In skaled (BFT, no beacon), prevRandao=0.
         result.block_difficulty = toEvmC( u256( 0 ) );
     } else {

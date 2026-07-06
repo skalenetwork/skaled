@@ -213,6 +213,10 @@ public:
             ret = RLP( m_seal[_offset] ).convert< T >( RLP::VeryStrict );
         return ret;
     }
+    size_t sealFieldCount() const {
+        Guard l( m_sealLock );
+        return m_seal.size();
+    }
 
 private:
     void populate( RLP const& _header );

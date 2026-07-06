@@ -89,13 +89,21 @@ void Ethash::verify( Strictness _s, BlockHeader const& _bi, BlockHeader const& _
     bytesConstRef _block ) const {
     SealEngineFace::verify( _s, _bi, _parent, _block );
 
-    if ( _parent && !ParisForkPatch::isEnabledInWorkingBlock() ) {
-        // Check difficulty is correct given the two timestamps.
-        auto expected = calculateDifficulty( _bi, _parent );
-        auto difficulty = _bi.difficulty();
-        if ( difficulty != expected )
-            BOOST_THROW_EXCEPTION( InvalidDifficulty() << RequirementError(
-                                       ( bigint ) expected, ( bigint ) difficulty ) );
+    if ( _parent ) {
+        const bool isParis =
+            ParisForkPatch::isEnabledWhen( static_cast< time_t >( _parent.timestamp() ) );
+        if ( isParis ) {
+            if ( _bi.sealFieldCount() != 0 )
+                BOOST_THROW_EXCEPTION( InvalidBlockFormat() << errinfo_comment(
+                                           "Paris block header must use SKALE no-seal format" ) );
+        } else {
+            // Check difficulty is correct given the two timestamps.
+            auto expected = calculateDifficulty( _bi, _parent );
+            auto difficulty = _bi.difficulty();
+            if ( difficulty != expected )
+                BOOST_THROW_EXCEPTION( InvalidDifficulty() << RequirementError(
+                                           ( bigint ) expected, ( bigint ) difficulty ) );
+        }
     }
 
     // check it hashes according to proof of work or that it's the genesis block.
@@ -199,9 +207,10 @@ u256 Ethash::calculateDifficulty( BlockHeader const& _bi, BlockHeader const& _pa
 
 void Ethash::populateFromParent( BlockHeader& _bi, BlockHeader const& _parent ) const {
     SealEngineFace::populateFromParent( _bi, _parent );
-    if ( ParisForkPatch::isEnabledInWorkingBlock() ) {
+    if ( ParisForkPatch::isEnabledWhen( static_cast< time_t >( _parent.timestamp() ) ) ) {
         _bi.setDifficulty( 0 );
-        setMixHash( _bi, h256( 0 ) );
+        // Keep SKALE's no-seal header shape. Setting only mixHash would create a
+        // London header with one seal field, which BlockHeader::populate() rejects.
     } else {
         _bi.setDifficulty( calculateDifficulty( _bi, _parent ) );
     }

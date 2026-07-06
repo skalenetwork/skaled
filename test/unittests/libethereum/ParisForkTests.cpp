@@ -89,4 +89,68 @@ BOOST_AUTO_TEST_CASE( parisForkDifficultyZeroThrowsPreParis ) {
 #endif
 }
 
+// EIP-3675: post-Paris blocks must have difficulty=0; non-zero difficulty changes the block hash.
+BOOST_AUTO_TEST_CASE( parisForkNonZeroDifficultyThrowsPostParis ) {
+    PatchableChainParams cp( genesisInfo( Network::ConstantinopleTest ) );
+#ifndef FAIR
+    cp.setPatchTimestamp( SchainPatchEnum::ParisForkPatch, 1 );
+#endif
+    SchainPatch::init( cp );
+    SchainPatch::useLatestBlockTimestamp( 1 );
+    std::unique_ptr< SealEngineFace > se( cp.createSealEngine() );
+
+    BlockHeader parent;
+    parent.setGasLimit( 0x7fffffffffffffff );
+    parent.setGasUsed( 0 );
+    parent.setDifficulty( 0 );
+    parent.setTimestamp( 1 );
+
+    BlockHeader bi;
+    bi.setParentHash( parent.hash() );
+    bi.setNumber( 1 );
+    bi.setGasLimit( 0x7fffffffffffffff );
+    bi.setGasUsed( 0 );
+    bi.setDifficulty( 42 );
+    bi.setTimestamp( 2 );
+
+    BOOST_REQUIRE_THROW( se->verify( QuickNonce, bi, parent, bytesConstRef{} ), InvalidDifficulty );
+
+    ChainParams resetCp( genesisInfo( Network::ConstantinopleTest ) );
+    SchainPatch::init( resetCp );
+    SchainPatch::useLatestBlockTimestamp( 0 );
+}
+
+// SKALE canonical post-Paris headers use no Ethash seal fields; mixHash/nonce would change hash.
+BOOST_AUTO_TEST_CASE( parisForkSealFieldsThrowPostParis ) {
+    PatchableChainParams cp( genesisInfo( Network::ConstantinopleTest ) );
+#ifndef FAIR
+    cp.setPatchTimestamp( SchainPatchEnum::ParisForkPatch, 1 );
+#endif
+    SchainPatch::init( cp );
+    SchainPatch::useLatestBlockTimestamp( 1 );
+    std::unique_ptr< SealEngineFace > se( cp.createSealEngine() );
+
+    BlockHeader parent;
+    parent.setGasLimit( 0x7fffffffffffffff );
+    parent.setGasUsed( 0 );
+    parent.setDifficulty( 0 );
+    parent.setTimestamp( 1 );
+
+    BlockHeader bi;
+    bi.setParentHash( parent.hash() );
+    bi.setNumber( 1 );
+    bi.setGasLimit( 0x7fffffffffffffff );
+    bi.setGasUsed( 0 );
+    bi.setDifficulty( 0 );
+    bi.setTimestamp( 2 );
+    bi.setSeal( 0, h256( 0 ) );
+    bi.setSeal( 1, Nonce( 0 ) );
+
+    BOOST_REQUIRE_THROW( se->verify( QuickNonce, bi, parent, bytesConstRef{} ), InvalidBlockFormat );
+
+    ChainParams resetCp( genesisInfo( Network::ConstantinopleTest ) );
+    SchainPatch::init( resetCp );
+    SchainPatch::useLatestBlockTimestamp( 0 );
+}
+
 BOOST_AUTO_TEST_SUITE_END()

@@ -41,8 +41,15 @@ void SealEngineFace::verify( Strictness _s, BlockHeader const& _bi, BlockHeader 
     _bi.verify( _s, _parent, _block );
 
     if ( _s != CheckNothingNew ) {
-        if ( !ParisForkPatch::isEnabledInWorkingBlock() &&
-             _bi.difficulty() < chainParams().getMinimumDifficulty() )
+        const time_t committedBlockTimestamp = _parent ?
+                                                   static_cast< time_t >( _parent.timestamp() ) :
+                                                   static_cast< time_t >( _bi.timestamp() );
+        if ( _parent && ParisForkPatch::isEnabledWhen( committedBlockTimestamp ) ) {
+            if ( _bi.difficulty() != 0 )
+                BOOST_THROW_EXCEPTION( InvalidDifficulty() << RequirementError(
+                                           bigint( 0 ), bigint( _bi.difficulty() ) ) );
+        } else if ( !ParisForkPatch::isEnabledWhen( committedBlockTimestamp ) &&
+                    _bi.difficulty() < chainParams().getMinimumDifficulty() )
             BOOST_THROW_EXCEPTION(
                 InvalidDifficulty() << RequirementError(
                     bigint( chainParams().getMinimumDifficulty() ), bigint( _bi.difficulty() ) ) );

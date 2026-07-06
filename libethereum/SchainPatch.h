@@ -217,7 +217,7 @@ DEFINE_SIMPLE_PATCH( ContractCreationReadOnlyPatch );
  * Paris fork (EIP-3675 + EIP-4399): difficulty=0, no uncles,
  * DIFFICULTY opcode returns prevRandao (0 in skaled, no beacon RANDAO).
  */
-DEFINE_AMNESIC_PATCH( ParisForkPatch );
+DEFINE_SIMPLE_PATCH( ParisForkPatch );
 
 #ifdef FAIR
 DEFINE_SIMPLE_PATCH( DisableSelfDestructPatch );
