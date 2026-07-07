@@ -607,10 +607,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         auto ethFace = new rpc::Eth(
             _config.empty() ? std::string( "" ) : _config, *client, *accountHolder.get() );
 
-        dev::rpc::Skale* skaleFace = nullptr;
-#ifdef BITE
-        skaleFace = new rpc::Skale( *client );
-#endif
+        dev::rpc::Skale* skaleFace = new rpc::Skale( *client );
 
         gasPricer = make_shared< eth::TrivialGasPricer >( 0, DefaultGasPrice );
 
