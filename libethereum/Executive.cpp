@@ -728,6 +728,14 @@ bool Executive::finalize() {
             feesEarned, currentBlockSchedule.shareOfTransactionFeeToRewardPromille );
 #endif
         m_s.addBalance( m_envInfo.author(), feesEarned );
+
+#ifdef BITE
+        // no need to put it under Bite2Patch - if isCTX() is true, then Bite2Patch must have been
+        // enabled, since CTXs are only supported in Bite2Patch
+        if ( m_t.isCTX() && RefundCTXPatch::isEnabledWhen( m_envInfo.committedBlockTimestamp() ) ) {
+            refundCTXAndResetEphemeralSenderNonce();
+        }
+#endif
     }
 
     // Suicides...
@@ -762,3 +770,19 @@ void Executive::revert() {
     // Warmings added by opcodes inside this frame (SLOAD, CALL, etc.) are discarded.
     *m_accessSets = m_accessSetsSnapshot;
 }
+
+
+#ifdef BITE
+void Executive::refundCTXAndResetEphemeralSenderNonce() {
+    // Move leftover balance in ephemeral account back to target contract balance
+    // Reset ephemeral account nonce to 0 - makes the account empty so its pruned
+    // at commit.
+    Address ephemeral = m_t.sender();
+    Address targetContract = m_t.decryptedTo();
+    u256 ephemeralBalance = m_s.balance( ephemeral );
+    if ( ephemeralBalance > 0 ) {
+        m_s.transferBalance( ephemeral, targetContract, ephemeralBalance );
+    }
+    m_s.setNonce( ephemeral, 0 );
+}
+#endif

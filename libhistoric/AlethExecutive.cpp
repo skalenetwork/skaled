@@ -10,6 +10,7 @@
 #include "libethereum/Block.h"
 #include "libethereum/BlockChain.h"
 #include "libethereum/Interface.h"
+#include "libethereum/SchainPatch.h"
 #include "libevm/LegacyVM.h"
 #include "libevm/VMFactory.h"
 #include <libethashseal/Ethash.h>
@@ -424,6 +425,14 @@ bool AlethExecutive::finalize() {
 
         u256 feesEarned = ( m_t.gas() - m_gas ) * m_t.gasPrice();
         m_s.addBalance( m_envInfo.author(), feesEarned );
+
+#ifdef BITE
+        // no need to put it under Bite2Patch - if isCTX() is true, then Bite2Patch must have been
+        // enabled, since CTXs are only supported in Bite2Patch
+        if ( m_t.isCTX() && RefundCTXPatch::isEnabledWhen( m_envInfo.committedBlockTimestamp() ) ) {
+            refundCTXAndResetEphemeralSenderNonce();
+        }
+#endif
     }
 
     // Selfdestructs...
@@ -453,3 +462,18 @@ void AlethExecutive::revert() {
     m_newAddress = {};
     m_s.rollback( m_savepoint );
 }
+
+#ifdef BITE
+void AlethExecutive::refundCTXAndResetEphemeralSenderNonce() {
+    // Move leftover balance in ephemeral account back to target contract balance
+    // Reset ephemeral account nonce to 0 - makes the account empty so its pruned
+    // at commit.
+    Address ephemeral = m_t.sender();
+    Address targetContract = m_t.decryptedTo();
+    u256 ephemeralBalance = m_s.balance( ephemeral );
+    if ( ephemeralBalance > 0 ) {
+        m_s.transferBalance( ephemeral, targetContract, ephemeralBalance );
+    }
+    m_s.setNonce( ephemeral, 0 );
+}
+#endif

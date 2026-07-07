@@ -448,6 +448,22 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         // this fixture is used in all tests to load config. So also init bls library as well
         libBLS::init();
 
+        auto applyConfigOverrides = [&params]( Json::Value& ret ) {
+#ifndef FAIR
+            if ( params.count( "contractStorageLimit" ) )
+                ret["skaleConfig"]["sChain"]["contractStorageLimit"] =
+                    std::stoi( params.at( "contractStorageLimit" ) );
+#endif
+#ifdef BITE
+            if ( params.count( "BITE2PatchTimestamp" ) )
+                ret["skaleConfig"]["sChain"]["Bite2PatchTimestamp"] =
+                    static_cast< Json::Int64 >( std::stoll( params.at( "BITE2PatchTimestamp" ) ) );
+            if ( params.count( "RefundCTXPatchTimestamp" ) )
+                ret["skaleConfig"]["sChain"]["RefundCTXPatchTimestamp"] =
+                    static_cast< Json::Int64 >( std::stoll( params.at( "RefundCTXPatchTimestamp" ) ) );
+#endif
+        };
+
         if ( _config != "" ) {
             if ( !_generation2 ) {
                 Json::Value ret;
@@ -466,12 +482,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
 #ifndef FAIR
                 ret["skaleConfig"]["sChain"]["contractStorageLimit"] = 128;
 #endif
-                if ( params.count( "contractStorageLimit" ) )
-                    ret["skaleConfig"]["sChain"]["contractStorageLimit"] = std::stoi( params.at( "contractStorageLimit" ) );
-#ifdef BITE
-                if ( params.count( "BITE2PatchTimestamp" ) )
-                    ret["skaleConfig"]["sChain"]["Bite2PatchTimestamp"] = std::stoi( params.at( "BITE2PatchTimestamp" ) );
-#endif
+                applyConfigOverrides( ret );
                 Json::FastWriter fastWriter;
                 std::string output = fastWriter.write( ret );
                 chainParams->loadConfig( output );
@@ -483,6 +494,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
                 ret["skaleConfig"]["sChain"]["contractStorageLimit"] = 106874910;
                 ret["skaleConfig"]["sChain"]["contractStoragePatchTimestamp"] = 1000;
 #endif
+                applyConfigOverrides( ret );
                 std::string output = fastWriter.write( ret );
                 chainParams->loadConfig( output );
 
@@ -5218,7 +5230,8 @@ static std::string const c_BITEConfigString =
             "SingleStateCommitPerBlockPatchTimestamp": 1,)"
 #ifdef BITE
     R"(            "Bite2PatchTimestamp": 1,
-            "currentBlockRandomPatchTimestamp": 1,)"
+            "currentBlockRandomPatchTimestamp": 1,
+            "RefundCTXPatchTimestamp": 1,)"
 #endif
     R"(            "nodeGroups": {
                 "0": {
@@ -5399,7 +5412,8 @@ static std::string const c_BITEConfigString =
             "ContractCreationReadOnlyPatchTimestamp": 1,
             "SingleStateCommitPerBlockPatchTimestamp": 1,)"
 #ifdef BITE
-    R"(            "Bite2PatchTimestamp": 1,
+    R"(     "Bite2PatchTimestamp": 1,
+            "RefundCTXPatchTimestamp": 1,
             "currentBlockRandomPatchTimestamp": 1,)"
 #endif
     R"(            "nodeGroups": {
@@ -5894,7 +5908,7 @@ dev::bytes buildAbiEncodedArrays( const std::vector< dev::bytes >& args1Elements
 }
 
 BOOST_AUTO_TEST_CASE( rejectExplicitCTXSubmission ) {
-    JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true, false, -1, { { "contractStorageLimit", "100000" } } );
+    JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true );
     string senderAddress = toJS( fixture.coinbase.address() );
     size_t nonce = 0;
     std::string onDecryptSelector = dev::toHexPrefixed( dev::bite::ON_DECRYPT_FUNCTION_SELECTOR );
@@ -5905,15 +5919,64 @@ BOOST_AUTO_TEST_CASE( rejectExplicitCTXSubmission ) {
     BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendRawTransaction( dev::toHexPrefixed( t.toBytes() ) ), jsonrpc::JsonRpcException );
 }
 
-BOOST_AUTO_TEST_CASE( submitCTX ) {
-    JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true, false, -1,
-        { { "contractStorageLimit", "100000" } } );
+struct SubmitCTXRefundContext {
+    dev::Address ephemeralAddress;
+    dev::Address contractAddress;
+    u256 ephemeralBalanceBefore;
+    u256 contractBalanceBefore;
+    u256 gasPrice;
+    u256 ctxGasUsed;
+};
 
-    string senderAddress = toJS( fixture.coinbase.address() );
+// Build the ABI-encoded input expected by the submitCTX precompile:
+// abi.encode(uint256 gasLimit, bytes data), where
+// data = abi.encode(bytes[] encrypted, bytes[] plaintext).
+dev::bytes buildSubmitCTXResultData( const std::vector< dev::bytes >& encrypted,
+    const std::vector< dev::bytes >& plaintext, const dev::u256& gasLimit ) {
+    dev::bytes resultData;
+    dev::bytes gasLimitBytes = dev::toBigEndian( gasLimit );
+    resultData.insert( resultData.end(), gasLimitBytes.begin(), gasLimitBytes.end() );
+    dev::bytes dataOffset = dev::toBigEndian( dev::u256( 64 ) );
+    resultData.insert( resultData.end(), dataOffset.begin(), dataOffset.end() );
+    dev::bytes randomData = buildAbiEncodedArrays( encrypted, plaintext );
+    dev::bytes dataLength = dev::toBigEndian( dev::u256( randomData.size() ) );
+    resultData.insert( resultData.end(), dataLength.begin(), dataLength.end() );
+    resultData.insert( resultData.end(), randomData.begin(), randomData.end() );
+    return resultData;
+}
 
-    std::vector< dev::bytes > pregeneratedDecryptedValues{ dev::fromHex( "5b221ee6b5c5751ff5808beddbc0644dc4fdda6b5efb13dbb49d698cb0e3f172" ),
-                                                           dev::fromHex( "006aa7d63edcfb03635a2ecf5064a9eec076c2466fb2a6c35d59b5f1039f2535" ) };
-    std::vector< dev::bytes > pregeneratedPlaintextValues{ dev::asBytes( "plaintext1" ), dev::asBytes( "plaintext2" ) };
+// Wrap submitCTX precompile input into a submitCTXWithInput(bytes) contract call:
+// functionSelector(4) | offsetToInput(32) | inputLength(32) | resultData.
+std::string buildSubmitCTXWithInputCalldata( const dev::bytes& resultData ) {
+    return "0x6040c1fb" + dev::toHex( dev::u256( 32 ) ) +
+           dev::toHex( dev::u256( resultData.size() ) ) + dev::toHex( resultData );
+}
+
+// RefundCTXPatch enabled: leftover ephemeral balance is transferred to the target
+// contract and the ephemeral account is reset (balance and nonce set to 0).
+void assertRefundCTXEnabled(
+    JsonRpcFixture& fixture, const SubmitCTXRefundContext& refundContext ) {
+    BOOST_CHECK_EQUAL( fixture.client->balanceAt( refundContext.ephemeralAddress ), u256( 0 ) );
+    BOOST_CHECK_EQUAL( fixture.client->countAt( refundContext.ephemeralAddress ), u256( 0 ) );
+    BOOST_CHECK_EQUAL( fixture.client->balanceAt( refundContext.contractAddress ),
+        refundContext.contractBalanceBefore + refundContext.ephemeralBalanceBefore -
+            refundContext.ctxGasUsed * refundContext.gasPrice );
+}
+
+// RefundCTXPatch disabled (pre-patch/legacy behavior): the ephemeral account survives
+// the CTX, keeps its leftover balance and nonce, and the target contract is not refunded.
+void assertRefundCTXDisabled(
+    JsonRpcFixture& fixture, const SubmitCTXRefundContext& refundContext ) {
+    BOOST_CHECK_EQUAL( fixture.client->countAt( refundContext.ephemeralAddress ), u256( 1 ) );
+    BOOST_CHECK_EQUAL( fixture.client->balanceAt( refundContext.ephemeralAddress ),
+        refundContext.ephemeralBalanceBefore - refundContext.ctxGasUsed * refundContext.gasPrice );
+    BOOST_CHECK_EQUAL( fixture.client->balanceAt( refundContext.contractAddress ),
+        refundContext.contractBalanceBefore );
+}
+
+// Deploys the Precompile0x1BCaller test contract and returns its address.
+std::string deploySubmitCTXCaller(
+    JsonRpcFixture& fixture, const std::string& senderAddress ) {
 // pragma solidity ^0.8.13;
 
 // contract Precompile0x1BCaller {
@@ -5989,20 +6052,38 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
     std::string contractAddress = txReceipt["contractAddress"].asString();
     BOOST_REQUIRE( txReceipt["status"] == "0x1" );
 
-    // send a transaction -> BITE2 txn queue should become non-empty
+    return contractAddress;
+}
+
+// Runs the full submitCTX crafting flow against an already-deployed caller contract:
+// - calls submitCTX() to queue a CTX and verifies the crafted-CTX mapping
+// - calls submitCTXWithInput() with custom encrypted/plaintext data
+// - mines the crafted CTX and verifies its on-chain transaction and decrypted/plaintext output
+// Returns the data needed to assert RefundCTXPatch behavior (pre- or post-patch).
+SubmitCTXRefundContext runSubmitCTXCraftAndMine(
+    JsonRpcFixture& fixture, const std::string& contractAddress, const std::string& senderAddress ) {
+    std::vector< dev::bytes > pregeneratedDecryptedValues{
+        dev::fromHex( "5b221ee6b5c5751ff5808beddbc0644dc4fdda6b5efb13dbb49d698cb0e3f172" ),
+        dev::fromHex( "006aa7d63edcfb03635a2ecf5064a9eec076c2466fb2a6c35d59b5f1039f2535" ) };
+    std::vector< dev::bytes > pregeneratedPlaintextValues{
+        dev::asBytes( "plaintext1" ), dev::asBytes( "plaintext2" ) };
+
+    // Step 1 -----------------------------------------------------------------
+    // send a transaction that calls 'submitCTX()' with random data set by test SC
     Json::Value txGenerate;
     txGenerate["to"] = contractAddress;
     txGenerate["gas"] = "1000000";
-    txGenerate["data"] = "0x7372aa26";
+    txGenerate["data"] = "0x7372aa26"; // submitCTX()
     txGenerate["from"] = toJS( senderAddress );
     txGenerate["nonce"] = 1;
 
-    txHash = fixture.rpcClient->eth_sendTransaction( txGenerate );
+    std::string txHash = fixture.rpcClient->eth_sendTransaction( txGenerate );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
-    txReceipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    Json::Value txReceipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE( txReceipt["status"] == "0x1" );
 
+    // confirm CTX is queued
     BOOST_REQUIRE( fixture.client->debugGetTransactionQueue()->pendingBITE2Transactions()->size() == 1 );
     auto bite2Txn = fixture.client->debugGetTransactionQueue()->pendingBITE2Transactions()->front();
     BOOST_REQUIRE( !bite2Txn.isInvalid() );
@@ -6010,47 +6091,32 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
     auto to = bite2Txn.to();
     BOOST_REQUIRE_EQUAL( to, dev::Address( contractAddress ) );
 
+    // Confirm that the transaction is associated with the correct CTX
     Json::Value craftedCTXs = fixture.rpcClient->bite_getCraftedCtxs( txHash );
     BOOST_REQUIRE_EQUAL( craftedCTXs.size(), 1 );
     BOOST_REQUIRE_EQUAL( craftedCTXs[0].asString(), bite2Txn.sha3().hex() );
 
+    // Step 2 -----------------------------------------------------------------
+    // send a transaction that calls 'submitCTXWithInput(bytes calldata input)'
+    // with custom data
     dev::u256 randomGasLimit = dev::h256::Arith( dev::h256::random() ) % 2500000 + 1000000;
-    dev::bytes randomGasLimitBytes = dev::toBigEndian( randomGasLimit );
 
-    std::vector< dev::bytes > originalValues{ dev::h256::random().asBytes(), dev::h256::random().asBytes() };
+    std::vector< dev::bytes > originalValues{
+        dev::h256::random().asBytes(), dev::h256::random().asBytes() };
 
-    dev::bytes encryptedArg1 = formEncryptedMessageMockup( originalValues[0], dev::Address( contractAddress ) );
-    dev::bytes encryptedArg2 = formEncryptedMessageMockup( originalValues[1], dev::Address( contractAddress ) );
-
-    // Build abi.encode(bytes[] args1, bytes[] args2) with 2 elements each
-    // args1 elements must be at least BITE_CIPHERTEXT_MIN_LEN bytes (encrypted data)
-    std::vector<dev::bytes> args1 = {
-        encryptedArg1, encryptedArg2
-    };
-    std::vector< dev::bytes > args2 = {
+    // encrypted elements must be at least BITE_CIPHERTEXT_MIN_LEN bytes
+    std::vector< dev::bytes > encrypted = {
+        formEncryptedMessageMockup( originalValues[0], dev::Address( contractAddress ) ),
+        formEncryptedMessageMockup( originalValues[1], dev::Address( contractAddress ) ) };
+    std::vector< dev::bytes > plaintext = {
         dev::fromHex( "706c61696e746578743122" ),  // "plaintext1"
         dev::fromHex( "706c61696e746578743222" )   // "plaintext2"
     };
+    dev::bytes resultData = buildSubmitCTXResultData( encrypted, plaintext, randomGasLimit );
 
-    dev::bytes randomData = buildAbiEncodedArrays( args1, args2 );
-
-    // Build ABI-encoded input: abi.encode(address, uint256, bytes)
-    // Format: gasLimit(32) + offset_to_bytes(32) + bytes_length(32) + bytes_data
-    dev::bytes resultData;
-    // gasLimit value (32 bytes)
-    resultData.insert( resultData.end(), randomGasLimitBytes.begin(), randomGasLimitBytes.end() );
-
-    // offset to bytes data (points to position 64 = 2 * 32)
-    dev::bytes dataOffset = dev::toBigEndian( dev::u256( 64 ) );
-    resultData.insert( resultData.end(), dataOffset.begin(), dataOffset.end() );
-    // bytes data (length + content)
-    dev::bytes dataLength = dev::toBigEndian( dev::u256( randomData.size() ) );
-    resultData.insert( resultData.end(), dataLength.begin(), dataLength.end() );
-    resultData.insert( resultData.end(), randomData.begin(), randomData.end() );
-
+    // build & mine tx
     txGenerate["to"] = contractAddress;
-    txGenerate["data"] = "0x6040c1fb" + dev::toHex( dev::u256( 32 ) ) +
-                         dev::toHex( dev::u256( resultData.size() ) ) + dev::toHex( resultData );
+    txGenerate["data"] = buildSubmitCTXWithInputCalldata( resultData );
     txGenerate["from"] = toJS( senderAddress );
     txGenerate["nonce"] = 2;
     std::string txGenerateHash = fixture.rpcClient->eth_sendTransaction( txGenerate );
@@ -6058,6 +6124,8 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
     BOOST_REQUIRE_EQUAL( fixture.client->pending().size(), 1 );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
+    // call submitCTX directly (separate from test SC tx) with readOnly=true - CTX is not pushed.
+    // this call is useful for getting ephemeral address only
     PrecompiledExecutor submitCTXExecutor = PrecompiledRegistrar::executor( "submitCTX" );
     dev::eth::PrecompiledCallContext ctx( fixture.client->number(), 1, 1, dev::h256::random(),
                                           dev::Address( contractAddress ), true );
@@ -6068,28 +6136,32 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
 
     dev::Address addressFromPrecompiled( dev::bytes( res.second.begin(), res.second.begin() + dev::Address::size ) );
 
+    // Snapshot balances before CTX mines for RefundCTXPatch verification
+    u256 ephemeralBalanceBefore = fixture.client->balanceAt( addressFromPrecompiled );
+    u256 contractBalanceBefore = fixture.client->balanceAt( dev::Address( contractAddress ) );
+
     PrecompiledExecutor blockRandomExecutor = PrecompiledRegistrar::executor( "getBlockRandom" );
     auto vrs = dev::makeSignature(
         blockRandomExecutor( bytesConstRef(), ctx ).second, ctx.currentTxnIndex );
     dev::u256 gasPrice = g_skaleHost->getGasPrice( ctx.blockNumber.convert_to< unsigned >() );
 
     // Build expected RLP-encoded data: RLP(RLP(args1[0], args1[1]), RLP(args2[0], args2[1]))
-    RLPStream args1Stream;
-    args1Stream.appendList( args1.size() );
-    for ( const auto& elem : args1 ) {
-        args1Stream << elem;
+    RLPStream encryptedStream;
+    encryptedStream.appendList( encrypted.size() );
+    for ( const auto& elem : encrypted ) {
+        encryptedStream << elem;
     }
 
-    RLPStream args2Stream;
-    args2Stream.appendList( args2.size() );
-    for ( const auto& elem : args2 ) {
-        args2Stream << elem;
+    RLPStream plaintextStream;
+    plaintextStream.appendList( plaintext.size() );
+    for ( const auto& elem : plaintext ) {
+        plaintextStream << elem;
     }
 
     RLPStream finalStream;
     finalStream.appendList( 2 );
-    finalStream.appendRaw( args1Stream.out() );
-    finalStream.appendRaw( args2Stream.out() );
+    finalStream.appendRaw( encryptedStream.out() );
+    finalStream.appendRaw( plaintextStream.out() );
 
     dev::bytes rlpEncodedData = finalStream.out();
 
@@ -6160,6 +6232,10 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
     auto ctxOrigin = fixture.rpcClient->bite_getCtxOrigin( "0x" + ctxFromBlockchain.sha3().hex() );
     BOOST_REQUIRE_EQUAL( "0x" + ctxOrigin, txGenerateHash );
 
+    Json::Value ctxReceipt =
+        fixture.rpcClient->eth_getTransactionReceipt( "0x" + ctxFromBlockchain.sha3().hex() );
+    u256 ctxGasUsed = jsToU256( ctxReceipt["gasUsed"].asString() );
+
     // call getDecrypted()
     result = dev::fromHex( fixture.rpcClient->eth_call( callDecrypted, "latest" ) );
     auto [rlpStreamDecrypted1, decryptedLength1] = dev::bite::parseAbiEncodedBytesArray( dev::bytesConstRef( result.data(), result.size() ), 32, "" );
@@ -6177,60 +6253,90 @@ BOOST_AUTO_TEST_CASE( submitCTX ) {
     BOOST_REQUIRE_EQUAL( plaintextLength1, pregeneratedPlaintextValues.size() );
     dev::RLP rlpPlaintext1( rlpStreamPlaintext1.out() );
     for (size_t i = 0; i < plaintextLength1; ++i) {
-        BOOST_REQUIRE_EQUAL( dev::toHex( rlpPlaintext1[i].toBytes() ), dev::toHex( args2[i] ) );
+        BOOST_REQUIRE_EQUAL( dev::toHex( rlpPlaintext1[i].toBytes() ), dev::toHex( plaintext[i] ) );
     }
 
-    // test submitCTXWithInput with randomGasLimit >> lastBlockGasLimit
+    SubmitCTXRefundContext refundContext;
+    refundContext.ephemeralAddress = addressFromPrecompiled;
+    refundContext.contractAddress = dev::Address( contractAddress );
+    refundContext.ephemeralBalanceBefore = ephemeralBalanceBefore;
+    refundContext.contractBalanceBefore = contractBalanceBefore;
+    refundContext.gasPrice = gasPrice;
+    refundContext.ctxGasUsed = ctxGasUsed;
+    return refundContext;
+}
+
+// Full happy-path CTX crafting flow with RefundCTXPatch active (default config):
+// the ephemeral account is refunded to the target contract and reset.
+BOOST_AUTO_TEST_CASE( submitCTX ) {
+    JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true );
+
+    string senderAddress = toJS( fixture.coinbase.address() );
+    std::string contractAddress = deploySubmitCTXCaller( fixture, senderAddress );
+
+    SubmitCTXRefundContext refundContext =
+        runSubmitCTXCraftAndMine( fixture, contractAddress, senderAddress );
+
+    assertRefundCTXEnabled( fixture, refundContext );
+}
+
+// Same CTX crafting flow but with RefundCTXPatch disabled, so the
+// pre-patch (legacy) refund behavior is exercised.
+BOOST_AUTO_TEST_CASE( submitCTXRefundDisabledBeforePatch ) {
+    JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true, false, -1,
+        { { "RefundCTXPatchTimestamp", "0" } } );
+
+    string senderAddress = toJS( fixture.coinbase.address() );
+    std::string contractAddress = deploySubmitCTXCaller( fixture, senderAddress );
+
+    SubmitCTXRefundContext refundContext =
+        runSubmitCTXCraftAndMine( fixture, contractAddress, senderAddress );
+
+    assertRefundCTXDisabled( fixture, refundContext );
+}
+
+// A submitCTXWithInput call requesting a gas limit far above the block gas limit must
+// fail the calling transaction and leave no CTX queued.
+BOOST_AUTO_TEST_CASE( submitCTXRejectsGasLimitAboveBlockLimit ) {
+    JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true );
+
+    string senderAddress = toJS( fixture.coinbase.address() );
+    std::string contractAddress = deploySubmitCTXCaller( fixture, senderAddress );
+
     dev::u256 lastBlockGasLimit = fixture.client->blockInfo( fixture.client->number() ).gasLimit();
-    dev::u256 randomGasLimit2 = lastBlockGasLimit * 10;
-    dev::bytes randomGasLimitBytes2 = dev::toBigEndian( randomGasLimit2 );
+    dev::u256 gasLimit = lastBlockGasLimit * 10;
 
-    std::vector< dev::bytes > originalValues2{ dev::h256::random().asBytes(), dev::h256::random().asBytes() };
-
-    dev::bytes encryptedArg1_2 = formEncryptedMessageMockup( originalValues2[0], dev::Address( contractAddress ) );
-    dev::bytes encryptedArg2_2 = formEncryptedMessageMockup( originalValues2[1], dev::Address( contractAddress ) );
-
-    std::vector<dev::bytes> args1_2 = {
-        encryptedArg1_2, encryptedArg2_2
+    std::vector< dev::bytes > originalValues{
+        dev::h256::random().asBytes(), dev::h256::random().asBytes() };
+    std::vector< dev::bytes > encrypted = {
+        formEncryptedMessageMockup( originalValues[0], dev::Address( contractAddress ) ),
+        formEncryptedMessageMockup( originalValues[1], dev::Address( contractAddress ) ) };
+    std::vector< dev::bytes > plaintext = {
+        dev::fromHex( "706c61696e746578743122" ),  // "plaintext1"
+        dev::fromHex( "706c61696e746578743222" )   // "plaintext2"
     };
-    std::vector<dev::bytes> args2_2 = {
-        dev::fromHex("706c61696e746578743122"),  // "plaintext1"
-        dev::fromHex("706c61696e746578743222")   // "plaintext2"
-    };
+    dev::bytes resultData = buildSubmitCTXResultData( encrypted, plaintext, gasLimit );
 
-    dev::bytes randomData2 = buildAbiEncodedArrays( args1_2, args2_2 );
-
-    dev::bytes resultData2;
-    // gasLimit value (32 bytes) - much greater than block gas limit
-    resultData2.insert( resultData2.end(), randomGasLimitBytes2.begin(), randomGasLimitBytes2.end() );
-
-    // offset to bytes data (points to position 64 = 2 * 32)
-    dev::bytes dataOffset2 = dev::toBigEndian( dev::u256( 64 ) );
-    resultData2.insert( resultData2.end(), dataOffset2.begin(), dataOffset2.end() );
-    // bytes data (length + content)
-    dev::bytes dataLength2 = dev::toBigEndian( dev::u256( randomData2.size() ) );
-    resultData2.insert( resultData2.end(), dataLength2.begin(), dataLength2.end() );
-    resultData2.insert( resultData2.end(), randomData2.begin(), randomData2.end() );
-
+    Json::Value txGenerate;
     txGenerate["to"] = contractAddress;
-    txGenerate["data"] = "0x6040c1fb" + dev::toHex( dev::u256( 32 ) ) + dev::toHex( dev::u256( resultData2.size() ) ) + dev::toHex( resultData2 );
+    txGenerate["gas"] = "1000000";
+    txGenerate["data"] = buildSubmitCTXWithInputCalldata( resultData );
     txGenerate["from"] = toJS( senderAddress );
-    txGenerate["nonce"] = 3;
-    std::string txGenerateHash2 = fixture.rpcClient->eth_sendTransaction( txGenerate );
+    txGenerate["nonce"] = 1;
+    std::string txGenerateHash = fixture.rpcClient->eth_sendTransaction( txGenerate );
     BOOST_REQUIRE_EQUAL( fixture.client->pending().size(), 1 );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
-    txReceipt = fixture.rpcClient->eth_getTransactionReceipt( txGenerateHash2 );
+    Json::Value txReceipt = fixture.rpcClient->eth_getTransactionReceipt( txGenerateHash );
     BOOST_REQUIRE( txReceipt["status"] == "0x0" );
 
-    auto bn2 = fixture.client->number();
-    BOOST_REQUIRE_EQUAL( fixture.client->transactions( bn2 ).size(), 1 );
-
+    auto bn = fixture.client->number();
+    BOOST_REQUIRE_EQUAL( fixture.client->transactions( bn ).size(), 1 );
     BOOST_REQUIRE_EQUAL( fixture.client->debugGetTransactionQueue()->pendingBITE2Transactions()->size(), 0 );
 }
 
 BOOST_AUTO_TEST_CASE( submitCTXInContractConstructor ) {
-    JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true, false, -1, {{ "contractStorageLimit", "100000"}} );
+    JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true );
 
     string senderAddress = toJS( fixture.coinbase.address() );
 
@@ -6289,7 +6395,7 @@ BOOST_AUTO_TEST_CASE( submitCTXInContractConstructor ) {
 }
 
 BOOST_AUTO_TEST_CASE( CTXTransactionAfterRevert ) {
-    JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true, false, -1, {{ "contractStorageLimit", "100000" }} );
+    JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true );
 
     string senderAddress = toJS( fixture.coinbase.address() );
 
@@ -6417,8 +6523,135 @@ BOOST_AUTO_TEST_CASE( CTXTransactionAfterRevert ) {
     BOOST_REQUIRE_EQUAL( fixture.client->debugGetTransactionQueue()->pendingBITE2Transactions()->size(), 0 );
 }
 
+// Verifies that RefundCTXPatch still applies when the CTX's own execution reverts
+// (as opposed to CTXTransactionAfterRevert, which reverts the crafting call instead).
+// The leftover ephemeral balance must still be moved to the target contract and the
+// ephemeral account must still be reset (pruned), while the reverted onDecrypt's
+// storage writes must be rolled back.
+BOOST_AUTO_TEST_CASE( CTXExecutionRevertStillRefunds ) {
+    JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true );
+
+    string senderAddress = toJS( fixture.coinbase.address() );
+
+// pragma solidity ^0.8.13;
+
+// contract Precompile0x1BCallerReverting {
+//     bytes[] decrypted = new bytes[](1);
+//     bytes[] plaintext = new bytes[](1);
+//     uint256 constant CALLBACK_GAS_LIMIT = 2_500_000;
+
+//     constructor() payable {}
+
+//     function submitCTX() public {
+//         bytes[] memory args1 = new bytes[](2);
+//         // Use pre-generated args1 values instead of generating them dynamically
+//         // the content doesn't matter - we just want it to pass CTX validation and reach the onDecrypt call, which will revert. 
+//         args1[0] = hex"f9015880b9015401cc5504bac92b5ccafa0c3202372d7bb0b8cb6861795deddafae0ed7be924ff170000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006360e4a05b2e03056b2d61c7ad2deb47b0be0084ffab44bf506bfff07b951fb0bf37c171584f74d80c96306e124152458183a7a2c570a136099f7c4ffc9dde340cbed4f87133200fc4e425946925eaac958209aba78e190feeb5c9f31182ec8d458260279adb3976c158471b932bbee5bb320c";
+//         args1[1] = hex"f9015880b9015401154918854780593f1c6bf620684b29ab3d4c4a4f5996dcbd1c1d0b48c06d56b40000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000751884c80374b7b5d6d0ef740dacbea91b3d53ee5243eeacf94a970f131185c69dfd44e868e370602c72484bc2f34e9466255ef50ca817d34d61a46bff368318b6fff300eb566dac8d1c569a270c6d9c1f99664643582cafcb276fea83d5564cd38f4b1be0e8ee6c06e10f10f10dc39120884";
+
+//         bytes[] memory args2 = new bytes[](2);
+//         args2[0] = abi.encodePacked("plaintext1");
+//         args2[1] = abi.encodePacked("plaintext2");
+
+//         bytes memory randomBytes = abi.encode(args1, args2);
+//         bytes memory input = abi.encode(CALLBACK_GAS_LIMIT, randomBytes);
+
+//         (bool success, bytes memory result) = address(0x1B).staticcall(input);
+//         require(success, "0x1B call failed");
+
+//         // Extract address from first 20 bytes of result and transfer
+//         address walletAddress = address(bytes20(result));
+//         payable(walletAddress).transfer(400000000000);
+//     }
+
+//     // Unlike Precompile0x1BCaller, onDecrypt always reverts here - used to verify
+//     // that the CTX refund (ephemeral balance -> target contract, nonce reset) still
+//     // applies even when the CTX's own execution fails.
+//     function onDecrypt(bytes[] calldata, bytes[] calldata) public {
+//         require(false, "onDecrypt reverted");
+//     }
+
+//     function getDecrypted() public view returns (bytes[] memory) {
+//         return decrypted;
+//     }
+
+//     function getPlaintext() public view returns (bytes[] memory) {
+//         return plaintext;
+//     }
+// }
+    std::string bytecode = "6001608081815260c06040529060a05b606081526020019060019003908161000f57505080516100379160009160209091019061007b565b5060408051600180825281830190925290816020015b606081526020019060019003908161004d57505080516100759160019160209091019061007b565b5061029d565b8280548282559060005260206000209081019282156100c1579160200282015b828111156100c157825182906100b190826101df565b509160200191906001019061009b565b506100cd9291506100d1565b5090565b808211156100cd5760006100e582826100ee565b506001016100d1565b5080546100fa90610156565b6000825580601f1061010a575050565b601f016020900490600052602060002090810190610128919061012b565b50565b5b808211156100cd576000815560010161012c565b634e487b7160e01b600052604160045260246000fd5b600181811c9082168061016a57607f821691505b60208210810361018a57634e487b7160e01b600052602260045260246000fd5b50919050565b601f8211156101da57806000526020600020601f840160051c810160208510156101b75750805b601f840160051c820191505b818110156101d757600081556001016101c3565b50505b505050565b81516001600160401b038111156101f8576101f8610140565b61020c816102068454610156565b84610190565b6020601f82116001811461024057600083156102285750848201515b600019600385901b1c1916600184901b1784556101d7565b600084815260208120601f198516915b828110156102705787850151825560209485019460019092019101610250565b508482101561028e5786840151600019600387901b60f8161c191681555b50505050600190811b01905550565b610a9c806102ac6000396000f3fe608060405234801561001057600080fd5b506004361061004c5760003560e01c806338d5a3121461005157806357983ac81461006f5780637372aa2614610084578063cc1591201461008c575b600080fd5b610059610094565b60405161006691906105cb565b60405180910390f35b61008261007d366004610631565b61016d565b005b6100826101af565b61005961044f565b60606000805480602002602001604051908101604052809291908181526020016000905b828210156101645783829060005260206000200180546100d7906106a2565b80601f0160208091040260200160405190810160405280929190818152602001828054610103906106a2565b80156101505780601f1061012557610100808354040283529160200191610150565b820191906000526020600020905b81548152906001019060200180831161013357829003601f168201915b5050505050815260200190600101906100b8565b50505050905090565b60405162461bcd60e51b81526020600482015260126024820152711bdb911958dc9e5c1d081c995d995c9d195960721b60448201526064015b60405180910390fd5b60408051600280825260608201909252600091816020015b60608152602001906001900390816101c757905050905060405180610180016040528061015b81526020016107b161015b91398160008151811061020d5761020d6106dc565b602002602001018190525060405180610180016040528061015b815260200161090c61015b913981600181518110610247576102476106dc565b602090810291909101015260408051600280825260608201909252600091816020015b606081526020019060019003908161026a5790505060405169706c61696e746578743160b01b6020820152909150602a01604051602081830303815290604052816000815181106102bd576102bd6106dc565b60200260200101819052506040516020016102e89069383630b4b73a32bc3a1960b11b8152600a0190565b6040516020818303038152906040528160018151811061030a5761030a6106dc565b60200260200101819052506000828260405160200161032a9291906106f2565b60405160208183030381529060405290506000622625a082604051602001610353929190610720565b6040516020818303038152906040529050600080601b6001600160a01b0316836040516103809190610741565b600060405180830381855afa9150503d80600081146103bb576040519150601f19603f3d011682016040523d82523d6000602084013e6103c0565b606091505b5091509150816104055760405162461bcd60e51b815260206004820152601060248201526f0c1e0c508818d85b1b0819985a5b195960821b60448201526064016101a6565b60006104108261075d565b60405160609190911c91508190600090645d21dba0009082818181858883f19350505050158015610445573d6000803e3d6000fd5b5050505050505050565b60606001805480602002602001604051908101604052809291908181526020016000905b82821015610164578382906000526020600020018054610492906106a2565b80601f01602080910402602001604051908101604052809291908181526020018280546104be906106a2565b801561050b5780601f106104e05761010080835404028352916020019161050b565b820191906000526020600020905b8154815290600101906020018083116104ee57829003601f168201915b505050505081526020019060010190610473565b60005b8381101561053a578181015183820152602001610522565b50506000910152565b6000815180845261055b81602086016020860161051f565b601f01601f19169290920160200192915050565b600082825180855260208501945060208160051b8301016020850160005b838110156105bf57601f198584030188526105a9838351610543565b602098890198909350919091019060010161058d565b50909695505050505050565b6020815260006105de602083018461056f565b9392505050565b60008083601f8401126105f757600080fd5b50813567ffffffffffffffff81111561060f57600080fd5b6020830191508360208260051b850101111561062a57600080fd5b9250929050565b6000806000806040858703121561064757600080fd5b843567ffffffffffffffff81111561065e57600080fd5b61066a878288016105e5565b909550935050602085013567ffffffffffffffff81111561068a57600080fd5b610696878288016105e5565b95989497509550505050565b600181811c908216806106b657607f821691505b6020821081036106d657634e487b7160e01b600052602260045260246000fd5b50919050565b634e487b7160e01b600052603260045260246000fd5b604081526000610705604083018561056f565b8281036020840152610717818561056f565b95945050505050565b8281526040602082015260006107396040830184610543565b949350505050565b6000825161075381846020870161051f565b9190910192915050565b805160208201516bffffffffffffffffffffffff198116919060148210156107a9576bffffffffffffffffffffffff196bffffffffffffffffffffffff198360140360031b1b82161692505b505091905056fef9015880b9015401cc5504bac92b5ccafa0c3202372d7bb0b8cb6861795deddafae0ed7be924ff170000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006360e4a05b2e03056b2d61c7ad2deb47b0be0084ffab44bf506bfff07b951fb0bf37c171584f74d80c96306e124152458183a7a2c570a136099f7c4ffc9dde340cbed4f87133200fc4e425946925eaac958209aba78e190feeb5c9f31182ec8d458260279adb3976c158471b932bbee5bb320cf9015880b9015401154918854780593f1c6bf620684b29ab3d4c4a4f5996dcbd1c1d0b48c06d56b40000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000751884c80374b7b5d6d0ef740dacbea91b3d53ee5243eeacf94a970f131185c69dfd44e868e370602c72484bc2f34e9466255ef50ca817d34d61a46bff368318b6fff300eb566dac8d1c569a270c6d9c1f99664643582cafcb276fea83d5564cd38f4b1be0e8ee6c06e10f10f10dc39120884a2646970667358221220cef8cd43b9f6f5cdfeda1a6b6eea97c8160fc3e6ab6e491a763c399ef275276664736f6c634300081e0033";
+    // deploy contract
+    Json::Value create;
+    create["from"] = toJS( senderAddress );
+    create["code"] = bytecode;
+    create["gas"] = "1800000";
+    create["value"] = "10000000000000000000";
+    create["nonce"] = 0;
+    string txHash = fixture.rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    auto txReceipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    std::string contractAddress = txReceipt["contractAddress"].asString();
+    BOOST_REQUIRE( txReceipt["status"] == "0x1" );
+
+    // call submitCTX() - crafts the CTX and pushes it into the BITE2 queue.
+    // This crafting call must succeed; only the CTX's own later execution
+    // (onDecrypt) will revert.
+    Json::Value txGenerate;
+    txGenerate["to"] = contractAddress;
+    txGenerate["gas"] = "1000000";
+    txGenerate["data"] = "0x7372aa26"; // submitCTX()
+    txGenerate["from"] = toJS( senderAddress );
+    txGenerate["nonce"] = 1;
+    txHash = fixture.rpcClient->eth_sendTransaction( txGenerate );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    txReceipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE( txReceipt["status"] == "0x1" );
+    BOOST_REQUIRE_EQUAL( fixture.client->debugGetTransactionQueue()->pendingBITE2Transactions()->size(), 1 );
+
+    auto bite2Txn = fixture.client->debugGetTransactionQueue()->pendingBITE2Transactions()->front();
+    BOOST_REQUIRE( !bite2Txn.isInvalid() );
+    dev::Address ephemeralAddress = bite2Txn.sender();
+    BOOST_REQUIRE_NE( ephemeralAddress, dev::ZeroAddress );
+
+    // Snapshot balances before the CTX itself gets mined/executed.
+    u256 ephemeralBalanceBefore = fixture.client->balanceAt( ephemeralAddress );
+    u256 contractBalanceBefore = fixture.client->balanceAt( dev::Address( contractAddress ) );
+    BOOST_REQUIRE_GT( ephemeralBalanceBefore, 0 );
+
+    // Mine again - this pulls the CTX from the queue and executes it;
+    // its onDecrypt() unconditionally reverts.
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    auto bn = fixture.client->number();
+    BOOST_REQUIRE_EQUAL( fixture.client->transactions( bn ).size(), 1 );
+    Transaction ctxFromBlockchain =
+        fixture.client->transaction( fixture.client->blockInfo( bn ).hash(), unsigned( 0 ) );
+    BOOST_REQUIRE( ctxFromBlockchain.isCTX() );
+    BOOST_REQUIRE_EQUAL( ctxFromBlockchain.to(), dev::Address( contractAddress ) );
+    BOOST_REQUIRE_EQUAL( ctxFromBlockchain.sender(), ephemeralAddress );
+
+    Json::Value ctxReceipt =
+        fixture.rpcClient->eth_getTransactionReceipt( "0x" + ctxFromBlockchain.sha3().hex() );
+    // The CTX's own execution reverted (onDecrypt always fails).
+    BOOST_REQUIRE( ctxReceipt["status"] == "0x0" );
+    u256 ctxGasUsed = jsToU256( ctxReceipt["gasUsed"].asString() );
+    u256 gasPrice = ctxFromBlockchain.gasPrice();
+
+    // Despite the revert, RefundCTXPatch must still apply: leftover ephemeral
+    // balance moves to the target contract and the ephemeral account is reset.
+    SubmitCTXRefundContext refundContext;
+    refundContext.ephemeralAddress = ephemeralAddress;
+    refundContext.contractAddress = dev::Address( contractAddress );
+    refundContext.ephemeralBalanceBefore = ephemeralBalanceBefore;
+    refundContext.contractBalanceBefore = contractBalanceBefore;
+    refundContext.gasPrice = gasPrice;
+    refundContext.ctxGasUsed = ctxGasUsed;
+    assertRefundCTXEnabled( fixture, refundContext );
+}
+
 BOOST_AUTO_TEST_CASE( CTXOutOfBlockGasLimit ) {
-    JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true, false, -1, {{ "contractStorageLimit", "100000" }} );
+    JsonRpcFixture fixture( c_BITEConfigString, true, true, true, true );
 
     dev::eth::g_skaleHost = fixture.client->skaleHost();
 
