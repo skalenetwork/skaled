@@ -58,6 +58,7 @@
 
 #include "genesisGeneration2Config.h"
 
+#include <libskale/SnapshotManager.h>
 #include <libweb3jsonrpc/Debug.h>
 #include <libweb3jsonrpc/Eth.h>
 #include <libweb3jsonrpc/JsonHelper.h>
@@ -566,8 +567,15 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
 
 
         setenv( "DATA_DIR", tempDir.path().c_str(), 1 );
+        std::shared_ptr< SnapshotManager > snapshotManager;
+        if ( chainParams->getSnapshotIntervalSec() > 0 ) {
+            snapshotManager =
+                std::make_shared< SnapshotManager >( chainParams, tempDir.path(), std::string() );
+        }
+
         client.reset( new eth::ClientTest( chainParams, ( int ) chainParams->getNetworkId(),
-            shared_ptr< GasPricer >(), NULL, monitor, tempDir.path(), WithExisting::Kill ) );
+            shared_ptr< GasPricer >(), snapshotManager, monitor, tempDir.path(),
+            WithExisting::Kill ) );
 
         if ( !_generation2 )
             client->setAuthor( coinbase.address() );
@@ -859,6 +867,89 @@ BOOST_AUTO_TEST_CASE( jsonrpc_stateAt ) {
     auto address = key.address();
     string stateAt = fixture.rpcClient->eth_getStorageAt( toJS( address ), "0", "latest" );
     BOOST_CHECK_EQUAL( fixture.client->stateAt( address, 0 ), jsToU256( stateAt ) );
+}
+
+BOOST_AUTO_TEST_CASE( skale_getLatestSnapshotHash_success ) {
+    Json::Value ret;
+    Json::Reader().parse( c_genesisConfigString, ret );
+    ret["skaleConfig"]["sChain"]["snapshotIntervalSec"] = 1;
+    ret["skaleConfig"]["sChain"]["emptyBlockIntervalMs"] = 100;
+
+    Json::FastWriter fastWriter;
+    std::string config = fastWriter.write( ret );
+    JsonRpcFixture fixture( config );
+
+    dev::eth::simulateMining( *( fixture.client ), 5 );
+
+    int64_t snapshotBlockNumber = -1;
+    for ( int i = 0; i < 30; ++i ) {
+        std::this_thread::sleep_for( std::chrono::milliseconds( 200 ) );
+        snapshotBlockNumber = fixture.client->getLatestSnapshotBlockNumer();
+        if ( snapshotBlockNumber > 0 )
+            break;
+    }
+    BOOST_REQUIRE_GT( snapshotBlockNumber, 0 );
+
+    std::string hash = fixture.rpcClient->skale_getLatestSnapshotHash();
+    BOOST_REQUIRE( !hash.empty() );
+    BOOST_CHECK_EQUAL( hash.size(), 64 );
+    BOOST_CHECK_EQUAL( hash.find_first_not_of( "0123456789abcdefABCDEF" ), std::string::npos );
+}
+
+BOOST_AUTO_TEST_CASE( skale_getLatestSnapshotHash_hashNotAvailableYet ) {
+    Json::Value ret;
+    Json::Reader().parse( c_genesisConfigString, ret );
+    ret["skaleConfig"]["sChain"]["snapshotIntervalSec"] = 1;
+    ret["skaleConfig"]["sChain"]["emptyBlockIntervalMs"] = 100;
+
+    Json::FastWriter fastWriter;
+    std::string config = fastWriter.write( ret );
+    JsonRpcFixture fixture( config );
+
+    dev::eth::simulateMining( *( fixture.client ), 5 );
+
+    int64_t snapshotBlockNumber = -1;
+    for ( int i = 0; i < 30; ++i ) {
+        std::this_thread::sleep_for( std::chrono::milliseconds( 200 ) );
+        snapshotBlockNumber = fixture.client->getLatestSnapshotBlockNumer();
+        if ( snapshotBlockNumber > 0 )
+            break;
+    }
+    BOOST_REQUIRE_GT( snapshotBlockNumber, 0 );
+
+    // remove only hash file to simulate snapshot present but hash unavailable
+    boost::filesystem::path snapshotHashPath =
+        boost::filesystem::path( fixture.tempDir.path() ) / "snapshots" /
+        std::to_string( snapshotBlockNumber ) / "snapshot_hash.txt";
+    BOOST_REQUIRE( boost::filesystem::exists( snapshotHashPath ) );
+    BOOST_REQUIRE( boost::filesystem::remove( snapshotHashPath ) );
+
+    BOOST_CHECK_EXCEPTION( fixture.rpcClient->skale_getLatestSnapshotHash(),
+        jsonrpc::JsonRpcException, []( const jsonrpc::JsonRpcException& ex ) {
+            return std::string( ex.what() ).find( "Latest snapshot hash is not available yet" ) !=
+                   std::string::npos;
+        } );
+}
+
+BOOST_AUTO_TEST_CASE( skale_getLatestSnapshotHash_invalidParams ) {
+    JsonRpcFixture fixture;
+
+    Json::Value params;
+    params.append( "unexpected" );
+    BOOST_CHECK_EXCEPTION( fixture.rpcClient->CallMethod( "skale_getLatestSnapshotHash", params ),
+        jsonrpc::JsonRpcException, []( const jsonrpc::JsonRpcException& ex ) {
+            return ex.GetCode() == jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS;
+        } );
+}
+
+BOOST_AUTO_TEST_CASE( skale_getLatestSnapshotHash_unavailable ) {
+    JsonRpcFixture fixture;
+
+    BOOST_CHECK_EXCEPTION( fixture.rpcClient->skale_getLatestSnapshotHash(),
+        jsonrpc::JsonRpcException, []( const jsonrpc::JsonRpcException& ex ) {
+            return std::string( ex.what() ).find( "Latest snapshot is not available" ) !=
+                   std::string::npos;
+        } );
 }
 
 BOOST_AUTO_TEST_CASE(

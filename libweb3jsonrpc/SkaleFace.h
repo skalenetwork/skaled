@@ -69,6 +69,12 @@ class SkaleFace : public ServerInterface< SkaleFace > {
         response = this->skale_getLatestSnapshotBlockNumber();
     }
 
+    inline virtual void skale_getLatestSnapshotHashI(
+        const Json::Value& request, Json::Value& response ) {
+        ( void ) request;
+        response = this->skale_getLatestSnapshotHash();
+    }
+
     inline virtual void skale_getLatestBlockNumberI(
         const Json::Value& request, Json::Value& response ) {
         ( void ) request;
@@ -124,6 +130,8 @@ class SkaleFace : public ServerInterface< SkaleFace > {
     virtual Json::Value skale_downloadSnapshotFragment( const Json::Value& request ) = 0;
     virtual Json::Value skale_getSnapshotSignature( unsigned blockNumber ) = 0;
     virtual std::string skale_getLatestSnapshotBlockNumber() = 0;
+    // Returns hash of the newest snapshot with computed hash; throws JSON-RPC error if unavailable.
+    virtual std::string skale_getLatestSnapshotHash() = 0;
     virtual std::string skale_getLatestBlockNumber() = 0;
     virtual Json::Value skale_getDBUsage() = 0;
 #ifndef FAIR
@@ -168,6 +176,9 @@ public:
         this->bindAndAddMethod( jsonrpc::Procedure( "skale_getLatestSnapshotBlockNumber",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_INTEGER, NULL ),
             &dev::rpc::SkaleFace::skale_getLatestSnapshotBlockNumberI );
+        this->bindAndAddMethod( jsonrpc::Procedure( "skale_getLatestSnapshotHash",
+                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
+            &dev::rpc::SkaleFace::skale_getLatestSnapshotHashI );
         this->bindAndAddMethod( jsonrpc::Procedure( "skale_getLatestBlockNumber",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_INTEGER, NULL ),
             &dev::rpc::SkaleFace::skale_getLatestBlockNumberI );

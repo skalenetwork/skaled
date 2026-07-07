@@ -356,6 +356,21 @@ std::string Skale::skale_getLatestSnapshotBlockNumber() {
     return response > 0 ? std::to_string( response ) : "earliest";
 }
 
+std::string Skale::skale_getLatestSnapshotHash() {
+    int64_t latestSnapshotBlockNumber = this->m_client.getLatestSnapshotBlockNumer();
+    if ( latestSnapshotBlockNumber <= 0 ) {
+        throw jsonrpc::JsonRpcException( "Latest snapshot is not available" );
+    }
+
+    dev::h256 snapshotHash =
+        this->m_client.getSnapshotHash( static_cast< unsigned >( latestSnapshotBlockNumber ) );
+    if ( !snapshotHash ) {
+        throw jsonrpc::JsonRpcException( "Latest snapshot hash is not available yet" );
+    }
+
+    return snapshotHash.hex();
+}
+
 #ifdef FAIR
 Json::Value Skale::skale_getBLSPublicKey() {
     try {
