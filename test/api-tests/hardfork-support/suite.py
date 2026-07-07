@@ -90,18 +90,50 @@ def _restore_nonce_overflow_stub_patch(project_dir: Path) -> None:
     )
 
 
-def _execution_specs_config_for_label(execution_cfg: dict, label: str) -> dict:
-    label_cfg = dict(execution_cfg)
+def _execution_specs_test_name(execution_cfg: dict) -> str:
+    workload_name = execution_cfg.get("name") or execution_cfg.get("fork", "Berlin")
+    return f"execution-specs-{workload_name}"
+
+
+def _execution_specs_workloads_for_label(execution_cfg: dict, label: str) -> list[dict]:
+    base_cfg = {
+        key: value
+        for key, value in execution_cfg.items()
+        if key not in {"endpoint_overrides", "workloads"}
+    }
+    raw_workloads = execution_cfg.get("workloads") or [{}]
     endpoint_overrides = execution_cfg.get("endpoint_overrides", {})
-    if isinstance(endpoint_overrides, dict):
-        label_cfg.update(endpoint_overrides.get(label, {}))
-    return label_cfg
+
+    workloads = []
+    for raw_workload in raw_workloads:
+        if not isinstance(raw_workload, dict):
+            raise RuntimeError(
+                "[execution_specs].workloads entries must be TOML tables"
+            )
+
+        workload_endpoint_overrides = raw_workload.get("endpoint_overrides", {})
+        workload_cfg = dict(base_cfg)
+        workload_cfg.update(
+            {
+                key: value
+                for key, value in raw_workload.items()
+                if key != "endpoint_overrides"
+            }
+        )
+        if isinstance(endpoint_overrides, dict):
+            workload_cfg.update(endpoint_overrides.get(label, {}))
+        if isinstance(workload_endpoint_overrides, dict):
+            workload_cfg.update(workload_endpoint_overrides.get(label, {}))
+        workloads.append(workload_cfg)
+
+    return workloads
 
 
-def _run_execution_specs(label: str, url: str, w3, private_key: str, cfg: dict) -> TestResult:
-    execution_cfg = _execution_specs_config_for_label(cfg.get("execution_specs", {}), label)
+def _run_execution_specs(
+    label: str, url: str, w3, private_key: str, execution_cfg: dict
+) -> TestResult:
     paths = [str(path) for path in execution_cfg.get("paths", [])]
-    test_name = f"execution-specs-{execution_cfg.get('fork', 'Berlin')}"
+    test_name = _execution_specs_test_name(execution_cfg)
 
     if not paths:
         return TestResult(
@@ -178,7 +210,8 @@ def _run_execution_specs(label: str, url: str, w3, private_key: str, cfg: dict) 
     log_dir = SUITE_DIR / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
     safe_label = label.replace("/", "_").replace(":", "_")
-    log_path = log_dir / f"execution-specs-{safe_label}.log"
+    safe_test_name = test_name.replace("/", "_").replace(":", "_")
+    log_path = log_dir / f"{safe_test_name}-{safe_label}.log"
 
     logger.info(
         "Running execution-specs against %s (%s, fork=%s, paths=%s)",
@@ -382,31 +415,57 @@ def run_tests(cfg: dict, env) -> dict[str, list[TestResult]]:
                 endpoint_failed[label] = f"{type(e).__name__}: {e}"
 
     if execution_specs_enabled:
-        logger.info("Running execution-specs workload")
+        logger.info("Running execution-specs workloads")
         for label, url in env.rpc_urls.items():
-            label_execution_cfg = _execution_specs_config_for_label(execution_cfg, label)
-            test_name = f"execution-specs-{label_execution_cfg.get('fork', 'Berlin')}"
-            if not bool(label_execution_cfg.get("enabled", True)):
-                tr = TestResult(
-                    name=test_name,
-                    passed=True,
-                    message=f"skipped for endpoint {label} by execution_specs endpoint override",
+            try:
+                label_workloads = _execution_specs_workloads_for_label(
+                    execution_cfg, label
                 )
-            else:
-                w3 = env.web3s.get(label)
-                if w3 is None:
+            except RuntimeError as exc:
+                tr = TestResult(
+                    name="execution-specs-config",
+                    passed=False,
+                    message=str(exc),
+                )
+                by_label_and_name.setdefault(label, {})[tr.name] = tr
+                logger.info(
+                    "  %s: %s — %s",
+                    tr.name,
+                    "PASS" if tr.passed else "FAIL",
+                    tr.message,
+                )
+                continue
+
+            for label_execution_cfg in label_workloads:
+                test_name = _execution_specs_test_name(label_execution_cfg)
+                if not bool(label_execution_cfg.get("enabled", True)):
                     tr = TestResult(
                         name=test_name,
-                        passed=False,
-                        message=f"No Web3 connection for endpoint {label}",
+                        passed=True,
+                        message=(
+                            f"skipped for endpoint {label} by execution_specs endpoint override"
+                        ),
                     )
                 else:
-                    tr = _run_execution_specs(label, url, w3, private_key, cfg)
+                    w3 = env.web3s.get(label)
+                    if w3 is None:
+                        tr = TestResult(
+                            name=test_name,
+                            passed=False,
+                            message=f"No Web3 connection for endpoint {label}",
+                        )
+                    else:
+                        tr = _run_execution_specs(
+                            label, url, w3, private_key, label_execution_cfg
+                        )
 
-            by_label_and_name.setdefault(label, {})[tr.name] = tr
-            logger.info(
-                "  %s: %s — %s", tr.name, "PASS" if tr.passed else "FAIL", tr.message,
-            )
+                by_label_and_name.setdefault(label, {})[tr.name] = tr
+                logger.info(
+                    "  %s: %s — %s",
+                    tr.name,
+                    "PASS" if tr.passed else "FAIL",
+                    tr.message,
+                )
 
     for label, err in endpoint_failed.items():
         label_results = by_label_and_name.setdefault(label, {})
