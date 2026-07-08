@@ -103,6 +103,24 @@ struct FixtureCommon {
         }
 #endif
     }
+
+    void cleanupBtrfsArtifacts( const std::string& _mountPath, const std::string& _imagePath ) {
+        gainRoot();
+#if ( !defined __APPLE__ )
+        while ( system( ( "mountpoint -q " + _mountPath ).c_str() ) == 0 ) {
+            int rv = system( ( "umount " + _mountPath ).c_str() );
+            assert( rv == 0 );
+        }
+#endif
+        int rv = system( ( "rm -rf " + _mountPath ).c_str() );
+        assert( rv == 0 );
+        rv = system( ( "rm -f " + _imagePath ).c_str() );
+        assert( rv == 0 );
+    }
+
+    void cleanupBtrfsArtifacts() {
+        cleanupBtrfsArtifacts( BTRFS_DIR_PATH, BTRFS_FILE_PATH );
+    }
 };
 
 class TestClientFixture : public TestOutputHelperFixture {
@@ -248,6 +266,7 @@ class TestClientSnapshotsFixture : public TestOutputHelperFixture, public Fixtur
 public:
     TestClientSnapshotsFixture( const std::string& _config ) try {
         check_sudo();
+        cleanupBtrfsArtifacts( m_tmpDir.path(), BTRFS_FILE_PATH );
 
         dropRoot();
 
@@ -341,11 +360,7 @@ public:
         const char* NC = getenv( "NC" );
         if ( NC )
             return;
-        gainRoot();
-        int rv = system( ( "umount " + m_tmpDir.path() ).c_str() );
-        rv = system( ( "rmdir " + m_tmpDir.path() ).c_str() );
-        rv = system( ( "rm " + BTRFS_FILE_PATH ).c_str() );
-        ( void ) rv;
+        cleanupBtrfsArtifacts( m_tmpDir.path(), BTRFS_FILE_PATH );
     }
 
 private:
