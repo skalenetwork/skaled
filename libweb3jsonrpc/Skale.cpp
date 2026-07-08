@@ -365,8 +365,7 @@ std::string Skale::skale_getLatestSnapshotHash() {
 
     if ( static_cast< uint64_t >( latestSnapshotBlockNumber ) >
          std::numeric_limits< unsigned >::max() ) {
-        throw jsonrpc::JsonRpcException(
-            "Latest snapshot block number exceeds supported range" );
+        throw jsonrpc::JsonRpcException( "Latest snapshot block number exceeds supported range" );
     }
 
     unsigned snapshotBlockNumber = static_cast< unsigned >( latestSnapshotBlockNumber );
