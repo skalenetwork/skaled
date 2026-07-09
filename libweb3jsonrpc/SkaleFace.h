@@ -71,7 +71,8 @@ class SkaleFace : public ServerInterface< SkaleFace > {
 
     inline virtual void skale_getLatestSnapshotHashI(
         const Json::Value& request, Json::Value& response ) {
-        ( void ) request;
+        if ( !request.isNull() && ( !request.isArray() || !request.empty() ) )
+            throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
         response = this->skale_getLatestSnapshotHash();
     }
 
