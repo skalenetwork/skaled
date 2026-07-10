@@ -48,6 +48,7 @@
 #include <libskutils/include/skutils/rest_call.h>
 #include <libweb3jsonrpc/AccountHolder.h>
 #include <libweb3jsonrpc/AdminEth.h>
+#include <test/tools/libtesteth/BtrfsTestFixture.h>
 
 #include "SkaledFixture.h"
 #include <libconsensus/SkaleCommon.h>
@@ -712,73 +713,13 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
     time_t push0PatchActivationTimestamp;
 };
 
-// Mounts a btrfs loopback filesystem for tests that require snapshot functionality.
-// Must be listed as the first base class of JsonRpcBtrfsFixture to guarantee the mount
-// is established before JsonRpcFixture's constructor body runs.
-struct BtrfsSetupForRpc {
-    std::string btrfsImagePath;
-    std::string btrfsMountPath;
-    uid_t sudo_uid = 0;
-    gid_t sudo_gid = 0;
-
-    BtrfsSetupForRpc() {
-#if ( !defined __APPLE__ )
-        const char* id_str = getenv( "SUDO_UID" );
-        if ( id_str == nullptr ) {
-            std::cerr << "BtrfsSetupForRpc: please run under sudo" << std::endl;
-            exit( -1 );
-        }
-        if ( geteuid() != 0 ) {
-            std::cerr << "BtrfsSetupForRpc: need to be root" << std::endl;
-            exit( -1 );
-        }
-        sscanf( id_str, "%d", &sudo_uid );
-        id_str = getenv( "SUDO_GID" );
-        sscanf( id_str, "%d", &sudo_gid );
-
-        // use pid + rand for unique paths, safe in parallel test runs
-        std::string uid = std::to_string( getpid() ) + "_" + std::to_string( rand() );
-        btrfsImagePath = "/tmp/btrfs_rpc_" + uid + ".img";
-        btrfsMountPath = "/tmp/btrfs_rpc_" + uid;
-
-        // create image and format as btrfs (run as sudo user, not root)
-        setresgid( sudo_gid, sudo_gid, 0 );
-        setresuid( sudo_uid, sudo_uid, 0 );
-        int rv = system( ( "dd if=/dev/zero of=" + btrfsImagePath + " bs=1M count=200" ).c_str() );
-        rv = system( ( "mkfs.btrfs " + btrfsImagePath ).c_str() );
-        rv = system( ( "mkdir -p " + btrfsMountPath ).c_str() );
-        ( void ) rv;
-
-        // mount requires root
-        setresuid( 0, 0, 0 );
-        setresgid( 0, 0, 0 );
-        rv = system(
-            ( "mount -o user_subvol_rm_allowed " + btrfsImagePath + " " + btrfsMountPath )
-                .c_str() );
-        rv = chown( btrfsMountPath.c_str(), sudo_uid, sudo_gid );
-        ( void ) rv;
-#endif
-    }
-
-    ~BtrfsSetupForRpc() {
-#if ( !defined __APPLE__ )
-        setresuid( 0, 0, 0 );
-        setresgid( 0, 0, 0 );
-        int rv = system( ( "umount " + btrfsMountPath ).c_str() );
-        rv = system( ( "rmdir " + btrfsMountPath ).c_str() );
-        rv = system( ( "rm -f " + btrfsImagePath ).c_str() );
-        ( void ) rv;
-#endif
-    }
-};
-
 // JsonRpcFixture variant with a btrfs-backed data directory.
-// BtrfsSetupForRpc is listed first so the mount is ready before JsonRpcFixture's
+// BtrfsTestMount is listed first so the mount is ready before JsonRpcFixture's
 // constructor body creates the SnapshotManager and ClientTest.
-struct JsonRpcBtrfsFixture : public BtrfsSetupForRpc, public JsonRpcFixture {
+struct JsonRpcBtrfsFixture : public dev::test::BtrfsTestMount, public JsonRpcFixture {
     explicit JsonRpcBtrfsFixture( const std::string& _config )
-        : BtrfsSetupForRpc(),
-          JsonRpcFixture( _config, true, true, false, false, false, -1, {}, btrfsMountPath ) {}
+        : dev::test::BtrfsTestMount( dev::test::BtrfsTestMount::uniqueTempPaths( "btrfs_rpc" ) ),
+          JsonRpcFixture( _config, true, true, false, false, false, -1, {}, mountPath() ) {}
 };
 
 #ifndef FAIR
@@ -993,7 +934,7 @@ BOOST_AUTO_TEST_CASE( skale_getLatestSnapshotHash_hashNotAvailableYet,
 
     // remove only hash file to simulate snapshot present but hash unavailable
     boost::filesystem::path snapshotHashPath =
-        boost::filesystem::path( fixture.btrfsMountPath ) / "snapshots" /
+        boost::filesystem::path( fixture.mountPath() ) / "snapshots" /
         std::to_string( snapshotBlockNumber ) / "snapshot_hash.txt";
     BOOST_REQUIRE( boost::filesystem::exists( snapshotHashPath ) );
     BOOST_REQUIRE( boost::filesystem::remove( snapshotHashPath ) );
