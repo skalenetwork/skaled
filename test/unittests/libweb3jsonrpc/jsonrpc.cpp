@@ -940,7 +940,8 @@ BOOST_AUTO_TEST_CASE( jsonrpc_stateAt ) {
 }
 
 BOOST_AUTO_TEST_CASE( skale_getLatestSnapshotHash_success,
-    *boost::unit_test::precondition( dev::test::option_all_tests ) ) {
+    *boost::unit_test::precondition( dev::test::option_all_tests ) *
+        boost::unit_test::label( "btrfs" ) ) {
     Json::Value ret;
     Json::Reader().parse( c_genesisConfigString, ret );
     ret["skaleConfig"]["sChain"]["snapshotIntervalSec"] = 1;
@@ -969,7 +970,8 @@ BOOST_AUTO_TEST_CASE( skale_getLatestSnapshotHash_success,
 }
 
 BOOST_AUTO_TEST_CASE( skale_getLatestSnapshotHash_hashNotAvailableYet,
-    *boost::unit_test::precondition( dev::test::option_all_tests ) ) {
+    *boost::unit_test::precondition( dev::test::option_all_tests ) *
+        boost::unit_test::label( "btrfs" ) ) {
     Json::Value ret;
     Json::Reader().parse( c_genesisConfigString, ret );
     ret["skaleConfig"]["sChain"]["snapshotIntervalSec"] = 1;
