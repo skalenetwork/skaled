@@ -445,8 +445,8 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
     JsonRpcFixture( const std::string& _config = "", bool _owner = true,
         bool _deploymentControl = true, bool _generation2 = false, bool _mtmEnabled = false,
         bool _isSyncNode = false, int _emptyBlockIntervalMs = -1,
-            std::map< std::string, std::string >(),
-        const std::string& _dataDirOverride = "" ) {
+            const std::map<std::string, std::string>& params = std::map< std::string, std::string >(),
+            const std::string& _dataDirOverride = "" ) {
 
         // this fixture is used in all tests to load config. So also init bls library as well
         libBLS::init();
