@@ -43,6 +43,7 @@ http_port       = 3234
 berlinForkPatchTimestamp                = 1
 pushZeroPatchTimestamp                  = 1
 EIP1559TransactionsPatchTimestamp       = 1
+londonForkPatchTimestamp                = 1
 singleStateCommitPerBlockPatchTimestamp = 1
 flexibleDeploymentPatchTimestamp        = 1
 
@@ -51,7 +52,7 @@ flexibleDeploymentPatchTimestamp        = 1
 # --------------------------------------------------------------------------
 [anvil]
 image      = "ghcr.io/foundry-rs/foundry:rc-3"
-extra_args = []
+extra_args = ["--hardfork", "london"]
 
 # --------------------------------------------------------------------------
 # Contract deployment (Step 2)
@@ -67,40 +68,54 @@ command = "bun hardhat run scripts/deploy_eip_tests.ts --network custom"
 # Number of iterations (0 = infinite loop until Ctrl-C).
 iterations = 1
 
-# EIPs to test (empty = all: 2929, 2930, 2718, 2565).
+# EIPs to test (empty = all: Berlin + London suite EIPs).
 eips = []
 
 # Gas limit for deployment and test transactions.
 gas_limit = 3000000
 
 # --------------------------------------------------------------------------
-# ethereum/execution-specs workload (Step 3, after EIP tests)
+# ethereum/execution-specs workloads (Step 3, after EIP tests)
 # --------------------------------------------------------------------------
 [execution_specs]
 enabled = true
 project_dir = "test/api-tests/execution-specs"
-fork = "Berlin"
 timeout_sec = 3600
 tx_wait_timeout = 120
 max_tx_per_batch = 50
 max_gas_per_test = 30000000
-# Skaled 5.1.0 does not expose eth_blobBaseFee; Berlin tests do not use blobs,
+# Skaled 5.1.0 does not expose eth_blobBaseFee; pre-Cancun tests do not use blobs,
 # but the current execution-specs execute plugin still has a blob-fee fixture.
 default_max_fee_per_blob_gas = 1
 eoa_start = 100000
 extra_args = []
+
+# Keep the original pre-London coverage and add London-fork execution tests.
+[[execution_specs.workloads]]
+name = "Berlin"
+fork = "Berlin"
 paths = [
   "tests/berlin",
 ]
 
 # Skaled genesis pre-seeds these contracts at nonce 2^64-1 so execute-remote
 # can run the nonce-overflow CREATE/CREATE2 cases without mutating live state.
-[execution_specs.address_stubs]
+[execution_specs.workloads.address_stubs]
 berlin_nonce_overflow_create = { addr = "0x0000000000000000000000000000000000002929" }
 berlin_nonce_overflow_create2 = { addr = "0x0000000000000000000000000000000000002930" }
 
+[[execution_specs.workloads]]
+name = "London"
+fork = "London"
+# Use a separate deterministic EOA range because execute-remote cleanup cannot
+# restore nonce/balance exactly on a live chain between workloads.
+eoa_start = 200000
+paths = [
+  "tests/london",
+]
+
 # Anvil is launched with its stock genesis and is only a comparator for the
-# local EIP contract checks; skip the heavier execution-specs workload there.
+# local EIP contract checks; skip the heavier execution-specs workloads there.
 [execution_specs.endpoint_overrides.anvil]
 enabled = false
 

@@ -164,6 +164,7 @@ public:
     time_t committedBlockTimestamp() const { return m_committedBlockTimestamp; }
     u256 const& gasUsed() const { return m_gasUsed; }
     u256 const& chainID() const { return m_chainID; }
+    u256 baseFeePerGas() const { return m_headerInfo.baseFeePerGas(); }
 
 private:
     BlockHeader m_headerInfo;

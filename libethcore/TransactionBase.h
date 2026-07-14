@@ -226,6 +226,10 @@ public:
     /// Force gas limit. This is used in tests
     void forceGasPrice( const u256& _gasPrice ) { m_gasPrice = _gasPrice; }
 
+#ifndef FAIR
+    virtual u256 getExternalGas() const { return 0; }
+#endif
+
 #ifdef BITE
 
     void setDecryptedFields( const std::shared_ptr< bytes >& _decryptedData,
@@ -442,17 +446,6 @@ protected:
 
     static bool isZeroSignature( u256 const& _r, u256 const& _s ) { return !_r && !_s; }
 
-#ifndef FAIR
-    /*
-     * this function is provided in order for aleth tests and utilities to compile.
-     * In will never be called in skaled since in skaled TransactionBase objects are never
-     * instantiated. Aleth tests and utilities  do instantiate TransactionBase
-     *
-     * The function always returns zero, which means no PoW.
-     */
-
-    virtual u256 getExternalGas() const { return 0; }
-#endif
 
     /// Clears the signature.
     void clearSignature() { m_vrs = SignatureStruct(); }
@@ -460,7 +453,8 @@ protected:
     u256 m_nonce;  ///< The transaction-count of the sender.
     u256 m_value;  ///< The amount of ETH to be transferred by this transaction. Called 'endowment'
     ///< for contract-creation transactions.
-    u256 m_gasPrice;  ///< The base fee and thus the implied exchange rate of ETH to GAS.
+    u256 m_gasPrice;  ///< The base fee and thus the implied exchange rate of ETH to GAS. Equals to
+                      ///< maxFeePerGas for type >= 2
     u256 m_gas;  ///< The total gas to convert, paid for from sender's account. Any unused gas gets
     ///< refunded once the contract is ended.
     bytes m_data;  ///< The data associated with the transaction, or the initialiser if it's a

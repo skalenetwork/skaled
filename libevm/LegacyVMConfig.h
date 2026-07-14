@@ -242,7 +242,7 @@ namespace eth {
         &&GASLIMIT,                             \
         &&CHAINID,                              \
         &&SELFBALANCE,                          \
-        &&INVALID,                              \
+        &&BASEFEE,                              \
         &&INVALID,                              \
         &&INVALID,                              \
         &&INVALID,                              \

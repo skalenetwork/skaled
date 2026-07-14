@@ -51,11 +51,23 @@ EIP1559TransactionsPatchTimestamp = 1
 flexibleDeploymentPatchTimestamp  = 1
 
 # Patch timestamps injected only into the 5.2.0 sync config right before
-# launching the sync node. Keep this list limited to 5.2-only operational
-# switches that do not alter historical block execution.
+# launching the sync node. The Berlin (EIP-2718/2930/2929/2565) and London
+# (EIP-1559 baseFee, EIP-3198 BASEFEE opcode) fork timestamps are added here
+# so they are recognised only by the 5.2.0 binary -- the 5.1.0 release predates
+# these config fields and rejects them as unknown.
+#
+# Both forks are scheduled one hour into the future (relative to sync launch,
+# i.e. after the 5.1.0 primary has already produced the whole workload). This
+# reproduces the real upgrade "gap period": the new 5.2.0 container is running
+# but the fork has not activated yet, so it must re-execute the pre-fork
+# transactions byte-for-byte like 5.1.0. Because every replayed/compared block
+# predates the fork timestamp, both stateRoot AND block hash must match. Both
+# forks share the same timestamp so they activate together.
 # Supports absolute integers and relative expressions: "now", "now+300", "now+5m".
 # --------------------------------------------------------------------------
 [hardfork_compat.patches]
+berlinForkPatchTimestamp                = "now+1h"
+londonForkPatchTimestamp                = "now+1h"
 singleStateCommitPerBlockPatchTimestamp = 1
 snapshotIntervalSec                     = 0
 

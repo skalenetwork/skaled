@@ -294,10 +294,12 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
 #ifndef FAIR
     const std::string& _gethURL,
 #endif
-    [[maybe_unused]] bool _broadcastEnabled )
+    bool _broadcastEnabled )
     : m_client( _client ),
       m_tq( _client.m_tq ),
       m_instanceMonitor( _instanceMonitor ),
+      //  disabled only for tests
+      m_broadcastEnabled( _broadcastEnabled ),
       total_sent( 0 ),
       total_arrived( 0 ),
       latestBlockTime( boost::chrono::high_resolution_clock::time_point() ) {
@@ -384,6 +386,9 @@ void SkaleHost::logState() {
 constexpr uint64_t MAX_BROADCAST_QUEUE_SIZE = 2048;
 
 void SkaleHost::pushToBroadcastQueue( const Transaction& _t ) {
+    if ( !m_broadcastEnabled )
+        return;
+
     {
         std::lock_guard< std::mutex > lock( m_broadcastQueueMutex );
         this->m_broadcastQueue.push_back( _t );
@@ -887,18 +892,20 @@ void SkaleHost::startWorking() {
     // recursively calls this func - so working is still false!)
     working = true;
 
-    try {
-        m_broadcaster->startService();
-    } catch ( const Broadcaster::StartupException& ) {
-        working = false;
-        std::throw_with_nested( SkaleHost::CreationException() );
-    } catch ( ... ) {
-        working = false;
-        std::throw_with_nested( std::runtime_error( "Error in starting broadcaster service" ) );
-    }
+    if ( m_broadcastEnabled ) {
+        try {
+            m_broadcaster->startService();
+        } catch ( const Broadcaster::StartupException& ) {
+            working = false;
+            std::throw_with_nested( SkaleHost::CreationException() );
+        } catch ( ... ) {
+            working = false;
+            std::throw_with_nested( std::runtime_error( "Error in starting broadcaster service" ) );
+        }
 
-    auto broadcastFunction = std::bind( &SkaleHost::broadcastFunc, this );
-    m_broadcastThread = std::thread( broadcastFunction );
+        auto broadcastFunction = std::bind( &SkaleHost::broadcastFunc, this );
+        m_broadcastThread = std::thread( broadcastFunction );
+    }
 
     auto consensusFunction = [&]() {
         try {
@@ -906,7 +913,8 @@ void SkaleHost::startWorking() {
         } catch ( ... ) {
             // cleanup
             m_exitNeeded = true;
-            m_broadcastThread.join();
+            if ( m_broadcastThread.joinable() )
+                m_broadcastThread.join();
             ExitHandler::exitHandler( -1, ExitHandler::ec_termninated_by_signal );
             return;
         }
@@ -1324,6 +1332,9 @@ void SkaleHost::forceEmptyBlock() {
 }
 
 void SkaleHost::forcedBroadcast( const Transaction& _txn ) {
+    if ( !m_broadcastEnabled )
+        return;
+
     m_broadcaster->broadcast( toJS( _txn.toBytes() ) );
 }
 

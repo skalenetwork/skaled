@@ -684,16 +684,26 @@ size_t Client::syncTransactions( const Transactions& _transactions, u256 _gasPri
     bool needsQueueReadyNotification = false;
 
     DEV_WRITE_GUARDED( x_working ) {
-        assert( !m_working.isSealed() );
+        if ( LondonForkPatch::isEnabledWhen( static_cast< time_t >( _timestamp ) ) &&
+             m_working.isSealed() )
+            BOOST_THROW_EXCEPTION(
+                InvalidOperationOnSealedBlock() << errinfo_comment(
+                    "Client::syncTransactions: working block is still sealed after waiting" ) );
+        u256 baseFeePerGas = 0;
 
 #ifdef HISTORIC_STATE
         m_state.mutableHistoricState().rotateDbsIfNeeded( m_working.info().number() );
 #endif
-        // assert(m_state.m_db_write_lock.has_value());
+
+        if ( LondonForkPatch::isEnabledWhen( static_cast< time_t >( _timestamp ) ) ) {
+            baseFeePerGas = _gasPrice;
+            if ( baseFeePerGas == 0 )
+                baseFeePerGas = 1;
+        }
 
         tie( newPendingReceipts, goodReceipts, needsQueueReadyNotification ) =
             m_working.syncEveryone(
-                bc(), _transactions, _timestamp, _gasPrice, _onTransactionConsumed );
+                bc(), _transactions, _timestamp, _gasPrice, baseFeePerGas, _onTransactionConsumed );
         m_state = m_state.createStateCopyAndClearCaches();
 #ifdef HISTORIC_STATE
         // make sure the trie in new state object points to the new state root
