@@ -223,11 +223,12 @@ jobs:
           run_test ClientTests 
           run_test SingleConsensusTests
           run_test ConsensusTests
-          ./testeth --report_level=detailed -t "JsonRpcSuite,!@btrfs" -- --all --verbosity 4
+          # Run without '--all' to skip tests that require sudo for btrfs setup
+          ./testeth -t 'JsonRpcSuite' -- --verbosity 4
           sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t BtrfsTestSuite -- --all --verbosity 4
           sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t HashSnapshotTestSuite -- --all --verbosity 4
           sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t ClientSnapshotsSuite -- --all --verbosity 4
-          sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t "@btrfs" -- --all --verbosity 4
+          sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t '@btrfs' -- --all --verbosity 4
           cd ..
         continue-on-error: true
 
