@@ -608,7 +608,8 @@ public:
 
     void testEip1283Case6() {
 #ifdef FAIR
-        testGasConsumed( "0x60006000556000600055", 1, 5112, 15000 );
+        // EIP-3529 (London): SSTORE_CLEARS_SCHEDULE reduced from 15000 to 4800
+        testGasConsumed( "0x60006000556000600055", 1, 5112, 4800 );
 #else
         testGasConsumed( "0x60006000556000600055", 1, 5212, 15000 );
 #endif
@@ -632,7 +633,8 @@ public:
 
     void testEip1283Case9() {
 #ifdef FAIR
-        testGasConsumed( "0x60026000556000600055", 1, 5112, 15000 );
+        // EIP-3529 (London): SSTORE_CLEARS_SCHEDULE reduced from 15000 to 4800
+        testGasConsumed( "0x60026000556000600055", 1, 5112, 4800 );
 #else
         testGasConsumed( "0x60026000556000600055", 1, 5212, 15000 );
 #endif
@@ -664,7 +666,8 @@ public:
 
     void testEip1283Case13() {
 #ifdef FAIR
-        testGasConsumed( "0x60016000556000600055", 1, 5112, 15000 );
+        // EIP-3529 (London): SSTORE_CLEARS_SCHEDULE reduced from 15000 to 4800
+        testGasConsumed( "0x60016000556000600055", 1, 5112, 4800 );
 #else
         testGasConsumed( "0x60016000556000600055", 1, 5212, 15000 );
 #endif
@@ -696,7 +699,8 @@ public:
 
     void testEip1283Case17() {
 #ifdef FAIR
-        testGasConsumed( "0x600060005560016000556000600055", 1, 8018, 19800 );
+        // EIP-3529 (London): SSTORE_CLEARS_SCHEDULE reduced from 15000 to 4800; 19800 = 15000+4800 -> 9600 = 4800+4800
+        testGasConsumed( "0x600060005560016000556000600055", 1, 8018, 9600 );
 #else
         testGasConsumed( "0x600060005560016000556000600055", 1, 10218, 19800 );
 #endif

@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include <cctype>
 
+#include "SchainPatch.h"
 #include <json_spirit/JsonSpiritHeaders.h>
 #include <libdevcore/JsonUtils.h>
 #include <libdevcore/Log.h>

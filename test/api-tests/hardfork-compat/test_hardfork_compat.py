@@ -7,6 +7,7 @@ Test flow:
        - legacy value transfers
        - Type1 (EIP-2930 access list) transactions
        - Type2 (EIP-1559) transactions
+       - a London-fork deploy exercising the EIP-3198 BASEFEE opcode
        - a contract deploy (SSTORE in constructor)
        - a factory whose constructor runs CREATE and CREATE2
   3. Launch the 5.2.0 sync node (syncNode=true, archiveMode=true)
@@ -55,6 +56,20 @@ _CREATE_FACTORY_BYTECODE = (
     "0x6460006000f36000526005601b6000f05060006005601b6000f5"
     "50600060205360016020f3"
 )
+
+# ---------------------------------------------------------------------------
+# London-fork bytecode that exercises the EIP-3198 BASEFEE opcode (0x48).
+#
+# Constructor:  BASEFEE, PUSH1 0, SSTORE  -- writes the block base fee to slot 0
+# Then RETURNs an empty (zero-length) runtime.
+# Hex: 4860005560006000f3
+#
+# BASEFEE is only a valid opcode once the London fork is active; on a binary
+# without London support the EVM treats 0x48 as invalid and the deploy reverts.
+# Either way both binaries behave identically, so the per-block stateRoot
+# comparison -- the suite's real assertion -- still holds.
+# ---------------------------------------------------------------------------
+_BASEFEE_BYTECODE = "0x4860005560006000f3"
 
 
 # ---------------------------------------------------------------------------
@@ -193,6 +208,26 @@ def test_workload_type2_tx(w3_primary: Web3, private_key: str, timeouts: dict):
     )
 
 
+def test_workload_london_basefee(w3_primary: Web3, private_key: str, timeouts: dict):
+    """Deploy a London-fork contract that uses the EIP-3198 BASEFEE opcode.
+
+    On a London-capable binary the constructor stores the block base fee to
+    slot 0 and the deploy succeeds; on a pre-London binary opcode 0x48 is
+    invalid and the deploy reverts. Both binaries behave identically, so the
+    transaction is recorded the same way on the primary and the sync node and
+    the per-block stateRoot comparison still passes. The assertion therefore
+    only requires the tx to be mined and included in a block.
+    """
+    timeout = timeouts.get("tx_mine", 120)
+    receipt = _deploy(w3_primary, private_key, _BASEFEE_BYTECODE, 100_000, timeout)
+    assert receipt is not None, "BASEFEE deploy not mined"
+    assert receipt["blockNumber"] is not None, "BASEFEE deploy not included in a block"
+    logger.info(
+        "London BASEFEE deploy mined: block=%d status=%d gasUsed=%d",
+        receipt["blockNumber"], receipt["status"], receipt["gasUsed"],
+    )
+
+
 def test_workload_contract_deploy(w3_primary: Web3, private_key: str, timeouts: dict):
     """Deploy a contract (SSTORE in constructor) on the 5.1.0 primary."""
     timeout = timeouts.get("tx_mine", 120)
@@ -286,9 +321,29 @@ def test_sync_catchup_and_state_root_comparison(
         # Run both comparisons before asserting so a failure reports the full
         # picture (stateRoot and hash mismatches) in one go. The block hash
         # embeds receiptsRoot/transactionsRoot, so it must fail the test just
-        # like a stateRoot mismatch -- not be logged as a diagnostic.
+        # like a stateRoot mismatch.
         root_mismatches = compare_state_roots(w3_primary, w3_sync, compare_bn)
         hash_mismatches = compare_block_hashes(w3_primary, w3_sync, compare_bn)
+
+        if root_mismatches:
+            logger.error(
+                "stateRoot mismatches between 5.1.0 and 5.2.0 at blocks: %s",
+                root_mismatches,
+            )
+        else:
+            logger.info(
+                "All %d block stateRoots match between 5.1.0 and 5.2.0", compare_bn + 1
+            )
+
+        if hash_mismatches:
+            logger.error(
+                "Block hash mismatches between 5.1.0 and 5.2.0 at blocks: %s",
+                hash_mismatches,
+            )
+        else:
+            logger.info(
+                "All %d block hashes match between 5.1.0 and 5.2.0", compare_bn + 1
+            )
 
         assert not root_mismatches and not hash_mismatches, (
             f"5.1.0 vs 5.2.0 divergence: stateRoot mismatches at blocks "

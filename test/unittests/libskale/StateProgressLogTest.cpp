@@ -7,6 +7,30 @@
 #include <libethcore/BITECommon.h>
 #include <libethereum/SchainPatch.h>
 #include <libethereum/Transaction.h>
+
+using dev::eth::ChainOperationParams;
+
+namespace {
+struct PatchableChainParams : public ChainOperationParams {
+    void setPatchTimestamp( SchainPatchEnum _patch, time_t _timestamp ) {
+        sChain._patchTimestamps[static_cast< size_t >( _patch )] = _timestamp;
+    }
+};
+
+struct Bite2PatchGuard {
+    Bite2PatchGuard() {
+        PatchableChainParams cp;
+        cp.setPatchTimestamp( SchainPatchEnum::Bite2Patch, 1 );
+        SchainPatch::init( cp );
+        SchainPatch::useLatestBlockTimestamp( 1 );
+    }
+    ~Bite2PatchGuard() {
+        PatchableChainParams cp;
+        SchainPatch::init( cp );
+        SchainPatch::useLatestBlockTimestamp( 0 );
+    }
+};
+}  // namespace
 #endif
 
 #include <boost/filesystem.hpp>
@@ -712,6 +736,7 @@ static dev::eth::Transaction makeSignedCTX( dev::u256 _value, dev::u256 _gasPric
 }
 
 BOOST_AUTO_TEST_CASE( save_load_single_ctx ) {
+    Bite2PatchGuard bite2Guard;
     dev::TransientDirectory tempDir;
 
     StateProgressLog log( tempDir.path() );
@@ -742,6 +767,7 @@ BOOST_AUTO_TEST_CASE( save_load_single_ctx ) {
 }
 
 BOOST_AUTO_TEST_CASE( save_load_multiple_ctxs ) {
+    Bite2PatchGuard bite2Guard;
     dev::TransientDirectory tempDir;
 
     StateProgressLog log( tempDir.path() );
@@ -780,6 +806,7 @@ BOOST_AUTO_TEST_CASE( save_load_multiple_ctxs ) {
 }
 
 BOOST_AUTO_TEST_CASE( save_load_ctxs_with_receipts ) {
+    Bite2PatchGuard bite2Guard;
     dev::TransientDirectory tempDir;
 
     StateProgressLog log( tempDir.path() );
@@ -818,6 +845,7 @@ BOOST_AUTO_TEST_CASE( save_load_ctxs_with_receipts ) {
 }
 
 BOOST_AUTO_TEST_CASE( save_load_empty_ctxs ) {
+    Bite2PatchGuard bite2Guard;
     dev::TransientDirectory tempDir;
 
     StateProgressLog log( tempDir.path() );
@@ -832,6 +860,7 @@ BOOST_AUTO_TEST_CASE( save_load_empty_ctxs ) {
 }
 
 BOOST_AUTO_TEST_CASE( ctxs_persistence_across_instances ) {
+    Bite2PatchGuard bite2Guard;
     dev::TransientDirectory tempDir;
 
     dev::Address dest( "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" );
@@ -860,6 +889,7 @@ BOOST_AUTO_TEST_CASE( ctxs_persistence_across_instances ) {
 }
 
 BOOST_AUTO_TEST_CASE( ctxs_overwrite ) {
+    Bite2PatchGuard bite2Guard;
     dev::TransientDirectory tempDir;
 
     StateProgressLog log( tempDir.path() );
@@ -887,6 +917,7 @@ BOOST_AUTO_TEST_CASE( ctxs_overwrite ) {
 }
 
 BOOST_AUTO_TEST_CASE( save_load_ctx_with_larger_data ) {
+    Bite2PatchGuard bite2Guard;
     dev::TransientDirectory tempDir;
 
     StateProgressLog log( tempDir.path() );
@@ -912,6 +943,7 @@ BOOST_AUTO_TEST_CASE( save_load_ctx_with_larger_data ) {
 }
 
 BOOST_AUTO_TEST_CASE( save_load_ctx_preserves_gas_fields ) {
+    Bite2PatchGuard bite2Guard;
     dev::TransientDirectory tempDir;
 
     StateProgressLog log( tempDir.path() );
