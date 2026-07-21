@@ -5,6 +5,12 @@ import os
 import json
 import argparse
 
+# alt_bn128 / BN254 scalar field order (libff::alt_bn128_Fr). A valid BLS secret is
+# a nonzero scalar in [1, BLS_ORDER-1]. sgxwallet's importBLSKeyShare expects a hex
+# string, so we sample uniformly from that valid scalar range directly and encode it
+# as 64 hex chars (zero-padded) to ensure the imported key is always in range.
+BLS_ORDER = 21888242871839275222246405745257275088548364400416034343698204186575808495617
+
 def parse_args(): 
     # parse args
     parser = argparse.ArgumentParser(description="Import keys into SGX and save them to a JSON file.")
@@ -32,7 +38,8 @@ def main():
                 ":DKG_ID:"
                 f"{str(random_dkg_id)}"
     )
-    insecure_bls_private_key = secrets.token_hex(32)
+    # 64-char hex scalar in [1, BLS_ORDER-1] (in range for the BLS curve)
+    insecure_bls_private_key = format(secrets.randbelow(BLS_ORDER - 1) + 1, "064x")
     response = sgx.import_bls_private_key(bls_key_name, insecure_bls_private_key)
 
     # generate & import random ECDSA key
