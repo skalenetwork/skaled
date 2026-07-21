@@ -7,9 +7,8 @@ import argparse
 
 # alt_bn128 / BN254 scalar field order (libff::alt_bn128_Fr). A valid BLS secret is
 # a nonzero scalar in [1, BLS_ORDER-1]. sgxwallet's importBLSKeyShare expects a hex
-# string, but a raw secrets.token_hex(32) is a 256-bit value that lands >= BLS_ORDER
-# ~81% of the time (r is ~254 bits), i.e. out of range. We reduce into the valid
-# range and hex-encode (64 chars, zero-padded) so the imported key is a valid scalar.
+# string, so we sample uniformly from that valid scalar range directly and encode it
+# as 64 hex chars (zero-padded) to ensure the imported key is always in range.
 BLS_ORDER = 21888242871839275222246405745257275088548364400416034343698204186575808495617
 
 def parse_args(): 
