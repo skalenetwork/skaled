@@ -262,7 +262,7 @@ jobs:
           cd build_historic/test
           export NO_NTP_CHECK=1
           export NO_ULIMIT_CHECK=1
-          ./testeth -t "JsonRpcSuite,!@btrfs" -- --all --verbosity 4
+          ./testeth -t 'JsonRpcSuite' -t '!@btrfs' -- --all --verbosity 4
         continue-on-error: true
       - name: Update PR Status
         uses: actions/github-script@v6
