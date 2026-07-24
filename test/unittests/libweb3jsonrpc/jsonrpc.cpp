@@ -626,6 +626,11 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         // section - thus giving same port for consensus
         serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ = std::rand() % 64000 + 1025 + 3;
         skale_server_connector = new SkaleServerOverride( chainParams, client.get(), serverOpts );
+
+        // Use a small deterministic Proxygen worker for local JSON-RPC tests to avoid the
+        // default 32 × CPU-core thread count exhausting CI file descriptors.
+        skale_server_connector->pg_threads_ = 4;
+        skale_server_connector->pg_threads_limit_ = 4;
         rpcServer->addConnector( skale_server_connector );
         skale_server_connector->StartListening();
 
