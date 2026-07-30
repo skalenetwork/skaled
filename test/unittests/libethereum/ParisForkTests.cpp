@@ -120,8 +120,8 @@ BOOST_AUTO_TEST_CASE( parisForkNonZeroDifficultyThrowsPostParis ) {
     SchainPatch::useLatestBlockTimestamp( 0 );
 }
 
-// SKALE canonical post-Paris headers use no Ethash seal fields; mixHash/nonce would change hash.
-BOOST_AUTO_TEST_CASE( parisForkSealFieldsThrowPostParis ) {
+// EIP-4399 reuses the Ethash mixHash position for prevRandao and requires a zero nonce.
+BOOST_AUTO_TEST_CASE( parisForkPrevRandaoAndNonceValidation ) {
     PatchableChainParams cp( genesisInfo( Network::ConstantinopleTest ) );
 #ifndef FAIR
     cp.setPatchTimestamp( SchainPatchEnum::ParisForkPatch, 1 );
@@ -146,7 +146,77 @@ BOOST_AUTO_TEST_CASE( parisForkSealFieldsThrowPostParis ) {
     bi.setSeal( 0, h256( 0 ) );
     bi.setSeal( 1, Nonce( 0 ) );
 
+    BOOST_REQUIRE_NO_THROW( se->verify( QuickNonce, bi, parent, bytesConstRef{} ) );
+
+    // the prevRandao value is consensus-derived at construction and not re-checked here,
+    // so a nonzero value is valid; only the shape and the zero nonce are pinned
+    bi.setPrevRandao( h256( 1 ) );
+    BOOST_REQUIRE_NO_THROW( se->verify( QuickNonce, bi, parent, bytesConstRef{} ) );
+
+    bi.setPrevRandao( h256( 0 ) );
+    bi.setSeal( 1, Nonce( 1 ) );
     BOOST_REQUIRE_THROW( se->verify( QuickNonce, bi, parent, bytesConstRef{} ), InvalidBlockFormat );
+
+    ChainParams resetCp( genesisInfo( Network::ConstantinopleTest ) );
+    SchainPatch::init( resetCp );
+    SchainPatch::useLatestBlockTimestamp( 0 );
+}
+
+BOOST_AUTO_TEST_CASE( parisForkMissingPrevRandaoAndNonceThrows ) {
+    PatchableChainParams cp( genesisInfo( Network::ConstantinopleTest ) );
+#ifndef FAIR
+    cp.setPatchTimestamp( SchainPatchEnum::ParisForkPatch, 1 );
+#endif
+    SchainPatch::init( cp );
+    SchainPatch::useLatestBlockTimestamp( 1 );
+    std::unique_ptr< SealEngineFace > se( cp.createSealEngine() );
+
+    BlockHeader parent;
+    parent.setGasLimit( 0x7fffffffffffffff );
+    parent.setGasUsed( 0 );
+    parent.setDifficulty( 0 );
+    parent.setTimestamp( 1 );
+
+    BlockHeader bi;
+    bi.setParentHash( parent.hash() );
+    bi.setNumber( 1 );
+    bi.setGasLimit( 0x7fffffffffffffff );
+    bi.setGasUsed( 0 );
+    bi.setDifficulty( 0 );
+    bi.setTimestamp( 2 );
+
+    BOOST_REQUIRE_THROW( se->verify( QuickNonce, bi, parent, bytesConstRef{} ), InvalidBlockFormat );
+
+    ChainParams resetCp( genesisInfo( Network::ConstantinopleTest ) );
+    SchainPatch::init( resetCp );
+    SchainPatch::useLatestBlockTimestamp( 0 );
+}
+
+BOOST_AUTO_TEST_CASE( parisForkPopulateAddsPrevRandaoAndNonce ) {
+    PatchableChainParams cp( genesisInfo( Network::ConstantinopleTest ) );
+#ifndef FAIR
+    cp.setPatchTimestamp( SchainPatchEnum::ParisForkPatch, 1 );
+#endif
+    SchainPatch::init( cp );
+    SchainPatch::useLatestBlockTimestamp( 1 );
+    std::unique_ptr< SealEngineFace > se( cp.createSealEngine() );
+
+    BlockHeader parent;
+    parent.setNumber( 1 );
+    parent.setGasLimit( 0x7fffffffffffffff );
+    parent.setGasUsed( 0 );
+    parent.setDifficulty( 0 );
+    parent.setTimestamp( 1 );
+    parent.hash();
+
+    BlockHeader bi;
+    se->populateFromParent( bi, parent );
+    bi.setTimestamp( 2 );
+
+    BOOST_REQUIRE_EQUAL( bi.difficulty(), 0 );
+    BOOST_REQUIRE_EQUAL( bi.sealFieldCount(), 2 );
+    BOOST_REQUIRE_EQUAL( bi.prevRandao(), h256( 0 ) );
+    BOOST_REQUIRE_EQUAL( bi.seal< Nonce >( 1 ), Nonce( 0 ) );
 
     ChainParams resetCp( genesisInfo( Network::ConstantinopleTest ) );
     SchainPatch::init( resetCp );

@@ -1005,7 +1005,7 @@ void VM::interpretCases() {
         }
         NEXT
 
-        CASE( DIFFICULTY ) {
+        CASE( PREVRANDAO ) {
             ON_OP();
             updateIOGas();
 

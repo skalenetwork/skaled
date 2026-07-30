@@ -67,6 +67,7 @@ public:
     static h256 seedHash( BlockHeader const& _bi );
     static Nonce nonce( BlockHeader const& _bi ) { return _bi.seal< Nonce >( NonceField ); }
     static h256 mixHash( BlockHeader const& _bi ) { return _bi.seal< h256 >( MixHashField ); }
+    static h256 prevRandao( BlockHeader const& _bi ) { return _bi.prevRandao(); }
     static h256 boundary( BlockHeader const& _bi ) {
         auto d = _bi.difficulty();
         return d ? ( h256 ) u256( ( bigint( 1 ) << 256 ) / d ) : h256();
@@ -77,6 +78,10 @@ public:
     }
     static BlockHeader& setMixHash( BlockHeader& _bi, h256 const& _v ) {
         _bi.setSeal( MixHashField, _v );
+        return _bi;
+    }
+    static BlockHeader& setPrevRandao( BlockHeader& _bi, h256 const& _v ) {
+        _bi.setPrevRandao( _v );
         return _bi;
     }
 

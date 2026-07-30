@@ -65,6 +65,13 @@ void enableLondonAtTimestampOne() {
     SchainPatch::init( cp );
 }
 
+void enableLondonAndParisAtTimestampOne() {
+    PatchableChainParams cp;
+    cp.setPatchTimestamp( SchainPatchEnum::LondonForkPatch, 1 );
+    cp.setPatchTimestamp( SchainPatchEnum::ParisForkPatch, 1 );
+    SchainPatch::init( cp );
+}
+
 }  // namespace
 
 BOOST_FIXTURE_TEST_SUITE( BlockHeaderRLPTests, TestOutputHelperFixture )
@@ -144,6 +151,31 @@ BOOST_AUTO_TEST_CASE( londonHeaderWithSealFieldsRoundTrips ) {
     BOOST_REQUIRE_EQUAL( restored.seal< h256 >( 0 ), expectedMixHash );
     BOOST_REQUIRE_EQUAL( restored.seal< Nonce >( 1 ), expectedNonce );
     BOOST_REQUIRE_EQUAL( restored.hash( WithSeal ), originalHash );
+}
+
+BOOST_AUTO_TEST_CASE( parisHeaderEncodesPrevRandaoAndNonceBeforeBaseFee ) {
+    SchainPatchGuard guard;
+    enableLondonAndParisAtTimestampOne();
+
+    const u256 expectedBaseFee = 777;
+    BlockHeader original = makeHeader( 50, expectedBaseFee );
+    original.setDifficulty( 0 );
+    original.setPrevRandao( h256( 0 ) );
+    original.setSeal( 1, Nonce( 0 ) );
+
+    RLPStream stream;
+    original.streamRLP( stream, WithSeal );
+    RLP rlp( stream.out() );
+
+    BOOST_REQUIRE_EQUAL( rlp.itemCount(), 16u );
+    BOOST_REQUIRE_EQUAL( rlp[13].toHash< h256 >( RLP::VeryStrict ), h256( 0 ) );
+    BOOST_REQUIRE_EQUAL( rlp[14].toHash< Nonce >( RLP::VeryStrict ), Nonce( 0 ) );
+    BOOST_REQUIRE_EQUAL( rlp[15].toInt< u256 >(), expectedBaseFee );
+
+    BlockHeader restored( stream.out(), HeaderData );
+    BOOST_REQUIRE_EQUAL( restored.prevRandao(), h256( 0 ) );
+    BOOST_REQUIRE_EQUAL( restored.seal< Nonce >( 1 ), Nonce( 0 ) );
+    BOOST_REQUIRE_EQUAL( restored.baseFeePerGas(), expectedBaseFee );
 }
 
 BOOST_AUTO_TEST_CASE( londonHeaderWithoutSealStillIncludesBaseFee ) {

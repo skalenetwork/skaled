@@ -530,7 +530,7 @@ void Block::sanityCheckPartialTransactionReceipts( std::optional< BlockNumber > 
 
 tuple< TransactionReceipts, unsigned, bool > Block::syncEveryone( BlockChain const& _bc,
     const Transactions& _transactions, uint64_t _timestamp, u256 _gasPrice, u256 _baseFeePerGas,
-    OnTransactionConsumed const& _onTransactionConsumed ) {
+    OnTransactionConsumed const& _onTransactionConsumed, u256 _prevRandao ) {
     if ( isSealed() )
         BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
 
@@ -541,7 +541,8 @@ tuple< TransactionReceipts, unsigned, bool > Block::syncEveryone( BlockChain con
     context.singleCommitEnabled = SingleStateCommitPerBlockPatch::isEnabledInWorkingBlock();
 
     if ( context.singleCommitEnabled && isCurrentBlockCommitted() ) {
-        auto recovered = recoverFromReceipts( _transactions, _timestamp, _baseFeePerGas );
+        auto recovered =
+            recoverFromReceipts( _transactions, _timestamp, _baseFeePerGas, _prevRandao );
         bool needsQueueReadyNotification = false;
         Transactions queueCleanupTransactions;
         u256 cumulativeGas = 0;
@@ -564,7 +565,7 @@ tuple< TransactionReceipts, unsigned, bool > Block::syncEveryone( BlockChain con
         return make_tuple( recovered.first, recovered.second, needsQueueReadyNotification );
     }
 
-    prepareStateForSync( _timestamp, _baseFeePerGas, context );
+    prepareStateForSync( _timestamp, _baseFeePerGas, _prevRandao, context );
     executeTransactions( _bc, _transactions, _gasPrice, context, _onTransactionConsumed );
 
     if ( !context.singleCommitEnabled || !isCurrentBlockCommitted() ) {
@@ -576,7 +577,7 @@ tuple< TransactionReceipts, unsigned, bool > Block::syncEveryone( BlockChain con
 }
 
 std::pair< TransactionReceipts, unsigned > Block::recoverFromReceipts(
-    const Transactions& _transactions, uint64_t, u256 _baseFeePerGas ) {
+    const Transactions& _transactions, uint64_t, u256 _baseFeePerGas, u256 _prevRandao ) {
     if ( !SingleStateCommitPerBlockPatch::isEnabledInWorkingBlock() ) {
         BOOST_THROW_EXCEPTION(
             std::runtime_error( "recoverFromReceipts called outside single commit mode" ) );
@@ -601,6 +602,9 @@ std::pair< TransactionReceipts, unsigned > Block::recoverFromReceipts(
     resetCurrent( savedData->timestamp );
     if ( _baseFeePerGas != 0 )
         m_currentBlock.setBaseFeePerGas( _baseFeePerGas );
+    // Nonzero only post-Paris (gated in SkaleHost::createBlock); recovery must rebuild the
+    // exact header the pre-crash execution was producing.
+    applyPrevRandao( _prevRandao );
 
     for ( const auto& tx : _transactions ) {
         m_transactions.push_back( tx );
@@ -625,10 +629,20 @@ std::pair< TransactionReceipts, unsigned > Block::recoverFromReceipts(
     return std::make_pair( m_receipts, m_receipts.size() - badCount );
 }
 
-void Block::prepareStateForSync( uint64_t _timestamp, u256 _baseFeePerGas, SyncContext& _context ) {
+void Block::applyPrevRandao( u256 _prevRandao ) {
+    if ( _prevRandao != 0 && m_currentBlock.sealFieldCount() == 2 )
+        m_currentBlock.setPrevRandao( h256( _prevRandao ) );
+}
+
+void Block::prepareStateForSync(
+    uint64_t _timestamp, u256 _baseFeePerGas, u256 _prevRandao, SyncContext& _context ) {
     resetCurrent( _timestamp );
     if ( _baseFeePerGas != 0 )
         m_currentBlock.setBaseFeePerGas( _baseFeePerGas );
+    // Nonzero only post-Paris (gated in SkaleHost::createBlock). resetCurrent() wrote the
+    // Paris zero seal fields via Ethash::populateFromParent; this overrides the value the
+    // same way baseFee is set.
+    applyPrevRandao( _prevRandao );
     m_state = m_state.createStateCopyAndClearCaches();
 
 #ifndef FAIR

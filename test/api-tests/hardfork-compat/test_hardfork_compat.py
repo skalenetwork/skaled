@@ -254,6 +254,7 @@ def _assert_receipts_before_timestamp(w3: Web3, receipts: list, timestamp: int, 
 
 
 def _assert_receipts_after_paris(w3: Web3, receipts: list, timestamp: int, label: str) -> None:
+    mix_hash_by_block = {}
     for receipt in receipts:
         block = w3.eth.get_block(receipt["blockNumber"])
         assert int(block["timestamp"]) >= timestamp, (
@@ -262,6 +263,45 @@ def _assert_receipts_after_paris(w3: Web3, receipts: list, timestamp: int, label
         )
         assert int(block["difficulty"]) == 0, (
             f"Post-Paris block {block['number']} has non-zero difficulty {block['difficulty']}"
+        )
+        # Post-Paris skaled headers carry prevRandao (in the mixHash position) derived
+        # from the previous block's BLS threshold signature — non-zero and distinct
+        # per block for every block after block 1.
+        mix_hash = int.from_bytes(bytes(block["mixHash"]), "big")
+        assert mix_hash != 0, (
+            f"Post-Paris block {block['number']} has zero prevRandao/mixHash"
+        )
+        mix_hash_by_block[int(block["number"])] = mix_hash
+    distinct_values = set(mix_hash_by_block.values())
+    assert len(distinct_values) == len(mix_hash_by_block), (
+        f"{label}: prevRandao values repeat across post-Paris blocks: {mix_hash_by_block}"
+    )
+
+
+def _assert_prevrandao_recorder(
+    w3: Web3, recorder_receipt, paris_active: bool, label: str
+) -> None:
+    """Check the value the PREVRANDAO recorder captured into slot 0 at deploy time.
+
+    Pre-Paris, opcode 0x44 is DIFFICULTY and must equal the deploy block's difficulty.
+    Post-Paris on skaled it is the beacon-derived prevRandao, which must be non-zero
+    and equal to the deploy block's header mixHash (the EIP-4399 invariant).
+    """
+    addr = recorder_receipt["contractAddress"]
+    assert addr, f"{label}: PREVRANDAO recorder receipt has no contract address"
+    recorded = int.from_bytes(bytes(w3.eth.get_storage_at(addr, 0)), "big")
+    block = w3.eth.get_block(recorder_receipt["blockNumber"])
+    if paris_active:
+        mix_hash = int.from_bytes(bytes(block["mixHash"]), "big")
+        assert recorded != 0, f"{label}: post-Paris PREVRANDAO recorded as zero"
+        assert recorded == mix_hash, (
+            f"{label}: recorded PREVRANDAO {hex(recorded)} != header mixHash "
+            f"{hex(mix_hash)} at block {block['number']}"
+        )
+    else:
+        assert recorded == int(block["difficulty"]), (
+            f"{label}: recorded DIFFICULTY {recorded} != block difficulty "
+            f"{block['difficulty']} at block {block['number']}"
         )
 
 
@@ -347,6 +387,9 @@ def test_london_pre_upgrade_workload(
         deploy_token=True,
     )
     assert receipts, "No pre-upgrade receipts produced"
+    _assert_prevrandao_recorder(
+        w3_primary, receipts[-1], paris_active=False, label="london-pre-upgrade"
+    )
 
 
 def test_upgrade_primary_to_current_with_paris_timestamp(
@@ -399,6 +442,9 @@ def test_current_pre_paris_workload(
         w3_primary, private_key, timeouts, workload_state, "current-pre-paris",
     )
     _assert_receipts_before_timestamp(w3_primary, receipts, activation, "current-pre-paris")
+    _assert_prevrandao_recorder(
+        w3_primary, receipts[-1], paris_active=False, label="current-pre-paris"
+    )
 
 
 def test_wait_for_paris_activation(w3_primary: Web3, timeouts: dict, workload_state: dict):
@@ -422,6 +468,9 @@ def test_current_post_paris_workload(
         w3_primary, private_key, timeouts, workload_state, "current-post-paris",
     )
     _assert_receipts_after_paris(w3_primary, receipts, activation, "current-post-paris")
+    _assert_prevrandao_recorder(
+        w3_primary, receipts[-1], paris_active=True, label="current-post-paris"
+    )
 
 
 def test_sync_catchup_and_state_root_comparison(

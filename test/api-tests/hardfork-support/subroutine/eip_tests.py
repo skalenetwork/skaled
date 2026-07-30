@@ -2116,11 +2116,13 @@ def _compute_block_hash(block) -> dict:
     Returns a dict mapping variant name -> bytes so the caller can determine
     which variant the node uses.  Known variants:
 
-    "skale"    — SKALE non-genesis blocks: no seal fields, baseFeePerGas
+    "skale"    — SKALE pre-Paris blocks: no seal fields, baseFeePerGas
                  directly after extraData.  mixHash/nonce are NOT part of the
                  hash even though jsInfo() exposes zero defaults via JSON-RPC.
-    "london"   — Ethereum London spec (Anvil/geth): extraData + mixHash +
-                 nonce + baseFeePerGas.
+                 Post-Paris SKALE blocks carry prevRandao (in the mixHash
+                 position) + nonce and therefore match "london" instead.
+    "london"   — Ethereum London spec (Anvil/geth, SKALE post-Paris):
+                 extraData + mixHash + nonce + baseFeePerGas.
     "shanghai" — EIP-4895: London fields + withdrawalsRoot.
     "cancun"   — EIP-4844: Shanghai fields + blobGasUsed + excessBlobGas +
                  parentBeaconBlockRoot.
@@ -2313,7 +2315,9 @@ def test_eip_4399(
 ) -> EIPTestResult:
     """EIP-4399: PREVRANDAO opcode is accessible post-Paris.
 
-    skaled (BFT, no beacon chain): returns 0.
+    skaled: prevRandao = BLAKE3 of the previous block's BLS threshold signature,
+    carried in the header mixHash — non-zero after block 1, and the opcode result
+    must equal the header field (the EIP-4399 invariant).
     Anvil: returns a non-zero simulated value — any non-zero value is accepted.
     """
     logger.info("=== EIP-4399 PREVRANDAO opcode test ===")
@@ -2344,18 +2348,71 @@ def test_eip_4399(
             details=details,
         )
 
-    # skaled: BFT consensus, no beacon chain — PREVRANDAO is always 0.
-    if prevrandao != 0:
+    # skaled: verify through a real transaction — deploy the PREVRANDAO recorder
+    # (constructor stores opcode 0x44 into slot 0) and compare the recorded value
+    # with the mixHash of the exact block that mined the deployment. This anchors
+    # the EIP-4399 invariant (opcode == executing header's mixHash) to one block
+    # with no timing dependence; the earlier eth_call checks the pending context.
+    recorder_receipt = _send_tx(
+        w3,
+        deployer,
+        {
+            "from": deployer.address,
+            "data": "0x4460005560006000f3",
+            "gas": 100_000,
+        },
+    )
+    if recorder_receipt["status"] != 1:
         return EIPTestResult(
             eip="4399",
             passed=False,
-            message=f"Expected PREVRANDAO=0 (no beacon RANDAO in skaled), got {prevrandao}",
+            message="PREVRANDAO recorder deploy reverted",
+            details=details,
+        )
+    recorder_addr = recorder_receipt["contractAddress"]
+    recorded = int.from_bytes(bytes(w3.eth.get_storage_at(recorder_addr, 0)), "big")
+    block = w3.eth.get_block(recorder_receipt["blockNumber"])
+    mix_hash = int.from_bytes(bytes(block["mixHash"]), "big")
+    details.update(
+        {
+            "recorder": recorder_addr,
+            "recorder_block": int(block["number"]),
+            "recorded": hex(recorded),
+            "mix_hash": hex(mix_hash),
+        }
+    )
+
+    if recorded == 0:
+        return EIPTestResult(
+            eip="4399",
+            passed=False,
+            message="Expected non-zero beacon-derived PREVRANDAO in transaction, got 0",
+            details=details,
+        )
+    if recorded != mix_hash:
+        return EIPTestResult(
+            eip="4399",
+            passed=False,
+            message=(
+                f"Recorded PREVRANDAO {hex(recorded)} != header mixHash {hex(mix_hash)} "
+                f"at block {block['number']}"
+            ),
+            details=details,
+        )
+    if prevrandao == 0:
+        return EIPTestResult(
+            eip="4399",
+            passed=False,
+            message="eth_call (pending context) returned zero PREVRANDAO",
             details=details,
         )
     return EIPTestResult(
         eip="4399",
         passed=True,
-        message="PREVRANDAO opcode returned 0 (correct for skaled post-Paris)",
+        message=(
+            f"PREVRANDAO non-zero and equal to header mixHash at block "
+            f"{block['number']} ({hex(recorded)[:14]}…)"
+        ),
         details=details,
     )
 

@@ -214,8 +214,14 @@ DEFINE_SIMPLE_PATCH( SingleStateCommitPerBlockPatch );
 DEFINE_SIMPLE_PATCH( ContractCreationReadOnlyPatch );
 
 /*
- * Paris fork (EIP-3675 + EIP-4399): difficulty=0, no uncles,
- * DIFFICULTY opcode returns prevRandao (0 in skaled, no beacon RANDAO).
+ * Paris fork (EIP-3675 + EIP-4399): difficulty=0, no uncles, and the header carries
+ * prevRandao = BLAKE3(thresholdSig(N-1)) — the previous block's consensus threshold
+ * signature hashed, same derivation as the getBlockRandom precompiled. The value is
+ * derived once at block construction (SkaleHost::createBlock) and only ever read from
+ * the header afterwards (PREVRANDAO opcode, replay, historic queries). Genesis and
+ * block 1 keep zero. Ethash::verify pins the header shape (2 seal fields, nonce=0)
+ * but cannot re-derive the value; changing the derivation after this patch has
+ * shipped requires a NEW patch.
  */
 DEFINE_SIMPLE_PATCH( ParisForkPatch );
 
