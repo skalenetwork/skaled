@@ -1,0 +1,37 @@
+diff --git a/packages/testing/src/execution_testing/cli/pytest_commands/plugins/execute/sender.py b/packages/testing/src/execution_testing/cli/pytest_commands/plugins/execute/sender.py
+index 40db82a1e..d8fa96696 100644
+--- a/packages/testing/src/execution_testing/cli/pytest_commands/plugins/execute/sender.py
++++ b/packages/testing/src/execution_testing/cli/pytest_commands/plugins/execute/sender.py
+@@ -412,7 +412,9 @@ def sync_worker_key_nonce(eth_rpc: EthRPC, session_worker_key: EOA) -> Account:
+ 
+     Fetch the account state and update the local nonce if it differs
+     from the RPC nonce. This handles both nonce increases (normal
+-    progression) and decreases (chain reverts).
++    progression) and decreases (chain reverts). A lower RPC nonce is
++    accepted only after a grace period, because it usually just means
++    our transactions are still pending.
+ 
+     Return the fetched account for further use.
+     """
+@@ -426,6 +428,21 @@ def sync_worker_key_nonce(eth_rpc: EthRPC, session_worker_key: EOA) -> Account:
+             session_worker_key, block_number="pending", skip_code=True
+         )
+     rpc_nonce = Number(session_worker_account.nonce)
++    if rpc_nonce < session_worker_key.nonce:
++        # A lower on-chain nonce usually means our transactions are still
++        # pending. Some clients (skaled) report only the executed nonce
++        # and reject same-nonce replacements, so resyncing down right away
++        # collides with the in-flight transactions. Wait for them to land
++        # and accept the lower value only if it persists (drop/revert).
++        deadline = time.time() + 15
++        while time.time() < deadline:
++            time.sleep(1)
++            session_worker_account = eth_rpc.get_account(
++                session_worker_key, block_number="latest", skip_code=True
++            )
++            rpc_nonce = Number(session_worker_account.nonce)
++            if rpc_nonce >= session_worker_key.nonce:
++                break
+     if rpc_nonce != session_worker_key.nonce:
+         wk_nonce = session_worker_key.nonce
+         logger.info(f"Worker key nonce mismatch: {wk_nonce} != {rpc_nonce}")

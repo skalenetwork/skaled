@@ -2116,11 +2116,13 @@ def _compute_block_hash(block) -> dict:
     Returns a dict mapping variant name -> bytes so the caller can determine
     which variant the node uses.  Known variants:
 
-    "skale"    — SKALE non-genesis blocks: no seal fields, baseFeePerGas
+    "skale"    — SKALE pre-Paris blocks: no seal fields, baseFeePerGas
                  directly after extraData.  mixHash/nonce are NOT part of the
                  hash even though jsInfo() exposes zero defaults via JSON-RPC.
-    "london"   — Ethereum London spec (Anvil/geth): extraData + mixHash +
-                 nonce + baseFeePerGas.
+                 Post-Paris SKALE blocks carry prevRandao (in the mixHash
+                 position) + nonce and therefore match "london" instead.
+    "london"   — Ethereum London spec (Anvil/geth, SKALE post-Paris):
+                 extraData + mixHash + nonce + baseFeePerGas.
     "shanghai" — EIP-4895: London fields + withdrawalsRoot.
     "cancun"   — EIP-4844: Shanghai fields + blobGasUsed + excessBlobGas +
                  parentBeaconBlockRoot.
@@ -2313,7 +2315,9 @@ def test_eip_4399(
 ) -> EIPTestResult:
     """EIP-4399: PREVRANDAO opcode is accessible post-Paris.
 
-    skaled (BFT, no beacon chain): returns 0.
+    skaled: prevRandao = BLAKE3 of the previous block's BLS threshold signature,
+    carried in the header mixHash — non-zero after block 1, and the opcode result
+    must equal the header field (the EIP-4399 invariant).
     Anvil: returns a non-zero simulated value — any non-zero value is accepted.
     """
     logger.info("=== EIP-4399 PREVRANDAO opcode test ===")
@@ -2344,18 +2348,43 @@ def test_eip_4399(
             details=details,
         )
 
-    # skaled: BFT consensus, no beacon chain — PREVRANDAO is always 0.
-    if prevrandao != 0:
+    # skaled: prevRandao is derived from the previous block's BLS threshold signature
+    # and stored in the header mixHash — non-zero for any block after block 1.
+    latest = w3.eth.get_block("latest")
+    mix_hash = int.from_bytes(bytes(latest["mixHash"]), "big")
+    # Bracket the invariant-check call between two height reads so we know which
+    # block context it executed in.
+    prevrandao_at_latest = _as_int(contract.functions.getPrevRandao().call())
+    chain_quiet = w3.eth.block_number == latest["number"]
+    details["latest_block"] = latest["number"]
+    details["mix_hash"] = hex(mix_hash)
+
+    if prevrandao == 0:
         return EIPTestResult(
             eip="4399",
             passed=False,
-            message=f"Expected PREVRANDAO=0 (no beacon RANDAO in skaled), got {prevrandao}",
+            message="Expected non-zero beacon-derived PREVRANDAO on skaled, got 0",
+            details=details,
+        )
+    # EIP-4399 invariant: the opcode returns the executing block header's mixHash.
+    # Only checkable when no new block arrived around the bracketed call.
+    if chain_quiet and prevrandao_at_latest != mix_hash:
+        return EIPTestResult(
+            eip="4399",
+            passed=False,
+            message=(
+                f"PREVRANDAO {hex(prevrandao_at_latest)} != header mixHash {hex(mix_hash)} "
+                f"at block {latest['number']}"
+            ),
             details=details,
         )
     return EIPTestResult(
         eip="4399",
         passed=True,
-        message="PREVRANDAO opcode returned 0 (correct for skaled post-Paris)",
+        message=(
+            f"PREVRANDAO returned non-zero beacon value {hex(prevrandao)[:14]}… "
+            f"(matches header mixHash: {chain_quiet})"
+        ),
         details=details,
     )
 
