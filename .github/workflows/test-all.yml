@@ -221,12 +221,14 @@ jobs:
           run_test OverlayDBTests 
           run_test AccountHolderTest 
           run_test ClientTests 
-          run_test JsonRpcSuite   
-          run_test SingleConsensusTests  
+          run_test SingleConsensusTests
           run_test ConsensusTests
+          # Run without '--all' to skip tests that require sudo for btrfs setup
+          ./testeth -t 'JsonRpcSuite' -- --verbosity 4
           sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t BtrfsTestSuite -- --all --verbosity 4
           sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t HashSnapshotTestSuite -- --all --verbosity 4
           sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t ClientSnapshotsSuite -- --all --verbosity 4
+          sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t '@btrfs' -- --all --verbosity 4
           cd ..
         continue-on-error: true
 
@@ -260,7 +262,7 @@ jobs:
           cd build_historic/test
           export NO_NTP_CHECK=1
           export NO_ULIMIT_CHECK=1
-          ./testeth -t JsonRpcSuite -- --all --verbosity 4
+          ./testeth -t 'JsonRpcSuite' -t '!@btrfs' -- --all --verbosity 4
         continue-on-error: true
       - name: Update PR Status
         uses: actions/github-script@v6
