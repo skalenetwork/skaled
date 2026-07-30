@@ -603,12 +603,8 @@ std::pair< TransactionReceipts, unsigned > Block::recoverFromReceipts(
     if ( _baseFeePerGas != 0 )
         m_currentBlock.setBaseFeePerGas( _baseFeePerGas );
     // Nonzero only post-Paris (gated in SkaleHost::createBlock); recovery must rebuild the
-    // exact header the pre-crash execution was producing. Applied only when the seal engine
-    // produced the Paris 2-field seal shape (Ethash) — never invent seal fields on engines
-    // whose headers carry none (e.g. NoProof test chains): a single-field seal is rejected
-    // by BlockHeader::populate().
-    if ( _prevRandao != 0 && m_currentBlock.sealFieldCount() == 2 )
-        m_currentBlock.setPrevRandao( h256( _prevRandao ) );
+    // exact header the pre-crash execution was producing.
+    applyPrevRandao( _prevRandao );
 
     for ( const auto& tx : _transactions ) {
         m_transactions.push_back( tx );
@@ -633,6 +629,11 @@ std::pair< TransactionReceipts, unsigned > Block::recoverFromReceipts(
     return std::make_pair( m_receipts, m_receipts.size() - badCount );
 }
 
+void Block::applyPrevRandao( u256 _prevRandao ) {
+    if ( _prevRandao != 0 && m_currentBlock.sealFieldCount() == 2 )
+        m_currentBlock.setPrevRandao( h256( _prevRandao ) );
+}
+
 void Block::prepareStateForSync(
     uint64_t _timestamp, u256 _baseFeePerGas, u256 _prevRandao, SyncContext& _context ) {
     resetCurrent( _timestamp );
@@ -640,11 +641,8 @@ void Block::prepareStateForSync(
         m_currentBlock.setBaseFeePerGas( _baseFeePerGas );
     // Nonzero only post-Paris (gated in SkaleHost::createBlock). resetCurrent() wrote the
     // Paris zero seal fields via Ethash::populateFromParent; this overrides the value the
-    // same way baseFee is set. Applied only when that 2-field seal shape exists — never
-    // invent seal fields on engines whose headers carry none (e.g. NoProof test chains):
-    // a single-field seal is rejected by BlockHeader::populate().
-    if ( _prevRandao != 0 && m_currentBlock.sealFieldCount() == 2 )
-        m_currentBlock.setPrevRandao( h256( _prevRandao ) );
+    // same way baseFee is set.
+    applyPrevRandao( _prevRandao );
     m_state = m_state.createStateCopyAndClearCaches();
 
 #ifndef FAIR

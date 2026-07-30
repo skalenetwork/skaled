@@ -1225,6 +1225,23 @@ u256 SkaleHost::getBlockRandom( unsigned _blockNumber, bool _isCalledFromTxn ) c
     return m_consensus->getRandomForBlockId( blockNumber );
 }
 
+u256 SkaleHost::getPrevRandaoForPendingBlock() const noexcept {
+    try {
+        auto latestNumber = m_client.number();
+        if ( latestNumber == 0 || !m_consensus )
+            return 0;
+        BlockHeader latestInfo =
+            static_cast< const Interface& >( m_client ).blockInfo( LatestBlock );
+        if ( !ParisForkPatch::isEnabledWhen( latestInfo.timestamp() ) )
+            return 0;
+        return m_consensus->getRandomForBlockId( latestNumber );
+    } catch ( ... ) {
+        // Pending-simulation value only; degrading to zero never affects consensus.
+        cwarn << "Could not fetch prevRandao for the pending block; simulations will see 0";
+        return 0;
+    }
+}
+
 #ifdef BITE
 u256 SkaleHost::getReencryptionBlockRandom( unsigned _blockNumber, bool _isCalledFromTxn ) const {
     auto blockNumber = resolveRandomBlockNumber( _blockNumber, _isCalledFromTxn );

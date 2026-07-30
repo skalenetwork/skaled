@@ -2348,42 +2348,70 @@ def test_eip_4399(
             details=details,
         )
 
-    # skaled: prevRandao is derived from the previous block's BLS threshold signature
-    # and stored in the header mixHash — non-zero for any block after block 1.
-    latest = w3.eth.get_block("latest")
-    mix_hash = int.from_bytes(bytes(latest["mixHash"]), "big")
-    # Bracket the invariant-check call between two height reads so we know which
-    # block context it executed in.
-    prevrandao_at_latest = _as_int(contract.functions.getPrevRandao().call())
-    chain_quiet = w3.eth.block_number == latest["number"]
-    details["latest_block"] = latest["number"]
-    details["mix_hash"] = hex(mix_hash)
-
-    if prevrandao == 0:
+    # skaled: verify through a real transaction — deploy the PREVRANDAO recorder
+    # (constructor stores opcode 0x44 into slot 0) and compare the recorded value
+    # with the mixHash of the exact block that mined the deployment. This anchors
+    # the EIP-4399 invariant (opcode == executing header's mixHash) to one block
+    # with no timing dependence; the earlier eth_call checks the pending context.
+    recorder_receipt = _send_tx(
+        w3,
+        deployer,
+        {
+            "from": deployer.address,
+            "data": "0x4460005560006000f3",
+            "gas": 100_000,
+        },
+    )
+    if recorder_receipt["status"] != 1:
         return EIPTestResult(
             eip="4399",
             passed=False,
-            message="Expected non-zero beacon-derived PREVRANDAO on skaled, got 0",
+            message="PREVRANDAO recorder deploy reverted",
             details=details,
         )
-    # EIP-4399 invariant: the opcode returns the executing block header's mixHash.
-    # Only checkable when no new block arrived around the bracketed call.
-    if chain_quiet and prevrandao_at_latest != mix_hash:
+    recorder_addr = recorder_receipt["contractAddress"]
+    recorded = int.from_bytes(bytes(w3.eth.get_storage_at(recorder_addr, 0)), "big")
+    block = w3.eth.get_block(recorder_receipt["blockNumber"])
+    mix_hash = int.from_bytes(bytes(block["mixHash"]), "big")
+    details.update(
+        {
+            "recorder": recorder_addr,
+            "recorder_block": int(block["number"]),
+            "recorded": hex(recorded),
+            "mix_hash": hex(mix_hash),
+        }
+    )
+
+    if recorded == 0:
+        return EIPTestResult(
+            eip="4399",
+            passed=False,
+            message="Expected non-zero beacon-derived PREVRANDAO in transaction, got 0",
+            details=details,
+        )
+    if recorded != mix_hash:
         return EIPTestResult(
             eip="4399",
             passed=False,
             message=(
-                f"PREVRANDAO {hex(prevrandao_at_latest)} != header mixHash {hex(mix_hash)} "
-                f"at block {latest['number']}"
+                f"Recorded PREVRANDAO {hex(recorded)} != header mixHash {hex(mix_hash)} "
+                f"at block {block['number']}"
             ),
+            details=details,
+        )
+    if prevrandao == 0:
+        return EIPTestResult(
+            eip="4399",
+            passed=False,
+            message="eth_call (pending context) returned zero PREVRANDAO",
             details=details,
         )
     return EIPTestResult(
         eip="4399",
         passed=True,
         message=(
-            f"PREVRANDAO returned non-zero beacon value {hex(prevrandao)[:14]}… "
-            f"(matches header mixHash: {chain_quiet})"
+            f"PREVRANDAO non-zero and equal to header mixHash at block "
+            f"{block['number']} ({hex(recorded)[:14]}…)"
         ),
         details=details,
     )

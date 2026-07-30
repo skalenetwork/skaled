@@ -275,6 +275,12 @@ public:
         OnTransactionConsumed const& _onTransactionConsumed = OnTransactionConsumed(),
         u256 _prevRandao = 0 );
 
+    /// Write prevRandao into the current (working) header. Applied only when the seal
+    /// engine produced the Paris 2-field seal shape — never invents seal fields on
+    /// engines (e.g. NoProof test chains) whose headers carry none: a single-field
+    /// seal is rejected by BlockHeader::populate().
+    void applyPrevRandao( u256 _prevRandao );
+
     /// Execute all transactions within a given block.
     /// @returns the additional total difficulty.
     u256 enactOn( VerifiedBlockRef const& _block, BlockChain const& _bc );

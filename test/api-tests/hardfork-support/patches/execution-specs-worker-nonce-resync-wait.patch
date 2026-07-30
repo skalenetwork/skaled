@@ -1,5 +1,48 @@
+diff --git a/packages/testing/src/execution_testing/cli/pytest_commands/plugins/execute/rpc/remote_seed_sender.py b/packages/testing/src/execution_testing/cli/pytest_commands/plugins/execute/rpc/remote_seed_sender.py
+index fa91b082a..0ca0f5c32 100644
+--- a/packages/testing/src/execution_testing/cli/pytest_commands/plugins/execute/rpc/remote_seed_sender.py
++++ b/packages/testing/src/execution_testing/cli/pytest_commands/plugins/execute/rpc/remote_seed_sender.py
+@@ -1,6 +1,7 @@
+ """Seed sender on a remote execution client."""
+ 
+ import os
++import time
+ from typing import Generator
+ 
+ import pytest
+@@ -57,6 +58,30 @@ def seed_key(
+     seed_account = eth_rpc.get_account(seed_key, skip_code=True)
+     seed_key.nonce = Number(seed_account.nonce)
+ 
++    # A previous process using the same key may have left transactions
++    # pending. Some clients (skaled) report only the executed nonce and
++    # reject same-nonce replacements, so starting from a stale value
++    # collides with them. Wait until the nonce stays unchanged for a full
++    # block interval before trusting it.
++    stable_since = time.monotonic()
++    drain_deadline = time.monotonic() + 30
++    last_nonce = seed_key.nonce
++    while time.monotonic() < drain_deadline:
++        if time.monotonic() - stable_since >= 12:
++            break
++        time.sleep(1)
++        current = Number(
++            eth_rpc.get_account(seed_key, skip_code=True).nonce
++        )
++        if current != last_nonce:
++            logger.info(
++                f"Seed nonce advanced {last_nonce} -> {current}; "
++                "waiting for pending transactions to drain"
++            )
++            last_nonce = current
++            stable_since = time.monotonic()
++    seed_key.nonce = last_nonce
++
+     # Record the start balance of the worker key
+     start_balance = seed_account.balance
+ 
 diff --git a/packages/testing/src/execution_testing/cli/pytest_commands/plugins/execute/sender.py b/packages/testing/src/execution_testing/cli/pytest_commands/plugins/execute/sender.py
-index 40db82a1e..d8fa96696 100644
+index 40db82a1e..bd8abb9bd 100644
 --- a/packages/testing/src/execution_testing/cli/pytest_commands/plugins/execute/sender.py
 +++ b/packages/testing/src/execution_testing/cli/pytest_commands/plugins/execute/sender.py
 @@ -412,7 +412,9 @@ def sync_worker_key_nonce(eth_rpc: EthRPC, session_worker_key: EOA) -> Account:
@@ -23,8 +66,8 @@ index 40db82a1e..d8fa96696 100644
 +        # and reject same-nonce replacements, so resyncing down right away
 +        # collides with the in-flight transactions. Wait for them to land
 +        # and accept the lower value only if it persists (drop/revert).
-+        deadline = time.time() + 15
-+        while time.time() < deadline:
++        deadline = time.monotonic() + 30
++        while time.monotonic() < deadline:
 +            time.sleep(1)
 +            session_worker_account = eth_rpc.get_account(
 +                session_worker_key, block_number="latest", skip_code=True

@@ -779,6 +779,11 @@ void Client::restartMining() {
     preChanged = newPreMine.sync( bc(), m_state );
 
     if ( preChanged || m_postSeal.author() != m_preSeal.author() ) {
+        // Pending simulations (eth_call/eth_estimateGas execute against the working
+        // block) must see the same prevRandao a real next block would carry, not the
+        // zero placeholder populateFromParent writes.
+        if ( m_skaleHost )
+            newPreMine.applyPrevRandao( m_skaleHost->getPrevRandaoForPendingBlock() );
         DEV_WRITE_GUARDED( x_preSeal )
         m_preSeal = newPreMine;
         DEV_WRITE_GUARDED( x_working )
