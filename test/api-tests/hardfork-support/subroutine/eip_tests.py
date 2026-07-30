@@ -2315,9 +2315,10 @@ def test_eip_4399(
 ) -> EIPTestResult:
     """EIP-4399: PREVRANDAO opcode is accessible post-Paris.
 
-    skaled: prevRandao = BLAKE3 of the previous block's BLS threshold signature,
-    carried in the header mixHash — non-zero after block 1, and the opcode result
-    must equal the header field (the EIP-4399 invariant).
+    skaled: prevRandao is a RANDAO-style accumulator — the parent's value XOR
+    BLAKE3 of the previous block's BLS threshold signature — carried in the header
+    mixHash: non-zero after block 1, and the opcode result must equal the header
+    field (the EIP-4399 invariant).
     Anvil: returns a non-zero simulated value — any non-zero value is accepted.
     """
     logger.info("=== EIP-4399 PREVRANDAO opcode test ===")
@@ -2352,7 +2353,8 @@ def test_eip_4399(
     # (constructor stores opcode 0x44 into slot 0) and compare the recorded value
     # with the mixHash of the exact block that mined the deployment. This anchors
     # the EIP-4399 invariant (opcode == executing header's mixHash) to one block
-    # with no timing dependence; the earlier eth_call checks the pending context.
+    # with no timing dependence. The earlier eth_call checks the working-block
+    # context: non-historic skaled serves both "latest" and "pending" from it.
     recorder_receipt = _send_tx(
         w3,
         deployer,
@@ -2403,7 +2405,7 @@ def test_eip_4399(
         return EIPTestResult(
             eip="4399",
             passed=False,
-            message="eth_call (pending context) returned zero PREVRANDAO",
+            message="eth_call (working-block context) returned zero PREVRANDAO",
             details=details,
         )
     return EIPTestResult(

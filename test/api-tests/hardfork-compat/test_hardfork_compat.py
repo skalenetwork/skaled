@@ -264,9 +264,10 @@ def _assert_receipts_after_paris(w3: Web3, receipts: list, timestamp: int, label
         assert int(block["difficulty"]) == 0, (
             f"Post-Paris block {block['number']} has non-zero difficulty {block['difficulty']}"
         )
-        # Post-Paris skaled headers carry prevRandao (in the mixHash position) derived
-        # from the previous block's BLS threshold signature — non-zero and distinct
-        # per block for every block after block 1.
+        # Post-Paris skaled headers carry prevRandao (in the mixHash position):
+        # a RANDAO-style accumulator of the parent's value XOR the previous block's
+        # BLS threshold signature hash — non-zero and distinct per block for every
+        # block after block 1.
         mix_hash = int.from_bytes(bytes(block["mixHash"]), "big")
         assert mix_hash != 0, (
             f"Post-Paris block {block['number']} has zero prevRandao/mixHash"

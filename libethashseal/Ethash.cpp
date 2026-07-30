@@ -97,9 +97,10 @@ void Ethash::verify( Strictness _s, BlockHeader const& _bi, BlockHeader const& _
                 BOOST_THROW_EXCEPTION(
                     InvalidBlockFormat()
                     << errinfo_comment( "Paris block header must contain prevRandao and nonce" ) );
-            // prevRandao is derived from the previous block's threshold signature at
-            // construction (SkaleHost::createBlock); verify cannot re-derive it here (no
-            // consensus access), so only the header shape and the zero nonce are pinned.
+            // prevRandao is accumulated at construction (SkaleHost::createBlock) from the
+            // parent's value and the previous block's threshold signature; verify cannot
+            // re-derive it here (no consensus access), so only the header shape and the
+            // zero nonce are pinned.
             if ( nonce( _bi ) != Nonce( 0 ) )
                 BOOST_THROW_EXCEPTION( InvalidBlockFormat() << errinfo_comment(
                                            "Paris block header nonce must be zero" ) );
