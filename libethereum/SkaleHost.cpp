@@ -685,6 +685,16 @@ void SkaleHost::createBlock( const ConsensusExtFace::Transactions& _approvedTran
 
     BlockHeader latestInfo = static_cast< const Interface& >( m_client ).blockInfo( LatestBlock );
 
+    // EIP-4399: derive the new block's prevRandao from the previous block's threshold
+    // signature. This is the only place the value ever crosses from consensus to the EVM;
+    // execution and replay read it from the header. The previous block was committed to the
+    // consensus BlockDB one block ago, so the lookup cannot hit DB rotation. Any failure here
+    // must abort the import (fail closed) — a fallback value would fork replay from history.
+    u256 prevRandao = 0;
+    if ( _blockID > 1 && ParisForkPatch::isEnabledWhen( latestInfo.timestamp() ) ) {
+        prevRandao = m_consensus->getRandomForBlockId( _blockID - 1 );
+    }
+
     // Keep this outside m_blockImportMutex to avoid lock-order cycles with
     // chain reads performed by random resolution.
 #ifdef BITE
@@ -740,7 +750,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::Transactions& _approvedTran
 #ifdef FAIR
             _winningNodeIndex,
 #endif
-            _timeStamp, onTransactionConsumed, &needsQueueReadyNotification );
+            _timeStamp, onTransactionConsumed, &needsQueueReadyNotification, prevRandao );
     }  // m_blockImportMutex
 
     if ( needsQueueReadyNotification )

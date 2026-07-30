@@ -1292,6 +1292,31 @@ BOOST_AUTO_TEST_CASE( prevRandaoReturnsZeroAfterParisFork ) {
     resetSchainPatchToDefault();
 }
 
+// The opcode returns whatever prevRandao the header carries, so the consensus-derived
+// nonzero value written at block construction flows through with no further EVM changes.
+BOOST_AUTO_TEST_CASE( prevRandaoReturnsHeaderValueWhenSet ) {
+    // Bytecode: PREVRANDAO PUSH1 0x00 MSTORE PUSH1 0x20 PUSH1 0x00 RETURN
+    bytes code = fromHex( "4460005260206000f3" );
+
+    enableParisForkPatch();
+    BlockHeader parisHeader = blockHeader;
+    parisHeader.setTimestamp( 1 );
+    parisHeader.setDifficulty( 0 );
+    parisHeader.setPrevRandao( h256( 42 ) );
+    parisHeader.setSeal( 1, Nonce( 0 ) );
+    EnvInfo parisEnvInfo{ parisHeader, lastBlockHashes, 1, 0, se->chainParams().getChainId() };
+
+    ExtVM extVm( state, parisEnvInfo, se->chainParams(), address, address, address,
+        value, gasPrice, ref( inputData ), ref( code ), sha3( code ), version, depth,
+        isCreate, staticCall );
+
+    owning_bytes_ref ret = vm->exec( gas, extVm, OnOpFunc{} );
+    BOOST_REQUIRE_EQUAL( ret.size(), 32 );
+    BOOST_REQUIRE_EQUAL( fromBigEndian< u256 >( ret.toVector() ), 42 );
+
+    resetSchainPatchToDefault();
+}
+
 // Pre-Paris: DIFFICULTY opcode must return the actual block difficulty.
 BOOST_AUTO_TEST_CASE( difficultyOpcodeUnchangedBeforeParisFork ) {
     // Same bytecode, patch NOT enabled

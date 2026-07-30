@@ -561,7 +561,7 @@ size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
     uint64_t _winningNodeIndex,
 #endif
     uint64_t _timestamp, Block::OnTransactionConsumed const& _onTransactionConsumed,
-    bool* _needsQueueReadyNotification ) {
+    bool* _needsQueueReadyNotification, u256 _prevRandao ) {
     // on schain creation, SnapshotAgent needs timestamp of block 1
     // so we use this HACK
     // pass block number 0 as for bigger BN it is initialized in init()
@@ -591,7 +591,7 @@ size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
 
     size_t cntSucceeded = 0;
     cntSucceeded = syncTransactions( _transactions, _gasPrice, _timestamp, _onTransactionConsumed,
-        _needsQueueReadyNotification );
+        _needsQueueReadyNotification, _prevRandao );
     sealUnconditionally( false );
     importWorkingBlock();
 
@@ -667,7 +667,7 @@ bool Client::updateGroupIfNeeded() {
 
 size_t Client::syncTransactions( const Transactions& _transactions, u256 _gasPrice,
     uint64_t _timestamp, Block::OnTransactionConsumed const& _onTransactionConsumed,
-    bool* _needsQueueReadyNotification ) {
+    bool* _needsQueueReadyNotification, u256 _prevRandao ) {
     assert( m_skaleHost );
 
     while ( m_working.isSealed() ) {
@@ -702,8 +702,8 @@ size_t Client::syncTransactions( const Transactions& _transactions, u256 _gasPri
         }
 
         tie( newPendingReceipts, goodReceipts, needsQueueReadyNotification ) =
-            m_working.syncEveryone(
-                bc(), _transactions, _timestamp, _gasPrice, baseFeePerGas, _onTransactionConsumed );
+            m_working.syncEveryone( bc(), _transactions, _timestamp, _gasPrice, baseFeePerGas,
+                _onTransactionConsumed, _prevRandao );
         m_state = m_state.createStateCopyAndClearCaches();
 #ifdef HISTORIC_STATE
         // make sure the trie in new state object points to the new state root
