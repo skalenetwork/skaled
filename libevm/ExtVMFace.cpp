@@ -134,8 +134,8 @@ evmc_tx_context EvmCHost::get_tx_context() noexcept {
     result.block_timestamp = envInfo.timestamp();
     result.block_gas_limit = static_cast< int64_t >( envInfo.gasLimit() );
     if ( ParisForkPatch::isEnabledWhen( envInfo.committedBlockTimestamp() ) ) {
-        // EIP-4399: DIFFICULTY opcode returns prevRandao. In skaled (BFT, no beacon), prevRandao=0.
-        result.block_difficulty = toEvmC( u256( 0 ) );
+        // This EVMC version names the 0x44 context field block_difficulty even after Paris.
+        result.block_difficulty = toEvmC( envInfo.prevRandao() );
     } else {
         result.block_difficulty = toEvmC( envInfo.difficulty() );
     }

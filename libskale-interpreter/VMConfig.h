@@ -221,7 +221,7 @@ namespace eth {
         &&COINBASE,                             \
         &&TIMESTAMP,                            \
         &&NUMBER,                               \
-        &&DIFFICULTY,                           \
+        &&PREVRANDAO,                           \
         &&GASLIMIT,                             \
         &&CHAINID,                              \
         &&SELFBALANCE,                          \

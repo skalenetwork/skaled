@@ -93,9 +93,16 @@ void Ethash::verify( Strictness _s, BlockHeader const& _bi, BlockHeader const& _
         const bool isParis =
             ParisForkPatch::isEnabledWhen( static_cast< time_t >( _parent.timestamp() ) );
         if ( isParis ) {
-            if ( _bi.sealFieldCount() != 0 )
+            if ( _bi.sealFieldCount() != 2 )
+                BOOST_THROW_EXCEPTION(
+                    InvalidBlockFormat()
+                    << errinfo_comment( "Paris block header must contain prevRandao and nonce" ) );
+            if ( prevRandao( _bi ) != h256( 0 ) )
                 BOOST_THROW_EXCEPTION( InvalidBlockFormat() << errinfo_comment(
-                                           "Paris block header must use SKALE no-seal format" ) );
+                                           "Paris block header prevRandao must be zero" ) );
+            if ( nonce( _bi ) != Nonce( 0 ) )
+                BOOST_THROW_EXCEPTION( InvalidBlockFormat() << errinfo_comment(
+                                           "Paris block header nonce must be zero" ) );
         } else {
             // Check difficulty is correct given the two timestamps.
             auto expected = calculateDifficulty( _bi, _parent );
@@ -209,8 +216,8 @@ void Ethash::populateFromParent( BlockHeader& _bi, BlockHeader const& _parent ) 
     SealEngineFace::populateFromParent( _bi, _parent );
     if ( ParisForkPatch::isEnabledWhen( static_cast< time_t >( _parent.timestamp() ) ) ) {
         _bi.setDifficulty( 0 );
-        // Keep SKALE's no-seal header shape. Setting only mixHash would create a
-        // London header with one seal field, which BlockHeader::populate() rejects.
+        setPrevRandao( _bi, h256( 0 ) );
+        setNonce( _bi, Nonce( 0 ) );
     } else {
         _bi.setDifficulty( calculateDifficulty( _bi, _parent ) );
     }

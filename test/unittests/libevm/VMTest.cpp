@@ -1259,19 +1259,26 @@ BOOST_AUTO_TEST_CASE( Push0 ) {
     BOOST_REQUIRE_EQUAL( stack[0], u256() );
 }
 
+BOOST_AUTO_TEST_CASE( PrevRandaoOpcodeNameAndValue ) {
+    BOOST_REQUIRE_EQUAL( static_cast< unsigned >( Instruction::PREVRANDAO ), 0x44u );
+    BOOST_REQUIRE_EQUAL( instructionInfo( Instruction::PREVRANDAO ).name, "PREVRANDAO" );
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_FIXTURE_TEST_SUITE( LegacyVMParisSuite, LegacyVMParisTestFixture )
 
-// EIP-4399: DIFFICULTY opcode must return 0 (prevRandao=0 in skaled) when ParisForkPatch is active.
-BOOST_AUTO_TEST_CASE( difficultyReturnsZeroAfterParisFork ) {
-    // Bytecode: DIFFICULTY PUSH1 0x00 MSTORE PUSH1 0x20 PUSH1 0x00 RETURN
+// EIP-4399: PREVRANDAO must return the zero prevRandao stored in a valid SKALE Paris header.
+BOOST_AUTO_TEST_CASE( prevRandaoReturnsZeroAfterParisFork ) {
+    // Bytecode: PREVRANDAO PUSH1 0x00 MSTORE PUSH1 0x20 PUSH1 0x00 RETURN
     bytes code = fromHex( "4460005260206000f3" );
 
     enableParisForkPatch();
     BlockHeader parisHeader = blockHeader;
     parisHeader.setTimestamp( 1 );
     parisHeader.setDifficulty( 42 );  // non-zero to prove the opcode ignores header.difficulty
+    parisHeader.setPrevRandao( h256( 0 ) );
+    parisHeader.setSeal( 1, Nonce( 0 ) );
     EnvInfo parisEnvInfo{ parisHeader, lastBlockHashes, 1, 0, se->chainParams().getChainId() };
 
     ExtVM extVm( state, parisEnvInfo, se->chainParams(), address, address, address,
