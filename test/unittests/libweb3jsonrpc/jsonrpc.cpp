@@ -20,6 +20,8 @@
 #pragma GCC diagnostic ignored "-Wdeprecated"
 
 #include <limits>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include "WebThreeStubClient.h"
 
@@ -58,6 +60,7 @@
 
 #include "genesisGeneration2Config.h"
 
+#include <libskale/SnapshotManager.h>
 #include <libweb3jsonrpc/Debug.h>
 #include <libweb3jsonrpc/Eth.h>
 #include <libweb3jsonrpc/JsonHelper.h>
@@ -442,8 +445,8 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
     JsonRpcFixture( const std::string& _config = "", bool _owner = true,
         bool _deploymentControl = true, bool _generation2 = false, bool _mtmEnabled = false,
         bool _isSyncNode = false, int _emptyBlockIntervalMs = -1,
-        const std::map< std::string, std::string >& params =
-            std::map< std::string, std::string >() ) {
+            const std::map<std::string, std::string>& params = std::map< std::string, std::string >(),
+            const std::string& _dataDirOverride = "" ) {
 
         // this fixture is used in all tests to load config. So also init bls library as well
         libBLS::init();
@@ -560,9 +563,16 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         auto monitor = make_shared< InstanceMonitor >( "test" );
 
 
-        setenv( "DATA_DIR", tempDir.path().c_str(), 1 );
+        const std::string& dataDir = _dataDirOverride.empty() ? tempDir.path() : _dataDirOverride;
+        setenv( "DATA_DIR", dataDir.c_str(), 1 );
+        std::shared_ptr< SnapshotManager > snapshotManager;
+        if ( chainParams->getSnapshotIntervalSec() > 0 ) {
+            snapshotManager =
+                std::make_shared< SnapshotManager >( chainParams, dataDir, std::string() );
+        }
         client.reset( new eth::ClientTest( chainParams, ( int ) chainParams->getNetworkId(),
-            shared_ptr< GasPricer >(), NULL, monitor, tempDir.path(), WithExisting::Kill ) );
+            shared_ptr< GasPricer >(), snapshotManager, monitor, dataDir,
+            WithExisting::Kill ) );
 
         if ( !_generation2 )
             client->setAuthor( coinbase.address() );
@@ -594,10 +604,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         auto ethFace = new rpc::Eth(
             _config.empty() ? std::string( "" ) : _config, *client, *accountHolder.get() );
 
-        dev::rpc::Skale* skaleFace = nullptr;
-#ifdef BITE
-        skaleFace = new rpc::Skale( *client );
-#endif
+        dev::rpc::Skale* skaleFace = new rpc::Skale( *client );
 
         gasPricer = make_shared< eth::TrivialGasPricer >( 0, DefaultGasPrice );
 
@@ -619,6 +626,11 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         // section - thus giving same port for consensus
         serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ = std::rand() % 64000 + 1025 + 3;
         skale_server_connector = new SkaleServerOverride( chainParams, client.get(), serverOpts );
+
+        // Use a small deterministic Proxygen worker for local JSON-RPC tests to avoid the
+        // default 32 × CPU-core thread count exhausting CI file descriptors.
+        skale_server_connector->pg_threads_ = 4;
+        skale_server_connector->pg_threads_limit_ = 4;
         rpcServer->addConnector( skale_server_connector );
         skale_server_connector->StartListening();
 
@@ -695,6 +707,75 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
     jsonrpc::HttpClient* httpClient;
     time_t powPatchActivationTimestamp;
     time_t push0PatchActivationTimestamp;
+};
+
+// Mounts a btrfs loopback filesystem for tests that require snapshot functionality.
+// Must be listed as the first base class of JsonRpcBtrfsFixture to guarantee the mount
+// is established before JsonRpcFixture's constructor body runs.
+struct BtrfsSetupForRpc {
+    std::string btrfsImagePath;
+    std::string btrfsMountPath;
+    uid_t sudo_uid = 0;
+    gid_t sudo_gid = 0;
+
+    BtrfsSetupForRpc() {
+#if ( !defined __APPLE__ )
+        const char* id_str = getenv( "SUDO_UID" );
+        if ( id_str == nullptr ) {
+            std::cerr << "BtrfsSetupForRpc: please run under sudo" << std::endl;
+            exit( -1 );
+        }
+        if ( geteuid() != 0 ) {
+            std::cerr << "BtrfsSetupForRpc: need to be root" << std::endl;
+            exit( -1 );
+        }
+        sscanf( id_str, "%d", &sudo_uid );
+        id_str = getenv( "SUDO_GID" );
+        sscanf( id_str, "%d", &sudo_gid );
+
+        // use pid + rand for unique paths, safe in parallel test runs
+        std::string uid = std::to_string( getpid() ) + "_" + std::to_string( rand() );
+        btrfsImagePath = "/tmp/btrfs_rpc_" + uid + ".img";
+        btrfsMountPath = "/tmp/btrfs_rpc_" + uid;
+
+        // create image and format as btrfs (run as sudo user, not root)
+        setresgid( sudo_gid, sudo_gid, 0 );
+        setresuid( sudo_uid, sudo_uid, 0 );
+        int rv = system( ( "dd if=/dev/zero of=" + btrfsImagePath + " bs=1M count=200" ).c_str() );
+        rv = system( ( "mkfs.btrfs " + btrfsImagePath ).c_str() );
+        rv = system( ( "mkdir -p " + btrfsMountPath ).c_str() );
+        ( void ) rv;
+
+        // mount requires root
+        setresuid( 0, 0, 0 );
+        setresgid( 0, 0, 0 );
+        rv = system(
+            ( "mount -o user_subvol_rm_allowed " + btrfsImagePath + " " + btrfsMountPath )
+                .c_str() );
+        rv = chown( btrfsMountPath.c_str(), sudo_uid, sudo_gid );
+        ( void ) rv;
+#endif
+    }
+
+    ~BtrfsSetupForRpc() {
+#if ( !defined __APPLE__ )
+        setresuid( 0, 0, 0 );
+        setresgid( 0, 0, 0 );
+        int rv = system( ( "umount " + btrfsMountPath ).c_str() );
+        rv = system( ( "rmdir " + btrfsMountPath ).c_str() );
+        rv = system( ( "rm -f " + btrfsImagePath ).c_str() );
+        ( void ) rv;
+#endif
+    }
+};
+
+// JsonRpcFixture variant with a btrfs-backed data directory.
+// BtrfsSetupForRpc is listed first so the mount is ready before JsonRpcFixture's
+// constructor body creates the SnapshotManager and ClientTest.
+struct JsonRpcBtrfsFixture : public BtrfsSetupForRpc, public JsonRpcFixture {
+    explicit JsonRpcBtrfsFixture( const std::string& _config )
+        : BtrfsSetupForRpc(),
+          JsonRpcFixture( _config, true, true, false, false, false, -1, {}, btrfsMountPath ) {}
 };
 
 #ifndef FAIR
@@ -860,6 +941,95 @@ BOOST_AUTO_TEST_CASE( jsonrpc_stateAt ) {
     auto address = key.address();
     string stateAt = fixture.rpcClient->eth_getStorageAt( toJS( address ), "0", "latest" );
     BOOST_CHECK_EQUAL( fixture.client->stateAt( address, 0 ), jsToU256( stateAt ) );
+}
+
+BOOST_AUTO_TEST_CASE( skale_getLatestSnapshotHash_success,
+    *boost::unit_test::precondition( dev::test::option_all_tests ) *
+        boost::unit_test::label( "btrfs" ) ) {
+    Json::Value ret;
+    Json::Reader().parse( c_genesisConfigString, ret );
+    ret["skaleConfig"]["sChain"]["snapshotIntervalSec"] = 1;
+    ret["skaleConfig"]["sChain"]["emptyBlockIntervalMs"] = 2000;
+
+    Json::FastWriter fastWriter;
+    std::string config = fastWriter.write( ret );
+    JsonRpcBtrfsFixture fixture( config );
+
+    // Poll for a consensus-committed block that triggers a snapshot at block > 0.
+    // emptyBlockIntervalMs=2000 produces blocks slowly enough to avoid the
+    // blockPromise callback race during fixture construction.
+    int64_t snapshotBlockNumber = -1;
+    for ( int i = 0; i < 30; ++i ) {
+        std::this_thread::sleep_for( std::chrono::milliseconds( 200 ) );
+        snapshotBlockNumber = fixture.client->getLatestSnapshotBlockNumer();
+        if ( snapshotBlockNumber > 0 )
+            break;
+    }
+    BOOST_REQUIRE_GT( snapshotBlockNumber, 0 );
+
+    std::string hash = fixture.rpcClient->skale_getLatestSnapshotHash();
+    BOOST_REQUIRE( !hash.empty() );
+    BOOST_CHECK_EQUAL( hash.size(), 64 );
+    BOOST_CHECK_EQUAL( hash.find_first_not_of( "0123456789abcdefABCDEF" ), std::string::npos );
+}
+
+BOOST_AUTO_TEST_CASE( skale_getLatestSnapshotHash_hashNotAvailableYet,
+    *boost::unit_test::precondition( dev::test::option_all_tests ) *
+        boost::unit_test::label( "btrfs" ) ) {
+    Json::Value ret;
+    Json::Reader().parse( c_genesisConfigString, ret );
+    ret["skaleConfig"]["sChain"]["snapshotIntervalSec"] = 1;
+    ret["skaleConfig"]["sChain"]["emptyBlockIntervalMs"] = 2000;
+
+    Json::FastWriter fastWriter;
+    std::string config = fastWriter.write( ret );
+    JsonRpcBtrfsFixture fixture( config );
+
+    // Poll for a consensus-committed block that triggers a snapshot at block > 0.
+    // emptyBlockIntervalMs=2000 produces blocks slowly enough to avoid the
+    // blockPromise callback race during fixture construction.
+    int64_t snapshotBlockNumber = -1;
+    for ( int i = 0; i < 30; ++i ) {
+        std::this_thread::sleep_for( std::chrono::milliseconds( 200 ) );
+        snapshotBlockNumber = fixture.client->getLatestSnapshotBlockNumer();
+        if ( snapshotBlockNumber > 0 )
+            break;
+    }
+    BOOST_REQUIRE_GT( snapshotBlockNumber, 0 );
+
+    // remove only hash file to simulate snapshot present but hash unavailable
+    boost::filesystem::path snapshotHashPath =
+        boost::filesystem::path( fixture.btrfsMountPath ) / "snapshots" /
+        std::to_string( snapshotBlockNumber ) / "snapshot_hash.txt";
+    BOOST_REQUIRE( boost::filesystem::exists( snapshotHashPath ) );
+    BOOST_REQUIRE( boost::filesystem::remove( snapshotHashPath ) );
+
+    BOOST_CHECK_EXCEPTION( fixture.rpcClient->skale_getLatestSnapshotHash(),
+        jsonrpc::JsonRpcException, []( const jsonrpc::JsonRpcException& ex ) {
+            return std::string( ex.what() ).find( "Latest snapshot hash is not available yet" ) !=
+                   std::string::npos;
+        } );
+}
+
+BOOST_AUTO_TEST_CASE( skale_getLatestSnapshotHash_invalidParams ) {
+    JsonRpcFixture fixture;
+
+    Json::Value params;
+    params.append( "unexpected" );
+    BOOST_CHECK_EXCEPTION( fixture.rpcClient->CallMethod( "skale_getLatestSnapshotHash", params ),
+        jsonrpc::JsonRpcException, []( const jsonrpc::JsonRpcException& ex ) {
+            return ex.GetCode() == jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS;
+        } );
+}
+
+BOOST_AUTO_TEST_CASE( skale_getLatestSnapshotHash_unavailable ) {
+    JsonRpcFixture fixture;
+
+    BOOST_CHECK_EXCEPTION( fixture.rpcClient->skale_getLatestSnapshotHash(),
+        jsonrpc::JsonRpcException, []( const jsonrpc::JsonRpcException& ex ) {
+            return std::string( ex.what() ).find( "Latest snapshot is not available" ) !=
+                   std::string::npos;
+        } );
 }
 
 BOOST_AUTO_TEST_CASE(
