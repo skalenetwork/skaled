@@ -198,9 +198,6 @@ set( SKUTILS_INCLUDE_DIRS
 include_directories( ${SKUTILS_INCLUDE_DIRS} )
 add_subdirectory( libskutils )
 
-option( SKALE_INTERPRETER_SHARED "Build skale-interpreter as a shared library" OFF )
-add_subdirectory( libskale-interpreter )
-
 add_subdirectory( libdevcore )
 add_subdirectory( libdevcrypto )
 add_subdirectory( libp2p )

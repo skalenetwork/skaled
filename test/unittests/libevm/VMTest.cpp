@@ -21,7 +21,6 @@
 #include <libethereum/SchainPatch.h>
 #include <libevm/EVMC.h>
 #include <libevm/LegacyVM.h>
-#include <libskale-interpreter/interpreter.h>
 #include <test/tools/jsontests/vm.h>
 #include <test/tools/libtesteth/BlockChainHelper.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>
@@ -384,12 +383,6 @@ public:
     LegacyVMCreate2TestFixture() : Create2TestFixture{ new LegacyVM } {}
 };
 
-class SkaleInterpreterCreate2TestFixture : public Create2TestFixture {
-public:
-    SkaleInterpreterCreate2TestFixture()
-        : Create2TestFixture{ new EVMC{ evmc_create_interpreter() } } {}
-};
-
 class ExtcodehashTestFixture : public TestOutputHelperFixture {
 public:
     explicit ExtcodehashTestFixture( VMFace* _vm ) : vm{ _vm } {
@@ -550,12 +543,6 @@ public:
     LegacyVMExtcodehashTestFixture() : ExtcodehashTestFixture{ new LegacyVM } {}
 };
 
-
-class SkaleInterpreterExtcodehashTestFixture : public ExtcodehashTestFixture {
-public:
-    SkaleInterpreterExtcodehashTestFixture()
-        : ExtcodehashTestFixture{ new EVMC{ evmc_create_interpreter() } } {}
-};
 
 class SstoreTestFixture : public TestOutputHelperFixture {
 public:
@@ -831,12 +818,6 @@ public:
     LegacyVMChainIDTestFixture() : ChainIDTestFixture{ new LegacyVM } {}
 };
 
-class SkaleInterpreterChainIDTestFixture : public ChainIDTestFixture {
-public:
-    SkaleInterpreterChainIDTestFixture()
-        : ChainIDTestFixture{ new EVMC{ evmc_create_interpreter() } } {}
-};
-
 class BalanceFixture : public TestOutputHelperFixture {
 public:
     explicit BalanceFixture( VMFace* _vm ) : vm{ _vm } { state.addBalance( address, 1 * ether ); }
@@ -996,11 +977,6 @@ public:
 class LegacyVMBalanceFixture : public BalanceFixture {
 public:
     LegacyVMBalanceFixture() : BalanceFixture{ new LegacyVM } {}
-};
-
-class SkaleInterpreterBalanceFixture : public BalanceFixture {
-public:
-    SkaleInterpreterBalanceFixture() : BalanceFixture{ new EVMC{ evmc_create_interpreter() } } {}
 };
 }  // namespace
 
@@ -1236,113 +1212,6 @@ BOOST_AUTO_TEST_CASE( Push0 ) {
     BOOST_REQUIRE_EQUAL( stack[0], u256() );
 }
 
-BOOST_AUTO_TEST_SUITE_END()
-
-BOOST_AUTO_TEST_SUITE_END()
-
-BOOST_FIXTURE_TEST_SUITE( SkaleInterpreterSuite, TestOutputHelperFixture )
-BOOST_FIXTURE_TEST_SUITE( SkaleInterpreterCreate2Suite, SkaleInterpreterCreate2TestFixture )
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterCreate2worksInConstantinople,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    testCreate2worksInConstantinople();
-}
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterCreate2isInvalidBeforeConstantinople ) {
-    testCreate2isInvalidBeforeConstantinople();
-}
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterCreate2succeedsIfAddressHasEther,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    testCreate2succeedsIfAddressHasEther();
-}
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterCreate2doesntChangeContractIfAddressExists ) {
-    testCreate2doesntChangeContractIfAddressExists();
-}
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterCreate2isForbiddenInStaticCall ) {
-    testCreate2isForbiddenInStaticCall();
-}
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterCreate2collisionWithNonEmptyStorage,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    testCreate2collisionWithNonEmptyStorage();
-}
-
-// Disable this test since we clean storage in a different way
-BOOST_AUTO_TEST_CASE( SkaleInterpreterCreate2collisionWithNonEmptyStorageEmptyInitCode ) {
-    testCreate2collisionWithNonEmptyStorageEmptyInitCode();
-}
-
-// Note: the nonce-overflow / warm-vs-cold CREATE tests rely on the per-instruction
-// OnOpFunc gas callback, which only LegacyVM invokes; the EVMC skale-interpreter does
-// not, so those cases live in the LegacyVM suite only (see LegacyVMCreate2Suite). The
-// fix they exercise is in the shared ExtVM::create, which both interpreters use.
-
-BOOST_AUTO_TEST_SUITE_END()
-
-BOOST_FIXTURE_TEST_SUITE( SkaleInterpreterExtcodehashSuite, SkaleInterpreterExtcodehashTestFixture )
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterExtcodehashWorksInConstantinople,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    testExtcodehashWorksInConstantinople();
-}
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterExtcodehashIsInvalidConstantinople ) {
-    testExtCodeHashisInvalidBeforeConstantinople();
-}
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterExtCodeHashOfNonContractAccount,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    testExtCodeHashOfNonContractAccount();
-}
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterExtCodeHashOfNonExistentAccount,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    testExtCodeHashOfPrecomileZeroBalance();
-}
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterExtCodeHashOfPrecomileZeroBalance,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    testExtCodeHashOfNonExistentAccount();
-}
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterExtCodeHashOfPrecomileNonZeroBalance,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    testExtCodeHashOfPrecomileNonZeroBalance();
-}
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterExtCodeHashIgnoresHigh12Bytes,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    testExtcodehashIgnoresHigh12Bytes();
-}
-
-BOOST_AUTO_TEST_SUITE_END()
-
-
-BOOST_FIXTURE_TEST_SUITE( SkaleInterpreterChainIDSuite, SkaleInterpreterChainIDTestFixture )
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterChainIDworksInIstanbul ) {
-    testChainIDWorksInIstanbul();
-}
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterChainIDisInvalidBeforeIstanbul,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    testChainIDisInvalidBeforeIstanbul();
-}
-BOOST_AUTO_TEST_SUITE_END()
-
-BOOST_FIXTURE_TEST_SUITE( SkaleInterpreterBalanceSuite, SkaleInterpreterBalanceFixture )
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterSelfBalanceworksInIstanbul ) {
-    testSelfBalanceWorksInIstanbul();
-}
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterSelfBalanceisInvalidBeforeIstanbul,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    testSelfBalanceisInvalidBeforeIstanbul();
-}
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE_END()
