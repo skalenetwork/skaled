@@ -157,7 +157,16 @@ public:
         m_consensus->exitGracefully();
         m_consensusThread.join();
 
+        // Bounded wait: a fixed cap (600 * 100ms = 60s) avoids hanging the whole
+        // test binary - and the CI job - forever if consensus never reaches
+        // CONSENSUS_EXITED.
+        int exitWaitTenthsSec = 0;
         while ( m_consensus->getStatus() != CONSENSUS_EXITED ) {
+            if ( ++exitWaitTenthsSec > 600 ) {
+                std::cerr << "SingleNodeConsensusFixture: timed out waiting for consensus to exit"
+                          << std::endl;
+                break;
+            }
             timespec ms100{ 0, 100000000 };
             nanosleep( &ms100, nullptr );
         }

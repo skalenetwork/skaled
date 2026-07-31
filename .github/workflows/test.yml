@@ -24,6 +24,8 @@ jobs:
   build-and-test:
     name: ${{ matrix.name }}
     runs-on: ubuntu-22.04
+    # Backstop so a hung test can't ride GitHub's 6h default and stall the queue.
+    timeout-minutes: 120
 
     strategy:
       fail-fast: false
