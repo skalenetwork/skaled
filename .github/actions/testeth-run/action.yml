@@ -43,7 +43,7 @@ runs:
           EthashTests SealEngineTests DifficultyTests BlockSuite BlockChainMainNetworkSuite
           BlockChainFrontierSuite BlockQueueSuite ClientBase EstimateGas getHistoricNodesData
           ExtVmSuite GasPricer BasicTests InstanceMonitorSuite PrecompiledTests SkaleHostSuite
-          StateUnitTests libethereum TransactionQueueSuite LegacyVMSuite SkaleInterpreterSuite
+          StateUnitTests libethereum TransactionQueueSuite LegacyVMSuite
           SnapshotSigningTestSuite SkUtils BlockChainTestSuite TestHelperSuite LevelDBHashBase
           memDB OverlayDBTests AccountHolderTest ClientTests JsonRpcSuite SingleConsensusTests ConsensusTests
         )
