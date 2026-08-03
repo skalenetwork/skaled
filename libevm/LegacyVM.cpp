@@ -1351,11 +1351,14 @@ void LegacyVM::interpretCases() {
         }
         NEXT
 
-        CASE( DIFFICULTY ) {
+        CASE( PREVRANDAO ) {
             ON_OP();
             updateIOGas();
 
-            m_SPP[0] = m_ext->envInfo().difficulty();
+            if ( ParisForkPatch::isEnabledWhen( m_ext->envInfo().committedBlockTimestamp() ) )
+                m_SPP[0] = u256( m_ext->envInfo().prevRandao() );
+            else
+                m_SPP[0] = m_ext->envInfo().difficulty();
         }
         NEXT
 

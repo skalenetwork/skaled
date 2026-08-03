@@ -28,6 +28,7 @@ enum class SchainPatchEnum {
     GroupIndexInitPatch,
     LondonForkPatch,
     ContractCreationReadOnlyPatch,
+    ParisForkPatch,  // EIP-3675 + EIP-4399
 #ifdef BITE
     Bite2Patch,
 #endif  // BITE

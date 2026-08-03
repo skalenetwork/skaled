@@ -54,6 +54,8 @@ SchainPatchEnum getEnumForPatchName( const std::string& _patchName ) {
         return SchainPatchEnum::LondonForkPatch;
     else if ( _patchName == "ContractCreationReadOnlyPatch" )
         return SchainPatchEnum::ContractCreationReadOnlyPatch;
+    else if ( _patchName == "ParisForkPatch" )
+        return SchainPatchEnum::ParisForkPatch;
 #ifdef BITE
     else if ( _patchName == "BITE2Patch" || _patchName == "Bite2Patch" )
         return SchainPatchEnum::Bite2Patch;
@@ -114,6 +116,8 @@ std::string getPatchNameForEnum( SchainPatchEnum _enumValue ) {
         return "LondonForkPatch";
     case SchainPatchEnum::ContractCreationReadOnlyPatch:
         return "ContractCreationReadOnlyPatch";
+    case SchainPatchEnum::ParisForkPatch:
+        return "ParisForkPatch";
 #ifdef BITE
     case SchainPatchEnum::Bite2Patch:
         return "Bite2Patch";
@@ -138,7 +142,7 @@ const std::unordered_set< SchainPatchEnum > SchainPatch::preEnabledForFAIR = {
     SchainPatchEnum::EIP1559TransactionsPatch, SchainPatchEnum::VerifyBlsSyncPatch,
     SchainPatchEnum::ClearPartialReceiptsPatch, SchainPatchEnum::InvalidTransactionFormatPatch,
     SchainPatchEnum::CurrentBlockRandomPatch, SchainPatchEnum::GroupIndexInitPatch,
-    SchainPatchEnum::LondonForkPatch
+    SchainPatchEnum::LondonForkPatch, SchainPatchEnum::ParisForkPatch
 };
 const std::unordered_set< SchainPatchEnum > SchainPatch::preDisabledForFAIR = {
     SchainPatchEnum::RevertableFSPatch, SchainPatchEnum::FlexibleDeploymentPatch,

@@ -338,9 +338,27 @@ public:
         se.reset( cp.createSealEngine() );
     }
 
+    void enableParisForkPatch() {
+        struct PatchableChainParams : public ChainParams {
+            using ChainParams::ChainParams;
+            void setPatchTimestamp( SchainPatchEnum _patch, time_t _timestamp ) {
+                sChain._patchTimestamps[static_cast< size_t >( _patch )] = _timestamp;
+            }
+        };
+
+        PatchableChainParams cp( genesisInfo( Network::ConstantinopleTest ) );
+#ifndef FAIR
+        cp.setPatchTimestamp( SchainPatchEnum::ParisForkPatch, 1 );
+#endif
+        SchainPatch::init( cp );
+        SchainPatch::useLatestBlockTimestamp( 1 );
+        se.reset( cp.createSealEngine() );
+    }
+
     void resetSchainPatchToDefault() {
         ChainParams cp( genesisInfo( Network::ConstantinopleTest ) );
         SchainPatch::init( cp );
+        SchainPatch::useLatestBlockTimestamp( 0 );
     }
 
 
@@ -416,7 +434,7 @@ public:
 
         vm->exec( gas, extVm, onOp );
 
-        BOOST_REQUIRE_EQUAL( gasBefore - gasAfter, 
+        BOOST_REQUIRE_EQUAL( gasBefore - gasAfter,
 #ifdef FAIR
         2600  // EIP-2929: cold account access cost
 #else
@@ -879,7 +897,7 @@ public:
 
         vm->exec( gas, extVm, onOp );
 
-        BOOST_REQUIRE_EQUAL( gasBefore - gasAfter, 
+        BOOST_REQUIRE_EQUAL( gasBefore - gasAfter,
 #ifdef FAIR
         2600  // EIP-2929: cold account access cost
 #else
@@ -977,6 +995,11 @@ public:
 class LegacyVMBalanceFixture : public BalanceFixture {
 public:
     LegacyVMBalanceFixture() : BalanceFixture{ new LegacyVM } {}
+};
+
+class LegacyVMParisTestFixture : public Create2TestFixture {
+public:
+    LegacyVMParisTestFixture() : Create2TestFixture{new LegacyVM} {}
 };
 }  // namespace
 
@@ -1210,6 +1233,164 @@ BOOST_AUTO_TEST_CASE( Push0 ) {
     u256s stack = vm->stack();
     BOOST_REQUIRE_EQUAL( stack.size(), 1 );
     BOOST_REQUIRE_EQUAL( stack[0], u256() );
+}
+
+BOOST_AUTO_TEST_CASE( PrevRandaoOpcodeNameAndValue ) {
+    BOOST_REQUIRE_EQUAL( static_cast< unsigned >( Instruction::PREVRANDAO ), 0x44u );
+    BOOST_REQUIRE_EQUAL( instructionInfo( Instruction::PREVRANDAO ).name, "PREVRANDAO" );
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_FIXTURE_TEST_SUITE( LegacyVMParisSuite, LegacyVMParisTestFixture )
+
+// EIP-4399: PREVRANDAO must return the zero prevRandao stored in a valid SKALE Paris header.
+BOOST_AUTO_TEST_CASE( prevRandaoReturnsZeroAfterParisFork ) {
+    // Bytecode: PREVRANDAO PUSH1 0x00 MSTORE PUSH1 0x20 PUSH1 0x00 RETURN
+    bytes code = fromHex( "4460005260206000f3" );
+
+    enableParisForkPatch();
+    BlockHeader parisHeader = blockHeader;
+    parisHeader.setTimestamp( 1 );
+    parisHeader.setDifficulty( 42 );  // non-zero to prove the opcode ignores header.difficulty
+    parisHeader.setPrevRandao( h256( 0 ) );
+    parisHeader.setSeal( 1, Nonce( 0 ) );
+    EnvInfo parisEnvInfo{ parisHeader, lastBlockHashes, 1, 0, se->chainParams().getChainId() };
+
+    ExtVM extVm( state, parisEnvInfo, se->chainParams(), address, address, address,
+        value, gasPrice, ref( inputData ), ref( code ), sha3( code ), version, depth,
+        isCreate, staticCall );
+
+    owning_bytes_ref ret = vm->exec( gas, extVm, OnOpFunc{} );
+    BOOST_REQUIRE_EQUAL( ret.size(), 32 );
+    BOOST_REQUIRE_EQUAL( fromBigEndian< u256 >( ret.toVector() ), 0 );
+
+    resetSchainPatchToDefault();
+}
+
+// The opcode returns whatever prevRandao the header carries, so the consensus-derived
+// nonzero value written at block construction flows through with no further EVM changes.
+BOOST_AUTO_TEST_CASE( prevRandaoReturnsHeaderValueWhenSet ) {
+    // Bytecode: PREVRANDAO PUSH1 0x00 MSTORE PUSH1 0x20 PUSH1 0x00 RETURN
+    bytes code = fromHex( "4460005260206000f3" );
+
+    enableParisForkPatch();
+    BlockHeader parisHeader = blockHeader;
+    parisHeader.setTimestamp( 1 );
+    parisHeader.setDifficulty( 0 );
+    parisHeader.setPrevRandao( h256( 42 ) );
+    parisHeader.setSeal( 1, Nonce( 0 ) );
+    EnvInfo parisEnvInfo{ parisHeader, lastBlockHashes, 1, 0, se->chainParams().getChainId() };
+
+    ExtVM extVm( state, parisEnvInfo, se->chainParams(), address, address, address,
+        value, gasPrice, ref( inputData ), ref( code ), sha3( code ), version, depth,
+        isCreate, staticCall );
+
+    owning_bytes_ref ret = vm->exec( gas, extVm, OnOpFunc{} );
+    BOOST_REQUIRE_EQUAL( ret.size(), 32 );
+    BOOST_REQUIRE_EQUAL( fromBigEndian< u256 >( ret.toVector() ), 42 );
+
+    resetSchainPatchToDefault();
+}
+
+// Pre-Paris: DIFFICULTY opcode must return the actual block difficulty.
+BOOST_AUTO_TEST_CASE( difficultyOpcodeUnchangedBeforeParisFork ) {
+    // Same bytecode, patch NOT enabled
+    bytes code = fromHex( "4460005260206000f3" );
+
+    BlockHeader preParisHeader = blockHeader;
+    preParisHeader.setTimestamp( 1 );
+    preParisHeader.setDifficulty( 12345 );
+    EnvInfo preParisEnvInfo{ preParisHeader, lastBlockHashes, 1, 0, se->chainParams().getChainId() };
+
+    ExtVM extVm( state, preParisEnvInfo, se->chainParams(), address, address, address,
+        value, gasPrice, ref( inputData ), ref( code ), sha3( code ), version, depth,
+        isCreate, staticCall );
+
+    owning_bytes_ref ret = vm->exec( gas, extVm, OnOpFunc{} );
+    BOOST_REQUIRE_EQUAL( ret.size(), 32 );
+#ifndef FAIR
+    BOOST_REQUIRE_EQUAL( fromBigEndian< u256 >( ret.toVector() ), 12345 );
+#endif
+}
+
+BOOST_AUTO_TEST_CASE( PrevRandaoOpcodeNameAndValue ) {
+    BOOST_REQUIRE_EQUAL( static_cast< unsigned >( Instruction::PREVRANDAO ), 0x44u );
+    BOOST_REQUIRE_EQUAL( instructionInfo( Instruction::PREVRANDAO ).name, "PREVRANDAO" );
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_FIXTURE_TEST_SUITE( LegacyVMParisSuite, LegacyVMParisTestFixture )
+
+// EIP-4399: PREVRANDAO must return the zero prevRandao stored in a valid SKALE Paris header.
+BOOST_AUTO_TEST_CASE( prevRandaoReturnsZeroAfterParisFork ) {
+    // Bytecode: PREVRANDAO PUSH1 0x00 MSTORE PUSH1 0x20 PUSH1 0x00 RETURN
+    bytes code = fromHex( "4460005260206000f3" );
+
+    enableParisForkPatch();
+    BlockHeader parisHeader = blockHeader;
+    parisHeader.setTimestamp( 1 );
+    parisHeader.setDifficulty( 42 );  // non-zero to prove the opcode ignores header.difficulty
+    parisHeader.setPrevRandao( h256( 0 ) );
+    parisHeader.setSeal( 1, Nonce( 0 ) );
+    EnvInfo parisEnvInfo{ parisHeader, lastBlockHashes, 1, 0, se->chainParams().getChainId() };
+
+    ExtVM extVm( state, parisEnvInfo, se->chainParams(), address, address, address,
+        value, gasPrice, ref( inputData ), ref( code ), sha3( code ), version, depth,
+        isCreate, staticCall );
+
+    owning_bytes_ref ret = vm->exec( gas, extVm, OnOpFunc{} );
+    BOOST_REQUIRE_EQUAL( ret.size(), 32 );
+    BOOST_REQUIRE_EQUAL( fromBigEndian< u256 >( ret.toVector() ), 0 );
+
+    resetSchainPatchToDefault();
+}
+
+// The opcode returns whatever prevRandao the header carries, so the consensus-derived
+// nonzero value written at block construction flows through with no further EVM changes.
+BOOST_AUTO_TEST_CASE( prevRandaoReturnsHeaderValueWhenSet ) {
+    // Bytecode: PREVRANDAO PUSH1 0x00 MSTORE PUSH1 0x20 PUSH1 0x00 RETURN
+    bytes code = fromHex( "4460005260206000f3" );
+
+    enableParisForkPatch();
+    BlockHeader parisHeader = blockHeader;
+    parisHeader.setTimestamp( 1 );
+    parisHeader.setDifficulty( 0 );
+    parisHeader.setPrevRandao( h256( 42 ) );
+    parisHeader.setSeal( 1, Nonce( 0 ) );
+    EnvInfo parisEnvInfo{ parisHeader, lastBlockHashes, 1, 0, se->chainParams().getChainId() };
+
+    ExtVM extVm( state, parisEnvInfo, se->chainParams(), address, address, address,
+        value, gasPrice, ref( inputData ), ref( code ), sha3( code ), version, depth,
+        isCreate, staticCall );
+
+    owning_bytes_ref ret = vm->exec( gas, extVm, OnOpFunc{} );
+    BOOST_REQUIRE_EQUAL( ret.size(), 32 );
+    BOOST_REQUIRE_EQUAL( fromBigEndian< u256 >( ret.toVector() ), 42 );
+
+    resetSchainPatchToDefault();
+}
+
+// Pre-Paris: DIFFICULTY opcode must return the actual block difficulty.
+BOOST_AUTO_TEST_CASE( difficultyOpcodeUnchangedBeforeParisFork ) {
+    // Same bytecode, patch NOT enabled
+    bytes code = fromHex( "4460005260206000f3" );
+
+    BlockHeader preParisHeader = blockHeader;
+    preParisHeader.setTimestamp( 1 );
+    preParisHeader.setDifficulty( 12345 );
+    EnvInfo preParisEnvInfo{ preParisHeader, lastBlockHashes, 1, 0, se->chainParams().getChainId() };
+
+    ExtVM extVm( state, preParisEnvInfo, se->chainParams(), address, address, address,
+        value, gasPrice, ref( inputData ), ref( code ), sha3( code ), version, depth,
+        isCreate, staticCall );
+
+    owning_bytes_ref ret = vm->exec( gas, extVm, OnOpFunc{} );
+    BOOST_REQUIRE_EQUAL( ret.size(), 32 );
+#ifndef FAIR
+    BOOST_REQUIRE_EQUAL( fromBigEndian< u256 >( ret.toVector() ), 12345 );
+#endif
 }
 
 BOOST_AUTO_TEST_SUITE_END()
