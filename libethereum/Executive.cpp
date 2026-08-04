@@ -279,7 +279,14 @@ void Executive::initialize( Transaction const& _transaction ) {
         throw;
     }
 
-    bigint gasCost = ( bigint ) m_t.gas() * m_t.gasPrice();
+    // Effective gas price is gated by London activation. Pre-London, this returns legacy
+    // gasPrice() (for type-2 txs that is maxFeePerGas). Under London + type-2, this returns
+    // min(maxFeePerGas, baseFeePerGas + maxPriorityFeePerGas). Non-FAIR external-gas txs
+    // always get 0, so upfront cost, refund (in finalize()), and author fee all use 0 here.
+    const bool isLondon = LondonForkPatch::isEnabledWhen( m_envInfo.committedBlockTimestamp() );
+    m_effectiveGasPrice = m_t.getEffectiveGasPrice( isLondon, m_envInfo.header().baseFeePerGas() );
+
+    bigint gasCost = ( bigint ) m_t.gas() * m_effectiveGasPrice;
     m_gasCost = ( u256 ) gasCost;
 }
 
@@ -290,14 +297,14 @@ bool Executive::execute() {
     // Pay...
     BOOST_LOG( m_loggerTrace ) << "Paying " << formatBalance( m_gasCost )
                                << " from sender for gas (" << m_t.gas() << " gas at "
-                               << formatBalance( m_t.gasPrice() ) << ")";
+                               << formatBalance( m_effectiveGasPrice ) << ")";
     m_s.subBalance( m_t.sender(), m_gasCost );
 #else
     if ( !m_t.hasExternalGas() ) {
         // Pay...
         BOOST_LOG( m_loggerTrace )
             << "Paying " << formatBalance( m_gasCost ) << " from sender for gas (" << m_t.gas()
-            << " gas at " << formatBalance( m_t.gasPrice() ) << ")";
+            << " gas at " << formatBalance( m_effectiveGasPrice ) << ")";
         m_s.subBalance( m_t.sender(), m_gasCost );
     }
 #endif
@@ -340,10 +347,10 @@ bool Executive::execute() {
 
     bool result;
     if ( m_t.isCreation() )
-        result = create( m_t.sender(), m_t.value(), m_t.gasPrice(),
+        result = create( m_t.sender(), m_t.value(), m_effectiveGasPrice,
             m_t.gas() - ( u256 ) m_baseGasRequired, &dataToPassToEvm, m_t.sender() );
     else
-        result = call( receiverAddressToPassToEvm, m_t.sender(), m_t.value(), m_t.gasPrice(),
+        result = call( receiverAddressToPassToEvm, m_t.sender(), m_t.value(), m_effectiveGasPrice,
             bytesConstRef( &dataToPassToEvm ), m_t.gas() - ( u256 ) m_baseGasRequired );
 
     return result;
@@ -634,6 +641,9 @@ bool Executive::go( OnOpFunc const& _onOp ) {
                 }
                 if ( out.size() > m_ext->evmSchedule().maxCodeSize )
                     BOOST_THROW_EXCEPTION( OutOfGas() );
+                // EIP-3541: reject contracts whose deployed code starts with 0xEF
+                else if ( m_ext->evmSchedule().eip3541Mode && !out.empty() && out[0] == 0xEF )
+                    BOOST_THROW_EXCEPTION( CodeStartsWith0xEF() );
                 else if ( out.size() * m_ext->evmSchedule().createDataGas <= m_gas ) {
                     if ( m_res )
                         m_res->codeDeposit = CodeDeposit::Success;
@@ -709,24 +719,35 @@ bool Executive::finalize() {
 #endif
 
         // Refunds must be applied before the miner gets the fees.
-        assert( m_ext->sub.refunds >= 0 );
+        if ( LondonForkPatch::isEnabledWhen( m_envInfo.committedBlockTimestamp() ) &&
+             m_ext->sub.refunds < 0 )
+            BOOST_THROW_EXCEPTION( std::runtime_error(
+                "Executive::finalize: negative gas refund (internal invariant violation)" ) );
+        // EIP-3529: refund cap is gasUsed / maxRefundQuotient (2 pre-London, 5 London+)
+        int64_t gasUsed = static_cast< int64_t >( m_t.gas() ) - static_cast< int64_t >( m_gas );
         int64_t maxRefund =
-            ( static_cast< int64_t >( m_t.gas() ) - static_cast< int64_t >( m_gas ) ) / 2;
+            gasUsed / static_cast< int64_t >( m_ext->evmSchedule().maxRefundQuotient );
         m_gas += min( maxRefund, m_ext->sub.refunds );
     }
 
     if ( m_t ) {
-        m_s.addBalance( m_t.sender(), m_gas * m_t.gasPrice() );
+        // SKALE fee policy: m_effectiveGasPrice already accounts for London (type-2 cap
+        // min(maxFee, baseFee + priority)) and for non-FAIR external-gas txs (forced to 0).
+        // SKALE does NOT implement Ethereum-style base-fee burn: the entire effective fee is
+        // available for the sender refund credit and the author reward below.
+        m_s.addBalance( m_t.sender(), m_gas * m_effectiveGasPrice );
 
-        u256 feesEarned = ( m_t.gas() - m_gas ) * m_t.gasPrice();
+        u256 feesEarned = ( m_t.gas() - m_gas ) * m_effectiveGasPrice;
 #ifdef FAIR
         EVMSchedule currentBlockSchedule = m_chainParams.makeEvmSchedule(
             m_envInfo.committedBlockTimestamp(), m_envInfo.number() );
-        // calculate share of transaction fees to reward
-        // the rest is effectively burnt
+        // FAIR: apply shareOfTransactionFeeToRewardPromille to the whole effective fee. The
+        // remainder is effectively burnt — but this is a SKALE reward-share, NOT EIP-1559
+        // base-fee burn; the base-fee component is not separately destroyed.
         feesEarned = dev::calculateShareWithPrecision(
             feesEarned, currentBlockSchedule.shareOfTransactionFeeToRewardPromille );
 #endif
+        // Non-FAIR (above #ifdef): the full effective fee goes to the block author.
         m_s.addBalance( m_envInfo.author(), feesEarned );
     }
 

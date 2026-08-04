@@ -19,8 +19,6 @@
 #include "EVMC.h"
 #include "LegacyVM.h"
 
-#include <libskale-interpreter/interpreter.h>
-
 #include <evmc/loader.h>
 
 namespace po = boost::program_options;

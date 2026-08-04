@@ -404,6 +404,11 @@ void TestBlock::recalcBlockHeaderBytes() {
 
     RLPStream blHeaderStream;
     m_blockHeader.streamRLP( blHeaderStream, WithSeal );
+    // Invalidate the cached hash so BlockHeader::hash() recomputes it from the current fields
+    // via streamRLP on next access.  Re-parsing the serialized bytes is not safe here: a
+    // default TestBlock header carries timestamp=-1, which streamRLP encodes as
+    // 0xffffffffffffffff, and BlockHeader::populate() then throws BadCast from toPositiveInt64.
+    m_blockHeader.noteDirty();
 
     RLPStream ret( 3 );
     ret.appendRaw( blHeaderStream.out() );  // block header

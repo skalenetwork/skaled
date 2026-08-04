@@ -50,6 +50,10 @@ struct EVMSchedule {
     bool eip2929Mode = false;
     bool eip2930Mode = false;
     bool eip2565Mode = false;
+    bool haveBaseFee = false;        // EIP-3198: BASEFEE opcode
+    bool eip3529Mode = false;        // EIP-3529: reduced refunds
+    bool eip3541Mode = false;        // EIP-3541: reject 0xEF contracts
+    unsigned maxRefundQuotient = 2;  // EIP-3529: changes to 5 under London
     std::array< unsigned, 8 > tierStepGas;
     unsigned expGas = 10;
     unsigned expByteGas = 10;

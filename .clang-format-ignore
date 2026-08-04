@@ -16,4 +16,3 @@
 ./test/unittests/libevm/*
 ./test/unittests/libskale/*
 ./storage_benchmark/*
-./skale-vm/*

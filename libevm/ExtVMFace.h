@@ -159,11 +159,13 @@ public:
     Address const& author() const { return m_headerInfo.author(); }
     int64_t timestamp() const { return m_headerInfo.timestamp(); }
     u256 const& difficulty() const { return m_headerInfo.difficulty(); }
+    h256 prevRandao() const { return m_headerInfo.prevRandao(); }
     u256 const& gasLimit() const { return m_headerInfo.gasLimit(); }
     LastBlockHashesFace const& lastHashes() const { return m_lastHashes; }
     time_t committedBlockTimestamp() const { return m_committedBlockTimestamp; }
     u256 const& gasUsed() const { return m_gasUsed; }
     u256 const& chainID() const { return m_chainID; }
+    u256 baseFeePerGas() const { return m_headerInfo.baseFeePerGas(); }
 
 private:
     BlockHeader m_headerInfo;
