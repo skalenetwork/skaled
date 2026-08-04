@@ -51,8 +51,8 @@
 
 #include <test/tools/libtesteth/BtrfsTestFixture.h>
 
-#include "SkaledFixture.h"
 #include <libweb3jsonrpc/JsonHelper.h>
+#include "SkaledFixture.h"
 #include <libconsensus/SkaleCommon.h>
 #include <libconsensus/node/ConsensusInterface.h>
 
@@ -139,8 +139,8 @@ static std::string const c_genesisConfigString = R"(
             "nodeName": "Node1",
             "nodeID": 1112,
             "bindIP": "127.0.0.1",
-            "basePort": )" + std::to_string( rand_port ) +
-                                                 R"(,
+            "basePort": )" +
+    std::to_string( rand_port ) + R"(,
             "logLevel": "trace",
             "logLevelProposal": "trace",
             "testSignatures": true
@@ -152,8 +152,8 @@ static std::string const c_genesisConfigString = R"(
             "nodeGroups": {},
             "nodes": [
                 { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )" +
-                                                 std::to_string( rand_port ) +
-                                                 R"(, "schainIndex" : 1, "publicKey": "0xfa"}
+    std::to_string( rand_port ) +
+    R"(, "schainIndex" : 1, "publicKey": "0xfa"}
             ]
         }
     },
@@ -162,7 +162,7 @@ static std::string const c_genesisConfigString = R"(
         "0000000000000000000000000000000000000002": { "precompiled": { "name": "sha256", "linear": { "base": 60, "word": 12 } } },
         "0000000000000000000000000000000000000003": { "precompiled": { "name": "ripemd160", "linear": { "base": 600, "word": 120 } } },
         "0000000000000000000000000000000000000004": { "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } } },)" +
-                                                 R"( "0000000000000000000000000000000000000005": {
+        R"( "0000000000000000000000000000000000000005": {
             "precompiled": {
                 "name": "createFile",
                 "linear": {
