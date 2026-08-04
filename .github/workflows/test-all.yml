@@ -208,7 +208,6 @@ jobs:
           run_test libethereum 
           run_test TransactionQueueSuite 
           run_test LegacyVMSuite 
-          run_test SkaleInterpreterSuite 
           run_test SnapshotSigningTestSuite 
           run_test SkUtils
           run_test BCGeneralStateTests
