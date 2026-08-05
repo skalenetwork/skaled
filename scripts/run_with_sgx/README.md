@@ -58,7 +58,7 @@ bash run.sh [-FAIR] [-HTTPS] [-config <path>] [-node-type <normal|archive>] [-ht
 | --- | --- | --- |
 | `-FAIR` | off | Fill FAIR-specific config fields (passed through to `update_config.py -isFair`). |
 | `-HTTPS` | off | Talk to the SGX wallet over HTTPS on port `1026` instead of HTTP on port `1029`. Requires `<work-dir>/sgx.crt` and `<work-dir>/sgx.key`. |
-| `-config <path>` | `./sample_configs/config.json` | Base config template to fill in with generated keys. For two-node local tests, use `./sample_configs/config_core.json` for core and `./sample_configs/config_historic.json` for historic. |
+| `-config <path>` | `./sample_configs/config_core.json` | Base config template to fill in with generated keys. For two-node local tests, use `./sample_configs/config_core.json` for core and `./sample_configs/config_historic.json` for historic. |
 | `-node-type <normal\|archive>` | `normal` | Sets `skaleConfig.nodeInfo.archiveMode` in the generated config. `archive` requires `skaled` to be built with `-DHISTORIC_STATE=1`. |
 | `-http-port <port>` | `1237` | HTTP RPC port passed to `skaled --http-port`. |
 | `-work-dir <path>` | `./tmp` | Runtime working directory for generated keys/certs/config/log data (`keys.json`, `updated_config.json`, `data_dir`). |

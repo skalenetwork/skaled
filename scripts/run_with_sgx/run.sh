@@ -84,7 +84,7 @@ done
 
 # set default config if not provided
 if [ -z "$config_path" ]; then
-    config_path="./sample_configs/config.json"
+    config_path="./sample_configs/config_core.json"
 fi
 
 # Resolve config_path to an absolute path relative to this script's directory.
