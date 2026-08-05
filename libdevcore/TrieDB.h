@@ -115,6 +115,9 @@ public:
 
 #ifdef HISTORIC_STATE
     uint64_t rootBlockNumber() const { return m_rootBlockNumber; }
+    void setRootBlockNumber( uint64_t _rootBlockNumber ) {
+        m_rootBlockNumber = _rootBlockNumber;
+    }
 #endif
 
     std::string at( bytes const& _key ) const { return at( &_key ); }
@@ -430,6 +433,10 @@ public:
 
     using Super::db;
     using Super::root;
+#ifdef HISTORIC_STATE
+    using Super::rootBlockNumber;
+    using Super::setRootBlockNumber;
+#endif
 
     using Super::check;
     using Super::debugStructure;
@@ -487,6 +494,7 @@ public:
     using Super::root;
 #ifdef HISTORIC_STATE
     using Super::rootBlockNumber;
+    using Super::setRootBlockNumber;
 #endif
     using Super::setRoot;
 

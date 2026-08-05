@@ -270,6 +270,32 @@ BOOST_AUTO_TEST_CASE( writeAndRead ) {
     BOOST_CHECK_EQUAL( sw.getNonce( address1 ), 3 );
 }
 
+// A restart restores a finite lookup bound. After the next rotation, a new root must advance
+// that bound so its nodes in the newly opened DB piece remain discoverable.
+BOOST_AUTO_TEST_CASE( restartThenRotateUpdatesHistoricRootLookupBound ) {
+    State sw = state.createStateCopyAndClearCaches();
+
+    sw.incNonce( address1 );
+    sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 1 );
+    sw.mutableHistoricState().saveRootForBlockNumber( 1 );
+
+    // This is the state restoration performed during startup.
+    sw.mutableHistoricState().setRootFromDB();
+    BOOST_CHECK_EQUAL( sw.mutableHistoricState().globalRootBlockNumber(), 1 );
+
+    sw.mutableHistoricState().rotateDbsIfNeeded( 2 );
+    sw.incNonce( address1 );
+    sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 2 );
+
+    BOOST_CHECK_EQUAL( sw.mutableHistoricState().globalRootBlockNumber(), 2 );
+    BOOST_CHECK_NO_THROW( sw.mutableHistoricState().saveRootForBlockNumber( 2 ) );
+
+    sw.mutableHistoricState().setRootByBlockNumber( 1 );
+    BOOST_CHECK_EQUAL( sw.mutableHistoricState().getNonce( address1 ), 1 );
+    sw.mutableHistoricState().setRootByBlockNumber( 2 );
+    BOOST_CHECK_EQUAL( sw.mutableHistoricState().getNonce( address1 ), 2 );
+}
+
 // make two changes in two blocks and try to access state in each block
 BOOST_AUTO_TEST_CASE( twoChanges ) {
     State sw = state.createStateCopyAndClearCaches();

@@ -399,9 +399,12 @@ public:
 
     /// Commit all changes waiting in the address cache to the DB.
     /// @param _commitBehaviour whether or not to remove empty accounts during commit.
+    /// @param _historicRootBlockNumber block that produced the historic-state root. Callers
+    /// without a block context should use the default unbounded lookup marker.
 
     void commit( dev::eth::CommitBehaviour _commitBehaviour =
-                     dev::eth::CommitBehaviour::RemoveEmptyAccounts );
+                     dev::eth::CommitBehaviour::RemoveEmptyAccounts,
+        uint64_t _historicRootBlockNumber = UINT64_MAX );
 
     /// Execute a given transaction.
     /// This will change the state accordingly.

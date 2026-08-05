@@ -208,10 +208,13 @@ void HistoricState::clearCacheIfTooLarge() const {
     }
 }
 
-void HistoricState::commitExternalChanges( AccountMap const& _accountMap ) {
+void HistoricState::commitExternalChanges(
+    AccountMap const& _accountMap, uint64_t _rootBlockNumber ) {
     auto historicStateStart = dev::db::LevelDB::getCurrentTimeMs();
-    commitExternalChangesIntoTrieDB( _accountMap, m_state );
+    auto changedAccounts = commitExternalChangesIntoTrieDB( _accountMap, m_state );
     m_state.db()->commit();
+    if ( !changedAccounts.empty() )
+        m_state.setRootBlockNumber( _rootBlockNumber );
     clearAllCaches();
     auto historicStateFinish = dev::db::LevelDB::getCurrentTimeMs();
     m_totalTimeSpentInStateCommitsPerBlock += historicStateFinish - historicStateStart;

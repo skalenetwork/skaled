@@ -724,7 +724,8 @@ void Block::saveStateChanges(
 void Block::runCommit( BlockChain const& _bc, const SyncContext& _context ) {
     bool removeEmptyAccounts = m_currentBlock.number() >= _bc.chainParams().getEIP158ForkBlock();
     m_state.commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
-                                          dev::eth::CommitBehaviour::KeepEmptyAccounts );
+                                          dev::eth::CommitBehaviour::KeepEmptyAccounts,
+        m_currentBlock.number() );
 
 #ifndef FAIR
     if ( _context.singleCommitEnabled ) {
@@ -1012,7 +1013,8 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
         m_currentBlock.number() >= _bc.chainParams().getEIP158ForkBlock();  // TODO: use EVMSchedule
     DEV_TIMED_ABOVE( "commit", 500 )
     m_state.commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
-                                          dev::eth::CommitBehaviour::KeepEmptyAccounts );
+                                          dev::eth::CommitBehaviour::KeepEmptyAccounts,
+        m_currentBlock.number() );
 
     //    // Hash the state trie and check against the state_root hash in m_currentBlock.
     //    if (m_currentBlock.stateRoot() != m_previousBlock.stateRoot() &&
@@ -1218,7 +1220,7 @@ void Block::performIrregularModifications() {
         Addresses allDAOs = childDaos();
         for ( Address const& dao : allDAOs )
             m_state.transferBalance( dao, recipient, m_state.balance( dao ) );
-        m_state.commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
+        m_state.commit( dev::eth::CommitBehaviour::KeepEmptyAccounts, info().number() );
     }
 }
 
@@ -1233,14 +1235,16 @@ void Block::updateBlockhashContract() {
                 state.setCode( c_blockhashContractAddress, bytes( c_blockhashContractCode ),
                     m_sealEngine->evmSchedule( this->m_previousBlock.timestamp(), blockNumber )
                         .accountVersion );
-                state.commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
+                state.commit( dev::eth::CommitBehaviour::KeepEmptyAccounts,
+                    blockNumber.convert_to< uint64_t >() );
             }
         } else {
             m_state.createContract( c_blockhashContractAddress );
             m_state.setCode( c_blockhashContractAddress, bytes( c_blockhashContractCode ),
                 m_sealEngine->evmSchedule( this->m_previousBlock.timestamp(), blockNumber )
                     .accountVersion );
-            m_state.commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
+            m_state.commit( dev::eth::CommitBehaviour::KeepEmptyAccounts,
+                blockNumber.convert_to< uint64_t >() );
         }
     }
 
@@ -1254,7 +1258,8 @@ void Block::updateBlockhashContract() {
             e.go();
         e.finalize();
 
-        m_state.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts );
+        m_state.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts,
+            blockNumber.convert_to< uint64_t >() );
     }
 }
 
@@ -1394,7 +1399,7 @@ LogBloom Block::logBloom() const {
 void Block::cleanup() {
     MICROPROFILE_SCOPEI( "Block", "cleanup", MP_BEIGE );
 
-    m_state.commit();  // TODO: State API for this?
+    m_state.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, info().number() );
 
     BOOST_LOG( m_loggerDebug ) << "Committed: stateRoot is not calculated in Skale state";
 
