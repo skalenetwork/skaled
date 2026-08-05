@@ -1235,16 +1235,14 @@ void Block::updateBlockhashContract() {
                 state.setCode( c_blockhashContractAddress, bytes( c_blockhashContractCode ),
                     m_sealEngine->evmSchedule( this->m_previousBlock.timestamp(), blockNumber )
                         .accountVersion );
-                state.commit( dev::eth::CommitBehaviour::KeepEmptyAccounts,
-                    blockNumber.convert_to< uint64_t >() );
+                state.commit( dev::eth::CommitBehaviour::KeepEmptyAccounts, info().number() );
             }
         } else {
             m_state.createContract( c_blockhashContractAddress );
             m_state.setCode( c_blockhashContractAddress, bytes( c_blockhashContractCode ),
                 m_sealEngine->evmSchedule( this->m_previousBlock.timestamp(), blockNumber )
                     .accountVersion );
-            m_state.commit( dev::eth::CommitBehaviour::KeepEmptyAccounts,
-                blockNumber.convert_to< uint64_t >() );
+            m_state.commit( dev::eth::CommitBehaviour::KeepEmptyAccounts, info().number() );
         }
     }
 
@@ -1258,8 +1256,7 @@ void Block::updateBlockhashContract() {
             e.go();
         e.finalize();
 
-        m_state.commit(
-            dev::eth::CommitBehaviour::RemoveEmptyAccounts, blockNumber.convert_to< uint64_t >() );
+        m_state.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, info().number() );
     }
 }
 

@@ -599,8 +599,9 @@ void State::clearCacheIfTooLarge() const {
     }
 }
 
-void State::commit(
-    dev::eth::CommitBehaviour _commitBehaviour, uint64_t _historicRootBlockNumber ) {
+void State::commit( dev::eth::CommitBehaviour _commitBehaviour, int64_t _historicRootBlockNumber ) {
+    LDB_CHECK( _historicRootBlockNumber >= 0 );
+
     if ( _commitBehaviour == dev::eth::CommitBehaviour::RemoveEmptyAccounts )
         removeEmptyAccounts();
 
@@ -659,7 +660,8 @@ void State::commit(
 
 
 #ifdef HISTORIC_STATE
-    m_historicState.commitExternalChanges( m_cache, _historicRootBlockNumber );
+    m_historicState.commitExternalChanges(
+        m_cache, static_cast< uint64_t >( _historicRootBlockNumber ) );
 #endif
 
     m_changeLog.clear();
