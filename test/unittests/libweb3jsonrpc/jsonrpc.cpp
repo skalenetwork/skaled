@@ -688,8 +688,10 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         if ( httpClient )
             delete httpClient;
 
-        if ( g_skaleHost )
+        if ( g_skaleHost ) {
+            g_skaleHost->stopWorking();
             g_skaleHost.reset();
+        }
 
         BOOST_TEST_MESSAGE( "Destructed JsonRpcFixture" );
     }
