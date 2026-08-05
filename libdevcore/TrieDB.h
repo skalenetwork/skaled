@@ -115,9 +115,7 @@ public:
 
 #ifdef HISTORIC_STATE
     uint64_t rootBlockNumber() const { return m_rootBlockNumber; }
-    void setRootBlockNumber( uint64_t _rootBlockNumber ) {
-        m_rootBlockNumber = _rootBlockNumber;
-    }
+    void setRootBlockNumber( uint64_t _rootBlockNumber ) { m_rootBlockNumber = _rootBlockNumber; }
 #endif
 
     std::string at( bytes const& _key ) const { return at( &_key ); }

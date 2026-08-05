@@ -1258,8 +1258,8 @@ void Block::updateBlockhashContract() {
             e.go();
         e.finalize();
 
-        m_state.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts,
-            blockNumber.convert_to< uint64_t >() );
+        m_state.commit(
+            dev::eth::CommitBehaviour::RemoveEmptyAccounts, blockNumber.convert_to< uint64_t >() );
     }
 }
 

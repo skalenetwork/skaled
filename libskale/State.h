@@ -402,8 +402,8 @@ public:
     /// @param _historicRootBlockNumber block that produced the historic-state root. Callers
     /// without a block context should use the default unbounded lookup marker.
 
-    void commit( dev::eth::CommitBehaviour _commitBehaviour =
-                     dev::eth::CommitBehaviour::RemoveEmptyAccounts,
+    void commit(
+        dev::eth::CommitBehaviour _commitBehaviour = dev::eth::CommitBehaviour::RemoveEmptyAccounts,
         uint64_t _historicRootBlockNumber = UINT64_MAX );
 
     /// Execute a given transaction.

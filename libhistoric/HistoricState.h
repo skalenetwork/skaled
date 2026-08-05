@@ -209,8 +209,7 @@ public:
 
     uint64_t globalRootBlockNumber() const { return m_state.rootBlockNumber(); }
 
-    void commitExternalChanges(
-        AccountMap const& _cache, uint64_t _rootBlockNumber = UINT64_MAX );
+    void commitExternalChanges( AccountMap const& _cache, uint64_t _rootBlockNumber = UINT64_MAX );
 
     /// Resets any uncommitted changes to the cache.
     void setRoot( GlobalRoot const& _root, uint64_t _rootBlockNumber );
