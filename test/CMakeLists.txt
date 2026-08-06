@@ -11,11 +11,16 @@ endif()
 set(excludeSuites jsonrpc \"customTestSuite\" BlockQueueSuite)
 set(allSuites jsonrpc)
 foreach(file ${sources})
-    file(STRINGS ${file} test_list_raw REGEX "BOOST_.*TEST_(SUITE|CASE|SUITE_END)")
+    file(READ ${file} test_source_raw)
+    string(REGEX REPLACE "[\r\n]+" " " test_source_flat "${test_source_raw}")
+    string(REGEX MATCHALL
+        "BOOST_[A-Z_]*TEST_SUITE[ \t]*\\([ \t]*[A-Za-z_][A-Za-z_0-9]*|BOOST_[A-Z_]*TEST_CASE[ \t]*\\([ \t]*[A-Za-z_][A-Za-z_0-9]*|BOOST_AUTO_TEST_SUITE_END[ \t]*\\("
+        test_list_raw
+        "${test_source_flat}")
     set(TestSuite "DEFAULT")
     set(TestSuitePath "")
     foreach(test_raw ${test_list_raw})
-        string(REGEX REPLACE ".*TEST_(SUITE|CASE)\\(( [^ ,\\)]*).*" "\\1 \\2" test ${test_raw})
+        string(REGEX REPLACE ".*TEST_(SUITE|CASE)[ \t]*\\([ \t]*([^ ,\\)]*).*" "\\1 \\2" test ${test_raw})
 
         #skip disabled
         if (";${excludeSuites};" MATCHES ";${TestSuite};")
@@ -24,7 +29,7 @@ foreach(file ${sources})
 
         if(test MATCHES "^SUITE .*")
 
-            string(SUBSTRING ${test} 6 -1 TestSuite)
+            string(SUBSTRING "${test}" 6 -1 TestSuite)
             set(TestSuitePath "${TestSuitePath}/${TestSuite}")
 
             if(FASTCTEST)
@@ -32,7 +37,11 @@ foreach(file ${sources})
                     continue()
                 endif()
                 if (NOT ";${allSuites};" MATCHES ";${TestSuite};")
-                    string(SUBSTRING ${TestSuitePath} 1 -1 TestSuitePathFixed)
+                    if(TestSuitePath STREQUAL "")
+                        set(TestSuitePathFixed "")
+                    else()
+                        string(SUBSTRING "${TestSuitePath}" 1 -1 TestSuitePathFixed)
+                    endif()
                     list(APPEND allSuites ${TestSuite})
                     separate_arguments(TESTETH_ARGS)
                     set(TestEthArgs -t ${TestSuitePathFixed} -- ${TESTETH_ARGS})
@@ -42,17 +51,26 @@ foreach(file ${sources})
         elseif(test MATCHES "^CASE .*")
             if(NOT FASTCTEST)
                 if(NOT test MATCHES "^CASE &createRandom.*")
-                    string(SUBSTRING ${test} 5 -1 TestCase)
-                    string(SUBSTRING ${TestSuitePath} 1 -1 TestSuitePathFixed)
+                    string(SUBSTRING "${test}" 5 -1 TestCase)
+                    if(TestSuitePath STREQUAL "")
+                        set(TestSelector "${TestCase}")
+                    else()
+                        string(SUBSTRING "${TestSuitePath}" 1 -1 TestSuitePathFixed)
+                        set(TestSelector "${TestSuitePathFixed}/${TestCase}")
+                    endif()
                     separate_arguments(TESTETH_ARGS)
-                    set(TestEthArgs -t ${TestSuitePathFixed}/${TestCase} -- ${TESTETH_ARGS})
-                    add_test(NAME ${TestSuitePathFixed}/${TestCase} WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/test COMMAND testeth ${TestEthArgs})
+                    set(TestEthArgs -t ${TestSelector} -- ${TESTETH_ARGS})
+                    add_test(NAME ${TestSelector} WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/test COMMAND testeth ${TestEthArgs})
                 endif()
             endif()
         elseif (";${test_raw};" MATCHES "BOOST_AUTO_TEST_SUITE_END()")
             #encountered SUITE_END block. remove one test suite from the suite path.
-            string(FIND ${TestSuitePath} "/" Position REVERSE)
-            string(SUBSTRING ${TestSuitePath} 0 ${Position} TestSuitePath)
+            string(FIND "${TestSuitePath}" "/" Position REVERSE)
+            if(Position GREATER_EQUAL 0)
+                string(SUBSTRING "${TestSuitePath}" 0 ${Position} TestSuitePath)
+            else()
+                set(TestSuitePath "")
+            endif()
         endif()
     endforeach(test_raw)
 endforeach(file)
@@ -60,6 +78,16 @@ endforeach(file)
 find_library( YAML_CPP_LIBRARIES NAMES yaml-cpp HINTS "${DEPS_INSTALL_ROOT}/lib")
 
 add_executable(testeth ${sources} unittests/libethereum/InstanceMonitorTest.cpp)
+
+# Add libBLS test utils for BITE tests
+if(BITE)
+    target_sources(testeth PRIVATE
+        ${CMAKE_SOURCE_DIR}/libconsensus/libBLS/test/utils.cpp
+    )
+    target_include_directories(testeth PRIVATE
+        ${CMAKE_SOURCE_DIR}/libconsensus/libBLS
+    )
+endif()
 
 target_compile_options( testeth PRIVATE
     -Wno-error=deprecated-copy -Wno-error=unused-result -Wno-unused-parameter -Wno-error=unused-variable -Wno-maybe-uninitialized
@@ -95,10 +123,8 @@ target_link_libraries(testeth PRIVATE
   jsoncpp
   ${DEPS_INSTALL_ROOT}/lib/libff.a
   ${DEPS_INSTALL_ROOT}/lib/libgmp.a
-  ${DEPS_INSTALL_ROOT}/lib/libcurl.a
   ${DEPS_INSTALL_ROOT}/lib/libssl.a
   ${DEPS_INSTALL_ROOT}/lib/libcrypto.a
-  idn2
   batched-io
 
   # conditional libs

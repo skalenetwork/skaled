@@ -41,7 +41,6 @@ OverlayDB::~OverlayDB() = default;
 void OverlayDB::commit() {
     if ( m_db ) {
         for ( unsigned commitTry = 0; commitTry < 10; ++commitTry ) {
-//      cnote << "Committing nodes to disk DB:";
 #if DEV_GUARDED_DB
             DEV_READ_GUARDED( x_this )
 #endif

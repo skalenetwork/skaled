@@ -201,11 +201,12 @@ private:
 
     dev::Logger getLoggerFromWsMsgType( skutils::ws::e_ws_log_message_type_t eWSLMT );
 
-    dev::Logger m_loggerDebug{ dev::createLogger( dev::VerbosityDebug, "SkaleWsPeer" ) };
-    dev::Logger m_loggerInfo{ dev::createLogger( dev::VerbosityInfo, "SkaleWsPeer" ) };
-    dev::Logger m_loggerTrace{ dev::createLogger( dev::VerbosityTrace, "SkaleWsPeer" ) };
-    dev::Logger m_loggerWarning{ dev::createLogger( dev::VerbosityWarning, "SkaleWsPeer" ) };
-    dev::Logger m_loggerError{ dev::createLogger( dev::VerbosityError, "SkaleWsPeer" ) };
+    mutable dev::Logger m_loggerDebug{ dev::createLogger( dev::VerbosityDebug, "SkaleWsPeer" ) };
+    mutable dev::Logger m_loggerInfo{ dev::createLogger( dev::VerbosityInfo, "SkaleWsPeer" ) };
+    mutable dev::Logger m_loggerTrace{ dev::createLogger( dev::VerbosityTrace, "SkaleWsPeer" ) };
+    mutable dev::Logger m_loggerWarning{ dev::createLogger(
+        dev::VerbosityWarning, "SkaleWsPeer" ) };
+    mutable dev::Logger m_loggerError{ dev::createLogger( dev::VerbosityError, "SkaleWsPeer" ) };
 
 public:
     string implPreformatTrafficJsonMessage( const string& strJSON, bool isRequest ) const;
@@ -520,10 +521,11 @@ private:
 
 
     /// Loggers
-    dev::Logger m_loggerDebug{ createLogger( dev::VerbosityDebug, "SkaleServerOverride" ) };
-    dev::Logger m_loggerTrace{ createLogger( dev::VerbosityTrace, "SkaleServerOverride" ) };
-    dev::Logger m_loggerWarning{ createLogger( dev::VerbosityWarning, "SkaleServerOverride" ) };
-    dev::Logger m_loggerError{ createLogger( dev::VerbosityError, "SkaleServerOverride" ) };
+    mutable dev::Logger m_loggerDebug{ createLogger( dev::VerbosityDebug, "SkaleServerOverride" ) };
+    mutable dev::Logger m_loggerTrace{ createLogger( dev::VerbosityTrace, "SkaleServerOverride" ) };
+    mutable dev::Logger m_loggerWarning{ createLogger(
+        dev::VerbosityWarning, "SkaleServerOverride" ) };
+    mutable dev::Logger m_loggerError{ createLogger( dev::VerbosityError, "SkaleServerOverride" ) };
 
 public:
     int getServerPortStatusWS( int ipVer, e_server_mode_t esm ) const;
@@ -628,6 +630,7 @@ public:
     friend class SkaleWsPeer;
 
 private:
+    static bool isValidRequestToTransformLogs( const nlohmann::json& _request );
     static void addRapidJsonError(
         rapidjson::Document& target, int code, const std::string& message );
 

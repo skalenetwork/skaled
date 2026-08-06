@@ -25,6 +25,7 @@
 
 #include "EVMSchedule.h"
 
+#include <libdevcore/CommonData.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/vector_ref.h>
 #include <libdevcrypto/Common.h>
@@ -35,6 +36,7 @@
 #ifdef BITE
 #include <libconsensus/libBLS/threshold_encryption/ThresholdEncryption.h>
 #include <libconsensus/node/ConsensusInterface.h>
+#include <libethcore/BITECommon.h>
 #endif
 using namespace std;
 
@@ -50,7 +52,7 @@ const dev::Address TransactionBase::BITE_ADDRESS =
     dev::Address( std::string( BITE_ADDRESS_AS_STRING ) );
 #endif
 
-std::vector< bytes > validateAccessListRLP( const RLP& _data ) {
+std::vector< bytes > validateAccessListRLP( const RLP& _data, bool _berlinForkPatchEnabled ) {
     if ( !_data.isList() )
         BOOST_THROW_EXCEPTION( InvalidTransactionFormat()
                                << errinfo_comment( "transaction accessList RLP must be a list" ) );
@@ -72,11 +74,23 @@ std::vector< bytes > validateAccessListRLP( const RLP& _data ) {
             BOOST_THROW_EXCEPTION(
                 InvalidTransactionFormat() << errinfo_comment(
                     "transaction accessList RLP must be a list of byte array and a list" ) );
-        for ( const auto& k : accessList[1].toList() )
+        // EIP-2930: address must be exactly 20 bytes, storage key must be exactly 32 bytes.
+        // Gated by BerlinForkPatch to preserve pre-fork acceptance of non-conforming RLP
+        // (e.g. addresses encoded as integers with stripped leading zeros).
+        if ( _berlinForkPatchEnabled && accessList[0].size() != 20 )
+            BOOST_THROW_EXCEPTION(
+                InvalidTransactionFormat()
+                << errinfo_comment( "transaction accessList address must be exactly 20 bytes" ) );
+        for ( const auto& k : accessList[1] ) {
             if ( !k.isData() )
                 BOOST_THROW_EXCEPTION(
                     InvalidTransactionFormat() << errinfo_comment(
                         "transaction storageKeys RLP must be a list of byte array" ) );
+            if ( _berlinForkPatchEnabled && k.size() != 32 )
+                BOOST_THROW_EXCEPTION(
+                    InvalidTransactionFormat() << errinfo_comment(
+                        "transaction accessList storage key must be exactly 32 bytes" ) );
+        }
     }
 
     if ( rlpList.size() > MAX_ACCESS_LIST_COUNT )
@@ -97,6 +111,42 @@ dev::RLPs accessListToRLPs( const std::vector< bytes >& _accessList ) {
         accessList[i] = RLP( _accessList[i] );
     }
     return accessList;
+}
+
+int64_t TransactionBase::accessListGasRequired(
+    std::vector< bytes > const& _accessList, EVMSchedule const& _es ) {
+    int64_t gas = 0;
+    for ( auto const& accessListEntryRaw : _accessList ) {
+        RLP const accessListEntry( accessListEntryRaw );
+        if ( !accessListEntry.isList() || accessListEntry.itemCount() != 2 )
+            BOOST_THROW_EXCEPTION( InvalidTransactionFormat() << errinfo_comment(
+                                       "transaction accessList entry is invalid" ) );
+        if ( !accessListEntry[1].isList() )
+            BOOST_THROW_EXCEPTION( InvalidTransactionFormat() << errinfo_comment(
+                                       "transaction accessList storage keys must be a list" ) );
+
+        size_t const storageKeyCount = accessListEntry[1].itemCount();
+        if ( gas > std::numeric_limits< int64_t >::max() -
+                       static_cast< int64_t >( _es.txAccessListAddressGas ) )
+            BOOST_THROW_EXCEPTION(
+                InvalidTransactionFormat() << errinfo_comment( "Gas calculation overflow" ) );
+        gas += static_cast< int64_t >( _es.txAccessListAddressGas );
+
+        if ( storageKeyCount > 0 ) {
+            if ( _es.txAccessListStorageKeyGas >
+                 std::numeric_limits< int64_t >::max() / storageKeyCount )
+                BOOST_THROW_EXCEPTION(
+                    InvalidTransactionFormat() << errinfo_comment( "Gas calculation overflow" ) );
+            int64_t const storageKeysGas =
+                static_cast< int64_t >( _es.txAccessListStorageKeyGas ) * storageKeyCount;
+            if ( gas > std::numeric_limits< int64_t >::max() - storageKeysGas )
+                BOOST_THROW_EXCEPTION(
+                    InvalidTransactionFormat() << errinfo_comment( "Gas calculation overflow" ) );
+            gas += storageKeysGas;
+        }
+    }
+
+    return gas;
 }
 
 TransactionBase::TransactionBase( TransactionSkeleton const& _ts, Secret const& _s )
@@ -193,7 +243,7 @@ void TransactionBase::fillFromBytesLegacy(
 }
 
 void TransactionBase::fillFromBytesType1( bytesConstRef _rlpData, CheckTransaction _checkSig,
-    bool _allowInvalid, bool _invalidTransactionFormatPatchEnabled ) {
+    bool _allowInvalid, bool _invalidTransactionFormatPatchEnabled, bool _berlinForkPatchEnabled ) {
     bytes croppedRlp( _rlpData.begin() + 1, _rlpData.end() );
     RLP const rlp( croppedRlp );
     try {
@@ -220,7 +270,7 @@ void TransactionBase::fillFromBytesType1( bytesConstRef _rlpData, CheckTransacti
 
         m_data = rlp[6].toBytes();
 
-        m_accessList = validateAccessListRLP( rlp[7] );
+        m_accessList = validateAccessListRLP( rlp[7], _berlinForkPatchEnabled );
 
         bool const yParity = rlp[8].toInt< uint8_t >();
         h256 const r = rlp[9].toInt< u256 >();
@@ -259,7 +309,7 @@ void TransactionBase::fillFromBytesType1( bytesConstRef _rlpData, CheckTransacti
 }
 
 void TransactionBase::fillFromBytesType2( bytesConstRef _rlpData, CheckTransaction _checkSig,
-    bool _allowInvalid, bool _invalidTransactionFormatPatchEnabled ) {
+    bool _allowInvalid, bool _invalidTransactionFormatPatchEnabled, bool _berlinForkPatchEnabled ) {
     bytes croppedRlp( _rlpData.begin() + 1, _rlpData.end() );
     RLP const rlp( croppedRlp );
     try {
@@ -296,7 +346,7 @@ void TransactionBase::fillFromBytesType2( bytesConstRef _rlpData, CheckTransacti
 
         m_data = rlp[7].toBytes();
 
-        m_accessList = validateAccessListRLP( rlp[8] );
+        m_accessList = validateAccessListRLP( rlp[8], _berlinForkPatchEnabled );
 
         bool const yParity = rlp[9].toInt< uint8_t >();
         h256 const r = rlp[10].toInt< u256 >();
@@ -335,18 +385,19 @@ void TransactionBase::fillFromBytesType2( bytesConstRef _rlpData, CheckTransacti
 }
 
 void TransactionBase::fillFromBytesByType( bytesConstRef _rlpData, CheckTransaction _checkSig,
-    bool _allowInvalid, TransactionType _type, bool _invalidTransactionFormatPatchEnabled ) {
+    bool _allowInvalid, TransactionType _type, bool _invalidTransactionFormatPatchEnabled,
+    bool _berlinForkPatchEnabled ) {
     switch ( _type ) {
     case TransactionType::Legacy:
         fillFromBytesLegacy( _rlpData, _checkSig, _allowInvalid );
         break;
     case TransactionType::Type1:
-        fillFromBytesType1(
-            _rlpData, _checkSig, _allowInvalid, _invalidTransactionFormatPatchEnabled );
+        fillFromBytesType1( _rlpData, _checkSig, _allowInvalid,
+            _invalidTransactionFormatPatchEnabled, _berlinForkPatchEnabled );
         break;
     case TransactionType::Type2:
-        fillFromBytesType2(
-            _rlpData, _checkSig, _allowInvalid, _invalidTransactionFormatPatchEnabled );
+        fillFromBytesType2( _rlpData, _checkSig, _allowInvalid,
+            _invalidTransactionFormatPatchEnabled, _berlinForkPatchEnabled );
         break;
     default:
         BOOST_THROW_EXCEPTION(
@@ -358,19 +409,50 @@ void TransactionBase::fillFromBytesByType( bytesConstRef _rlpData, CheckTransact
 TransactionType TransactionBase::getTransactionType( bytesConstRef _rlp ) {
     if ( _rlp.empty() )
         return TransactionType::Legacy;
-    if ( _rlp[0] > 2 )
+
+    uint8_t firstByte = _rlp[0];
+
+    // EIP-2718: first byte in [0xc0, 0xfe] is a legacy RLP-encoded transaction (list prefix).
+    // First byte in [0, 0x7f] is a typed transaction where the byte is the type.
+    if ( firstByte >= 0xc0 )
         return TransactionType::Legacy;
-    return TransactionType( _rlp[0] );
+
+    if ( firstByte <= 0x7f ) {
+        switch ( firstByte ) {
+        case 0:
+            // Type 0 is effectively Legacy (no prefix stripping needed).
+            return TransactionType::Legacy;
+        case 1:
+            return TransactionType::Type1;
+        case 2:
+            return TransactionType::Type2;
+        default:
+            BOOST_THROW_EXCEPTION(
+                InvalidTransactionFormat() << errinfo_comment(
+                    "unsupported typed transaction type: " + std::to_string( firstByte ) ) );
+        }
+    }
+
+    // Bytes [0x80, 0xbf] are RLP string prefixes — not a valid transaction envelope.
+    BOOST_THROW_EXCEPTION( InvalidTransactionFormat() << errinfo_comment(
+                               "invalid transaction envelope: unexpected first byte 0x" +
+                               toHex( bytes{ firstByte } ) ) );
 }
 
-TransactionBase::TransactionBase( bytesConstRef _rlpData, CheckTransaction _checkSig,
-    bool _allowInvalid, bool _eip1559Enabled, bool _invalidTransactionFormatPatchEnabled ) {
+TransactionBase::TransactionBase(
+    bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid, bool _eip1559Enabled,
+    bool _invalidTransactionFormatPatchEnabled, bool _berlinForkPatchEnabled
+#ifdef BITE
+    ,
+    bool _bite2PatchEnabled
+#endif
+) {
     MICROPROFILE_SCOPEI( "TransactionBase", "ctor", MP_GOLD2 );
     try {
         if ( _eip1559Enabled ) {
             TransactionType txnType = getTransactionType( _rlpData );
             fillFromBytesByType( _rlpData, _checkSig, _allowInvalid, txnType,
-                _invalidTransactionFormatPatchEnabled );
+                _invalidTransactionFormatPatchEnabled, _berlinForkPatchEnabled );
         } else {
             fillFromBytesLegacy( _rlpData, _checkSig, _allowInvalid );
         }
@@ -379,7 +461,14 @@ TransactionBase::TransactionBase( bytesConstRef _rlpData, CheckTransaction _chec
         // bad formatted txns cannot make it to the block
         // therefore no need to check it anywhere else
         checkIfBITETxnAndSet( m_receiveAddress );
-#endif
+
+        // check if a txn is a CTX here only when bite2Patch is enabled;
+        // bad formatted txns cannot make it to the block
+        // therefore no need to check it anywhere else
+        if ( _bite2PatchEnabled )
+            checkIfCTXAndSet( m_data );
+
+#endif  // BITE
     } catch ( std::exception& e ) {
         m_type = Type::Invalid;
         RLPStream s;
@@ -559,7 +648,7 @@ int64_t TransactionBase::baseGasRequired(
     ,
     bool _isBITETxn
 #endif
-#ifdef BITE2
+#ifdef BITE
     ,
     std::optional< size_t > _bite2EncryptedArgsSize
 #endif
@@ -576,7 +665,7 @@ int64_t TransactionBase::baseGasRequired(
     }
 #endif
 
-#ifdef BITE2
+#ifdef BITE
     // BITE2 transaction - charge for every encrypted payload
     if ( _bite2EncryptedArgsSize.has_value() ) {
         // Check for multiplication overflow
@@ -668,6 +757,11 @@ bytesConstRef dev::eth::bytesRefFromTransactionRlp( const RLP& _rlp ) {
 }
 
 #ifdef BITE
+bool TransactionBase::isInvalidBiteTransaction() const {
+    return ( m_isBITETxn && ( !m_decryptedData && !m_decryptedTo ) ) ||
+           ( m_isCTX && !m_decryptedData );
+}
+
 bytes const& TransactionBase::decryptedData() const {
     if ( !m_decryptedData )
         return data();
@@ -688,77 +782,28 @@ void TransactionBase::checkAndValidateBITETransaction( uint64_t _currentEpochId 
     if ( !isBite() )
         return;
 
-    RLP rlpEncodedBITETxn;
-    try {
-        try {
-            rlpEncodedBITETxn = RLP( m_data );
-        } catch ( ... ) {
-            BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment( std::string(
-                                       "BITE transaction's data must be RLP encoded" ) ) );
-        }
-
-        // RLP structure: [epochId1, encryptedBITEData]
-        // encryptedBITEData may optionally have 1 or 2 encrypted AES keys assosiated with it
-
-        if ( !rlpEncodedBITETxn.isList() )
-            BOOST_THROW_EXCEPTION(
-                InvalidBITETransaction() << errinfo_comment(
-                    std::string( "BITE transaction's data is invalid: RLP must be a list" ) ) );
-
-        if ( rlpEncodedBITETxn.itemCount() != 2 )
-            BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment(
-                                       std::string( "BITE transaction's data is invalid: RLP list "
-                                                    "should have exactly 2 elements, got: " ) +
-                                       std::to_string( rlpEncodedBITETxn.itemCount() ) ) );
-
-        // read encrypted data
-        dev::bytes encryptedBITEData = rlpEncodedBITETxn[1].toBytes();
-        if ( encryptedBITEData.size() < BITE_CIPHERTEXT_MIN_LEN )
-            BOOST_THROW_EXCEPTION(
-                BITETransactionTooShort() << errinfo_comment(
-                    std::string( "BITE transaction's data size must be at least " ) +
-                    std::to_string( BITE_CIPHERTEXT_MIN_LEN ) + std::string( ", got " ) +
-                    std::to_string( encryptedBITEData.size() ) ) );
-
-        // read epochId
-        if ( !rlpEncodedBITETxn[0].isInt() )
-            BOOST_THROW_EXCEPTION(
-                InvalidBITETransaction() << errinfo_comment(
-                    std::string( "BITE transaction's data is invalid: epochId must be an int" ) ) );
-        uint64_t epochIdCandidate = rlpEncodedBITETxn[0].toInt< uint64_t >();
-        // if a txn was sent before rotation it may have previous epochId: currentEpochId - 1
-        if ( _currentEpochId != epochIdCandidate && _currentEpochId != epochIdCandidate + 1 )
-            BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment(
-                                       std::string( "BITE transaction's data is invalid: no "
-                                                    "payload found with matching epochId " ) +
-                                       std::to_string( _currentEpochId ) ) );
-
-        try {
-            // check that ciphertext is valid
-            libBLS::Ciphertext ciphertext = libBLS::Ciphertext::fromBytes( encryptedBITEData );
-            // if currentEpochId = epochIdCandidate + 1, then ciphertext must have
-            // 2 encrypted AES keys associated with it
-            if ( epochIdCandidate != _currentEpochId && ciphertext.getKeys().size() != 2 )
-                BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment(
-                                           std::string( "BITE transaction's data is invalid: no "
-                                                        "payload found with matching epochId " ) +
-                                           std::to_string( _currentEpochId ) ) );
-            // validate encrypted AES keys
-            for ( const auto& cipheredKey : ciphertext.getKeys() )
-                libBLS::ThresholdEncryption::validateEncryption( cipheredKey );
-        } catch ( libBLS::ThresholdUtils::IncorrectInput& ex ) {
-            BOOST_THROW_EXCEPTION(
-                InvalidBITETransaction() << errinfo_comment(
-                    std::string( "BITE transaction's data is invalid: " ) + ex.what() ) );
-        } catch ( libBLS::ThresholdUtils::IsNotWellFormed& ex ) {
-            BOOST_THROW_EXCEPTION(
-                InvalidBITETransaction() << errinfo_comment(
-                    std::string( "BITE transaction's data is invalid: " ) + ex.what() ) );
-        }
-    } catch ( const Exception& _e ) {
-        BOOST_LOG( m_loggerDebug )
-            << std::string( "invalid BITE data format: " ) << std::string( _e.what() );
-        throw;
-    }
+    dev::bite::BITEVerificationData verificationData{ _currentEpochId, {} };
+    dev::bite::validateBITECiphertext( m_data, verificationData );
 }
-#endif
+
+void TransactionBase::checkIfCTXAndSet( const dev::bytes& _data ) {
+    if ( _data.size() < dev::bite::ON_DECRYPT_FUNCTION_SELECTOR_SIZE_BYTES )
+        return;
+    m_isCTX = std::equal( _data.begin(),
+        _data.begin() + dev::bite::ON_DECRYPT_FUNCTION_SELECTOR_SIZE_BYTES,
+        dev::bite::ON_DECRYPT_FUNCTION_SELECTOR.begin() );
+}
+
+void TransactionBase::setDecryptedArgsCTX( const DecryptedCTXArgs& _decryptedCTXArgs ) {
+    if ( !isCTX() )
+        throw std::runtime_error( "Trying to set CTX arguments for not CTX-type transaction" );
+
+    m_ctxEncryptedArgsSize = _decryptedCTXArgs.args.size();
+
+    auto decryptedCTXData = dev::bite::constructDecryptedCTXData( m_data, _decryptedCTXArgs );
+
+    // Reconstruct decrypted data: selector + abi encoded arrays
+    m_decryptedData = std::make_shared< dev::bytes >( decryptedCTXData );
+}
+
+#endif  // BITE

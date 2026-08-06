@@ -9,7 +9,7 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-  
+
 defaults:
   run:
     shell: bash
@@ -43,6 +43,7 @@ jobs:
             build_dir: build
             cmake_args: "-DFAIR=1"
             mode: full
+            bite2_suites: "true"
 
           - name: FAIR-historic
             build_dir: build
@@ -53,22 +54,12 @@ jobs:
             build_dir: build
             cmake_args: "-DBITE=1"
             mode: full
+            bite2_suites: "true"
 
           - name: BITE-historic
             build_dir: build
             cmake_args: "-DBITE=1 -DHISTORIC_STATE=1"
             mode: historic
-            
-          - name: BITE2
-            build_dir: build
-            cmake_args: "-DBITE2=1"
-            mode: full
-
-          - name: BITE2-historic
-            build_dir: build
-            cmake_args: "-DBITE2=1 -DHISTORIC_STATE=1"
-            mode: historic
-
     steps:
       - uses: actions/checkout@v6
         with:
@@ -79,7 +70,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libunwind-dev autoconf build-essential cmake libprocps-dev libtool texinfo wget yasm flex bison btrfs-progs python3 python3-pip gawk git vim doxygen
           sudo apt-get install -y make pkg-config libgnutls28-dev libssl-dev unzip zlib1g-dev libgcrypt20-dev gcc-11 g++-11 gperf clang-format-11 gnutls-dev
-          sudo apt-get install -y nettle-dev libhiredis-dev redis-server google-perftools libgoogle-perftools-dev lcov libv8-dev 
+          sudo apt-get install -y nettle-dev libhiredis-dev redis-server google-perftools libgoogle-perftools-dev lcov libv8-dev
           sudo apt-get install -y gettext
 
           # Remove deps installed in the next steps
@@ -93,6 +84,11 @@ jobs:
           sudo update-alternatives --install /usr/bin/gcov-dump gcov-dump /usr/bin/gcov-dump-11 11
           sudo update-alternatives --install /usr/bin/gcov-tool gcov-tool /usr/bin/gcov-tool-11 11
           gcc --version
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
+          df -h
 
       - name: Build dependencies
         run: |
@@ -115,6 +111,7 @@ jobs:
           build_dir: ${{ matrix.build_dir }}
           mode: ${{ matrix.mode }}
           verbosity: "1"
+          bite2_suites: ${{ matrix.bite2_suites || 'false' }}
 
       - name: Testeth verbosity 4
         uses: ./.github/actions/testeth-run
@@ -122,3 +119,4 @@ jobs:
           build_dir: ${{ matrix.build_dir }}
           mode: ${{ matrix.mode }}
           verbosity: "4"
+          bite2_suites: ${{ matrix.bite2_suites || 'false' }}

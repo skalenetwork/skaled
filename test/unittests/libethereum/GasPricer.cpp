@@ -54,7 +54,8 @@ void executeGasPricerTest( string const& name, double _etherPrice, double _block
         "ASK Got: " + toString( gp.ask( Block( Block::Null ) ) ) +
             " Expected: " + toString( _expectedAsk ) );
     BOOST_CHECK_MESSAGE( abs( gp.bid( dev::eth::LatestBlock, _txPrio ) - _expectedBid ) < 100000000,
-        "BID Got: " + toString( gp.bid( dev::eth::LatestBlock, _txPrio ) ) + " Expected: " + toString( _expectedBid ) );
+        "BID Got: " + toString( gp.bid( dev::eth::LatestBlock, _txPrio ) ) +
+            " Expected: " + toString( _expectedBid ) );
 }
 }  // namespace test
 }  // namespace dev
@@ -72,8 +73,8 @@ BOOST_AUTO_TEST_CASE( trivialGasPricer ) {
     BOOST_CHECK_EQUAL( gp->bid(), DefaultGasPrice );
 }
 
-BOOST_AUTO_TEST_CASE( basicGasPricerNoUpdate, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    basicGasPricerNoUpdate, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     BasicGasPricer gp( u256( double( ether / 1000 ) / 30.679 ), u256( 15.0 * 1000 ) );
     BOOST_CHECK_EQUAL( gp.ask( Block( Block::Null ) ), 103754996057 );
     BOOST_CHECK_EQUAL( gp.bid(), 103754996057 );

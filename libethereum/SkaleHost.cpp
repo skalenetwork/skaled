@@ -27,6 +27,7 @@
 #include <atomic>
 #include <chrono>
 #include <future>
+#include <stdexcept>
 #include <string>
 
 using namespace std;
@@ -40,13 +41,17 @@ using namespace std;
 #include <libdevcore/FileSystem.h>
 #include <libdevcore/HashingThreadSafeQueue.h>
 #include <libdevcore/RLP.h>
+
+#ifdef BITE
+#include <libethcore/BITECommon.h>
+#endif
+
 #include <libethcore/CommonJS.h>
 
 #include <libethereum/ChainParams.h>
 #include <libethereum/Client.h>
 #include <libethereum/CommonNet.h>
 #include <libethereum/Executive.h>
-#include <libethereum/TransactionQueue.h>
 
 #include <libweb3jsonrpc/JsonHelper.h>
 
@@ -85,6 +90,10 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
     patchTimeStamps["verifyBlsSyncPatchTimestamp"] =
         m_client.chainParams().getPatchTimestamp( SchainPatchEnum::VerifyBlsSyncPatch );
 #endif  // FAIR
+#ifdef BITE
+    patchTimeStamps["bite2PatchTimestamp"] =
+        m_client.chainParams().getPatchTimestamp( SchainPatchEnum::Bite2Patch );
+#endif  // BITE
 
     auto consensusEnginePtr = make_unique< ConsensusEngine >( _extFace, m_client.number(), ts, 0,
         patchTimeStamps, m_client.chainParams().getConsensusStorageLimit() );
@@ -240,10 +249,10 @@ void DefaultConsensusFactory::fillRotationHistory( ConsensusEngine& consensus ) 
 class ConsensusExtImpl : public ConsensusExtFace {
 public:
     ConsensusExtImpl( SkaleHost& _host );
-    virtual transactions_vector pendingTransactions( size_t _limit, u256& _stateRoot ) override;
-    virtual void createBlock( const transactions_vector& _approvedTransactions,
+    virtual Transactions pendingTransactions( size_t _limit, u256& _stateRoot ) override;
+    virtual void createBlock( const Transactions& _approvedTransactions,
 #ifdef BITE
-        shared_ptr< DecryptedTransactionFieldsMap > _decryptedTransactionFields,
+        DecryptedTransactions _decryptedTransactions,
 #endif
         uint64_t _timeStamp, uint32_t _timeStampMs, uint64_t _blockID, u256 _gasPrice,
         u256 _stateRoot, uint64_t _winningNodeIndex ) override;
@@ -256,23 +265,22 @@ private:
 
 ConsensusExtImpl::ConsensusExtImpl( SkaleHost& _host ) : m_host( _host ) {}
 
-ConsensusExtFace::transactions_vector ConsensusExtImpl::pendingTransactions(
+ConsensusExtFace::Transactions ConsensusExtImpl::pendingTransactions(
     size_t _limit, u256& _stateRoot ) {
     auto ret = m_host.pendingTransactions( _limit, _stateRoot );
     return ret;
 }
 
-void ConsensusExtImpl::createBlock(
-    const ConsensusExtFace::transactions_vector& _approvedTransactions,
+void ConsensusExtImpl::createBlock( const ConsensusExtFace::Transactions& _approvedTransactions,
 #ifdef BITE
-    shared_ptr< DecryptedTransactionFieldsMap > _decryptedTransactionFields,
+    DecryptedTransactions _decryptedTransactions,
 #endif
     uint64_t _timeStamp, uint32_t, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot,
     uint64_t _winningNodeIndex ) {
     MICROPROFILE_SCOPEI( "ConsensusExtFace", "createBlock", MP_INDIANRED );
     m_host.createBlock( _approvedTransactions,
 #ifdef BITE
-        _decryptedTransactionFields,
+        _decryptedTransactions,
 #endif
         _timeStamp, _blockID, _gasPrice, _stateRoot, _winningNodeIndex );
 }
@@ -312,10 +320,15 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
                 << "TRACEPOINT " << name << " " << m_debugTracer.get_tracepoint_count( name );
         } );
 
-        // m_broadcaster.reset( new HttpBroadcaster( _client ) );
         m_broadcaster.reset( new ZmqBroadcaster( _client, *this ) );
 
         m_extFace.reset( new ConsensusExtImpl( *this ) );
+
+#ifdef BITE
+        dev::bite::isCiphertextValidationEnabled =
+            _client.chainParams().isSyncNode() ? !_client.chainParams().isTestSignaturesEnabled() :
+                                                 !_client.chainParams().getSgxServerUrl().empty();
+#endif
 
     } catch ( const std::exception& e ) {
         BOOST_LOG( m_loggerError ) << "Could not init SkaleHost" << e.what();
@@ -342,6 +355,16 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
         m_consensus->parseFullConfigAndCreateNode(
             m_client.chainParams().getOriginalJson(), _gethURL );
 #endif
+
+#ifdef BITE
+        // empty initialize for safety - this initial value should never be used:
+        // 1. On genesis block: calls to getEncryptionCallRandom will return fixed hash & never read
+        // this
+        // 2. On any blockId > 0: 'createBlock' updates this member before any calls to
+        //                        getEncryptionCallRandom can happen.
+        m_cachedBlockRandomBytes = dev::bytes( 32, 0 );
+#endif  // BITE
+
     } catch ( const std::exception& e ) {
         BOOST_LOG( m_loggerError )
             << "Could not create parse consensus config in SkaleHost" << e.what();
@@ -376,13 +399,33 @@ void SkaleHost::pushToBroadcastQueue( const Transaction& _t ) {
     m_broadcastQueueCondition.notify_all();  // Notify the condition variable
 }
 
-#ifdef BITE2
-void SkaleHost::pushToBITE2Queue( dev::eth::Transaction&& _transaction ) {
-    m_tq.importBITE2Transaction( std::move( _transaction ) );
+#ifdef BITE
+void SkaleHost::addTempBITE2Transaction( dev::eth::Transaction&& _transaction ) {
+    m_tq.addTempBITE2Transaction( std::move( _transaction ) );
+}
+
+std::vector< h256 > SkaleHost::getBITE2HashesForCurrentTxn() const {
+    return m_tq.getTempBITE2Hashes();
+}
+
+void SkaleHost::commitTempBITE2Transactions() {
+    m_tq.commitTempBITE2Transactions();
+}
+
+void SkaleHost::clearTempBITE2Transactions() {
+    m_tq.clearTempBITE2Transactions();
+}
+
+std::shared_ptr< std::deque< Transaction > > SkaleHost::pendingBITE2Transactions() const {
+    return m_tq.pendingBITE2Transactions();
+}
+
+void SkaleHost::setBITE2QueueOnInit( std::deque< dev::eth::Transaction >&& _ctxs ) {
+    return m_tq.setBITE2QueueOnInit( std::move( _ctxs ) );
 }
 #endif
 
-h256 SkaleHost::receiveTransaction( std::string _rlp ) {
+h256 SkaleHost::receiveTransaction( const std::string& _rlp ) {
     // drop incoming transactions if skaled has an outdated state
     if ( m_client.bc().info().timestamp() + REJECT_OLD_TRANSACTION_THROUGH_BROADCAST_INTERVAL_SEC <
          std::time( NULL ) ) {
@@ -392,7 +435,13 @@ h256 SkaleHost::receiveTransaction( std::string _rlp ) {
 
     Transaction transaction( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::None, false,
         EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
-        InvalidTransactionFormatPatch::isEnabledInWorkingBlock() );
+        InvalidTransactionFormatPatch::isEnabledInWorkingBlock(),
+        BerlinForkPatch::isEnabledInWorkingBlock()
+#ifdef BITE
+            ,
+        Bite2Patch::isEnabledInWorkingBlock()
+#endif  // BITE
+    );
     h256 sha = transaction.sha3();
 
     //
@@ -429,23 +478,16 @@ public:
     void will_exit() { m_will_exit = true; }
 };
 
-ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
-    size_t _limit, u256& _stateRoot ) {
+ConsensusExtFace::Transactions SkaleHost::pendingTransactions( size_t _limit, u256& _stateRoot ) {
     assert( _limit > 0 );
     assert( _limit <= numeric_limits< unsigned int >::max() );
 
-    ConsensusExtFace::transactions_vector out_vector;
-
-    if ( m_exitNeeded )
-        return out_vector;
+    ConsensusExtFace::Transactions out_vector;
 
     if ( m_exitNeeded )
         return out_vector;
 
     std::lock_guard< std::mutex > pauseLock( m_consensusPauseMutex );
-
-    if ( m_exitNeeded )
-        return out_vector;
 
     if ( m_exitNeeded )
         return out_vector;
@@ -467,6 +509,23 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
 
     int counter = 0;
     BlockHeader latestInfo = static_cast< const Interface& >( m_client ).blockInfo( LatestBlock );
+    u256 blockGasLimit = this->m_client.chainParams().getGasLimit();
+
+#ifdef BITE
+    auto bite2Transactions = m_tq.pendingBITE2Transactions();
+    u256 gasAccByCTXs = 0;
+    // limit CTXs by block gas limit
+    for ( const auto& ctx : *bite2Transactions ) {
+        gasAccByCTXs += ctx.gas();
+        if ( gasAccByCTXs > blockGasLimit ) {
+            // we should skip regular txns until we process all CTXs in queue
+            break;
+        }
+        out_vector.pushBackCTX( ctx.toBytes() );
+        m_debugTracer.tracepoint( "sent_txn" );
+        BOOST_LOG( m_loggerTrace ) << "Sent CTX";
+    }
+#endif
 
     Transactions txns = m_tq.topTransactionsSync(
         _limit, [this, &to_delete, &counter, &latestInfo]( const Transaction& tx ) -> bool {
@@ -498,8 +557,10 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
     std::lock_guard< std::recursive_mutex > lock( m_pending_createMutex, std::adopt_lock );
 
     // drop by block gas limit
-    u256 blockGasLimit = this->m_client.chainParams().getGasLimit();
     u256 gasAcc = 0;
+#ifdef BITE
+    gasAcc = gasAccByCTXs;
+#endif
     auto first_to_drop_it = txns.begin();
     for ( ; first_to_drop_it != txns.end(); ++first_to_drop_it ) {
         gasAcc += first_to_drop_it->gas();
@@ -522,7 +583,7 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
 
             h256 sha = txn.sha3();
 
-            out_vector.push_back( txn.toBytes() );
+            out_vector.pushBackRegular( txn.toBytes() );
 
             ++total_sent;
 
@@ -581,9 +642,9 @@ void SkaleHost::checkStateRoot( uint64_t _blockID, uint64_t _winningNodeIndex, u
                                      << _stateRoot.str() << " with block ID #" << _blockID;
 }
 
-void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
+void SkaleHost::createBlock( const ConsensusExtFace::Transactions& _approvedTransactions,
 #ifdef BITE
-    shared_ptr< DecryptedTransactionFieldsMap > _decryptedTransactionFields,
+    DecryptedTransactions _decryptedTransactions,
 #endif
     uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot,
     uint64_t _winningNodeIndex ) try {
@@ -599,6 +660,11 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     }
 
     BOOST_LOG( m_loggerDebug ) << "createBlock ID = #" << _blockID;
+
+#ifdef BITE
+    BOOST_LOG( m_loggerDebug ) << "Got block with " << _approvedTransactions.sizeCTX() << " CTXs";
+#endif
+
     m_debugTracer.tracepoint( "create_block" );
 
     // convert bytes back to transactions (using caching), delete them from q and push results into
@@ -607,59 +673,42 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     if ( this->m_client.chainParams().getSnapshotIntervalSec() > 0 )
         checkStateRoot( _blockID, _winningNodeIndex, _stateRoot );
 
-    std::vector< Transaction > out_txns;  // resultant Transaction vector
+    std::vector< Transaction > outTxns;  // resultant Transaction vector
+    bool needsQueueReadyNotification = false;
 
     size_t n_succeeded;
 
     BlockHeader latestInfo = static_cast< const Interface& >( m_client ).blockInfo( LatestBlock );
 
+    // Keep this outside m_blockImportMutex to avoid lock-order cycles with
+    // chain reads performed by random resolution.
+#ifdef BITE
+    // Need to reset encryption state with new block id before processing txs to make
+    // sure a random for current block id is set.
+    if ( Bite2Patch::isEnabledInWorkingBlock() ) {
+        resetEncryptionStateForBlock( _blockID );
+    }
+#endif
+
     DEV_GUARDED( m_client.m_blockImportMutex ) {
         m_debugTracer.tracepoint( "drop_good_transactions" );
 
+        if ( _winningNodeIndex != 0 ) {
+            // only process transactions for non-default blocks
+            outTxns = processRegularTransactions( _approvedTransactions, latestInfo
 #ifdef BITE
-        auto decryptedTransactionFieldsIt = _decryptedTransactionFields->begin();
+                ,
+                _decryptedTransactions
 #endif
-        for ( size_t i = 0; i < _approvedTransactions.size(); ++i ) {
-            const bytes& data = _approvedTransactions.at( i );
-            h256 sha = sha3( data );
-            BOOST_LOG( m_loggerTrace ) << "Arrived txn: " << sha;
-
-            Transaction t( data, CheckTransaction::Everything, true,
-                EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
-                InvalidTransactionFormatPatch::isEnabledInWorkingBlock() );
+            );
 #ifdef BITE
-            if ( decryptedTransactionFieldsIt != _decryptedTransactionFields->end() &&
-                 decryptedTransactionFieldsIt->first == i ) {
-                DecryptedTransactionFields& txFields = decryptedTransactionFieldsIt->second;
-
-                dev::Address to = dev::Address( txFields.to.get() );
-                t.setDecryptedFields( txFields.data, std::make_shared< dev::Address >( to ) );
-                ++decryptedTransactionFieldsIt;
-            }
-
+            auto ctxTxns =
+                processCTXTransactions( _approvedTransactions, latestInfo, _decryptedTransactions );
+            outTxns.insert( outTxns.begin(), ctxTxns.begin(), ctxTxns.end() );
 #endif
-
-#ifndef FAIR
-            t.checkOutExternalGas(
-                m_client.chainParams(), latestInfo.timestamp(), m_client.number() );
-
-            if ( !ExternalGasPatch::isEnabledWhen( latestInfo.timestamp() ) ) {
-                auto hash = t.sha3();
-                if ( m_client.m_tq.isTransactionKnown( hash ) ) {
-                    // if a transaction is in the pending queue
-                    // do checkOutExternal gas twice to repeat incorrect behavior that
-                    // existed before the patch
-                    t.checkOutExternalGas(
-                        m_client.chainParams(), latestInfo.timestamp(), m_client.number() );
-                }
-            }
-#endif
-            out_txns.push_back( t );
-            m_debugTracer.tracepoint( "drop_good" );
-            m_tq.dropGood( t );
         }
 
-        total_arrived += out_txns.size();
+        total_arrived += outTxns.size();
 
         if ( _blockID != m_client.number() + 1 ) {
             BOOST_LOG( m_loggerError )
@@ -672,23 +721,31 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
         m_debugTracer.tracepoint( "import_block" );
 
-        n_succeeded = m_client.importTransactionsAsBlock( out_txns,
+        auto onTransactionConsumed = [this]( Transaction const& _tx ) {
+            m_debugTracer.tracepoint( "drop_good" );
+            return m_tq.dropGood( _tx, TransactionQueue::ReadyNotification::Defer ).readyChanged;
+        };
+
+        n_succeeded = m_client.importTransactionsAsBlock( outTxns,
 
 #ifdef BITE
-            _decryptedTransactionFields,
+            _decryptedTransactions,
 #endif
             _gasPrice,
 #ifdef FAIR
             _winningNodeIndex,
 #endif
-            _timeStamp );
+            _timeStamp, onTransactionConsumed, &needsQueueReadyNotification );
     }  // m_blockImportMutex
+
+    if ( needsQueueReadyNotification )
+        m_tq.notifyReady();
 
 #ifdef FAIR
     syncNodeGroups();
 #endif
 
-    if ( n_succeeded != out_txns.size() )
+    if ( n_succeeded != outTxns.size() )
         penalizePeer();
 
 
@@ -718,7 +775,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
     latestBlockTime = skaledTimeFinish;
     BOOST_LOG( m_loggerDebug ) << "Successfully imported " << n_succeeded << " of "
-                               << out_txns.size() << " transactions";
+                               << outTxns.size() << " transactions";
 
 
     if ( m_instanceMonitor != nullptr ) {
@@ -854,10 +911,6 @@ void SkaleHost::startWorking() {
             return;
         }
 
-        // comment out as this hack is in consensus now
-        // HACK Prevent consensus from hanging up for emptyBlockIntervalMs at bootstrapAll()!
-        //        uint64_t tmp_interval = m_consensus->getEmptyBlockIntervalMs();
-        //        m_consensus->setEmptyBlockIntervalMs( 50 );
         try {
             static const char g_strThreadName[] = "bootStrapAll";
             dev::setThreadName( g_strThreadName );
@@ -993,13 +1046,136 @@ void SkaleHost::broadcastFunc() {
     m_broadcaster->stopService();
 }
 
+std::vector< Transaction > SkaleHost::processRegularTransactions(
+    const ConsensusExtFace::Transactions& _approvedTransactions,
+    [[maybe_unused]] const BlockHeader& latestInfo
+#ifdef BITE
+    ,
+    DecryptedTransactions _decryptedTransactions
+#endif
+) {
+    std::vector< Transaction > outTxns;
+#ifdef BITE
+    CHECK_EXPRESSION( _decryptedTransactions.regularTxsMap );
+    auto regularTxnsIterator = _decryptedTransactions.regularTxsMap->begin();
+#endif
+    size_t regularTxnsStartIndex = 0;
+#ifdef BITE
+    regularTxnsStartIndex = _approvedTransactions.sizeCTX();
+#endif
+    for ( size_t i = regularTxnsStartIndex; i < _approvedTransactions.size(); ++i ) {
+        const bytes& data = _approvedTransactions.at( i );
+        h256 sha = sha3( data );
+        BOOST_LOG( m_loggerTrace ) << "Arrived txn: " << sha;
+
+        Transaction t( data, CheckTransaction::Everything, true,
+            EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
+            InvalidTransactionFormatPatch::isEnabledInWorkingBlock(),
+            BerlinForkPatch::isEnabledInWorkingBlock()
+#ifdef BITE
+                ,
+            Bite2Patch::isEnabledInWorkingBlock()
+#endif  // BITE
+        );
+#ifdef BITE
+        if ( regularTxnsIterator != _decryptedTransactions.regularTxsMap->end() &&
+             regularTxnsIterator->first == i ) {
+            std::optional< DecryptedRegularTxFields > txFields = regularTxnsIterator->second;
+            if ( txFields.has_value() ) {
+                dev::Address to( txFields->to.data(), dev::Address::ConstructFromPointer );
+                t.setDecryptedFields( std::make_shared< dev::bytes >( txFields->data ),
+                    std::make_shared< dev::Address >( to ) );
+            }
+        }
+#endif
+
+#ifndef FAIR
+        t.checkOutExternalGas( m_client.chainParams(), latestInfo.timestamp(), m_client.number() );
+
+        if ( !ExternalGasPatch::isEnabledWhen( latestInfo.timestamp() ) ) {
+            auto hash = t.sha3();
+            if ( m_client.m_tq.isTransactionKnown( hash ) ) {
+                // if a transaction is in the pending queue
+                // do checkOutExternal gas twice to repeat incorrect behavior that
+                // existed before the patch
+                t.checkOutExternalGas(
+                    m_client.chainParams(), latestInfo.timestamp(), m_client.number() );
+            }
+        }
+#endif
+        outTxns.push_back( t );
+#ifdef BITE
+        if ( regularTxnsIterator != _decryptedTransactions.regularTxsMap->end() )
+            ++regularTxnsIterator;
+#endif
+    }
+    return outTxns;
+}
+
+#ifdef BITE
+std::vector< Transaction > SkaleHost::processCTXTransactions(
+    const ConsensusExtFace::Transactions& _approvedTransactions,
+    [[maybe_unused]] const dev::eth::BlockHeader& latestInfo,
+    DecryptedTransactions _decryptedTransactions ) {
+    CHECK_EXPRESSION( _decryptedTransactions.ctxTxsMap );
+
+    std::vector< Transaction > outTxns;
+    outTxns.reserve( _approvedTransactions.sizeCTX() );
+
+    auto ctxIterator = _decryptedTransactions.ctxTxsMap->begin();
+    for ( size_t i = 0; i < _approvedTransactions.sizeCTX(); ++i ) {
+        const bytes& data = _approvedTransactions.at( i );
+        h256 sha = sha3( data );
+        BOOST_LOG( m_loggerTrace ) << "Arrived CTX: " << sha;
+
+        Transaction t( data, CheckTransaction::Everything, true,
+            EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
+            InvalidTransactionFormatPatch::isEnabledInWorkingBlock(),
+            BerlinForkPatch::isEnabledInWorkingBlock(), Bite2Patch::isEnabledInWorkingBlock() );
+
+        if ( ctxIterator != _decryptedTransactions.ctxTxsMap->end() && ctxIterator->first == i ) {
+            std::optional< DecryptedCTXArgs > decryptedArgs = ctxIterator->second;
+            if ( decryptedArgs.has_value() ) {
+                t.setDecryptedArgsCTX( decryptedArgs.value() );
+            } else {
+                BOOST_LOG( m_loggerTrace )
+                    << "Couldn't decrypt CTX: " << sha << " with index: " << i;
+            }
+        } else {
+            BOOST_LOG( m_loggerInfo )
+                << "Received unexpected CTX. Exiting with code 200, repair will be needed.";
+            ExitHandler::exitHandler( -1, ExitHandler::ec_state_root_mismatch );
+        }
+
+        // no POW for CTXs
+
+        outTxns.push_back( t );
+        if ( ctxIterator != _decryptedTransactions.ctxTxsMap->end() )
+            ++ctxIterator;
+    }
+
+    auto ctxOrigins = m_tq.validateNextExpectedBITE2CTXsAndGetOrigins( outTxns );
+    if ( !ctxOrigins ) {
+        BOOST_LOG( m_loggerError )
+            << "Received CTX list that does not match next expected pending BITE2 CTXs";
+        BOOST_THROW_EXCEPTION( std::runtime_error(
+            "Block CTX list does not match next expected pending BITE2 CTXs" ) );
+    }
+
+    for ( size_t i = 0; i < outTxns.size(); ++i )
+        outTxns[i].setCTXOrigin( ( *ctxOrigins )[i] );
+
+    return outTxns;
+}
+#endif
+
 u256 SkaleHost::getGasPrice( unsigned _blockNumber ) const {
     if ( _blockNumber == dev::eth::LatestBlock )
         _blockNumber = m_client.number();
     return m_consensus->getPriceForBlockId( _blockNumber );
 }
 
-u256 SkaleHost::getBlockRandom( unsigned _blockNumber, bool _isCalledFromTxn ) const {
+unsigned SkaleHost::resolveRandomBlockNumber( unsigned _blockNumber, bool _isCalledFromTxn ) const {
     // for FAIR patch is always enabled
     // check that patch enabled after block _blockNumber - 1
     // if so - return correct value
@@ -1009,7 +1185,7 @@ u256 SkaleHost::getBlockRandom( unsigned _blockNumber, bool _isCalledFromTxn ) c
     if ( _blockNumber == 0 ) {
         // handle corner case of genesis block
         // is never a case unless called from debug_traceBlock / eth_call on genesis
-        return m_consensus->getRandomForBlockId( _blockNumber );
+        return _blockNumber;
     }
     auto previousBlockTimestamp =
         m_client.blockInfo( m_client.hashFromNumber( _blockNumber - 1 ) ).timestamp();
@@ -1021,10 +1197,29 @@ u256 SkaleHost::getBlockRandom( unsigned _blockNumber, bool _isCalledFromTxn ) c
             if ( _blockNumber > m_client.number() )
                 --_blockNumber;
         }
-        return m_consensus->getRandomForBlockId( _blockNumber );
+        return _blockNumber;
     }
-    return m_consensus->getRandomForBlockId( _blockNumber - 1 );
+    return _blockNumber - 1;
 }
+
+u256 SkaleHost::getBlockRandom( unsigned _blockNumber, bool _isCalledFromTxn ) const {
+    auto blockNumber = resolveRandomBlockNumber( _blockNumber, _isCalledFromTxn );
+    return m_consensus->getRandomForBlockId( blockNumber );
+}
+
+#ifdef BITE
+u256 SkaleHost::getReencryptionBlockRandom( unsigned _blockNumber, bool _isCalledFromTxn ) const {
+    auto blockNumber = resolveRandomBlockNumber( _blockNumber, _isCalledFromTxn );
+    if ( blockNumber == 0 ) {
+        // handle corner case of genesis block
+        // could happen if blockRandom patch is not enabled.
+        // we need to return a default value to avoid reading from db since
+        // genesis block is never stored - would lead to exception.
+        return u256();
+    }
+    return m_consensus->getReencryptionRandomForBlockId( blockNumber );
+}
+#endif
 
 dev::eth::SyncStatus SkaleHost::syncStatus() const {
     if ( !m_consensus )
@@ -1052,6 +1247,51 @@ bool SkaleHost::ignoreNewBlocksEnabled() const {
 std::array< std::string, 4 > SkaleHost::getCurrentBLSPublicKey() const {
     return m_client.getCurrentBLSPublicKey();
 }
+
+#ifdef BITE
+
+void SkaleHost::resetEncryptionStateForBlock( uint64_t _blockID ) {
+    constexpr bool _isCalledFromTxn = true;
+    m_encryptionCounter = 0;
+    m_cachedBlockRandomBytes =
+        toBigEndian( getReencryptionBlockRandom( _blockID, _isCalledFromTxn ) );
+}
+
+dev::h256 SkaleHost::getEncryptionCallRandom( unsigned _blockNumber, bool _isCalledFromTxn ) {
+    uint64_t counter = 0;
+    bytes blockRandomBytes;
+
+    // Can only happen if there is some encryption in genesis block
+    // Should not happen in reality, since fixed hash is non-random, and
+    // encryption with fixed hash is not secure.
+    if ( _blockNumber == 0 )
+        return dev::h256();
+
+    // read only - should not affect state - use default counter value 0 & don't update cache
+    // compute block random for each call - no guarantee that it will follow linear block
+    // increase
+    if ( !_isCalledFromTxn ) {
+        blockRandomBytes =
+            toBigEndian( getReencryptionBlockRandom( _blockNumber, _isCalledFromTxn ) );
+    }
+    // block tx - should follow linear block increase
+    else {
+        counter = m_encryptionCounter++;
+        // should hold the the block random for current block ID
+        blockRandomBytes = m_cachedBlockRandomBytes;
+    }
+
+    // Combine blockRandom || counter
+    bytes counterBytes = toBigEndian( dev::u256( counter ) );
+    bytes combinedBytes;
+    combinedBytes.insert( combinedBytes.end(), blockRandomBytes.begin(), blockRandomBytes.end() );
+    combinedBytes.insert( combinedBytes.end(), counterBytes.begin(), counterBytes.end() );
+
+    // Hash to get final deterministic random value
+    return dev::sha3( combinedBytes );
+}
+
+#endif
 
 std::string SkaleHost::getHistoricNodeId( unsigned _id ) const {
     return m_client.getHistoricNodeId( _id );

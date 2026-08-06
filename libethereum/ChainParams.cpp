@@ -64,6 +64,8 @@ ChainParams::ChainParams() {
     precompiled.insert( make_pair( Address( 4 ),
         PrecompiledContract( 15, 3, PrecompiledRegistrar::executor( "identity" ) ) ) );
 
+    rebuildPrecompiledAddresses();
+
     // fill empty stateRoot
     secp256k1_sha256_t ctx;
     secp256k1_sha256_initialize( &ctx );
@@ -177,6 +179,8 @@ void ChainParams::loadConfig( string const& _json, const boost::filesystem::path
 
     genesisState =
         jsonToAccountMap( genesisStateStr, accountStartNonce, nullptr, &precompiled, _configPath );
+
+    rebuildPrecompiledAddresses();
 }
 void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
     auto skaleObj = obj[c_skaleConfig].get_obj();
@@ -691,10 +695,6 @@ const std::string& ChainParams::getOriginalJson() const {
     params[c_tieBreakingGas] = tieBreakingGas;
     params[c_blockReward] = toHex( toBigEndian( blockReward( DefaultSchedule ) ) );
 
-    //    auto setOptionalU256Parameter = [&params](u256 &_destination, string const &_name) {
-    //        if (params.count(_name))
-    //            _destination = u256(fromBigEndian<u256>(fromHex(params.at(_name).get_str())));
-    //    };
     params[c_minGasLimit] = toHex( toBigEndian( minGasLimit ) );
     params[c_maxGasLimit] = toHex( toBigEndian( maxGasLimit ) );
     params[c_gasLimitBoundDivisor] = toHex( toBigEndian( gasLimitBoundDivisor ) );

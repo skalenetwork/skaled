@@ -36,7 +36,7 @@ BOOST_AUTO_TEST_CASE( test_toJS, *boost::unit_test::precondition( dev::test::run
     h64 a( "0xbaadf00ddeadbeef" );
     u64 b( "0xffff0000bbbaaaa" );
     uint64_t c = 38990234243;
-    bytes d = {0xff, 0x0, 0xef, 0xbc};
+    bytes d = { 0xff, 0x0, 0xef, 0xbc };
 
     BOOST_CHECK( toJS( a ) == "0xbaadf00ddeadbeef" );
     BOOST_CHECK( toJS( b ) == "0xffff0000bbbaaaa" );
@@ -44,9 +44,10 @@ BOOST_AUTO_TEST_CASE( test_toJS, *boost::unit_test::precondition( dev::test::run
     BOOST_CHECK( toJS( d ) == "0xff00efbc" );
 }
 
-BOOST_AUTO_TEST_CASE( test_jsToBytes, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    bytes a = {0xff, 0xaa, 0xbb, 0xcc};
-    bytes b = {0x03, 0x89, 0x90, 0x23, 0x42, 0x43};
+BOOST_AUTO_TEST_CASE(
+    test_jsToBytes, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+    bytes a = { 0xff, 0xaa, 0xbb, 0xcc };
+    bytes b = { 0x03, 0x89, 0x90, 0x23, 0x42, 0x43 };
     BOOST_CHECK( a == jsToBytes( "0xffaabbcc" ) );
     BOOST_CHECK( b == jsToBytes( "38990234243" ) );
     BOOST_CHECK( bytes() == jsToBytes( "" ) );
@@ -54,42 +55,46 @@ BOOST_AUTO_TEST_CASE( test_jsToBytes, *boost::unit_test::precondition( dev::test
 }
 
 BOOST_AUTO_TEST_CASE( test_padded, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    bytes a = {0xff, 0xaa};
-    BOOST_CHECK( bytes( {0x00, 0x00, 0xff, 0xaa} ) == padded( a, 4 ) );
+    bytes a = { 0xff, 0xaa };
+    BOOST_CHECK( bytes( { 0x00, 0x00, 0xff, 0xaa } ) == padded( a, 4 ) );
     bytes b = {};
-    BOOST_CHECK( bytes( {0x00, 0x00, 0x00, 0x00} ) == padded( b, 4 ) );
-    bytes c = {0xff, 0xaa, 0xbb, 0xcc};
-    BOOST_CHECK( bytes{0xcc} == padded( c, 1 ) );
+    BOOST_CHECK( bytes( { 0x00, 0x00, 0x00, 0x00 } ) == padded( b, 4 ) );
+    bytes c = { 0xff, 0xaa, 0xbb, 0xcc };
+    BOOST_CHECK( bytes{ 0xcc } == padded( c, 1 ) );
 }
 
-BOOST_AUTO_TEST_CASE( test_paddedRight, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    bytes a = {0xff, 0xaa};
-    BOOST_CHECK( bytes( {0xff, 0xaa, 0x00, 0x00} ) == paddedRight( a, 4 ) );
+BOOST_AUTO_TEST_CASE(
+    test_paddedRight, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+    bytes a = { 0xff, 0xaa };
+    BOOST_CHECK( bytes( { 0xff, 0xaa, 0x00, 0x00 } ) == paddedRight( a, 4 ) );
     bytes b = {};
-    BOOST_CHECK( bytes( {0x00, 0x00, 0x00, 0x00} ) == paddedRight( b, 4 ) );
-    bytes c = {0xff, 0xaa, 0xbb, 0xcc};
-    BOOST_CHECK( bytes{0xff} == paddedRight( c, 1 ) );
+    BOOST_CHECK( bytes( { 0x00, 0x00, 0x00, 0x00 } ) == paddedRight( b, 4 ) );
+    bytes c = { 0xff, 0xaa, 0xbb, 0xcc };
+    BOOST_CHECK( bytes{ 0xff } == paddedRight( c, 1 ) );
 }
 
-BOOST_AUTO_TEST_CASE( test_unpadded, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    bytes a = {0xff, 0xaa, 0x00, 0x00, 0x00};
-    BOOST_CHECK( bytes( {0xff, 0xaa} ) == unpadded( a ) );
-    bytes b = {0x00, 0x00};
+BOOST_AUTO_TEST_CASE(
+    test_unpadded, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+    bytes a = { 0xff, 0xaa, 0x00, 0x00, 0x00 };
+    BOOST_CHECK( bytes( { 0xff, 0xaa } ) == unpadded( a ) );
+    bytes b = { 0x00, 0x00 };
     BOOST_CHECK( bytes() == unpadded( b ) );
     bytes c = {};
     BOOST_CHECK( bytes() == unpadded( c ) );
 }
 
-BOOST_AUTO_TEST_CASE( test_unpaddedLeft, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    bytes a = {0x00, 0x00, 0x00, 0xff, 0xaa};
-    BOOST_CHECK( bytes( {0xff, 0xaa} ) == unpadLeft( a ) );
-    bytes b = {0x00, 0x00};
+BOOST_AUTO_TEST_CASE(
+    test_unpaddedLeft, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+    bytes a = { 0x00, 0x00, 0x00, 0xff, 0xaa };
+    BOOST_CHECK( bytes( { 0xff, 0xaa } ) == unpadLeft( a ) );
+    bytes b = { 0x00, 0x00 };
     BOOST_CHECK( bytes() == unpadLeft( b ) );
     bytes c = {};
     BOOST_CHECK( bytes() == unpadLeft( c ) );
 }
 
-BOOST_AUTO_TEST_CASE( test_fromRaw, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    test_fromRaw, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     // non ascii characters means empty string
     h256 a( "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" );
     BOOST_CHECK( "" == fromRaw( a ) );
@@ -99,7 +104,8 @@ BOOST_AUTO_TEST_CASE( test_fromRaw, *boost::unit_test::precondition( dev::test::
     BOOST_CHECK( "AsciiCharacters" == fromRaw( c ) );
 }
 
-BOOST_AUTO_TEST_CASE( test_jsToFixed, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    test_jsToFixed, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     h256 a( "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" );
     BOOST_CHECK( a == jsToFixed< 32 >(
                           "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" ) );
@@ -108,7 +114,8 @@ BOOST_AUTO_TEST_CASE( test_jsToFixed, *boost::unit_test::precondition( dev::test
     BOOST_CHECK_THROW( jsToFixed< 32 >( "NotAHexadecimalOrDecimal" ), std::invalid_argument );
 }
 
-BOOST_AUTO_TEST_CASE( test_jsToInt, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    test_jsToInt, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     BOOST_CHECK( 43832124 == jsToInt( "43832124" ) );
     BOOST_CHECK( 1342356623 == jsToInt( "0x5002bc8f" ) );
     BOOST_CHECK( 3483942 == jsToInt( "015224446" ) );
@@ -122,7 +129,8 @@ BOOST_AUTO_TEST_CASE( test_jsToInt, *boost::unit_test::precondition( dev::test::
     BOOST_CHECK_THROW( jsToInt< 16 >( "NotAHexadecimalOrDecimal" ), std::invalid_argument );
 }
 
-BOOST_AUTO_TEST_CASE( test_jsToU256, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    test_jsToU256, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     BOOST_CHECK( u256( "983298932490823474234" ) == jsToU256( "983298932490823474234" ) );
     BOOST_CHECK_THROW( jsToU256( "NotAHexadecimalOrDecimal" ), std::invalid_argument );
 }

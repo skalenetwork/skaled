@@ -207,13 +207,20 @@ bool LegacyVM::caseCallSetup( CallParameters* callParams, bytesRef& o_output ) {
     assert( callParams->valueTransfer == 0 );
     assert( callParams->apparentValue == 0 );
 
-    m_runGas = toInt63( m_schedule->callGas );
-
     callParams->staticCall = ( m_OP == Instruction::STATICCALL || m_ext->staticCall );
 
     bool const haveValueArg = m_OP == Instruction::CALL || m_OP == Instruction::CALLCODE;
 
     Address destinationAddr = asAddress( m_SP[1] );
+
+    if ( m_schedule->eip2929Mode ) {
+        bool warm = m_ext->accessAccount( destinationAddr );
+        m_runGas = warm ? toInt63( m_schedule->warmStorageReadCost ) :
+                          toInt63( m_schedule->coldAccountAccessCost );
+    } else {
+        m_runGas = toInt63( m_schedule->callGas );
+    }
+
     if ( m_OP == Instruction::CALL &&
          ( m_SP[2] > 0 || m_schedule->zeroValueTransferChargesNewAccountGas() ) &&
          !m_ext->exists( destinationAddr ) )

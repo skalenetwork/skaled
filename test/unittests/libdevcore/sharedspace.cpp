@@ -15,18 +15,16 @@ BOOST_FIXTURE_TEST_SUITE( SharedSpaceTests, TestOutputHelperFixture )
 
 BOOST_AUTO_TEST_CASE( All ) {
     TransientDirectory td;
-    SharedSpace space(td.path());
+    SharedSpace space( td.path() );
 
     space.lock();
-    BOOST_ASSERT(!space.try_lock());
+    BOOST_ASSERT( !space.try_lock() );
 
-    auto th = std::thread([&space](){
-        space.unlock();
-    });
+    auto th = std::thread( [&space]() { space.unlock(); } );
     th.join();
 
-    BOOST_ASSERT(space.try_lock());
-    BOOST_ASSERT(!space.try_lock());
+    BOOST_ASSERT( space.try_lock() );
+    BOOST_ASSERT( !space.try_lock() );
     space.unlock();
 }
 

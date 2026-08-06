@@ -72,7 +72,7 @@ TestBlock::TestBlock( std::string const& _blockRLP ) : TestBlock() {
     for ( auto const& tr : root[1] ) {
         Transaction tx( tr.data(), CheckTransaction::Everything );
         TestTransaction testTx( tx );
-        m_transactionQueue.import( tx.toBytes() );
+        m_transactionQueue.import( tx, IfDropped::Ignore, false, tx.nonce() );
         m_testTransactions.push_back( testTx );
     }
 
@@ -99,11 +99,12 @@ void TestBlock::initBlockFromJsonHeader( mObject const& _blockHeader, mObject co
     m_state = std::unique_ptr< State >(
         new State( 0, m_tempDirState.get()->path(), h256{}, BaseState::Empty, 0
 #ifndef FAIR
-                   , 1000000000
+            ,
+            1000000000
 #endif
-                   ) );
+            ) );
     ImportTest::importState( _stateObj, *m_state );
-    m_state->createStateCopyAndClearCaches().commit(dev::eth::CommitBehaviour::KeepEmptyAccounts );
+    m_state->createStateCopyAndClearCaches().commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
 
     json_spirit::mObject state = _stateObj;
     dev::test::replaceCodeInState( state );
@@ -125,7 +126,8 @@ void TestBlock::setState( State const& _state ) {
 
 void TestBlock::addTransaction( TestTransaction const& _tr ) {
     m_testTransactions.push_back( _tr );
-    if ( m_transactionQueue.import( _tr.transaction().toBytes() ) != ImportResult::Success )
+    if ( m_transactionQueue.import( _tr.transaction(), IfDropped::Ignore, false,
+             _tr.transaction().nonce() ) != ImportResult::Success )
         cnote << TestOutputHelper::get().testName() + " Test block failed importing transaction";
     recalcBlockHeaderBytes();
 }
@@ -202,7 +204,7 @@ void TestBlock::mine( TestBlockChain const& _bc ) {
 
         size_t transactionsOnImport = m_transactionQueue.topTransactions( 100 ).size();
         block.sync( blockchain, m_transactionQueue,
-            gp );  //Invalid transactions could be dropped from queue here
+            gp );  // Invalid transactions could be dropped from queue here
         // if (transactionsOnImport >  m_transactionQueue.topTransactions(1000).size())
         // BOOST_ERROR(TestOutputHelper::get().testName() + " Dropped invalid Transactions before
         // mining!");
@@ -215,7 +217,8 @@ void TestBlock::mine( TestBlockChain const& _bc ) {
         // renew the TestBlock transactions
         m_transactionQueue.clear();
         for ( size_t i = 0; i < block.pending().size(); i++ )
-            m_transactionQueue.import( block.pending()[i] );
+            m_transactionQueue.import(
+                block.pending()[i], IfDropped::Ignore, false, block.pending()[i].nonce() );
     } catch ( Exception const& _e ) {
         cnote << TestOutputHelper::get().testName() +
                      " block sync or mining did throw an exception: "
@@ -360,11 +363,12 @@ void TestBlock::verify( TestBlockChain const& _bc ) const {
         _bc.getInterface().sealEngine()->verify(
             CheckNothingNew, m_blockHeader, BlockHeader(), &m_bytes );
     } catch ( Exception const& _e ) {
-        u256 const& daoHardfork = _bc.getInterface().sealEngine()->chainParams().getDaoHardforkBlock();
+        u256 const& daoHardfork =
+            _bc.getInterface().sealEngine()->chainParams().getDaoHardforkBlock();
         if ( ( m_blockHeader.number() >= daoHardfork &&
                  m_blockHeader.number() <= daoHardfork + 9 ) ||
              m_blockHeader.number() == 0 ) {
-            string exWhat{_e.what()};
+            string exWhat{ _e.what() };
             string exExpect = "InvalidTransactionsRoot";
             BOOST_REQUIRE_MESSAGE( exWhat.find( exExpect ) != string::npos,
                 TestOutputHelper::get().testName() +
@@ -445,7 +449,7 @@ void TestBlock::populateFrom( TestBlock const& _original ) {
     m_transactionQueue.clear();
     TransactionQueue const& trQueue = _original.transactionQueue();
     for ( auto const& txi : trQueue.topTransactions( std::numeric_limits< unsigned >::max() ) )
-        m_transactionQueue.import( txi.toBytes() );
+        m_transactionQueue.import( txi, IfDropped::Ignore, false, txi.nonce() );
 
     m_uncles = _original.uncles();
     m_blockHeader = _original.blockHeader();
@@ -463,8 +467,8 @@ void TestBlockChain::reset( TestBlock const& _genesisBlock ) {
     m_chainParams.reset( new ChainParams( genesisInfo( TestBlockChain::s_sealEngineNetwork ),
         _genesisBlock.bytes(), _genesisBlock.accountMap() ) );
 
-    m_blockChain.reset(
-        new BlockChain( m_chainParams, m_tempDirBlockchain.get()->path(), true, WithExisting::Kill ) );
+    m_blockChain.reset( new BlockChain(
+        m_chainParams, m_tempDirBlockchain.get()->path(), true, WithExisting::Kill ) );
     if ( !m_blockChain->isKnown( BlockHeader::headerHashFromBlock( _genesisBlock.bytes() ) ) ) {
         cdebug << "Not known:" << BlockHeader::headerHashFromBlock( _genesisBlock.bytes() )
                << BlockHeader( m_chainParams->genesisBlock() ).hash();
@@ -476,8 +480,7 @@ void TestBlockChain::reset( TestBlock const& _genesisBlock ) {
 }
 
 bool TestBlockChain::addBlock( TestBlock const& _block ) {
-
-    SchainPatch::useLatestBlockTimestamp(m_blockChain->info().timestamp());
+    SchainPatch::useLatestBlockTimestamp( m_blockChain->info().timestamp() );
 
     while ( true ) {
         try {
@@ -501,7 +504,7 @@ bool TestBlockChain::addBlock( TestBlock const& _block ) {
         State st( block.state() );
         m_lastBlock.setState( st );
 
-        SchainPatch::useLatestBlockTimestamp(m_blockChain->info().timestamp());
+        SchainPatch::useLatestBlockTimestamp( m_blockChain->info().timestamp() );
 
         return true;
     }

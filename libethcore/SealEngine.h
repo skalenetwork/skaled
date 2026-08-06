@@ -103,8 +103,8 @@ public:
         return m_params.isPrecompiled( _a, _blockNumber );
     }
     virtual bigint costOfPrecompiled(
-        Address const& _a, bytesConstRef _in, u256 const& _blockNumber ) const {
-        return m_params.getPrecompiledContract( _a ).cost( _in, m_params, _blockNumber );
+        Address const& _a, bytesConstRef _in, PrecompiledCallContext const& _ctx ) const {
+        return m_params.getPrecompiledContract( _a ).cost( _in, m_params, _ctx );
     }
     virtual std::pair< bool, bytes > executePrecompiled(
         Address const& _a, bytesConstRef _in, const PrecompiledCallContext& _ctx ) const {

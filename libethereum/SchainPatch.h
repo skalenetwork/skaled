@@ -139,6 +139,11 @@ DEFINE_AMNESIC_PATCH( ContractStoragePatch )
 DEFINE_AMNESIC_PATCH( StorageDestructionPatch );
 
 /*
+ * Enable Berlin fork related changes (EIP-2718, EIP-2930, EIP-2929, EIP-2565)
+ */
+DEFINE_EVM_PATCH( BerlinForkPatch );
+
+/*
  * Enable restriction on contract storage size, when it's doing selfdestruct
  */
 DEFINE_SIMPLE_PATCH( EIP1559TransactionsPatch );
@@ -184,6 +189,16 @@ DEFINE_SIMPLE_PATCH( CurrentBlockRandomPatch );
  * Version introduced: 4.1.0
  */
 DEFINE_AMNESIC_PATCH( GroupIndexInitPatch );
+
+#ifdef BITE
+/*
+ * Purpose: gate BITE2 features (CTX precompileds and CTX transaction detection)
+ * behind a timestamp-controlled patch so nodes activate them synchronously.
+ * When not enabled: BITE2 precompileds (submitCTX, encryptTE, encryptECIES)
+ * return a revert and CTX status is not set in TransactionBase constructor.
+ */
+DEFINE_SIMPLE_PATCH( Bite2Patch );
+#endif  // BITE
 
 /*
  * Purpose: enable state mode so the database commit is executed only once per block.

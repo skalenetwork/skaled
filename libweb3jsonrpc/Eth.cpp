@@ -32,6 +32,7 @@
 #include <libethashseal/EthashClient.h>
 #include <libethcore/CommonJS.h>
 #include <libethereum/Client.h>
+#include <libethereum/SchainPatch.h>
 #include <libskale/SkipInvalidTransactionsPatch.h>
 #include <libweb3jsonrpc/JsonHelper.h>
 
@@ -236,12 +237,7 @@ Json::Value Eth::eth_pendingTransactions() {
     // Return list of transaction that being sent by local accounts
     Transactions ours;
     for ( Transaction const& pending : client()->pending() ) {
-        // for ( Address const& account : m_ethAccounts.allAccounts() ) {
-        //    if ( pending.sender() == account ) {
         ours.push_back( pending );
-        //        break;
-        //    }
-        //}
     }
 
     return toJson( ours );
@@ -410,9 +406,16 @@ Json::Value Eth::setSchainExitTime( Json::Value const& /*_transaction*/ ) {
 
 Json::Value Eth::eth_inspectTransaction( std::string const& _rlp ) {
     try {
-        return toJson( Transaction( jsToBytes( _rlp, OnFailed::Throw ),
-            CheckTransaction::Everything, EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
-            InvalidTransactionFormatPatch::isEnabledInWorkingBlock() ) );
+        return toJson(
+            Transaction( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::Everything, false,
+                EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
+                InvalidTransactionFormatPatch::isEnabledInWorkingBlock(),
+                BerlinForkPatch::isEnabledInWorkingBlock()
+#ifdef BITE
+                    ,
+                Bite2Patch::isEnabledInWorkingBlock()
+#endif  // BITE
+                    ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
@@ -425,7 +428,13 @@ string Eth::eth_sendRawTransaction( std::string const& _rlp ) {
     // will be checked as a part of transaction import
     Transaction t( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::None, false,
         EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
-        InvalidTransactionFormatPatch::isEnabledInWorkingBlock() );
+        InvalidTransactionFormatPatch::isEnabledInWorkingBlock(),
+        BerlinForkPatch::isEnabledInWorkingBlock()
+#ifdef BITE
+            ,
+        Bite2Patch::isEnabledInWorkingBlock()
+#endif  // BITE
+    );
     return toJS( client()->importTransaction( t, TransactionBroadcast::BroadcastToAll ) );
 }
 
@@ -842,14 +851,6 @@ string Eth::eth_newFilter( Json::Value const& _json ) {
     }
 }
 
-// string Eth::eth_newFilterEx( Json::Value const& _json ) {
-//    try {
-//        return toJS( client()->installWatch( toLogFilter( _json ) ) );
-//    } catch ( ... ) {
-//        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
-//    }
-//}
-
 string Eth::eth_newBlockFilter() {
     h256 filter = dev::eth::ChainChangedFilter;
     return toJS( client()->installWatch( filter ) );
@@ -1034,9 +1035,15 @@ Json::Value Eth::eth_feeHistory( dev::u256 _blockCount, const std::string& _newe
             throw std::runtime_error( "Reward percentiles must be a list" );
 
         for ( auto p : _rewardPercentiles ) {
-            if ( !p.isUInt() || p > 100 ) {
-                throw std::runtime_error( "Percentiles must be positive integers less then 100" );
-            }
+            double percentileValue;
+            if ( p.isUInt() )
+                percentileValue = static_cast< double >( p.asUInt() );
+            else if ( p.isDouble() )
+                percentileValue = p.asDouble();
+            else
+                throw std::runtime_error( "Percentiles must be integer or floating-point numbers" );
+            if ( percentileValue < 0.0 || percentileValue > 100.0 )
+                throw std::runtime_error( "Percentiles must be numbers between 0 and 100" );
         }
 
         if ( _blockCount > MAX_BLOCK_RANGE )
@@ -1190,6 +1197,8 @@ string dev::rpc::exceptionToErrorMessage() {
         ret = "Same transaction already exists in the pending transaction queue.";
     } catch ( TransactionAlreadyInChain const& ) {
         ret = "Transaction is already in the blockchain.";
+    } catch ( TransactionQueueIsFull const& ) {
+        ret = "Transaction queue is full.";
     } catch ( NotEnoughCash const& ) {
         ret = "Account balance is too low (balance < value + gas * gas price).";
     } catch ( InvalidSignature const& ) {
@@ -1208,7 +1217,7 @@ string dev::rpc::exceptionToErrorMessage() {
 #ifdef BITE
     // BITE exceptions
     catch ( InvalidBITETransaction const& _e ) {
-        ret = "Invalid BITE transaction format.";
+        ret = std::string( "Invalid BITE transaction format." ) + " " + _e.what();
     } catch ( BITETransactionTooShort const& _e ) {
         ret = "BITE transaction too short.";
     }

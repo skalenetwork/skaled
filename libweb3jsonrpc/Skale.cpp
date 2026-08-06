@@ -590,7 +590,6 @@ std::string Skale::oracle_checkResult( std::string& receipt ) {
             throw jsonrpc::JsonRpcException(
                 status, skutils::tools::format( "Oracle request failed with status %zu", status ) );
         }
-        BOOST_LOG( m_loggerDebug ) << result;
         return result;
     } catch ( jsonrpc::JsonRpcException const& e ) {
         throw e;
@@ -658,6 +657,67 @@ Json::Value Skale::bite_getDecryptedTransactionData( const std::string& _transac
         response["data"] = dev::toHexPrefixed( decryptedData.data() );
         response["to"] = dev::toHexPrefixed( decryptedData.to() );
         return response;
+    } catch ( Exception const& ) {
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+    } catch ( const std::exception& e ) {
+        throw jsonrpc::JsonRpcException( e.what() );
+    } catch ( ... ) {
+        BOOST_THROW_EXCEPTION(
+            jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
+    }
+}
+
+Json::Value Skale::bite_getCraftedCtxs( const std::string& _transactionHash ) {
+    try {
+        h256 h = jsToFixed< 32 >( _transactionHash );
+        if ( !m_client.isKnownTransaction( h ) )
+            throw std::invalid_argument( "Transaction with provided hash does not exist." );
+
+#ifdef HISTORIC_STATE
+        // skip invalid
+        auto rcp = m_client.localisedTransactionReceipt( h );
+        if ( rcp.gasUsed() == 0 )
+            return Json::Value( Json::arrayValue );
+#endif  // HISTORIC_STATE
+
+        auto craftedCTXs = m_client.craftedCTXs( h );
+
+        Json::Value response = Json::arrayValue;
+        response.resize( craftedCTXs.size() );
+        for ( unsigned i = 0; i < craftedCTXs.size(); ++i ) {
+            response[i] = craftedCTXs[i].hex();
+        }
+
+        return response;
+    } catch ( Exception const& ) {
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+    } catch ( const std::exception& e ) {
+        throw jsonrpc::JsonRpcException( e.what() );
+    } catch ( ... ) {
+        BOOST_THROW_EXCEPTION(
+            jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
+    }
+}
+
+std::string Skale::bite_getCtxOrigin( const std::string& _transactionHash ) {
+    try {
+        h256 h = jsToFixed< 32 >( _transactionHash );
+        if ( !m_client.isKnownTransaction( h ) )
+            throw std::invalid_argument( "Transaction with provided hash does not exist." );
+
+#ifdef HISTORIC_STATE
+        // skip invalid
+        auto rcp = m_client.localisedTransactionReceipt( h );
+        if ( rcp.gasUsed() == 0 )
+            return std::string();
+#endif  // HISTORIC_STATE
+
+        auto ctxOrigin = m_client.ctxOrigin( h );
+        if ( ctxOrigin == dev::h256() ) {
+            throw std::invalid_argument( "Haven't found ctxOrigin for provided transaction hash" );
+        }
+
+        return ctxOrigin.hex();
     } catch ( Exception const& ) {
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& e ) {
@@ -812,7 +872,6 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
                                                                 << " " << s;
                     return false;
                 }
-                // size_t sizeArrived = joFragment["size"];
                 std::string strBase64orBinary = joFragment["data"];
 
                 buffer = skutils::tools::base64::decodeBin( strBase64orBinary );

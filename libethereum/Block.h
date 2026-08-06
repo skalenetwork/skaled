@@ -24,6 +24,7 @@
 #pragma once
 
 #include <array>
+#include <functional>
 #include <optional>
 #include <unordered_map>
 
@@ -84,6 +85,8 @@ class Block {
     friend class BlockChain;
 
 public:
+    using OnTransactionConsumed = std::function< bool( Transaction const& ) >;
+
     // TODO: pass in ChainOperationParams rather than u256
 
     /// Default constructor; creates with a blank database prepopulated with the genesis block.
@@ -266,8 +269,9 @@ public:
         BlockChain const& _bc, h256 const& _blockHash, BlockHeader const& _bi = BlockHeader() );
 
     /// Sync all transactions unconditionally
-    std::tuple< TransactionReceipts, unsigned > syncEveryone( BlockChain const& _bc,
-        const Transactions& _transactions, uint64_t _timestamp, u256 _gasPrice );
+    std::tuple< TransactionReceipts, unsigned, bool > syncEveryone( BlockChain const& _bc,
+        const Transactions& _transactions, uint64_t _timestamp, u256 _gasPrice,
+        OnTransactionConsumed const& _onTransactionConsumed = OnTransactionConsumed() );
 
     /// Execute all transactions within a given block.
     /// @returns the additional total difficulty.
@@ -323,22 +327,33 @@ public:
     void startReadState();
 
 #ifdef BITE
-    void setDecryptedTransactionDataFields(
-        const std::shared_ptr< DecryptedTransactionFieldsMap >& _decryptedTransactionDataFields ) {
-        CHECK_EXPRESSION( _decryptedTransactionDataFields );
-        m_decryptedTransactionDataFields = _decryptedTransactionDataFields;
+    void setDecryptedTransactionDataFields( DecryptedTransactions _decryptedTransactions ) {
+        CHECK_EXPRESSION( _decryptedTransactions.ctxTxsMap );
+        CHECK_EXPRESSION( _decryptedTransactions.regularTxsMap );
+        m_decryptedTransactions = _decryptedTransactions;
     }
 
-    const std::shared_ptr< DecryptedTransactionFieldsMap >& decryptedTransactionDataFields() const {
-        return m_decryptedTransactionDataFields;
+    const DecryptedTransactions& decryptedTransactions() const { return m_decryptedTransactions; }
+
+    const std::vector< std::vector< dev::h256 > >& ctxHashesLists() const {
+        return m_ctxHashesLists;
     }
-#endif
+
+    const std::shared_ptr< std::deque< dev::eth::Transaction > >& pendingCtxs() const {
+        CHECK_EXPRESSION( m_pendingCtxs );
+        return m_pendingCtxs;
+    }
+#endif  // BITE
 
 private:
     struct SyncContext {
         bool singleCommitEnabled = false;
         TransactionReceipts receipts;
         TransactionReceipts receiptsOfCommitted;
+        // Holds transactions that were consumed by execution layer and need
+        // to be removed from transaction queue
+        Transactions queueCleanupTransactions;
+        bool needsQueueReadyNotification = false;
         unsigned badCount = 0;
     };
 
@@ -349,7 +364,8 @@ private:
 
     void prepareStateForSync( uint64_t _timestamp, SyncContext& _context );
     void executeTransactions( BlockChain const& _bc, const Transactions& _transactions,
-        u256 _gasPrice, SyncContext& _context );
+        u256 _gasPrice, SyncContext& _context,
+        OnTransactionConsumed const& _onTransactionConsumed );
     std::optional< TransactionReceipt > executeSingleTransaction( BlockChain const& _bc,
         Transaction const& _tx, unsigned _txIndex, u256 _gasPrice, skale::Permanence _permanence,
         SyncContext& _context );
@@ -416,9 +432,18 @@ private:
 #ifdef BITE
     // decrypted transaction data fields to be stored with the block and their indexes
     // only filled for a working block
-    std::shared_ptr< DecryptedTransactionFieldsMap > m_decryptedTransactionDataFields =
-        std::make_shared< DecryptedTransactionFieldsMap >();
-#endif
+    DecryptedTransactions m_decryptedTransactions =
+        DecryptedTransactions{ std::make_shared< DecryptedCTXTxsMap >(),
+            std::make_shared< DecryptedRegularTxsMap >() };
+
+    // list of ctx hashes crafted by every txn in block
+    // only filled for a working block
+    std::vector< std::vector< dev::h256 > > m_ctxHashesLists;
+    // list of pending ctxs
+    // only filled for a working block
+    std::shared_ptr< std::deque< Transaction > > m_pendingCtxs =
+        std::make_shared< std::deque< Transaction > >();
+#endif  // BITE
 
     Logger m_loggerDebug{ createLogger( VerbosityDebug, "block" ) };
     Logger m_loggerTrace{ createLogger( VerbosityTrace, "block" ) };
