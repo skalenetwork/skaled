@@ -98,7 +98,7 @@ public:
     std::pair< ExecutionResult, TransactionReceipt > execute( EnvInfo const& _envInfo,
         eth::ChainOperationParams const& _chainParams, Transaction const& _t,
         skale::Permanence _p = skale::Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc()
-#ifdef BITE2
+#ifdef BITE
                                                                  ,
         int64_t _transactionIndex = -1
 #endif

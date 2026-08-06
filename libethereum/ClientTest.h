@@ -25,6 +25,7 @@
 
 #include <libethereum/Client.h>
 #include <boost/filesystem/path.hpp>
+#include <functional>
 #include <tuple>
 
 namespace dev {
@@ -47,6 +48,11 @@ public:
     ~ClientTest();
 
     bool mineBlocks( unsigned _count ) noexcept;
+
+    // Test-only helper: serialize custom test actions (e.g. manual snapshots)
+    // with block import, because height-based synchronization is not enough.
+    void withBlockImportBarrier( const std::function< void() >& _action );
+
     void modifyTimestamp( int64_t _timestamp );
     void rewindToBlock( unsigned _number );
     h256 importRawBlock( std::string const& _blockRLP );

@@ -54,6 +54,10 @@ ClientTest::~ClientTest() {
     terminate();
 }
 
+void ClientTest::withBlockImportBarrier( const std::function< void() >& _action ) {
+    DEV_GUARDED( m_blockImportMutex ) { _action(); }
+}
+
 void ClientTest::modifyTimestamp( int64_t _timestamp ) {
     Block block( chainParams().getAccountStartNonce() );
     DEV_READ_GUARDED( x_preSeal )
@@ -112,7 +116,7 @@ h256 ClientTest::importRawBlock( const string& _blockRLP ) {
     if ( result != ImportResult::Success )
         BOOST_THROW_EXCEPTION( ImportBlockFailed() << errinfo_importResult( result ) );
 
-    // TOOD notify some sync component
+    // TODO notify some sync component
 
     bool moreToImport = true;
     while ( moreToImport ) {

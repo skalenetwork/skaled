@@ -19,6 +19,7 @@ docs-dictionary-*
 deps/*
 !deps/build.sh
 !deps/clean.sh
+build*
 
 # Compiled Object files
 *.slo
@@ -122,3 +123,29 @@ saved_environment_on_startup.txt
 qtbuild/
 
 scripts/skale_build/executable/skaled
+
+# local test runner configs
+/test/api-tests/run.toml
+
+# api-tests artifacts
+/test/api-tests/**/.venv/
+/test/api-tests/**/__pycache__/
+/test/api-tests/**/node_modules/
+/test/api-tests/**/.ropeproject/
+/test/api-tests/**/.pytest_cache/
+/test/api-tests/**/logs/
+/test/api-tests/**/sgx-artifacts/
+/test/api-tests/**/datadir/
+/test/api-tests/**/datadir-*/
+/test/api-tests/**/progress_log/
+/test/api-tests/**/sol/artifacts/
+/test/api-tests/**/sol/cache/
+/test/api-tests/**/sol/typechain-types/
+/test/api-tests/**/sol/deployments/
+/test/api-tests/**/configs/*
+!/test/api-tests/**/configs/*template*
+!/test/api-tests/**/configs/*example*
+/test/api-tests/**/config-*.generated.json
+/test/api-tests/**/skaled.status
+/test/api-tests/**/sgx-keys.json
+/test/api-tests/**/.*.swp

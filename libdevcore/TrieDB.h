@@ -891,7 +891,6 @@ bytes GenericTrieDB< DB >::mergeAt(
         }
 
         auto sh = _k.shared( k );
-        //		std::cout << _k << " sh " << k << " = " << sh << std::endl;
         if ( sh ) {
             // shared stuff - cleve at disagreement.
             auto cleved = cleve( _orig, sh );
@@ -1065,11 +1064,6 @@ bool GenericTrieDB< DB >::deleteAtAux( RLPStream& _out, RLP const& _orig, Nibble
     if ( !b.size() )  // not found - no change.
         return false;
 
-    /*	if (_orig.isList())
-            killNode(_orig);
-        else
-            killNode(_orig.toHash<h256>());*/
-
     streamNode( _out, b );
     return true;
 }
@@ -1152,9 +1146,6 @@ bytes GenericTrieDB< DB >::graft( RLP const& _orig ) {
     assert( n.itemCount() == 2 );
 
     return rlpList( hexPrefixEncode( keyOf( _orig ), keyOf( n ), isLeaf( n ) ), n[1] );
-    //	auto ret =
-    //	std::cout << keyOf(_orig) << " ++ " << keyOf(n) << " == " << keyOf(RLP(ret)) << std::endl;
-    //	return ret;
 }
 
 template < class DB >

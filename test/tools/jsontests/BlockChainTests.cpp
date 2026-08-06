@@ -237,7 +237,7 @@ json_spirit::mObject fillBCTest( json_spirit::mObject const& _input ) {
     size_t importBlockNumber = 0;
     string chainname = "default";
     string chainnetwork = "default";
-    std::map< string, ChainBranch* > chainMap = {{chainname, new ChainBranch( genesisBlock )}};
+    std::map< string, ChainBranch* > chainMap = { { chainname, new ChainBranch( genesisBlock ) } };
 
     if ( _input.count( "network" ) > 0 )
         output["network"] = _input.at( "network" );
@@ -384,8 +384,8 @@ json_spirit::mObject fillBCTest( json_spirit::mObject const& _input ) {
 #ifdef FAIR
         unordered_set< Address > owners;
         owners.insert( testChain.topBlock().blockHeader().author() );
-        if ( ImportTest::compareStatesFAIR(
-                 stateExpect, testChain.topBlock().state(), owners, expectStateMap, WhenError::Throw ) )
+        if ( ImportTest::compareStatesFAIR( stateExpect, testChain.topBlock().state(), owners,
+                 expectStateMap, WhenError::Throw ) )
             cerr << testName << "\n";
 #else
         if ( ImportTest::compareStates(
@@ -395,13 +395,13 @@ json_spirit::mObject fillBCTest( json_spirit::mObject const& _input ) {
     }
 
     output["blocks"] = blArray;
-    output["postState"] = fillJsonWithState(testChain.topBlock().state() );
+    output["postState"] = fillJsonWithState( testChain.topBlock().state() );
     output["lastblockhash"] = toHexPrefixed( testChain.topBlock().blockHeader().hash( WithSeal ) );
 
     // make all values hex in pre section
     State prestate = State();
     ImportTest::importState( _input.at( "pre" ).get_obj(), prestate );
-    output["pre"] = fillJsonWithState(prestate );
+    output["pre"] = fillJsonWithState( prestate );
 
     for ( auto iterator = chainMap.begin(); iterator != chainMap.end(); iterator++ )
         delete iterator->second;
@@ -515,7 +515,8 @@ void testBCTest( json_spirit::mObject const& _o ) {
         if ( blockFromFields.blockHeader().parentHash() == preHash ) {
             State const postState = testChain.topBlock().state();
             assert( testChain.getInterface().sealEngine() );
-            bigint reward = calculateMiningReward( testChain.topBlock().blockHeader().timestamp(), testChain.topBlock().blockHeader().number(),
+            bigint reward = calculateMiningReward( testChain.topBlock().blockHeader().timestamp(),
+                testChain.topBlock().blockHeader().number(),
                 uncleNumbers.size() >= 1 ? uncleNumbers[0] : 0,
                 uncleNumbers.size() >= 2 ? uncleNumbers[1] : 0,
                 testChain.getInterface().sealEngine()->chainParams() );
@@ -546,7 +547,7 @@ void testBCTest( json_spirit::mObject const& _o ) {
 
     State postState = State();  // Compare post states
 #ifndef FAIR
-    postState.setStorageLimit(1000000000);
+    postState.setStorageLimit( 1000000000 );
 #endif
     BOOST_REQUIRE( ( _o.count( "postState" ) > 0 ) );
     ImportTest::importState( _o.at( "postState" ).get_obj(), postState );
@@ -561,8 +562,8 @@ void testBCTest( json_spirit::mObject const& _o ) {
 #endif
 }
 
-bigint calculateMiningReward( time_t _committedBlockTimestamp, u256 const& _blNumber, u256 const& _unNumber1, u256 const& _unNumber2,
-    ChainOperationParams const& _cp ) {
+bigint calculateMiningReward( time_t _committedBlockTimestamp, u256 const& _blNumber,
+    u256 const& _unNumber1, u256 const& _unNumber2, ChainOperationParams const& _cp ) {
     bigint const baseReward = _cp.blockReward( _committedBlockTimestamp, _blNumber );
     bigint reward = baseReward;
     // INCLUDE_UNCLE = BASE_REWARD / 32
@@ -601,10 +602,9 @@ void overwriteBlockHeaderForTest(
                                              header.transactionsRoot(),
             ho.count( "receiptTrie" ) ? h256( ho["receiptTrie"].get_str() ) : header.receiptsRoot(),
             ho.count( "bloom" ) ? LogBloom( ho["bloom"].get_str() ) : header.logBloom(),
-            ho.count( "difficulty" ) ?
-                toInt( ho["difficulty"] ) :
-                ho.count( "relDifficulty" ) ? header.difficulty() + toInt( ho["relDifficulty"] ) :
-                                              header.difficulty(),
+            ho.count( "difficulty" )    ? toInt( ho["difficulty"] ) :
+            ho.count( "relDifficulty" ) ? header.difficulty() + toInt( ho["relDifficulty"] ) :
+                                          header.difficulty(),
             ho.count( "number" ) ? toInt( ho["number"] ) : header.number(),
             ho.count( "gasLimit" ) ? toInt( ho["gasLimit"] ) : header.gasLimit(),
             ho.count( "gasUsed" ) ? toInt( ho["gasUsed"] ) : header.gasUsed(),
@@ -771,11 +771,10 @@ void overwriteUncleHeaderForTest( mObject& uncleHeaderObj, TestBlock& uncle,
             uncleHeader.transactionsRoot(), uncleHeader.receiptsRoot(), uncleHeader.logBloom(),
             overwrite == "difficulty" ?
                 toInt( uncleHeaderObj.at( "difficulty" ) ) :
-                overwrite == "timestamp" ?
+            overwrite == "timestamp" ?
                 ( ( const Ethash* ) sealEngine )
-                        ->calculateDifficulty(
-                            uncleHeader, importedBlocks.at( ( size_t ) uncleHeader.number() - 1 )
-                                             .blockHeader() ) :
+                    ->calculateDifficulty( uncleHeader,
+                        importedBlocks.at( ( size_t ) uncleHeader.number() - 1 ).blockHeader() ) :
                 uncleHeader.difficulty(),
             overwrite == "number" ? toInt( uncleHeaderObj.at( "number" ) ) : uncleHeader.number(),
             overwrite == "gasLimit" ? toInt( uncleHeaderObj.at( "gasLimit" ) ) :
@@ -850,7 +849,7 @@ mObject writeBlockHeaderToJson( BlockHeader const& _bi ) {
 }
 
 void checkExpectedException( mObject& _blObj, Exception const& _e ) {
-    string exWhat{_e.what()};
+    string exWhat{ _e.what() };
     bool isNetException =
         ( _blObj.count( "expectException" +
                         test::netIdToString( test::TestBlockChain::s_sealEngineNetwork ) ) > 0 );
@@ -1011,6 +1010,14 @@ public:
     bcTransitionFixture() {
         test::TransitionTestsSuite suite;
         string const& casename = boost::unit_test::framework::current_test_case().p_name;
+#ifdef FAIR
+        // BerlinForkPatch is pre-enabled for FAIR, so transition tests whose
+        // pre-computed block RLPs assume pre-Berlin gas costs are invalid.
+        if ( casename == "bcByzantiumToConstantinopleFix" || casename == "bcEIP158ToByzantium" ) {
+            cnote << "Skipping " << casename << " (not applicable with pre-enabled BerlinForkPatch)\n";
+            return;
+        }
+#endif
         suite.runAllTestsInFolder( casename );
     }
 };
@@ -1037,10 +1044,10 @@ BOOST_AUTO_TEST_CASE( bcGasPricerTest ) {}
 BOOST_AUTO_TEST_CASE( bcUncleHeaderValidity ) {}
 // Commenting this out as we do not support this
 BOOST_AUTO_TEST_CASE( bcValidBlockTest ) {}
-BOOST_AUTO_TEST_CASE( bcWalletTest,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE( bcForgedTest,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    bcWalletTest, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    bcForgedTest, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 BOOST_AUTO_TEST_CASE( bcRandomBlockhashTest ) {}
 
 BOOST_AUTO_TEST_SUITE_END()
@@ -1058,110 +1065,103 @@ BOOST_AUTO_TEST_SUITE_END()
 BOOST_FIXTURE_TEST_SUITE( BCGeneralStateTests, bcGeneralTestsFixture )
 
 // Frontier Tests
-BOOST_AUTO_TEST_CASE( stCallCodes,
-                      *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( stCallCodes, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
 }
-BOOST_AUTO_TEST_CASE( stCallCreateCallCodeTest,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE( stExample,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) *
+BOOST_AUTO_TEST_CASE(
+    stCallCreateCallCodeTest, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    stExample, *boost::unit_test::precondition( dev::test::run_not_express ) *
                    boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE( stInitCodeTest,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE( stLogTests,
-                      *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE( stMemoryTest,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE( stPreCompiledContracts,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE( stPreCompiledContracts2,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE( stRandom,
-                      *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE( stRandom2,
-                      *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE( stRecursiveCreate,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE( stRefundTest,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE( stSolidityTest,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE( stSpecialTest,
-                      *boost::unit_test::expected_failures( 4 ) * boost::unit_test::disabled() ) {}
-BOOST_AUTO_TEST_CASE( stSystemOperationsTest,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE( stTransactionTest,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE( stTransitionTest,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE( stWalletTest,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    stInitCodeTest, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( stLogTests, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    stMemoryTest, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    stPreCompiledContracts, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    stPreCompiledContracts2, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( stRandom, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( stRandom2, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    stRecursiveCreate, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    stRefundTest, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    stSolidityTest, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    stSpecialTest, *boost::unit_test::expected_failures( 4 ) * boost::unit_test::disabled() ) {}
+BOOST_AUTO_TEST_CASE(
+    stSystemOperationsTest, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    stTransactionTest, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    stTransitionTest, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    stWalletTest, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 
 // Homestead Tests
 BOOST_AUTO_TEST_CASE( stCallDelegateCodesCallCodeHomestead,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE( stCallDelegateCodesHomestead,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE( stHomesteadSpecific,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE( stDelegatecallTestHomestead,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    stCallDelegateCodesHomestead, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    stHomesteadSpecific, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    stDelegatecallTestHomestead, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 
 // EIP150 Tests
-BOOST_AUTO_TEST_CASE( stChangedEIP150,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE( stEIP150singleCodeGasPrices,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE( stMemExpandingEIP150Calls,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE( stEIP150Specific,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    stChangedEIP150, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    stEIP150singleCodeGasPrices, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    stMemExpandingEIP150Calls, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    stEIP150Specific, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 
 // EIP158 Tests
-BOOST_AUTO_TEST_CASE( stEIP158Specific,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE( stNonZeroCallsTest,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE( stZeroCallsTest,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE( stZeroCallsRevert,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE( stRevertTest,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    stEIP158Specific, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    stNonZeroCallsTest, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    stZeroCallsTest, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    stZeroCallsRevert, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    stRevertTest, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 
 // Metropolis Tests
-BOOST_AUTO_TEST_CASE( stStackTests,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE( stStaticCall,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE( stReturnDataTest,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE( stZeroKnowledge,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE( stZeroKnowledge2,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE( stBugs,
-                      *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    stStackTests, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    stStaticCall, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    stReturnDataTest, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    stZeroKnowledge, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    stZeroKnowledge2, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( stBugs, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 
 // Constantinople Tests
-BOOST_AUTO_TEST_CASE( stShift,
-                      *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( stShift, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 
 
 // Stress Tests
-BOOST_AUTO_TEST_CASE( stAttackTest,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE( stMemoryStressTest,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE( stQuadraticComplexityTest,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    stAttackTest, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    stMemoryStressTest, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    stQuadraticComplexityTest, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 
 // Bad opcodes test
-BOOST_AUTO_TEST_CASE( stBadOpcode,
-                      *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( stBadOpcode, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
 }
 
 // New Tests
-BOOST_AUTO_TEST_CASE( stArgsZeroOneBalance,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    stArgsZeroOneBalance, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 BOOST_AUTO_TEST_SUITE_END()

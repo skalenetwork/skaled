@@ -1,5 +1,5 @@
 /*
-    Modifications Copyright (C) 2018-2019 SKALE Labs
+    Modifications Copyright (C) 2018-2026 SKALE Labs
 
     This file is part of cpp-ethereum.
 
@@ -28,7 +28,7 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonData.h>
 #include <libdevcore/Log.h>
-#ifdef BITE2
+#ifdef BITE
 #include <libdevcore/RLP.h>
 #endif
 #include <libethcore/Common.h>
@@ -38,10 +38,6 @@
 
 namespace dev {
 namespace eth {
-
-// Parse _count bytes of _in starting with _begin offset as big endian int.
-// If there's not enough bytes in _in, consider it infinitely right-padded with zeroes.
-bigint parseBigEndianRightPadded( bytesConstRef _in, bigint const& _begin, bigint const& _count );
 
 // Get logger for precompiled contracts
 Logger& getLogger( int a_severity = VerbosityTrace );
@@ -83,16 +79,6 @@ std::pair< std::string, unsigned > parseHistoricFieldRequest( std::string callDa
 
 // Convert hex string to address (u256)
 dev::u256 statS2A( const std::string& saIn );
-
-#endif
-
-#ifdef BITE2
-// Parse ABI-encoded bytes array
-std::pair< RLPStream, size_t > parseAbiEncodedBytesArray( bytesConstRef dataRef,
-    bigint const& arrayOffset, const std::string& arrayName, bool validateMinLength );
-
-// Convert ABI-encoded arrays to RLP format
-std::pair< dev::bytes, size_t > abiEncodedArraysToRlp( const dev::bytes& _abiEncodedArrays );
 
 #endif
 

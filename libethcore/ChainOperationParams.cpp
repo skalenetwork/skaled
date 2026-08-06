@@ -41,7 +41,8 @@ using namespace eth;
 PrecompiledContract::PrecompiledContract( unsigned _base, unsigned _word,
     PrecompiledExecutor const& _exec, u256 const& _startingBlock, h160Set const& _allowedAddresses )
     : PrecompiledContract(
-          [=]( bytesConstRef _in, ChainOperationParams const&, u256 const& ) -> bigint {
+          [=]( bytesConstRef _in, ChainOperationParams const&,
+              PrecompiledCallContext const& ) -> bigint {
               bigint s = _in.size();
               bigint b = _base;
               bigint w = _word;
@@ -98,6 +99,8 @@ EVMSchedule const ChainOperationParams::makeEvmSchedule(
     // 2 based on previous - decide by timestamp
     if ( PushZeroPatch::isEnabledWhen( _committedBlockTimestamp ) )
         result = PushZeroPatch::makeSchedule( result );
+    if ( BerlinForkPatch::isEnabledWhen( _committedBlockTimestamp ) )
+        result = BerlinForkPatch::makeSchedule( result );
 
 #ifdef FAIR
     if ( BlockRewardsActivationPatch::isEnabled( chainID ) )
@@ -132,4 +135,13 @@ void ChainOperationParams::setBlockReward( u256 const& _newBlockReward ) {
 
 time_t ChainOperationParams::getPatchTimestamp( SchainPatchEnum _patchEnum ) const {
     return sChain.getPatchTimestamp( _patchEnum );
+}
+
+void ChainOperationParams::setPatchTimestamps(
+    const std::map< SchainPatchEnum, time_t >& _patchTimestampsToSet ) {
+    for ( const auto& patch : _patchTimestampsToSet ) {
+        auto name = patch.first;
+        auto activationTimestamp = patch.second;
+        sChain._patchTimestamps[static_cast< int >( name )] = activationTimestamp;
+    }
 }

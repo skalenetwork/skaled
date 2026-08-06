@@ -53,7 +53,7 @@ TransientDirectory::~TransientDirectory() {
     if ( !ec )
         return;
 
-    // In some cases, antivirus runnig on Windows will scan all the newly created directories.
+    // In some cases, antivirus running on Windows will scan all the newly created directories.
     // As a consequence, directory is locked and can not be deleted immediately.
     // Retry after 10 milliseconds usually is successful.
     // This will help our tests run smoothly in such environment.

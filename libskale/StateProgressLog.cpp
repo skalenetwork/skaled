@@ -1,6 +1,8 @@
 #include "StateProgressLog.h"
 
 #include <libdevcore/RLP.h>
+#include <libethereum/SchainPatch.h>
+#include <libethereum/Transaction.h>
 
 #include <fstream>
 #include <stdexcept>
@@ -37,18 +39,26 @@ void StateProgressLog::markBlockCommitStarted( uint64_t _blockNumber ) {
 }
 
 void StateProgressLog::markBlockCommitCompleted(
-    uint64_t _blockNumber, const dev::eth::TransactionReceipts& _receipts, uint64_t _timestamp ) {
+    uint64_t _blockNumber, const dev::eth::TransactionReceipts& _receipts, uint64_t _timestamp
+#ifdef BITE
+    ,
+    const std::deque< dev::eth::Transaction >& _ctxsCreatedInBlock
+#endif
+) {
     CommittedProgressData data;
     data.blockNumber = _blockNumber;
     data.status = static_cast< uint8_t >( Status::Completed );
     data.timestamp = _timestamp;
     data.receipts = _receipts;
+#ifdef BITE
+    data.ctxsCreatedInBlock = _ctxsCreatedInBlock;
+#endif
     writeProgressData( data );
 }
 
 void StateProgressLog::writeProgressData( const CommittedProgressData& _data ) {
     dev::RLPStream rlpStream;
-    rlpStream.appendList( 4 );
+    rlpStream.appendList( rlpItemsCount );
     rlpStream << _data.blockNumber;
     rlpStream << _data.status;
     rlpStream << _data.timestamp;
@@ -56,9 +66,24 @@ void StateProgressLog::writeProgressData( const CommittedProgressData& _data ) {
     dev::RLPStream receiptsStream;
     receiptsStream.appendList( _data.receipts.size() );
     for ( const auto& receipt : _data.receipts ) {
-        receiptsStream.appendRaw( receipt.rlp() );
+        // Store receipt bytes as an RLP data item so typed receipts (type || rlp(...))
+        // are preserved across crash recovery in single-commit mode.
+        receiptsStream << receipt.typedRlp();
     }
     rlpStream.appendRaw( receiptsStream.out() );
+
+#ifdef BITE
+    dev::RLPStream ctxsStream;
+    ctxsStream.appendList( _data.ctxsCreatedInBlock.size() );
+    for ( const auto& ctx : _data.ctxsCreatedInBlock ) {
+        dev::RLPStream ctxEntry;
+        ctxEntry.appendList( 2 );
+        ctxEntry.appendRaw( ctx.toBytes() );
+        ctxEntry << ctx.getCTXOrigin();
+        ctxsStream.appendRaw( ctxEntry.out() );
+    }
+    rlpStream.appendRaw( ctxsStream.out() );
+#endif
 
     dev::bytes encoded = rlpStream.out();
 
@@ -102,8 +127,9 @@ std::optional< CommittedProgressData > StateProgressLog::loadProgressData() cons
     try {
         dev::RLP rlp( encoded );
 
-        if ( !rlp.isList() || rlp.itemCount() != 4 ) {
-            BOOST_LOG( m_logger ) << "Invalid progress data format: expected list of 4 items";
+        if ( !rlp.isList() || rlp.itemCount() != rlpItemsCount ) {
+            BOOST_LOG( m_logger ) << "Invalid progress data format: expected list of "
+                                  << rlpItemsCount << " items";
             return std::nullopt;
         }
 
@@ -113,8 +139,30 @@ std::optional< CommittedProgressData > StateProgressLog::loadProgressData() cons
         data.timestamp = rlp[2].toInt< uint64_t >();
 
         for ( auto const& item : rlp[3] ) {
-            data.receipts.emplace_back( item.data() );
+            // Backward compatibility:
+            // - old format stored raw legacy receipt RLP (list item) via appendRaw(receipt.rlp()).
+            // - new format stores receipt bytes as an RLP data item via << receipt.typedRlp().
+            if ( item.isData() ) {
+                dev::bytes receiptBytes = item.toBytes();
+                data.receipts.emplace_back(
+                    dev::bytesConstRef( receiptBytes.data(), receiptBytes.size() ) );
+            } else {
+                data.receipts.emplace_back( item.data() );
+            }
         }
+
+#ifdef BITE
+        for ( auto const& item : rlp[4] ) {
+            CHECK_EXPRESSION( item.isList() && item.itemCount() == 2 );
+            dev::eth::Transaction tx( item[0].data(), dev::eth::CheckTransaction::None, true,
+                EIP1559TransactionsPatch::isEnabledWhen( data.timestamp ),
+                InvalidTransactionFormatPatch::isEnabledWhen( data.timestamp ),
+                BerlinForkPatch::isEnabledWhen( data.timestamp ),
+                Bite2Patch::isEnabledWhen( data.timestamp ) );
+            tx.setCTXOrigin( item[1].toHash< dev::h256 >() );
+            data.ctxsCreatedInBlock.push_back( std::move( tx ) );
+        }
+#endif
         return data;
     } catch ( const std::exception& ex ) {
         BOOST_LOG( m_logger ) << "Failed to decode progress data: " << ex.what();

@@ -30,6 +30,8 @@ SchainPatchEnum getEnumForPatchName( const std::string& _patchName ) {
         return SchainPatchEnum::VerifyDaSigsPatch;
     else if ( _patchName == "FastConsensusPatch" )
         return SchainPatchEnum::FastConsensusPatch;
+    else if ( _patchName == "BerlinForkPatch" )
+        return SchainPatchEnum::BerlinForkPatch;
     else if ( _patchName == "EIP1559TransactionsPatch" )
         return SchainPatchEnum::EIP1559TransactionsPatch;
     else if ( _patchName == "VerifyBlsSyncPatch" )
@@ -50,6 +52,10 @@ SchainPatchEnum getEnumForPatchName( const std::string& _patchName ) {
         return SchainPatchEnum::GroupIndexInitPatch;
     else if ( _patchName == "ContractCreationReadOnlyPatch" )
         return SchainPatchEnum::ContractCreationReadOnlyPatch;
+#ifdef BITE
+    else if ( _patchName == "BITE2Patch" || _patchName == "Bite2Patch" )
+        return SchainPatchEnum::Bite2Patch;
+#endif  // BITE
 #ifdef FAIR
     else if ( _patchName == "DisableSelfDestructPatch" )
         return SchainPatchEnum::DisableSelfDestructPatch;
@@ -82,6 +88,8 @@ std::string getPatchNameForEnum( SchainPatchEnum _enumValue ) {
         return "VerifyDaSigsPatch";
     case SchainPatchEnum::FastConsensusPatch:
         return "FastConsensusPatch";
+    case SchainPatchEnum::BerlinForkPatch:
+        return "BerlinForkPatch";
     case SchainPatchEnum::EIP1559TransactionsPatch:
         return "EIP1559TransactionsPatch";
     case SchainPatchEnum::VerifyBlsSyncPatch:
@@ -102,6 +110,10 @@ std::string getPatchNameForEnum( SchainPatchEnum _enumValue ) {
         return "GroupIndexInitPatch";
     case SchainPatchEnum::ContractCreationReadOnlyPatch:
         return "ContractCreationReadOnlyPatch";
+#ifdef BITE
+    case SchainPatchEnum::Bite2Patch:
+        return "Bite2Patch";
+#endif  // BITE
 #ifdef FAIR
     case SchainPatchEnum::DisableSelfDestructPatch:
         return "DisableSelfDestructPatch";
@@ -118,10 +130,10 @@ const std::unordered_set< SchainPatchEnum > SchainPatch::preEnabledForFAIR = {
     SchainPatchEnum::ContractStorageZeroValuePatch, SchainPatchEnum::PushZeroPatch,
     SchainPatchEnum::ContractStoragePatch, SchainPatchEnum::StorageDestructionPatch,
     SchainPatchEnum::SkipInvalidTransactionsPatch, SchainPatchEnum::VerifyDaSigsPatch,
-    SchainPatchEnum::FastConsensusPatch, SchainPatchEnum::EIP1559TransactionsPatch,
-    SchainPatchEnum::VerifyBlsSyncPatch, SchainPatchEnum::ClearPartialReceiptsPatch,
-    SchainPatchEnum::InvalidTransactionFormatPatch, SchainPatchEnum::CurrentBlockRandomPatch,
-    SchainPatchEnum::GroupIndexInitPatch
+    SchainPatchEnum::FastConsensusPatch, SchainPatchEnum::BerlinForkPatch,
+    SchainPatchEnum::EIP1559TransactionsPatch, SchainPatchEnum::VerifyBlsSyncPatch,
+    SchainPatchEnum::ClearPartialReceiptsPatch, SchainPatchEnum::InvalidTransactionFormatPatch,
+    SchainPatchEnum::CurrentBlockRandomPatch, SchainPatchEnum::GroupIndexInitPatch
 };
 const std::unordered_set< SchainPatchEnum > SchainPatch::preDisabledForFAIR = {
     SchainPatchEnum::RevertableFSPatch, SchainPatchEnum::FlexibleDeploymentPatch,
@@ -174,5 +186,28 @@ bool SchainPatch::isPatchEnabledWhen(
 EVMSchedule PushZeroPatch::makeSchedule( const EVMSchedule& _base ) {
     EVMSchedule ret = _base;
     ret.havePush0 = true;
+    return ret;
+}
+
+EVMSchedule BerlinForkPatch::makeSchedule( const EVMSchedule& _base ) {
+    EVMSchedule ret = _base;
+    ret.eip2929Mode = true;
+    ret.eip2930Mode = true;
+    ret.eip2565Mode = true;
+
+    // EIP-2929: apply cold-access pricing for opcodes represented in the static schedule.
+    // These are the *default* (cold) costs; the LegacyVM will dynamically substitute
+    // warmStorageReadCost (100) for warm accesses at runtime.
+    ret.sloadGas = ret.coldSloadCost;
+    ret.balanceGas = ret.coldAccountAccessCost;
+    ret.extcodesizeGas = ret.coldAccountAccessCost;
+    ret.extcodecopyGas = ret.coldAccountAccessCost;
+    ret.extcodehashGas = ret.coldAccountAccessCost;
+
+    // EIP-2929 SSTORE changes: SLOAD_GAS becomes WARM_STORAGE_READ_COST,
+    // and SSTORE_RESET_GAS is reduced by COLD_SLOAD_COST so that total cost
+    // for a cold SSTORE reset remains the same (5000 - 2100 = 2900).
+    ret.sstoreUnchangedGas = ret.warmStorageReadCost;
+    ret.sstoreResetGas = 5000 - ret.coldSloadCost;  // 2900
     return ret;
 }

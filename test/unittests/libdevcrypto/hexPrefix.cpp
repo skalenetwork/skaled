@@ -37,8 +37,8 @@ BOOST_AUTO_TEST_SUITE( Crypto )
 
 BOOST_FIXTURE_TEST_SUITE( Basic, TestOutputHelperFixture )
 
-BOOST_AUTO_TEST_CASE( hexPrefix_test, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    hexPrefix_test, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     fs::path testPath = test::getTestPath();
     testPath /= fs::path( "BasicTests" );
 
@@ -61,29 +61,29 @@ BOOST_AUTO_TEST_CASE( hexPrefix_test,
     }
 }
 
-BOOST_AUTO_TEST_CASE( base64, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    static char const* const s_tests[][2] = {{"", ""}, {"f", "Zg=="}, {"fo", "Zm8="},
-        {"foo", "Zm9v"}, {"foob", "Zm9vYg=="}, {"fooba", "Zm9vYmE="}, {"foobar", "Zm9vYmFy"},
-        {"So?<p>"
-         "This 4, 5, 6, 7, 8, 9, z, {, |, } tests Base64 encoder. "
-         "Show me: @, A, B, C, D, E, F, G, H, I, J, K, L, M, "
-         "N, O, P, Q, R, S, T, U, V, W, X, Y, Z, [, \\, ], ^, _, `, "
-         "a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s.",
+BOOST_AUTO_TEST_CASE( base64, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+    static char const* const s_tests[][2] = { { "", "" }, { "f", "Zg==" }, { "fo", "Zm8=" },
+        { "foo", "Zm9v" }, { "foob", "Zm9vYg==" }, { "fooba", "Zm9vYmE=" },
+        { "foobar", "Zm9vYmFy" },
+        { "So?<p>"
+          "This 4, 5, 6, 7, 8, 9, z, {, |, } tests Base64 encoder. "
+          "Show me: @, A, B, C, D, E, F, G, H, I, J, K, L, M, "
+          "N, O, P, Q, R, S, T, U, V, W, X, Y, Z, [, \\, ], ^, _, `, "
+          "a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s.",
             "U28/PHA+VGhpcyA0LCA1LCA2LCA3LCA4LCA5LCB6LCB7LCB8LCB9IHRlc3RzIEJhc2U2NCBlbmNv"
             "ZGVyLiBTaG93IG1lOiBALCBBLCBCLCBDLCBELCBFLCBGLCBHLCBILCBJLCBKLCBLLCBMLCBNLCBO"
             "LCBPLCBQLCBRLCBSLCBTLCBULCBVLCBWLCBXLCBYLCBZLCBaLCBbLCBcLCBdLCBeLCBfLCBgLCBh"
-            "LCBiLCBjLCBkLCBlLCBmLCBnLCBoLCBpLCBqLCBrLCBsLCBtLCBuLCBvLCBwLCBxLCByLCBzLg=="}};
+            "LCBiLCBjLCBkLCBlLCBmLCBnLCBoLCBpLCBqLCBrLCBsLCBtLCBuLCBvLCBwLCBxLCByLCBzLg==" } };
     static const auto c_numTests = sizeof( s_tests ) / sizeof( s_tests[0] );
 
     for ( size_t i = 0; i < c_numTests; ++i ) {
-        auto expectedDecoded = std::string{s_tests[i][0]};
-        auto expectedEncoded = std::string{s_tests[i][1]};
+        auto expectedDecoded = std::string{ s_tests[i][0] };
+        auto expectedEncoded = std::string{ s_tests[i][1] };
 
         auto encoded = toBase64( expectedDecoded );
         BOOST_CHECK_EQUAL( expectedEncoded, encoded );
         auto decodedBytes = fromBase64( expectedEncoded );
-        auto decoded = bytesConstRef{decodedBytes.data(), decodedBytes.size()}.toString();
+        auto decoded = bytesConstRef{ decodedBytes.data(), decodedBytes.size() }.toString();
         BOOST_CHECK_EQUAL( decoded, expectedDecoded );
     }
 }
