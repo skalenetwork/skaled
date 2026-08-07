@@ -608,19 +608,31 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
 
         serverOpts.netOpts_.bindOptsStandard_.cntServers_ = 1;
         serverOpts.netOpts_.bindOptsStandard_.strAddrHTTP4_ = chainParams->getSelfNodeIp();
-        // random port
-        // +3 because rand() seems to be called effectively simultaneously here and in "static"
-        // section - thus giving same port for consensus
-        serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ = std::rand() % 64000 + 1025 + 3;
         skale_server_connector = new SkaleServerOverride( chainParams, client.get(), serverOpts );
         rpcServer->addConnector( skale_server_connector );
-        skale_server_connector->StartListening();
+
+        constexpr size_t maxBindAttempts = 20;
+        bool serverStarted = false;
+        for ( size_t attempt = 0; attempt < maxBindAttempts; ++attempt ) {
+            skale_server_connector->opts_.netOpts_.bindOptsStandard_.nBasePortHTTP4_ =
+                std::rand() % 64000 + 1025 + 3;
+            if ( skale_server_connector->StartListening() ) {
+                serverStarted = true;
+                break;
+            }
+            skale_server_connector->StopListening();
+        }
+        BOOST_REQUIRE_MESSAGE(
+            serverStarted, "Failed to bind JSON-RPC test server after " << maxBindAttempts
+                                                                         << " attempts" );
 
         sleep( 1 );
 
+        const auto jsonRpcPort =
+            skale_server_connector->opts_.netOpts_.bindOptsStandard_.nBasePortHTTP4_;
         httpClient = new jsonrpc::HttpClient(
             "http://" + chainParams->getSelfNodeIp() + ":" +
-            std::to_string( serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ ) );
+            std::to_string( jsonRpcPort ) );
         httpClient->SetTimeout( 1000000000 );
 
         rpcClient = unique_ptr< WebThreeStubClient >( new WebThreeStubClient( *httpClient ) );
@@ -645,6 +657,10 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
 
         if ( httpClient )
             delete httpClient;
+
+        // Keep g_skaleHost alive until every worker that may use it has stopped.
+        if ( client )
+            client->stopWorking();
 
         if ( g_skaleHost )
             g_skaleHost.reset();
