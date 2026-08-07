@@ -48,6 +48,7 @@
 #include <test/tools/libtesteth/TestOutputHelper.h>
 #include <test/tools/libtesteth/TestSuite.h>
 #include <test/tools/libtestutils/Common.h>
+#include "libconsensus/libBLS/threshold_encryption/ThresholdEncryption.h"
 
 #pragma GCC diagnostic pop
 
@@ -65,8 +66,9 @@ void mine( Client& c, int numBlocks );
  * @brief simulateMining gives money to miner but do not create block. Use it only for testing
  * instead of mine( Client& c, int numBlocks )
  */
-void simulateMining( Client& client, size_t numBlocks, const dev::Address &address );
-void simulateMining( Client& client, size_t numBlocks, [[ maybe_unused ]] const bool handleConsensusUpdate = false );
+void simulateMining( Client& client, size_t numBlocks, dev::Address const& address );
+void simulateMining(
+    Client& client, size_t numBlocks, [[maybe_unused]] const bool handleConsensusUpdate = false );
 void mineMoney( Client& c, int numBlocks );
 void mineTransaction( Client& c, int numBlocks );
 void connectClients( Client& c1, Client& c2 );
@@ -83,7 +85,8 @@ typedef json_spirit::Value_type jsonVType;
 class ZeroGasPricer : public eth::GasPricer {
 protected:
     u256 ask( eth::Block const& ) const override { return 0; }
-    u256 bid( unsigned = dev::eth::LatestBlock, eth::TransactionPriority = eth::TransactionPriority::Medium ) const override {
+    u256 bid( unsigned = dev::eth::LatestBlock,
+        eth::TransactionPriority = eth::TransactionPriority::Medium ) const override {
         return 0;
     }
 };
@@ -107,7 +110,7 @@ u256 toInt( json_spirit::mValue const& _v );
 
 /// Parses a JSON value as an 64-bit signed integer.
 /// Throws std::out_of_range exception in case the value is too big or negative.
-int64_t toPositiveInt64( const json_spirit::mValue& _v );
+int64_t toPositiveInt64( json_spirit::mValue const& _v );
 
 _byte_ toByte( json_spirit::mValue const& _v );
 bytes processDataOrCode( json_spirit::mObject const& _o, std::string const& nodeName );
@@ -152,6 +155,20 @@ std::vector< std::string > testSuggestions(
 // Fill Test Functions
 bool createRandomTest();  // returns true if succeed, false if there was an error;
 void doRlpTests( json_spirit::mValue const& _input );
+
+// ============== Ciphertext Helpers ============== //
+
+    // parse RLP(epochId, ciphertext) and return the ciphertext bytes only
+    bytes parseEpochedCiphertextBytes( const bytes& ciphertext, uint64_t expectedEpochId ); 
+
+    // Compute deterministic seed: Hash(blockRandom || counter)
+    h256 buildDeterministicRandomForEncryption( u256 blockRandom, uint64_t counter );
+
+    // Compute deterministic ciphertext for given blockRandom and counter
+    bytes buildDeterministicCiphertext( u256 blockRandom, uint64_t counter, 
+        std::vector< libBLS::TEPublicKey > const& publicKeys, bytes const& dataToEncrypt );
+
+
 
 /// Allows observing test execution process.
 /// This class also provides methods for registering and notifying the listener

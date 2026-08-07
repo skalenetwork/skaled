@@ -1,0 +1,53 @@
+diff --git a/tests/berlin/eip2929_gas_cost_increases/test_create.py b/tests/berlin/eip2929_gas_cost_increases/test_create.py
+index f216a3924..fb5ef73bc 100644
+--- a/tests/berlin/eip2929_gas_cost_increases/test_create.py
++++ b/tests/berlin/eip2929_gas_cost_increases/test_create.py
+@@ -40,6 +40,25 @@ from execution_testing import (
+ REFERENCE_SPEC_GIT_PATH = "EIPS/eip-2929.md"
+ REFERENCE_SPEC_VERSION = "0e11417265a623adb680c527b15d0cb6701b870b"
+ 
++NONCE_OVERFLOW_CREATE_STUB = "berlin_nonce_overflow_create"
++NONCE_OVERFLOW_CREATE2_STUB = "berlin_nonce_overflow_create2"
++
++
++def _has_stub(pre: Alloc, stub: str) -> bool:
++    """
++    Return True when execute/fill was configured with a matching address stub.
++
++    execute-remote cannot materialize arbitrary pre-state nonce values by
++    transaction, so a live-RPC run can preseed the account in genesis and pass
++    it as an address stub. Normal fillers keep using explicit alloc pre-state.
++    """
++    address_stubs = getattr(pre, "_address_stubs", None)
++    if address_stubs is not None and stub in address_stubs:
++        return True
++
++    stub_accounts = getattr(pre, "_stub_accounts", None)
++    return stub_accounts is not None and stub in stub_accounts
++
+ 
+ @pytest.mark.valid_from("Berlin")
+ @pytest.mark.parametrize(
+@@ -208,10 +227,19 @@ def test_create_nonce_overflow(
+         create_opcode(value=0, offset=0, size=len(initcode)),
+     )
+ 
+-    # Nonce at max value (2^64-1) causes CREATE to abort
+-    creator_address = pre.deploy_contract(
+-        creator_code, nonce=2**64 - 1, storage={0: 1}
++    # Nonce at max value (2^64-1) causes CREATE to abort. In execute-remote,
++    # use a genesis-preseeded stub because the live RPC setup path cannot set
++    # arbitrary account nonces by transaction.
++    creator_stub = (
++        NONCE_OVERFLOW_CREATE2_STUB
++        if create_opcode == Op.CREATE2
++        else NONCE_OVERFLOW_CREATE_STUB
+     )
++    deploy_kwargs = {"nonce": 2**64 - 1, "storage": {0: 1}}
++    if _has_stub(pre, creator_stub):
++        deploy_kwargs["stub"] = creator_stub
++
++    creator_address = pre.deploy_contract(creator_code, **deploy_kwargs)
+ 
+     # Pre-compute the address that would have been created
+     contract_address = compute_create_address(

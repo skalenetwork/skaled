@@ -1,0 +1,77 @@
+name: api-tests-run
+description: Install and run skaled api test suite
+inputs:
+  suite:
+    required: true
+    description: "API test suite name (for example: bite compat)"
+  build_skaled:
+    required: false
+    default: "true"
+    description: "Whether run.py is allowed to build skaled if binary is missing"
+  skaled_binary:
+    required: false
+    default: ""
+    description: "Optional pre-built skaled binary path to inject into run.toml"
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - uses: astral-sh/setup-uv@v6
+
+    - name: Sync Python dependencies
+      shell: bash
+      run: |
+        set -euo pipefail
+        uv sync --locked --project test/api-tests
+
+    - name: Sync execution-specs dependencies
+      if: ${{ inputs.suite == 'hardfork-support' }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        UV_NO_CONFIG=1 uv sync --locked --project test/api-tests/execution-specs
+
+    - name: Apply hardfork-support execution-specs patches
+      if: ${{ inputs.suite == 'hardfork-support' }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        patch_path="../hardfork-support/patches/execution-specs-berlin-nonce-overflow-stubs.patch"
+        if git -C test/api-tests/execution-specs apply --check "${patch_path}"; then
+          git -C test/api-tests/execution-specs apply "${patch_path}"
+        elif git -C test/api-tests/execution-specs apply --reverse --check "${patch_path}"; then
+          echo "execution-specs patch already applied: ${patch_path}"
+        else
+          echo "::error::execution-specs patch does not apply: ${patch_path}"
+          git -C test/api-tests/execution-specs apply --check "${patch_path}"
+        fi
+
+    - name: Render run.toml from template
+      shell: bash
+      env:
+        FUNC_TEST_PRIVATE_KEY: ${{ env.FUNC_TEST_PRIVATE_KEY }}
+        SKALED_BINARY: ${{ inputs.skaled_binary }}
+        BUILD_SKALED: ${{ inputs.build_skaled }}
+      run: uv run --locked --project test/api-tests python3 test/api-tests/render_config.py
+
+    - name: Run API test suite
+      shell: bash
+      run: |
+        set -euo pipefail
+        cd test/api-tests
+        if ! uv run --locked --project . run.py --config run.toml --suite "${{ inputs.suite }}"; then
+          echo "::error::Test execution failed"
+          for log_dir in logs */logs; do
+            [ -d "${log_dir}" ] || continue
+            find "${log_dir}" -maxdepth 1 -type f -name '*.log' | while read -r log; do
+              echo "::group::${log}"
+              cat "${log}"
+              echo "::endgroup::"
+            done
+          done
+          exit 1
+        fi

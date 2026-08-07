@@ -88,6 +88,7 @@ DEV_SIMPLE_EXCEPTION( PreEIP155LegacyTransactionNotAllowed );
 DEV_SIMPLE_EXCEPTION( PreEIP155ReplayProtectionViolation );
 DEV_SIMPLE_EXCEPTION( PendingTransactionAlreadyExists );
 DEV_SIMPLE_EXCEPTION( TransactionAlreadyInChain );
+DEV_SIMPLE_EXCEPTION( TransactionQueueIsFull );
 DEV_SIMPLE_EXCEPTION( BlockNotFound );
 DEV_SIMPLE_EXCEPTION( UnknownParent );
 DEV_SIMPLE_EXCEPTION( AddressAlreadyUsed );
@@ -121,7 +122,8 @@ DEV_SIMPLE_EXCEPTION( LogCountLimitExceeded );
 #ifdef BITE
 DEV_SIMPLE_EXCEPTION( InvalidBITETransaction );
 DEV_SIMPLE_EXCEPTION( BITETransactionTooShort );
-#endif
+DEV_SIMPLE_EXCEPTION( IllegalCTXSubmission );
+#endif  // BITE
 
 }  // namespace eth
 }  // namespace dev

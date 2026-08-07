@@ -65,6 +65,18 @@
 // CryptoPP defines byte in the global namespace, so must we.
 using _byte_ = uint8_t;
 
+template < typename T >
+concept AssociativeContainer = requires {
+    typename T::key_type;
+};
+
+template < typename T >
+concept LinearContainer = requires( T a ) {
+    { a.begin() };
+    { a.end() };
+}
+&&!AssociativeContainer< T >;
+
 #define DEV_IGNORE_EXCEPTIONS( X ) \
     try {                          \
         X;                         \

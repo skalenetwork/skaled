@@ -80,7 +80,7 @@ BOOST_AUTO_TEST_CASE( Mining_1_mineBlockWithTransaction ) {
 
 BOOST_AUTO_TEST_CASE( Mining_2_mineUncles ) {
     TestBlockChain bc( TestBlockChain::defaultGenesisBlock() );
-    TestTransaction tr = TestTransaction::defaultTransaction(); // nonce 1
+    TestTransaction tr = TestTransaction::defaultTransaction();  // nonce 1
     TestBlock block;
     block.addTransaction( tr );
     block.mine( bc );
@@ -92,7 +92,7 @@ BOOST_AUTO_TEST_CASE( Mining_2_mineUncles ) {
     uncleBlock2.mine( bc );
 
     sleep( 1 );
-    TestTransaction tr2 = TestTransaction::defaultTransaction( 2 ); // nonce 2
+    TestTransaction tr2 = TestTransaction::defaultTransaction( 2 );  // nonce 2
     TestBlock block2;
     block2.addTransaction( tr2 );
     block2.mine( bc );
@@ -297,7 +297,8 @@ BOOST_AUTO_TEST_CASE( updateStats ) {
     bcRef.garbageCollect( true );
 }
 
-BOOST_AUTO_TEST_CASE( invalidJsonThrows, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    invalidJsonThrows, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     h256 emptyStateRoot;
     /* Below, a comma is missing between fields. */
     BOOST_CHECK_THROW(

@@ -67,8 +67,8 @@ public:
         u256 const& _startingBlock = 0, h160Set const& _allowedAddresses = h160Set() );
 
     bigint cost( bytesConstRef _in, ChainOperationParams const& _chainParams,
-        u256 const& _blockNumber ) const {
-        return m_cost( _in, _chainParams, _blockNumber );
+        PrecompiledCallContext const& _ctx ) const {
+        return m_cost( _in, _chainParams, _ctx );
     }
 #ifdef FAIR
     std::pair< bool, bytes > execute(
@@ -329,8 +329,8 @@ public:
         return precompiled.count( _a ) != 0 && _blockNumber >= precompiled.at( _a ).startingBlock();
     }
     bigint costOfPrecompiled(
-        Address const& _a, bytesConstRef _in, u256 const& _blockNumber ) const {
-        return precompiled.at( _a ).cost( _in, *this, _blockNumber );
+        Address const& _a, bytesConstRef _in, PrecompiledCallContext const& _ctx ) const {
+        return precompiled.at( _a ).cost( _in, *this, _ctx );
     }
     bool precompiledExecutionAllowedFrom(
         Address const& _a, Address const& _from, bool _readOnly ) const {
@@ -340,6 +340,9 @@ public:
     const PrecompiledContract& getPrecompiledContract( const dev::Address& _a ) const {
         return precompiled.at( _a );
     }
+
+    /// EIP-2929: return all precompiled contract addresses for warm-set initialization.
+    std::vector< Address > const& precompiledAddresses() const { return m_precompiledAddresses; }
 
 #ifdef FAIR
     std::pair< bool, bytes > executePrecompiled(
@@ -360,6 +363,8 @@ public:
     void setHomesteadForkBlock( u256 _bn ) { homesteadForkBlock = _bn; }
 
     void setByzantiumForkBlock( u256 _bn ) { byzantiumForkBlock = _bn; }
+
+    void setPatchTimestamps( const std::map< SchainPatchEnum, time_t >& _patchTimestampsToSet );
 
     // GENERAL CHAIN GETTERS
 
@@ -445,6 +450,16 @@ protected:
 
     /// Precompiled contracts as specified in the chain params.
     std::unordered_map< Address, PrecompiledContract > precompiled;
+
+    /// Cached address list built once after precompiled is fully populated.
+    std::vector< Address > m_precompiledAddresses;
+
+    void rebuildPrecompiledAddresses() {
+        m_precompiledAddresses.clear();
+        m_precompiledAddresses.reserve( precompiled.size() );
+        for ( auto const& p : precompiled )
+            m_precompiledAddresses.push_back( p.first );
+    }
 
     /// skale
     /// Skale additional config

@@ -139,11 +139,22 @@ public:
     /// Constructs a transaction from the given RLP.
     explicit Transaction( bytesConstRef _rlp, CheckTransaction _checkSig,
         bool _allowInvalid = false, bool _eip1559Enabled = false,
-        bool _invalidTransactionFormatPatchEnabled = false );
+        bool _invalidTransactionFormatPatchEnabled = false, bool _berlinForkPatchEnabled = false
+#ifdef BITE
+        ,
+        bool _bite2PatchEnabled = false
+#endif
+    );
 
     /// Constructs a transaction from the given RLP.
     explicit Transaction( bytes const& _rlp, CheckTransaction _checkSig, bool _allowInvalid = false,
-        bool _eip1559Enabled = false, bool _invalidTransactionFormatPatchEnabled = false );
+        bool _eip1559Enabled = false, bool _invalidTransactionFormatPatchEnabled = false,
+        bool _berlinForkPatchEnabled = false
+#ifdef BITE
+        ,
+        bool _bite2PatchEnabled = false
+#endif
+    );
 
     Transaction( Transaction const& ) = default;
 

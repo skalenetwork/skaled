@@ -79,6 +79,18 @@ public:
         streamRLP( s );
         return s.out();
     }
+    void setTxType( int _txType ) { m_txType = _txType; }
+    int txType() const { return m_txType; }
+
+    bytes typedRlp() const {
+        if ( m_txType > 0 ) {
+            bytes result( 1, static_cast< uint8_t >( m_txType ) );
+            bytes receiptBytes = rlp();
+            result.insert( result.end(), receiptBytes.begin(), receiptBytes.end() );
+            return result;
+        }
+        return rlp();
+    }
 
 private:
     boost::variant< uint8_t, h256 > m_statusCodeOrStateRoot;
@@ -86,6 +98,7 @@ private:
     LogBloom m_bloom;
     LogEntries m_log;
     std::string m_strRevertReason;
+    int m_txType = 0;  ///< EIP-2718 transaction type (0 = Legacy).
 
     Counter< TransactionReceipt > c;
 

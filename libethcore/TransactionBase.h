@@ -25,14 +25,16 @@
 #include <libdevcrypto/Common.h>
 #include <libethcore/Common.h>
 #include <libethcore/Counter.h>
+#include <libethcore/EVMSchedule.h>
 
 #include <SkaleCommon.h>
+#ifdef BITE
+#include <libconsensus/node/ConsensusTypes.h>
+#endif
 #include <boost/optional.hpp>
 
 namespace dev {
 namespace eth {
-
-struct EVMSchedule;
 
 /// Named-boolean type to encode whether a signature be included in the serialisation process.
 enum IncludeSignature {
@@ -160,14 +162,30 @@ public:
     /// Constructs a transaction from the given RLP.
     explicit TransactionBase( bytesConstRef _rlp, CheckTransaction _checkSig,
         bool _allowInvalid = false, bool _eip1559Enabled = false,
-        bool _invalidTransactionFormatPatchEnabled = false );
+        bool _invalidTransactionFormatPatchEnabled = false, bool _berlinForkPatchEnabled = false
+#ifdef BITE
+        ,
+        bool _bite2PatchEnabled = false
+#endif
+    );
 
     /// Constructs a transaction from the given RLP.
     explicit TransactionBase( bytes const& _rlp, CheckTransaction _checkSig,
         bool _allowInvalid = false, bool _eip1559Enabled = false,
-        bool _invalidTransactionFormatPatchEnabled = false )
+        bool _invalidTransactionFormatPatchEnabled = false, bool _berlinForkPatchEnabled = false
+#ifdef BITE
+        ,
+        bool _bite2PatchEnabled = false
+#endif
+        )
         : TransactionBase( &_rlp, _checkSig, _allowInvalid, _eip1559Enabled,
-              _invalidTransactionFormatPatchEnabled ) {}
+              _invalidTransactionFormatPatchEnabled, _berlinForkPatchEnabled
+#ifdef BITE
+              ,
+              _bite2PatchEnabled
+#endif
+          ) {
+    }
 
     TransactionBase( TransactionBase const& ) = default;
 
@@ -225,14 +243,25 @@ public:
     Address decryptedTo() const;
 
     // Tx is only valid BITE if is marked as BITE and has the decrypted fields set
-    bool isInvalidBiteTransaction() const {
-        return m_isBITETxn && !m_decryptedData && !m_decryptedTo;
-    }
+    bool isInvalidBiteTransaction() const;
 
     bool isBite() const { return m_isBITETxn; }
 
     void checkAndValidateBITETransaction( uint64_t _epochId ) const;
-#endif
+
+    bool isCTX() const { return m_isCTX; }
+
+    void checkIfCTXAndSet( const dev::bytes& _data );
+
+    void setDecryptedArgsCTX( const DecryptedCTXArgs& _decryptedCTXArgs );
+
+    void setBITE2EncryptedArgsSize( size_t _s ) { m_ctxEncryptedArgsSize = _s; }
+
+    void setCTXOrigin( const dev::h256& _txHash ) { m_ctxOrigin = _txHash; }
+
+    dev::h256 getCTXOrigin() const { return m_ctxOrigin; }
+
+#endif  // BITE
 
     /// @throws TransactionIsUnsigned if signature was not initialized
     /// @throws InvalidSValue if the signature has an invalid S value.
@@ -361,16 +390,19 @@ public:
     /// @returns amount of gas required for the basic payment.
     int64_t baseGasRequired( EVMSchedule const& _es ) const {
         CHECK_STATE2( !isInvalid(), "Transaction is invalid. Cannot get base gas required." );
-        return baseGasRequired( isCreation(), &m_data, _es
+        int64_t gasRequired = baseGasRequired( isCreation(), &m_data, _es
 #ifdef BITE
             ,
             m_isBITETxn
 #endif
-#ifdef BITE2
+#ifdef BITE
             ,
-            m_bite2EncryptedArgsSize
+            m_ctxEncryptedArgsSize
 #endif
         );
+        if ( _es.eip2930Mode && m_txType != TransactionType::Legacy )
+            gasRequired += accessListGasRequired( m_accessList, _es );
+        return gasRequired;
     }
 
     bool isInvalid() const { return m_type == Type::Invalid; }
@@ -390,15 +422,14 @@ public:
         ,
         bool _isBITETxn = false
 #endif
-#ifdef BITE2
+#ifdef BITE
         ,
         std::optional< size_t > _bite2EncryptedArgsSize = std::nullopt
 #endif
     );
 
-#ifdef BITE2
-    void setBITE2EncryptedArgsSize( size_t _s ) { m_bite2EncryptedArgsSize = _s; }
-#endif
+    static int64_t accessListGasRequired(
+        std::vector< bytes > const& _accessList, EVMSchedule const& _es );
 
 protected:
     /// Type of transaction.
@@ -452,10 +483,11 @@ protected:
     bool m_isBITETxn = false;  ///< Is this a BITE transaction
 
     static const Address BITE_ADDRESS;
-#endif
 
-#ifdef BITE2
-    std::optional< size_t > m_bite2EncryptedArgsSize = std::nullopt;
+    dev::h256 m_ctxOrigin = dev::h256( 0 );  ///< Txn that initiated submitCTX call
+
+    std::optional< size_t > m_ctxEncryptedArgsSize = std::nullopt;
+    bool m_isCTX = false;
 #endif
 
     TransactionType m_txType = TransactionType::Legacy;
@@ -473,13 +505,14 @@ private:
 
     /// Constructs a transaction from the given RLP and transaction type.
     void fillFromBytesByType( bytesConstRef _rlpData, CheckTransaction _checkSig,
-        bool _allowInvalid, TransactionType _type, bool _invalidTransactionFormatPatchEnabled );
+        bool _allowInvalid, TransactionType _type, bool _invalidTransactionFormatPatchEnabled,
+        bool _berlinForkPatchEnabled );
     void fillFromBytesLegacy(
         bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid );
     void fillFromBytesType1( bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid,
-        bool _invalidTransactionFormatPatchEnabled );
+        bool _invalidTransactionFormatPatchEnabled, bool _berlinForkPatchEnabled );
     void fillFromBytesType2( bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid,
-        bool _invalidTransactionFormatPatchEnabled );
+        bool _invalidTransactionFormatPatchEnabled, bool _berlinForkPatchEnabled );
 
     void streamLegacyTransaction( RLPStream& _s, IncludeSignature _sig, bool _forEip155hash ) const;
     void streamType1Transaction( RLPStream& _s, IncludeSignature _sig ) const;
@@ -488,7 +521,7 @@ private:
 #ifdef BITE
     // called in TransactionBase constructor
     // sets m_isBITETxn to true if a txn 'to' field
-    // maches BITE address
+    // matches BITE address
     void checkIfBITETxnAndSet( const Address& _to );
 #endif
 

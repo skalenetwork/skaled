@@ -106,9 +106,9 @@ public:
     /// Simple constructor; executive will operate on given state, with the given environment info.
     Executive( skale::State& _s, EnvInfo const& _envInfo, ChainOperationParams const& _chainParams,
         const u256& _gasPrice, unsigned _level, bool _readOnly = true
-#ifdef BITE2
+#ifdef BITE
         ,
-        const u256& _txnIndex = u256( -1 )
+        const u256& _txnIndex = u256( -1 ), const dev::h256& _txnHash = dev::h256( 0 )
 #endif
             )
         : m_s( _s ),
@@ -117,9 +117,10 @@ public:
           m_readOnly( _readOnly ),
           m_chainParams( _chainParams ),
           m_systemGasPrice( _gasPrice )
-#ifdef BITE2
+#ifdef BITE
           ,
-          m_txnIndex( _txnIndex )
+          m_txnIndex( _txnIndex ),
+          m_txnHash( _txnHash )
 #endif
     {
     }
@@ -192,6 +193,9 @@ public:
     /// Finalise an operation through accruing the substate into the parent context.
     void accrueSubState( SubState& _parentContext );
 
+    /// EIP-2929: share the transaction-global access sets with this executive's child context.
+    void setAccessSets( std::shared_ptr< AccessSets > _sets ) { m_accessSets = std::move( _sets ); }
+
     /// Executes (or continues execution of) the VM.
     /// @returns false iff go() must be called again to finish the transaction.
     bool go( OnOpFunc const& _onOp = OnOpFunc() );
@@ -221,6 +225,8 @@ public:
         const bool _allowFuture = false );
 
 private:
+    void initAccessSets();
+
     /// @returns false iff go() must be called (and thus a VM execution in required).
     bool executeCreate( Address const& _txSender, u256 const& _endowment, u256 const& _gasPrice,
         u256 const& _gas, bytesConstRef _code, Address const& _originAddress,
@@ -256,8 +262,14 @@ private:
     Address m_newAddress;
     size_t m_savepoint = 0;
 
-#ifdef BITE2
+    std::shared_ptr< AccessSets > m_accessSets = std::make_shared< AccessSets >();
+    /// Snapshot of access sets taken at savepoint; restored in revert() to roll back
+    /// any warmings that occurred inside this sub-call frame.
+    AccessSets m_accessSetsSnapshot;
+
+#ifdef BITE
     u256 m_txnIndex = u256( -1 );  ///< Index of transaction under execution. -1 for external calls
+    h256 m_txnHash = h256( 0 );    ///< hash of transaction under execution. 0 for external calls
 #endif
 
     Logger m_loggerDebug{ createLogger( VerbosityDebug, "Executive" ) };

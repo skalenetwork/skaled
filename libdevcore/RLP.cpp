@@ -221,7 +221,6 @@ RLPStream& RLPStream::appendRaw( bytesConstRef _s, size_t _itemCount ) {
 void RLPStream::noteAppended( size_t _itemCount ) {
     if ( !_itemCount )
         return;
-    //	cdebug << "noteAppended(" << _itemCount << ")";
     while ( m_listStack.size() ) {
         if ( m_listStack.back().first < _itemCount )
             BOOST_THROW_EXCEPTION( RLPException()
@@ -257,7 +256,6 @@ void RLPStream::noteAppended( size_t _itemCount ) {
 }
 
 RLPStream& RLPStream::appendList( size_t _items ) {
-    //	cdebug << "appendList(" << _items << ")";
     if ( _items )
         m_listStack.push_back( std::make_pair( _items, m_out.size() ) );
     else
