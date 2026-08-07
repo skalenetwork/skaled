@@ -18,6 +18,7 @@
 #include <libweb3jsonrpc/Test.h>
 #include <libweb3jsonrpc/Web3.h>
 #include <skutils/btrfs.h>
+#include <test/tools/libtesteth/BtrfsTestFixture.h>
 #include <test/tools/libtesteth/TestHelper.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>
 #include <boost/test/unit_test.hpp>
@@ -31,6 +32,8 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 using namespace dev::test;
+
+const string BTRFS_DIR_PATH = dev::test::BtrfsTestMount::defaultMountPath();
 
 boost::unit_test::assertion_result option_all_test( boost::unit_test::test_unit_id ) {
     return boost::unit_test::assertion_result( dev::test::Options::get().all ? true : false );
@@ -245,110 +248,9 @@ private:
     TestIpcServer& m_server;
 };
 
-struct FixtureCommon {
-    const string BTRFS_FILE_PATH = "btrfs.file";
-    const string BTRFS_DIR_PATH = "btrfs";
-    uid_t sudo_uid;
-    gid_t sudo_gid;
-
-    void check_sudo() {
-#if ( !defined __APPLE__ )
-        char* id_str = getenv( "SUDO_UID" );
-        if ( id_str == NULL ) {
-            cerr << "Please run under sudo" << endl;
-            exit( -1 );
-        }
-
-        sscanf( id_str, "%d", &sudo_uid );
-
-        //    uid_t ru, eu, su;
-        //    getresuid( &ru, &eu, &su );
-        //    cerr << ru << " " << eu << " " << su << endl;
-
-        if ( geteuid() != 0 ) {
-            cerr << "Need to be root" << endl;
-            exit( -1 );
-        }
-
-        id_str = getenv( "SUDO_GID" );
-        sscanf( id_str, "%d", &sudo_gid );
-
-        gid_t rgid, egid, sgid;
-        getresgid( &rgid, &egid, &sgid );
-        cerr << "GIDS: " << rgid << " " << egid << " " << sgid << endl;
-#endif
-    }
-
-    void dropRoot() {
-#if ( !defined __APPLE__ )
-        int res = setresgid( sudo_gid, sudo_gid, 0 );
-        cerr << "setresgid " << sudo_gid << " " << res << endl;
-        if ( res < 0 )
-            cerr << strerror( errno ) << endl;
-        res = setresuid( sudo_uid, sudo_uid, 0 );
-        cerr << "setresuid " << sudo_uid << " " << res << endl;
-        if ( res < 0 )
-            cerr << strerror( errno ) << endl;
-#endif
-    }
-
-    void gainRoot() {
-#if ( !defined __APPLE__ )
-        int res = setresuid( 0, 0, 0 );
-        if ( res ) {
-            cerr << strerror( errno ) << endl;
-            assert( false );
-        }
-        res = setresgid( 0, 0, 0 );
-        if ( res ) {
-            cerr << strerror( errno ) << endl;
-            assert( false );
-        }
-#endif
-    }
-
-    void cleanupBtrfsArtifacts() {
-        gainRoot();
-#if ( !defined __APPLE__ )
-        while ( system( ( "mountpoint -q " + BTRFS_DIR_PATH ).c_str() ) == 0 ) {
-            int rv = system( ( "umount " + BTRFS_DIR_PATH ).c_str() );
-            assert( rv == 0 );
-        }
-#endif
-        int rv = system( ( "rm -rf " + BTRFS_DIR_PATH ).c_str() );
-        assert( rv == 0 );
-        rv = system( ( "rm -f " + BTRFS_FILE_PATH ).c_str() );
-        assert( rv == 0 );
-    }
-};
-
 // TODO Do not copy&paste from JsonRpcFixture
-struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCommon {
-    SnapshotHashingFixture() {
-        check_sudo();
-        cleanupBtrfsArtifacts();
-
-        dropRoot();
-
-        int rv =
-            system( ( "dd if=/dev/zero of=" + BTRFS_FILE_PATH + " bs=1M count=" + to_string( 200 ) )
-                        .c_str() );
-        rv = system( ( "mkfs.btrfs " + BTRFS_FILE_PATH ).c_str() );
-        rv = system( ( "mkdir " + BTRFS_DIR_PATH ).c_str() );
-
-        gainRoot();
-        rv = system( ( "mount -o user_subvol_rm_allowed " + BTRFS_FILE_PATH + " " + BTRFS_DIR_PATH )
-                         .c_str() );
-        rv = chown( BTRFS_DIR_PATH.c_str(), sudo_uid, sudo_gid );
-        ( void ) rv;
-        dropRoot();
-
-        //        btrfs.subvolume.create( ( BTRFS_DIR_PATH + "/vol1" ).c_str() );
-        //        btrfs.subvolume.create( ( BTRFS_DIR_PATH + "/vol2" ).c_str() );
-        // system( ( "mkdir " + BTRFS_DIR_PATH + "/snapshots" ).c_str() );
-
-        gainRoot();
-
+struct SnapshotHashingFixture : public TestOutputHelperFixture {
+    SnapshotHashingFixture() : btrfsMount( dev::test::BtrfsTestMount::fixedPaths() ) {
         std::shared_ptr< ChainParams > chainParams = std::make_shared< ChainParams >();
         dev::p2p::NetworkPreferences nprefs;
         chainParams->sealEngineName = NoProof::name();
@@ -476,10 +378,6 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         client.reset();
         mgr.reset();
 
-        const char* NC = getenv( "NC" );
-        if ( NC )
-            return;
-        cleanupBtrfsArtifacts();
     }
 
     string sendingRawShouldFail( string const& _t ) {
@@ -492,6 +390,7 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         return string();
     }
 
+    dev::test::BtrfsTestMount btrfsMount;
     TransientDirectory tempDir;  // ! should exist before client!
     unique_ptr< Client > client;
 

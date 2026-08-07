@@ -1,6 +1,7 @@
 #include <libskale/SnapshotManager.h>
 #include <skutils/btrfs.h>
 
+#include <test/tools/libtesteth/BtrfsTestFixture.h>
 #include <test/tools/libtesteth/TestHelper.h>
 
 #include <boost/filesystem.hpp>
@@ -14,144 +15,25 @@
 
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/wait.h>
 
 using namespace std;
 namespace fs = boost::filesystem;
 
-int setid_system( const char* cmd, uid_t uid, gid_t gid ) {
-    pid_t pid = fork();
-    if ( pid ) {
-        int status;
-        waitpid( pid, &status, 0 );
-        return WEXITSTATUS( status );
-    }
+const string BTRFS_FILE_PATH = dev::test::BtrfsTestMount::defaultImagePath();
+const string BTRFS_DIR_PATH = dev::test::BtrfsTestMount::defaultMountPath();
 
-    int rv;
-#if ( !defined __APPLE__ )
-    rv = setresuid( uid, uid, uid );
-    rv = setresgid( gid, gid, gid );
-#endif
+struct BtrfsFixture {
+    BtrfsFixture() : btrfsMount( dev::test::BtrfsTestMount::fixedPaths() ) {}
 
-    rv = execl( "/bin/sh", "sh", "-c", cmd, ( char* ) NULL );
-    ( void ) rv;
-    return 0;
-}
+    void dropRoot() { btrfsMount.dropRoot(); }
+    void gainRoot() { btrfsMount.gainRoot(); }
 
-struct FixtureCommon {
-    const string BTRFS_FILE_PATH = "btrfs.file";
-    const string BTRFS_DIR_PATH = "btrfs";
-    uid_t sudo_uid;
-    gid_t sudo_gid;
-
-    void check_sudo() {
-#if ( !defined __APPLE__ )
-        char* id_str = getenv( "SUDO_UID" );
-        if ( id_str == NULL ) {
-            cerr << "Please run under sudo" << endl;
-            exit( -1 );
-        }
-
-        sscanf( id_str, "%d", &sudo_uid );
-
-        //    uid_t ru, eu, su;
-        //    getresuid( &ru, &eu, &su );
-        //    cerr << ru << " " << eu << " " << su << endl;
-
-        if ( geteuid() != 0 ) {
-            cerr << "Need to be root" << endl;
-            exit( -1 );
-        }
-
-        id_str = getenv( "SUDO_GID" );
-        sscanf( id_str, "%d", &sudo_gid );
-
-        gid_t rgid, egid, sgid;
-        getresgid( &rgid, &egid, &sgid );
-        cerr << "GIDS: " << rgid << " " << egid << " " << sgid << endl;
-#endif
-    }
-
-    void dropRoot() {
-#if ( !defined __APPLE__ )
-        int res = setresgid( sudo_gid, sudo_gid, 0 );
-        cerr << "setresgid " << sudo_gid << " " << res << endl;
-        if ( res < 0 )
-            cerr << strerror( errno ) << endl;
-        res = setresuid( sudo_uid, sudo_uid, 0 );
-        cerr << "setresuid " << sudo_uid << " " << res << endl;
-        if ( res < 0 )
-            cerr << strerror( errno ) << endl;
-#endif
-    }
-
-    void gainRoot() {
-#if ( !defined __APPLE__ )
-        int res = setresuid( 0, 0, 0 );
-        if ( res ) {
-            cerr << strerror( errno ) << endl;
-            assert( false );
-        }
-        res = setresgid( 0, 0, 0 );
-        if ( res ) {
-            cerr << strerror( errno ) << endl;
-            assert( false );
-        }
-#endif
-    }
-
-    void cleanupBtrfsArtifacts() {
-        gainRoot();
-#if ( !defined __APPLE__ )
-        while ( system( ( "mountpoint -q " + BTRFS_DIR_PATH ).c_str() ) == 0 ) {
-            int rv = system( ( "umount " + BTRFS_DIR_PATH ).c_str() );
-            assert( rv == 0 );
-        }
-#endif
-        int rv = system( ( "rm -rf " + BTRFS_DIR_PATH ).c_str() );
-        assert( rv == 0 );
-        rv = system( ( "rm -f " + BTRFS_FILE_PATH ).c_str() );
-        assert( rv == 0 );
-    }
+    dev::test::BtrfsTestMount btrfsMount;
 };
 
-struct BtrfsFixture : public FixtureCommon {
-    BtrfsFixture() {
-        check_sudo();
-        cleanupBtrfsArtifacts();
-
-        dropRoot();
-
-        int rv = system( ( "dd if=/dev/zero of=" + BTRFS_FILE_PATH + " bs=1M count=200" ).c_str() );
-        rv = system( ( "mkfs.btrfs " + BTRFS_FILE_PATH ).c_str() );
-        rv = system( ( "mkdir " + BTRFS_DIR_PATH ).c_str() );
-
-        gainRoot();
-        rv = system( ( "mount -o user_subvol_rm_allowed " + BTRFS_FILE_PATH + " " + BTRFS_DIR_PATH )
-                         .c_str() );
-        rv = chown( BTRFS_DIR_PATH.c_str(), sudo_uid, sudo_gid );
-        ( void ) rv;
-        dropRoot();
-
-        //        btrfs.subvolume.create( ( BTRFS_DIR_PATH + "/vol1" ).c_str() );
-        //        btrfs.subvolume.create( ( BTRFS_DIR_PATH + "/vol2" ).c_str() );
-        // system( ( "mkdir " + BTRFS_DIR_PATH + "/snapshots" ).c_str() );
-
-        gainRoot();
-    }
-
-    ~BtrfsFixture() {
-        const char* NC = getenv( "NC" );
-        if ( NC )
-            return;
-        cleanupBtrfsArtifacts();
-    }
-};
-
-struct NoBtrfsFixture : public FixtureCommon {
+struct NoBtrfsFixture : public dev::test::BtrfsTestEnvironment {
     NoBtrfsFixture() {
-        check_sudo();
-        cleanupBtrfsArtifacts();
+        dev::test::BtrfsTestMount::cleanupArtifacts( BTRFS_DIR_PATH, BTRFS_FILE_PATH, true );
         dropRoot();
         int rv = system( ( "mkdir " + BTRFS_DIR_PATH ).c_str() );
         rv = system( ( "mkdir " + BTRFS_DIR_PATH + "/vol1" ).c_str() );
@@ -160,7 +42,7 @@ struct NoBtrfsFixture : public FixtureCommon {
         gainRoot();
     }
     ~NoBtrfsFixture() {
-        cleanupBtrfsArtifacts();
+        dev::test::BtrfsTestMount::cleanupArtifacts( BTRFS_DIR_PATH, BTRFS_FILE_PATH, true );
     }
 };
 
