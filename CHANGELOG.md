@@ -15,21 +15,19 @@ London and Paris fork support; snapshot-hash JSON-RPC API; consensus performance
 
 ### Added
 
-* Add `skale_getLatestSnapshotHash` to return the hash of the newest available snapshot
+- Add `skale_getLatestSnapshotHash` to return the hash of the newest available snapshot
   ([#2501](https://github.com/skalenetwork/skaled/pull/2501), [#2327](https://github.com/skalenetwork/skaled/issues/2327))
-* London fork support, including EIP-3198 BASEFEE, EIP-3529 refund changes, EIP-3541 bytecode
+- London fork support, including EIP-3198 BASEFEE, EIP-3529 refund changes, EIP-3541 bytecode
   validation, and EIP-1559 `baseFeePerGas` to block header ([#2446](https://github.com/skalenetwork/skaled/pull/2446), [#1794](https://github.com/skalenetwork/skaled/issues/1794))
-* Paris fork support, including post-Merge block validation and PREVRANDAO support
+- Paris fork support, including post-Merge block validation and PREVRANDAO support
   ([#2465](https://github.com/skalenetwork/skaled/pull/2465), [#1795](https://github.com/skalenetwork/skaled/issues/1795))
 
 ### Changed
 
-* Improve consensus performance through proposal-path, decryption-share, and validation optimizations:
+- Improve consensus performance through proposal-path, decryption-share, and validation optimizations:
   BITE benchmarks show up to 56% higher TPS and about 33% lower block time, while non-BITE
   benchmarks show up to 11% higher TPS
   ([#2517](https://github.com/skalenetwork/skaled/pull/2517), [#2502](https://github.com/skalenetwork/skaled/issues/2502), [skale-consensus#1012](https://github.com/skalenetwork/skale-consensus/issues/1012))
-
-
 
 ## [5.2.0] - 2026-07-22 (beta)
 
