@@ -915,6 +915,7 @@ def print_summary(all_results: dict[str, list[TestResult]]) -> bool:
     print("=" * 60)
 
     total_pass = total_fail = 0
+    failed_entries: list[tuple[str, TestResult]] = []
     for label in sorted(all_results):
         results = all_results[label]
         print(f"\n  {label}:")
@@ -925,8 +926,18 @@ def print_summary(all_results: dict[str, list[TestResult]]) -> bool:
                 total_pass += 1
             else:
                 total_fail += 1
+                failed_entries.append((label, r))
 
     print(f"\n  Total: {total_pass} passed, {total_fail} failed")
+    print("\n" + "=" * 60)
+    print("FAILED TESTS")
+    print("=" * 60)
+    if not failed_entries:
+        print("  None")
+    else:
+        for label, r in failed_entries:
+            print(f"  [{label}] {r.name}")
+            print(f"    {r.message}")
     print("=" * 60)
     return total_fail == 0
 

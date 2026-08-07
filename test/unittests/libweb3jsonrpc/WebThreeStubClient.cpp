@@ -160,6 +160,18 @@ std::string WebThreeStubClient::skale_protocolVersion() {
 }
 
 
+std::string WebThreeStubClient::skale_getLatestSnapshotHash() {
+    Json::Value p;
+    p = Json::nullValue;
+    Json::Value result = this->CallMethod( "skale_getLatestSnapshotHash", p );
+    if ( result.isString() )
+        return result.asString();
+    else
+        throw jsonrpc::JsonRpcException(
+            jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
+}
+
+
 std::string WebThreeStubClient::skale_stats() {
     Json::Value p;
     p = Json::nullValue;

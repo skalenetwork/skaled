@@ -19,6 +19,17 @@ link_directories( "${DEPS_INSTALL_ROOT}/lib" )
 set( CMAKE_PREFIX_PATH "${DEPS_INSTALL_ROOT}" )
 list( APPEND CMAKE_MODULE_PATH ${DEPS_INSTALL_ROOT}/lib/cmake )
 
+if (NOT TARGET skale_libcurl)
+    add_library(skale_libcurl INTERFACE)
+    target_link_libraries(skale_libcurl INTERFACE
+        "${DEPS_INSTALL_ROOT}/lib/libcurl.a"
+        idn2
+        "${DEPS_INSTALL_ROOT}/lib/libz.a"
+        "${DEPS_INSTALL_ROOT}/lib/libssl.a"
+        "${DEPS_INSTALL_ROOT}/lib/libcrypto.a"
+    )
+endif ()
+
 link_directories( ${CMAKE_BINARY_DIR}/deps/lib )          # HACK for not-found -lff in testeth
 
 option( SKALED_PROFILING "Build for profiling" OFF )
@@ -95,10 +106,6 @@ project( skale )
 file( READ VERSION PROJECT_VERSION )
 string( STRIP ${PROJECT_VERSION} PROJECT_VERSION )
 
-if( NOT EXISTS ${CMAKE_SOURCE_DIR}/evmjit/.git )
-    message( FATAL_ERROR "Git submodules not initialized, execute:\n  git submodule update --init" )
-endif()
-
 cable_add_buildinfo_library( PROJECT_NAME skale )
 
 set( CMAKE_SKIP_INSTALL_ALL_DEPENDENCY ON )
@@ -114,7 +121,6 @@ set( CLANG_FORMAT_EXCLUDE_PATTERNS
     ${CMAKE_BINARY_DIR}
     ${DEPS_SOURCES_ROOT}
     "${CMAKE_CURRENT_SOURCE_DIR}/evmc/"
-    "${CMAKE_CURRENT_SOURCE_DIR}/evmjit/"
     "${CMAKE_CURRENT_SOURCE_DIR}/libconsensus/"
     )
 include( FindClangFormat )
@@ -172,7 +178,6 @@ if (BITE)
     add_definitions(-DBITE=1)
 endif()
 
-
 if (FAIR)
     set(BITE "1")
     add_definitions(-DBITE=1)
@@ -193,9 +198,6 @@ set( SKUTILS_INCLUDE_DIRS
 include_directories( ${SKUTILS_INCLUDE_DIRS} )
 add_subdirectory( libskutils )
 
-option( SKALE_INTERPRETER_SHARED "Build skale-interpreter as a shared library" OFF )
-add_subdirectory( libskale-interpreter )
-
 add_subdirectory( libdevcore )
 add_subdirectory( libdevcrypto )
 add_subdirectory( libp2p )
@@ -212,17 +214,8 @@ add_subdirectory( libethereum )
 add_subdirectory( libethashseal )
 add_subdirectory( libweb3jsonrpc )
 
-if( EVMJIT )
-    add_subdirectory( evmjit )
-endif()
-
 add_subdirectory( skaled )
 add_subdirectory( skaled_ssl_test )
-
-if( TOOLS )
-    add_subdirectory( skale-key )
-    add_subdirectory( skale-vm )
-endif()
 
 if( TESTS )
     enable_testing()
@@ -242,8 +235,9 @@ if ( CONSENSUS )
     set( SKALED_LATEST_STANDARD ON CACHE BOOL "Use latest standards" ) # depricated option. TODO: remove from consensus
     set( BUILD_TESTS OFF CACHE BOOL "Build tests" ) # do not build libbls tests
     add_subdirectory( libconsensus EXCLUDE_FROM_ALL)
-    target_compile_options( consensus PRIVATE -Wno-unused-variable ) # silence libff warnings
+    target_compile_options( consensus PRIVATE -Wno-unused-variable -Wno-ignored-attributes ) # silence libff/pclose warnings
     target_compile_options( bls PRIVATE -Wno-unused-variable) # silence libff warnings
+    target_compile_options( consensus PRIVATE -Wno-error=ignored-attributes )
 else()
     add_subdirectory( libconsensus/libBLS )
     target_compile_options( bls PRIVATE -Wno-unused-variable) # silence libff warnings

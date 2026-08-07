@@ -309,7 +309,7 @@ public:
 #endif
         uint64_t _timestamp = ( uint64_t ) utcTime(),
         Block::OnTransactionConsumed const& _onTransactionConsumed = Block::OnTransactionConsumed(),
-        bool* _needsQueueReadyNotification = nullptr );
+        bool* _needsQueueReadyNotification = nullptr, u256 _prevRandao = 0 );
 
     boost::filesystem::path createSnapshotFile( unsigned _blockNumber ) {
         return m_snapshotAgent->createSnapshotFile( _blockNumber );
@@ -410,7 +410,7 @@ protected:
     size_t syncTransactions( const Transactions& _transactions, u256 _gasPrice,
         uint64_t _timestamp = ( uint64_t ) utcTime(),
         Block::OnTransactionConsumed const& _onTransactionConsumed = Block::OnTransactionConsumed(),
-        bool* _needsQueueReadyNotification = nullptr );
+        bool* _needsQueueReadyNotification = nullptr, u256 _prevRandao = 0 );
 
     /// As rejigSealing - but stub
     /// thread unsafe!!
