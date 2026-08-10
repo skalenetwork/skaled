@@ -29,6 +29,15 @@ London and Paris fork support; snapshot-hash JSON-RPC API; consensus performance
   benchmarks show up to 11% higher TPS
   ([#2517](https://github.com/skalenetwork/skaled/pull/2517), [#2502](https://github.com/skalenetwork/skaled/issues/2502), [skale-consensus#1012](https://github.com/skalenetwork/skale-consensus/issues/1012))
 
+## [5.2.1] - 2026-08-07
+
+### Fixed
+
+- Fix state-root mismatch on historic node restart by updating the historic trie root block number
+  during `commitExternalChanges()` and propagating the committed block number through the existing
+  commit path
+  ([skalenetwork/internal-support#1495](https://github.com/skalenetwork/internal-support/issues/1495))
+
 ## [5.2.0] - 2026-07-22 (beta)
 
 ### Breaking Changes
