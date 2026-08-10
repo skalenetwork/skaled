@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [5.3.0] - 2026-08-07
+## [5.3.0] - 2026-08-10 (beta)
 
 London and Paris fork support; snapshot-hash JSON-RPC API; consensus performance improvements.
 
