@@ -41,7 +41,15 @@ void SealEngineFace::verify( Strictness _s, BlockHeader const& _bi, BlockHeader 
     _bi.verify( _s, _parent, _block );
 
     if ( _s != CheckNothingNew ) {
-        if ( _bi.difficulty() < chainParams().getMinimumDifficulty() )
+        const time_t committedBlockTimestamp = _parent ?
+                                                   static_cast< time_t >( _parent.timestamp() ) :
+                                                   static_cast< time_t >( _bi.timestamp() );
+        if ( _parent && ParisForkPatch::isEnabledWhen( committedBlockTimestamp ) ) {
+            if ( _bi.difficulty() != 0 )
+                BOOST_THROW_EXCEPTION( InvalidDifficulty() << RequirementError(
+                                           bigint( 0 ), bigint( _bi.difficulty() ) ) );
+        } else if ( !ParisForkPatch::isEnabledWhen( committedBlockTimestamp ) &&
+                    _bi.difficulty() < chainParams().getMinimumDifficulty() )
             BOOST_THROW_EXCEPTION(
                 InvalidDifficulty() << RequirementError(
                     bigint( chainParams().getMinimumDifficulty() ), bigint( _bi.difficulty() ) ) );
@@ -182,6 +190,25 @@ void SealEngineFace::verifyTransaction( ChainOperationParams const& _chainParams
                                    static_cast< bigint >( _header.gasLimit() - _gasUsed ),
                                    static_cast< bigint >( gas ),
                                    string( "_gasUsed + (bigint)_t.gas() > _header.gasLimit()" ) ) );
+
+    // maxPriorityFeePerGas <= maxFeePerGas is already enforced in TransactionBase parsing.
+    // Under London every tx type must pay at least baseFeePerGas: for type-2 txs the cap is
+    // maxFeePerGas (TransactionBase stores it in m_gasPrice), for legacy / EIP-2930 txs the cap
+    // is the explicit gasPrice. _t.gasPrice() returns the correct field in all cases.
+    //
+    // Non-FAIR checked external-gas txs are exempt from this check: their effectiveGasPrice is
+    // forced to 0 (see Transaction::getEffectiveGasPrice), so charging them against baseFee
+    // would be inconsistent with the zero upfront / zero refund / zero author-fee invariant.
+    if ( LondonForkPatch::isEnabledWhen( _committedBlockTimestamp )
+#ifndef FAIR
+         && _t.getExternalGas() == 0
+#endif
+    ) {
+        u256 baseFee = _header.baseFeePerGas();
+        if ( _t.gasPrice() < baseFee )
+            BOOST_THROW_EXCEPTION( InvalidTransactionFormat()
+                                   << errinfo_comment( "transaction gasPrice < baseFeePerGas" ) );
+    }
 }
 
 SealEngineFace* SealEngineRegistrar::create( ChainOperationParams const& _params ) {

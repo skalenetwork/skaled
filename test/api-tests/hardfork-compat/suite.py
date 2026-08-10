@@ -1,11 +1,12 @@
 """
 hardfork-compat test suite -- entry point for run.py.
 
-Verifies that the 5.2.0 skaled binary derives byte-identical state from a
-chain produced by the 5.1.0 binary.  A 5.1.0 node (primary) produces blocks
-with a mixed transaction workload; a 5.2.0 node (sync, syncNode=true,
-archiveMode=true) replays every block and recomputes its own state.  The suite
-then compares the per-block stateRoot of every block between the two binaries.
+Verifies Paris fork replay compatibility across an in-place London -> current
+upgrade.  The primary starts on the London-capable binary, sends native/ERC20
+and PREVRANDAO workloads, restarts on the current binary with a future Paris
+activation timestamp, sends another workload before activation and another after
+activation.  A current sync node (syncNode=true, archiveMode=true) then replays
+every block and compares per-block stateRoot and block hash values.
 
 Delegates all test logic to pytest.  run.py calls ``deploy()`` and
 ``run_tests()``; pytest manages everything else including node lifecycle,

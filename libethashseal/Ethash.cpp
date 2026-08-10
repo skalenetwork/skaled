@@ -23,6 +23,7 @@
 #include <libethcore/ChainOperationParams.h>
 #include <libethcore/CommonJS.h>
 #include <libethereum/Interface.h>
+#include <libethereum/SchainPatch.h>
 
 #include <ethash/ethash.hpp>
 
@@ -89,12 +90,28 @@ void Ethash::verify( Strictness _s, BlockHeader const& _bi, BlockHeader const& _
     SealEngineFace::verify( _s, _bi, _parent, _block );
 
     if ( _parent ) {
-        // Check difficulty is correct given the two timestamps.
-        auto expected = calculateDifficulty( _bi, _parent );
-        auto difficulty = _bi.difficulty();
-        if ( difficulty != expected )
-            BOOST_THROW_EXCEPTION( InvalidDifficulty() << RequirementError(
-                                       ( bigint ) expected, ( bigint ) difficulty ) );
+        const bool isParis =
+            ParisForkPatch::isEnabledWhen( static_cast< time_t >( _parent.timestamp() ) );
+        if ( isParis ) {
+            if ( _bi.sealFieldCount() != 2 )
+                BOOST_THROW_EXCEPTION(
+                    InvalidBlockFormat()
+                    << errinfo_comment( "Paris block header must contain prevRandao and nonce" ) );
+            // prevRandao is accumulated at construction (SkaleHost::createBlock) from the
+            // parent's value and the previous block's threshold signature; verify cannot
+            // re-derive it here (no consensus access), so only the header shape and the
+            // zero nonce are pinned.
+            if ( nonce( _bi ) != Nonce( 0 ) )
+                BOOST_THROW_EXCEPTION( InvalidBlockFormat() << errinfo_comment(
+                                           "Paris block header nonce must be zero" ) );
+        } else {
+            // Check difficulty is correct given the two timestamps.
+            auto expected = calculateDifficulty( _bi, _parent );
+            auto difficulty = _bi.difficulty();
+            if ( difficulty != expected )
+                BOOST_THROW_EXCEPTION( InvalidDifficulty() << RequirementError(
+                                           ( bigint ) expected, ( bigint ) difficulty ) );
+        }
     }
 
     // check it hashes according to proof of work or that it's the genesis block.
@@ -198,7 +215,13 @@ u256 Ethash::calculateDifficulty( BlockHeader const& _bi, BlockHeader const& _pa
 
 void Ethash::populateFromParent( BlockHeader& _bi, BlockHeader const& _parent ) const {
     SealEngineFace::populateFromParent( _bi, _parent );
-    _bi.setDifficulty( calculateDifficulty( _bi, _parent ) );
+    if ( ParisForkPatch::isEnabledWhen( static_cast< time_t >( _parent.timestamp() ) ) ) {
+        _bi.setDifficulty( 0 );
+        setPrevRandao( _bi, h256( 0 ) );
+        setNonce( _bi, Nonce( 0 ) );
+    } else {
+        _bi.setDifficulty( calculateDifficulty( _bi, _parent ) );
+    }
     _bi.setGasLimit( childGasLimit( _parent, chainParams().getMinGasLimit() ) );
 }
 

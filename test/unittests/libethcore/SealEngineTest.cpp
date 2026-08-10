@@ -40,6 +40,11 @@ public:
 
         header.clear();
         header.setGasLimit( 22000 );
+        // London base-fee check is always on under FAIR (LondonForkPatch is preEnabledForFAIR);
+        // BlockHeader::clear() leaves baseFeePerGas at 1, which would reject the zero-gasPrice
+        // unsigned tx used here. Force baseFee to 0 so the fixture represents an eth_call-style
+        // header that the baseFee check trivially passes.
+        header.setBaseFeePerGas( 0 );
     }
 
     ChainOperationParams params;

@@ -167,8 +167,10 @@ dev::h256 SnapshotAgent::getSnapshotHash( unsigned _blockNumber ) const {
         return dev::h256();
 
     try {
-        dev::h256 res = this->m_snapshotManager->getSnapshotHash( _blockNumber );
-        return res;
+        if ( !this->m_snapshotManager->checkSnapshotFolderAndSnapshotHash( _blockNumber ) )
+            return dev::h256();
+
+        return this->m_snapshotManager->getSnapshotHash( _blockNumber );
     } catch ( const SnapshotManager::SnapshotAbsent& ) {
         return dev::h256();
     }

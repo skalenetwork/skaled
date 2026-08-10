@@ -24,6 +24,8 @@ jobs:
   build-and-test:
     name: ${{ matrix.name }}
     runs-on: ubuntu-22.04
+    # Backstop so a hung test can't ride GitHub's 6h default and stall the queue.
+    timeout-minutes: 120
 
     strategy:
       fail-fast: false
@@ -101,7 +103,6 @@ jobs:
         with:
           build_dir: ${{ matrix.build_dir }}
           cmake_build_type: ${{ env.CMAKE_BUILD_TYPE }}
-          coverage: ${{ env.CODE_COVERAGE }}
           cmake_args: ${{ matrix.cmake_args }}
           make_target: testeth
 

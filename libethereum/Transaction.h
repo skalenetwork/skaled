@@ -54,7 +54,8 @@ enum class TransactionException {
     InvalidZeroSignatureFormat,
     AddressAlreadyUsed,
     InvalidContractDeployer,
-    WouldNotBeInBlock  ///< In original Ethereum this tx should not be included in block
+    CodeStartsWith0xEF,  ///< EIP-3541: deployed bytecode begins with 0xEF
+    WouldNotBeInBlock    ///< In original Ethereum this tx should not be included in block
 #ifdef BITE
     ,
     InvalidBITEAESData
@@ -161,13 +162,20 @@ public:
 #ifndef FAIR
     bool hasExternalGas() const;
 
-    u256 getExternalGas() const;
+    /// Override of TransactionBase::getExternalGas(). Returns the checked external gas if any,
+    /// otherwise 0. Never throws (safe to call before checkOutExternalGas()).
+    u256 getExternalGas() const override;
 
     void checkOutExternalGas(
         const ChainParams& _cp, time_t _committedBlockTimestamp, uint64_t _committedBlockNumber );
 #endif
 
     u256 gasPrice() const;
+    /// Effective gas price actually charged for this transaction.
+    /// Pre-London (_isLondon == false): legacy gasPrice() for all tx types.
+    /// London + type-2: min(maxFeePerGas, baseFeePerGas + maxPriorityFeePerGas).
+    /// In non-FAIR builds, hasExternalGas() forces the result to 0 regardless of London or type.
+    u256 getEffectiveGasPrice( bool _isLondon, u256 const& _baseFeePerGas ) const;
 
 #ifndef FAIR
     void ignoreExternalGas() {

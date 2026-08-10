@@ -103,6 +103,28 @@ struct FixtureCommon {
         }
 #endif
     }
+
+    void cleanupBtrfsArtifacts(
+        const std::string& _mountPath, const std::string& _imagePath, bool _removeMountPath ) {
+        gainRoot();
+#if ( !defined __APPLE__ )
+        while ( system( ( "mountpoint -q " + _mountPath ).c_str() ) == 0 ) {
+            int rv = system( ( "umount " + _mountPath ).c_str() );
+            assert( rv == 0 );
+        }
+#endif
+        int rv;
+        if ( _removeMountPath ) {
+            rv = system( ( "rm -rf " + _mountPath ).c_str() );
+            assert( rv == 0 );
+        }
+        rv = system( ( "rm -f " + _imagePath ).c_str() );
+        assert( rv == 0 );
+    }
+
+    void cleanupBtrfsArtifacts() {
+        cleanupBtrfsArtifacts( BTRFS_DIR_PATH, BTRFS_FILE_PATH, true );
+    }
 };
 
 class TestClientFixture : public TestOutputHelperFixture {
@@ -248,12 +270,12 @@ class TestClientSnapshotsFixture : public TestOutputHelperFixture, public Fixtur
 public:
     TestClientSnapshotsFixture( const std::string& _config ) try {
         check_sudo();
+        cleanupBtrfsArtifacts( m_tmpDir.path(), BTRFS_FILE_PATH, false );
 
         dropRoot();
 
         int rv = system( ( "dd if=/dev/zero of=" + BTRFS_FILE_PATH + " bs=1M count=200" ).c_str() );
         rv = system( ( "mkfs.btrfs " + BTRFS_FILE_PATH ).c_str() );
-        rv = system( ( "mkdir " + m_tmpDir.path() ).c_str() );
 
         gainRoot();
         rv =
@@ -341,11 +363,7 @@ public:
         const char* NC = getenv( "NC" );
         if ( NC )
             return;
-        gainRoot();
-        int rv = system( ( "umount " + m_tmpDir.path() ).c_str() );
-        rv = system( ( "rmdir " + m_tmpDir.path() ).c_str() );
-        rv = system( ( "rm " + BTRFS_FILE_PATH ).c_str() );
-        ( void ) rv;
+        cleanupBtrfsArtifacts( m_tmpDir.path(), BTRFS_FILE_PATH, false );
     }
 
 private:
@@ -599,6 +617,14 @@ static std::string const c_genesisInfoSkaleTest =
 )E";
 #endif
 
+static u256 estimateGasPrice( ClientTest* _client ) {
+#ifdef FAIR
+    return std::max( u256( 1000000 ), _client->gasBidPrice() );
+#else
+    ( void ) _client;
+    return u256( 1000000 );
+#endif
+}
 
 BOOST_AUTO_TEST_SUITE( EstimateGas )
 
@@ -614,7 +640,7 @@ BOOST_AUTO_TEST_CASE( transactionWithData ) {
     while ( !CorrectForkInPowPatch::isEnabledInWorkingBlock() )
         usleep( 100 );
     u256 estimate =
-        testClient->estimateGas( addr, 0, addr, data, 10000000, 1000000, GasEstimationCallback() )
+        testClient->estimateGas( addr, 0, addr, data, 10000000, estimateGasPrice( testClient ), GasEstimationCallback() )
             .first;
     BOOST_CHECK_EQUAL( estimate, u256( 21000 + 7 * 16 + 3 * 4 ) );
 }
@@ -654,7 +680,7 @@ BOOST_AUTO_TEST_CASE( constantConsumption ) {
         usleep( 100 );
 
     u256 estimate = testClient
-                        ->estimateGas( from, 0, contractAddress, data, 10000000, 1000000,
+                        ->estimateGas( from, 0, contractAddress, data, 10000000, estimateGasPrice( testClient ),
                             GasEstimationCallback() )
                         .first;
 
@@ -696,7 +722,7 @@ BOOST_AUTO_TEST_CASE( linearConsumption ) {
         usleep( 100 );
 
     u256 estimate = testClient
-                        ->estimateGas( from, 0, contractAddress, data, 10000000, 1000000,
+                        ->estimateGas( from, 0, contractAddress, data, 10000000, estimateGasPrice( testClient ),
                             GasEstimationCallback() )
                         .first;
 
@@ -740,7 +766,7 @@ BOOST_AUTO_TEST_CASE( exceedsGasLimit ) {
         usleep( 100 );
 
     u256 estimate = testClient
-                        ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
+                        ->estimateGas( from, 0, contractAddress, data, maxGas, estimateGasPrice( testClient ),
                             GasEstimationCallback() )
                         .first;
 
@@ -780,7 +806,7 @@ BOOST_AUTO_TEST_CASE( runsInterference ) {
         usleep( 100 );
 
     u256 estimate = testClient
-                        ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
+                        ->estimateGas( from, 0, contractAddress, data, maxGas, estimateGasPrice( testClient ),
                             GasEstimationCallback() )
                         .first;
 
@@ -828,7 +854,7 @@ BOOST_AUTO_TEST_CASE( consumptionWithRefunds ) {
         usleep( 100 );
 
     u256 estimate = testClient
-                        ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
+                        ->estimateGas( from, 0, contractAddress, data, maxGas, estimateGasPrice( testClient ),
                             GasEstimationCallback() )
                         .first;
 
@@ -890,7 +916,7 @@ BOOST_AUTO_TEST_CASE( consumptionWithRefunds2 ) {
         usleep( 100 );
 
     u256 estimate = testClient
-                        ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
+                        ->estimateGas( from, 0, contractAddress, data, maxGas, estimateGasPrice( testClient ),
                             GasEstimationCallback() )
                         .first;
 
@@ -939,7 +965,7 @@ BOOST_AUTO_TEST_CASE( nonLinearConsumption ) {
     while ( !CorrectForkInPowPatch::isEnabledInWorkingBlock() )
         usleep( 100 );
     u256 estimate = testClient
-                        ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
+                        ->estimateGas( from, 0, contractAddress, data, maxGas, estimateGasPrice( testClient ),
                             GasEstimationCallback() )
                         .first;
 
@@ -948,7 +974,7 @@ BOOST_AUTO_TEST_CASE( nonLinearConsumption ) {
     maxGas = 50000;
     estimate = testClient
                    ->estimateGas(
-                       from, 0, contractAddress, data, maxGas, 1000000, GasEstimationCallback() )
+                       from, 0, contractAddress, data, maxGas, estimateGasPrice( testClient ), GasEstimationCallback() )
                    .first;
 
     BOOST_CHECK_EQUAL( estimate, u256( maxGas ) );
@@ -956,7 +982,7 @@ BOOST_AUTO_TEST_CASE( nonLinearConsumption ) {
     maxGas = 200000;
     estimate = testClient
                    ->estimateGas(
-                       from, 0, contractAddress, data, maxGas, 1000000, GasEstimationCallback() )
+                       from, 0, contractAddress, data, maxGas, estimateGasPrice( testClient ), GasEstimationCallback() )
                    .first;
 
     BOOST_CHECK_EQUAL( estimate, u256( maxGas ) );
@@ -1013,7 +1039,7 @@ BOOST_AUTO_TEST_CASE( consumptionWithReverts ) {
     u256 estimate;
     testClient->withBlockImportBarrier( [&]() {
         estimate = testClient
-                       ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
+                       ->estimateGas( from, 0, contractAddress, data, maxGas, estimateGasPrice( testClient ),
                            GasEstimationCallback() )
                        .first;
     } );
@@ -1026,7 +1052,7 @@ BOOST_AUTO_TEST_CASE( consumptionWithReverts ) {
 
     testClient->withBlockImportBarrier( [&]() {
         estimate = testClient
-                       ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
+                       ->estimateGas( from, 0, contractAddress, data, maxGas, estimateGasPrice( testClient ),
                            GasEstimationCallback() )
                        .first;
     } );
@@ -1039,7 +1065,7 @@ BOOST_AUTO_TEST_CASE( consumptionWithReverts ) {
 
     testClient->withBlockImportBarrier( [&]() {
         estimate = testClient
-                       ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
+                       ->estimateGas( from, 0, contractAddress, data, maxGas, estimateGasPrice( testClient ),
                            GasEstimationCallback() )
                        .first;
     } );

@@ -1351,11 +1351,14 @@ void LegacyVM::interpretCases() {
         }
         NEXT
 
-        CASE( DIFFICULTY ) {
+        CASE( PREVRANDAO ) {
             ON_OP();
             updateIOGas();
 
-            m_SPP[0] = m_ext->envInfo().difficulty();
+            if ( ParisForkPatch::isEnabledWhen( m_ext->envInfo().committedBlockTimestamp() ) )
+                m_SPP[0] = u256( m_ext->envInfo().prevRandao() );
+            else
+                m_SPP[0] = m_ext->envInfo().difficulty();
         }
         NEXT
 
@@ -1388,6 +1391,18 @@ void LegacyVM::interpretCases() {
             updateIOGas();
 
             m_SPP[0] = m_ext->balance( m_ext->myAddress );
+        }
+        NEXT
+
+        CASE( BASEFEE ) {
+            ON_OP();
+
+            if ( !m_schedule->haveBaseFee )
+                throwBadInstruction();
+
+            updateIOGas();
+
+            m_SPP[0] = m_ext->envInfo().baseFeePerGas();
         }
         NEXT
 

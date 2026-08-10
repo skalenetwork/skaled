@@ -190,6 +190,12 @@ DEFINE_SIMPLE_PATCH( CurrentBlockRandomPatch );
  */
 DEFINE_AMNESIC_PATCH( GroupIndexInitPatch );
 
+/*
+ * Enable London fork changes (EIP-1559 baseFee, EIP-3198 BASEFEE opcode,
+ * EIP-3529 reduced refunds, EIP-3541 reject 0xEF contracts)
+ */
+DEFINE_EVM_PATCH( LondonForkPatch );
+
 #ifdef BITE
 /*
  * Purpose: gate BITE2 features (CTX precompileds and CTX transaction detection)
@@ -206,6 +212,20 @@ DEFINE_SIMPLE_PATCH( Bite2Patch );
 DEFINE_SIMPLE_PATCH( SingleStateCommitPerBlockPatch );
 
 DEFINE_SIMPLE_PATCH( ContractCreationReadOnlyPatch );
+
+/*
+ * Paris fork (EIP-3675 + EIP-4399): difficulty=0, no uncles, and the header carries a
+ * RANDAO-style accumulator: prevRandao(N) = prevRandao(N-1) XOR BLAKE3(thresholdSig(N-1)),
+ * seeded by the zero of pre-Paris parents. Each term is the previous block's consensus
+ * threshold signature hashed — the same derivation the getBlockRandom precompiled uses —
+ * and the parent's mix is read from its stored header, so committee rotation adds
+ * cross-epoch lookahead protection. The value is derived once at block construction
+ * (SkaleHost::createBlock) and only ever read from the header afterwards (PREVRANDAO
+ * opcode, replay, historic queries). Genesis and block 1 keep zero. Ethash::verify pins
+ * the header shape (2 seal fields, nonce=0) but cannot re-derive the value; changing the
+ * derivation after this patch has shipped requires a NEW patch.
+ */
+DEFINE_SIMPLE_PATCH( ParisForkPatch );
 
 #ifdef FAIR
 DEFINE_SIMPLE_PATCH( DisableSelfDestructPatch );
