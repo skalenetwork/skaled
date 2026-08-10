@@ -176,15 +176,9 @@ public:
 #endif
 
     void pauseConsensus( bool _pause ) {
-        if ( _pause && !m_consensusPaused ) {
-            m_consensusPaused = true;
-            m_consensusPauseMutex.lock();
-        } else if ( !_pause && m_consensusPaused ) {
-            m_consensusPaused = false;
-            m_consensusPauseMutex.unlock();
-        }
-        // else do nothing
+        m_consensus->setPaused( _pause );
     }
+    
     void pauseBroadcast( bool _pause ) { m_broadcastPauseFlag = _pause; }
 
     void forceEmptyBlock();
@@ -268,8 +262,6 @@ private:
 
     std::atomic_bool m_exitNeeded = false;
 
-    std::mutex m_consensusPauseMutex;
-    std::atomic_bool m_consensusPaused = false;
     std::atomic_bool m_broadcastPauseFlag = false;  // not pause - just ignore
 
     dev::eth::Client& m_client;
