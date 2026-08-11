@@ -70,7 +70,7 @@ static const std::map<Instruction,  InstructionInfo> c_instructionInfo =
     { Instruction::COINBASE,     { "COINBASE",            0,    1,  Tier::Base } },
     { Instruction::TIMESTAMP,    { "TIMESTAMP",           0,    1,  Tier::Base } },
     { Instruction::NUMBER,       { "NUMBER",              0,    1,  Tier::Base } },
-    { Instruction::DIFFICULTY,   { "DIFFICULTY",          0,    1,  Tier::Base } },
+    { Instruction::PREVRANDAO,   { "PREVRANDAO",          0,    1,  Tier::Base } },
     { Instruction::GASLIMIT,     { "GASLIMIT",            0,    1,  Tier::Base } },
     { Instruction::CHAINID,      { "CHAINID",             0,    1,  Tier::Base } },
     { Instruction::SELFBALANCE,  { "SELFBALANCE",         0,    1,  Tier::Low } },

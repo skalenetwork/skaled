@@ -155,6 +155,10 @@ public:
 
     dev::u256 getGasPrice( unsigned _blockNumber = dev::eth::LatestBlock ) const;
     dev::u256 getBlockRandom( unsigned _blockNumber, bool _isCalledFromTxn ) const;
+    // prevRandao the next (pending) block will carry: the just-committed block's
+    // consensus random. Returns 0 when unavailable (pre-Paris, genesis, consensus
+    // not running) — never throws; used only for read-only pending simulations.
+    dev::u256 getPrevRandaoForPendingBlock() const noexcept;
     dev::eth::SyncStatus syncStatus() const;
     std::map< std::string, uint64_t > getConsensusDbUsage() const;
     bool ignoreNewBlocksEnabled() const;

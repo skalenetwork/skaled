@@ -2116,11 +2116,13 @@ def _compute_block_hash(block) -> dict:
     Returns a dict mapping variant name -> bytes so the caller can determine
     which variant the node uses.  Known variants:
 
-    "skale"    — SKALE non-genesis blocks: no seal fields, baseFeePerGas
+    "skale"    — SKALE pre-Paris blocks: no seal fields, baseFeePerGas
                  directly after extraData.  mixHash/nonce are NOT part of the
                  hash even though jsInfo() exposes zero defaults via JSON-RPC.
-    "london"   — Ethereum London spec (Anvil/geth): extraData + mixHash +
-                 nonce + baseFeePerGas.
+                 Post-Paris SKALE blocks carry prevRandao (in the mixHash
+                 position) + nonce and therefore match "london" instead.
+    "london"   — Ethereum London spec (Anvil/geth, SKALE post-Paris):
+                 extraData + mixHash + nonce + baseFeePerGas.
     "shanghai" — EIP-4895: London fields + withdrawalsRoot.
     "cancun"   — EIP-4844: Shanghai fields + blobGasUsed + excessBlobGas +
                  parentBeaconBlockRoot.
@@ -2271,6 +2273,153 @@ def test_eip_1559_block_hash_integrity(
 
 
 # ---------------------------------------------------------------------------
+# EIP-3675 / EIP-4399: Paris fork (difficulty=0, PREVRANDAO opcode)
+# ---------------------------------------------------------------------------
+
+def test_eip_3675(
+    w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000
+) -> EIPTestResult:
+    """EIP-3675: eth_getBlockByNumber must return difficulty=0x0 post-Paris."""
+    logger.info("=== EIP-3675 difficulty=0 header test ===")
+    block = w3.eth.get_block("latest")
+    difficulty = _as_int(block.get("difficulty"))
+
+    details = {
+        "difficulty": difficulty,
+        "block_number": block["number"],
+    }
+    if difficulty != 0:
+        return EIPTestResult(
+            eip="3675",
+            passed=False,
+            message=f"Expected difficulty=0, got {difficulty}",
+            details=details,
+        )
+    return EIPTestResult(
+        eip="3675",
+        passed=True,
+        message="difficulty=0x0 in latest block header",
+        details=details,
+    )
+
+
+def _is_anvil(w3: Web3) -> bool:
+    try:
+        return "anvil" in w3.client_version.lower()
+    except Exception:
+        return False
+
+
+def test_eip_4399(
+    w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000
+) -> EIPTestResult:
+    """EIP-4399: PREVRANDAO opcode is accessible post-Paris.
+
+    skaled: prevRandao is a RANDAO-style accumulator — the parent's value XOR
+    BLAKE3 of the previous block's BLS threshold signature — carried in the header
+    mixHash: non-zero after block 1, and the opcode result must equal the header
+    field (the EIP-4399 invariant).
+    Anvil: returns a non-zero simulated value — any non-zero value is accepted.
+    """
+    logger.info("=== EIP-4399 PREVRANDAO opcode test ===")
+    abi, bytecode = _load_artifact(sol_dir, "EIP4399Test")
+    addr = _deploy_contract(w3, deployer, abi, bytecode, gas_limit)
+    contract = w3.eth.contract(address=addr, abi=abi)
+
+    prevrandao = _as_int(contract.functions.getPrevRandao().call())
+
+    details = {
+        "prevrandao": prevrandao,
+        "contract": addr,
+    }
+
+    if _is_anvil(w3):
+        # Anvil simulates PREVRANDAO as a non-zero random value — just verify the opcode works.
+        if prevrandao == 0:
+            return EIPTestResult(
+                eip="4399",
+                passed=False,
+                message="PREVRANDAO=0 on Anvil — opcode not active or returning wrong value",
+                details=details,
+            )
+        return EIPTestResult(
+            eip="4399",
+            passed=True,
+            message=f"PREVRANDAO opcode returned non-zero value (Anvil simulation: {prevrandao})",
+            details=details,
+        )
+
+    # skaled: verify through a real transaction — deploy the PREVRANDAO recorder
+    # (constructor stores opcode 0x44 into slot 0) and compare the recorded value
+    # with the mixHash of the exact block that mined the deployment. This anchors
+    # the EIP-4399 invariant (opcode == executing header's mixHash) to one block
+    # with no timing dependence. The earlier eth_call checks the working-block
+    # context: non-historic skaled serves both "latest" and "pending" from it.
+    recorder_receipt = _send_tx(
+        w3,
+        deployer,
+        {
+            "from": deployer.address,
+            "data": "0x4460005560006000f3",
+            "gas": 100_000,
+        },
+    )
+    if recorder_receipt["status"] != 1:
+        return EIPTestResult(
+            eip="4399",
+            passed=False,
+            message="PREVRANDAO recorder deploy reverted",
+            details=details,
+        )
+    recorder_addr = recorder_receipt["contractAddress"]
+    recorded = int.from_bytes(bytes(w3.eth.get_storage_at(recorder_addr, 0)), "big")
+    block = w3.eth.get_block(recorder_receipt["blockNumber"])
+    mix_hash = int.from_bytes(bytes(block["mixHash"]), "big")
+    details.update(
+        {
+            "recorder": recorder_addr,
+            "recorder_block": int(block["number"]),
+            "recorded": hex(recorded),
+            "mix_hash": hex(mix_hash),
+        }
+    )
+
+    if recorded == 0:
+        return EIPTestResult(
+            eip="4399",
+            passed=False,
+            message="Expected non-zero beacon-derived PREVRANDAO in transaction, got 0",
+            details=details,
+        )
+    if recorded != mix_hash:
+        return EIPTestResult(
+            eip="4399",
+            passed=False,
+            message=(
+                f"Recorded PREVRANDAO {hex(recorded)} != header mixHash {hex(mix_hash)} "
+                f"at block {block['number']}"
+            ),
+            details=details,
+        )
+    if prevrandao == 0:
+        return EIPTestResult(
+            eip="4399",
+            passed=False,
+            message="eth_call (working-block context) returned zero PREVRANDAO",
+            details=details,
+        )
+    return EIPTestResult(
+        eip="4399",
+        passed=True,
+        message=(
+            f"PREVRANDAO non-zero and equal to header mixHash at block "
+            f"{block['number']} ({hex(recorded)[:14]}…)"
+        ),
+        details=details,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Orchestrator
 # ---------------------------------------------------------------------------
 
@@ -2302,6 +2451,8 @@ EIP_TEST_MAP = {
     "1559-max-priority-fee": test_eip_1559_max_priority_fee,
     "1559-genesis-no-basefee": test_eip_1559_genesis_no_basefee,
     "1559-block-hash-integrity": test_eip_1559_block_hash_integrity,
+    "3675":                    test_eip_3675,
+    "4399":                    test_eip_4399,
 }
 
 ALL_EIPS = [
@@ -2314,6 +2465,7 @@ ALL_EIPS = [
     "1559-effective-price", "1559-legacy-gasprice-eq-basefee", "1559-basefee-header",
     "1559-fee-history", "1559-max-priority-fee", "1559-genesis-no-basefee",
     "1559-block-hash-integrity",
+    "3675", "4399",
 ]
 
 

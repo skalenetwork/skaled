@@ -28,6 +28,7 @@ NONCE_OVERFLOW_PATCH = (
     SUITE_DIR / "patches" / "execution-specs-berlin-nonce-overflow-stubs.patch"
 )
 NONCE_OVERFLOW_PATCH_MARKER = "NONCE_OVERFLOW_CREATE_STUB"
+SUPPORT_PATCHES_DIR = NONCE_OVERFLOW_PATCH.parent
 
 
 def _load_run_eip_tests():
@@ -74,6 +75,68 @@ def _ensure_nonce_overflow_stub_patch(project_dir: Path) -> bool:
         check=True,
     )
     return True
+
+
+def _apply_support_patches(project_dir: Path) -> list:
+    """Apply every hardfork-support execution-specs patch except the config-gated
+    nonce-overflow stub patch. Already-applied patches are skipped. Returns the
+    names of patches this call applied; on failure, reverses those first so a
+    partial application never leaks into the checkout."""
+    applied = []
+    try:
+        for patch in sorted(SUPPORT_PATCHES_DIR.glob("*.patch")):
+            if patch == NONCE_OVERFLOW_PATCH:
+                continue
+            check = subprocess.run(
+                ["git", "apply", "--check", str(patch)],
+                cwd=project_dir,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if check.returncode == 0:
+                subprocess.run(
+                    ["git", "apply", str(patch)],
+                    cwd=project_dir,
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+                applied.append(patch.name)
+                continue
+            reverse = subprocess.run(
+                ["git", "apply", "--reverse", "--check", str(patch)],
+                cwd=project_dir,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if reverse.returncode != 0:
+                raise RuntimeError(
+                    f"{patch.name}: {check.stderr.strip() or check.stdout.strip()}"
+                )
+    except Exception:
+        _reverse_support_patches(project_dir, applied)
+        raise
+    return applied
+
+
+def _reverse_support_patches(project_dir: Path, applied: list) -> None:
+    """Reverse the given patches in reverse application order; log-and-continue
+    on individual failures so one stuck patch does not block the others."""
+    for patch_name in reversed(applied):
+        try:
+            subprocess.run(
+                ["git", "apply", "--reverse", str(SUPPORT_PATCHES_DIR / patch_name)],
+                cwd=project_dir,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+        except (OSError, subprocess.CalledProcessError) as exc:
+            logger.warning(
+                "Failed to reverse execution-specs patch %s: %s", patch_name, exc
+            )
 
 
 def _restore_nonce_overflow_stub_patch(project_dir: Path) -> None:
@@ -176,6 +239,29 @@ def _run_execution_specs(
                 message=f"failed to patch execution-specs nonce-overflow stubs: {exc}",
             )
 
+    # Apply every other hardfork-support execution-specs patch, mirroring CI
+    # (.github/actions/api-tests-run). The stub patch above stays config-gated.
+    # Patches applied by this run are reversed in the finally below; on apply
+    # failure the nonce-overflow patch must be restored here since the early
+    # return never reaches that finally.
+    applied_support_patches = []
+    try:
+        applied_support_patches = _apply_support_patches(project_dir)
+    except (OSError, RuntimeError, subprocess.CalledProcessError) as exc:
+        if nonce_patch_applied:
+            try:
+                _restore_nonce_overflow_stub_patch(project_dir)
+            except (OSError, subprocess.CalledProcessError) as restore_exc:
+                logger.warning(
+                    "Failed to restore execution-specs nonce-overflow patch: %s",
+                    restore_exc,
+                )
+        return TestResult(
+            name=test_name,
+            passed=False,
+            message=f"failed to apply execution-specs patches: {exc}",
+        )
+
     fork = str(execution_cfg.get("fork", "Berlin"))
     timeout_sec = int(execution_cfg.get("timeout_sec", 1200))
     cmd = [
@@ -256,6 +342,7 @@ def _run_execution_specs(
                     details={"log": str(log_path)},
                 )
     finally:
+        _reverse_support_patches(project_dir, applied_support_patches)
         if nonce_patch_applied:
             try:
                 _restore_nonce_overflow_stub_patch(project_dir)

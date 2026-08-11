@@ -239,6 +239,10 @@ void BlockHeader::populateFromParent( BlockHeader const& _parent ) {
     m_parentHash = _parent.m_hash;
     m_gasLimit = _parent.m_gasLimit;
     m_difficulty = _parent.m_difficulty;
+    // EIP-3675 (Paris): post-merge blocks must carry difficulty 0. Activation is
+    // keyed to the parent timestamp, same as the check in SealEngineFace::verify.
+    if ( ParisForkPatch::isEnabledWhen( static_cast< time_t >( _parent.timestamp() ) ) )
+        m_difficulty = 0;
     m_gasUsed = 0;
     m_baseFeePerGas = _parent.m_baseFeePerGas;
     // At London activation, the parent may be a pre-London block with baseFeePerGas=0

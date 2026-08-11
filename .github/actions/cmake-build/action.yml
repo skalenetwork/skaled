@@ -5,9 +5,6 @@ inputs:
     required: true
   cmake_build_type:
     required: true
-  coverage:
-    required: false
-    default: ""
   cmake_args:
     required: false
     default: ""
@@ -26,5 +23,5 @@ runs:
         mkdir -p "${{ inputs.build_dir }}"
         cd "${{ inputs.build_dir }}"
 
-        cmake -DCMAKE_BUILD_TYPE="${{ inputs.cmake_build_type }}" -DCOVERAGE="${{ inputs.coverage }}" ${{ inputs.cmake_args }} ..
+        cmake -DCMAKE_BUILD_TYPE="${{ inputs.cmake_build_type }}" ${{ inputs.cmake_args }} ..
         make "${{ inputs.make_target }}" -j"$(nproc)"

@@ -1,10 +1,12 @@
 """
 pytest fixtures for the hardfork-compat test suite.
 
-The primary node (5.1.0 binary) is session-scoped: launched once, used by
-all workload tests.  The sync node (5.2.0 binary, syncNode=true,
-archiveMode=true) is launched on-demand by the final test after all
-primary-node transactions have been sent, then compared block-by-block.
+The primary node starts on the London-capable binary, produces pre-upgrade
+blocks, is restarted in-place with the current Paris-capable binary and a
+future ParisForkPatch timestamp, then produces both pre-activation and
+post-activation blocks.  A current-version sync node (syncNode=true,
+archiveMode=true) is launched at the end to replay the whole chain and compare
+state roots / block hashes block-by-block.
 
 Configuration is read from a JSON file whose path is stored in the
 HARDFORK_COMPAT_CFG_JSON environment variable.  run.py sets this
@@ -20,15 +22,14 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Optional
 
 import pytest
 from web3 import Web3
 
 logger = logging.getLogger("hardfork-compat.conftest")
 
-SUITE_DIR  = Path(__file__).resolve().parent
-REPO_ROOT  = SUITE_DIR.parent.parent.parent
+SUITE_DIR = Path(__file__).resolve().parent
+REPO_ROOT = SUITE_DIR.parent.parent.parent
 FUNC_TESTS = SUITE_DIR.parent
 
 # Add api-tests/ to sys.path so ``from run import ...`` works.
@@ -71,14 +72,35 @@ def timeouts(hardfork_cfg: dict) -> dict:
 
 
 @pytest.fixture(scope="session")
-def sync_binary(hardfork_cfg: dict) -> Path:
-    """Path to the 5.2.0 binary used for the sync node."""
+def london_binary(hardfork_cfg: dict) -> Path:
+    """Path to the London-capable binary used before the Paris upgrade."""
     return _hardfork_binary(
         hardfork_cfg,
-        "v520_binary",
-        "HARDFORK_COMPAT_V520_BINARY",
+        "london_binary",
+        "HARDFORK_COMPAT_LONDON_BINARY",
         "bin-5-2-0",
+        legacy_cfg_key="v510_binary",
+        legacy_env_key="HARDFORK_COMPAT_V510_BINARY",
     )
+
+
+@pytest.fixture(scope="session")
+def current_binary(hardfork_cfg: dict) -> Path:
+    """Path to the current Paris-capable binary used after upgrade and for sync."""
+    return _hardfork_binary(
+        hardfork_cfg,
+        "current_binary",
+        "HARDFORK_COMPAT_CURRENT_BINARY",
+        "build/skaled/skaled",
+        legacy_cfg_key="v520_binary",
+        legacy_env_key="HARDFORK_COMPAT_V520_BINARY",
+    )
+
+
+@pytest.fixture(scope="session")
+def sync_binary(current_binary: Path) -> Path:
+    """Path to the current binary used for the archive sync node."""
+    return current_binary
 
 
 # ---------------------------------------------------------------------------
@@ -91,14 +113,24 @@ def _resolve(path_str: str) -> Path:
 
 
 def _hardfork_binary(
-    hardfork_cfg: dict, cfg_key: str, env_key: str, default: str,
+    hardfork_cfg: dict,
+    cfg_key: str,
+    env_key: str,
+    default: str,
+    legacy_cfg_key: str | None = None,
+    legacy_env_key: str | None = None,
 ) -> Path:
     """Resolve a hardfork-compat binary path.
 
-    Environment variables allow local and CI callers to point at externally
-    supplied binaries without editing hardfork-compat.toml.
+    New Paris-specific names are preferred, while the older v510/v520 names
+    remain supported so local/CI callers can migrate without a flag day.
     """
-    return _resolve(os.environ.get(env_key) or hardfork_cfg.get(cfg_key, default))
+    value = os.environ.get(env_key) or hardfork_cfg.get(cfg_key)
+    if value is None and legacy_env_key:
+        value = os.environ.get(legacy_env_key)
+    if value is None and legacy_cfg_key:
+        value = hardfork_cfg.get(legacy_cfg_key)
+    return _resolve(value or default)
 
 
 def _resolve_ft(path_str: str) -> Path:
@@ -116,6 +148,13 @@ def _wait_for_rpc(w3: Web3, timeout_s: int, label: str) -> None:
         except Exception:
             time.sleep(3)
     raise RuntimeError(f"{label} RPC did not come up within {timeout_s}s")
+
+
+def _tail_file(path: Path, max_lines: int = 80) -> str:
+    try:
+        return "\n".join(path.read_text(errors="replace").splitlines()[-max_lines:])
+    except OSError as exc:
+        return f"<failed to read {path}: {exc}>"
 
 
 def _stop_node(proc: subprocess.Popen, log_fd, label: str) -> None:
@@ -150,15 +189,15 @@ def _launch_node(
     log_fd = open(log_path, "w")
     cmd = [
         str(binary),
-        "--config",  str(cfg_out),
+        "--config", str(cfg_out),
         "--http-port", str(http_port),
-        "--ws-port",   str(http_port - 1),
+        "--ws-port", str(http_port - 1),
         "--info-http-port", str(http_port + 6),
         "-v", "9",
         "--web3-trace",
         "--enable-debug-behavior-apis",
         "--ipcpath", str(datadir),
-        "-d",        str(datadir),
+        "-d", str(datadir),
     ]
     logger.info("Launching %s node (http=%d) -> %s", label, http_port, log_path)
     proc = subprocess.Popen(cmd, stdout=log_fd, stderr=subprocess.STDOUT, cwd=REPO_ROOT)
@@ -168,11 +207,11 @@ def _launch_node(
 def make_sync_config(
     primary_cfg_path: Path, sync_cfg_path: Path, sync_http_port: int,
 ) -> None:
-    """Create the 5.2.0 sync config from the primary config.
+    """Create the current-version archive sync config from the primary config.
 
-    syncNode=true + archiveMode=true makes the node replay every block and
-    retain historic state, so its recomputed per-block stateRoot can be
-    compared against the 5.1.0 primary.
+    The primary config already contains the resolved Paris timestamp by the time
+    this is called.  Do not re-resolve relative timestamps here, otherwise the
+    sync node could replay with a different activation point.
     """
     with open(primary_cfg_path) as f:
         cfg = json.load(f)
@@ -192,20 +231,81 @@ def make_sync_config(
     with open(sync_cfg_path, "w") as f:
         json.dump(cfg, f, indent=2)
     logger.info(
-        "Created 5.2.0 sync config: %s (syncNode=true, archiveMode=true)",
+        "Created current sync config: %s (syncNode=true, archiveMode=true)",
         sync_cfg_path,
     )
 
 
+class ManagedPrimaryNode:
+    def __init__(
+        self,
+        *,
+        w3: Web3,
+        cfg_path: Path,
+        datadir: Path,
+        http_port: int,
+        proc: subprocess.Popen,
+        log_fd,
+        label: str,
+    ):
+        self.w3 = w3
+        self.cfg_path = cfg_path
+        self.datadir = datadir
+        self.http_port = http_port
+        self.proc = proc
+        self.log_fd = log_fd
+        self.label = label
+        self.upgraded = False
+
+    def stop(self) -> None:
+        if self.proc is not None and self.log_fd is not None:
+            _stop_node(self.proc, self.log_fd, self.label)
+            self.proc = None
+            self.log_fd = None
+
+    def upgrade_to_current(
+        self, *, binary: Path, patches: dict, timeout_s: int,
+    ) -> None:
+        """Restart the primary in-place on the current binary with Paris patches."""
+        if self.upgraded:
+            logger.info("Primary node is already upgraded to current binary")
+            return
+
+        from run import inject_patches, set_ulimit
+
+        self.stop()
+        inject_patches(str(self.cfg_path), patches)
+        set_ulimit()
+
+        log_dir = SUITE_DIR / "logs"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        self.label = "PRIMARY(current)"
+        log_path = log_dir / "skaled-primary-current.log"
+        self.proc, self.log_fd = _launch_node(
+            binary,
+            self.cfg_path,
+            self.http_port,
+            self.datadir,
+            log_path,
+            self.label,
+            fresh=False,
+        )
+        try:
+            _wait_for_rpc(self.w3, timeout_s, self.label)
+        except RuntimeError as exc:
+            raise RuntimeError(f"{exc}\n--- {log_path} tail ---\n{_tail_file(log_path)}") from exc
+        self.upgraded = True
+
+
 # ---------------------------------------------------------------------------
-# Primary node (5.1.0, session-scoped)
+# Primary node (London first, then current in-place)
 # ---------------------------------------------------------------------------
 
 @pytest.fixture(scope="session")
-def primary_session(run_cfg: dict, hardfork_cfg: dict):
+def primary_session(run_cfg: dict, hardfork_cfg: dict, london_binary: Path):
     """
-    Render the primary (5.1.0) config, launch the node, wait for RPC,
-    and yield ``(w3, cfg_out_path)``.
+    Render the primary config, launch the London binary, wait for RPC,
+    and yield a managed node object that tests can upgrade in-place.
     """
     from run import (
         configure_single_node_skaled,
@@ -218,12 +318,6 @@ def primary_session(run_cfg: dict, hardfork_cfg: dict):
     priv_key = run_cfg.get("type", {}).get("private_key", "")
     tmpl_ctx = run_cfg.get("skaled", {}).get("template", {}).get("context", {})
     http_port = int(hardfork_cfg.get("primary_http_port", 5334))
-    binary  = _hardfork_binary(
-        hardfork_cfg,
-        "v510_binary",
-        "HARDFORK_COMPAT_V510_BINARY",
-        "bin-5-1-0",
-    )
     datadir = _resolve("test/api-tests/hardfork-compat/datadir-primary")
     cfg_out = _resolve(
         "test/api-tests/hardfork-compat/configs/config-primary.generated.json"
@@ -232,13 +326,10 @@ def primary_session(run_cfg: dict, hardfork_cfg: dict):
         "hardfork-compat/config-templates/config-template.json.j2"
     )
 
-    if not binary.is_file():
+    if not london_binary.is_file():
         pytest.fail(
-            f"5.1.0 skaled binary not found: {binary}\n"
-            "Set HARDFORK_COMPAT_V510_BINARY or [hardfork_compat].v510_binary, "
-            "or build with:\n"
-            "  git checkout v5.1.0 && cmake -H. -Bbuild-v510 -DCMAKE_BUILD_TYPE=Release "
-            "&& cmake --build build-v510 --target skaled -- -j4"
+            f"London skaled binary not found: {london_binary}\n"
+            "Set HARDFORK_COMPAT_LONDON_BINARY or [hardfork_compat].london_binary."
         )
 
     render_template_file(str(tmpl), str(cfg_out), tmpl_ctx)
@@ -250,9 +341,10 @@ def primary_session(run_cfg: dict, hardfork_cfg: dict):
     log_dir = SUITE_DIR / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
 
+    log_path = log_dir / "skaled-primary-london.log"
     proc, log_fd = _launch_node(
-        binary, cfg_out, http_port, datadir,
-        log_dir / "skaled-primary-v510.log", "PRIMARY(5.1.0)",
+        london_binary, cfg_out, http_port, datadir,
+        log_path, "PRIMARY(London)",
     )
     w3 = Web3(Web3.HTTPProvider(
         f"http://127.0.0.1:{http_port}", request_kwargs={"timeout": 10}
@@ -260,22 +352,43 @@ def primary_session(run_cfg: dict, hardfork_cfg: dict):
 
     rpc_timeout = hardfork_cfg.get("timeouts", {}).get("rpc_up", 360)
     try:
-        _wait_for_rpc(w3, rpc_timeout, "PRIMARY(5.1.0)")
+        _wait_for_rpc(w3, rpc_timeout, "PRIMARY(London)")
     except RuntimeError as e:
-        _stop_node(proc, log_fd, "PRIMARY(5.1.0)")
-        pytest.fail(str(e))
+        _stop_node(proc, log_fd, "PRIMARY(London)")
+        pytest.fail(f"{e}\n--- {log_path} tail ---\n{_tail_file(log_path)}")
+
+    node = ManagedPrimaryNode(
+        w3=w3,
+        cfg_path=cfg_out,
+        datadir=datadir,
+        http_port=http_port,
+        proc=proc,
+        log_fd=log_fd,
+        label="PRIMARY(London)",
+    )
 
     try:
-        yield w3, cfg_out
+        yield node
     finally:
-        _stop_node(proc, log_fd, "PRIMARY(5.1.0)")
+        node.stop()
 
 
 @pytest.fixture(scope="session")
-def w3_primary(primary_session) -> Web3:
-    return primary_session[0]
+def primary_node(primary_session: ManagedPrimaryNode) -> ManagedPrimaryNode:
+    return primary_session
 
 
 @pytest.fixture(scope="session")
-def primary_cfg_path(primary_session) -> Path:
-    return primary_session[1]
+def w3_primary(primary_session: ManagedPrimaryNode) -> Web3:
+    return primary_session.w3
+
+
+@pytest.fixture(scope="session")
+def primary_cfg_path(primary_session: ManagedPrimaryNode) -> Path:
+    return primary_session.cfg_path
+
+
+@pytest.fixture(scope="session")
+def workload_state() -> dict:
+    """Mutable cross-test state for deployed contracts and activation timestamp."""
+    return {}

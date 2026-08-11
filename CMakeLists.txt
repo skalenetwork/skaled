@@ -106,10 +106,6 @@ project( skale )
 file( READ VERSION PROJECT_VERSION )
 string( STRIP ${PROJECT_VERSION} PROJECT_VERSION )
 
-if( NOT EXISTS ${CMAKE_SOURCE_DIR}/evmjit/.git )
-    message( FATAL_ERROR "Git submodules not initialized, execute:\n  git submodule update --init" )
-endif()
-
 cable_add_buildinfo_library( PROJECT_NAME skale )
 
 set( CMAKE_SKIP_INSTALL_ALL_DEPENDENCY ON )
@@ -125,7 +121,6 @@ set( CLANG_FORMAT_EXCLUDE_PATTERNS
     ${CMAKE_BINARY_DIR}
     ${DEPS_SOURCES_ROOT}
     "${CMAKE_CURRENT_SOURCE_DIR}/evmc/"
-    "${CMAKE_CURRENT_SOURCE_DIR}/evmjit/"
     "${CMAKE_CURRENT_SOURCE_DIR}/libconsensus/"
     )
 include( FindClangFormat )
@@ -203,9 +198,6 @@ set( SKUTILS_INCLUDE_DIRS
 include_directories( ${SKUTILS_INCLUDE_DIRS} )
 add_subdirectory( libskutils )
 
-option( SKALE_INTERPRETER_SHARED "Build skale-interpreter as a shared library" OFF )
-add_subdirectory( libskale-interpreter )
-
 add_subdirectory( libdevcore )
 add_subdirectory( libdevcrypto )
 add_subdirectory( libp2p )
@@ -222,17 +214,8 @@ add_subdirectory( libethereum )
 add_subdirectory( libethashseal )
 add_subdirectory( libweb3jsonrpc )
 
-if( EVMJIT )
-    add_subdirectory( evmjit )
-endif()
-
 add_subdirectory( skaled )
 add_subdirectory( skaled_ssl_test )
-
-if( TOOLS )
-    add_subdirectory( skale-key )
-    add_subdirectory( skale-vm )
-endif()
 
 if( TESTS )
     enable_testing()

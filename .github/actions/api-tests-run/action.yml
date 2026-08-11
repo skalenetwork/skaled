@@ -40,15 +40,18 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
-        patch_path="../hardfork-support/patches/execution-specs-berlin-nonce-overflow-stubs.patch"
-        if git -C test/api-tests/execution-specs apply --check "${patch_path}"; then
-          git -C test/api-tests/execution-specs apply "${patch_path}"
-        elif git -C test/api-tests/execution-specs apply --reverse --check "${patch_path}"; then
-          echo "execution-specs patch already applied: ${patch_path}"
-        else
-          echo "::error::execution-specs patch does not apply: ${patch_path}"
-          git -C test/api-tests/execution-specs apply --check "${patch_path}"
-        fi
+        for patch_path in test/api-tests/hardfork-support/patches/*.patch; do
+          rel_path="../hardfork-support/patches/$(basename "${patch_path}")"
+          if git -C test/api-tests/execution-specs apply --check "${rel_path}"; then
+            git -C test/api-tests/execution-specs apply "${rel_path}"
+            echo "execution-specs patch applied: ${rel_path}"
+          elif git -C test/api-tests/execution-specs apply --reverse --check "${rel_path}"; then
+            echo "execution-specs patch already applied: ${rel_path}"
+          else
+            echo "::error::execution-specs patch does not apply: ${rel_path}"
+            git -C test/api-tests/execution-specs apply --check "${rel_path}"
+          fi
+        done
 
     - name: Render run.toml from template
       shell: bash
