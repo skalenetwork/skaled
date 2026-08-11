@@ -179,10 +179,8 @@ public:
     uint64_t checkOracleResult( const string& _receipt, string& _result );
 #endif
 
-    void pauseConsensus( bool _pause ) {
-        m_consensus->setPaused( _pause );
-    }
-    
+    void pauseConsensus( bool _pause ) { m_consensus->setPaused( _pause ); }
+
     void pauseBroadcast( bool _pause ) { m_broadcastPauseFlag = _pause; }
 
     void forceEmptyBlock();
