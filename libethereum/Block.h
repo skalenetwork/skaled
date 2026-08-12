@@ -272,7 +272,14 @@ public:
     std::tuple< TransactionReceipts, unsigned, bool > syncEveryone( BlockChain const& _bc,
         const Transactions& _transactions, uint64_t _timestamp, u256 _gasPrice,
         u256 _baseFeePerGas = 0,
-        OnTransactionConsumed const& _onTransactionConsumed = OnTransactionConsumed() );
+        OnTransactionConsumed const& _onTransactionConsumed = OnTransactionConsumed(),
+        u256 _prevRandao = 0 );
+
+    /// Write prevRandao into the current (working) header. Applied only when the seal
+    /// engine produced the Paris 2-field seal shape — never invents seal fields on
+    /// engines (e.g. NoProof test chains) whose headers carry none: a single-field
+    /// seal is rejected by BlockHeader::populate().
+    void applyPrevRandao( u256 _prevRandao );
 
     /// Execute all transactions within a given block.
     /// @returns the additional total difficulty.
@@ -365,7 +372,8 @@ private:
     /// Undo the changes to the state for committing to mine.
     void uncommitToSeal();
 
-    void prepareStateForSync( uint64_t _timestamp, u256 _baseFeePerGas, SyncContext& _context );
+    void prepareStateForSync(
+        uint64_t _timestamp, u256 _baseFeePerGas, u256 _prevRandao, SyncContext& _context );
     void executeTransactions( BlockChain const& _bc, const Transactions& _transactions,
         u256 _gasPrice, SyncContext& _context,
         OnTransactionConsumed const& _onTransactionConsumed );
@@ -377,7 +385,8 @@ private:
     // Loads saved receipts from progress log to skip re-execution after crash.
     // Throws if called outside single commit mode or if receipts are unavailable.
     std::pair< TransactionReceipts, unsigned > recoverFromReceipts(
-        const Transactions& _transactions, uint64_t _timestamp, u256 _baseFeePerGas );
+        const Transactions& _transactions, uint64_t _timestamp, u256 _baseFeePerGas,
+        u256 _prevRandao );
     void saveStateChanges(
         BlockChain const& _bc, const Transactions& _transactions, const SyncContext& _context );
     void runCommit( BlockChain const& _bc, const SyncContext& _context );  // run commit for state

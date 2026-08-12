@@ -8,9 +8,9 @@
 # SKALED – SKALE C++ Client
 
 
-[![Discord](https://img.shields.io/discord/534485763354787851.svg)](https://discord.gg/vvUtWJB)
+[![Discord](https://img.shields.io/discord/534485763354787851.svg)](https://discord.gg/YYHy7Ekc8)
 
-Skaled is SKALE Proof-Of-Stake blockchain client, compatible with ETH ecocystem, including EVM, Solidity, Metamask and Truffle. It uses [SKALE BFT Consensus engine](https://github.com/skalenetwork/skale-consensus).  It is currently actively developed and maintained by SKALE Labs, and intended to be used for [SKALE blockchains](https://skale.space/technology).
+Skaled is SKALE Proof-Of-Stake blockchain client, compatible with ETH ecocystem, including EVM, Solidity, Metamask and Truffle. It uses [SKALE BFT Consensus engine](https://github.com/skalenetwork/skale-consensus).  It is currently actively developed and maintained by SKALE Labs, and intended to be used for [SKALE blockchains](https://docs.skale.space/skale-chain/introduction).
 
 The SKALE network supports an unlimited number of independent blockchains with zero gas fees, instant finality, and high transaction throughput. SKALE is the first live blockchain with Linear Scaling. As more nodes join the network, the capacity of the network also grows.
 
@@ -119,30 +119,31 @@ To **run `skaled` with Intel SGX** see: [Run `skaled` with SGX](./docs/getting-s
 
 ## Documentation
 
-[SKALED documentation](https://docs.skale.network/skaled/3.16.x-beta/)
+* [SKALED documentation](./docs/README.md)
+* [SKALE Network documentation](https://docs.skale.space)
 
 ## Contributing
 
 We are actively looking for contributors and have great bounties!
 
-**Please read [CONTRIBUTING](CONTRIBUTING.md) and [CODING_STYLE](CODING_STYLE.md) thoroughly before making alterations to the code base. This project adheres to SKALE's code of conduct. By participating, you are expected to uphold this code.**
+**Please read [CONTRIBUTING](https://github.com/skalenetwork/skale-network/blob/master/CONTRIBUTING.md) and [CODING_STYLE](CODING_STYLE.md) thoroughly before making alterations to the code base. This project adheres to SKALE's code of conduct. By participating, you are expected to uphold this code.**
 
-**We use GitHub issues for tracking requests and bugs, so please see our general development questions and discussion on [Discord](https://discord.gg/vvUtWJB).**
+**We use GitHub issues for tracking requests and bugs, so please see our general development questions and discussion on [Discord](https://discord.gg/YYHy7Ekc8).**
 
 All contributions are welcome! We try to keep a list of tasks that are suitable for newcomers under the tag [help wanted](https://github.com/skalenetwork/skaled/labels/help%20wanted). If you have any questions, please just ask.
 
-[![Discord](https://img.shields.io/discord/534485763354787851.svg)](https://discord.gg/vvUtWJB)
+[![Discord](https://img.shields.io/discord/534485763354787851.svg)](https://discord.gg/YYHy7Ekc8)
 
 
 All development goes in develop branch. 
 
 
 ## For more information
-* [SKALE Labs Website](https://skalelabs.com)
-* [SKALE Labs Twitter](https://twitter.com/skalelabs)
+* [SKALE Labs Website](https://www.skale.space/)
+* [SKALE Labs Twitter](https://x.com/SkaleNetwork)
 * [SKALE Labs Blog](https://medium.com/skale)
 
-Learn more about the SKALE community over on [Discord](https://discord.gg/vvUtWJB).
+Learn more about the SKALE community over on [Discord](https://discord.gg/YYHy7Ekc8).
 
 
 ## License
