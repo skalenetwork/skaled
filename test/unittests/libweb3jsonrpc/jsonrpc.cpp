@@ -4527,6 +4527,10 @@ BOOST_AUTO_TEST_CASE( eip2930Transactions ) {
                        "latest" ) == "0x16345785d8a0000" );
 
 #ifndef FAIR
+    auto preEip1559Block =
+        fixture.rpcClient->eth_getBlockByNumber( receipt["blockNumber"].asString(), false );
+    BOOST_REQUIRE( !preEip1559Block.isMember( "baseFeePerGas" ) );
+
     // try sending type1 txn before patchTimestmap
     BOOST_REQUIRE_THROW(
         fixture.rpcClient->eth_sendRawTransaction(
@@ -4576,8 +4580,19 @@ BOOST_AUTO_TEST_CASE( eip2930Transactions ) {
     auto block = fixture.rpcClient->eth_getBlockByNumber( "4", false );
     BOOST_REQUIRE( block["transactions"].size() == 1 );
     BOOST_REQUIRE( block["transactions"][0].asString() == txHash );
+#ifndef FAIR
+    const auto syntheticBaseFeePerGas = toJS( fixture.client->gasBidPrice( 3 ) );
+    BOOST_REQUIRE( block.isMember( "baseFeePerGas" ) );
+    BOOST_REQUIRE_EQUAL( block["baseFeePerGas"].asString(), syntheticBaseFeePerGas );
+    auto blockByHash = fixture.rpcClient->eth_getBlockByHash( block["hash"].asString(), false );
+    BOOST_REQUIRE( blockByHash.isMember( "baseFeePerGas" ) );
+    BOOST_REQUIRE_EQUAL( blockByHash["baseFeePerGas"].asString(), syntheticBaseFeePerGas );
+#endif
 
     block = fixture.rpcClient->eth_getBlockByNumber( "4", true );
+#ifndef FAIR
+    BOOST_REQUIRE_EQUAL( block["baseFeePerGas"].asString(), syntheticBaseFeePerGas );
+#endif
     BOOST_REQUIRE( block["transactions"].size() == 1 );
     BOOST_REQUIRE( block["transactions"][0]["hash"].asString() == txHash );
     BOOST_REQUIRE( block["transactions"][0]["type"] == "0x1" );
@@ -4796,6 +4811,8 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
 
     block = fixture.rpcClient->eth_getBlockByNumber( "4", true );
     BOOST_REQUIRE( !block["baseFeePerGas"].asString().empty() );
+    BOOST_REQUIRE_EQUAL(
+        block["baseFeePerGas"].asString(), toJS( fixture.client->blockInfo( 4 ).baseFeePerGas() ) );
     BOOST_REQUIRE( block["transactions"].size() == 1 );
     BOOST_REQUIRE( block["transactions"][0]["hash"].asString() == txHash );
     BOOST_REQUIRE( block["transactions"][0]["type"] == "0x2" );
