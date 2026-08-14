@@ -159,7 +159,7 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
 
     // TODO check
     unsigned blockNumber = joRequest["blockNumber"].get< unsigned >();
-    if ( blockNumber != 0 && blockNumber != m_client.getLatestSnapshotBlockNumer() ) {
+    if ( blockNumber != 0 && blockNumber != m_client.getOneBeforeLatestSnapshotBlockNumer() ) {
         joResponse["error"] = "Invalid snapshot block number requested - it might be deleted.";
         return joResponse;
     }
@@ -353,26 +353,14 @@ std::string Skale::skale_getLatestBlockNumber() {
 }
 
 std::string Skale::skale_getLatestSnapshotBlockNumber() {
-    int64_t response = this->m_client.getLatestSnapshotBlockNumer();
+    int64_t response = this->m_client.getOneBeforeLatestSnapshotBlockNumer();
     return response > 0 ? std::to_string( response ) : "earliest";
 }
 
 std::string Skale::skale_getLatestSnapshotHash() {
-    int64_t latestSnapshotBlockNumber = this->m_client.getLatestSnapshotBlockNumer();
-    if ( latestSnapshotBlockNumber <= 0 ) {
-        throw jsonrpc::JsonRpcException( "Latest snapshot is not available" );
-    }
-
-    if ( static_cast< uint64_t >( latestSnapshotBlockNumber ) >
-         std::numeric_limits< unsigned >::max() ) {
-        throw jsonrpc::JsonRpcException( "Latest snapshot block number exceeds supported range" );
-    }
-
-    unsigned snapshotBlockNumber = static_cast< unsigned >( latestSnapshotBlockNumber );
-
-    dev::h256 snapshotHash = this->m_client.getSnapshotHash( snapshotBlockNumber );
+    dev::h256 snapshotHash = this->m_client.getLatestSnapshotHash();
     if ( !snapshotHash ) {
-        throw jsonrpc::JsonRpcException( "Latest snapshot hash is not available yet" );
+        throw jsonrpc::JsonRpcException( "There isn't any snapshot hash available yet" );
     }
 
     return snapshotHash.hex();
@@ -407,7 +395,7 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
          ( chainParams.getKeyShareName().empty() || chainParams.getSgxServerUrl().empty() ) )
         throw jsonrpc::JsonRpcException( "Snapshot signing is not enabled" );
 
-    if ( blockNumber != 0 && blockNumber != this->m_client.getLatestSnapshotBlockNumer() ) {
+    if ( blockNumber != 0 && blockNumber != this->m_client.getOneBeforeLatestSnapshotBlockNumer() ) {
         throw jsonrpc::JsonRpcException(
             "Invalid snapshot block number requested - it might be deleted." );
     }

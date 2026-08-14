@@ -31,7 +31,9 @@ public:
     void terminate();
 
     dev::h256 getSnapshotHash( unsigned _blockNumber ) const;
+    dev::h256 getLatestSnapshotHash() const;
     uint64_t getBlockTimestampFromSnapshot( unsigned _blockNumber ) const;
+    int64_t getOneBeforeLatestSnapshotBlockNumer() const { return this->one_before_last_snapshoted_block_with_hash; }
     int64_t getLatestSnapshotBlockNumer() const { return this->last_snapshoted_block_with_hash; }
     uint64_t getSnapshotCalculationTime() const { return this->snapshot_calculation_time_ms; }
     uint64_t getSnapshotHashCalculationTime() const {
@@ -41,8 +43,10 @@ public:
 private:
     // time of last physical snapshot
     int64_t last_snapshot_creation_time = 0;
-    // usually this is snapshot before last!
-    int64_t last_snapshoted_block_with_hash = -1;
+
+    // holds the block before last snapshoted block with hash
+    int64_t one_before_last_snapshoted_block_with_hash = -1;
+    std::atomic< int64_t > last_snapshoted_block_with_hash = -1;
 
     int64_t m_snapshotIntervalSec;
     std::shared_ptr< SnapshotManager > m_snapshotManager;

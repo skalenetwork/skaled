@@ -22,8 +22,10 @@
 #include <test/tools/libtesteth/TestOutputHelper.h>
 #include <boost/test/unit_test.hpp>
 
+#include <chrono>
 #include <iostream>
 #include <string>
+#include <thread>
 
 #include "../libweb3jsonrpc/WebThreeStubClient.h"
 
@@ -324,7 +326,10 @@ struct FixtureCommon {
 
 // TODO Do not copy&paste from JsonRpcFixture
 struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCommon {
-    SnapshotHashingFixture() {
+    // _snapshotIntervalSec <= 0 (the default) disables SnapshotAgent's automatic
+    // snapshot/hash-computation cycle, matching the behavior relied on by tests that drive
+    // SnapshotManager manually via `mgr`.
+    explicit SnapshotHashingFixture( int64_t _snapshotIntervalSec = -1 ) {
         check_sudo();
         cleanupBtrfsArtifacts();
 
@@ -366,6 +371,7 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         chainParams->extraData = h256::random().asBytes();
 
         chainParams->sChain.emptyBlockIntervalMs = 1000;
+        chainParams->sChain.snapshotIntervalSec = _snapshotIntervalSec;
 
         //        web3.reset( new WebThreeDirect(
         //            "eth tests", tempDir.path(), "", chainParams, WithExisting::Kill, {"eth"},
@@ -415,8 +421,11 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         auto monitor = make_shared< InstanceMonitor >( "test" );
 
         setenv( "DATA_DIR", BTRFS_DIR_PATH.c_str(), 1 );
+        // Client's internal SnapshotAgent needs a real SnapshotManager whenever
+        // snapshotIntervalSec > 0 (its automatic snapshot/hash cycle is enabled and will
+        // dereference it); reuse the same `mgr` the test uses for manual snapshot calls.
         client.reset( new eth::ClientTest( chainParams, ( int ) chainParams->getNetworkId(),
-            shared_ptr< GasPricer >(), NULL, monitor, boost::filesystem::path( BTRFS_DIR_PATH ),
+            shared_ptr< GasPricer >(), mgr, monitor, boost::filesystem::path( BTRFS_DIR_PATH ),
             WithExisting::Kill ) );
 
         // wait for 1st block to prevent race conditions in UnsafeRegion
@@ -505,7 +514,7 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
     unique_ptr< WebThreeStubClient > rpcClient;
     TestIpcClient* testIpcClient;
     std::string adminSession;
-    unique_ptr< SnapshotManager > mgr;
+    shared_ptr< SnapshotManager > mgr;
 };
 }  // namespace
 
@@ -606,7 +615,7 @@ BOOST_FIXTURE_TEST_CASE( SnapshotHashingTest, SnapshotHashingFixture,
     t["to"] = toJS( receiver.address() );
     t["value"] = jsToDecimal( toJS( 10000 * dev::eth::szabo ) );
 
-    BOOST_REQUIRE( client->getLatestSnapshotBlockNumer() == -1 );
+    BOOST_REQUIRE( client->getOneBeforeLatestSnapshotBlockNumer() == -1 );
 
     // Mine to generate a non-zero account balance
     const int blocksToMine = 1;
@@ -666,6 +675,47 @@ BOOST_FIXTURE_TEST_CASE( SnapshotHashingTest, SnapshotHashingFixture,
     uint64_t timestampFromBlockchain = client->blockInfo( hash ).timestamp();
 
     BOOST_REQUIRE_EQUAL( timestampFromBlockchain, mgr->getBlockTimestamp( 3 ) );
+}
+
+BOOST_AUTO_TEST_CASE( SnapshotOneBeforeTracksPreviousLatest,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+    SnapshotHashingFixture fixture( 1 );  // snapshotIntervalSec = 1s
+
+    int64_t lastObservedLatest = -1;
+    int distinctLatestTransitions = 0;
+
+    for ( int i = 0; i < 300 && distinctLatestTransitions < 3; ++i ) {
+        std::this_thread::sleep_for( std::chrono::milliseconds( 100 ) );
+
+        int64_t latest = fixture.client->getLatestSnapshotBlockNumer();
+        int64_t oneBefore = fixture.client->getOneBeforeLatestSnapshotBlockNumer();
+
+        BOOST_REQUIRE_MESSAGE( oneBefore <= latest,
+            "one-before-latest snapshot (" << oneBefore << ") got ahead of latest (" << latest
+                                            << ")" );
+
+        if ( latest != lastObservedLatest ) {
+            if ( lastObservedLatest >= 0 ) {
+                // Give the one-before pointer a chance to catch up to what "latest" used to be,
+                // in case this exact sample raced it.
+                bool convergedToPrevious = ( oneBefore == lastObservedLatest );
+                for ( int j = 0; j < 50 && !convergedToPrevious; ++j ) {
+                    std::this_thread::sleep_for( std::chrono::milliseconds( 100 ) );
+                    convergedToPrevious = ( fixture.client->getOneBeforeLatestSnapshotBlockNumer() ==
+                                             lastObservedLatest );
+                }
+                BOOST_REQUIRE_MESSAGE( convergedToPrevious,
+                    "one-before-latest snapshot never converged to the previous latest snapshot ("
+                        << lastObservedLatest << ")" );
+            }
+            lastObservedLatest = latest;
+            ++distinctLatestTransitions;
+        }
+    }
+
+    BOOST_REQUIRE_MESSAGE( distinctLatestTransitions >= 3,
+        "could not observe enough distinct latest-snapshot transitions to validate the "
+        "one-before invariant" );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -338,8 +338,16 @@ public:
         return m_snapshotAgent->getBlockTimestampFromSnapshot( _blockNumber );
     }
 
+    int64_t getOneBeforeLatestSnapshotBlockNumer() const {
+        return m_snapshotAgent->getOneBeforeLatestSnapshotBlockNumer();
+    }
+
     int64_t getLatestSnapshotBlockNumer() const {
         return m_snapshotAgent->getLatestSnapshotBlockNumer();
+    }
+
+    dev::h256 getLatestSnapshotHash() const {
+        return m_snapshotAgent->getLatestSnapshotHash();
     }
 
     uint64_t getSnapshotCalculationTime() const {
