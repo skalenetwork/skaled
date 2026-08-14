@@ -4700,6 +4700,19 @@ BOOST_AUTO_TEST_CASE( eip2930Transactions ) {
                    "0x0000000000000000000000000000000000000000000000000000000000000003" );
     BOOST_REQUIRE( result["accessList"][0]["storageKeys"][1].asString() ==
                    "0x0000000000000000000000000000000000000000000000000000000000000007" );
+
+#ifndef FAIR
+    // eth_feeHistory must report the same synthetic pre-London base fee as the block RPCs.
+    // Entry i describes block (newest - i - 1), so with latest == 5 the two entries cover
+    // block 4 (EIP-1559 window -> synthetic price) and block 3 (parent pre-patch -> zero).
+    Json::Value feeHistoryPercentiles( Json::arrayValue );
+    auto feeHistory =
+        fixture.rpcClient->eth_feeHistory( toJS( 2 ), "latest", feeHistoryPercentiles );
+    BOOST_REQUIRE( feeHistory["baseFeePerGas"].isArray() );
+    BOOST_REQUIRE_EQUAL( feeHistory["baseFeePerGas"].size(), 2u );
+    BOOST_REQUIRE_EQUAL( feeHistory["baseFeePerGas"][0].asString(), syntheticBaseFeePerGas );
+    BOOST_REQUIRE_EQUAL( feeHistory["baseFeePerGas"][1].asString(), toJS( 0 ) );
+#endif
 }
 
 BOOST_AUTO_TEST_CASE( eip1559Transactions ) {

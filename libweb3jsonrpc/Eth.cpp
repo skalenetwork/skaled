@@ -1090,7 +1090,10 @@ Json::Value Eth::eth_feeHistory( dev::u256 _blockCount, const std::string& _newe
         for ( auto bn = newestBlock; bn > oldestBlock - 1; --bn ) {
             auto blockInfo = client()->blockInfo( bn - 1 );
 
-            result["baseFeePerGas"].append( toJS( blockInfo.baseFeePerGas() ) );
+            // Same base fee selection as eth_getBlockBy*; the array must stay dense, so blocks
+            // without a base fee (pre-EIP-1559 eras) report zero instead of omitting the entry.
+            result["baseFeePerGas"].append(
+                toJS( baseFeePerGasForRpc( *client(), blockInfo, m_loggerDebug ).value_or( 0 ) ) );
 
             double gasUsedRatio = blockInfo.gasUsed().convert_to< double >() /
                                   blockInfo.gasLimit().convert_to< double >();
