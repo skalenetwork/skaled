@@ -346,9 +346,7 @@ public:
         return m_snapshotAgent->getLatestSnapshotBlockNumer();
     }
 
-    dev::h256 getLatestSnapshotHash() const {
-        return m_snapshotAgent->getLatestSnapshotHash();
-    }
+    dev::h256 getLatestSnapshotHash() const { return m_snapshotAgent->getLatestSnapshotHash(); }
 
     uint64_t getSnapshotCalculationTime() const {
         return m_snapshotAgent->getSnapshotCalculationTime();

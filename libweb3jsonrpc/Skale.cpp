@@ -395,7 +395,8 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
          ( chainParams.getKeyShareName().empty() || chainParams.getSgxServerUrl().empty() ) )
         throw jsonrpc::JsonRpcException( "Snapshot signing is not enabled" );
 
-    if ( blockNumber != 0 && blockNumber != this->m_client.getOneBeforeLatestSnapshotBlockNumer() ) {
+    if ( blockNumber != 0 &&
+         blockNumber != this->m_client.getOneBeforeLatestSnapshotBlockNumer() ) {
         throw jsonrpc::JsonRpcException(
             "Invalid snapshot block number requested - it might be deleted." );
     }
