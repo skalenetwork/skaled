@@ -87,6 +87,7 @@ public:
     consensus_engine_status getStatus() const override {
         return need_exit ? CONSENSUS_EXITED : CONSENSUS_ACTIVE;
     }
+    void setPaused( bool /*_paused*/ ) override {}
     void stop() {}
 
     ConsensusExtFace::Transactions pendingTransactions( size_t _limit ) {
