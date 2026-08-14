@@ -6,6 +6,7 @@
 
 #include <boost/filesystem.hpp>
 
+#include <atomic>
 #include <memory>
 #include <thread>
 
@@ -47,7 +48,7 @@ private:
     int64_t last_snapshot_creation_time = 0;
 
     // holds the block before last snapshoted block with hash
-    int64_t one_before_last_snapshoted_block_with_hash = -1;
+    std::atomic< int64_t > one_before_last_snapshoted_block_with_hash = -1;
     std::atomic< int64_t > last_snapshoted_block_with_hash = -1;
 
     int64_t m_snapshotIntervalSec;
