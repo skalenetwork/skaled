@@ -19,6 +19,8 @@
 
 #pragma GCC diagnostic ignored "-Wdeprecated"
 
+#include <algorithm>
+#include <fstream>
 #include <limits>
 #include <sys/types.h>
 #include <unistd.h>
@@ -826,6 +828,67 @@ struct JsonRpcBtrfsFixture : public BtrfsSetupForRpc, public JsonRpcFixture {
           JsonRpcFixture( _config, true, true, false, false, false, -1, {}, btrfsMountPath ) {}
 };
 
+// Builds a genesis config with snapshotting enabled, tuned to produce snapshots quickly enough
+// for tests.
+std::string makeSnapshotTestConfig(
+    int64_t _snapshotIntervalSec = 1, int64_t _emptyBlockIntervalMs = 2000 ) {
+    Json::Value ret;
+    Json::Reader().parse( c_genesisConfigString, ret );
+    ret["skaleConfig"]["sChain"]["snapshotIntervalSec"] = _snapshotIntervalSec;
+    ret["skaleConfig"]["sChain"]["emptyBlockIntervalMs"] = _emptyBlockIntervalMs;
+
+    Json::FastWriter fastWriter;
+    return fastWriter.write( ret );
+}
+
+// Polls for a consensus-committed block that triggers a snapshot at block > 0.
+// Returns the observed block number, or -1 if none was observed within the timeout.
+int64_t waitForOneBeforeLatestSnapshot( JsonRpcFixture& _fixture, int _maxIterations = 30,
+    std::chrono::milliseconds _sleep = std::chrono::milliseconds( 200 ) ) {
+    int64_t snapshotBlockNumber = -1;
+    for ( int i = 0; i < _maxIterations; ++i ) {
+        std::this_thread::sleep_for( _sleep );
+        snapshotBlockNumber = _fixture.client->getOneBeforeLatestSnapshotBlockNumer();
+        if ( snapshotBlockNumber > 0 )
+            break;
+    }
+    return snapshotBlockNumber;
+}
+
+// Path to the hash file of a given snapshot inside _snapshotsDir.
+boost::filesystem::path snapshotHashFilePath(
+    const boost::filesystem::path& _snapshotsDir, unsigned _blockNumber ) {
+    return _snapshotsDir / std::to_string( _blockNumber ) / "snapshot_hash.txt";
+}
+
+// Snapshot numbers present on disk, newest first (snapshot 0 is excluded, as everywhere else).
+std::vector< unsigned > scanSnapshotsDesc( const boost::filesystem::path& _snapshotsDir ) {
+    std::vector< unsigned > numbers;
+    if ( boost::filesystem::exists( _snapshotsDir ) ) {
+        for ( const auto& entry : boost::filesystem::directory_iterator( _snapshotsDir ) ) {
+            if ( !boost::filesystem::is_directory( entry.path() ) )
+                continue;
+            const std::string dirName = entry.path().filename().string();
+            if ( dirName.empty() || dirName == "0" )
+                continue;
+            if ( !std::all_of( dirName.begin(), dirName.end(), ::isdigit ) )
+                continue;
+            numbers.push_back( std::stoul( dirName ) );
+        }
+    }
+    std::sort( numbers.rbegin(), numbers.rend() );
+    return numbers;
+}
+
+std::string readSnapshotHashFile( const boost::filesystem::path& _path ) {
+    std::ifstream file( _path.string() );
+    std::string hash;
+    std::getline( file, hash );
+    hash.erase( hash.find_last_not_of( " \n\r\t" ) + 1 );
+    std::transform( hash.begin(), hash.end(), hash.begin(), ::tolower );
+    return hash;
+}
+
 #ifndef FAIR
 struct RestrictedAddressFixture : public JsonRpcFixture {
     RestrictedAddressFixture(
@@ -994,25 +1057,11 @@ BOOST_AUTO_TEST_CASE( jsonrpc_stateAt ) {
 BOOST_AUTO_TEST_CASE( skale_getLatestSnapshotHash_success,
     *boost::unit_test::precondition( dev::test::option_all_tests ) *
         boost::unit_test::label( "btrfs" ) ) {
-    Json::Value ret;
-    Json::Reader().parse( c_genesisConfigString, ret );
-    ret["skaleConfig"]["sChain"]["snapshotIntervalSec"] = 1;
-    ret["skaleConfig"]["sChain"]["emptyBlockIntervalMs"] = 2000;
+    JsonRpcBtrfsFixture fixture( makeSnapshotTestConfig() );
 
-    Json::FastWriter fastWriter;
-    std::string config = fastWriter.write( ret );
-    JsonRpcBtrfsFixture fixture( config );
-
-    // Poll for a consensus-committed block that triggers a snapshot at block > 0.
     // emptyBlockIntervalMs=2000 produces blocks slowly enough to avoid the
     // blockPromise callback race during fixture construction.
-    int64_t snapshotBlockNumber = -1;
-    for ( int i = 0; i < 30; ++i ) {
-        std::this_thread::sleep_for( std::chrono::milliseconds( 200 ) );
-        snapshotBlockNumber = fixture.client->getLatestSnapshotBlockNumer();
-        if ( snapshotBlockNumber > 0 )
-            break;
-    }
+    int64_t snapshotBlockNumber = waitForOneBeforeLatestSnapshot( fixture );
     BOOST_REQUIRE_GT( snapshotBlockNumber, 0 );
 
     std::string hash = fixture.rpcClient->skale_getLatestSnapshotHash();
@@ -1024,37 +1073,23 @@ BOOST_AUTO_TEST_CASE( skale_getLatestSnapshotHash_success,
 BOOST_AUTO_TEST_CASE( skale_getLatestSnapshotHash_hashNotAvailableYet,
     *boost::unit_test::precondition( dev::test::option_all_tests ) *
         boost::unit_test::label( "btrfs" ) ) {
-    Json::Value ret;
-    Json::Reader().parse( c_genesisConfigString, ret );
-    ret["skaleConfig"]["sChain"]["snapshotIntervalSec"] = 1;
-    ret["skaleConfig"]["sChain"]["emptyBlockIntervalMs"] = 2000;
+    JsonRpcBtrfsFixture fixture( makeSnapshotTestConfig() );
 
-    Json::FastWriter fastWriter;
-    std::string config = fastWriter.write( ret );
-    JsonRpcBtrfsFixture fixture( config );
-
-    // Poll for a consensus-committed block that triggers a snapshot at block > 0.
     // emptyBlockIntervalMs=2000 produces blocks slowly enough to avoid the
     // blockPromise callback race during fixture construction.
-    int64_t snapshotBlockNumber = -1;
-    for ( int i = 0; i < 30; ++i ) {
-        std::this_thread::sleep_for( std::chrono::milliseconds( 200 ) );
-        snapshotBlockNumber = fixture.client->getLatestSnapshotBlockNumer();
-        if ( snapshotBlockNumber > 0 )
-            break;
-    }
+    int64_t snapshotBlockNumber = waitForOneBeforeLatestSnapshot( fixture );
     BOOST_REQUIRE_GT( snapshotBlockNumber, 0 );
 
     // remove only hash file to simulate snapshot present but hash unavailable
-    boost::filesystem::path snapshotHashPath =
-        boost::filesystem::path( fixture.btrfsMountPath ) / "snapshots" /
-        std::to_string( snapshotBlockNumber ) / "snapshot_hash.txt";
+    boost::filesystem::path snapshotHashPath = snapshotHashFilePath(
+        boost::filesystem::path( fixture.btrfsMountPath ) / "snapshots",
+        static_cast< unsigned >( snapshotBlockNumber ) );
     BOOST_REQUIRE( boost::filesystem::exists( snapshotHashPath ) );
     BOOST_REQUIRE( boost::filesystem::remove( snapshotHashPath ) );
 
     BOOST_CHECK_EXCEPTION( fixture.rpcClient->skale_getLatestSnapshotHash(),
         jsonrpc::JsonRpcException, []( const jsonrpc::JsonRpcException& ex ) {
-            return std::string( ex.what() ).find( "Latest snapshot hash is not available yet" ) !=
+            return std::string( ex.what() ).find( "There isn't any snapshot hash available yet" ) !=
                    std::string::npos;
         } );
 }
@@ -1075,9 +1110,66 @@ BOOST_AUTO_TEST_CASE( skale_getLatestSnapshotHash_unavailable ) {
 
     BOOST_CHECK_EXCEPTION( fixture.rpcClient->skale_getLatestSnapshotHash(),
         jsonrpc::JsonRpcException, []( const jsonrpc::JsonRpcException& ex ) {
-            return std::string( ex.what() ).find( "Latest snapshot is not available" ) !=
+            return std::string( ex.what() ).find( "There isn't any snapshot hash available yet" ) !=
                    std::string::npos;
         } );
+}
+
+BOOST_AUTO_TEST_CASE( skale_getLatestSnapshotHash_tracksPhysicalNewest,
+    *boost::unit_test::precondition( dev::test::option_all_tests ) *
+        boost::unit_test::label( "btrfs" ) ) {
+    JsonRpcBtrfsFixture fixture( makeSnapshotTestConfig() );
+
+    boost::filesystem::path snapshotsDir =
+        boost::filesystem::path( fixture.btrfsMountPath ) / "snapshots";
+
+    // Verify skale_getLatestSnapshotHash() always returns the hash of the physically newest
+    // snapshot on disk, once that snapshot's hash has finished computing. Sampled across at
+    // least two distinct "newest" snapshots, to prove it keeps tracking new snapshots as they
+    // land rather than merely matching once by coincidence (or lagging behind by one, as it
+    // used to before last_snapshoted_block_with_hash was introduced).
+    unsigned lastObservedNewest = 0;
+    int distinctObservations = 0;
+
+    for ( int i = 0; i < 200 && distinctObservations < 2; ++i ) {
+        std::this_thread::sleep_for( std::chrono::milliseconds( 100 ) );
+
+        const std::vector< unsigned > diskBefore = scanSnapshotsDesc( snapshotsDir );
+        if ( diskBefore.empty() )
+            continue;
+
+        const unsigned newestDisk = diskBefore[0];
+        // Only interesting once the newest snapshot's hash computation has completed.
+        if ( !boost::filesystem::exists( snapshotHashFilePath( snapshotsDir, newestDisk ) ) )
+            continue;
+
+        const std::string newestDiskHash =
+            readSnapshotHashFile( snapshotHashFilePath( snapshotsDir, newestDisk ) );
+        if ( newestDiskHash.empty() )
+            continue;
+
+        std::string hashViaApi = fixture.rpcClient->skale_getLatestSnapshotHash();
+        std::transform( hashViaApi.begin(), hashViaApi.end(), hashViaApi.begin(), ::tolower );
+
+        const std::vector< unsigned > diskAfter = scanSnapshotsDesc( snapshotsDir );
+        if ( diskAfter.empty() || diskAfter[0] != newestDisk )
+            continue;  // a newer snapshot landed mid-sample - values may be inconsistent, retry
+
+        BOOST_CHECK_MESSAGE( hashViaApi == newestDiskHash,
+            "skale_getLatestSnapshotHash() returned " << hashViaApi
+                                                       << " but the physically newest snapshot ("
+                                                       << newestDisk << ") has hash "
+                                                       << newestDiskHash );
+
+        if ( newestDisk != lastObservedNewest ) {
+            lastObservedNewest = newestDisk;
+            ++distinctObservations;
+        }
+    }
+
+    BOOST_REQUIRE_MESSAGE( distinctObservations >= 2,
+        "could not observe skale_getLatestSnapshotHash() tracking at least two distinct "
+        "physically-newest snapshots" );
 }
 
 BOOST_AUTO_TEST_CASE(
