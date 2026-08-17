@@ -1493,7 +1493,7 @@ BOOST_AUTO_TEST_CASE( ClientSnapshotsTest, *boost::unit_test::disabled() ) {
     TestClientSnapshotsFixture fixture( c_skaleConfigString );
     ClientTest* testClient = asClientTest( fixture.ethereum() );
 
-    BOOST_REQUIRE( testClient->getLatestSnapshotBlockNumer() == -1 );
+    BOOST_REQUIRE( testClient->getOneBeforeLatestSnapshotBlockNumer() == -1 );
 
     BOOST_REQUIRE( testClient->getSnapshotHash( 0 ) != dev::h256() );
 
@@ -1501,7 +1501,7 @@ BOOST_AUTO_TEST_CASE( ClientSnapshotsTest, *boost::unit_test::disabled() ) {
     int64_t snapshotBlockNumber = -1;
     for ( int i = 0; i < 30; ++i ) {
         std::this_thread::sleep_for( 1000ms );
-        snapshotBlockNumber = testClient->getLatestSnapshotBlockNumer();
+        snapshotBlockNumber = testClient->getOneBeforeLatestSnapshotBlockNumer();
         if ( snapshotBlockNumber > 0 )
             break;
     }
