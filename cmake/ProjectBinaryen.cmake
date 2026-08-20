@@ -49,6 +49,11 @@ ExternalProject_Add(binaryen
     URL_HASH SHA256=19439e41dc576446eaae0c4a8e07d4cd4c40aea7dfb0a6475b925686852f8006
     CMAKE_ARGS
         -DCMAKE_INSTALL_PREFIX=${prefix}
+        # Upstream binaryen still declares CMAKE_MINIMUM_REQUIRED(VERSION 2.8.7); CMake 4
+        # removed compatibility with < 3.5 and hard-errors. Harmless on older CMake, which
+        # just reports it as an unused variable. Not needed for secp256k1, whose CMakeLists
+        # we substitute via PATCH_COMMAND in ProjectSecp256k1.cmake.
+        -DCMAKE_POLICY_VERSION_MINIMUM=3.5
         -DCMAKE_INSTALL_LIBDIR=lib
         -DCMAKE_BUILD_TYPE=Release
         -DBUILD_STATIC_LIB=ON

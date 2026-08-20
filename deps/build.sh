@@ -3,6 +3,19 @@
 set -e
 export SKALED_DEPS_CHAIN=1
 
+# Since git 2.5x, clone/fetch kick off background maintenance that rewrites .git/objects.
+# Every "get it from git" step below tars the freshly cloned tree, so that rewrite races
+# the archiver: tar reports "file changed as we read it", exits 1, and set -e aborts the
+# whole dependency build. Opt out through GIT_CONFIG_* rather than "git config --global"
+# so the override is scoped to this process tree and never touches a developer config.
+# Exported before env_save_original so both env_restore paths preserve it, and inherited
+# by the chained libconsensus/deps/build.sh.
+export GIT_CONFIG_COUNT=2
+export GIT_CONFIG_KEY_0=gc.auto
+export GIT_CONFIG_VALUE_0=0
+export GIT_CONFIG_KEY_1=maintenance.auto
+export GIT_CONFIG_VALUE_1=false
+
 #env_clear_all() { 
 #	for i in $(env | awk -F"=" '{print $1}') ; do
 #	unset $i ; done
