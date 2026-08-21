@@ -3,13 +3,11 @@
 set -e
 export SKALED_DEPS_CHAIN=1
 
-# Since git 2.5x, clone/fetch kick off background maintenance that rewrites .git/objects.
-# Every "get it from git" step below tars the freshly cloned tree, so that rewrite races
-# the archiver: tar reports "file changed as we read it", exits 1, and set -e aborts the
-# whole dependency build. Opt out through GIT_CONFIG_* rather than "git config --global"
-# so the override is scoped to this process tree and never touches a developer config.
-# Exported before env_save_original so both env_restore paths preserve it, and inherited
-# by the chained libconsensus/deps/build.sh.
+# Recent Git versions may run background maintenance after clone/fetch, rewriting
+# .git/objects while the checkout is archived. This can make tar fail under set -e.
+# Use process-scoped GIT_CONFIG_* overrides, exported before env_save_original so
+# restore paths and the chained libconsensus build inherit them without changing
+# global Git config.
 export GIT_CONFIG_COUNT=2
 export GIT_CONFIG_KEY_0=gc.auto
 export GIT_CONFIG_VALUE_0=0
