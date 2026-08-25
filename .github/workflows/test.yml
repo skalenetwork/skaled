@@ -96,9 +96,8 @@ jobs:
         run: |
           git config --global maintenance.auto false
           git config --global gc.auto 0
-          git config --global --show-origin --get-regexp '^(maintenance|gc)\.' || true
           cd deps
-          GIT_TRACE=1 ./build.sh PARALLEL_COUNT=$(nproc) DEBUG=0
+          GIT_TRACE=1 ./build.sh DEBUG=1 PARALLEL_COUNT=$(nproc)
           cd ..
 
       - name: Build (${{ matrix.name }})
