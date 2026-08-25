@@ -98,7 +98,6 @@ jobs:
           git config --global gc.auto 0
           cd deps
           ./build.sh DEBUG=1 PARALLEL_COUNT=$(nproc)
-          GIT_TRACE=1 ./build.sh DEBUG=1 PARALLEL_COUNT=$(nproc)
           cd ..
 
       - name: Build (${{ matrix.name }})
