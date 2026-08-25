@@ -94,8 +94,9 @@ jobs:
 
       - name: Build dependencies
         run: |
+          git config --global --show-origin --get-regexp '^(maintenance|gc)\.' || true
           cd deps
-          ./build.sh DEBUG=1 PARALLEL_COUNT=$(nproc)
+          GIT_TRACE=1 ./build.sh PARALLEL_COUNT=$(nproc) DEBUG=0
           cd ..
 
       - name: Build (${{ matrix.name }})
