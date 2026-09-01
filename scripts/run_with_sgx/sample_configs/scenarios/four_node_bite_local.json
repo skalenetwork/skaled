@@ -1,0 +1,44 @@
+{
+  "name": "four_node_bite_local",
+  "sgxUrl": "http://127.0.0.1:1029",
+  "outputDir": "../../tmp/prepared/four_node_bite_local",
+  "isFair": false,
+  "nodes": [
+    {
+      "nodeId": 1,
+      "role": "core",
+      "nodeType": "normal",
+      "template": "../config_core_node1.json",
+      "outputConfig": "node1/updated_config.json",
+      "httpPort": 1237,
+      "workDir": "./tmp/node1"
+    },
+    {
+      "nodeId": 2,
+      "role": "core",
+      "nodeType": "normal",
+      "template": "../config_core_node2.json",
+      "outputConfig": "node2/updated_config.json",
+      "httpPort": 1337,
+      "workDir": "./tmp/node2"
+    },
+    {
+      "nodeId": 3,
+      "role": "core",
+      "nodeType": "normal",
+      "template": "../config_core_node3.json",
+      "outputConfig": "node3/updated_config.json",
+      "httpPort": 1437,
+      "workDir": "./tmp/node3"
+    },
+    {
+      "nodeId": 4,
+      "role": "core",
+      "nodeType": "normal",
+      "template": "../config_core_node4.json",
+      "outputConfig": "node4/updated_config.json",
+      "httpPort": 1537,
+      "workDir": "./tmp/node4"
+    }
+  ]
+}

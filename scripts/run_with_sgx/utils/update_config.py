@@ -60,10 +60,19 @@ def _normalize_keys_map(raw_map):
     return normalized
 
 
+def _extract_common_public_key(raw_map):
+    common_public_key = raw_map.get("commonPublicKey") if isinstance(raw_map, dict) else None
+    if common_public_key is None:
+        return None
+    if not isinstance(common_public_key, list) or len(common_public_key) != 4:
+        raise ValueError(f"keys map 'commonPublicKey' must be a 4-element list, got: {common_public_key!r}")
+    return common_public_key
+
+
 def _read_keys_map(keys_map_path):
     with open(keys_map_path, "r") as f:
         raw = json.load(f)
-    return _normalize_keys_map(raw)
+    return _normalize_keys_map(raw), _extract_common_public_key(raw)
 
 
 def update_dict(base, updates, isFair: bool, nodeType: str, keys_map_path=None, node_id_override=None,
@@ -73,8 +82,9 @@ def update_dict(base, updates, isFair: bool, nodeType: str, keys_map_path=None, 
     current_node_id = int(node_id_override) if node_id_override is not None else int(node_info["nodeID"])
 
     shared_keys = None
+    common_public_key = None
     if keys_map_path:
-        shared_keys = _read_keys_map(keys_map_path)
+        shared_keys, common_public_key = _read_keys_map(keys_map_path)
         if current_node_id not in shared_keys:
             raise ValueError(
                 f"Node with nodeID={current_node_id} was not found in shared keys map")
@@ -166,21 +176,26 @@ def update_dict(base, updates, isFair: bool, nodeType: str, keys_map_path=None, 
                 if node_id in shared_keys:
                     group_entry[2] = "0x" + shared_keys[node_id]["ecdsa"]["public_key"]
 
-        # Keep this deterministic across every node config in the same scenario: the real
-        # signer with the lowest nodeId is the anchor. Every node (signer or syncNode) must
-        # use the anchor's BLS public key as both the group's bls_public_key and its own
-        # commonBLSPublicKey, since that is the key actual block signatures verify against.
-        anchor_node_id = min(shared_keys.keys())
-        anchor_bls = shared_keys[anchor_node_id]["bls"]["public_key"]
-        first_group["bls_public_key"]["blsPublicKey0"] = anchor_bls[0]
-        first_group["bls_public_key"]["blsPublicKey1"] = anchor_bls[1]
-        first_group["bls_public_key"]["blsPublicKey2"] = anchor_bls[2]
-        first_group["bls_public_key"]["blsPublicKey3"] = anchor_bls[3]
+        # commonBLSPublicKey*/bls_public_key must be the real group's aggregate BLS public
+        # key (produced by a proper DKG across all signers), since that is the key actual
+        # threshold-combined block signatures are verified against - see
+        # CryptoManager::verifyThresholdSig in libconsensus/crypto/CryptoManager.cpp. It must
+        # be identical across every node config.
+        if common_public_key is None:
+            # Backward-compat fallback for older keys maps (e.g. degenerate t=1,n=1 runs)
+            # that don't carry a real group key: use the lowest-nodeId signer's own key.
+            anchor_node_id = min(shared_keys.keys())
+            common_public_key = shared_keys[anchor_node_id]["bls"]["public_key"]
 
-        node_info["wallets"]["ima"]["commonBLSPublicKey0"] = anchor_bls[0]
-        node_info["wallets"]["ima"]["commonBLSPublicKey1"] = anchor_bls[1]
-        node_info["wallets"]["ima"]["commonBLSPublicKey2"] = anchor_bls[2]
-        node_info["wallets"]["ima"]["commonBLSPublicKey3"] = anchor_bls[3]
+        first_group["bls_public_key"]["blsPublicKey0"] = common_public_key[0]
+        first_group["bls_public_key"]["blsPublicKey1"] = common_public_key[1]
+        first_group["bls_public_key"]["blsPublicKey2"] = common_public_key[2]
+        first_group["bls_public_key"]["blsPublicKey3"] = common_public_key[3]
+
+        node_info["wallets"]["ima"]["commonBLSPublicKey0"] = common_public_key[0]
+        node_info["wallets"]["ima"]["commonBLSPublicKey1"] = common_public_key[1]
+        node_info["wallets"]["ima"]["commonBLSPublicKey2"] = common_public_key[2]
+        node_info["wallets"]["ima"]["commonBLSPublicKey3"] = common_public_key[3]
     else:
         # Single-node fallback behavior.
         first_group["bls_public_key"]["blsPublicKey0"] = bls0
