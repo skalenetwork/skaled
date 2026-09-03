@@ -144,8 +144,6 @@ jobs:
 
       - name: Build dependencies
         run: |
-          git config --global maintenance.auto false
-          git config --global gc.auto 0
           [[ $CMAKE_BUILD_TYPE = "Debug" ]] && export DEBUG_FLAG=1 || export DEBUG_FLAG=0
           cd deps
           ./build.sh PARALLEL_COUNT=$(nproc) DEBUG=$DEBUG_FLAG

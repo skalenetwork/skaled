@@ -111,6 +111,8 @@ struct FixtureCommon {
         while ( system( ( "mountpoint -q " + _mountPath ).c_str() ) == 0 ) {
             const int unmountResult = system( ( "umount " + _mountPath ).c_str() );
             BOOST_CHECK_EQUAL( unmountResult, 0 );
+            if ( unmountResult != 0 )
+                return;
         }
 #endif
         if ( _removeMountPath ) {

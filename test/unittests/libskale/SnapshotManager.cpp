@@ -106,6 +106,8 @@ struct FixtureCommon {
         while ( system( ( "mountpoint -q " + BTRFS_DIR_PATH ).c_str() ) == 0 ) {
             const int unmountResult = system( ( "umount " + BTRFS_DIR_PATH ).c_str() );
             BOOST_CHECK_EQUAL( unmountResult, 0 );
+            if ( unmountResult != 0 )
+                return;
         }
 #endif
         const int removeDirectoryResult = system( ( "rm -rf " + BTRFS_DIR_PATH ).c_str() );
