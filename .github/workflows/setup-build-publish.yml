@@ -46,7 +46,7 @@ on:
       
 jobs:
   main:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     outputs:
       version: ${{ env.VERSION }}
     env: 
@@ -134,9 +134,9 @@ jobs:
       - name: Install packages
         run: |
           sudo apt-get update
-          sudo apt-get install -y libunwind-dev autoconf build-essential cmake libprocps-dev libtool texinfo wget yasm flex bison btrfs-progs python3 python3-pip gawk git vim doxygen
-          sudo apt-get install -y make pkg-config libgnutls28-dev libssl-dev unzip zlib1g-dev libgcrypt20-dev gcc-11 g++-11 gperf clang-format-11 gnutls-dev
-          sudo apt-get install -y nettle-dev libhiredis-dev redis-server google-perftools libgoogle-perftools-dev lcov libv8-dev 
+          sudo apt-get install -y libunwind-dev autoconf build-essential cmake libtool texinfo wget yasm flex bison btrfs-progs python3 python3-pip gawk git vim doxygen
+          sudo apt-get install -y make pkg-config libgnutls28-dev libssl-dev unzip zlib1g-dev libgcrypt20-dev gcc-11 g++-11 gperf
+          sudo apt-get install -y nettle-dev libhiredis-dev redis-server google-perftools libgoogle-perftools-dev lcov 
           sudo apt-get install -y gettext
 
           # Remove deps installed in the next steps
@@ -144,8 +144,6 @@ jobs:
 
       - name: Build dependencies
         run: |
-          git config --global maintenance.auto false
-          git config --global gc.auto 0
           [[ $CMAKE_BUILD_TYPE = "Debug" ]] && export DEBUG_FLAG=1 || export DEBUG_FLAG=0
           cd deps
           ./build.sh PARALLEL_COUNT=$(nproc) DEBUG=$DEBUG_FLAG
