@@ -49,6 +49,10 @@ ExternalProject_Add(binaryen
     URL_HASH SHA256=19439e41dc576446eaae0c4a8e07d4cd4c40aea7dfb0a6475b925686852f8006
     CMAKE_ARGS
         -DCMAKE_INSTALL_PREFIX=${prefix}
+        # Binaryen declares CMake 2.8.7 compatibility, unsupported by CMake 4.
+        # Older CMake ignores this override. secp256k1 replaces its CMakeLists via
+        # PATCH_COMMAND, so it does not need the override.
+        -DCMAKE_POLICY_VERSION_MINIMUM=3.5
         -DCMAKE_INSTALL_LIBDIR=lib
         -DCMAKE_BUILD_TYPE=Release
         -DBUILD_STATIC_LIB=ON
