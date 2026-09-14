@@ -41,7 +41,7 @@ Historically skaled started by forking [Aleth](https://github.com/ethereum/aleth
 
 ### OS requirements
 
-Skaled officially builds, runs, and is tested on on Ubuntu 22.04. You may build and run it on other Ubuntu versions at your own risk.
+Skaled officially builds, runs, and is tested on Ubuntu 24.04. You may build and run it on other Ubuntu versions at your own risk.
 
 ### Clone repository
 
@@ -54,17 +54,22 @@ cd skaled
 
 If you have already cloned the repo and forgot to pass `--recurse-submodules`, execute `git submodule update --init --recursive`
 
-### Install required Ubuntu packages
+### Install required Ubuntu 24.04 packages
 
 ```
-sudo apt update
-sudo apt install autoconf build-essential cmake libprocps-dev libtool texinfo wget yasm flex bison btrfs-progs python3 python3-pip gawk git vim doxygen 
-sudo apt install make build-essential cmake pkg-config libgnutls28-dev libssl-dev unzip zlib1g-dev libgcrypt20-dev docker.io gcc-11 g++-11 gperf clang-format-11 gnutls-dev
-sudo apt install nettle-dev libhiredis-dev redis-server google-perftools libgoogle-perftools-dev lcov
-sudo apt install libv8-dev
+sudo apt-get update
+sudo apt-get install -y libunwind-dev autoconf build-essential cmake libtool texinfo wget yasm flex bison btrfs-progs python3 python3-pip gawk git vim doxygen
+sudo apt-get install -y make pkg-config libgnutls28-dev libssl-dev unzip zlib1g-dev libgcrypt20-dev docker.io gcc-11 g++-11 gperf
+sudo apt-get install -y nettle-dev libhiredis-dev redis-server google-perftools libgoogle-perftools-dev lcov
+sudo apt-get install -y gettext
 ```
 
-###  Set  gcc-11 as default compiler if you don (Ubuntu 22.04 has already has it as default)
+The older setup listed `libprocps-dev`, `gnutls-dev`, `libv8-dev`, and `clang-format-11`; they are not required for this build and are unavailable from Ubuntu 24.04's standard repositories. `libgnutls28-dev` provides the required GnuTLS development files.
+
+### Set GCC 11 as the default compiler
+
+Ubuntu 24.04 uses a newer GCC release by default, while skaled is built with GCC 11.
+
 ```
 sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 11
 sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 11

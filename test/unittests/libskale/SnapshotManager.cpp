@@ -104,14 +104,16 @@ struct FixtureCommon {
         gainRoot();
 #if ( !defined __APPLE__ )
         while ( system( ( "mountpoint -q " + BTRFS_DIR_PATH ).c_str() ) == 0 ) {
-            int rv = system( ( "umount " + BTRFS_DIR_PATH ).c_str() );
-            assert( rv == 0 );
+            const int unmountResult = system( ( "umount " + BTRFS_DIR_PATH ).c_str() );
+            BOOST_CHECK_EQUAL( unmountResult, 0 );
+            if ( unmountResult != 0 )
+                return;
         }
 #endif
-        int rv = system( ( "rm -rf " + BTRFS_DIR_PATH ).c_str() );
-        assert( rv == 0 );
-        rv = system( ( "rm -f " + BTRFS_FILE_PATH ).c_str() );
-        assert( rv == 0 );
+        const int removeDirectoryResult = system( ( "rm -rf " + BTRFS_DIR_PATH ).c_str() );
+        BOOST_CHECK_EQUAL( removeDirectoryResult, 0 );
+        const int removeFileResult = system( ( "rm -f " + BTRFS_FILE_PATH ).c_str() );
+        BOOST_CHECK_EQUAL( removeFileResult, 0 );
     }
 };
 
