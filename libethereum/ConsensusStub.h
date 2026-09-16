@@ -31,6 +31,7 @@ using namespace std;
 #include <libdevcore/FixedHash.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/Worker.h>
+#include <atomic>
 #include <map>
 #include <vector>
 
@@ -47,6 +48,7 @@ public:
     void exitGracefully() override;
     u256 getPriceForBlockId( uint64_t /*_blockId*/ ) const override { return 1000; }
     consensus_engine_status getStatus() const override { return CONSENSUS_ACTIVE; }  // moch
+    void setPaused( bool _paused ) override { m_paused = _paused; }
 
 #ifdef FAIR
     void updateLogger() const override {}
@@ -68,6 +70,7 @@ private:
     ConsensusExtFace& m_extFace;
     int64_t blockCounter = 0;
     u256 stateRoot = 0;
+    std::atomic_bool m_paused{ false };
 
     dev::Logger m_loggerDebug{ dev::createLogger( dev::VerbosityDebug, "ConsensusStub" ) };
 };

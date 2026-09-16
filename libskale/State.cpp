@@ -599,7 +599,9 @@ void State::clearCacheIfTooLarge() const {
     }
 }
 
-void State::commit( dev::eth::CommitBehaviour _commitBehaviour ) {
+void State::commit( dev::eth::CommitBehaviour _commitBehaviour, int64_t _historicRootBlockNumber ) {
+    LDB_CHECK( _historicRootBlockNumber >= 0 );
+
     if ( _commitBehaviour == dev::eth::CommitBehaviour::RemoveEmptyAccounts )
         removeEmptyAccounts();
 
@@ -658,7 +660,8 @@ void State::commit( dev::eth::CommitBehaviour _commitBehaviour ) {
 
 
 #ifdef HISTORIC_STATE
-    m_historicState.commitExternalChanges( m_cache );
+    m_historicState.commitExternalChanges(
+        m_cache, static_cast< uint64_t >( _historicRootBlockNumber ) );
 #endif
 
     m_changeLog.clear();
@@ -1238,7 +1241,8 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
             }
             removeEmptyAccounts = _envInfo.number() >= _chainParams.getEIP158ForkBlock();
             commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
-                                          dev::eth::CommitBehaviour::KeepEmptyAccounts );
+                                          dev::eth::CommitBehaviour::KeepEmptyAccounts,
+                _envInfo.number() );
         }
 
         break;

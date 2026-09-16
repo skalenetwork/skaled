@@ -3,6 +3,17 @@
 set -e
 export SKALED_DEPS_CHAIN=1
 
+# Recent Git versions may run background maintenance after clone/fetch, rewriting
+# .git/objects while the checkout is archived. This can make tar fail under set -e.
+# Use process-scoped GIT_CONFIG_* overrides, exported before env_save_original so
+# restore paths and the chained libconsensus build inherit them without changing
+# global Git config.
+export GIT_CONFIG_COUNT=2
+export GIT_CONFIG_KEY_0=gc.auto
+export GIT_CONFIG_VALUE_0=0
+export GIT_CONFIG_KEY_1=maintenance.auto
+export GIT_CONFIG_VALUE_1=false
+
 #env_clear_all() { 
 #	for i in $(env | awk -F"=" '{print $1}') ; do
 #	unset $i ; done
