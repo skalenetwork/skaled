@@ -58,6 +58,9 @@
         "0x5339Ef05428d1b87f4e2F2db64E782c68E9cDA56": {
            "balance": "1000000000000000000000000000000000000000"
         },
+        "0x907cd0881E50d359bb9Fd120B1A5A143b1C97De6": {
+           "balance": "1000000000000000000000000000000000000000"
+        },
         "0xc868AF52a6549c773082A334E5AE232e0Ea3B513": {
             "balance": "1000000000000000000000000000000"
         },
@@ -114,6 +117,9 @@
         },
         "0xffffffffffffffffffffffffffffffffffffffff": {
             "balance": "1000000000000000000000000000000"
+        },
+        "0x607959E575833D05709Cb8D8B12f29DE0Fd730Df": {
+            "balance": "1000000000000000000000000000000000000000"
         },
         "0x0000000000000000000000000000000000000001": {
             "precompiled": {
@@ -232,16 +238,18 @@
     },
     "skaleConfig": {
         "nodeInfo": {
-            "nodeID": 1,
-            "nodeName": "TestNode",
-            "basePort": 1231,
-            "httpRpcPort": 1234,
-            "httpsRpcPort": 1239,
-            "wsRpcPort": 1233,
-            "wssRpcPort": 1238,
-            "infoHttpRpcPort": 1240,
+            "nodeID": 2,
+            "nodeName": "HistoricNode",
+            "basePort": 2231,
+            "httpRpcPort": 2237,
+            "httpsRpcPort": 2283,
+            "wsRpcPort": 2281,
+            "wssRpcPort": 2282,
+            "infoHttpRpcPort": 2284,
             "info-acceptors": 1,
             "bindIP": "0.0.0.0",
+            "archiveMode": true,
+            "syncNode": true,
             "logLevel": "info",
             "logLevelConfig": "info",
             "pg-threads": 10,
@@ -280,6 +288,7 @@
             "maxSkaledLeveldbStorageBytes": 63269997772,
             "maxFileStorageBytes": 63269997772,
             "maxReservedStorageBytes": 21089999257,
+            "maxHistoricStateDbSize": 100000,
             "multiTransactionMode": true,
             "nodeGroups": {
                 "0": {
@@ -302,12 +311,12 @@
             "nodes": [
                 {
                     "nodeID": 1,
-                    "nodeName": "TestNode",
+                    "nodeName": "CoreNode",
                     "basePort": 1231,
-                    "httpRpcPort": 1234,
-                    "httpsRpcPort": 1239,
-                    "wsRpcPort": 1233,
-                    "wssRpcPort": 1238,
+                    "httpRpcPort": 1237,
+                    "httpsRpcPort": 1283,
+                    "wsRpcPort": 1281,
+                    "wssRpcPort": 1282,
                     "blsPublicKey0": "bls-key-to-be-filled",
                     "blsPublicKey1": "bls-key-to-be-filled",
                     "blsPublicKey2": "bls-key-to-be-filled",
