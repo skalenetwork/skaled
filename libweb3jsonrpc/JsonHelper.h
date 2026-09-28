@@ -29,6 +29,7 @@
 #include <libethcore/Common.h>
 #include <libethereum/LogFilter.h>
 
+#include <optional>
 #include <stdexcept>
 #ifndef RAPIDJSON_ASSERT
 #define RAPIDJSON_ASSERT( x )                                       \
@@ -61,9 +62,11 @@ Json::Value toJson( BlockHeader const& _bi, SealEngineFace* _face = nullptr );
 Json::Value toJson(
     Transaction const& _t, std::pair< h256, unsigned > _location, BlockNumber _blockNumber );
 Json::Value toJson( BlockHeader const& _bi, BlockDetails const& _bd, UncleHashes const& _us,
-    Transactions const& _ts, SealEngineFace* _face = nullptr, u256 _gasPrice = 0 );
+    Transactions const& _ts, SealEngineFace* _face = nullptr,
+    std::optional< u256 > _baseFeePerGas = std::nullopt );
 Json::Value toJson( BlockHeader const& _bi, BlockDetails const& _bd, UncleHashes const& _us,
-    TransactionHashes const& _ts, SealEngineFace* _face = nullptr, u256 _gasPrice = 0 );
+    TransactionHashes const& _ts, SealEngineFace* _face = nullptr,
+    std::optional< u256 > _baseFeePerGas = std::nullopt );
 Json::Value toJson( TransactionSkeleton const& _t );
 Json::Value toJson( Transaction const& _t );
 Json::Value toJson( Transaction const& _t, bytes const& _rlp );
