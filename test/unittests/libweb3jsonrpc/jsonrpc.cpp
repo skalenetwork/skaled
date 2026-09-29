@@ -2098,6 +2098,83 @@ BOOST_AUTO_TEST_CASE( eth_estimateGas_chainId ) {
     }
 }
 
+BOOST_AUTO_TEST_CASE( eth_estimateGas_gasPriceIndependentUnderLondon ) {
+    std::string _config = c_genesisConfigString;
+    Json::Value ret;
+    Json::Reader().parse( _config, ret );
+
+    ret["skaleConfig"]["sChain"]["EIP1559TransactionsPatchTimestamp"] = 1;
+    ret["skaleConfig"]["sChain"]["LondonForkPatchTimestamp"] = 1;
+
+    Json::FastWriter fastWriter;
+    std::string config = fastWriter.write( ret );
+    JsonRpcFixture fixture( config );
+
+    dev::eth::simulateMining( *( fixture.client ), 20 );
+    string senderAddress = toJS( fixture.coinbase.address() );
+
+    // mine 2 blocks, so there is a post-London block before the latest one for historic calls
+    Json::Value txRefill;
+    txRefill["to"] = "0x5EdF1e852fdD1B0Bc47C0307EF755C76f4B9c251";
+    txRefill["from"] = senderAddress;
+    txRefill["gas"] = "100000";
+    txRefill["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txRefill["value"] = 1000000;
+    for ( size_t i = 0; i < 2; ++i ) {
+        fixture.rpcClient->eth_sendTransaction( txRefill );
+        dev::eth::mineTransaction( *( fixture.client ), 1 );
+    }
+
+    BOOST_REQUIRE( LondonForkPatch::isEnabledInWorkingBlock() );
+    // gasPrice 0x0 and 0x1 below must both be under the base fee
+    Json::Value latestBlock = fixture.rpcClient->eth_getBlockByNumber( "latest", false );
+    BOOST_REQUIRE_GT( jsToU256( latestBlock["baseFeePerGas"].asString() ), u256( 1 ) );
+
+    // call testRequireOff(50000) on 0xD2001300000000000000000000000000000000D4,
+    // see the eth_estimateGas test above for the contract source
+    Json::Value call;
+    call["to"] = "0xD2001300000000000000000000000000000000D4";
+    call["data"] = "0xfdde8d66000000000000000000000000000000000000000000000000000000000000c350";
+
+    // a rejected eth_call returns "0x" instead of failing, so check the output of a call that
+    // must execute: contract creation whose init code returns 0x1234
+    Json::Value returningCall;
+    returningCall["data"] = "0x6112346000526002601ef3";
+    returningCall["gasPrice"] = "0x0";
+    BOOST_CHECK_EQUAL( fixture.rpcClient->eth_call( returningCall, "latest" ), "0x1234" );
+
+    Json::Value zeroPriceCall = call;
+    zeroPriceCall["gasPrice"] = "0x0";
+
+    string estimate = fixture.rpcClient->eth_estimateGas( call );  // gasPrice omitted
+    BOOST_REQUIRE_GT( jsToU256( estimate ), u256( 21000 ) );
+
+    for ( auto const& gasPrice : { "0x0", "0x1" } ) {
+        Json::Value pricedCall = call;
+        pricedCall["gasPrice"] = gasPrice;
+        BOOST_CHECK_EQUAL( fixture.rpcClient->eth_estimateGas( pricedCall ), estimate );
+    }
+
+    Json::Value zeroMaxFeeCall = call;
+    zeroMaxFeeCall["maxFeePerGas"] = "0x0";
+    BOOST_CHECK_EQUAL( fixture.rpcClient->eth_estimateGas( zeroMaxFeeCall ), estimate );
+
+    Json::Value accessList = fixture.rpcClient->eth_createAccessList( zeroPriceCall, "latest" );
+    BOOST_CHECK_EQUAL( accessList["gasUsed"].asString(), estimate );
+
+#ifdef HISTORIC_STATE
+    // historic eth_call and traceCall execute through AlethExecutive
+    BlockNumber historicBlock = fixture.client->number() - 1;
+    string historicResult;
+    BOOST_CHECK_NO_THROW(
+        historicResult = fixture.rpcClient->eth_call( returningCall, toJS( historicBlock ) ) );
+    BOOST_CHECK_EQUAL( historicResult, "0x1234" );
+    BOOST_CHECK_NO_THROW( fixture.client->traceCall( fixture.coinbase.address(), 0,
+        jsToAddress( call["to"].asString() ), jsToBytes( call["data"].asString() ), Invalid256, 0,
+        historicBlock, Json::Value( Json::objectValue ) ) );
+#endif
+}
+
 BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasLimitExceeded ) {
     JsonRpcFixture fixture;
     auto senderAddress = fixture.coinbase.address();
