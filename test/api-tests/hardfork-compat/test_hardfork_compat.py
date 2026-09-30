@@ -1,17 +1,18 @@
 """
-hardfork-compat: Paris fork replay compatibility across a London -> current upgrade.
+hardfork-compat: fork-boundary RPC and Paris replay compatibility.
 
 Test flow:
-  1. Start the primary node with the London-capable binary.
-  2. Produce a pre-upgrade London workload:
+  1. Exercise staggered EIP-1559/London block RPC output on a temporary current node.
+  2. Start the primary node with the London-capable binary.
+  3. Produce a pre-upgrade London workload:
        - native token transfers
        - basic ERC20 deploy/mint/transfer
        - a DIFFICULTY/PREVRANDAO opcode transaction
-  3. Restart the same primary node/datadir on the current binary and inject a
+  4. Restart the same primary node/datadir on the current binary and inject a
      future ParisForkPatch timestamp.
-  4. Produce the same essential workload before Paris activation.
-  5. Wait until the Paris timestamp is active and produce the workload again.
-  6. Launch a current-version sync node with archiveMode=true and verify that
+  5. Produce the same essential workload before Paris activation.
+  6. Wait until the Paris timestamp is active and produce the workload again.
+  7. Launch a current-version sync node with archiveMode=true and verify that
      replaying the whole chain has no per-block stateRoot or block-hash
      mismatches.
 """
@@ -24,6 +25,7 @@ import pytest
 from eth_account import Account
 from web3 import Web3
 
+from _basefee_compat import assert_basefee_rpc_compatibility
 from _test_utils import (
     compare_block_hashes,
     compare_state_roots,
@@ -244,6 +246,28 @@ def _read_schain_value(config_path: Path, key: str):
     return cfg["skaleConfig"]["sChain"].get(key)
 
 
+def _configure_single_node_ports(config_path: Path, http_port: int) -> None:
+    """Keep the compatibility node's consensus and RPC sockets isolated."""
+    with open(config_path) as f:
+        cfg = json.load(f)
+
+    ports = {
+        "basePort": http_port - 3,
+        "httpRpcPort": http_port,
+        "httpsRpcPort": http_port + 5,
+        "wsRpcPort": http_port - 1,
+        "wssRpcPort": http_port + 4,
+    }
+    node_info = cfg["skaleConfig"]["nodeInfo"]
+    node_info.update(ports)
+    node_info["infoHttpRpcPort"] = http_port + 6
+    for node in cfg["skaleConfig"]["sChain"]["nodes"]:
+        node.update(ports)
+
+    with open(config_path, "w") as f:
+        json.dump(cfg, f, indent=2)
+
+
 def _assert_receipts_before_timestamp(w3: Web3, receipts: list, timestamp: int, label: str) -> None:
     for receipt in receipts:
         block = w3.eth.get_block(receipt["blockNumber"])
@@ -356,6 +380,79 @@ def _run_paris_workload_phase(
 # ---------------------------------------------------------------------------
 # Tests (ordered by file position)
 # ---------------------------------------------------------------------------
+
+def test_current_binary_basefee_rpc_compatibility(
+    current_binary: Path, run_cfg: dict, hardfork_cfg: dict, private_key: str,
+):
+    """Check block RPC output before EIP-1559, before London, and after London."""
+    from conftest import _launch_node, _resolve, _resolve_ft, _stop_node, _wait_for_rpc
+    from run import (
+        configure_single_node_skaled,
+        ensure_genesis_balance,
+        inject_patches,
+        render_template_file,
+        set_ulimit,
+    )
+
+    if not current_binary.is_file():
+        pytest.fail(
+            f"Current skaled binary not found: {current_binary}\n"
+            "Set HARDFORK_COMPAT_CURRENT_BINARY or [hardfork_compat].current_binary."
+        )
+
+    basefee_cfg = hardfork_cfg.get("basefee_compat", {})
+    http_port = int(basefee_cfg.get("http_port", 6234))
+    cfg_out = _resolve(
+        "test/api-tests/hardfork-compat/configs/config-basefee.generated.json"
+    )
+    datadir = _resolve("test/api-tests/hardfork-compat/datadir-basefee")
+    template = _resolve_ft("hardfork-compat/config-templates/config-template.json.j2")
+    template_context = run_cfg.get("skaled", {}).get("template", {}).get("context", {})
+
+    render_template_file(str(template), str(cfg_out), template_context)
+    ensure_genesis_balance(str(cfg_out), private_key)
+    configure_single_node_skaled(str(cfg_out))
+    _configure_single_node_ports(cfg_out, http_port)
+    inject_patches(str(cfg_out), basefee_cfg.get("patches", {}))
+
+    eip1559 = _read_schain_value(cfg_out, "EIP1559TransactionsPatchTimestamp")
+    london = _read_schain_value(cfg_out, "londonForkPatchTimestamp")
+    assert isinstance(eip1559, int) and isinstance(london, int), (
+        "baseFeePerGas compatibility patch timestamps must resolve to integers"
+    )
+
+    set_ulimit()
+    log_dir = SUITE_DIR / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_path = log_dir / "skaled-basefee-compat.log"
+    proc, log_fd = _launch_node(
+        current_binary,
+        cfg_out,
+        http_port,
+        datadir,
+        log_path,
+        "BASEFEE(current)",
+    )
+    w3 = Web3(Web3.HTTPProvider(
+        f"http://127.0.0.1:{http_port}", request_kwargs={"timeout": 10}
+    ))
+
+    try:
+        rpc_timeout = hardfork_cfg.get("timeouts", {}).get("rpc_up", 360)
+        _wait_for_rpc(w3, rpc_timeout, "BASEFEE(current)")
+        details = assert_basefee_rpc_compatibility(
+            w3,
+            eip1559,
+            london,
+            timeout_sec=float(basefee_cfg.get("transition_timeout_sec", 120)),
+            poll_interval_sec=float(basefee_cfg.get("poll_interval_sec", 0.5)),
+        )
+        logger.info("baseFeePerGas RPC compatibility checks passed: %s", details)
+    except Exception as exc:
+        pytest.fail(f"{exc}\n--- {log_path} tail ---\n{log_path.read_text(errors='replace')[-8000:]}")
+    finally:
+        _stop_node(proc, log_fd, "BASEFEE(current)")
+
 
 def test_london_primary_rpc_up(w3_primary: Web3):
     """Verify the London primary node RPC is reachable."""

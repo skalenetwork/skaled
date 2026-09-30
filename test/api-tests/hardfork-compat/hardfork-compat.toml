@@ -1,13 +1,14 @@
 # ==========================================================================
-# hardfork-compat suite -- Paris fork replay test parameters
+# hardfork-compat suite -- fork-boundary RPC and Paris replay test parameters
 # ==========================================================================
 # Merged on top of run.toml at runtime by the test runner.
 #
-# Purpose: confirm that the current Paris-capable skaled binary can replay a
-# chain that starts on the London-capable binary, upgrades before Paris
-# activation, and continues after Paris activation without stateRoot or block
-# hash divergence.  The final current-version sync node runs with
-# syncNode=true and archiveMode=true and compares every block.
+# Purpose: verify baseFeePerGas RPC compatibility across staggered EIP-1559 and
+# London activation, then confirm that the current Paris-capable skaled binary
+# can replay a chain that starts on the London-capable binary, upgrades before
+# Paris activation, and continues after activation without stateRoot or block
+# hash divergence. The final current-version sync node runs with syncNode=true
+# and archiveMode=true and compares every block.
 
 # --------------------------------------------------------------------------
 # Environment type override
@@ -37,6 +38,19 @@ current_binary = "build/skaled/skaled"
 # Ports: primary on 5334, archive sync node on 5344.
 primary_http_port = 5334
 sync_http_port    = 5344
+
+# A separate current-binary node exercises the EIP-1559-to-London RPC window
+# without changing the London->Paris replay chain below.
+[hardfork_compat.basefee_compat]
+http_port = 6234
+transition_timeout_sec = 120
+poll_interval_sec = 0.5
+
+[hardfork_compat.basefee_compat.patches]
+EIP1559TransactionsPatchTimestamp = "now+30s"
+londonForkPatchTimestamp = "now+60s"
+emptyBlockIntervalMs = 2000
+snapshotIntervalSec = 0
 
 # --------------------------------------------------------------------------
 # Baseline London-era settings injected into the primary config before the

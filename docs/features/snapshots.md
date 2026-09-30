@@ -2,13 +2,14 @@
 
 # Snapshots
 
--   [Introduction](#introduction)
--   [Design](#design)    
--   [JSON-RPC Snapshot Methods](#json-rpc-snapshot-methods)
-    -   [skale_getSnapshot](#skale_getsnapshot)
-    -   [skale_downloadSnapshotFragment](#skale_downloadsnapshotfragment)
-    -   [skale_getSnapshotSignature](#skale_getsnapshotsignature)
-    -   [skale_getLatestSnapshotBlockNumber](#skale_getlatestsnapshotblocknumber)
+- [Snapshots](#snapshots)
+  - [Introduction](#introduction)
+  - [Design](#design)
+  - [JSON-RPC Snapshot Methods](#json-rpc-snapshot-methods)
+    - [skale\_getSnapshot](#skale_getsnapshot)
+    - [skale\_downloadSnapshotFragment](#skale_downloadsnapshotfragment)
+    - [skale\_getSnapshotSignature](#skale_getsnapshotsignature)
+    - [skale\_getLatestSnapshotBlockNumber](#skale_getlatestsnapshotblocknumber)
 
 ## Introduction
 
