@@ -8,5 +8,5 @@ if [ "$CURRENT_DIR_NAME" != "$EXPECTED_DIR" ]; then
 fi
 
 rm -rf tmp
-rm -rf venv
+rm -rf .venv
 rm -rf __pycache__
