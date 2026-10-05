@@ -21,6 +21,9 @@
  */
 
 #include <libethashseal/Ethash.h>
+#include <libethcore/Exceptions.h>
+#include <libethereum/SchainPatch.h>
+#include <libethereum/SchainPatchEnum.h>
 #include <test/tools/libtesteth/TestHelper.h>
 #include <boost/test/unit_test.hpp>
 
@@ -48,6 +51,28 @@ public:
     Transaction tx{ 0, 0, 21000, Address( "a94f5374fce5edbc8e2a8697c15331677e6ebf0b" ), bytes(),
         0 };
 };
+
+struct PatchableChainParams : public ChainOperationParams {
+    void setPatchTimestamp( SchainPatchEnum _patch, time_t _timestamp ) {
+        sChain._patchTimestamps[static_cast< size_t >( _patch )] = _timestamp;
+    }
+};
+
+// London active from timestamp 1 with a base fee far above the gas prices used in the tests.
+// Restores the default patch state on exit.
+class LondonTransactionFixture : public UnsignedTransactionFixture {
+public:
+    LondonTransactionFixture() {
+        PatchableChainParams cp;
+        cp.setPatchTimestamp( SchainPatchEnum::LondonForkPatch, 1 );
+        SchainPatch::init( cp );
+
+        header.setNumber( 1 );
+        header.setBaseFeePerGas( 1000000 );
+    }
+
+    ~LondonTransactionFixture() { SchainPatch::init( PatchableChainParams() ); }
+};
 }  // namespace
 
 BOOST_FIXTURE_TEST_SUITE( SealEngineTests, TestOutputHelperFixture )
@@ -71,6 +96,32 @@ BOOST_AUTO_TEST_CASE( UnsignedTransactionIsValidInExperimental ) {
 
     SealEngineFace::verifyTransaction( params, ImportRequirements::TransactionSignatures, tx, 1,
         header, 0 );  // check that it doesn't throw
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_FIXTURE_TEST_SUITE( LondonBaseFeeTests, LondonTransactionFixture )
+
+// eth_call / eth_estimateGas results must not depend on the gasPrice the caller passes
+BOOST_AUTO_TEST_CASE( UnsignedTransactionIgnoresBaseFeeUnderLondon ) {
+    BOOST_REQUIRE( tx.gasPrice() < header.baseFeePerGas() );
+
+    SealEngineFace::verifyTransaction( params, ImportRequirements::Everything, tx, 1, header,
+        0 );  // check that it doesn't throw
+}
+
+BOOST_AUTO_TEST_CASE( SignedTransactionBelowBaseFeeRejectedUnderLondon ) {
+    Transaction signedTx( 0, 1, 21000, Address( "a94f5374fce5edbc8e2a8697c15331677e6ebf0b" ),
+        bytes(), 0, KeyPair::create().secret() );
+
+    BOOST_CHECK_THROW( SealEngineFace::verifyTransaction(
+                           params, ImportRequirements::Everything, signedTx, 1, header, 0 ),
+        InvalidTransactionFormat );
+
+    // the same transaction is valid once it pays the base fee
+    header.setBaseFeePerGas( signedTx.gasPrice() );
+    SealEngineFace::verifyTransaction(
+        params, ImportRequirements::Everything, signedTx, 1, header, 0 );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

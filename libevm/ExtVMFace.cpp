@@ -18,6 +18,7 @@
 #include "ExtVMFace.h"
 
 #include <evmc/helpers.h>
+#include <libethereum/SchainPatch.h>
 
 namespace dev {
 namespace eth {
@@ -132,7 +133,12 @@ evmc_tx_context EvmCHost::get_tx_context() noexcept {
     result.block_number = envInfo.number();
     result.block_timestamp = envInfo.timestamp();
     result.block_gas_limit = static_cast< int64_t >( envInfo.gasLimit() );
-    result.block_difficulty = toEvmC( envInfo.difficulty() );
+    if ( ParisForkPatch::isEnabledWhen( envInfo.committedBlockTimestamp() ) ) {
+        // This EVMC version names the 0x44 context field block_difficulty even after Paris.
+        result.block_difficulty = toEvmC( envInfo.prevRandao() );
+    } else {
+        result.block_difficulty = toEvmC( envInfo.difficulty() );
+    }
     result.chain_id = toEvmC( envInfo.chainID() );
     return result;
 }

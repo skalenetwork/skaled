@@ -70,6 +70,38 @@ async function main() {
   const addr2565Gas = await eip2565Gas.getAddress();
   console.log("EIP2565GasTest deployed to:", addr2565Gas);
 
+  // Deploy EIP3198Test
+  console.log("\nDeploying EIP3198Test...");
+  const EIP3198 = await ethers.getContractFactory("EIP3198Test");
+  const eip3198 = await EIP3198.deploy();
+  await eip3198.waitForDeployment();
+  const addr3198 = await eip3198.getAddress();
+  console.log("EIP3198Test deployed to:", addr3198);
+
+  // Deploy EIP3529Test
+  console.log("\nDeploying EIP3529Test...");
+  const EIP3529 = await ethers.getContractFactory("EIP3529Test");
+  const eip3529 = await EIP3529.deploy();
+  await eip3529.waitForDeployment();
+  const addr3529 = await eip3529.getAddress();
+  console.log("EIP3529Test deployed to:", addr3529);
+
+  // Deploy EIP3541Test
+  console.log("\nDeploying EIP3541Test...");
+  const EIP3541 = await ethers.getContractFactory("EIP3541Test");
+  const eip3541 = await EIP3541.deploy();
+  await eip3541.waitForDeployment();
+  const addr3541 = await eip3541.getAddress();
+  console.log("EIP3541Test deployed to:", addr3541);
+
+  // Deploy EIP1559EffectiveGasPrice
+  console.log("\nDeploying EIP1559EffectiveGasPrice...");
+  const EIP1559EffectiveGasPrice = await ethers.getContractFactory("EIP1559EffectiveGasPrice");
+  const eip1559EffectiveGasPrice = await EIP1559EffectiveGasPrice.deploy();
+  await eip1559EffectiveGasPrice.waitForDeployment();
+  const addr1559EffectiveGasPrice = await eip1559EffectiveGasPrice.getAddress();
+  console.log("EIP1559EffectiveGasPrice deployed to:", addr1559EffectiveGasPrice);
+
   console.log("\n" + "=".repeat(50));
 
   const deploymentInfo = {
@@ -83,6 +115,10 @@ async function main() {
       EIP2929RevertTest: addr2929Revert,
       EIP2929ExtendedTest: addr2929Extended,
       EIP2565GasTest: addr2565Gas,
+      EIP3198Test: addr3198,
+      EIP3529Test: addr3529,
+      EIP3541Test: addr3541,
+      EIP1559EffectiveGasPrice: addr1559EffectiveGasPrice,
     },
     deploymentTime: new Date().toISOString(),
     blockNumber: await ethers.provider.getBlockNumber(),

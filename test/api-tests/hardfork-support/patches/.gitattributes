@@ -1,0 +1,3 @@
+# Unified-diff patch files legitimately contain blank context lines that end in
+# a single space; exempt them from git's trailing-whitespace checks.
+*.patch -whitespace

@@ -72,14 +72,16 @@ enum class Instruction : uint8_t {
     RETURNDATACOPY = 0x3e,  ///< copy data returned from previous call to memory
     EXTCODEHASH = 0x3f,     ///< get external code hash
 
-    BLOCKHASH = 0x40,  ///< get hash of most recent complete block
-    COINBASE,          ///< get the block's coinbase address
-    TIMESTAMP,         ///< get the block's timestamp
-    NUMBER,            ///< get the block's number
-    DIFFICULTY,        ///< get the block's difficulty
-    GASLIMIT,          ///< get the block's gas limit
-    CHAINID,           ///< get the network's ChainID
-    SELFBALANCE,       ///< get balance of the current address
+    BLOCKHASH = 0x40,         ///< get hash of most recent complete block
+    COINBASE,                 ///< get the block's coinbase address
+    TIMESTAMP,                ///< get the block's timestamp
+    NUMBER,                   ///< get the block's number
+    PREVRANDAO = 0x44,        ///< get the previous RANDAO value after Paris
+    DIFFICULTY = PREVRANDAO,  ///< pre-Paris compatibility alias for opcode 0x44
+    GASLIMIT = 0x45,          ///< get the block's gas limit
+    CHAINID,                  ///< get the network's ChainID
+    SELFBALANCE,              ///< get balance of the current address
+    BASEFEE = 0x48,           ///< get the block's base fee (EIP-3198)
 
     POP = 0x50,  ///< remove item from stack
     MLOAD,       ///< load word from memory

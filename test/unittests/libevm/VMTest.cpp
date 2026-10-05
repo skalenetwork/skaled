@@ -21,7 +21,6 @@
 #include <libethereum/SchainPatch.h>
 #include <libevm/EVMC.h>
 #include <libevm/LegacyVM.h>
-#include <libskale-interpreter/interpreter.h>
 #include <test/tools/jsontests/vm.h>
 #include <test/tools/libtesteth/BlockChainHelper.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>
@@ -339,9 +338,27 @@ public:
         se.reset( cp.createSealEngine() );
     }
 
+    void enableParisForkPatch() {
+        struct PatchableChainParams : public ChainParams {
+            using ChainParams::ChainParams;
+            void setPatchTimestamp( SchainPatchEnum _patch, time_t _timestamp ) {
+                sChain._patchTimestamps[static_cast< size_t >( _patch )] = _timestamp;
+            }
+        };
+
+        PatchableChainParams cp( genesisInfo( Network::ConstantinopleTest ) );
+#ifndef FAIR
+        cp.setPatchTimestamp( SchainPatchEnum::ParisForkPatch, 1 );
+#endif
+        SchainPatch::init( cp );
+        SchainPatch::useLatestBlockTimestamp( 1 );
+        se.reset( cp.createSealEngine() );
+    }
+
     void resetSchainPatchToDefault() {
         ChainParams cp( genesisInfo( Network::ConstantinopleTest ) );
         SchainPatch::init( cp );
+        SchainPatch::useLatestBlockTimestamp( 0 );
     }
 
 
@@ -384,12 +401,6 @@ public:
     LegacyVMCreate2TestFixture() : Create2TestFixture{ new LegacyVM } {}
 };
 
-class SkaleInterpreterCreate2TestFixture : public Create2TestFixture {
-public:
-    SkaleInterpreterCreate2TestFixture()
-        : Create2TestFixture{ new EVMC{ evmc_create_interpreter() } } {}
-};
-
 class ExtcodehashTestFixture : public TestOutputHelperFixture {
 public:
     explicit ExtcodehashTestFixture( VMFace* _vm ) : vm{ _vm } {
@@ -423,7 +434,7 @@ public:
 
         vm->exec( gas, extVm, onOp );
 
-        BOOST_REQUIRE_EQUAL( gasBefore - gasAfter, 
+        BOOST_REQUIRE_EQUAL( gasBefore - gasAfter,
 #ifdef FAIR
         2600  // EIP-2929: cold account access cost
 #else
@@ -551,12 +562,6 @@ public:
 };
 
 
-class SkaleInterpreterExtcodehashTestFixture : public ExtcodehashTestFixture {
-public:
-    SkaleInterpreterExtcodehashTestFixture()
-        : ExtcodehashTestFixture{ new EVMC{ evmc_create_interpreter() } } {}
-};
-
 class SstoreTestFixture : public TestOutputHelperFixture {
 public:
     explicit SstoreTestFixture( VMFace* _vm ) : vm{ _vm } {
@@ -608,7 +613,8 @@ public:
 
     void testEip1283Case6() {
 #ifdef FAIR
-        testGasConsumed( "0x60006000556000600055", 1, 5112, 15000 );
+        // EIP-3529 (London): SSTORE_CLEARS_SCHEDULE reduced from 15000 to 4800
+        testGasConsumed( "0x60006000556000600055", 1, 5112, 4800 );
 #else
         testGasConsumed( "0x60006000556000600055", 1, 5212, 15000 );
 #endif
@@ -632,7 +638,8 @@ public:
 
     void testEip1283Case9() {
 #ifdef FAIR
-        testGasConsumed( "0x60026000556000600055", 1, 5112, 15000 );
+        // EIP-3529 (London): SSTORE_CLEARS_SCHEDULE reduced from 15000 to 4800
+        testGasConsumed( "0x60026000556000600055", 1, 5112, 4800 );
 #else
         testGasConsumed( "0x60026000556000600055", 1, 5212, 15000 );
 #endif
@@ -664,7 +671,8 @@ public:
 
     void testEip1283Case13() {
 #ifdef FAIR
-        testGasConsumed( "0x60016000556000600055", 1, 5112, 15000 );
+        // EIP-3529 (London): SSTORE_CLEARS_SCHEDULE reduced from 15000 to 4800
+        testGasConsumed( "0x60016000556000600055", 1, 5112, 4800 );
 #else
         testGasConsumed( "0x60016000556000600055", 1, 5212, 15000 );
 #endif
@@ -696,7 +704,8 @@ public:
 
     void testEip1283Case17() {
 #ifdef FAIR
-        testGasConsumed( "0x600060005560016000556000600055", 1, 8018, 19800 );
+        // EIP-3529 (London): SSTORE_CLEARS_SCHEDULE reduced from 15000 to 4800; 19800 = 15000+4800 -> 9600 = 4800+4800
+        testGasConsumed( "0x600060005560016000556000600055", 1, 8018, 9600 );
 #else
         testGasConsumed( "0x600060005560016000556000600055", 1, 10218, 19800 );
 #endif
@@ -827,12 +836,6 @@ public:
     LegacyVMChainIDTestFixture() : ChainIDTestFixture{ new LegacyVM } {}
 };
 
-class SkaleInterpreterChainIDTestFixture : public ChainIDTestFixture {
-public:
-    SkaleInterpreterChainIDTestFixture()
-        : ChainIDTestFixture{ new EVMC{ evmc_create_interpreter() } } {}
-};
-
 class BalanceFixture : public TestOutputHelperFixture {
 public:
     explicit BalanceFixture( VMFace* _vm ) : vm{ _vm } { state.addBalance( address, 1 * ether ); }
@@ -894,7 +897,7 @@ public:
 
         vm->exec( gas, extVm, onOp );
 
-        BOOST_REQUIRE_EQUAL( gasBefore - gasAfter, 
+        BOOST_REQUIRE_EQUAL( gasBefore - gasAfter,
 #ifdef FAIR
         2600  // EIP-2929: cold account access cost
 #else
@@ -994,9 +997,9 @@ public:
     LegacyVMBalanceFixture() : BalanceFixture{ new LegacyVM } {}
 };
 
-class SkaleInterpreterBalanceFixture : public BalanceFixture {
+class LegacyVMParisTestFixture : public Create2TestFixture {
 public:
-    SkaleInterpreterBalanceFixture() : BalanceFixture{ new EVMC{ evmc_create_interpreter() } } {}
+    LegacyVMParisTestFixture() : Create2TestFixture{new LegacyVM} {}
 };
 }  // namespace
 
@@ -1232,113 +1235,90 @@ BOOST_AUTO_TEST_CASE( Push0 ) {
     BOOST_REQUIRE_EQUAL( stack[0], u256() );
 }
 
-BOOST_AUTO_TEST_SUITE_END()
-
-BOOST_AUTO_TEST_SUITE_END()
-
-BOOST_FIXTURE_TEST_SUITE( SkaleInterpreterSuite, TestOutputHelperFixture )
-BOOST_FIXTURE_TEST_SUITE( SkaleInterpreterCreate2Suite, SkaleInterpreterCreate2TestFixture )
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterCreate2worksInConstantinople,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    testCreate2worksInConstantinople();
-}
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterCreate2isInvalidBeforeConstantinople ) {
-    testCreate2isInvalidBeforeConstantinople();
-}
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterCreate2succeedsIfAddressHasEther,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    testCreate2succeedsIfAddressHasEther();
-}
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterCreate2doesntChangeContractIfAddressExists ) {
-    testCreate2doesntChangeContractIfAddressExists();
-}
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterCreate2isForbiddenInStaticCall ) {
-    testCreate2isForbiddenInStaticCall();
-}
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterCreate2collisionWithNonEmptyStorage,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    testCreate2collisionWithNonEmptyStorage();
-}
-
-// Disable this test since we clean storage in a different way
-BOOST_AUTO_TEST_CASE( SkaleInterpreterCreate2collisionWithNonEmptyStorageEmptyInitCode ) {
-    testCreate2collisionWithNonEmptyStorageEmptyInitCode();
-}
-
-// Note: the nonce-overflow / warm-vs-cold CREATE tests rely on the per-instruction
-// OnOpFunc gas callback, which only LegacyVM invokes; the EVMC skale-interpreter does
-// not, so those cases live in the LegacyVM suite only (see LegacyVMCreate2Suite). The
-// fix they exercise is in the shared ExtVM::create, which both interpreters use.
-
-BOOST_AUTO_TEST_SUITE_END()
-
-BOOST_FIXTURE_TEST_SUITE( SkaleInterpreterExtcodehashSuite, SkaleInterpreterExtcodehashTestFixture )
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterExtcodehashWorksInConstantinople,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    testExtcodehashWorksInConstantinople();
-}
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterExtcodehashIsInvalidConstantinople ) {
-    testExtCodeHashisInvalidBeforeConstantinople();
-}
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterExtCodeHashOfNonContractAccount,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    testExtCodeHashOfNonContractAccount();
-}
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterExtCodeHashOfNonExistentAccount,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    testExtCodeHashOfPrecomileZeroBalance();
-}
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterExtCodeHashOfPrecomileZeroBalance,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    testExtCodeHashOfNonExistentAccount();
-}
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterExtCodeHashOfPrecomileNonZeroBalance,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    testExtCodeHashOfPrecomileNonZeroBalance();
-}
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterExtCodeHashIgnoresHigh12Bytes,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    testExtcodehashIgnoresHigh12Bytes();
+BOOST_AUTO_TEST_CASE( PrevRandaoOpcodeNameAndValue ) {
+    BOOST_REQUIRE_EQUAL( static_cast< unsigned >( Instruction::PREVRANDAO ), 0x44u );
+    BOOST_REQUIRE_EQUAL( instructionInfo( Instruction::PREVRANDAO ).name, "PREVRANDAO" );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
 
+BOOST_FIXTURE_TEST_SUITE( LegacyVMParisSuite, LegacyVMParisTestFixture )
 
-BOOST_FIXTURE_TEST_SUITE( SkaleInterpreterChainIDSuite, SkaleInterpreterChainIDTestFixture )
+// EIP-4399: PREVRANDAO must return the zero prevRandao stored in a valid SKALE Paris header.
+BOOST_AUTO_TEST_CASE( prevRandaoReturnsZeroAfterParisFork ) {
+    // Bytecode: PREVRANDAO PUSH1 0x00 MSTORE PUSH1 0x20 PUSH1 0x00 RETURN
+    bytes code = fromHex( "4460005260206000f3" );
 
-BOOST_AUTO_TEST_CASE( SkaleInterpreterChainIDworksInIstanbul ) {
-    testChainIDWorksInIstanbul();
+    enableParisForkPatch();
+    BlockHeader parisHeader = blockHeader;
+    parisHeader.setTimestamp( 1 );
+    parisHeader.setDifficulty( 42 );  // non-zero to prove the opcode ignores header.difficulty
+    parisHeader.setPrevRandao( h256( 0 ) );
+    parisHeader.setSeal( 1, Nonce( 0 ) );
+    EnvInfo parisEnvInfo{ parisHeader, lastBlockHashes, 1, 0, se->chainParams().getChainId() };
+
+    ExtVM extVm( state, parisEnvInfo, se->chainParams(), address, address, address,
+        value, gasPrice, ref( inputData ), ref( code ), sha3( code ), version, depth,
+        isCreate, staticCall );
+
+    owning_bytes_ref ret = vm->exec( gas, extVm, OnOpFunc{} );
+    BOOST_REQUIRE_EQUAL( ret.size(), 32 );
+    BOOST_REQUIRE_EQUAL( fromBigEndian< u256 >( ret.toVector() ), 0 );
+
+    resetSchainPatchToDefault();
 }
 
-BOOST_AUTO_TEST_CASE( SkaleInterpreterChainIDisInvalidBeforeIstanbul,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    testChainIDisInvalidBeforeIstanbul();
-}
-BOOST_AUTO_TEST_SUITE_END()
+// The opcode returns whatever prevRandao the header carries, so the consensus-derived
+// nonzero value written at block construction flows through with no further EVM changes.
+BOOST_AUTO_TEST_CASE( prevRandaoReturnsHeaderValueWhenSet ) {
+    // Bytecode: PREVRANDAO PUSH1 0x00 MSTORE PUSH1 0x20 PUSH1 0x00 RETURN
+    bytes code = fromHex( "4460005260206000f3" );
 
-BOOST_FIXTURE_TEST_SUITE( SkaleInterpreterBalanceSuite, SkaleInterpreterBalanceFixture )
+    enableParisForkPatch();
+    BlockHeader parisHeader = blockHeader;
+    parisHeader.setTimestamp( 1 );
+    parisHeader.setDifficulty( 0 );
+    parisHeader.setPrevRandao( h256( 42 ) );
+    parisHeader.setSeal( 1, Nonce( 0 ) );
+    EnvInfo parisEnvInfo{ parisHeader, lastBlockHashes, 1, 0, se->chainParams().getChainId() };
 
-BOOST_AUTO_TEST_CASE( SkaleInterpreterSelfBalanceworksInIstanbul ) {
-    testSelfBalanceWorksInIstanbul();
+    ExtVM extVm( state, parisEnvInfo, se->chainParams(), address, address, address,
+        value, gasPrice, ref( inputData ), ref( code ), sha3( code ), version, depth,
+        isCreate, staticCall );
+
+    owning_bytes_ref ret = vm->exec( gas, extVm, OnOpFunc{} );
+    BOOST_REQUIRE_EQUAL( ret.size(), 32 );
+    BOOST_REQUIRE_EQUAL( fromBigEndian< u256 >( ret.toVector() ), 42 );
+
+    resetSchainPatchToDefault();
 }
 
-BOOST_AUTO_TEST_CASE( SkaleInterpreterSelfBalanceisInvalidBeforeIstanbul,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    testSelfBalanceisInvalidBeforeIstanbul();
+// Pre-Paris: DIFFICULTY opcode must return the actual block difficulty.
+BOOST_AUTO_TEST_CASE( difficultyOpcodeUnchangedBeforeParisFork ) {
+    // Same bytecode, patch NOT enabled
+    bytes code = fromHex( "4460005260206000f3" );
+
+    BlockHeader preParisHeader = blockHeader;
+    preParisHeader.setTimestamp( 1 );
+    preParisHeader.setDifficulty( 12345 );
+    EnvInfo preParisEnvInfo{ preParisHeader, lastBlockHashes, 1, 0, se->chainParams().getChainId() };
+
+    ExtVM extVm( state, preParisEnvInfo, se->chainParams(), address, address, address,
+        value, gasPrice, ref( inputData ), ref( code ), sha3( code ), version, depth,
+        isCreate, staticCall );
+
+    owning_bytes_ref ret = vm->exec( gas, extVm, OnOpFunc{} );
+    BOOST_REQUIRE_EQUAL( ret.size(), 32 );
+#ifndef FAIR
+    BOOST_REQUIRE_EQUAL( fromBigEndian< u256 >( ret.toVector() ), 12345 );
+#endif
 }
+
+BOOST_AUTO_TEST_CASE( PrevRandaoOpcodeNameAndValue ) {
+    BOOST_REQUIRE_EQUAL( static_cast< unsigned >( Instruction::PREVRANDAO ), 0x44u );
+    BOOST_REQUIRE_EQUAL( instructionInfo( Instruction::PREVRANDAO ).name, "PREVRANDAO" );
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE_END()

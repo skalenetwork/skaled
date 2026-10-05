@@ -41,6 +41,7 @@
 
 #include <csignal>
 #include <exception>
+#include <stdexcept>
 
 #include <skutils/console_colors.h>
 #include <skutils/eth_utils.h>
@@ -57,6 +58,29 @@ const u256 MAX_BLOCK_RANGE = 1024;
 
 // Geth compatible error code for a revert
 const uint64_t REVERT_RPC_ERROR_CODE = 3;
+
+// Preserve the legacy RPC-only base fee until London starts storing it in block headers.
+static std::optional< u256 > baseFeePerGasForRpc(
+    eth::Client& _client, BlockHeader const& _blockInfo, Logger& _logger ) {
+    const auto blockNumber = static_cast< BlockNumber >( _blockInfo.number() );
+    if ( blockNumber == 0 )
+        return std::nullopt;
+
+    if ( LondonForkPatch::isEnabledWhen( static_cast< time_t >( _blockInfo.timestamp() ) ) )
+        return _blockInfo.baseFeePerGas();
+
+    const auto parentTimestamp = _client.blockInfo( blockNumber - 1 ).timestamp();
+    if ( !EIP1559TransactionsPatch::isEnabledWhen( parentTimestamp ) )
+        return std::nullopt;
+
+    try {
+        return _client.gasBidPrice( blockNumber - 1 );
+    } catch ( std::invalid_argument const& _e ) {
+        BOOST_LOG( _logger ) << "Cannot get gas price for block " << blockNumber;
+        BOOST_LOG( _logger ) << _e.what();
+        return _client.gasBidPrice();
+    }
+}
 
 #ifdef HISTORIC_STATE
 
@@ -589,21 +613,12 @@ Json::Value Eth::eth_getBlockByHash( string const& _blockHash, bool _includeTran
         if ( !client()->isKnown( h ) )
             return Json::Value( Json::nullValue );
 
-        u256 baseFeePerGas;
+        BlockHeader blockInfo = client()->blockInfo( h );
+        auto baseFeePerGas = baseFeePerGasForRpc( *client(), blockInfo, m_loggerDebug );
+
+#ifdef HISTORIC_STATE
         BlockNumber bn = client()->numberFromHash( h );
-        if ( bn > 0 &&
-             EIP1559TransactionsPatch::isEnabledWhen( client()->blockInfo( bn - 1 ).timestamp() ) )
-            try {
-                baseFeePerGas = client()->gasBidPrice( bn - 1 );
-            } catch ( std::invalid_argument& _e ) {
-                BOOST_LOG( m_loggerDebug ) << "Cannot get gas price for block " << h;
-                BOOST_LOG( m_loggerDebug ) << _e.what();
-                // set default gasPrice
-                // probably the price was rotated out as we are asking the price for the old block
-                baseFeePerGas = client()->gasBidPrice();
-            }
-        else
-            baseFeePerGas = 0;
+#endif
 
         if ( _includeTransactions ) {
             Transactions transactions = client()->transactions( h );
@@ -620,8 +635,8 @@ Json::Value Eth::eth_getBlockByHash( string const& _blockHash, bool _includeTran
                 transactions.erase( newEnd, transactions.end() );
             }
 #endif
-            return toJson( client()->blockInfo( h ), client()->blockDetails( h ),
-                client()->uncleHashes( h ), transactions, client()->sealEngine(), baseFeePerGas );
+            return toJson( blockInfo, client()->blockDetails( h ), client()->uncleHashes( h ),
+                transactions, client()->sealEngine(), baseFeePerGas );
         } else {
             h256s transactions = client()->transactionHashes( h );
 
@@ -637,9 +652,13 @@ Json::Value Eth::eth_getBlockByHash( string const& _blockHash, bool _includeTran
                 transactions.erase( newEnd, transactions.end() );
             }
 #endif
-            return toJson( client()->blockInfo( h ), client()->blockDetails( h ),
-                client()->uncleHashes( h ), transactions, client()->sealEngine(), baseFeePerGas );
+            return toJson( blockInfo, client()->blockDetails( h ), client()->uncleHashes( h ),
+                transactions, client()->sealEngine(), baseFeePerGas );
         }
+    } catch ( const JsonRpcException& ) {
+        throw;
+    } catch ( const std::runtime_error& _e ) {
+        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INTERNAL_ERROR, _e.what() ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
@@ -651,39 +670,24 @@ Json::Value Eth::eth_getBlockByNumber( string const& _blockNumber, bool _include
         if ( !client()->isKnown( h ) )
             return Json::Value( Json::nullValue );
 
-        BlockNumber bn = ( h == LatestBlock || h == PendingBlock ) ? client()->number() : h;
-
-        u256 baseFeePerGas;
-        if ( bn > 0 &&
-             EIP1559TransactionsPatch::isEnabledWhen( client()->blockInfo( bn - 1 ).timestamp() ) )
-            try {
-                baseFeePerGas = client()->gasBidPrice( bn - 1 );
-            } catch ( std::invalid_argument& _e ) {
-                BOOST_LOG( m_loggerDebug ) << "Cannot get gas price for block " << bn;
-                BOOST_LOG( m_loggerDebug ) << _e.what();
-                // set default gasPrice
-                // probably the price was rotated out as we are asking the price for the old block
-                baseFeePerGas = client()->gasBidPrice();
-            }
-        else
-            baseFeePerGas = 0;
-
 #ifdef HISTORIC_STATE
         h256 bh = client()->hashFromNumber( h );
         return eth_getBlockByHash( "0x" + bh.hex(), _includeTransactions );
-    } catch ( const JsonRpcException& ) {
-        throw;
 #else
+        BlockHeader blockInfo = client()->blockInfo( h );
+        auto baseFeePerGas = baseFeePerGasForRpc( *client(), blockInfo, m_loggerDebug );
 
         if ( _includeTransactions )
-            return toJson( client()->blockInfo( h ), client()->blockDetails( h ),
-                client()->uncleHashes( h ), client()->transactions( h ), client()->sealEngine(),
-                baseFeePerGas );
+            return toJson( blockInfo, client()->blockDetails( h ), client()->uncleHashes( h ),
+                client()->transactions( h ), client()->sealEngine(), baseFeePerGas );
         else
-            return toJson( client()->blockInfo( h ), client()->blockDetails( h ),
-                client()->uncleHashes( h ), client()->transactionHashes( h ),
-                client()->sealEngine(), baseFeePerGas );
+            return toJson( blockInfo, client()->blockDetails( h ), client()->uncleHashes( h ),
+                client()->transactionHashes( h ), client()->sealEngine(), baseFeePerGas );
 #endif
+    } catch ( const JsonRpcException& ) {
+        throw;
+    } catch ( const std::runtime_error& _e ) {
+        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INTERNAL_ERROR, _e.what() ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
@@ -703,6 +707,10 @@ Json::Value Eth::eth_getTransactionByHash( string const& _transactionHash ) {
 #endif
 
         return toJson( client()->localisedTransaction( h ) );
+    } catch ( const JsonRpcException& ) {
+        throw;
+    } catch ( const std::runtime_error& _e ) {
+        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INTERNAL_ERROR, _e.what() ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
@@ -728,6 +736,10 @@ Json::Value Eth::eth_getTransactionByBlockHashAndIndex(
             return Json::Value( Json::nullValue );
 
         return toJson( client()->localisedTransaction( bh, ti ) );
+    } catch ( const JsonRpcException& ) {
+        throw;
+    } catch ( const std::runtime_error& _e ) {
+        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INTERNAL_ERROR, _e.what() ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
@@ -754,6 +766,10 @@ Json::Value Eth::eth_getTransactionByBlockNumberAndIndex(
             return Json::Value( Json::nullValue );
 
         return toJson( client()->localisedTransaction( bh, ti ) );
+    } catch ( const JsonRpcException& ) {
+        throw;
+    } catch ( const std::runtime_error& _e ) {
+        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INTERNAL_ERROR, _e.what() ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
@@ -794,7 +810,14 @@ LocalisedTransactionReceipt Eth::eth_getTransactionReceipt( string const& _trans
     }
 
     auto cli = client();
-    auto rcp = cli->localisedTransactionReceipt( h );
+    LocalisedTransactionReceipt rcp = [&]() {
+        try {
+            return cli->localisedTransactionReceipt( h );
+        } catch ( const std::runtime_error& _e ) {
+            BOOST_THROW_EXCEPTION(
+                JsonRpcException( Errors::ERROR_RPC_INTERNAL_ERROR, _e.what() ) );
+        }
+    }();
 
 #ifdef HISTORIC_STATE
     if ( SkipInvalidTransactionsPatch::hasPotentialInvalidTransactionsInBlock(
@@ -1067,10 +1090,10 @@ Json::Value Eth::eth_feeHistory( dev::u256 _blockCount, const std::string& _newe
         for ( auto bn = newestBlock; bn > oldestBlock - 1; --bn ) {
             auto blockInfo = client()->blockInfo( bn - 1 );
 
-            if ( EIP1559TransactionsPatch::isEnabledWhen( blockInfo.timestamp() ) )
-                result["baseFeePerGas"].append( toJS( client()->gasBidPrice( bn - 1 ) ) );
-            else
-                result["baseFeePerGas"].append( toJS( 0 ) );
+            // Same base fee selection as eth_getBlockBy*; the array must stay dense, so blocks
+            // without a base fee (pre-EIP-1559 eras) report zero instead of omitting the entry.
+            result["baseFeePerGas"].append(
+                toJS( baseFeePerGasForRpc( *client(), blockInfo, m_loggerDebug ).value_or( 0 ) ) );
 
             double gasUsedRatio = blockInfo.gasUsed().convert_to< double >() /
                                   blockInfo.gasLimit().convert_to< double >();
@@ -1087,12 +1110,18 @@ Json::Value Eth::eth_feeHistory( dev::u256 _blockCount, const std::string& _newe
         }
 
         return result;
+    } catch ( const JsonRpcException& ) {
+        throw;
+    } catch ( const std::runtime_error& _e ) {
+        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INTERNAL_ERROR, _e.what() ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
 }
 
 std::string Eth::eth_maxPriorityFeePerGas() {
+    // SKALE requires no priority fee: this is a wallet-compatibility stub and stays 0x0,
+    // independent of the per-receipt effectiveGasPrice computed at execution time.
     return "0x0";
 }
 

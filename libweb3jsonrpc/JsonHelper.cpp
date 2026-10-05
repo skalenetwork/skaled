@@ -30,6 +30,7 @@
 #include <libethcore/CommonJS.h>
 #include <libethcore/SealEngine.h>
 #include <libethereum/Client.h>
+#include <libethereum/SchainPatch.h>
 
 using namespace std;
 using namespace dev;
@@ -135,14 +136,15 @@ Json::Value toJson( dev::eth::Transaction const& _t, std::pair< h256, unsigned >
 }
 
 Json::Value toJson( dev::eth::BlockHeader const& _bi, BlockDetails const& _bd,
-    UncleHashes const& _us, Transactions const& _ts, SealEngineFace* _face, u256 _gasPrice ) {
+    UncleHashes const& _us, Transactions const& _ts, SealEngineFace* _face,
+    std::optional< u256 > _baseFeePerGas ) {
     Json::Value res = toJson( _bi, _face );
     if ( _bi ) {
         res["totalDifficulty"] = toJS( _bd.totalDifficulty );
         res["size"] = toJS( _bd.blockSizeBytes );
         res["uncles"] = Json::Value( Json::arrayValue );
-        if ( _gasPrice > 0 )
-            res["baseFeePerGas"] = toJS( _gasPrice );
+        if ( _bi.number() > 0 && _baseFeePerGas )
+            res["baseFeePerGas"] = toJS( *_baseFeePerGas );
         for ( h256 h : _us )
             res["uncles"].append( toJS( h ) );
         res["transactions"] = Json::Value( Json::arrayValue );
@@ -154,14 +156,15 @@ Json::Value toJson( dev::eth::BlockHeader const& _bi, BlockDetails const& _bd,
 }
 
 Json::Value toJson( dev::eth::BlockHeader const& _bi, BlockDetails const& _bd,
-    UncleHashes const& _us, TransactionHashes const& _ts, SealEngineFace* _face, u256 _gasPrice ) {
+    UncleHashes const& _us, TransactionHashes const& _ts, SealEngineFace* _face,
+    std::optional< u256 > _baseFeePerGas ) {
     Json::Value res = toJson( _bi, _face );
     if ( _bi ) {
         res["totalDifficulty"] = toJS( _bd.totalDifficulty );
         res["size"] = toJS( _bd.blockSizeBytes );
         res["uncles"] = Json::Value( Json::arrayValue );
-        if ( _gasPrice > 0 )
-            res["baseFeePerGas"] = toJS( _gasPrice );
+        if ( _bi.number() > 0 && _baseFeePerGas )
+            res["baseFeePerGas"] = toJS( *_baseFeePerGas );
         for ( h256 h : _us )
             res["uncles"].append( toJS( h ) );
         res["transactions"] = Json::Value( Json::arrayValue );

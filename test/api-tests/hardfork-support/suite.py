@@ -28,6 +28,7 @@ NONCE_OVERFLOW_PATCH = (
     SUITE_DIR / "patches" / "execution-specs-berlin-nonce-overflow-stubs.patch"
 )
 NONCE_OVERFLOW_PATCH_MARKER = "NONCE_OVERFLOW_CREATE_STUB"
+SUPPORT_PATCHES_DIR = NONCE_OVERFLOW_PATCH.parent
 
 
 def _load_run_eip_tests():
@@ -76,6 +77,68 @@ def _ensure_nonce_overflow_stub_patch(project_dir: Path) -> bool:
     return True
 
 
+def _apply_support_patches(project_dir: Path) -> list:
+    """Apply every hardfork-support execution-specs patch except the config-gated
+    nonce-overflow stub patch. Already-applied patches are skipped. Returns the
+    names of patches this call applied; on failure, reverses those first so a
+    partial application never leaks into the checkout."""
+    applied = []
+    try:
+        for patch in sorted(SUPPORT_PATCHES_DIR.glob("*.patch")):
+            if patch == NONCE_OVERFLOW_PATCH:
+                continue
+            check = subprocess.run(
+                ["git", "apply", "--check", str(patch)],
+                cwd=project_dir,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if check.returncode == 0:
+                subprocess.run(
+                    ["git", "apply", str(patch)],
+                    cwd=project_dir,
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+                applied.append(patch.name)
+                continue
+            reverse = subprocess.run(
+                ["git", "apply", "--reverse", "--check", str(patch)],
+                cwd=project_dir,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if reverse.returncode != 0:
+                raise RuntimeError(
+                    f"{patch.name}: {check.stderr.strip() or check.stdout.strip()}"
+                )
+    except Exception:
+        _reverse_support_patches(project_dir, applied)
+        raise
+    return applied
+
+
+def _reverse_support_patches(project_dir: Path, applied: list) -> None:
+    """Reverse the given patches in reverse application order; log-and-continue
+    on individual failures so one stuck patch does not block the others."""
+    for patch_name in reversed(applied):
+        try:
+            subprocess.run(
+                ["git", "apply", "--reverse", str(SUPPORT_PATCHES_DIR / patch_name)],
+                cwd=project_dir,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+        except (OSError, subprocess.CalledProcessError) as exc:
+            logger.warning(
+                "Failed to reverse execution-specs patch %s: %s", patch_name, exc
+            )
+
+
 def _restore_nonce_overflow_stub_patch(project_dir: Path) -> None:
     test_path = project_dir / NONCE_OVERFLOW_TEST
     if NONCE_OVERFLOW_PATCH_MARKER not in test_path.read_text():
@@ -90,18 +153,50 @@ def _restore_nonce_overflow_stub_patch(project_dir: Path) -> None:
     )
 
 
-def _execution_specs_config_for_label(execution_cfg: dict, label: str) -> dict:
-    label_cfg = dict(execution_cfg)
+def _execution_specs_test_name(execution_cfg: dict) -> str:
+    workload_name = execution_cfg.get("name") or execution_cfg.get("fork", "Berlin")
+    return f"execution-specs-{workload_name}"
+
+
+def _execution_specs_workloads_for_label(execution_cfg: dict, label: str) -> list[dict]:
+    base_cfg = {
+        key: value
+        for key, value in execution_cfg.items()
+        if key not in {"endpoint_overrides", "workloads"}
+    }
+    raw_workloads = execution_cfg.get("workloads") or [{}]
     endpoint_overrides = execution_cfg.get("endpoint_overrides", {})
-    if isinstance(endpoint_overrides, dict):
-        label_cfg.update(endpoint_overrides.get(label, {}))
-    return label_cfg
+
+    workloads = []
+    for raw_workload in raw_workloads:
+        if not isinstance(raw_workload, dict):
+            raise RuntimeError(
+                "[execution_specs].workloads entries must be TOML tables"
+            )
+
+        workload_endpoint_overrides = raw_workload.get("endpoint_overrides", {})
+        workload_cfg = dict(base_cfg)
+        workload_cfg.update(
+            {
+                key: value
+                for key, value in raw_workload.items()
+                if key != "endpoint_overrides"
+            }
+        )
+        if isinstance(endpoint_overrides, dict):
+            workload_cfg.update(endpoint_overrides.get(label, {}))
+        if isinstance(workload_endpoint_overrides, dict):
+            workload_cfg.update(workload_endpoint_overrides.get(label, {}))
+        workloads.append(workload_cfg)
+
+    return workloads
 
 
-def _run_execution_specs(label: str, url: str, w3, private_key: str, cfg: dict) -> TestResult:
-    execution_cfg = _execution_specs_config_for_label(cfg.get("execution_specs", {}), label)
+def _run_execution_specs(
+    label: str, url: str, w3, private_key: str, execution_cfg: dict
+) -> TestResult:
     paths = [str(path) for path in execution_cfg.get("paths", [])]
-    test_name = f"execution-specs-{execution_cfg.get('fork', 'Berlin')}"
+    test_name = _execution_specs_test_name(execution_cfg)
 
     if not paths:
         return TestResult(
@@ -144,6 +239,29 @@ def _run_execution_specs(label: str, url: str, w3, private_key: str, cfg: dict) 
                 message=f"failed to patch execution-specs nonce-overflow stubs: {exc}",
             )
 
+    # Apply every other hardfork-support execution-specs patch, mirroring CI
+    # (.github/actions/api-tests-run). The stub patch above stays config-gated.
+    # Patches applied by this run are reversed in the finally below; on apply
+    # failure the nonce-overflow patch must be restored here since the early
+    # return never reaches that finally.
+    applied_support_patches = []
+    try:
+        applied_support_patches = _apply_support_patches(project_dir)
+    except (OSError, RuntimeError, subprocess.CalledProcessError) as exc:
+        if nonce_patch_applied:
+            try:
+                _restore_nonce_overflow_stub_patch(project_dir)
+            except (OSError, subprocess.CalledProcessError) as restore_exc:
+                logger.warning(
+                    "Failed to restore execution-specs nonce-overflow patch: %s",
+                    restore_exc,
+                )
+        return TestResult(
+            name=test_name,
+            passed=False,
+            message=f"failed to apply execution-specs patches: {exc}",
+        )
+
     fork = str(execution_cfg.get("fork", "Berlin"))
     timeout_sec = int(execution_cfg.get("timeout_sec", 1200))
     cmd = [
@@ -178,7 +296,8 @@ def _run_execution_specs(label: str, url: str, w3, private_key: str, cfg: dict) 
     log_dir = SUITE_DIR / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
     safe_label = label.replace("/", "_").replace(":", "_")
-    log_path = log_dir / f"execution-specs-{safe_label}.log"
+    safe_test_name = test_name.replace("/", "_").replace(":", "_")
+    log_path = log_dir / f"{safe_test_name}-{safe_label}.log"
 
     logger.info(
         "Running execution-specs against %s (%s, fork=%s, paths=%s)",
@@ -223,6 +342,7 @@ def _run_execution_specs(label: str, url: str, w3, private_key: str, cfg: dict) 
                     details={"log": str(log_path)},
                 )
     finally:
+        _reverse_support_patches(project_dir, applied_support_patches)
         if nonce_patch_applied:
             try:
                 _restore_nonce_overflow_stub_patch(project_dir)
@@ -382,31 +502,57 @@ def run_tests(cfg: dict, env) -> dict[str, list[TestResult]]:
                 endpoint_failed[label] = f"{type(e).__name__}: {e}"
 
     if execution_specs_enabled:
-        logger.info("Running execution-specs workload")
+        logger.info("Running execution-specs workloads")
         for label, url in env.rpc_urls.items():
-            label_execution_cfg = _execution_specs_config_for_label(execution_cfg, label)
-            test_name = f"execution-specs-{label_execution_cfg.get('fork', 'Berlin')}"
-            if not bool(label_execution_cfg.get("enabled", True)):
-                tr = TestResult(
-                    name=test_name,
-                    passed=True,
-                    message=f"skipped for endpoint {label} by execution_specs endpoint override",
+            try:
+                label_workloads = _execution_specs_workloads_for_label(
+                    execution_cfg, label
                 )
-            else:
-                w3 = env.web3s.get(label)
-                if w3 is None:
+            except RuntimeError as exc:
+                tr = TestResult(
+                    name="execution-specs-config",
+                    passed=False,
+                    message=str(exc),
+                )
+                by_label_and_name.setdefault(label, {})[tr.name] = tr
+                logger.info(
+                    "  %s: %s — %s",
+                    tr.name,
+                    "PASS" if tr.passed else "FAIL",
+                    tr.message,
+                )
+                continue
+
+            for label_execution_cfg in label_workloads:
+                test_name = _execution_specs_test_name(label_execution_cfg)
+                if not bool(label_execution_cfg.get("enabled", True)):
                     tr = TestResult(
                         name=test_name,
-                        passed=False,
-                        message=f"No Web3 connection for endpoint {label}",
+                        passed=True,
+                        message=(
+                            f"skipped for endpoint {label} by execution_specs endpoint override"
+                        ),
                     )
                 else:
-                    tr = _run_execution_specs(label, url, w3, private_key, cfg)
+                    w3 = env.web3s.get(label)
+                    if w3 is None:
+                        tr = TestResult(
+                            name=test_name,
+                            passed=False,
+                            message=f"No Web3 connection for endpoint {label}",
+                        )
+                    else:
+                        tr = _run_execution_specs(
+                            label, url, w3, private_key, label_execution_cfg
+                        )
 
-            by_label_and_name.setdefault(label, {})[tr.name] = tr
-            logger.info(
-                "  %s: %s — %s", tr.name, "PASS" if tr.passed else "FAIL", tr.message,
-            )
+                by_label_and_name.setdefault(label, {})[tr.name] = tr
+                logger.info(
+                    "  %s: %s — %s",
+                    tr.name,
+                    "PASS" if tr.passed else "FAIL",
+                    tr.message,
+                )
 
     for label, err in endpoint_failed.items():
         label_results = by_label_and_name.setdefault(label, {})

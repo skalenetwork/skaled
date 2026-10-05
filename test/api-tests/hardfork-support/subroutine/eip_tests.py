@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
+
 from eth_account import Account
 from eth_account.signers.local import LocalAccount
 from web3 import Web3
@@ -85,8 +86,22 @@ def _send_tx(w3: Web3, deployer: LocalAccount, tx_dict: dict, pre_wait: float = 
     # may lag behind a recently confirmed transaction.
     tx_dict["nonce"] = w3.eth.get_transaction_count(deployer.address)
     # Type 2 (EIP-1559) uses maxFeePerGas/maxPriorityFeePerGas; gasPrice must not be present.
-    if tx_dict.get("type", 0) != 2:
+    # web3.py may set type as "0x2" (str) or 2 (int), and may auto-add maxFeePerGas when it
+    # detects EIP-1559 support.  Treat any of these as a type-2 tx and skip gasPrice.
+    tx_type = tx_dict.get("type", 0)
+    if isinstance(tx_type, str):
+        tx_type = int(tx_type, 16) if tx_type.startswith("0x") else int(tx_type)
+    if tx_type != 2 and "maxFeePerGas" not in tx_dict:
         tx_dict.setdefault("gasPrice", w3.eth.gas_price)
+    else:
+        # Type 2 tx: web3.py may compute maxFeePerGas=0 when baseFeePerGas=1
+        # (SKALE post-London default) and eth_maxPriorityFeePerGas is unsupported.
+        # The node enforces a minimum floor equal to eth_gasPrice, so bump
+        # maxFeePerGas up if needed.
+        min_price = int(w3.eth.gas_price)
+        if min_price > 0 and tx_dict.get("maxFeePerGas", 0) < min_price:
+            tx_dict["maxFeePerGas"] = min_price
+            tx_dict["maxPriorityFeePerGas"] = min_price
     signed = deployer.sign_transaction(tx_dict)
     tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
     logger.info("Sent tx %s (type=%s)", tx_hash.hex(), tx_dict.get("type", 0))
@@ -96,6 +111,28 @@ def _send_tx(w3: Web3, deployer: LocalAccount, tx_dict: dict, pre_wait: float = 
     return w3.eth.wait_for_transaction_receipt(
         tx_hash, timeout=300, poll_latency=5
     )
+
+
+def _as_int(value):
+    if value is None:
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        return int(value, 16) if value.startswith("0x") else int(value)
+    return int(value)
+
+
+def _is_skaled(w3: Web3) -> bool:
+    """True if the connected node is skaled. Used to gate SKALE-specific policy assertions
+    (no priority fee, no genesis baseFeePerGas) that a standard Ethereum node (e.g. anvil)
+    is not expected to follow. skaled's web3_clientVersion is "skaled/<version>/..."."""
+    try:
+        resp = w3.provider.make_request("web3_clientVersion", [])
+        version = (resp.get("result") or "") if isinstance(resp, dict) else ""
+        return "skaled" in version.lower()
+    except Exception:
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -1330,6 +1367,1059 @@ def test_eip_2718_type2_accepted(
 
 
 # ---------------------------------------------------------------------------
+# EIP-3198 / EIP-3529 / EIP-3541 / EIP-1559 London tests
+# ---------------------------------------------------------------------------
+
+def test_eip_3198(w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000) -> EIPTestResult:
+    """BASEFEE opcode returns the same value as block.baseFeePerGas."""
+    logger.info("=== EIP-3198 BASEFEE opcode test ===")
+    abi, bytecode = _load_artifact(sol_dir, "EIP3198Test")
+    addr = _deploy_contract(w3, deployer, abi, bytecode, gas_limit)
+    contract = w3.eth.contract(address=addr, abi=abi)
+
+    opcode_base_fee = _as_int(contract.functions.getBaseFee().call())
+    block = w3.eth.get_block("latest")
+    header_base_fee = _as_int(block.get("baseFeePerGas"))
+
+    details = {
+        "opcode_base_fee": opcode_base_fee,
+        "header_base_fee": header_base_fee,
+        "block_number": block["number"],
+        "contract": addr,
+    }
+
+    if header_base_fee is None:
+        return EIPTestResult(
+            eip="3198",
+            passed=False,
+            message="baseFeePerGas missing from block header",
+            details=details,
+        )
+    if opcode_base_fee != header_base_fee:
+        return EIPTestResult(
+            eip="3198",
+            passed=False,
+            message=f"BASEFEE opcode={opcode_base_fee}, header={header_base_fee}",
+            details=details,
+        )
+
+    try:
+        reward_scalar = _as_int(contract.functions.rewardScalarFromBaseFee().call())
+    except Exception as e:
+        details["reward_scalar_error"] = str(e)
+        return EIPTestResult(
+            eip="3198",
+            passed=False,
+            message=(
+                "rewardScalarFromBaseFee reverted; reward calculation must not revert "
+                f"(baseFeePerGas={header_base_fee})"
+            ),
+            details=details,
+        )
+
+    if header_base_fee == 0:
+        return EIPTestResult(
+            eip="3198",
+            passed=False,
+            message=(
+                "rewardScalarFromBaseFee unexpectedly succeeded with baseFeePerGas=0; "
+                "contract/test assumptions are inconsistent"
+            ),
+            details=details,
+        )
+
+    expected_reward_scalar = 1000 // header_base_fee
+    details["reward_scalar"] = reward_scalar
+    details["expected_reward_scalar"] = expected_reward_scalar
+
+    if reward_scalar != expected_reward_scalar:
+        return EIPTestResult(
+            eip="3198",
+            passed=False,
+            message=(
+                f"rewardScalar mismatch: got {reward_scalar}, expected "
+                f"1000/{header_base_fee}={expected_reward_scalar}"
+            ),
+            details=details,
+        )
+
+    return EIPTestResult(
+        eip="3198",
+        passed=True,
+        message=(
+            f"BASEFEE matches header ({opcode_base_fee}); "
+            f"rewardScalar=1000/baseFee={reward_scalar}"
+        ),
+        details=details,
+    )
+
+
+def test_eip_3529(w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000) -> EIPTestResult:
+    """Smoke test for reduced SSTORE refunds under London."""
+    logger.info("=== EIP-3529 SSTORE refund test ===")
+    abi, bytecode = _load_artifact(sol_dir, "EIP3529Test")
+    addr = _deploy_contract(w3, deployer, abi, bytecode, gas_limit)
+    contract = w3.eth.contract(address=addr, abi=abi)
+
+    key = 42
+    receipt_prep = _send_tx(
+        w3,
+        deployer,
+        contract.functions.prepopulate(key, 1).build_transaction(
+            {"from": deployer.address, "gas": gas_limit, "chainId": w3.eth.chain_id}
+        ),
+    )
+    receipt_clear = _send_tx(
+        w3,
+        deployer,
+        contract.functions.clearSlot(key).build_transaction(
+            {"from": deployer.address, "gas": gas_limit, "chainId": w3.eth.chain_id}
+        ),
+    )
+
+    details = {
+        "gas_used_prepopulate": receipt_prep["gasUsed"],
+        "gas_used_clear": receipt_clear["gasUsed"],
+        "status_prepopulate": receipt_prep["status"],
+        "status_clear": receipt_clear["status"],
+        "contract": addr,
+    }
+
+    errors = []
+    if receipt_prep["status"] != 1:
+        errors.append("prepopulate transaction reverted")
+    if receipt_clear["status"] != 1:
+        errors.append("clearSlot transaction reverted")
+
+    if errors:
+        return EIPTestResult(
+            eip="3529",
+            passed=False,
+            message="; ".join(errors),
+            details=details,
+        )
+
+    return EIPTestResult(
+        eip="3529",
+        passed=True,
+        message=f"SSTORE clear succeeded, gasUsed={receipt_clear['gasUsed']}",
+        details=details,
+    )
+
+
+def test_eip_3529_refund_cap(
+    w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000
+) -> EIPTestResult:
+    """
+    EIP-3529 smoke test: clears storage slots and checks the transaction succeeds.
+
+    Does not assert the 1/5 refund cap numerically; only verifies the node
+    accepts and executes the clearing transaction without reverting.
+    """
+    logger.info("=== EIP-3529 refund cap test ===")
+    abi, bytecode = _load_artifact(sol_dir, "EIP3529Test")
+    addr = _deploy_contract(w3, deployer, abi, bytecode, gas_limit)
+    contract = w3.eth.contract(address=addr, abi=abi)
+
+    # Prepopulate many slots
+    NUM_SLOTS = 20
+    for i in range(NUM_SLOTS):
+        _send_tx(w3, deployer, contract.functions.prepopulate(i, 1).build_transaction(
+            {"from": deployer.address, "gas": gas_limit, "chainId": w3.eth.chain_id}
+        ))
+
+    # Clear all slots in one tx, accumulating refunds
+    receipt = _send_tx(w3, deployer, contract.functions.clearSlots(
+        list(range(NUM_SLOTS))
+    ).build_transaction(
+        {"from": deployer.address, "gas": gas_limit, "chainId": w3.eth.chain_id}
+    ))
+
+    gas_used = receipt["gasUsed"]
+    details = {"gas_used": gas_used, "num_slots": NUM_SLOTS, "contract": addr}
+
+    if receipt["status"] != 1:
+        return EIPTestResult(
+            eip="3529-refund-cap", passed=False,
+            message="clearSlots transaction reverted", details=details,
+        )
+
+    return EIPTestResult(
+        eip="3529-refund-cap", passed=True,
+        message=f"clearSlots gasUsed={gas_used} (London refund cap = gasUsed/5)",
+        details=details,
+    )
+
+
+def test_eip_3529_selfdestruct(
+    w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000
+) -> EIPTestResult:
+    """SELFDESTRUCT path should execute successfully with London semantics."""
+    logger.info("=== EIP-3529 SELFDESTRUCT refund removal test ===")
+    abi, bytecode = _load_artifact(sol_dir, "EIP3529Test")
+    addr = _deploy_contract(w3, deployer, abi, bytecode, gas_limit)
+    contract = w3.eth.contract(address=addr, abi=abi)
+
+    receipt = _send_tx(
+        w3,
+        deployer,
+        contract.functions.measureSelfdestructRefund().build_transaction(
+            {"from": deployer.address, "gas": gas_limit, "chainId": w3.eth.chain_id}
+        ),
+    )
+
+    details = {
+        "status": receipt["status"],
+        "gas_used": receipt["gasUsed"],
+        "contract": addr,
+    }
+
+    if receipt["status"] != 1:
+        return EIPTestResult(
+            eip="3529-selfdestruct",
+            passed=False,
+            message="SELFDESTRUCT measurement transaction reverted",
+            details=details,
+        )
+
+    # Under London (EIP-3529), suicideRefundGas = 0, so no gas refund is granted for SELFDESTRUCT.
+    # The SELFDESTRUCT base cost is 5000 gas.  If a refund were applied, gasUsed would be lower.
+    # We just confirm the transaction cost at least the SELFDESTRUCT base cost (5000 gas).
+    SELFDESTRUCT_BASE_COST = 5000
+    gas_used = receipt["gasUsed"]
+    if gas_used < SELFDESTRUCT_BASE_COST:
+        return EIPTestResult(
+            eip="3529-selfdestruct",
+            passed=False,
+            message=(
+                f"gasUsed={gas_used} is below SELFDESTRUCT base cost {SELFDESTRUCT_BASE_COST}; "
+                f"unexpected large refund may have been applied"
+            ),
+            details=details,
+        )
+
+    return EIPTestResult(
+        eip="3529-selfdestruct",
+        passed=True,
+        message=f"SELFDESTRUCT measurement succeeded, gasUsed={gas_used} (no refund under London)",
+        details=details,
+    )
+
+
+def test_eip_3541(w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000) -> EIPTestResult:
+    """Reject deployment of contracts whose runtime code starts with 0xEF."""
+    logger.info("=== EIP-3541 reject 0xEF contracts test ===")
+    abi, bytecode = _load_artifact(sol_dir, "EIP3541Test")
+    addr = _deploy_contract(w3, deployer, abi, bytecode, gas_limit)
+    contract = w3.eth.contract(address=addr, abi=abi)
+
+    receipt_ef = _send_tx(
+        w3,
+        deployer,
+        contract.functions.deployEFCode().build_transaction(
+            {"from": deployer.address, "gas": gas_limit, "chainId": w3.eth.chain_id}
+        ),
+    )
+    receipt_fe = _send_tx(
+        w3,
+        deployer,
+        contract.functions.deployFECode().build_transaction(
+            {"from": deployer.address, "gas": gas_limit, "chainId": w3.eth.chain_id}
+        ),
+    )
+    receipt_ef2 = _send_tx(
+        w3,
+        deployer,
+        contract.functions.deployEFCodeCreate2(bytes(32)).build_transaction(
+            {"from": deployer.address, "gas": gas_limit, "chainId": w3.eth.chain_id}
+        ),
+    )
+
+    logs_ef = contract.events.DeployResult().process_receipt(receipt_ef)
+    logs_fe = contract.events.DeployResult().process_receipt(receipt_fe)
+    logs_ef2 = contract.events.DeployResult().process_receipt(receipt_ef2)
+
+    ef_success = bool(logs_ef and logs_ef[0]["args"]["success"])
+    fe_success = bool(logs_fe and logs_fe[0]["args"]["success"])
+    ef2_success = bool(logs_ef2 and logs_ef2[0]["args"]["success"])
+
+    details = {
+        "ef_create_success": ef_success,
+        "fe_create_success": fe_success,
+        "ef_create2_success": ef2_success,
+        "contract": addr,
+    }
+
+    if ef_success:
+        return EIPTestResult(
+            eip="3541",
+            passed=False,
+            message="CREATE with 0xEF runtime code unexpectedly succeeded",
+            details=details,
+        )
+    if ef2_success:
+        return EIPTestResult(
+            eip="3541",
+            passed=False,
+            message="CREATE2 with 0xEF runtime code unexpectedly succeeded",
+            details=details,
+        )
+    if not fe_success:
+        return EIPTestResult(
+            eip="3541",
+            passed=False,
+            message="CREATE with 0xFE runtime code unexpectedly failed",
+            details=details,
+        )
+
+    return EIPTestResult(
+        eip="3541",
+        passed=True,
+        message="0xEF deployments rejected (CREATE/CREATE2), 0xFE accepted",
+        details=details,
+    )
+
+
+def test_eip_1559_effective_price(
+    w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000
+) -> EIPTestResult:
+    """Type 2 tx: GASPRICE opcode should report effectiveGasPrice."""
+    logger.info("=== EIP-1559 effective gas price test ===")
+    abi, bytecode = _load_artifact(sol_dir, "EIP1559EffectiveGasPrice")
+    addr = _deploy_contract(w3, deployer, abi, bytecode, gas_limit)
+    contract = w3.eth.contract(address=addr, abi=abi)
+
+    latest = w3.eth.get_block("latest")
+    base_fee = _as_int(latest.get("baseFeePerGas")) or 0
+    max_priority = 10**9  # 1 gwei tip
+    # Keep maxFeePerGas comfortably above baseFeePerGas + maxPriorityFeePerGas so the
+    # effective price should follow the London formula rather than the fee cap.
+    max_fee = base_fee + max_priority * 100
+
+    tx = contract.functions.reportGasPrice().build_transaction(
+        {
+            "from": deployer.address,
+            "gas": gas_limit,
+            "type": 2,
+            "chainId": w3.eth.chain_id,
+            "maxFeePerGas": max_fee,
+            "maxPriorityFeePerGas": max_priority,
+        }
+    )
+    receipt = _send_tx(w3, deployer, tx, pre_wait=1.0)
+
+    logs = contract.events.GasPriceReported().process_receipt(receipt)
+    reported_gas_price = _as_int(logs[0]["args"]["gasPrice"]) if logs else None
+    receipt_effective = _as_int(receipt.get("effectiveGasPrice"))
+
+    # Use the baseFee from the block that actually included the transaction —
+    # baseFeePerGas can change between blocks, so using the pre-send value causes
+    # a spurious mismatch when the tx lands in a later block.
+    inclusion_block = w3.eth.get_block(receipt["blockNumber"])
+    inclusion_base_fee = _as_int(inclusion_block.get("baseFeePerGas")) or 0
+
+    details = {
+        "reported_gas_price": reported_gas_price,
+        "receipt_effective_gas_price": receipt_effective,
+        "pre_send_base_fee": base_fee,
+        "inclusion_base_fee": inclusion_base_fee,
+        "max_fee_per_gas": max_fee,
+        "max_priority_fee_per_gas": max_priority,
+        "status": receipt["status"],
+        "contract": addr,
+    }
+
+    if receipt["status"] != 1:
+        return EIPTestResult(
+            eip="1559-effective-price",
+            passed=False,
+            message="Type 2 transaction reverted",
+            details=details,
+        )
+    if reported_gas_price is None:
+        return EIPTestResult(
+            eip="1559-effective-price",
+            passed=False,
+            message="GasPriceReported event not found",
+            details=details,
+        )
+    if receipt_effective is not None and reported_gas_price != receipt_effective:
+        return EIPTestResult(
+            eip="1559-effective-price",
+            passed=False,
+            message=(
+                f"GASPRICE opcode={reported_gas_price} differs from "
+                f"receipt.effectiveGasPrice={receipt_effective}"
+            ),
+            details=details,
+        )
+
+    # Verify the EIP-1559 effective gas price formula using the inclusion block's baseFee:
+    # effectiveGasPrice = min(maxFeePerGas, baseFeePerGas + maxPriorityFeePerGas)
+    expected_effective = min(max_fee, inclusion_base_fee + max_priority)
+    if receipt_effective is not None and receipt_effective != expected_effective:
+        return EIPTestResult(
+            eip="1559-effective-price",
+            passed=False,
+            message=(
+                f"effectiveGasPrice={receipt_effective} does not match "
+                f"min(maxFee={max_fee}, baseFee={inclusion_base_fee} + maxPriority={max_priority}) "
+                f"= {expected_effective}"
+            ),
+            details=details,
+        )
+
+    return EIPTestResult(
+        eip="1559-effective-price",
+        passed=True,
+        message=(
+            f"GASPRICE opcode={reported_gas_price}, "
+            f"receipt.effectiveGasPrice={receipt_effective}, "
+            f"formula min({max_fee}, {inclusion_base_fee}+{max_priority})={expected_effective}"
+        ),
+        details=details,
+    )
+
+
+def test_eip_1559_legacy_gasprice_equals_basefee(
+    w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000
+) -> EIPTestResult:
+    """Legacy tx with gasPrice == baseFeePerGas: effectiveGasPrice must equal baseFee."""
+    logger.info("=== EIP-1559 legacy gasPrice == baseFee test ===")
+
+    latest = w3.eth.get_block("latest")
+    base_fee = _as_int(latest.get("baseFeePerGas"))
+    logger.info("BASE FEE for LEGACY GAS PRICE %s", base_fee)
+
+    if base_fee is None or base_fee == 0:
+        return EIPTestResult(
+            eip="1559-legacy-gasprice-eq-basefee",
+            passed=False,
+            message="baseFeePerGas missing or zero in latest block",
+            details={"base_fee": base_fee},
+        )
+
+    # Send a simple value transfer with gasPrice set exactly to baseFee.
+    tx_dict = {
+        "from": deployer.address,
+        "to": deployer.address,
+        "value": 0,
+        "gas": 21_000,
+        "gasPrice": base_fee,
+        "chainId": w3.eth.chain_id,
+        "nonce": w3.eth.get_transaction_count(deployer.address),
+    }
+    signed = deployer.sign_transaction(tx_dict)
+    tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
+    receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=300)
+
+    inclusion_block = w3.eth.get_block(receipt["blockNumber"])
+    inclusion_base_fee = _as_int(inclusion_block.get("baseFeePerGas")) or 0
+    receipt_effective = _as_int(receipt.get("effectiveGasPrice"))
+
+    details = {
+        "gas_price_sent": base_fee,
+        "inclusion_base_fee": inclusion_base_fee,
+        "receipt_effective_gas_price": receipt_effective,
+        "status": receipt["status"],
+    }
+
+    if receipt["status"] != 1:
+        return EIPTestResult(
+            eip="1559-legacy-gasprice-eq-basefee",
+            passed=False,
+            message="Legacy tx with gasPrice==baseFee reverted",
+            details=details,
+        )
+
+    # For legacy txs, effectiveGasPrice == gasPrice.
+    if receipt_effective is not None and receipt_effective != base_fee:
+        return EIPTestResult(
+            eip="1559-legacy-gasprice-eq-basefee",
+            passed=False,
+            message=(
+                f"effectiveGasPrice={receipt_effective} != gasPrice={base_fee} "
+                f"(baseFee={inclusion_base_fee})"
+            ),
+            details=details,
+        )
+
+    return EIPTestResult(
+        eip="1559-legacy-gasprice-eq-basefee",
+        passed=True,
+        message=(
+            f"Legacy tx accepted with gasPrice==baseFee={base_fee}, "
+            f"effectiveGasPrice={receipt_effective}"
+        ),
+        details=details,
+    )
+
+
+def test_eip_1559_basefee_header(
+    w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000
+) -> EIPTestResult:
+    """eth_getBlockBy* should expose baseFeePerGas."""
+    logger.info("=== EIP-1559 baseFeePerGas header test ===")
+    block = w3.eth.get_block("latest")
+    base_fee = _as_int(block.get("baseFeePerGas"))
+
+    details = {
+        "base_fee_per_gas": base_fee,
+        "block_number": block["number"],
+    }
+    if base_fee is None:
+        return EIPTestResult(
+            eip="1559-basefee-header",
+            passed=False,
+            message="baseFeePerGas missing from latest block",
+            details=details,
+        )
+    return EIPTestResult(
+        eip="1559-basefee-header",
+        passed=True,
+        message=f"baseFeePerGas present in header ({base_fee})",
+        details=details,
+    )
+
+
+def test_eip_1559_fee_history(
+    w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000
+) -> EIPTestResult:
+    """eth_feeHistory should return baseFeePerGas data."""
+    logger.info("=== EIP-1559 feeHistory RPC test ===")
+    try:
+        result = w3.eth.fee_history(4, "latest", [25, 75])
+    except Exception as e:
+        return EIPTestResult(
+            eip="1559-fee-history",
+            passed=False,
+            message=f"eth_feeHistory failed: {e}",
+        )
+
+    base_fees_raw = result.get("baseFeePerGas", [])
+    base_fees = [_as_int(v) for v in base_fees_raw]
+    details = {
+        "base_fee_per_gas": base_fees,
+        "oldest_block": _as_int(result.get("oldestBlock")),
+    }
+    if not base_fees:
+        return EIPTestResult(
+            eip="1559-fee-history",
+            passed=False,
+            message="eth_feeHistory returned empty baseFeePerGas array",
+            details=details,
+        )
+    return EIPTestResult(
+        eip="1559-fee-history",
+        passed=True,
+        message=f"eth_feeHistory returned {len(base_fees)} baseFeePerGas entries",
+        details=details,
+    )
+
+
+def test_eip_1559_fee_history_float_percentiles(
+    w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000
+) -> EIPTestResult:
+    """eth_feeHistory must accept float reward percentiles (e.g. 25.5, 75.5)."""
+    logger.info("=== EIP-1559 feeHistory float-percentile RPC test ===")
+    try:
+        body = w3.provider.make_request("eth_feeHistory", ["0x4", "latest", [25.5, 75.5]])  # type: ignore[union-attr]
+    except Exception as e:
+        return EIPTestResult(
+            eip="1559-fee-history-float",
+            passed=False,
+            message=f"HTTP call failed: {e}",
+        )
+
+    if "error" in body:
+        return EIPTestResult(
+            eip="1559-fee-history-float",
+            passed=False,
+            message=f"eth_feeHistory rejected float percentiles: {body['error']}",
+            details={"response": body},
+        )
+
+    result = body.get("result", {})
+    base_fees = result.get("baseFeePerGas", [])
+    if not base_fees:
+        return EIPTestResult(
+            eip="1559-fee-history-float",
+            passed=False,
+            message="eth_feeHistory with float percentiles returned empty baseFeePerGas",
+            details={"result": result},
+        )
+
+    return EIPTestResult(
+        eip="1559-fee-history-float",
+        passed=True,
+        message=f"eth_feeHistory accepted float percentiles, returned {len(base_fees)} baseFeePerGas entries",
+        details={"base_fee_per_gas": base_fees},
+    )
+
+
+def test_eip_1559_max_priority_fee(
+    w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000
+) -> EIPTestResult:
+    """eth_maxPriorityFeePerGas should be available AND return 0x0 (SKALE-specific contract).
+
+    SKALE does not require priority fees. The RPC is a wallet-compatibility stub and must stay
+    at 0x0 so wallets do not over-pay; receipt-level effectiveGasPrice is computed independently
+    under London via min(maxFee, baseFee + priority).
+    """
+    logger.info("=== EIP-1559 maxPriorityFeePerGas RPC test ===")
+    response = w3.provider.make_request("eth_maxPriorityFeePerGas", [])
+    if "error" in response:
+        return EIPTestResult(
+            eip="1559-max-priority-fee",
+            passed=False,
+            message=f"eth_maxPriorityFeePerGas failed: {response['error']}",
+        )
+
+    raw = response.get("result")
+    value = _as_int(raw)
+    is_skaled = _is_skaled(w3)
+    details = {"max_priority_fee_per_gas": value, "raw": raw, "is_skaled": is_skaled}
+    if value is None:
+        return EIPTestResult(
+            eip="1559-max-priority-fee",
+            passed=False,
+            message="eth_maxPriorityFeePerGas returned null result",
+            details=details,
+        )
+    # The 0x0 contract is SKALE-specific. A standard Ethereum node (e.g. anvil) legitimately
+    # returns a non-zero suggested priority fee, so only enforce 0 on skaled.
+    if not is_skaled:
+        return EIPTestResult(
+            eip="1559-max-priority-fee",
+            passed=True,
+            message=f"eth_maxPriorityFeePerGas returned {value} (non-skaled node; 0 not enforced)",
+            details=details,
+        )
+    if value != 0:
+        return EIPTestResult(
+            eip="1559-max-priority-fee",
+            passed=False,
+            message=(
+                f"eth_maxPriorityFeePerGas returned {value} (expected 0x0); "
+                "SKALE is required to return 0 here."
+            ),
+            details=details,
+        )
+    return EIPTestResult(
+        eip="1559-max-priority-fee",
+        passed=True,
+        message="eth_maxPriorityFeePerGas returned 0x0 as required by SKALE policy",
+        details=details,
+    )
+
+
+def test_eip_1559_genesis_no_basefee(
+    w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000
+) -> EIPTestResult:
+    """Genesis (block 0) must not expose baseFeePerGas via RPC.
+
+    Per the action-plan policy decision: genesis carries no baseFeePerGas in its RLP — its
+    on-chain identity is independent of London activation. RPC must reflect that and omit the
+    field for block 0. eth_getBlockByNumber("0x0") therefore must not include a baseFeePerGas
+    key in the returned block object.
+    """
+    logger.info("=== EIP-1559 genesis baseFeePerGas absence test ===")
+    response = w3.provider.make_request("eth_getBlockByNumber", ["0x0", False])
+    if "error" in response:
+        return EIPTestResult(
+            eip="1559-genesis-no-basefee",
+            passed=False,
+            message=f"eth_getBlockByNumber(0x0) failed: {response['error']}",
+        )
+    block = response.get("result")
+    if not isinstance(block, dict):
+        return EIPTestResult(
+            eip="1559-genesis-no-basefee",
+            passed=False,
+            message="eth_getBlockByNumber(0x0) did not return a block object",
+            details={"result": block},
+        )
+    is_skaled = _is_skaled(w3)
+    details = {"keys_present": sorted(block.keys()), "is_skaled": is_skaled}
+    # Omitting genesis baseFeePerGas is a SKALE-specific policy. A standard Ethereum node
+    # (e.g. anvil) exposes baseFeePerGas on the genesis block, so only enforce omission on skaled.
+    if not is_skaled:
+        return EIPTestResult(
+            eip="1559-genesis-no-basefee",
+            passed=True,
+            message=(
+                "Genesis baseFeePerGas presence not enforced on non-skaled node "
+                f"(baseFeePerGas={'present' if 'baseFeePerGas' in block else 'absent'})"
+            ),
+            details=details,
+        )
+    if "baseFeePerGas" in block:
+        return EIPTestResult(
+            eip="1559-genesis-no-basefee",
+            passed=False,
+            message=(
+                "Genesis block exposes baseFeePerGas via RPC "
+                f"(value={block['baseFeePerGas']}); it must be omitted."
+            ),
+            details=details,
+        )
+    return EIPTestResult(
+        eip="1559-genesis-no-basefee",
+        passed=True,
+        message="Genesis block has no baseFeePerGas field as required",
+        details=details,
+    )
+
+
+# ---------------------------------------------------------------------------
+# EIP-1559: block hash integrity (Gap 2 regression test)
+# ---------------------------------------------------------------------------
+# Recomputes the block hash from the fields returned by eth_getBlockByNumber
+# using independent Python RLP encoding.  This catches the class of bug where
+# baseFeePerGas is present in the JSON response but absent from the RLP used
+# to compute the hash (as happened when the London RLP code was guarded by
+# #ifdef FAIR and compiled out of non-FAIR builds).
+# ---------------------------------------------------------------------------
+
+def _uint_to_bytes(v: int) -> bytes:
+    """Encode a non-negative integer as minimal big-endian bytes (RLP integer)."""
+    if v == 0:
+        return b""
+    return v.to_bytes((v.bit_length() + 7) // 8, "big")
+
+
+def _rlp_item(data: bytes) -> bytes:
+    """RLP-encode a single byte string."""
+    if len(data) == 1 and data[0] < 0x80:
+        return data
+    n = len(data)
+    if n < 56:
+        return bytes([0x80 + n]) + data
+    nb = n.to_bytes((n.bit_length() + 7) // 8, "big")
+    return bytes([0xb7 + len(nb)]) + nb + data
+
+
+def _rlp_list(items: list) -> bytes:
+    """RLP-encode a flat list of byte strings."""
+    payload = b"".join(_rlp_item(i) for i in items)
+    n = len(payload)
+    if n < 56:
+        return bytes([0xc0 + n]) + payload
+    nb = n.to_bytes((n.bit_length() + 7) // 8, "big")
+    return bytes([0xf7 + len(nb)]) + nb + payload
+
+
+def _compute_block_hash(block) -> dict:
+    """
+    Recompute the keccak256 block hash from eth_getBlockByNumber fields.
+
+    Returns a dict mapping variant name -> bytes so the caller can determine
+    which variant the node uses.  Known variants:
+
+    "skale"    — SKALE pre-Paris blocks: no seal fields, baseFeePerGas
+                 directly after extraData.  mixHash/nonce are NOT part of the
+                 hash even though jsInfo() exposes zero defaults via JSON-RPC.
+                 Post-Paris SKALE blocks carry prevRandao (in the mixHash
+                 position) + nonce and therefore match "london" instead.
+    "london"   — Ethereum London spec (Anvil/geth, SKALE post-Paris):
+                 extraData + mixHash + nonce + baseFeePerGas.
+    "shanghai" — EIP-4895: London fields + withdrawalsRoot.
+    "cancun"   — EIP-4844: Shanghai fields + blobGasUsed + excessBlobGas +
+                 parentBeaconBlockRoot.
+
+    Field order (13 base fields):
+      parentHash, sha3Uncles, miner, stateRoot, transactionsRoot,
+      receiptsRoot, logsBloom, difficulty, number, gasLimit, gasUsed,
+      timestamp, extraData
+    """
+    from eth_utils import keccak
+
+    def h(v) -> bytes:
+        return bytes(v)
+
+    base_fields = [
+        h(block["parentHash"]),
+        h(block["sha3Uncles"]),
+        bytes.fromhex(block["miner"][2:]),
+        h(block["stateRoot"]),
+        h(block["transactionsRoot"]),
+        h(block["receiptsRoot"]),
+        h(block["logsBloom"]),
+        _uint_to_bytes(block["difficulty"]),
+        _uint_to_bytes(block["number"]),
+        _uint_to_bytes(block["gasLimit"]),
+        _uint_to_bytes(block["gasUsed"]),
+        _uint_to_bytes(block["timestamp"]),
+        h(block["extraData"]),
+    ]
+
+    base_fee = block.get("baseFeePerGas")
+    mix_hash_raw = block.get("mixHash")
+    nonce_raw = block.get("nonce")
+    withdrawals_root_raw = block.get("withdrawalsRoot")
+    blob_gas_used = block.get("blobGasUsed")
+    excess_blob_gas = block.get("excessBlobGas")
+    parent_beacon_root_raw = block.get("parentBeaconBlockRoot")
+
+    variants: dict = {}
+
+    # Variant "skale": no seal, baseFeePerGas directly after extraData.
+    skale_fields = list(base_fields)
+    if base_fee is not None:
+        skale_fields.append(_uint_to_bytes(base_fee))
+    variants["skale"] = keccak(primitive=_rlp_list(skale_fields))
+
+    if mix_hash_raw is not None and nonce_raw is not None:
+        nonce_bytes = bytes(nonce_raw)
+        if len(nonce_bytes) != 8:
+            nonce_bytes = nonce_bytes.rjust(8, b"\x00")
+
+        # Variant "london": extraData + mixHash + nonce + baseFeePerGas
+        london_fields = list(base_fields) + [h(mix_hash_raw), nonce_bytes]
+        if base_fee is not None:
+            london_fields.append(_uint_to_bytes(base_fee))
+        variants["london"] = keccak(primitive=_rlp_list(london_fields))
+
+        # Variant "shanghai": London + withdrawalsRoot (EIP-4895).
+        # Anvil rc-3 uses this block structure even when --hardfork london is
+        # set, because the internal block representation always includes it.
+        if withdrawals_root_raw is not None:
+            shanghai_fields = list(london_fields) + [h(withdrawals_root_raw)]
+            variants["shanghai"] = keccak(primitive=_rlp_list(shanghai_fields))
+
+            # Variant "cancun": Shanghai + blobGasUsed + excessBlobGas +
+            # parentBeaconBlockRoot (EIP-4844 / EIP-4788).
+            if (blob_gas_used is not None and excess_blob_gas is not None
+                    and parent_beacon_root_raw is not None):
+                cancun_fields = shanghai_fields + [
+                    _uint_to_bytes(blob_gas_used),
+                    _uint_to_bytes(excess_blob_gas),
+                    h(parent_beacon_root_raw),
+                ]
+                variants["cancun"] = keccak(primitive=_rlp_list(cancun_fields))
+
+    return variants
+
+
+def test_eip_1559_block_hash_integrity(
+    w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000
+) -> EIPTestResult:
+    """
+    Recompute block hash from eth_getBlockByNumber fields and compare against
+    the hash reported by the node.
+
+    This detects RLP serialization bugs where a field (e.g. baseFeePerGas) is
+    present in the JSON response but missing from the actual RLP used to hash
+    the block.
+    """
+    logger.info("=== EIP-1559 block hash integrity test ===")
+    block = w3.eth.get_block("latest")
+    reported_hash = bytes(block["hash"])
+
+    details = {
+        "block_number": block["number"],
+        "reported_hash": reported_hash.hex(),
+        "has_base_fee": block.get("baseFeePerGas") is not None,
+    }
+
+    try:
+        hash_variants = _compute_block_hash(block)
+    except Exception as e:
+        return EIPTestResult(
+            eip="1559-block-hash-integrity",
+            passed=False,
+            message=f"Hash recomputation failed: {e}",
+            details=details,
+        )
+
+    details["computed_hashes"] = {k: v.hex() for k, v in hash_variants.items()}
+    # Keep legacy keys for existing log consumers.
+    details["computed_hash_skale"] = hash_variants.get("skale", b"").hex()
+    details["computed_hash_eth"] = hash_variants.get("london", b"").hex()
+
+    _variant_labels = {
+        "skale":    "SKALE (no seal)",
+        "london":   "Ethereum London (mixHash+nonce+baseFee)",
+        "shanghai": "Shanghai (+ withdrawalsRoot)",
+        "cancun":   "Cancun (+ blob fields)",
+    }
+
+    matched = next(
+        (name for name, h in hash_variants.items() if reported_hash == h), None
+    )
+
+    if matched is None:
+        computed_summary = ", ".join(
+            f"{k}={v.hex()[:12]}…" for k, v in hash_variants.items()
+        )
+        return EIPTestResult(
+            eip="1559-block-hash-integrity",
+            passed=False,
+            message=(
+                f"Block hash mismatch: node reports {reported_hash.hex()[:12]}…, "
+                f"{computed_summary} — "
+                f"likely a field order or encoding error in RLP"
+            ),
+            details=details,
+        )
+
+    variant = _variant_labels.get(matched, matched)
+    return EIPTestResult(
+        eip="1559-block-hash-integrity",
+        passed=True,
+        message=f"Block hash matches recomputed RLP/{variant} ({reported_hash.hex()[:12]}…)",
+        details=details,
+    )
+
+
+# ---------------------------------------------------------------------------
+# EIP-3675 / EIP-4399: Paris fork (difficulty=0, PREVRANDAO opcode)
+# ---------------------------------------------------------------------------
+
+def test_eip_3675(
+    w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000
+) -> EIPTestResult:
+    """EIP-3675: eth_getBlockByNumber must return difficulty=0x0 post-Paris."""
+    logger.info("=== EIP-3675 difficulty=0 header test ===")
+    block = w3.eth.get_block("latest")
+    difficulty = _as_int(block.get("difficulty"))
+
+    details = {
+        "difficulty": difficulty,
+        "block_number": block["number"],
+    }
+    if difficulty != 0:
+        return EIPTestResult(
+            eip="3675",
+            passed=False,
+            message=f"Expected difficulty=0, got {difficulty}",
+            details=details,
+        )
+    return EIPTestResult(
+        eip="3675",
+        passed=True,
+        message="difficulty=0x0 in latest block header",
+        details=details,
+    )
+
+
+def _is_anvil(w3: Web3) -> bool:
+    try:
+        return "anvil" in w3.client_version.lower()
+    except Exception:
+        return False
+
+
+def test_eip_4399(
+    w3: Web3, deployer: LocalAccount, sol_dir: str, gas_limit: int = 3_000_000
+) -> EIPTestResult:
+    """EIP-4399: PREVRANDAO opcode is accessible post-Paris.
+
+    skaled: prevRandao is a RANDAO-style accumulator — the parent's value XOR
+    BLAKE3 of the previous block's BLS threshold signature — carried in the header
+    mixHash: non-zero after block 1, and the opcode result must equal the header
+    field (the EIP-4399 invariant).
+    Anvil: returns a non-zero simulated value — any non-zero value is accepted.
+    """
+    logger.info("=== EIP-4399 PREVRANDAO opcode test ===")
+    abi, bytecode = _load_artifact(sol_dir, "EIP4399Test")
+    addr = _deploy_contract(w3, deployer, abi, bytecode, gas_limit)
+    contract = w3.eth.contract(address=addr, abi=abi)
+
+    prevrandao = _as_int(contract.functions.getPrevRandao().call())
+
+    details = {
+        "prevrandao": prevrandao,
+        "contract": addr,
+    }
+
+    if _is_anvil(w3):
+        # Anvil simulates PREVRANDAO as a non-zero random value — just verify the opcode works.
+        if prevrandao == 0:
+            return EIPTestResult(
+                eip="4399",
+                passed=False,
+                message="PREVRANDAO=0 on Anvil — opcode not active or returning wrong value",
+                details=details,
+            )
+        return EIPTestResult(
+            eip="4399",
+            passed=True,
+            message=f"PREVRANDAO opcode returned non-zero value (Anvil simulation: {prevrandao})",
+            details=details,
+        )
+
+    # skaled: verify through a real transaction — deploy the PREVRANDAO recorder
+    # (constructor stores opcode 0x44 into slot 0) and compare the recorded value
+    # with the mixHash of the exact block that mined the deployment. This anchors
+    # the EIP-4399 invariant (opcode == executing header's mixHash) to one block
+    # with no timing dependence. The earlier eth_call checks the working-block
+    # context: non-historic skaled serves both "latest" and "pending" from it.
+    recorder_receipt = _send_tx(
+        w3,
+        deployer,
+        {
+            "from": deployer.address,
+            "data": "0x4460005560006000f3",
+            "gas": 100_000,
+        },
+    )
+    if recorder_receipt["status"] != 1:
+        return EIPTestResult(
+            eip="4399",
+            passed=False,
+            message="PREVRANDAO recorder deploy reverted",
+            details=details,
+        )
+    recorder_addr = recorder_receipt["contractAddress"]
+    recorded = int.from_bytes(bytes(w3.eth.get_storage_at(recorder_addr, 0)), "big")
+    block = w3.eth.get_block(recorder_receipt["blockNumber"])
+    mix_hash = int.from_bytes(bytes(block["mixHash"]), "big")
+    details.update(
+        {
+            "recorder": recorder_addr,
+            "recorder_block": int(block["number"]),
+            "recorded": hex(recorded),
+            "mix_hash": hex(mix_hash),
+        }
+    )
+
+    if recorded == 0:
+        return EIPTestResult(
+            eip="4399",
+            passed=False,
+            message="Expected non-zero beacon-derived PREVRANDAO in transaction, got 0",
+            details=details,
+        )
+    if recorded != mix_hash:
+        return EIPTestResult(
+            eip="4399",
+            passed=False,
+            message=(
+                f"Recorded PREVRANDAO {hex(recorded)} != header mixHash {hex(mix_hash)} "
+                f"at block {block['number']}"
+            ),
+            details=details,
+        )
+    if prevrandao == 0:
+        return EIPTestResult(
+            eip="4399",
+            passed=False,
+            message="eth_call (working-block context) returned zero PREVRANDAO",
+            details=details,
+        )
+    return EIPTestResult(
+        eip="4399",
+        passed=True,
+        message=(
+            f"PREVRANDAO non-zero and equal to header mixHash at block "
+            f"{block['number']} ({hex(recorded)[:14]}…)"
+        ),
+        details=details,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Orchestrator
 # ---------------------------------------------------------------------------
 
@@ -1349,6 +2439,20 @@ EIP_TEST_MAP = {
     "2565":             test_eip_2565,
     "2565-formula":     test_eip_2565_formula_exact,
     "2565-zero-exp":    test_eip_2565_zero_exponent_floor,
+    "3198":             test_eip_3198,
+    "3529":             test_eip_3529,
+    "3529-refund-cap":  test_eip_3529_refund_cap,
+    "3529-selfdestruct": test_eip_3529_selfdestruct,
+    "3541":             test_eip_3541,
+    "1559-effective-price": test_eip_1559_effective_price,
+    "1559-legacy-gasprice-eq-basefee": test_eip_1559_legacy_gasprice_equals_basefee,
+    "1559-basefee-header": test_eip_1559_basefee_header,
+    "1559-fee-history": test_eip_1559_fee_history,
+    "1559-max-priority-fee": test_eip_1559_max_priority_fee,
+    "1559-genesis-no-basefee": test_eip_1559_genesis_no_basefee,
+    "1559-block-hash-integrity": test_eip_1559_block_hash_integrity,
+    "3675":                    test_eip_3675,
+    "4399":                    test_eip_4399,
 }
 
 ALL_EIPS = [
@@ -1357,6 +2461,11 @@ ALL_EIPS = [
     "2930", "2930-gas-saving", "2930-duplicates",
     "2718-type2",
     "2565", "2565-formula", "2565-zero-exp",
+    "3198", "3529", "3529-refund-cap", "3529-selfdestruct", "3541",
+    "1559-effective-price", "1559-legacy-gasprice-eq-basefee", "1559-basefee-header",
+    "1559-fee-history", "1559-max-priority-fee", "1559-genesis-no-basefee",
+    "1559-block-hash-integrity",
+    "3675", "4399",
 ]
 
 

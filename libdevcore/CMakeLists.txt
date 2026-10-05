@@ -25,7 +25,7 @@ target_include_directories( devcore PRIVATE
 	${SKUTILS_INCLUDE_DIRS}
 	)
 
-target_link_libraries(devcore PUBLIC skale-buildinfo Boost::filesystem Boost::system Boost::log Boost::thread Threads::Threads PRIVATE ethash::ethash)
+target_link_libraries(devcore PUBLIC skale-buildinfo Boost::filesystem Boost::system Boost::log_setup Boost::log Boost::thread Threads::Threads PRIVATE ethash::ethash)
 
 #find_package(LevelDB)
 #target_include_directories(devcore SYSTEM PUBLIC ${LEVELDB_INCLUDE_DIRS})

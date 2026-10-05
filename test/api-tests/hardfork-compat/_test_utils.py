@@ -38,6 +38,30 @@ def wait_for_tx(w3: Web3, tx_hash, timeout_s: int) -> Optional[dict]:
     return None
 
 
+def wait_for_block_timestamp(w3: Web3, target_timestamp: int, timeout_s: int) -> Optional[int]:
+    """Wait until the latest block timestamp reaches ``target_timestamp``."""
+    deadline = time.time() + timeout_s
+    last_seen = None
+    while time.time() < deadline:
+        try:
+            block = w3.eth.get_block("latest")
+            last_seen = (block["number"], block["timestamp"])
+            logger.info(
+                "Waiting for timestamp >= %d: latest block=%d timestamp=%d",
+                target_timestamp, block["number"], block["timestamp"],
+            )
+            if int(block["timestamp"]) >= target_timestamp:
+                return int(block["number"])
+        except Exception:
+            pass
+        time.sleep(2)
+    logger.error(
+        "Timed out waiting for block timestamp >= %d (last seen=%s)",
+        target_timestamp, last_seen,
+    )
+    return None
+
+
 def wait_for_sync_catchup(
     w3_primary: Web3, w3_sync: Web3, timeout_s: int,
 ) -> bool:
@@ -72,9 +96,9 @@ def compare_state_roots(
     """Compare per-block stateRoot from block 0 to ``up_to_block``.
 
     Returns the list of mismatched block numbers (empty means all match).
-    A mismatch means the 5.2.0 binary derived a different world state than
-    5.1.0 while replaying the same block -- i.e. an unguarded state-transition
-    change between the two versions.
+    A mismatch means the archive sync node derived a different world state than
+    the upgraded primary while replaying the same block -- i.e. an unguarded
+    state-transition change across the fork/upgrade path.
     """
     mismatches = []
     for bn in range(0, up_to_block + 1):
@@ -83,7 +107,7 @@ def compare_state_roots(
             sync_root = _block_state_root(w3_sync, bn)
             if primary_root != sync_root:
                 logger.error(
-                    "STATE ROOT MISMATCH block %d: 5.1.0=%s 5.2.0=%s",
+                    "STATE ROOT MISMATCH block %d: primary=%s sync=%s",
                     bn, primary_root, sync_root,
                 )
                 mismatches.append(bn)
@@ -111,7 +135,7 @@ def compare_block_hashes(
             sync_hash = w3_sync.eth.get_block(bn)["hash"].hex()
             if primary_hash != sync_hash:
                 logger.error(
-                    "HASH MISMATCH block %d: 5.1.0=%s 5.2.0=%s",
+                    "HASH MISMATCH block %d: primary=%s sync=%s",
                     bn, primary_hash, sync_hash,
                 )
                 mismatches.append(bn)

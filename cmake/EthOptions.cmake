@@ -26,8 +26,6 @@ macro(configure_project)
 
     # components
     option(TESTS "Build with tests" ON)
-    option(TOOLS "Build additional tools" ON)
-    option(EVMJIT "Build with EVMJIT module enabled" OFF)    
 
     # Resolve any clashes between incompatible options.
     if ("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
@@ -107,8 +105,6 @@ macro(print_config)
     message("-- MICROPROFILE     -                                        ${MICROPROFILE}")
     message("------------------------------------------------------------- components")
     message("-- TESTS            Build tests                              ${TESTS}")
-    message("-- TOOLS            Build tools                              ${TOOLS}")
-    message("-- EVMJIT           Build LLVM-based JIT EVM                 ${EVMJIT}")    
     message("------------------------------------------------------------- tests")
     message("-- FASTCTEST        Run only test suites in ctest            ${FASTCTEST}")
     message("-- TESTETH_ARGS     Testeth arguments in ctest:               ")

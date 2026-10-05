@@ -41,6 +41,19 @@ using namespace dev::eth;
 using skale::Permanence;
 using skale::State;
 
+u256 ClientBase::getBaseFeeValue( BlockHeader const& _header ) const {
+    if ( _header.baseFeePerGas() != 0 || _header.number() == 0 ||
+         !LondonForkPatch::isEnabledWhen( static_cast< time_t >( _header.timestamp() ) ) )
+        return _header.baseFeePerGas();
+
+    try {
+        return gasBidPrice( static_cast< unsigned >( _header.number() ) );
+    } catch ( std::invalid_argument const& ) {
+        BOOST_THROW_EXCEPTION(
+            std::runtime_error( "Historical baseFeePerGas is unavailable for London block " +
+                                toString( _header.number() ) ) );
+    }
+}
 
 static const int64_t c_maxGasEstimate = 50000000;
 
@@ -374,7 +387,10 @@ LocalisedLogEntries ClientBase::checkWatch( unsigned _watchId ) {
 BlockHeader ClientBase::blockInfo( h256 const& _hash ) const {
     if ( _hash == PendingBlockHash )
         return preSeal().info();
-    return BlockHeader( bc().block( _hash ) );
+
+    BlockHeader blockInfo( bc().block( _hash ) );
+    blockInfo.setBaseFeePerGas( getBaseFeeValue( blockInfo ) );
+    return blockInfo;
 }
 
 BlockDetails ClientBase::blockDetails( h256 const& _hash ) const {
@@ -496,7 +512,30 @@ LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(
     dev::h256 txHash{ t.sha3() };
     dev::Address from{ t.isInvalid() ? dev::Address( 0 ) : t.from() };
     int txType{ t.txType() };
-    dev::u256 effectiveGasPrice{ t.isInvalid() ? 0 : t.gasPrice() };
+    dev::u256 effectiveGasPrice{ 0 };
+    if ( !t.isInvalid() ) {
+        const auto blkInfo = blockInfo( blockHash );
+        const bool isLondon =
+            LondonForkPatch::isEnabledWhen( static_cast< time_t >( blkInfo.timestamp() ) );
+#ifndef FAIR
+        // A tx rebuilt from RLP isn't external-gas-checked, so re-run checkOutExternalGas with the
+        // parent block's context (as live execution does) to recover the zero-fee verdict.
+        if ( bc().chainParams().getExternalGasDifficulty() > 0 && blockNumber > 0 ) {
+            try {
+                const auto parentInfo = blockInfo( blockNumber - 1 );
+                t.checkOutExternalGas( bc().chainParams(),
+                    static_cast< time_t >( parentInfo.timestamp() ),
+                    static_cast< uint64_t >( blockNumber - 1 ) );
+            } catch ( Exception const& _e ) {
+                // Only InvalidSignature is possible here and it can't fire for a committed tx;
+                // stay defensive so receipt RPC never fails.
+                cwarn << "External-gas recheck failed for receipt of a tx in block " << blockNumber
+                      << ": " << _e.what();
+            }
+        }
+#endif
+        effectiveGasPrice = t.getEffectiveGasPrice( isLondon, blkInfo.baseFeePerGas() );
+    }
 
     return LocalisedTransactionReceipt( receipt, txHash, blockHash, blockNumber, transactionIdx,
         from, to, gasUsed, contractAddress, txType, effectiveGasPrice );

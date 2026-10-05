@@ -294,10 +294,12 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
 #ifndef FAIR
     const std::string& _gethURL,
 #endif
-    [[maybe_unused]] bool _broadcastEnabled )
+    bool _broadcastEnabled )
     : m_client( _client ),
       m_tq( _client.m_tq ),
       m_instanceMonitor( _instanceMonitor ),
+      //  disabled only for tests
+      m_broadcastEnabled( _broadcastEnabled ),
       total_sent( 0 ),
       total_arrived( 0 ),
       latestBlockTime( boost::chrono::high_resolution_clock::time_point() ) {
@@ -384,6 +386,9 @@ void SkaleHost::logState() {
 constexpr uint64_t MAX_BROADCAST_QUEUE_SIZE = 2048;
 
 void SkaleHost::pushToBroadcastQueue( const Transaction& _t ) {
+    if ( !m_broadcastEnabled )
+        return;
+
     {
         std::lock_guard< std::mutex > lock( m_broadcastQueueMutex );
         this->m_broadcastQueue.push_back( _t );
@@ -680,6 +685,21 @@ void SkaleHost::createBlock( const ConsensusExtFace::Transactions& _approvedTran
 
     BlockHeader latestInfo = static_cast< const Interface& >( m_client ).blockInfo( LatestBlock );
 
+    // EIP-4399: accumulate the new block's prevRandao RANDAO-style:
+    //   mix[N] = mix[N-1] XOR BLAKE3(thresholdSig(N-1))
+    // The parent's mix comes from its stored header (zero for pre-Paris parents, which
+    // self-seeds the chain at activation), so committee rotation gives cross-epoch
+    // defense-in-depth: predicting a future mix requires every intervening epoch's terms.
+    // This is the only place the value ever crosses from consensus to the EVM; execution
+    // and replay read it from the header. The previous block was committed to the
+    // consensus BlockDB one block ago, so the lookup cannot hit DB rotation. Any failure
+    // here must abort the import (fail closed) — a fallback value would fork replay.
+    u256 prevRandao = 0;
+    if ( _blockID > 1 && ParisForkPatch::isEnabledWhen( latestInfo.timestamp() ) ) {
+        prevRandao =
+            u256( latestInfo.prevRandao() ) ^ m_consensus->getRandomForBlockId( _blockID - 1 );
+    }
+
     // Keep this outside m_blockImportMutex to avoid lock-order cycles with
     // chain reads performed by random resolution.
 #ifdef BITE
@@ -735,7 +755,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::Transactions& _approvedTran
 #ifdef FAIR
             _winningNodeIndex,
 #endif
-            _timeStamp, onTransactionConsumed, &needsQueueReadyNotification );
+            _timeStamp, onTransactionConsumed, &needsQueueReadyNotification, prevRandao );
     }  // m_blockImportMutex
 
     if ( needsQueueReadyNotification )
@@ -887,18 +907,20 @@ void SkaleHost::startWorking() {
     // recursively calls this func - so working is still false!)
     working = true;
 
-    try {
-        m_broadcaster->startService();
-    } catch ( const Broadcaster::StartupException& ) {
-        working = false;
-        std::throw_with_nested( SkaleHost::CreationException() );
-    } catch ( ... ) {
-        working = false;
-        std::throw_with_nested( std::runtime_error( "Error in starting broadcaster service" ) );
-    }
+    if ( m_broadcastEnabled ) {
+        try {
+            m_broadcaster->startService();
+        } catch ( const Broadcaster::StartupException& ) {
+            working = false;
+            std::throw_with_nested( SkaleHost::CreationException() );
+        } catch ( ... ) {
+            working = false;
+            std::throw_with_nested( std::runtime_error( "Error in starting broadcaster service" ) );
+        }
 
-    auto broadcastFunction = std::bind( &SkaleHost::broadcastFunc, this );
-    m_broadcastThread = std::thread( broadcastFunction );
+        auto broadcastFunction = std::bind( &SkaleHost::broadcastFunc, this );
+        m_broadcastThread = std::thread( broadcastFunction );
+    }
 
     auto consensusFunction = [&]() {
         try {
@@ -906,7 +928,8 @@ void SkaleHost::startWorking() {
         } catch ( ... ) {
             // cleanup
             m_exitNeeded = true;
-            m_broadcastThread.join();
+            if ( m_broadcastThread.joinable() )
+                m_broadcastThread.join();
             ExitHandler::exitHandler( -1, ExitHandler::ec_termninated_by_signal );
             return;
         }
@@ -1207,6 +1230,25 @@ u256 SkaleHost::getBlockRandom( unsigned _blockNumber, bool _isCalledFromTxn ) c
     return m_consensus->getRandomForBlockId( blockNumber );
 }
 
+u256 SkaleHost::getPrevRandaoForPendingBlock() const noexcept {
+    try {
+        auto latestNumber = m_client.number();
+        if ( latestNumber == 0 || !m_consensus )
+            return 0;
+        BlockHeader latestInfo =
+            static_cast< const Interface& >( m_client ).blockInfo( LatestBlock );
+        if ( !ParisForkPatch::isEnabledWhen( latestInfo.timestamp() ) )
+            return 0;
+        // Same accumulator as createBlock, one step ahead: the pending block N+1
+        // carries mix[N] XOR random(N).
+        return u256( latestInfo.prevRandao() ) ^ m_consensus->getRandomForBlockId( latestNumber );
+    } catch ( ... ) {
+        // Pending-simulation value only; degrading to zero never affects consensus.
+        cwarn << "Could not fetch prevRandao for the pending block; simulations will see 0";
+        return 0;
+    }
+}
+
 #ifdef BITE
 u256 SkaleHost::getReencryptionBlockRandom( unsigned _blockNumber, bool _isCalledFromTxn ) const {
     auto blockNumber = resolveRandomBlockNumber( _blockNumber, _isCalledFromTxn );
@@ -1324,6 +1366,9 @@ void SkaleHost::forceEmptyBlock() {
 }
 
 void SkaleHost::forcedBroadcast( const Transaction& _txn ) {
+    if ( !m_broadcastEnabled )
+        return;
+
     m_broadcaster->broadcast( toJS( _txn.toBytes() ) );
 }
 

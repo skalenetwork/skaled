@@ -103,6 +103,28 @@ struct FixtureCommon {
         }
 #endif
     }
+
+    void cleanupBtrfsArtifacts(
+        const std::string& _mountPath, const std::string& _imagePath, bool _removeMountPath ) {
+        gainRoot();
+#if ( !defined __APPLE__ )
+        while ( system( ( "mountpoint -q " + _mountPath ).c_str() ) == 0 ) {
+            int rv = system( ( "umount " + _mountPath ).c_str() );
+            assert( rv == 0 );
+        }
+#endif
+        int rv;
+        if ( _removeMountPath ) {
+            rv = system( ( "rm -rf " + _mountPath ).c_str() );
+            assert( rv == 0 );
+        }
+        rv = system( ( "rm -f " + _imagePath ).c_str() );
+        assert( rv == 0 );
+    }
+
+    void cleanupBtrfsArtifacts() {
+        cleanupBtrfsArtifacts( BTRFS_DIR_PATH, BTRFS_FILE_PATH, true );
+    }
 };
 
 class TestClientFixture : public TestOutputHelperFixture {
@@ -248,12 +270,12 @@ class TestClientSnapshotsFixture : public TestOutputHelperFixture, public Fixtur
 public:
     TestClientSnapshotsFixture( const std::string& _config ) try {
         check_sudo();
+        cleanupBtrfsArtifacts( m_tmpDir.path(), BTRFS_FILE_PATH, false );
 
         dropRoot();
 
         int rv = system( ( "dd if=/dev/zero of=" + BTRFS_FILE_PATH + " bs=1M count=200" ).c_str() );
         rv = system( ( "mkfs.btrfs " + BTRFS_FILE_PATH ).c_str() );
-        rv = system( ( "mkdir " + m_tmpDir.path() ).c_str() );
 
         gainRoot();
         rv =
@@ -341,11 +363,7 @@ public:
         const char* NC = getenv( "NC" );
         if ( NC )
             return;
-        gainRoot();
-        int rv = system( ( "umount " + m_tmpDir.path() ).c_str() );
-        rv = system( ( "rmdir " + m_tmpDir.path() ).c_str() );
-        rv = system( ( "rm " + BTRFS_FILE_PATH ).c_str() );
-        ( void ) rv;
+        cleanupBtrfsArtifacts( m_tmpDir.path(), BTRFS_FILE_PATH, false );
     }
 
 private:
@@ -1047,6 +1065,48 @@ BOOST_AUTO_TEST_CASE( consumptionWithReverts ) {
     BOOST_CHECK_EQUAL( estimate, u256( 121632 ) );
 }
 
+BOOST_AUTO_TEST_CASE( estimateIndependentOfGasPrice ) {
+    // FAIR pre-enables London; enable it here too so the regular build checks the same thing
+    Json::Value config;
+    Json::Reader().parse( c_genesisInfoSkaleTest, config );
+    config["skaleConfig"]["sChain"]["LondonForkPatchTimestamp"] = 1;
+    TestClientFixture fixture( Json::FastWriter().write( config ) );
+    ClientTest* testClient = asClientTest( fixture.ethereum() );
+
+    dev::eth::simulateMining( *( fixture.ethereum() ), 10 );
+
+    Address from( "0xca4409573a5129a72edf85d6c51e26760fc9c903" );
+    Address contractAddress( "0xD2001300000000000000000000000000000000D2" );
+
+    // data to call method spendGas(50000)
+    bytes data =
+        jsToBytes( "0x815b8ab4000000000000000000000000000000000000000000000000000000000000c350" );
+
+    while ( !CorrectForkInPowPatch::isEnabledInWorkingBlock() )
+        usleep( 100 );
+    BOOST_REQUIRE( LondonForkPatch::isEnabledInWorkingBlock() );
+
+    auto estimate = [&]( u256 const& _gasPrice ) {
+        return testClient
+            ->estimateGas(
+                from, 0, contractAddress, data, 10000000, _gasPrice, GasEstimationCallback() )
+            .first;
+    };
+
+    // one barrier keeps every estimate on the same pending block
+    testClient->withBlockImportBarrier( [&]() {
+        // the pending block inherits this base fee; gasPrice 0 and 1 must both be below it
+        BOOST_REQUIRE_GT( testClient->blockInfo( LatestBlock ).baseFeePerGas(), u256( 1 ) );
+
+        u256 const expected = estimate( Invalid256 );  // omitted gasPrice uses gasBidPrice()
+        BOOST_REQUIRE_GT( expected, u256( 21000 ) );
+
+        BOOST_CHECK_EQUAL( estimate( 0 ), expected );
+        BOOST_CHECK_EQUAL( estimate( 1 ), expected );
+        BOOST_CHECK_EQUAL( estimate( testClient->gasBidPrice() * 10 ), expected );
+    } );
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE( getHistoricNodesData )
@@ -1467,7 +1527,7 @@ BOOST_AUTO_TEST_CASE( ClientSnapshotsTest, *boost::unit_test::disabled() ) {
     TestClientSnapshotsFixture fixture( c_skaleConfigString );
     ClientTest* testClient = asClientTest( fixture.ethereum() );
 
-    BOOST_REQUIRE( testClient->getLatestSnapshotBlockNumer() == -1 );
+    BOOST_REQUIRE( testClient->getOneBeforeLatestSnapshotBlockNumer() == -1 );
 
     BOOST_REQUIRE( testClient->getSnapshotHash( 0 ) != dev::h256() );
 
@@ -1475,7 +1535,7 @@ BOOST_AUTO_TEST_CASE( ClientSnapshotsTest, *boost::unit_test::disabled() ) {
     int64_t snapshotBlockNumber = -1;
     for ( int i = 0; i < 30; ++i ) {
         std::this_thread::sleep_for( 1000ms );
-        snapshotBlockNumber = testClient->getLatestSnapshotBlockNumer();
+        snapshotBlockNumber = testClient->getOneBeforeLatestSnapshotBlockNumer();
         if ( snapshotBlockNumber > 0 )
             break;
     }

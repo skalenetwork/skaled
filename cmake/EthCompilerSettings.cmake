@@ -28,7 +28,7 @@ option( SKALED_HATE_WARNINGS "Treat most of warings as errors" ON )
 
 # Ensures that CMAKE_BUILD_TYPE has a default value
 if( NOT DEFINED CMAKE_BUILD_TYPE )
-    set( CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel Coverage." )
+    set( CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel." )
 endif()
 if( NOT CMAKE_BUILD_TYPE MATCHES "^(Debug|Release|RelWithDebInfo|MinSizeRel)$" )
     message( FATAL_ERROR "Invalid value for CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}" )
@@ -113,22 +113,8 @@ endif()
 if (SANITIZE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-omit-frame-pointer -fsanitize=${SANITIZE}")
     if (${CMAKE_CXX_COMPILER_ID} MATCHES "Clang")
-        set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -fsanitize-blacklist=${CMAKE_SOURCE_DIR}/sanitizer-blacklist.txt")
+        set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -fsanitize-blacklist=${ETH_CMAKE_DIR}/sanitizer-blacklist.txt")
     endif()
-endif()
-
-option(COVERAGE "Build with code coverage support" OFF)
-if(COVERAGE)
-    message( STATUS "**********************" )
-    message( STATUS "*** COVERAGE is ON ***" )
-    message( STATUS "**********************" )
-    add_compile_options(-g --coverage)
-    #
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fprofile-arcs -ftest-coverage")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-arcs -ftest-coverage")
-    #
-    set(CMAKE_SHARED_LINKER_FLAGS "--coverage ${CMAKE_SHARED_LINKER_FLAGS}")
-    set(CMAKE_EXE_LINKER_FLAGS "--coverage ${CMAKE_EXE_LINKER_FLAGS}")
 endif()
 
 if(UNIX AND NOT APPLE)

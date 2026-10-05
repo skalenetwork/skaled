@@ -1,11 +1,16 @@
-import * as dotenv from "dotenv";
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import "@nomicfoundation/hardhat-ethers";
 import { ethers } from "ethers";
 import { HardhatNetworkAccountUserConfig } from "hardhat/types";
 
-dotenv.config();
+try {
+  // Optional in CI/local environments where env is already injected.
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  require("dotenv").config();
+} catch (_e) {
+  // no-op
+}
 
 function getAccounts() {
   const accounts: HardhatNetworkAccountUserConfig[] = [];
@@ -43,7 +48,7 @@ const config: HardhatUserConfig = {
       },
     },
     custom: {
-      url: process.env.ENDPOINT,
+      url: process.env.ENDPOINT ?? "http://localhost:1234",
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
     },
   },

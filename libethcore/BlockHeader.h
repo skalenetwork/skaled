@@ -110,7 +110,8 @@ public:
                m_receiptsRoot == _cmp.receiptsRoot() && m_logBloom == _cmp.logBloom() &&
                m_difficulty == _cmp.difficulty() && m_number == _cmp.number() &&
                m_gasLimit == _cmp.gasLimit() && m_gasUsed == _cmp.gasUsed() &&
-               m_timestamp == _cmp.timestamp() && m_extraData == _cmp.extraData();
+               m_timestamp == _cmp.timestamp() && m_extraData == _cmp.extraData() &&
+               m_baseFeePerGas == _cmp.baseFeePerGas();
     }
     bool operator!=( BlockHeader const& _cmp ) const { return !operator==( _cmp ); }
 
@@ -184,6 +185,7 @@ public:
     void setSeal( T const& _value ) {
         setSeal( 0, _value );
     }
+    void setPrevRandao( h256 const& _value ) { setSeal( 0, _value ); }
 
     h256 const& parentHash() const { return m_parentHash; }
     h256 const& sha3Uncles() const { return m_sha3Uncles; }
@@ -199,6 +201,12 @@ public:
     bytes const& extraData() const { return m_extraData; }
     LogBloom const& logBloom() const { return m_logBloom; }
     u256 const& difficulty() const { return m_difficulty; }
+    h256 prevRandao() const { return seal< h256 >( 0 ); }
+    u256 baseFeePerGas() const { return m_baseFeePerGas; }
+    void setBaseFeePerGas( u256 const& _v ) {
+        m_baseFeePerGas = _v;
+        noteDirty();
+    }
     template < class T >
     T seal( unsigned _offset = 0 ) const {
         T ret;
@@ -206,6 +214,10 @@ public:
         if ( _offset < m_seal.size() )
             ret = RLP( m_seal[_offset] ).convert< T >( RLP::VeryStrict );
         return ret;
+    }
+    size_t sealFieldCount() const {
+        Guard l( m_sealLock );
+        return m_seal.size();
     }
 
 private:
@@ -238,6 +250,7 @@ private:
 
     Address m_author;
     u256 m_difficulty;
+    u256 m_baseFeePerGas = 1;
 
     std::vector< bytes > m_seal;  ///< Additional (RLP-encoded) header fields.
     mutable Mutex m_sealLock;

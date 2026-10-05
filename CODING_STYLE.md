@@ -4,6 +4,8 @@
 
 Use clang-format tool to format your changes, see [CONTRIBUTING](CONTRIBUTING.md) for details.
 
+Keep lines at or below 100 characters (enforced by clang-format `ColumnLimit`).
+
 
 ## Namespaces
 
@@ -28,7 +30,8 @@ Use clang-format tool to format your changes, see [CONTRIBUTING](CONTRIBUTING.md
    - Copyright.
    - License.
    
-2. Never use `#ifdef`/`#define`/`#endif` file guards. Prefer `#pragma` once as first line below file comment.
+2. Prefer `#pragma once` as the first line below the file comment for new files.
+   Existing files using `#ifdef`/`#define`/`#endif` guards do not need to be converted.
 3. Prefer static const variable to value macros.
 4. Prefer inline constexpr functions to function macros.
 
@@ -44,6 +47,7 @@ GOLDEN RULE: Preprocessor: ALL_CAPS; C++: camelCase.
    - Enum members.
    - static const variables that form an external API.
 3. All preprocessor symbols (macros, macro arguments) in full uppercase with underscore word separation.
+4. Keep naming style consistent within a single file; don't mix conventions.
 
 
 All other entities' first alpha is lower case.
@@ -80,8 +84,7 @@ Prefer exception to bool/int return type.
    - Always avoid doubly-stating the type.
    - Use to avoid vast and unimportant type declarations.
    - However, avoid using auto where type is not immediately obvious from the context, and especially not for arithmetic expressions.
-8. Don't pass bools: prefer enumerations instead.
-9. Prefer enum class to straight enum.
+8. Prefer enum class to straight enum.
 
 ```cpp
        // WRONG:
@@ -107,6 +110,13 @@ Prefer exception to bool/int return type.
        for (auto i = x.begin(); i != x.end(); ++i) {}
 ```
 
+## Functions
+
+1. Keep functions at or below 100 lines; split long functions.
+2. Functions should do one thing and have a clear, descriptive name.
+3. Avoid duplicate copy-paste logic; extract shared code into helper functions.
+
+
 ## Structs & classes
 
 1. Structs to be used when all members public and no virtual functions.
@@ -119,7 +129,8 @@ Prefer exception to bool/int return type.
 
 1. One member per line only.
 2. Private, non-static, non-const fields prefixed with m_.
-3. Avoid public fields, except in structs.
+3. Avoid public fields (except in structs); prefer private members and methods and keep the
+   public API minimal.
 4. Use `override`, `final` and `const` as much as possible.
 5. No implementations with the class declaration, except:
    - template or force-inline method (though prefer implementation at bottom of header file).
@@ -174,6 +185,11 @@ Prefer exception to bool/int return type.
    - Comment in terms of the method properties and intended alteration to class state (or what aspects of the state it reports).
    - Be careful to scrutinise documentation that extends only to intended purpose and usage.
    - Reject documentation that is simply an English transaction of the implementation.
+3. Remove commented-out dead code.
+4. Add concise comments for complex logic; simple code needs no comment.
+5. New function: add a short preceding description comment, or use a very descriptive name.
+6. New global variable or class field: add a short preceding description comment, or use a
+   very descriptive name.
 
 
 
@@ -188,6 +204,11 @@ Some rules to keep in mind:
  - Verbosity >= 2 -> Anything that is or might be displayed more than once every minute
  - Verbosity >= 3 -> Anything that only a developer would understand
  - Verbosity >= 4 -> Anything that is low-level (e.g. peer disconnects, timers being cancelled)
+
+Also:
+ - Use project logging libraries; avoid `cout` in normal code paths.
+ - Keep logs plain text; no color formatting.
+ - Avoid info-level log spam.
 
 
 ## Recommended reading

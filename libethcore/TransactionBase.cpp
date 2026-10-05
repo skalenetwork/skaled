@@ -328,7 +328,7 @@ void TransactionBase::fillFromBytesType2( bytesConstRef _rlpData, CheckTransacti
             BOOST_THROW_EXCEPTION( InvalidTransactionFormat() << errinfo_comment(
                                        "maxFeePerGas cannot be less than maxPriorityFeePerGas (The "
                                        "total must be the larger of the two)" ) );
-        // set m_gasPrice as SKALE ignores priority fees
+        // Keep gasPrice aligned with the maxFeePerGas.
         m_gasPrice = m_maxFeePerGas;
         m_gas = rlp[4].toInt< u256 >();
 

@@ -186,3 +186,15 @@ EIP1559TransactionsPatchTimestamp       = 1
 singleStateCommitPerBlockPatchTimestamp = 1
 flexibleDeploymentPatchTimestamp        = 1
 snapshotIntervalSec                     = 0
+
+# --------------------------------------------------------------------------
+# Optional: remote staged-file deployment + image build via pyinfra
+# Used by: python3 test/api-tests/deploy.py
+# --------------------------------------------------------------------------
+[deploy_pyinfra]
+host = "user@remote-host"
+# hosts = ["user@remote-1", "user@remote-2"]
+destination = "/path/to/destination"
+build_command = "python3 skaled.py build-image"
+tag = "skaled:dev"
+pyinfra_args = ["-y"]

@@ -30,6 +30,7 @@
 #include <libdevcore/TrieDB.h>
 #include <libdevcore/TrieHash.h>
 #include <libethcore/Common.h>
+#include <libethereum/SchainPatch.h>
 
 using namespace std;
 using namespace dev;
@@ -59,6 +60,7 @@ BlockHeader::BlockHeader( BlockHeader const& _other )
       m_timestamp( _other.timestamp() ),
       m_author( _other.author() ),
       m_difficulty( _other.difficulty() ),
+      m_baseFeePerGas( _other.baseFeePerGas() ),
       m_seal( _other.seal() ),
       m_hash( _other.hashRawRead() ),
       m_hashWithout( _other.hashWithoutRawRead() ) {
@@ -81,6 +83,7 @@ BlockHeader& BlockHeader::operator=( BlockHeader const& _other ) {
     m_timestamp = _other.timestamp();
     m_author = _other.author();
     m_difficulty = _other.difficulty();
+    m_baseFeePerGas = _other.baseFeePerGas();
     std::vector< bytes > seal = _other.seal();
     {
         Guard l( m_sealLock );
@@ -106,6 +109,7 @@ void BlockHeader::clear() {
     m_receiptsRoot = EmptyTrie;
     m_logBloom = LogBloom();
     m_difficulty = 0;
+    m_baseFeePerGas = 1;
     m_number = 0;
     m_gasLimit = 0;
     m_gasUsed = 0;
@@ -134,13 +138,23 @@ void BlockHeader::streamRLPFields( RLPStream& _s ) const {
 }
 
 void BlockHeader::streamRLP( RLPStream& _s, IncludeSeal _i ) const {
+    // Genesis (block 0) never carries baseFeePerGas in its RLP, even if its timestamp falls
+    // inside the London-active range. This keeps the genesis hash stable across London
+    // activation and matches the parser-side expectation in populate() below.
+    const bool london = LondonForkPatch::isEnabledWhen( static_cast< time_t >( timestamp() ) );
+    const bool writeBaseFee = london && number() > 0;
     if ( _i != OnlySeal ) {
-        _s.appendList( BlockHeader::BasicFields + ( _i == WithoutSeal ? 0 : m_seal.size() ) );
+        _s.appendList( BlockHeader::BasicFields + ( writeBaseFee ? 1 : 0 ) +
+                       ( _i == WithoutSeal ? 0 : m_seal.size() ) );
         BlockHeader::streamRLPFields( _s );
     }
     if ( _i != WithoutSeal )
         for ( unsigned i = 0; i < m_seal.size(); ++i )
             _s.appendRaw( m_seal[i] );
+    if ( _i != OnlySeal ) {
+        if ( writeBaseFee )
+            _s << m_baseFeePerGas;
+    }
 }
 
 h256 BlockHeader::headerHashFromBlock( bytesConstRef _block ) {
@@ -185,8 +199,33 @@ void BlockHeader::populate( RLP const& _header ) {
         m_timestamp = _header[field = 11].toPositiveInt64();
         m_extraData = _header[field = 12].toBytes();
         m_seal.clear();
-        for ( unsigned i = 13; i < _header.itemCount(); ++i )
+        m_baseFeePerGas = 0;
+        const bool london = LondonForkPatch::isEnabledWhen( static_cast< time_t >( m_timestamp ) );
+        // Genesis (block 0) never carries baseFeePerGas in its RLP regardless of London status.
+        // All subsequent London blocks written by streamRLP() always include it as the last field.
+        const bool expectBaseFee = london && m_number > 0;
+        const unsigned totalItems = _header.itemCount();
+        // Non-genesis London headers carry baseFee as the last field after 0 or 2 seal fields
+        // (14 or 16 total); reject other counts to avoid misreading a seal field.
+        if ( expectBaseFee ) {
+            const unsigned emptySealShape = 13 + 0 + 1;     // 14
+            const unsigned twoFieldSealShape = 13 + 2 + 1;  // 16
+            if ( totalItems != emptySealShape && totalItems != twoFieldSealShape ) {
+                BOOST_THROW_EXCEPTION(
+                    InvalidBlockFormat()
+                    << errinfo_comment( "London block header has wrong field count "
+                                        "(expected 14 for empty seal or 16 for a 2-field seal, "
+                                        "including the trailing baseFeePerGas; it may be missing "
+                                        "or the seal length is wrong)" )
+                    << BadFieldError( 13, std::string( "<missing-or-misaligned>" ) ) );
+            }
+        }
+        const unsigned sealEnd = expectBaseFee ? totalItems - 1 : totalItems;
+        for ( unsigned i = 13; i < sealEnd; ++i )
             m_seal.push_back( _header[i].data().toBytes() );
+        if ( expectBaseFee ) {
+            m_baseFeePerGas = _header[field = sealEnd].toInt< u256 >();
+        }
     } catch ( Exception const& _e ) {
         _e << errinfo_name( "invalid block header format" )
            << BadFieldError( field, toHex( _header[field].data().toBytes() ) );
@@ -200,7 +239,17 @@ void BlockHeader::populateFromParent( BlockHeader const& _parent ) {
     m_parentHash = _parent.m_hash;
     m_gasLimit = _parent.m_gasLimit;
     m_difficulty = _parent.m_difficulty;
+    // EIP-3675 (Paris): post-merge blocks must carry difficulty 0. Activation is
+    // keyed to the parent timestamp, same as the check in SealEngineFace::verify.
+    if ( ParisForkPatch::isEnabledWhen( static_cast< time_t >( _parent.timestamp() ) ) )
+        m_difficulty = 0;
     m_gasUsed = 0;
+    m_baseFeePerGas = _parent.m_baseFeePerGas;
+    // At London activation, the parent may be a pre-London block with baseFeePerGas=0
+    // (no field 13 in its RLP). Ensure the first post-London block starts at 1.
+    if ( LondonForkPatch::isEnabledWhen( static_cast< time_t >( m_timestamp ) ) &&
+         m_baseFeePerGas == 0 )
+        m_baseFeePerGas = 1;
 }
 
 void BlockHeader::verify( Strictness _s, BlockHeader const& _parent, bytesConstRef _block ) const {

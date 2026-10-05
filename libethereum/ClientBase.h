@@ -208,6 +208,7 @@ protected:
     std::pair< bool, ExecutionResult > estimateGasStep( int64_t _gas, Block& _latestBlock,
         Block& _pendingBlock, Address const& _from, Address const& _destination, u256 const& _value,
         u256 const& _gasPrice, bytes const& _data );
+    u256 getBaseFeeValue( BlockHeader const& _header ) const;
 
     /// The interface that must be implemented in any class deriving this.
     /// {

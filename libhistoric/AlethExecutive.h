@@ -180,6 +180,9 @@ private:
     LogEntries m_logs;  ///< The log entries created by this transaction. Set by finalize().
 
     u256 m_gasCost;
+    /// Effective gas price (London-aware, 0 for non-FAIR external-gas); must match the value
+    /// used at original execution so reconstructed receipts agree with eth_getTransactionReceipt.
+    u256 m_effectiveGasPrice;
     ChainOperationParams const& m_chainParams;
 
     bool m_isCreation = false;

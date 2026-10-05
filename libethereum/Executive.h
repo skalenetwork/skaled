@@ -255,6 +255,7 @@ private:
     LogEntries m_logs;  ///< The log entries created by this transaction. Set by finalize().
 
     u256 m_gasCost;
+    u256 m_effectiveGasPrice = 0;
     ChainOperationParams const& m_chainParams;
     u256 m_systemGasPrice;
 

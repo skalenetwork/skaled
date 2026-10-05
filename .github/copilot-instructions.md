@@ -39,10 +39,8 @@ Top-level files and folders most often needed:
 - `libhistoric/` - historic state and archive-specific execution/state logic.
 - `libskale/` - SKALE runtime, patches, and snapshot orchestration.
 - `libweb3jsonrpc/` - JSON-RPC APIs and request handlers.
-- `rlp/` - RLP-related tools/components.
 - `scripts/` - operational, test, and packaging scripts.
 - `skaled/` - main node binary sources.
-- `skale-vm/` - auxiliary tool.
 - `storage_benchmark/` - storage benchmark target.
 - `test/` - unit/integration/historicstate tests and harnesses.
 Documentation pointers:

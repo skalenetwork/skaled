@@ -72,6 +72,7 @@ public:
     Json::Value skale_downloadSnapshotFragment( const Json::Value& request ) override;
     Json::Value skale_getSnapshotSignature( unsigned blockNumber ) override;
     std::string skale_getLatestSnapshotBlockNumber() override;
+    std::string skale_getLatestSnapshotHash() override;
 #ifdef FAIR
     Json::Value skale_getBLSPublicKey() override;
 #endif

@@ -99,11 +99,26 @@ struct FixtureCommon {
         }
 #endif
     }
+
+    void cleanupBtrfsArtifacts() {
+        gainRoot();
+#if ( !defined __APPLE__ )
+        while ( system( ( "mountpoint -q " + BTRFS_DIR_PATH ).c_str() ) == 0 ) {
+            int rv = system( ( "umount " + BTRFS_DIR_PATH ).c_str() );
+            assert( rv == 0 );
+        }
+#endif
+        int rv = system( ( "rm -rf " + BTRFS_DIR_PATH ).c_str() );
+        assert( rv == 0 );
+        rv = system( ( "rm -f " + BTRFS_FILE_PATH ).c_str() );
+        assert( rv == 0 );
+    }
 };
 
 struct BtrfsFixture : public FixtureCommon {
     BtrfsFixture() {
         check_sudo();
+        cleanupBtrfsArtifacts();
 
         dropRoot();
 
@@ -129,17 +144,14 @@ struct BtrfsFixture : public FixtureCommon {
         const char* NC = getenv( "NC" );
         if ( NC )
             return;
-        gainRoot();
-        int rv = system( ( "umount " + BTRFS_DIR_PATH ).c_str() );
-        rv = system( ( "rmdir " + BTRFS_DIR_PATH ).c_str() );
-        rv = system( ( "rm " + BTRFS_FILE_PATH ).c_str() );
-        ( void ) rv;
+        cleanupBtrfsArtifacts();
     }
 };
 
 struct NoBtrfsFixture : public FixtureCommon {
     NoBtrfsFixture() {
         check_sudo();
+        cleanupBtrfsArtifacts();
         dropRoot();
         int rv = system( ( "mkdir " + BTRFS_DIR_PATH ).c_str() );
         rv = system( ( "mkdir " + BTRFS_DIR_PATH + "/vol1" ).c_str() );
@@ -148,9 +160,7 @@ struct NoBtrfsFixture : public FixtureCommon {
         gainRoot();
     }
     ~NoBtrfsFixture() {
-        gainRoot();
-        int rv = system( ( "rm -rf " + BTRFS_DIR_PATH ).c_str() );
-        ( void ) rv;
+        cleanupBtrfsArtifacts();
     }
 };
 

@@ -55,6 +55,7 @@
 #include <exception>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <vector>
 
 #include <cstdlib>
@@ -158,7 +159,7 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
 
     // TODO check
     unsigned blockNumber = joRequest["blockNumber"].get< unsigned >();
-    if ( blockNumber != 0 && blockNumber != m_client.getLatestSnapshotBlockNumer() ) {
+    if ( blockNumber != 0 && blockNumber != m_client.getOneBeforeLatestSnapshotBlockNumer() ) {
         joResponse["error"] = "Invalid snapshot block number requested - it might be deleted.";
         return joResponse;
     }
@@ -352,8 +353,17 @@ std::string Skale::skale_getLatestBlockNumber() {
 }
 
 std::string Skale::skale_getLatestSnapshotBlockNumber() {
-    int64_t response = this->m_client.getLatestSnapshotBlockNumer();
+    int64_t response = this->m_client.getOneBeforeLatestSnapshotBlockNumer();
     return response > 0 ? std::to_string( response ) : "earliest";
+}
+
+std::string Skale::skale_getLatestSnapshotHash() {
+    dev::h256 snapshotHash = this->m_client.getLatestSnapshotHash();
+    if ( !snapshotHash ) {
+        throw jsonrpc::JsonRpcException( "There isn't any snapshot hash available yet" );
+    }
+
+    return snapshotHash.hex();
 }
 
 #ifdef FAIR
@@ -385,7 +395,8 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
          ( chainParams.getKeyShareName().empty() || chainParams.getSgxServerUrl().empty() ) )
         throw jsonrpc::JsonRpcException( "Snapshot signing is not enabled" );
 
-    if ( blockNumber != 0 && blockNumber != this->m_client.getLatestSnapshotBlockNumer() ) {
+    if ( blockNumber != 0 &&
+         blockNumber != this->m_client.getOneBeforeLatestSnapshotBlockNumer() ) {
         throw jsonrpc::JsonRpcException(
             "Invalid snapshot block number requested - it might be deleted." );
     }
