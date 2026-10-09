@@ -262,12 +262,12 @@ ETH_REGISTER_FS_PRECOMPILED( createFile )
         size_t const fileSize = byteFileSize.convert_to< size_t >();
         const fs::path filePath( rawFilename );
         const fs::path fsDirectoryPath = getFileStorageDir( Address( address ) );
-        if ( !fs::exists( fsDirectoryPath ) ) {
-            _overlayFS->createDirectory( fsDirectoryPath.string() );
-        }
-
         if ( FileStorageContainmentPatch::isEnabledWhen( _ctx.latestBlockTimestamp ) ) {
             validateAndResolveStoragePath( Address( address ), rawFilename, false );
+        }
+
+        if ( !fs::exists( fsDirectoryPath ) ) {
+            _overlayFS->createDirectory( fsDirectoryPath.string() );
         }
 
         const fs::path fsFilePath = fsDirectoryPath / filePath.parent_path();
@@ -319,7 +319,7 @@ ETH_REGISTER_FS_PRECOMPILED( uploadChunk )
         fs::path filePath;
 
         if ( FileStorageContainmentPatch::isEnabledWhen( _ctx.latestBlockTimestamp ) ) {
-            filePath = validateAndResolveStoragePath( Address( address ), filename, false );
+            filePath = validateAndResolveStoragePath( Address( address ), filename, true );
         } else {
             filePath = getFileStorageDir( Address( address ) ) / filename;
         }

@@ -110,38 +110,40 @@ boost::filesystem::path validateAndResolveStoragePath(
     boost::filesystem::path const baseDir = getFileStorageDir( _address );
     boost::filesystem::path const fullPath = baseDir / relPath;
 
-    if ( _mustExist ) {
-        if ( !boost::filesystem::exists( fullPath ) )
-            throw std::runtime_error( "FileStorage target path does not exist" );
-        boost::filesystem::path const canonicalTarget = boost::filesystem::canonical( fullPath );
-        boost::filesystem::path const canonicalBase = boost::filesystem::exists( baseDir ) ?
-                                                          boost::filesystem::canonical( baseDir ) :
-                                                          baseDir;
+    auto resolveExistingComponents = []( const boost::filesystem::path& _path ) {
+        boost::filesystem::path const absolutePath = boost::filesystem::absolute( _path );
+        boost::filesystem::path resolved = absolutePath.root_path();
+        for ( const auto& component : absolutePath.relative_path() ) {
+            if ( component == "." )
+                continue;
+            if ( component == ".." ) {
+                if ( resolved != resolved.root_path() )
+                    resolved = resolved.parent_path();
+                continue;
+            }
 
-        auto itTarget = canonicalTarget.begin();
-        auto itBase = canonicalBase.begin();
-        for ( ; itBase != canonicalBase.end(); ++itBase, ++itTarget ) {
-            if ( itTarget == canonicalTarget.end() || *itTarget != *itBase )
-                throw std::runtime_error( "FileStorage path traversal detected" );
+            resolved /= component;
+            // Resolve symlinks before handling subsequent ".." components. Using symlink_status
+            // also makes canonical() reject dangling links instead of treating them as new files.
+            if ( boost::filesystem::is_symlink( boost::filesystem::symlink_status( resolved ) ) )
+                resolved = boost::filesystem::canonical( resolved );
         }
-        // Return the joined path, not the canonical one: the canonical path depends on the
-        // node's datadir layout, and CalculateFileHash derives its hash input from the path string.
-        return fullPath;
+        return resolved;
+    };
+
+    boost::filesystem::path const canonicalBase = resolveExistingComponents( baseDir );
+    boost::filesystem::path const canonicalTarget = resolveExistingComponents( fullPath );
+    auto itTarget = canonicalTarget.begin();
+    for ( auto itBase = canonicalBase.begin(); itBase != canonicalBase.end();
+          ++itBase, ++itTarget ) {
+        if ( itTarget == canonicalTarget.end() || *itTarget != *itBase )
+            throw std::runtime_error( "FileStorage path traversal detected" );
     }
 
-    // For paths that may not yet exist on disk, verify lexical descent
-    int depth = 0;
-    for ( const auto& elem : relPath ) {
-        const std::string s = elem.string();
-        if ( s == ".." ) {
-            --depth;
-            if ( depth < 0 )
-                throw std::runtime_error( "FileStorage path escapes base directory" );
-        } else if ( s != "." && !s.empty() ) {
-            ++depth;
-        }
-    }
+    if ( _mustExist && !boost::filesystem::exists( fullPath ) )
+        throw std::runtime_error( "FileStorage target path does not exist" );
 
+    // Preserve the joined path: CalculateFileHash derives its hash input from the path string.
     return fullPath;
 }
 

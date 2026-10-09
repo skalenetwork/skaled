@@ -53,7 +53,8 @@ size_t statComputeFileSize( const char* _strFileName );
 // Get file storage directory for an address
 boost::filesystem::path getFileStorageDir( const Address& _address );
 
-// Validate that a relative path stays contained within the address's filestorage directory
+// Check canonical containment, resolving existing components even when the target is missing.
+// _mustExist only controls whether a missing target is rejected; dangling symlinks are rejected.
 boost::filesystem::path validateAndResolveStoragePath(
     const Address& _address, const std::string& _relativePath, bool _mustExist = false );
 
