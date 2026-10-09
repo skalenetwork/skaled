@@ -573,9 +573,6 @@ protected:
     typedef std::map< string, rpc_method_t > protocol_rpc_map_t;
     static const protocol_rpc_map_t g_protocol_rpc_map;
 
-    void setSchainExitTime( const string& strOrigin, const rapidjson::Document& joRequest,
-        rapidjson::Document& joResponse );
-
     void eth_sendRawTransaction( const string& strOrigin, const rapidjson::Document& joRequest,
         rapidjson::Document& joResponse );
 

@@ -4289,12 +4289,16 @@ BOOST_AUTO_TEST_CASE( storage_limit_reverted ) {
     BOOST_REQUIRE( receipt["status"] == string( "0x1" ) );
 }
 
-BOOST_AUTO_TEST_CASE( setSchainExitTime ) {
+BOOST_AUTO_TEST_CASE( setSchainExitTime_methodNotFound ) {
     JsonRpcFixture fixture;
-    Json::Value requestJson;
-    requestJson["finishTime"] = 100;
-    BOOST_REQUIRE_THROW(
-        fixture.rpcClient->setSchainExitTime( requestJson ), jsonrpc::JsonRpcException );
+    Json::Value finishTime;
+    finishTime["finishTime"] = 100;
+    Json::Value params;
+    params.append( finishTime );
+    BOOST_CHECK_EXCEPTION( fixture.rpcClient->CallMethod( "setSchainExitTime", params ),
+        jsonrpc::JsonRpcException, []( const jsonrpc::JsonRpcException& ex ) {
+            return ex.GetCode() == jsonrpc::Errors::ERROR_RPC_METHOD_NOT_FOUND;
+        } );
 }
 
 #ifndef FAIR

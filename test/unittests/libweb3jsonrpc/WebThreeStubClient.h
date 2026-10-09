@@ -99,7 +99,6 @@ public:
     Json::Value eth_signTransaction( const Json::Value& param1 ) noexcept( false );
     Json::Value eth_subscribe( const Json::Value& param1 ) noexcept( false );
     Json::Value eth_unsubscribe( const Json::Value& param1 ) noexcept( false );
-    Json::Value setSchainExitTime( const Json::Value& param1 ) noexcept( false );
     Json::Value eth_inspectTransaction( const std::string& param1 ) noexcept( false );
     Json::Value eth_pendingTransactions() noexcept( false );
     std::string eth_sendRawTransaction( const std::string& param1 ) noexcept( false );

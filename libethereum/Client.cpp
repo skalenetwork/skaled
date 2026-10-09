@@ -820,10 +820,6 @@ void Client::resetState() {
     onTransactionQueueReady();
 }
 
-void Client::setSchainExitTime( uint64_t _timestamp ) const {
-    m_instanceMonitor->initRotationParams( _timestamp );
-}
-
 void Client::onChainChanged( ImportRoute const& _ir ) {
     h256Hash changeds;
     onDeadBlocks( _ir.deadBlocks, changeds );
