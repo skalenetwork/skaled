@@ -244,7 +244,7 @@ ETH_REGISTER_PRECOMPILED_PRICER( alt_bn128_pairing_product )
 
 // TODO: check file name and file existance
 ETH_REGISTER_FS_PRECOMPILED( createFile )
-( bytesConstRef _in, const PrecompiledCallContext&, skale::OverlayFS* _overlayFS ) {
+( bytesConstRef _in, const PrecompiledCallContext& _ctx, skale::OverlayFS* _overlayFS ) {
     if ( !_overlayFS )
         throw runtime_error( "_overlayFS is nullptr " );
 
@@ -265,6 +265,11 @@ ETH_REGISTER_FS_PRECOMPILED( createFile )
         if ( !fs::exists( fsDirectoryPath ) ) {
             _overlayFS->createDirectory( fsDirectoryPath.string() );
         }
+
+        if ( FileStorageContainmentPatch::isEnabledWhen( _ctx.latestBlockTimestamp ) ) {
+            validateAndResolveStoragePath( Address( address ), rawFilename, false );
+        }
+        
         const fs::path fsFilePath = fsDirectoryPath / filePath.parent_path();
         if ( filePath.filename().extension() == "._hash" ) {
             throw std::runtime_error(
@@ -289,7 +294,7 @@ ETH_REGISTER_FS_PRECOMPILED( createFile )
 }
 
 ETH_REGISTER_FS_PRECOMPILED( uploadChunk )
-( bytesConstRef _in, const PrecompiledCallContext&, skale::OverlayFS* _overlayFS ) {
+( bytesConstRef _in, const PrecompiledCallContext& _ctx, skale::OverlayFS* _overlayFS ) {
     if ( !_overlayFS )
         throw runtime_error( "_overlayFS is nullptr " );
 
@@ -311,7 +316,14 @@ ETH_REGISTER_FS_PRECOMPILED( uploadChunk )
             _in, 96 + filenameBlocksCount * UINT256_SIZE, UINT256_SIZE ) );
         size_t const dataLength = byteDataLength.convert_to< size_t >();
 
-        const fs::path filePath = getFileStorageDir( Address( address ) ) / filename;
+        fs::path filePath;
+
+        if ( FileStorageContainmentPatch::isEnabledWhen( _ctx.latestBlockTimestamp ) ) {
+            filePath = validateAndResolveStoragePath( Address( address ), filename, false );
+        } else {
+            filePath = getFileStorageDir( Address( address ) ) / filename;
+        }
+
         if ( position + dataLength > statComputeFileSize( filePath.c_str() ) ) {
             throw std::runtime_error(
                 "uploadChunk() failed because chunk gets out of the file bounds" );
@@ -338,7 +350,7 @@ ETH_REGISTER_FS_PRECOMPILED( uploadChunk )
     return { false, response };
 }
 
-ETH_REGISTER_PRECOMPILED( readChunk )( bytesConstRef _in, const PrecompiledCallContext& ) {
+ETH_REGISTER_PRECOMPILED( readChunk )( bytesConstRef _in, const PrecompiledCallContext& _ctx ) {
     MICROPROFILE_SCOPEI( "VM", "readChunk", MP_ORANGERED );
     try {
         auto rawAddress = _in.cropped( 12, 20 ).toBytes();
@@ -358,12 +370,19 @@ ETH_REGISTER_PRECOMPILED( readChunk )( bytesConstRef _in, const PrecompiledCallC
             _in, 96 + filenameBlocksCount * UINT256_SIZE, UINT256_SIZE ) );
         size_t const chunkLength = byteChunkLength.convert_to< size_t >();
 
-        const fs::path filePath = getFileStorageDir( Address( address ) ) / filename;
-        const fs::path canonicalPath = fs::canonical( filePath );
-        if ( canonicalPath.string().find( getFileStorageDir( Address( address ) ).c_str(), 0 ) !=
-             0 ) {
-            throw std::runtime_error( "readChunk() failed because file couldn't be read" );
+        fs::path filePath;
+
+        if ( FileStorageContainmentPatch::isEnabledWhen( _ctx.latestBlockTimestamp ) ) {
+            filePath = validateAndResolveStoragePath( Address( address ), filename, true );
+        } else {
+            filePath = getFileStorageDir( Address( address ) ) / filename;
+            const fs::path canonicalPath = fs::canonical( filePath );
+            if ( canonicalPath.string().find( getFileStorageDir( Address( address ) ).c_str(), 0 ) !=
+                 0 ) {
+                throw std::runtime_error( "readChunk() failed because file couldn't be read" );
+            }
         }
+
         if ( position > statComputeFileSize( filePath.c_str() ) ||
              position + chunkLength > statComputeFileSize( filePath.c_str() ) ) {
             throw std::runtime_error(
@@ -389,7 +408,7 @@ ETH_REGISTER_PRECOMPILED( readChunk )( bytesConstRef _in, const PrecompiledCallC
     return { false, response };
 }
 
-ETH_REGISTER_PRECOMPILED( getFileSize )( bytesConstRef _in, const PrecompiledCallContext& ) {
+ETH_REGISTER_PRECOMPILED( getFileSize )( bytesConstRef _in, const PrecompiledCallContext& _ctx ) {
     try {
         auto rawAddress = _in.cropped( 12, 20 ).toBytes();
         std::string address;
@@ -399,11 +418,16 @@ ETH_REGISTER_PRECOMPILED( getFileSize )( bytesConstRef _in, const PrecompiledCal
         std::string filename;
         convertBytesToString( _in, 32, filename, filenameLength );
 
-        const fs::path filePath = getFileStorageDir( Address( address ) ) / filename;
-        const fs::path canonicalPath = fs::canonical( filePath );
-        if ( canonicalPath.string().find( getFileStorageDir( Address( address ) ).c_str(), 0 ) !=
-             0 ) {
-            throw std::runtime_error( "getFileSize() failed because file couldn't be read" );
+        fs::path filePath;
+        if ( FileStorageContainmentPatch::isEnabledWhen( _ctx.latestBlockTimestamp ) ) {
+            filePath = validateAndResolveStoragePath( Address( address ), filename, true );
+        } else {
+            filePath = getFileStorageDir( Address( address ) ) / filename;
+            const fs::path canonicalPath = fs::canonical( filePath );
+            if ( canonicalPath.string().find( getFileStorageDir( Address( address ) ).c_str(), 0 ) !=
+                 0 ) {
+                throw std::runtime_error( "getFileSize() failed because file couldn't be read" );
+            }
         }
 
         size_t const fileSize = statComputeFileSize( filePath.c_str() );
@@ -424,7 +448,7 @@ ETH_REGISTER_PRECOMPILED( getFileSize )( bytesConstRef _in, const PrecompiledCal
 }
 
 ETH_REGISTER_FS_PRECOMPILED( deleteFile )
-( bytesConstRef _in, const PrecompiledCallContext&, skale::OverlayFS* _overlayFS ) {
+( bytesConstRef _in, const PrecompiledCallContext& _ctx, skale::OverlayFS* _overlayFS ) {
     if ( !_overlayFS )
         throw runtime_error( "_overlayFS is nullptr " );
 
@@ -436,7 +460,12 @@ ETH_REGISTER_FS_PRECOMPILED( deleteFile )
         std::string filename;
         convertBytesToString( _in, 32, filename, filenameLength );
 
-        const fs::path filePath = getFileStorageDir( Address( address ) ) / filename;
+        fs::path filePath;
+        if ( FileStorageContainmentPatch::isEnabledWhen( _ctx.latestBlockTimestamp ) ) {
+            filePath = validateAndResolveStoragePath( Address( address ), filename, false );
+        } else {
+            filePath = getFileStorageDir( Address( address ) ) / filename;
+        }
 
         _overlayFS->deleteFile( filePath.string() );
         _overlayFS->deleteFile( filePath.string() + "._hash" );
@@ -458,7 +487,7 @@ ETH_REGISTER_FS_PRECOMPILED( deleteFile )
 }
 
 ETH_REGISTER_FS_PRECOMPILED( createDirectory )
-( bytesConstRef _in, const PrecompiledCallContext&, skale::OverlayFS* _overlayFS ) {
+( bytesConstRef _in, const PrecompiledCallContext& _ctx, skale::OverlayFS* _overlayFS ) {
     if ( !_overlayFS )
         throw runtime_error( "_overlayFS is nullptr " );
 
@@ -470,7 +499,13 @@ ETH_REGISTER_FS_PRECOMPILED( createDirectory )
         std::string directoryPath;
         convertBytesToString( _in, 32, directoryPath, directoryPathLength );
 
-        const fs::path absolutePath = getFileStorageDir( Address( address ) ) / directoryPath;
+        fs::path absolutePath;
+        if ( FileStorageContainmentPatch::isEnabledWhen( _ctx.latestBlockTimestamp ) ) {
+            absolutePath = validateAndResolveStoragePath( Address( address ), directoryPath, false );
+        } else {
+            absolutePath = getFileStorageDir( Address( address ) ) / directoryPath;
+        }
+
         _overlayFS->createDirectory( absolutePath.string() );
 
         u256 code = 1;
@@ -491,7 +526,7 @@ ETH_REGISTER_FS_PRECOMPILED( createDirectory )
 }
 
 ETH_REGISTER_FS_PRECOMPILED( deleteDirectory )
-( bytesConstRef _in, const PrecompiledCallContext&, skale::OverlayFS* _overlayFS ) {
+( bytesConstRef _in, const PrecompiledCallContext& _ctx, skale::OverlayFS* _overlayFS ) {
     if ( !_overlayFS )
         throw runtime_error( "_overlayFS is nullptr " );
 
@@ -503,9 +538,14 @@ ETH_REGISTER_FS_PRECOMPILED( deleteDirectory )
         std::string directoryPath;
         convertBytesToString( _in, 32, directoryPath, directoryPathLength );
 
-        const fs::path absolutePath = getFileStorageDir( Address( address ) ) / directoryPath;
-        if ( !fs::exists( absolutePath ) ) {
-            throw std::runtime_error( "deleteDirectory() failed because directory not exists" );
+        fs::path absolutePath;
+        if ( FileStorageContainmentPatch::isEnabledWhen( _ctx.latestBlockTimestamp ) ) {
+            absolutePath = validateAndResolveStoragePath( Address( address ), directoryPath, true );
+        } else {
+            absolutePath = getFileStorageDir( Address( address ) ) / directoryPath;
+            if ( !fs::exists( absolutePath ) ) {
+                throw std::runtime_error( "deleteDirectory() failed because directory not exists" );
+            }
         }
 
         const std::string absolutePathStr = absolutePath.string();
@@ -531,7 +571,7 @@ ETH_REGISTER_FS_PRECOMPILED( deleteDirectory )
 }
 
 ETH_REGISTER_FS_PRECOMPILED( calculateFileHash )
-( bytesConstRef _in, const PrecompiledCallContext&, skale::OverlayFS* _overlayFS ) {
+( bytesConstRef _in, const PrecompiledCallContext& _ctx, skale::OverlayFS* _overlayFS ) {
     try {
         auto rawAddress = _in.cropped( 12, 20 ).toBytes();
         std::string address;
@@ -541,10 +581,14 @@ ETH_REGISTER_FS_PRECOMPILED( calculateFileHash )
         std::string filename;
         convertBytesToString( _in, 32, filename, filenameLength );
 
-        const fs::path filePath = getFileStorageDir( Address( address ) ) / filename;
-
-        if ( !fs::exists( filePath ) ) {
-            throw std::runtime_error( "calculateFileHash() failed because file does not exist" );
+        fs::path filePath;
+        if ( FileStorageContainmentPatch::isEnabledWhen( _ctx.latestBlockTimestamp ) ) {
+            filePath = validateAndResolveStoragePath( Address( address ), filename, true );
+        } else {
+            filePath = getFileStorageDir( Address( address ) ) / filename;
+            if ( !fs::exists( filePath ) ) {
+                throw std::runtime_error( "calculateFileHash() failed because file does not exist" );
+            }
         }
 
         _overlayFS->calculateFileHash( filePath.string() );

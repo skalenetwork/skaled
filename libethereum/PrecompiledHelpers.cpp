@@ -95,6 +95,55 @@ boost::filesystem::path getFileStorageDir( const Address& _address ) {
     return dev::getDataDir() / "filestorage" / _address.hex();
 }
 
+boost::filesystem::path validateAndResolveStoragePath(
+    const Address& _address, const std::string& _relativePath, bool _mustExist ) {
+    if ( _relativePath.empty() )
+        throw std::runtime_error( "FileStorage path cannot be empty" );
+
+    if ( _relativePath.find( '\0' ) != std::string::npos )
+        throw std::runtime_error( "FileStorage path cannot contain null bytes" );
+
+    boost::filesystem::path const relPath( _relativePath );
+    if ( relPath.is_absolute() )
+        throw std::runtime_error( "FileStorage path cannot be absolute" );
+
+    boost::filesystem::path const baseDir = getFileStorageDir( _address );
+    boost::filesystem::path const fullPath = baseDir / relPath;
+
+    if ( _mustExist ) {
+        if ( !boost::filesystem::exists( fullPath ) )
+            throw std::runtime_error( "FileStorage target path does not exist" );
+        boost::filesystem::path const canonicalTarget = boost::filesystem::canonical( fullPath );
+        boost::filesystem::path const canonicalBase =
+            boost::filesystem::exists( baseDir ) ? boost::filesystem::canonical( baseDir ) : baseDir;
+
+        auto itTarget = canonicalTarget.begin();
+        auto itBase = canonicalBase.begin();
+        for ( ; itBase != canonicalBase.end(); ++itBase, ++itTarget ) {
+            if ( itTarget == canonicalTarget.end() || *itTarget != *itBase )
+                throw std::runtime_error( "FileStorage path traversal detected" );
+        }
+        // Return the joined path, not the canonical one: the canonical path depends on the
+        // node's datadir layout, and CalculateFileHash derives its hash input from the path string.
+        return fullPath;
+    }
+
+    // For paths that may not yet exist on disk, verify lexical descent
+    int depth = 0;
+    for ( const auto& elem : relPath ) {
+        const std::string s = elem.string();
+        if ( s == ".." ) {
+            --depth;
+            if ( depth < 0 )
+                throw std::runtime_error( "FileStorage path escapes base directory" );
+        } else if ( s != "." && !s.empty() ) {
+            ++depth;
+        }
+    }
+
+    return fullPath;
+}
+
 static const std::list< std::string > g_listReadableConfigParts{ "skaleConfig.sChain.nodes.",
     "skaleConfig.nodeInfo.wallets.ima.n" };
 
