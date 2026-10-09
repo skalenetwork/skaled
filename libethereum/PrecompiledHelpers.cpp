@@ -114,8 +114,9 @@ boost::filesystem::path validateAndResolveStoragePath(
         if ( !boost::filesystem::exists( fullPath ) )
             throw std::runtime_error( "FileStorage target path does not exist" );
         boost::filesystem::path const canonicalTarget = boost::filesystem::canonical( fullPath );
-        boost::filesystem::path const canonicalBase =
-            boost::filesystem::exists( baseDir ) ? boost::filesystem::canonical( baseDir ) : baseDir;
+        boost::filesystem::path const canonicalBase = boost::filesystem::exists( baseDir ) ?
+                                                          boost::filesystem::canonical( baseDir ) :
+                                                          baseDir;
 
         auto itTarget = canonicalTarget.begin();
         auto itBase = canonicalBase.begin();

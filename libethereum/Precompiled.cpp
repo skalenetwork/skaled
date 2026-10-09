@@ -269,7 +269,7 @@ ETH_REGISTER_FS_PRECOMPILED( createFile )
         if ( FileStorageContainmentPatch::isEnabledWhen( _ctx.latestBlockTimestamp ) ) {
             validateAndResolveStoragePath( Address( address ), rawFilename, false );
         }
-        
+
         const fs::path fsFilePath = fsDirectoryPath / filePath.parent_path();
         if ( filePath.filename().extension() == "._hash" ) {
             throw std::runtime_error(
@@ -377,8 +377,8 @@ ETH_REGISTER_PRECOMPILED( readChunk )( bytesConstRef _in, const PrecompiledCallC
         } else {
             filePath = getFileStorageDir( Address( address ) ) / filename;
             const fs::path canonicalPath = fs::canonical( filePath );
-            if ( canonicalPath.string().find( getFileStorageDir( Address( address ) ).c_str(), 0 ) !=
-                 0 ) {
+            if ( canonicalPath.string().find(
+                     getFileStorageDir( Address( address ) ).c_str(), 0 ) != 0 ) {
                 throw std::runtime_error( "readChunk() failed because file couldn't be read" );
             }
         }
@@ -424,8 +424,8 @@ ETH_REGISTER_PRECOMPILED( getFileSize )( bytesConstRef _in, const PrecompiledCal
         } else {
             filePath = getFileStorageDir( Address( address ) ) / filename;
             const fs::path canonicalPath = fs::canonical( filePath );
-            if ( canonicalPath.string().find( getFileStorageDir( Address( address ) ).c_str(), 0 ) !=
-                 0 ) {
+            if ( canonicalPath.string().find(
+                     getFileStorageDir( Address( address ) ).c_str(), 0 ) != 0 ) {
                 throw std::runtime_error( "getFileSize() failed because file couldn't be read" );
             }
         }
@@ -501,7 +501,8 @@ ETH_REGISTER_FS_PRECOMPILED( createDirectory )
 
         fs::path absolutePath;
         if ( FileStorageContainmentPatch::isEnabledWhen( _ctx.latestBlockTimestamp ) ) {
-            absolutePath = validateAndResolveStoragePath( Address( address ), directoryPath, false );
+            absolutePath =
+                validateAndResolveStoragePath( Address( address ), directoryPath, false );
         } else {
             absolutePath = getFileStorageDir( Address( address ) ) / directoryPath;
         }
@@ -587,7 +588,8 @@ ETH_REGISTER_FS_PRECOMPILED( calculateFileHash )
         } else {
             filePath = getFileStorageDir( Address( address ) ) / filename;
             if ( !fs::exists( filePath ) ) {
-                throw std::runtime_error( "calculateFileHash() failed because file does not exist" );
+                throw std::runtime_error(
+                    "calculateFileHash() failed because file does not exist" );
             }
         }
 
