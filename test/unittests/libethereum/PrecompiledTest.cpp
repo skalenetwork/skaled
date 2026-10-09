@@ -1839,6 +1839,7 @@ static std::string const genesisInfoSkaleConfigTest =
         "schainName": "TestChain",
         "schainID": 1,
         "precompiledConfigPatchTimestamp": 1,
+        "fileStorageContainmentPatchTimestamp": 1,
         "emptyBlockIntervalMs": -1,
         "nodeGroups": {
             "1": {
@@ -2375,9 +2376,16 @@ struct FilestorageFixture : public TestOutputHelperFixture {
         file.write( "0", 1 );
 
         m_overlayFS = std::make_shared< skale::OverlayFS >( true );
+
+        std::shared_ptr< ChainParams > chainParams = std::make_shared< ChainParams >();
+        chainParams->loadConfig( genesisInfoSkaleConfigTest );
+        SchainPatch::init( *chainParams );
+        SchainPatch::useLatestBlockTimestamp( 1000 );
+        defaultPrecompiledContext.latestBlockTimestamp = 1000;
     }
 
     ~FilestorageFixture() override {
+        defaultPrecompiledContext.latestBlockTimestamp = 0;
         std::string pathToHashFile = pathToFile.string() + "._hash";
         remove( pathToFile.c_str() );
         remove( pathToHashFile.c_str() );
@@ -2597,6 +2605,216 @@ BOOST_AUTO_TEST_CASE( calculateFileHash ) {
     BOOST_REQUIRE( boost::filesystem::exists( fileHashName ) );
 
     remove( ( pathToFile.parent_path() / fileHashName ).c_str() );
+}
+
+BOOST_AUTO_TEST_CASE( legitimateNestedPathWorks ) {
+    PrecompiledExecutor execDir = PrecompiledRegistrar::executor( "createDirectory" );
+    PrecompiledExecutor execFile = PrecompiledRegistrar::executor( "createFile" );
+
+    std::string subDir = "nested_dir";
+    bytes inDir = fromHex( hexAddress + numberToHex( subDir.length() ) + stringToHex( subDir ) );
+    auto resDir = execDir(
+        bytesConstRef( inDir.data(), inDir.size() ), defaultPrecompiledContext, m_overlayFS.get() );
+    BOOST_REQUIRE( resDir.first );
+
+    std::string nestedFile = "nested_dir/inner_file";
+    bytes inFile = fromHex( hexAddress + numberToHex( nestedFile.length() ) +
+                            stringToHex( nestedFile ) + numberToHex( fileSize ) );
+    auto resFile = execFile( bytesConstRef( inFile.data(), inFile.size() ),
+        defaultPrecompiledContext, m_overlayFS.get() );
+    BOOST_REQUIRE( resFile.first );
+
+    m_overlayFS->commit();
+    boost::filesystem::path expectedPath =
+        dev::getDataDir() / "filestorage" / ownerAddress.hex() / nestedFile;
+    BOOST_REQUIRE( boost::filesystem::exists( expectedPath ) );
+    boost::filesystem::remove_all(
+        dev::getDataDir() / "filestorage" / ownerAddress.hex() / subDir );
+}
+
+namespace {
+enum class Legacy { Accepts, Unchecked };
+
+struct ContainmentCase {
+    std::string label;
+    std::string executor;
+    bytes input;
+    // Result of the legacy (pre-patch) branch. Unchecked when it was not verified statically.
+    Legacy legacy;
+    // True while nothing escaped the owner's directory on disk. Evaluated after commit().
+    std::function< bool() > intact;
+};
+
+// On-disk state the containment cases operate on. Created per phase, removed afterwards.
+struct ContainmentState {
+    ContainmentState( const Address& _owner, size_t _fileSize )
+        : owner( _owner ),
+          dataDir( dev::getDataDir() ),
+          baseDir( dev::getDataDir() / "filestorage" / _owner.hex() ),
+          siblingDir( dev::getDataDir() / "filestorage" / ( _owner.hex() + "_sibling" ) ),
+          nulParent( baseDir / "nul_parent" ),
+          victimDir( dataDir / "victim_dir" ),
+          victimUpload( dataDir / "victim_upload" ),
+          victimDelete( dataDir / "victim_delete" ),
+          victimHash( dataDir / "victim_hash" ),
+          evilFile( dataDir / "evil_file" ),
+          evilDir( dataDir / "evil_dir" ),
+          absoluteEvil( dataDir / "absolute_evil" ),
+          initialUpload( _fileSize, 'x' ) {
+        boost::filesystem::create_directories( siblingDir );
+        boost::filesystem::create_directories( nulParent );
+        boost::filesystem::create_directories( victimDir );
+        write( siblingDir / "victim", std::string( _fileSize, 'x' ) );
+        write( victimDir / "canary.txt", "data" );
+        write( victimUpload, initialUpload );
+        write( victimDelete, "victim data" );
+        write( victimHash, "content to hash" );
+    }
+    ~ContainmentState() {
+        for ( const auto& p : { siblingDir, nulParent, victimDir, victimUpload, victimDelete,
+                  victimHash, evilFile, evilDir, absoluteEvil } )
+            boost::filesystem::remove_all( p );
+        boost::filesystem::remove( dataDir / "victim_hash._hash" );
+    }
+
+    static void write( const boost::filesystem::path& _p, const std::string& _content ) {
+        std::ofstream of( _p.string(), std::ios::binary );
+        of << _content;
+    }
+
+    Address owner;
+    boost::filesystem::path dataDir, baseDir, siblingDir, nulParent, victimDir, victimUpload,
+        victimDelete, victimHash, evilFile, evilDir, absoluteEvil;
+    std::string initialUpload;
+};
+
+// Escaping inputs for every filestorage executor. `legacy` is the expected result before
+// FileStorageContainmentPatch activates; `intact` is checked after commit() once it is active.
+std::vector< ContainmentCase > makeContainmentCases(
+    const std::string& _hexAddress, size_t _fileSize, const ContainmentState& _s ) {
+    namespace bfs = boost::filesystem;
+    const std::string siblingDir = "../" + _s.owner.hex() + "_sibling";
+    const std::string siblingVictim = siblingDir + "/victim";
+    const std::string data = "poisoned_data";
+    const size_t dataLength = data.length();
+
+    auto encodeAddressAndPath = [&]( const std::string& _name ) {
+        return _hexAddress + numberToHex( _name.length() ) + stringToHex( _name );
+    };
+    auto always = [] { return true; };
+
+    std::vector< ContainmentCase > cases;
+
+    // traversal out of the filestorage tree
+    cases.push_back( { "deleteDirectory ../../", "deleteDirectory",
+        fromHex( encodeAddressAndPath( "../../victim_dir" ) ), Legacy::Accepts,
+        [&_s] { return bfs::exists( _s.victimDir / "canary.txt" ); } } );
+
+    cases.push_back( { "createFile ../../", "createFile",
+        fromHex( encodeAddressAndPath( "../../evil_file" ) + numberToHex( _fileSize ) ), Legacy::Accepts,
+        [&_s] { return !bfs::exists( _s.evilFile ); } } );
+
+    cases.push_back( { "uploadChunk ../../", "uploadChunk",
+        fromHex( encodeAddressAndPath( "../../victim_upload" ) + numberToHex( 0 ) +
+                 numberToHex( dataLength ) + stringToHex( data ) ),
+        Legacy::Accepts, [&_s, dataLength] {
+            std::ifstream in( _s.victimUpload.string(), std::ios::binary );
+            std::string content( dataLength, '\0' );
+            in.read( &content[0], static_cast< std::streamsize >( dataLength ) );
+            return content == _s.initialUpload.substr( 0, dataLength );
+        } } );
+
+    cases.push_back( { "deleteFile ../../", "deleteFile",
+        fromHex( encodeAddressAndPath( "../../victim_delete" ) ), Legacy::Accepts,
+        [&_s] { return bfs::exists( _s.victimDelete ); } } );
+
+    cases.push_back( { "createDirectory ../../", "createDirectory",
+        fromHex( encodeAddressAndPath( "../../evil_dir" ) ), Legacy::Accepts,
+        [&_s] { return !bfs::exists( _s.evilDir ); } } );
+
+    cases.push_back( { "calculateFileHash ../../", "calculateFileHash",
+        fromHex( encodeAddressAndPath( "../../victim_hash" ) + numberToHex( _fileSize ) ), Legacy::Accepts,
+        [&_s] { return !bfs::exists( _s.dataDir / "victim_hash._hash" ); } } );
+
+    // absolute path and embedded NUL
+    cases.push_back( { "createFile absolute", "createFile",
+        fromHex( encodeAddressAndPath( _s.absoluteEvil.string() ) + numberToHex( _fileSize ) ),
+        Legacy::Unchecked, [&_s] { return !bfs::exists( _s.absoluteEvil ); } } );
+
+    cases.push_back( { "createFile NUL", "createFile",
+        fromHex( encodeAddressAndPath( std::string( "legit\0../../evil_file", 20 ) ) +
+                 numberToHex( _fileSize ) ),
+        Legacy::Unchecked, [&_s] { return !bfs::exists( _s.evilFile ); } } );
+    // "nul_parent/..\0" is read by stat/remove_all as "nul_parent/..", i.e. the owner's root.
+    // Boost behaviour with an embedded NUL was not verified statically.
+    cases.push_back( { "deleteDirectory NUL", "deleteDirectory",
+        fromHex( encodeAddressAndPath( std::string( "nul_parent/..\0", 14 ) ) ), Legacy::Unchecked,
+        [&_s] { return bfs::exists( _s.baseDir / "test_file" ); } } );
+
+    // sibling directory whose name starts with the owner's directory name; the legacy string
+    // prefix check accepts it
+    cases.push_back( { "createFile sibling", "createFile",
+        fromHex( encodeAddressAndPath( siblingDir + "/evil_file" ) + numberToHex( _fileSize ) ),
+        Legacy::Accepts, [&_s] { return !bfs::exists( _s.siblingDir / "evil_file" ); } } );
+
+    cases.push_back( { "deleteDirectory sibling", "deleteDirectory",
+        fromHex( encodeAddressAndPath( siblingDir ) ), Legacy::Accepts,
+        [&_s] { return bfs::exists( _s.siblingDir / "victim" ); } } );
+
+    cases.push_back( { "calculateFileHash sibling", "calculateFileHash",
+        fromHex( encodeAddressAndPath( siblingVictim ) + numberToHex( _fileSize ) ), Legacy::Accepts,
+        [&_s] { return !bfs::exists( _s.siblingDir / "victim._hash" ); } } );
+
+    cases.push_back( { "readChunk sibling", "readChunk",
+        fromHex( encodeAddressAndPath( siblingVictim ) + numberToHex( 0 ) + numberToHex( 10 ) ),
+        Legacy::Accepts, always } );
+        
+    cases.push_back( { "getFileSize sibling", "getFileSize", fromHex( encodeAddressAndPath( siblingVictim ) ),
+        Legacy::Accepts, always } );
+    return cases;
+}
+}  // namespace
+
+// NOTE: this test pins the VULNERABLE legacy behaviour on purpose. Before
+// FileStorageContainmentPatch activates, the escaping inputs must still be accepted, so that
+// pre-activation blocks replay identically. Do not "fix" it; delete it if the patch ever
+// becomes unconditional. Nothing is committed to disk. The process-wide patch timestamp is 1000
+// (fixture), so reintroducing a check on the working-block timestamp makes this test fail.
+BOOST_AUTO_TEST_CASE( legacyBehaviorBeforeActivation ) {
+    ContainmentState state( ownerAddress, fileSize );
+    const PrecompiledCallContext beforeActivation{ 1, 0, true };
+
+    for ( const auto& c : makeContainmentCases( hexAddress, fileSize, state ) ) {
+        if ( c.legacy == Legacy::Unchecked )
+            continue;
+        auto overlay = std::make_shared< skale::OverlayFS >( true );
+        PrecompiledExecutor exec = PrecompiledRegistrar::executor( c.executor );
+        auto res = exec(
+            bytesConstRef( c.input.data(), c.input.size() ), beforeActivation, overlay.get() );
+        BOOST_CHECK_MESSAGE( res.first == ( c.legacy == Legacy::Accepts ),
+            "legacy behaviour changed before activation: " + c.label );
+    }
+}
+
+// 1 is the activation timestamp from the test genesis (>= boundary), 1000 is after it.
+BOOST_AUTO_TEST_CASE( containmentAtAndAfterActivationTimestamp ) {
+    for ( int64_t timestamp : { int64_t( 1 ), int64_t( 1000 ) } ) {
+        ContainmentState state( ownerAddress, fileSize );
+        const PrecompiledCallContext ctx{ 1, timestamp, true };
+
+        for ( const auto& c : makeContainmentCases( hexAddress, fileSize, state ) ) {
+            const std::string where =
+                " at timestamp " + std::to_string( timestamp ) + ": " + c.label;
+            auto overlay = std::make_shared< skale::OverlayFS >( true );
+            PrecompiledExecutor exec = PrecompiledRegistrar::executor( c.executor );
+            auto res =
+                exec( bytesConstRef( c.input.data(), c.input.size() ), ctx, overlay.get() );
+            overlay->commit();
+
+            BOOST_CHECK_MESSAGE( !res.first, "escape accepted" + where );
+            BOOST_CHECK_MESSAGE( c.intact(), "escape reached the disk" + where );
+        }
+    }
 }
 
 BOOST_AUTO_TEST_SUITE_END()

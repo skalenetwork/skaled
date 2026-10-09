@@ -29,6 +29,7 @@ enum class SchainPatchEnum {
     LondonForkPatch,
     ContractCreationReadOnlyPatch,
     ParisForkPatch,  // EIP-3675 + EIP-4399
+    FileStorageContainmentPatch,
 #ifdef BITE
     Bite2Patch,
 #endif  // BITE
