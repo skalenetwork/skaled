@@ -2832,11 +2832,8 @@ std::vector< ContainmentCase > makeContainmentCases(
 }
 }  // namespace
 
-// NOTE: this test pins the VULNERABLE legacy behaviour on purpose. Before
-// FileStorageContainmentPatch activates, the escaping inputs must still be accepted, so that
-// pre-activation blocks replay identically. Do not "fix" it; delete it if the patch ever
-// becomes unconditional. Nothing is committed to disk. The process-wide patch timestamp is 1000
-// (fixture), so reintroducing a check on the working-block timestamp makes this test fail.
+// Preserve pre-activation behaviour for historical block replay without committing filesystem
+// operations. The context timestamp precedes activation despite the fixture's later global timestamp.
 BOOST_AUTO_TEST_CASE( legacyBehaviorBeforeActivation ) {
     ContainmentState state( ownerAddress, fileSize );
     const PrecompiledCallContext beforeActivation{ 1, 0, true };
