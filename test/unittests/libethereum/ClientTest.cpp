@@ -30,6 +30,7 @@
 #include <libskale/SnapshotManager.h>
 #include <libweb3jsonrpc/AccountHolder.h>
 #include <libweb3jsonrpc/JsonHelper.h>
+#include <test/tools/libtesteth/BtrfsTestFixture.h>
 #include <test/tools/libtesteth/TestHelper.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>
 
@@ -41,91 +42,6 @@ using namespace dev::p2p;
 namespace fs = boost::filesystem;
 
 static size_t rand_port = ( srand( time( nullptr ) ), 1024 + rand() % 64000 );
-
-struct FixtureCommon {
-    const string BTRFS_FILE_PATH = "btrfs.file";
-    const string BTRFS_DIR_PATH = "btrfs";
-    uid_t sudo_uid;
-    gid_t sudo_gid;
-
-    void check_sudo() {
-#if ( !defined __APPLE__ )
-        char* id_str = getenv( "SUDO_UID" );
-        if ( id_str == NULL ) {
-            cerr << "Please run under sudo" << endl;
-            exit( -1 );
-        }
-
-        sscanf( id_str, "%d", &sudo_uid );
-
-        //    uid_t ru, eu, su;
-        //    getresuid( &ru, &eu, &su );
-        //    cerr << ru << " " << eu << " " << su << endl;
-
-        if ( geteuid() != 0 ) {
-            cerr << "Need to be root" << endl;
-            exit( -1 );
-        }
-
-        id_str = getenv( "SUDO_GID" );
-        sscanf( id_str, "%d", &sudo_gid );
-
-        gid_t rgid, egid, sgid;
-        getresgid( &rgid, &egid, &sgid );
-        cerr << "GIDS: " << rgid << " " << egid << " " << sgid << endl;
-#endif
-    }
-
-    void dropRoot() {
-#if ( !defined __APPLE__ )
-        int res = setresgid( sudo_gid, sudo_gid, 0 );
-        cerr << "setresgid " << sudo_gid << " " << res << endl;
-        if ( res < 0 )
-            cerr << strerror( errno ) << endl;
-        res = setresuid( sudo_uid, sudo_uid, 0 );
-        cerr << "setresuid " << sudo_uid << " " << res << endl;
-        if ( res < 0 )
-            cerr << strerror( errno ) << endl;
-#endif
-    }
-
-    void gainRoot() {
-#if ( !defined __APPLE__ )
-        int res = setresuid( 0, 0, 0 );
-        if ( res ) {
-            cerr << strerror( errno ) << endl;
-            assert( false );
-        }
-        res = setresgid( 0, 0, 0 );
-        if ( res ) {
-            cerr << strerror( errno ) << endl;
-            assert( false );
-        }
-#endif
-    }
-
-    void cleanupBtrfsArtifacts(
-        const std::string& _mountPath, const std::string& _imagePath, bool _removeMountPath ) {
-        gainRoot();
-#if ( !defined __APPLE__ )
-        while ( system( ( "mountpoint -q " + _mountPath ).c_str() ) == 0 ) {
-            int rv = system( ( "umount " + _mountPath ).c_str() );
-            assert( rv == 0 );
-        }
-#endif
-        int rv;
-        if ( _removeMountPath ) {
-            rv = system( ( "rm -rf " + _mountPath ).c_str() );
-            assert( rv == 0 );
-        }
-        rv = system( ( "rm -f " + _imagePath ).c_str() );
-        assert( rv == 0 );
-    }
-
-    void cleanupBtrfsArtifacts() {
-        cleanupBtrfsArtifacts( BTRFS_DIR_PATH, BTRFS_FILE_PATH, true );
-    }
-};
 
 class TestClientFixture : public TestOutputHelperFixture {
 public:
@@ -266,31 +182,10 @@ private:
     std::unique_ptr< FixedAccountHolder > accountHolder;
 };
 
-class TestClientSnapshotsFixture : public TestOutputHelperFixture, public FixtureCommon {
+class TestClientSnapshotsFixture : public TestOutputHelperFixture {
 public:
-    TestClientSnapshotsFixture( const std::string& _config ) try {
-        check_sudo();
-        cleanupBtrfsArtifacts( m_tmpDir.path(), BTRFS_FILE_PATH, false );
-
-        dropRoot();
-
-        int rv = system( ( "dd if=/dev/zero of=" + BTRFS_FILE_PATH + " bs=1M count=200" ).c_str() );
-        rv = system( ( "mkfs.btrfs " + BTRFS_FILE_PATH ).c_str() );
-
-        gainRoot();
-        rv =
-            system( ( "mount -o user_subvol_rm_allowed " + BTRFS_FILE_PATH + " " + m_tmpDir.path() )
-                        .c_str() );
-        rv = chown( m_tmpDir.path().c_str(), sudo_uid, sudo_gid );
-        ( void ) rv;
-        dropRoot();
-
-        //        btrfs.subvolume.create( ( BTRFS_DIR_PATH + "/vol1" ).c_str() );
-        //        btrfs.subvolume.create( ( BTRFS_DIR_PATH + "/vol2" ).c_str() );
-        // system( ( "mkdir " + BTRFS_DIR_PATH + "/snapshots" ).c_str() );
-
-        gainRoot();
-
+    TestClientSnapshotsFixture( const std::string& _config ) try
+        : btrfsMount( dev::test::BtrfsTestMount::externalMountPath( m_tmpDir.path() ) ) {
         chainParams = std::make_shared< ChainParams >();
 
         Json::Value ret;
@@ -360,16 +255,13 @@ public:
             dev::eth::g_skaleHost.reset();
 #endif
         m_ethereum.reset( 0 );
-        const char* NC = getenv( "NC" );
-        if ( NC )
-            return;
-        cleanupBtrfsArtifacts( m_tmpDir.path(), BTRFS_FILE_PATH, false );
     }
 
 private:
+    TransientDirectory m_tmpDir;
+    dev::test::BtrfsTestMount btrfsMount;
     std::shared_ptr< ChainParams > chainParams;
     std::unique_ptr< dev::eth::Client > m_ethereum;
-    TransientDirectory m_tmpDir;
     dev::KeyPair coinbase{ KeyPair::create() };
 };
 
