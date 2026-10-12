@@ -2607,6 +2607,56 @@ BOOST_AUTO_TEST_CASE( calculateFileHash ) {
     remove( ( pathToFile.parent_path() / fileHashName ).c_str() );
 }
 
+BOOST_AUTO_TEST_CASE( calculateFileHashSidecarContainment ) {
+    namespace bfs = boost::filesystem;
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "calculateFileHash" );
+    const bytes input = fromHex( hexAddress + numberToHex( fileName.length() ) +
+                                 stringToHex( fileName ) + numberToHex( fileSize ) );
+    const bfs::path sidecar( pathToFile.string() + "._hash" );
+    const std::string initialContent = "unchanged";
+
+    for ( int64_t timestamp : { int64_t( 0 ), int64_t( 1 ), int64_t( 1000 ) } ) {
+        for ( bool cacheEnabled : { false, true } ) {
+            for ( bool targetExists : { false, true } ) {
+                TransientDirectory outside;
+                const bfs::path victim = bfs::path( outside.path() ) / "victim";
+                if ( targetExists ) {
+                    std::ofstream file( victim.string() );
+                    file << initialContent;
+                    BOOST_REQUIRE( file.good() );
+                }
+                bfs::create_symlink( victim, sidecar );
+                skale::OverlayFS overlay( cacheEnabled );
+                const PrecompiledCallContext ctx{ 1, timestamp, true };
+                const auto result =
+                    exec( bytesConstRef( input.data(), input.size() ), ctx, &overlay );
+                overlay.commit();
+
+                const bool patchEnabled = timestamp >= 1;
+                BOOST_CHECK_EQUAL( result.first, !patchEnabled );
+                BOOST_CHECK_EQUAL( bfs::exists( victim ), !patchEnabled || targetExists );
+                if ( bfs::exists( victim ) ) {
+                    std::ifstream file( victim.string() );
+                    std::string content;
+                    file >> content;
+                    BOOST_CHECK( file.good() || file.eof() );
+                    if ( patchEnabled )
+                        BOOST_CHECK_EQUAL( content, initialContent );
+                    else
+                        BOOST_CHECK( content != initialContent );
+                }
+                BOOST_REQUIRE( bfs::remove( sidecar ) );
+            }
+        }
+    }
+
+    const auto result = exec(
+        bytesConstRef( input.data(), input.size() ), defaultPrecompiledContext, m_overlayFS.get() );
+    BOOST_REQUIRE( result.first );
+    m_overlayFS->commit();
+    BOOST_CHECK( bfs::is_regular_file( sidecar ) );
+}
+
 BOOST_AUTO_TEST_CASE( legitimateNestedPathWorks ) {
     PrecompiledExecutor execDir = PrecompiledRegistrar::executor( "createDirectory" );
     PrecompiledExecutor execFile = PrecompiledRegistrar::executor( "createFile" );

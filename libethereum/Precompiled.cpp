@@ -585,6 +585,7 @@ ETH_REGISTER_FS_PRECOMPILED( calculateFileHash )
         fs::path filePath;
         if ( FileStorageContainmentPatch::isEnabledWhen( _ctx.latestBlockTimestamp ) ) {
             filePath = validateAndResolveStoragePath( Address( address ), filename, true );
+            validateAndResolveStoragePath( Address( address ), filename + "._hash", false );
         } else {
             filePath = getFileStorageDir( Address( address ) ) / filename;
             if ( !fs::exists( filePath ) ) {

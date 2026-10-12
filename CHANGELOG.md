@@ -12,7 +12,8 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- Harden path validation in the FileStorage precompiled contracts. The change is gated by
+- Harden path validation in the FileStorage precompiled contracts, including the `._hash`
+  output path used by `calculateFileHash`. The change is gated by
   `fileStorageContainmentPatchTimestamp` and has no effect until that timestamp is reached
   ([skalenetwork/internal-support#1531](https://github.com/skalenetwork/internal-support/issues/1531))
 
