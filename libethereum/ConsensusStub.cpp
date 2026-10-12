@@ -72,6 +72,12 @@ void ConsensusStub::exitGracefully() {
 void ConsensusStub::startedWorking() {}
 
 void ConsensusStub::doWork() {
+    if ( m_paused ) {
+        // avoid busy-spinning the tight worker loop while paused
+        std::this_thread::sleep_for( std::chrono::milliseconds( 100 ) );
+        return;
+    }
+
     // Get some number of pending txns. Possibly in several calls.
     // Then loose some of them.
     // Then return block

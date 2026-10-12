@@ -467,32 +467,11 @@ h256 SkaleHost::receiveTransaction( const std::string& _rlp ) {
     return sha;
 }
 
-// keeps mutex unlocked when exists
-template < class M >
-class unlock_guard {
-private:
-    M& mutex_ref;
-    std::atomic_bool m_will_exit = false;
-
-public:
-    explicit unlock_guard( M& m ) : mutex_ref( m ) { mutex_ref.unlock(); }
-    ~unlock_guard() {
-        if ( !m_will_exit )
-            mutex_ref.lock();
-    }
-    void will_exit() { m_will_exit = true; }
-};
-
 ConsensusExtFace::Transactions SkaleHost::pendingTransactions( size_t _limit, u256& _stateRoot ) {
     assert( _limit > 0 );
     assert( _limit <= numeric_limits< unsigned int >::max() );
 
     ConsensusExtFace::Transactions out_vector;
-
-    if ( m_exitNeeded )
-        return out_vector;
-
-    std::lock_guard< std::mutex > pauseLock( m_consensusPauseMutex );
 
     if ( m_exitNeeded )
         return out_vector;

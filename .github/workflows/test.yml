@@ -23,7 +23,7 @@ env:
 jobs:
   build-and-test:
     name: ${{ matrix.name }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     # Backstop so a hung test can't ride GitHub's 6h default and stall the queue.
     timeout-minutes: 120
 
@@ -70,9 +70,9 @@ jobs:
       - name: Install packages
         run: |
           sudo apt-get update
-          sudo apt-get install -y libunwind-dev autoconf build-essential cmake libprocps-dev libtool texinfo wget yasm flex bison btrfs-progs python3 python3-pip gawk git vim doxygen
-          sudo apt-get install -y make pkg-config libgnutls28-dev libssl-dev unzip zlib1g-dev libgcrypt20-dev gcc-11 g++-11 gperf clang-format-11 gnutls-dev
-          sudo apt-get install -y nettle-dev libhiredis-dev redis-server google-perftools libgoogle-perftools-dev lcov libv8-dev
+          sudo apt-get install -y libunwind-dev autoconf build-essential cmake libtool texinfo wget yasm flex bison btrfs-progs python3 python3-pip gawk git vim doxygen
+          sudo apt-get install -y make pkg-config libgnutls28-dev libssl-dev unzip zlib1g-dev libgcrypt20-dev gcc-11 g++-11 gperf
+          sudo apt-get install -y nettle-dev libhiredis-dev redis-server google-perftools libgoogle-perftools-dev lcov
           sudo apt-get install -y gettext
 
           # Remove deps installed in the next steps

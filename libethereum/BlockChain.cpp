@@ -1706,7 +1706,7 @@ bytes BlockChain::block( h256 const& _hash ) const {
 
     string d = m_blocksDB->lookup( toSlice( _hash ) );
     if ( d.empty() ) {
-        BOOST_LOG( m_loggerWarning ) << "Couldn't find requested block:" << _hash;
+        BOOST_LOG( m_loggerDebug ) << "Couldn't find requested block:" << _hash;
         return bytes();
     }
 
@@ -1732,7 +1732,7 @@ bytes BlockChain::headerData( h256 const& _hash ) const {
 
     string d = m_blocksDB->lookup( toSlice( _hash ) );
     if ( d.empty() ) {
-        BOOST_LOG( m_loggerWarning ) << "Couldn't find requested block:" << _hash;
+        BOOST_LOG( m_loggerDebug ) << "Couldn't find requested block:" << _hash;
         return bytes();
     }
 
