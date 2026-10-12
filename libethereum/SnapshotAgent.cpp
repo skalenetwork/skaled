@@ -32,41 +32,36 @@ void SnapshotAgent::init( unsigned _currentBlockNumber, int64_t _timestampOfBloc
     if ( latest_snapshots.first ) {
         assert( latest_snapshots.first != 1 );  // 1 can never be snapshotted
 
+        this->one_before_last_snapshoted_block_with_hash = latest_snapshots.first;
         this->last_snapshoted_block_with_hash = latest_snapshots.first;
-
-        // ignore second as it was "in hash computation"
-        // check that both are imported!!
-        // h256 h2 = this->hashFromNumber( latest_snapshots.second );
-        // assert( h2 != h256() );
-        // last_snapshot_creation_time = blockInfo( h2 ).timestamp();
 
         last_snapshot_creation_time =
             this->m_snapshotManager->getBlockTimestamp( latest_snapshots.second );
 
         if ( !m_snapshotManager->checkSnapshotFolderAndSnapshotHash( latest_snapshots.second ) )
             startHashComputingThread();
+        else
+            this->last_snapshoted_block_with_hash = latest_snapshots.second;
 
         // one snapshot
     } else if ( latest_snapshots.second ) {
         assert( latest_snapshots.second != 1 );  // 1 can never be snapshotted
         assert( _timestampOfBlock1 > 0 );        // we created snapshot somehow
 
-        // whether it is local or downloaded - we shall ignore it's hash but use it's time
-        // see also how last_snapshotted_block_with_hash is updated in importTransactionsAsBlock
-        // h256 h2 = this->hashFromNumber( latest_snapshots.second );
-        // uint64_t time_of_second = blockInfo( h2 ).timestamp();
-
+        this->one_before_last_snapshoted_block_with_hash = -1;
         this->last_snapshoted_block_with_hash = -1;
-        // last_snapshot_creation_time = time_of_second;
 
         last_snapshot_creation_time =
             this->m_snapshotManager->getBlockTimestamp( latest_snapshots.second );
 
         if ( !m_snapshotManager->checkSnapshotFolderAndSnapshotHash( latest_snapshots.second ) )
             startHashComputingThread();
+        else
+            this->last_snapshoted_block_with_hash = latest_snapshots.second;
 
         // no snapshots yet
     } else {
+        this->one_before_last_snapshoted_block_with_hash = -1;
         this->last_snapshoted_block_with_hash = -1;
         // init last block creation time with only robust time source - timestamp of 1st block!
         last_snapshot_creation_time = _timestampOfBlock1;
@@ -74,6 +69,7 @@ void SnapshotAgent::init( unsigned _currentBlockNumber, int64_t _timestampOfBloc
 
     BOOST_LOG( m_loggerInfo ) << "Latest snapshots init: " << latest_snapshots.first << " "
                               << latest_snapshots.second << " -> "
+                              << this->one_before_last_snapshoted_block_with_hash << " / "
                               << this->last_snapshoted_block_with_hash;
 
     BOOST_LOG( m_loggerInfo ) << "Init last snapshot creation time: "
@@ -96,7 +92,7 @@ void SnapshotAgent::finishHashComputingAndUpdateHashesIfNeeded( int64_t _timesta
         if ( latest_snapshots.second ) {
             assert(
                 m_snapshotManager->checkSnapshotFolderAndSnapshotHash( latest_snapshots.second ) );
-            this->last_snapshoted_block_with_hash = latest_snapshots.second;
+            this->one_before_last_snapshoted_block_with_hash = latest_snapshots.second;
             m_snapshotManager->leaveNLastSnapshots( 2 );
         }
     }
@@ -144,7 +140,7 @@ void SnapshotAgent::doSnapshotIfNeeded( unsigned _currentBlockNumber, int64_t _t
 }
 
 boost::filesystem::path SnapshotAgent::createSnapshotFile( unsigned _blockNumber ) {
-    if ( _blockNumber > this->getLatestSnapshotBlockNumer() && _blockNumber != 0 )
+    if ( _blockNumber > this->getOneBeforeLatestSnapshotBlockNumer() && _blockNumber != 0 )
         throw std::invalid_argument( "Too new snapshot requested" );
     boost::filesystem::path path = m_snapshotManager->makeOrGetDiff( _blockNumber );
     // TODO Make constant 2 configurable
@@ -178,6 +174,10 @@ dev::h256 SnapshotAgent::getSnapshotHash( unsigned _blockNumber ) const {
     // fall through other exceptions
 }
 
+dev::h256 SnapshotAgent::getLatestSnapshotHash() const {
+    return this->getSnapshotHash( this->last_snapshoted_block_with_hash );
+}
+
 uint64_t SnapshotAgent::getBlockTimestampFromSnapshot( unsigned _blockNumber ) const {
     return this->m_snapshotManager->getBlockTimestamp( _blockNumber );
 }
@@ -201,6 +201,7 @@ void SnapshotAgent::startHashComputingThread() {
             t2 = boost::chrono::high_resolution_clock::now();
             this->snapshot_hash_calculation_time_ms =
                 boost::chrono::duration_cast< boost::chrono::milliseconds >( t2 - t1 ).count();
+            this->last_snapshoted_block_with_hash = latest_snapshots.second;
             BOOST_LOG( m_loggerInfo )
                 << "Computed hash for snapshot " << latest_snapshots.second << ": "
                 << m_snapshotManager->getSnapshotHash( latest_snapshots.second );

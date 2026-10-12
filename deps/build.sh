@@ -291,7 +291,7 @@ setup_variable WITH_JSONCPP "no"
 setup_variable WITH_JSONRPCCPP "no"
 setup_variable WITH_CRYPTOPP "no"
 
-setup_variable WITH_FF "no"
+setup_variable WITH_FF "yes"
 setup_variable WITH_GMP "no"
 setup_variable WITH_PBC "no"
 
@@ -941,7 +941,17 @@ then
 			cd curl
 			eval mkdir -p build
 			cd build
-			eval "$CMAKE" "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DOPENSSL_ROOT_DIR="$SOURCES_ROOT/openssl" -DBUILD_CURL_EXE=OFF -DBUILD_TESTING=OFF -DCMAKE_USE_LIBSSH2=OFF -DBUILD_SHARED_LIBS=OFF -DCURL_DISABLE_LDAP=ON -DCURL_STATICLIB=ON -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" ..
+			eval "$CMAKE" "${CMAKE_CROSSCOMPILING_OPTS}" \
+				-DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" \
+				-DOPENSSL_ROOT_DIR="$SOURCES_ROOT/openssl" \
+				-DBUILD_CURL_EXE=OFF \
+				-DBUILD_TESTING=OFF \
+				-DCMAKE_USE_LIBSSH2=OFF \
+				-DBUILD_SHARED_LIBS=OFF \
+				-DCURL_DISABLE_LDAP=ON \
+				-DCURL_STATICLIB=ON \
+				-DCURL_USE_LIBPSL=OFF \
+				-DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" ..
 			echo " " >> lib/curl_config.h
 			echo "#define HAVE_POSIX_STRERROR_R 1" >> lib/curl_config.h
 			echo " " >> lib/curl_config.h

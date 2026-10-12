@@ -94,6 +94,8 @@ jobs:
 
       - name: Build dependencies
         run: |
+          git config --global maintenance.auto false
+          git config --global gc.auto 0
           cd deps
           ./build.sh DEBUG=1 PARALLEL_COUNT=$(nproc)
           cd ..

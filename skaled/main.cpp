@@ -1973,12 +1973,13 @@ int main( int argc, char** argv ) {
             DefaultConsensusFactory cons_fact( *g_client );
             setenv( "DATA_DIR", getDataDir().c_str(), 0 );
 
+            const bool broadcastEnabled = true;
             std::shared_ptr< SkaleHost > skaleHost =
                 std::make_shared< SkaleHost >( *g_client, &cons_fact, instanceMonitor,
 #ifndef FAIR
                     skutils::json_config_file_accessor::g_strImaMainNetURL,
 #endif
-                    !chainParams->isSyncNode() );
+                    broadcastEnabled );
             dev::eth::g_skaleHost = skaleHost;
 
             // XXX nested lambdas and strlen hacks..

@@ -141,7 +141,7 @@ All contributions are welcome! We try to keep a list of tasks that are suitable 
 
 
 All development goes in develop branch. 
-
+ 
 
 ## For more information
 * [SKALE Labs Website](https://www.skale.space/)
