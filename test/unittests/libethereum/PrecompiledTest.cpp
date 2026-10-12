@@ -2620,21 +2620,28 @@ BOOST_AUTO_TEST_CASE( calculateFileHashSidecarContainment ) {
             for ( bool targetExists : { false, true } ) {
                 TransientDirectory outside;
                 const bfs::path victim = bfs::path( outside.path() ) / "victim";
+
                 if ( targetExists ) {
                     std::ofstream file( victim.string() );
                     file << initialContent;
                     BOOST_REQUIRE( file.good() );
                 }
+
+                // symlink sidecar -> victim
                 bfs::create_symlink( victim, sidecar );
+
                 skale::OverlayFS overlay( cacheEnabled );
+
                 const PrecompiledCallContext ctx{ 1, timestamp, true };
                 const auto result =
                     exec( bytesConstRef( input.data(), input.size() ), ctx, &overlay );
                 overlay.commit();
 
+                // precompiled contract succeeds pre-patch, fails post-patch
                 const bool patchEnabled = timestamp >= 1;
                 BOOST_CHECK_EQUAL( result.first, !patchEnabled );
                 BOOST_CHECK_EQUAL( bfs::exists( victim ), !patchEnabled || targetExists );
+                
                 if ( bfs::exists( victim ) ) {
                     std::ifstream file( victim.string() );
                     std::string content;
