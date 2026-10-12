@@ -1,0 +1,27 @@
+{
+  "name": "core_historic_local",
+  "sgxUrl": "http://127.0.0.1:1029",
+  "outputDir": "../../tmp/prepared/core_historic_local",
+  "isFair": false,
+  "nodes": [
+    {
+      "nodeId": 1,
+      "role": "core",
+      "nodeType": "normal",
+      "template": "../config_core.json",
+      "outputConfig": "core/updated_config.json",
+      "httpPort": 1247,
+      "workDir": "./tmp/core"
+    },
+    {
+      "nodeId": 2,
+      "role": "historic",
+      "nodeType": "archive",
+      "syncNode": true,
+      "template": "../config_historic.json",
+      "outputConfig": "historic/updated_config.json",
+      "httpPort": 1248,
+      "workDir": "./tmp/historic"
+    }
+  ]
+}

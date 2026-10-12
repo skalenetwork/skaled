@@ -26,7 +26,7 @@ You can also see the generated keys as well as the updated `config.json` inside 
     cmake --build build -- -j$(nproc)
     ```
 
-2. **(Optional)** If you need to edit any config from skaled config file, edit the `scripts/run_with_sgx/configs/non-fair.json`
+2. **(Optional)** If you need to edit the default skaled config, edit `scripts/run_with_sgx/sample_configs/config_core.json`.
 
 3. Launch SGXWallet:
 
@@ -51,9 +51,9 @@ You can also see the generated keys as well as the updated `config.json` inside 
 
 4. Run the script:
     ```bash
-    bash ./run.sh [custom-config-file] [-HTTPS]
+    bash ./run.sh [-config <custom-config-file>] [-HTTPS]
     ```
-    You may pass some other config file path as an argument to the script. If not, it will use the default one at `scripts/run_with_sgx/configs/non-fair.json`.
+    Pass a custom config with `-config <path>`; otherwise the script uses `scripts/run_with_sgx/sample_configs/config_core.json`.
     
     Also, if you **used a custom that uses HTTPS, pass the `-HTTPS`**. Else, if you used defualt container, do not pas that flag.
 
@@ -66,15 +66,15 @@ You can also see the generated keys as well as the updated `config.json` inside 
     cmake --build build -- -j$(nproc)
     ```
 
-2. **(Optional)** If you need to edit any config from skaled config file, edit the `scripts/run_with_sgx/configs/fair.json`
+2. **(Optional)** If you need to edit the default skaled config, edit `scripts/run_with_sgx/sample_configs/config_core.json`.
 
 3. Launch SGXWallet - see non-fair build above (**1.3**)
 
 4. Go to `scritps/run_with_sgx` and run the script:
     ```bash
-    bash ./run.sh [custom-config-file] -FAIR [-HTTPS]
+    bash ./run.sh [-config <custom-config-file>] -FAIR [-HTTPS]
     ```
-    You may pass some other config file path as an argument to the script. If not, it will use the default one at `scripts/run_with_sgx/configs/non-fair.json`.
+    Pass a custom config with `-config <path>`; otherwise the script uses `scripts/run_with_sgx/sample_configs/config_core.json`.
 
 ---
 
