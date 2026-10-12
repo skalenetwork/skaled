@@ -872,9 +872,9 @@ void Client::rejigSealing() {
 
                 // TODO Deduplicate code
                 dev::h256 stateRootToSet;
-                if ( m_snapshotAgent->getLatestSnapshotBlockNumer() > 0 ) {
+                if ( m_snapshotAgent->getOneBeforeLatestSnapshotBlockNumer() > 0 ) {
                     dev::h256 stateRootHash = this->m_snapshotAgent->getSnapshotHash(
-                        m_snapshotAgent->getLatestSnapshotBlockNumer() );
+                        m_snapshotAgent->getOneBeforeLatestSnapshotBlockNumer() );
                     stateRootToSet = stateRootHash;
                 }
                 // propagate current
@@ -930,9 +930,9 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
         // latest hash is really updated after NEXT snapshot already started hash computation
         // TODO Deduplicate code
         dev::h256 stateRootToSet;
-        if ( m_snapshotAgent->getLatestSnapshotBlockNumer() > 0 ) {
+        if ( m_snapshotAgent->getOneBeforeLatestSnapshotBlockNumer() > 0 ) {
             dev::h256 stateRootHash = this->m_snapshotAgent->getSnapshotHash(
-                m_snapshotAgent->getLatestSnapshotBlockNumer() );
+                m_snapshotAgent->getOneBeforeLatestSnapshotBlockNumer() );
             stateRootToSet = stateRootHash;
         }
         // propagate current

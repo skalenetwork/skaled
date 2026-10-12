@@ -18,12 +18,15 @@
 #include <libweb3jsonrpc/Test.h>
 #include <libweb3jsonrpc/Web3.h>
 #include <skutils/btrfs.h>
+#include <test/tools/libtesteth/BtrfsTestFixture.h>
 #include <test/tools/libtesteth/TestHelper.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>
 #include <boost/test/unit_test.hpp>
 
+#include <chrono>
 #include <iostream>
 #include <string>
+#include <thread>
 
 #include "../libweb3jsonrpc/WebThreeStubClient.h"
 
@@ -31,6 +34,8 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 using namespace dev::test;
+
+const string BTRFS_DIR_PATH = dev::test::BtrfsTestMount::defaultMountPath();
 
 boost::unit_test::assertion_result option_all_test( boost::unit_test::test_unit_id ) {
     return boost::unit_test::assertion_result( dev::test::Options::get().all ? true : false );
@@ -245,110 +250,13 @@ private:
     TestIpcServer& m_server;
 };
 
-struct FixtureCommon {
-    const string BTRFS_FILE_PATH = "btrfs.file";
-    const string BTRFS_DIR_PATH = "btrfs";
-    uid_t sudo_uid;
-    gid_t sudo_gid;
-
-    void check_sudo() {
-#if ( !defined __APPLE__ )
-        char* id_str = getenv( "SUDO_UID" );
-        if ( id_str == NULL ) {
-            cerr << "Please run under sudo" << endl;
-            exit( -1 );
-        }
-
-        sscanf( id_str, "%d", &sudo_uid );
-
-        //    uid_t ru, eu, su;
-        //    getresuid( &ru, &eu, &su );
-        //    cerr << ru << " " << eu << " " << su << endl;
-
-        if ( geteuid() != 0 ) {
-            cerr << "Need to be root" << endl;
-            exit( -1 );
-        }
-
-        id_str = getenv( "SUDO_GID" );
-        sscanf( id_str, "%d", &sudo_gid );
-
-        gid_t rgid, egid, sgid;
-        getresgid( &rgid, &egid, &sgid );
-        cerr << "GIDS: " << rgid << " " << egid << " " << sgid << endl;
-#endif
-    }
-
-    void dropRoot() {
-#if ( !defined __APPLE__ )
-        int res = setresgid( sudo_gid, sudo_gid, 0 );
-        cerr << "setresgid " << sudo_gid << " " << res << endl;
-        if ( res < 0 )
-            cerr << strerror( errno ) << endl;
-        res = setresuid( sudo_uid, sudo_uid, 0 );
-        cerr << "setresuid " << sudo_uid << " " << res << endl;
-        if ( res < 0 )
-            cerr << strerror( errno ) << endl;
-#endif
-    }
-
-    void gainRoot() {
-#if ( !defined __APPLE__ )
-        int res = setresuid( 0, 0, 0 );
-        if ( res ) {
-            cerr << strerror( errno ) << endl;
-            assert( false );
-        }
-        res = setresgid( 0, 0, 0 );
-        if ( res ) {
-            cerr << strerror( errno ) << endl;
-            assert( false );
-        }
-#endif
-    }
-
-    void cleanupBtrfsArtifacts() {
-        gainRoot();
-#if ( !defined __APPLE__ )
-        while ( system( ( "mountpoint -q " + BTRFS_DIR_PATH ).c_str() ) == 0 ) {
-            int rv = system( ( "umount " + BTRFS_DIR_PATH ).c_str() );
-            assert( rv == 0 );
-        }
-#endif
-        int rv = system( ( "rm -rf " + BTRFS_DIR_PATH ).c_str() );
-        assert( rv == 0 );
-        rv = system( ( "rm -f " + BTRFS_FILE_PATH ).c_str() );
-        assert( rv == 0 );
-    }
-};
-
 // TODO Do not copy&paste from JsonRpcFixture
-struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCommon {
-    SnapshotHashingFixture() {
-        check_sudo();
-        cleanupBtrfsArtifacts();
-
-        dropRoot();
-
-        int rv =
-            system( ( "dd if=/dev/zero of=" + BTRFS_FILE_PATH + " bs=1M count=" + to_string( 200 ) )
-                        .c_str() );
-        rv = system( ( "mkfs.btrfs " + BTRFS_FILE_PATH ).c_str() );
-        rv = system( ( "mkdir " + BTRFS_DIR_PATH ).c_str() );
-
-        gainRoot();
-        rv = system( ( "mount -o user_subvol_rm_allowed " + BTRFS_FILE_PATH + " " + BTRFS_DIR_PATH )
-                         .c_str() );
-        rv = chown( BTRFS_DIR_PATH.c_str(), sudo_uid, sudo_gid );
-        ( void ) rv;
-        dropRoot();
-
-        //        btrfs.subvolume.create( ( BTRFS_DIR_PATH + "/vol1" ).c_str() );
-        //        btrfs.subvolume.create( ( BTRFS_DIR_PATH + "/vol2" ).c_str() );
-        // system( ( "mkdir " + BTRFS_DIR_PATH + "/snapshots" ).c_str() );
-
-        gainRoot();
-
+struct SnapshotHashingFixture : public TestOutputHelperFixture {
+    // _snapshotIntervalSec <= 0 (the default) disables SnapshotAgent's automatic
+    // snapshot/hash-computation cycle, matching the behavior relied on by tests that drive
+    // SnapshotManager manually via `mgr`.
+    explicit SnapshotHashingFixture( int64_t _snapshotIntervalSec = -1 )
+        : btrfsMount( dev::test::BtrfsTestMount::fixedPaths() ) {
         std::shared_ptr< ChainParams > chainParams = std::make_shared< ChainParams >();
         dev::p2p::NetworkPreferences nprefs;
         chainParams->sealEngineName = NoProof::name();
@@ -366,6 +274,7 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         chainParams->extraData = h256::random().asBytes();
 
         chainParams->sChain.emptyBlockIntervalMs = 1000;
+        chainParams->sChain.snapshotIntervalSec = _snapshotIntervalSec;
 
         //        web3.reset( new WebThreeDirect(
         //            "eth tests", tempDir.path(), "", chainParams, WithExisting::Kill, {"eth"},
@@ -415,8 +324,11 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         auto monitor = make_shared< InstanceMonitor >( "test" );
 
         setenv( "DATA_DIR", BTRFS_DIR_PATH.c_str(), 1 );
+        // Client's internal SnapshotAgent needs a real SnapshotManager whenever
+        // snapshotIntervalSec > 0 (its automatic snapshot/hash cycle is enabled and will
+        // dereference it); reuse the same `mgr` the test uses for manual snapshot calls.
         client.reset( new eth::ClientTest( chainParams, ( int ) chainParams->getNetworkId(),
-            shared_ptr< GasPricer >(), NULL, monitor, boost::filesystem::path( BTRFS_DIR_PATH ),
+            shared_ptr< GasPricer >(), mgr, monitor, boost::filesystem::path( BTRFS_DIR_PATH ),
             WithExisting::Kill ) );
 
         // wait for 1st block to prevent race conditions in UnsafeRegion
@@ -476,10 +388,6 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         client.reset();
         mgr.reset();
 
-        const char* NC = getenv( "NC" );
-        if ( NC )
-            return;
-        cleanupBtrfsArtifacts();
     }
 
     string sendingRawShouldFail( string const& _t ) {
@@ -492,6 +400,7 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         return string();
     }
 
+    dev::test::BtrfsTestMount btrfsMount;
     TransientDirectory tempDir;  // ! should exist before client!
     unique_ptr< Client > client;
 
@@ -505,7 +414,7 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
     unique_ptr< WebThreeStubClient > rpcClient;
     TestIpcClient* testIpcClient;
     std::string adminSession;
-    unique_ptr< SnapshotManager > mgr;
+    shared_ptr< SnapshotManager > mgr;
 };
 }  // namespace
 
@@ -606,7 +515,7 @@ BOOST_FIXTURE_TEST_CASE( SnapshotHashingTest, SnapshotHashingFixture,
     t["to"] = toJS( receiver.address() );
     t["value"] = jsToDecimal( toJS( 10000 * dev::eth::szabo ) );
 
-    BOOST_REQUIRE( client->getLatestSnapshotBlockNumer() == -1 );
+    BOOST_REQUIRE( client->getOneBeforeLatestSnapshotBlockNumer() == -1 );
 
     // Mine to generate a non-zero account balance
     const int blocksToMine = 1;
@@ -666,6 +575,47 @@ BOOST_FIXTURE_TEST_CASE( SnapshotHashingTest, SnapshotHashingFixture,
     uint64_t timestampFromBlockchain = client->blockInfo( hash ).timestamp();
 
     BOOST_REQUIRE_EQUAL( timestampFromBlockchain, mgr->getBlockTimestamp( 3 ) );
+}
+
+BOOST_AUTO_TEST_CASE( SnapshotOneBeforeTracksPreviousLatest,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+    SnapshotHashingFixture fixture( 1 );  // snapshotIntervalSec = 1s
+
+    int64_t lastObservedLatest = -1;
+    int distinctLatestTransitions = 0;
+
+    for ( int i = 0; i < 300 && distinctLatestTransitions < 3; ++i ) {
+        std::this_thread::sleep_for( std::chrono::milliseconds( 100 ) );
+
+        int64_t latest = fixture.client->getLatestSnapshotBlockNumer();
+        int64_t oneBefore = fixture.client->getOneBeforeLatestSnapshotBlockNumer();
+
+        BOOST_REQUIRE_MESSAGE( oneBefore <= latest,
+            "one-before-latest snapshot (" << oneBefore << ") got ahead of latest (" << latest
+                                            << ")" );
+
+        if ( latest != lastObservedLatest ) {
+            if ( lastObservedLatest >= 0 ) {
+                // Give the one-before pointer a chance to catch up to what "latest" used to be,
+                // in case this exact sample raced it.
+                bool convergedToPrevious = ( oneBefore == lastObservedLatest );
+                for ( int j = 0; j < 50 && !convergedToPrevious; ++j ) {
+                    std::this_thread::sleep_for( std::chrono::milliseconds( 100 ) );
+                    convergedToPrevious = ( fixture.client->getOneBeforeLatestSnapshotBlockNumer() ==
+                                             lastObservedLatest );
+                }
+                BOOST_REQUIRE_MESSAGE( convergedToPrevious,
+                    "one-before-latest snapshot never converged to the previous latest snapshot ("
+                        << lastObservedLatest << ")" );
+            }
+            lastObservedLatest = latest;
+            ++distinctLatestTransitions;
+        }
+    }
+
+    BOOST_REQUIRE_MESSAGE( distinctLatestTransitions >= 3,
+        "could not observe enough distinct latest-snapshot transitions to validate the "
+        "one-before invariant" );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
