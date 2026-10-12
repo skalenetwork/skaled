@@ -199,7 +199,9 @@ void SealEngineFace::verifyTransaction( ChainOperationParams const& _chainParams
     // Non-FAIR checked external-gas txs are exempt from this check: their effectiveGasPrice is
     // forced to 0 (see Transaction::getEffectiveGasPrice), so charging them against baseFee
     // would be inconsistent with the zero upfront / zero refund / zero author-fee invariant.
-    if ( LondonForkPatch::isEnabledWhen( _committedBlockTimestamp )
+    //
+    // Unsigned txs are exempt: eth_call, eth_estimateGas and debug_traceCall run at any gasPrice.
+    if ( LondonForkPatch::isEnabledWhen( _committedBlockTimestamp ) && _t.hasSignature()
 #ifndef FAIR
          && _t.getExternalGas() == 0
 #endif
