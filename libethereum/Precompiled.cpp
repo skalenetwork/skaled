@@ -43,6 +43,7 @@
 #include <libdevcrypto/Common.h>
 #include <libdevcrypto/Hash.h>
 #include <libdevcrypto/LibSnark.h>
+#include <libdevcrypto/P256.h>
 #include <libethcore/ChainOperationParams.h>
 #include <libethcore/Common.h>
 #include <libethereum/Client.h>
@@ -238,6 +239,18 @@ ETH_REGISTER_PRECOMPILED_PRICER( alt_bn128_pairing_product )
     auto const k = _in.size() / 192;
     return _ctx.blockNumber < _chainParams.getIstanbulForkBlock() ? 100000 + k * 80000 :
                                                                     45000 + k * 34000;
+}
+
+// EIP-7951: secp256r1 (P-256) signature verification
+ETH_REGISTER_PRECOMPILED( p256verify )( bytesConstRef _in, const PrecompiledCallContext& ) {
+    return dev::crypto::p256Verify( _in );
+}
+
+ETH_REGISTER_PRECOMPILED_PRICER( p256verify )
+( bytesConstRef, ChainOperationParams const&, PrecompiledCallContext const& _ctx ) {
+    if ( !EIP7951Patch::isEnabledWhen( _ctx.latestBlockTimestamp ) )
+        return 0;
+    return 6900;
 }
 
 #ifndef FAIR

@@ -1604,6 +1604,144 @@ constexpr PrecompiledTest bn256PairingTests[] = {
     },
 };
 
+/// EIP-7951 (P256VERIFY) vectors. Expected results are cross-checked with an independent
+/// pure Python implementation of P-256 ECDSA. Input: hash | r | s | qx | qy.
+constexpr PrecompiledTest p256VerifyTests[] = {
+    // RIP-7212 / go-ethereum reference vector
+    { "4cee90eb86eaa050036147a12d49004b6b9c72bd725d39d4785011fe190f0b4d"
+      "a73bd4903f0ce3b639bbbf6e8e80d16931ff4bcf5993d58468e8fb19086e8cac"
+      "36dbcd03009df8c59286b162af3bd7fcc0450c9aa81be5d10d312af6c66b1d60"
+      "4aebd3099c618202fcfe16ae7770b0c49ab5eadf74b754204a3bb6060e44eff3"
+      "7618b065f9832de4ca6ca971a7a1adc826d0f7c00181a5fb2ddf79ae00b4e10e",
+        "0000000000000000000000000000000000000000000000000000000000000001", "known_vector" },
+    // valid signature
+    { "a14602b6c565f3a19844545783837da86474415433572b36ae4aa9003011b3bf"
+      "c4bc9d287ef485d5f472796a8c742e72ec7726e402a7161c3ba1e046c72f4a45"
+      "ae9d9ca6f95e65aa8d3b2b1b955318a6c48682248c6265eb24dad9f8e6e6881e"
+      "43dc65a70fa4d896587f1d1ea9594471149321a72a9d570876e133cbf31bf9e0"
+      "b902830773516e9435933bc0199a9f66d6b503fbb74a5a2e5ab6b490c17c170d",
+        "0000000000000000000000000000000000000000000000000000000000000001", "valid" },
+    // s > n/2 is accepted (no low-s rule in EIP-7951)
+    { "a14602b6c565f3a19844545783837da86474415433572b36ae4aa9003011b3bf"
+      "c4bc9d287ef485d5f472796a8c742e72ec7726e402a7161c3ba1e046c72f4a45"
+      "5162635806a19a5672c4d4e46aace758f86078891ab53899cedef0ca157c9d33"
+      "43dc65a70fa4d896587f1d1ea9594471149321a72a9d570876e133cbf31bf9e0"
+      "b902830773516e9435933bc0199a9f66d6b503fbb74a5a2e5ab6b490c17c170d",
+        "0000000000000000000000000000000000000000000000000000000000000001", "valid_high_s" },
+    // hash does not match
+    { "a14602b6c565f3a19844545783837da86474415433572b36ae4aa9003011b3be"
+      "c4bc9d287ef485d5f472796a8c742e72ec7726e402a7161c3ba1e046c72f4a45"
+      "ae9d9ca6f95e65aa8d3b2b1b955318a6c48682248c6265eb24dad9f8e6e6881e"
+      "43dc65a70fa4d896587f1d1ea9594471149321a72a9d570876e133cbf31bf9e0"
+      "b902830773516e9435933bc0199a9f66d6b503fbb74a5a2e5ab6b490c17c170d",
+        "", "wrong_hash" },
+    // r does not match
+    { "a14602b6c565f3a19844545783837da86474415433572b36ae4aa9003011b3bf"
+      "c4bc9d287ef485d5f472796a8c742e72ec7726e402a7161c3ba1e046c72f4a46"
+      "ae9d9ca6f95e65aa8d3b2b1b955318a6c48682248c6265eb24dad9f8e6e6881e"
+      "43dc65a70fa4d896587f1d1ea9594471149321a72a9d570876e133cbf31bf9e0"
+      "b902830773516e9435933bc0199a9f66d6b503fbb74a5a2e5ab6b490c17c170d",
+        "", "wrong_r" },
+    // signature made by another key
+    { "a14602b6c565f3a19844545783837da86474415433572b36ae4aa9003011b3bf"
+      "c4bc9d287ef485d5f472796a8c742e72ec7726e402a7161c3ba1e046c72f4a45"
+      "ae9d9ca6f95e65aa8d3b2b1b955318a6c48682248c6265eb24dad9f8e6e6881e"
+      "84214574604de6c14b857a9871a2c4eef6c41df2d478aaee07872fc70da89713"
+      "cfb6e47bf74e441752fb681a36bfe88eb9ca687750157b3da214f22788676ae1",
+        "", "wrong_pubkey" },
+    // hash >= n is reduced mod n
+    { "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      "753d0326e1ff51c5d7969c2d5a7890d5bba63f8d437eed40daa39816bdf32cd6"
+      "f7e3a51f4e2a4867a44b478ab2a7ed4d140be2c590e095a2f47e8af8d8300732"
+      "43dc65a70fa4d896587f1d1ea9594471149321a72a9d570876e133cbf31bf9e0"
+      "b902830773516e9435933bc0199a9f66d6b503fbb74a5a2e5ab6b490c17c170d",
+        "0000000000000000000000000000000000000000000000000000000000000001", "valid_hash_ge_n" },
+    // zero hash
+    { "0000000000000000000000000000000000000000000000000000000000000000"
+      "3c7dc9c4bd86532f3db3ef2d2ac1b2ff94f5792c96e2d2d4cc18b1282baecb43"
+      "5ffdc6cb02cc79c973da34986b333edb93dfcf8ded278a85464e9daf6009c1ae"
+      "43dc65a70fa4d896587f1d1ea9594471149321a72a9d570876e133cbf31bf9e0"
+      "b902830773516e9435933bc0199a9f66d6b503fbb74a5a2e5ab6b490c17c170d",
+        "0000000000000000000000000000000000000000000000000000000000000001", "valid_zero_hash" },
+    // r == 0
+    { "a14602b6c565f3a19844545783837da86474415433572b36ae4aa9003011b3bf"
+      "0000000000000000000000000000000000000000000000000000000000000000"
+      "ae9d9ca6f95e65aa8d3b2b1b955318a6c48682248c6265eb24dad9f8e6e6881e"
+      "43dc65a70fa4d896587f1d1ea9594471149321a72a9d570876e133cbf31bf9e0"
+      "b902830773516e9435933bc0199a9f66d6b503fbb74a5a2e5ab6b490c17c170d",
+        "", "r_zero" },
+    // s == 0
+    { "a14602b6c565f3a19844545783837da86474415433572b36ae4aa9003011b3bf"
+      "c4bc9d287ef485d5f472796a8c742e72ec7726e402a7161c3ba1e046c72f4a45"
+      "0000000000000000000000000000000000000000000000000000000000000000"
+      "43dc65a70fa4d896587f1d1ea9594471149321a72a9d570876e133cbf31bf9e0"
+      "b902830773516e9435933bc0199a9f66d6b503fbb74a5a2e5ab6b490c17c170d",
+        "", "s_zero" },
+    // r == n
+    { "a14602b6c565f3a19844545783837da86474415433572b36ae4aa9003011b3bf"
+      "ffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551"
+      "ae9d9ca6f95e65aa8d3b2b1b955318a6c48682248c6265eb24dad9f8e6e6881e"
+      "43dc65a70fa4d896587f1d1ea9594471149321a72a9d570876e133cbf31bf9e0"
+      "b902830773516e9435933bc0199a9f66d6b503fbb74a5a2e5ab6b490c17c170d",
+        "", "r_eq_n" },
+    // s == n
+    { "a14602b6c565f3a19844545783837da86474415433572b36ae4aa9003011b3bf"
+      "c4bc9d287ef485d5f472796a8c742e72ec7726e402a7161c3ba1e046c72f4a45"
+      "ffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551"
+      "43dc65a70fa4d896587f1d1ea9594471149321a72a9d570876e133cbf31bf9e0"
+      "b902830773516e9435933bc0199a9f66d6b503fbb74a5a2e5ab6b490c17c170d",
+        "", "s_eq_n" },
+    // qx == p
+    { "a14602b6c565f3a19844545783837da86474415433572b36ae4aa9003011b3bf"
+      "c4bc9d287ef485d5f472796a8c742e72ec7726e402a7161c3ba1e046c72f4a45"
+      "ae9d9ca6f95e65aa8d3b2b1b955318a6c48682248c6265eb24dad9f8e6e6881e"
+      "ffffffff00000001000000000000000000000000ffffffffffffffffffffffff"
+      "b902830773516e9435933bc0199a9f66d6b503fbb74a5a2e5ab6b490c17c170d",
+        "", "qx_eq_p" },
+    // public key is the point at infinity (0, 0)
+    { "a14602b6c565f3a19844545783837da86474415433572b36ae4aa9003011b3bf"
+      "c4bc9d287ef485d5f472796a8c742e72ec7726e402a7161c3ba1e046c72f4a45"
+      "ae9d9ca6f95e65aa8d3b2b1b955318a6c48682248c6265eb24dad9f8e6e6881e"
+      "0000000000000000000000000000000000000000000000000000000000000000"
+      "0000000000000000000000000000000000000000000000000000000000000000",
+        "", "pubkey_infinity" },
+    // public key is not on the curve
+    { "a14602b6c565f3a19844545783837da86474415433572b36ae4aa9003011b3bf"
+      "c4bc9d287ef485d5f472796a8c742e72ec7726e402a7161c3ba1e046c72f4a45"
+      "ae9d9ca6f95e65aa8d3b2b1b955318a6c48682248c6265eb24dad9f8e6e6881e"
+      "43dc65a70fa4d896587f1d1ea9594471149321a72a9d570876e133cbf31bf9e0"
+      "b902830773516e9435933bc0199a9f66d6b503fbb74a5a2e5ab6b490c17c170e",
+        "", "pubkey_not_on_curve" },
+    // u1 * G + u2 * Q is the point at infinity
+    { "74f7cfa49b2a9d78b974bc8adfea2fcc39631b899998853c45800ebd1e0ab919"
+      "0000000000000000000000000000000000000000000000000000000000001234"
+      "0000000000000000000000000000000000000000000000000000000000005678"
+      "43dc65a70fa4d896587f1d1ea9594471149321a72a9d570876e133cbf31bf9e0"
+      "b902830773516e9435933bc0199a9f66d6b503fbb74a5a2e5ab6b490c17c170d",
+        "", "result_infinity" },
+    // valid signature for a public key with small qx
+    { "d7ac08f6cc49af90d0ab52659548d50ecbc975faba1737090b019fa017d230a0"
+      "13cd7f3941c34f8f07cc11f65089e87f09f771a61985f9ee331559ef14c653be"
+      "a03b743b6373afa04935c042a9d651719531d3c906eed48cb8feba311b6ae505"
+      "0000000000000000000000000000000000000000000000000000000000000005"
+      "459243b9aa581806fe913bce99817ade11ca503c64d9a3c533415c083248fbcc",
+        "0000000000000000000000000000000000000000000000000000000000000001", "small_x_valid" },
+    // same as above, but qx + p: coordinates must not be reduced mod p
+    { "d7ac08f6cc49af90d0ab52659548d50ecbc975faba1737090b019fa017d230a0"
+      "13cd7f3941c34f8f07cc11f65089e87f09f771a61985f9ee331559ef14c653be"
+      "a03b743b6373afa04935c042a9d651719531d3c906eed48cb8feba311b6ae505"
+      "ffffffff00000001000000000000000000000001000000000000000000000004"
+      "459243b9aa581806fe913bce99817ade11ca503c64d9a3c533415c083248fbcc",
+        "", "qx_plus_p" },
+    // same as above, but -Q
+    { "d7ac08f6cc49af90d0ab52659548d50ecbc975faba1737090b019fa017d230a0"
+      "13cd7f3941c34f8f07cc11f65089e87f09f771a61985f9ee331559ef14c653be"
+      "a03b743b6373afa04935c042a9d651719531d3c906eed48cb8feba311b6ae505"
+      "0000000000000000000000000000000000000000000000000000000000000005"
+      "ba6dbc4555a7e7fa016ec431667e8521ee35afc49b265c3accbea3f7cdb70433",
+        "", "neg_y" },
+};
+
 namespace {
 #ifdef BITE
 // RAII guard for submitCTX/BITE precompiled tests. Wires up the process-wide
@@ -1716,6 +1854,13 @@ BOOST_AUTO_TEST_CASE( bench_bn256Pairing,
     benchmarkPrecompiled( "alt_bn128_pairing_product", tests, 1000 );
 }
 
+BOOST_AUTO_TEST_CASE( bench_p256verify,
+    *ut::label( "bench" ) * boost::unit_test::precondition( dev::test::run_not_express ) ) {
+    vector_ref< const PrecompiledTest > tests{ p256VerifyTests,
+        sizeof( p256VerifyTests ) / sizeof( p256VerifyTests[0] ) };
+    benchmarkPrecompiled( "p256verify", tests, 10000 );
+}
+
 BOOST_AUTO_TEST_CASE(
     ecaddCostBeforeIstanbul, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledPricer cost = PrecompiledRegistrar::pricer( "alt_bn128_G1_add" );
@@ -1781,6 +1926,59 @@ BOOST_AUTO_TEST_CASE( ecpairingCost ) {
 
     auto costIstanbul = cost( ref( in ), chainParams, PrecompiledCallContext{2, 0, false} );
     BOOST_CHECK_EQUAL( static_cast< int >( costIstanbul ), in.size() / 192 * 34000 + 45000 );
+}
+
+BOOST_AUTO_TEST_CASE( p256verify ) {
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "p256verify" );
+
+    for ( auto const& test : p256VerifyTests ) {
+        bytes input = fromHex( test.input );
+        auto res = exec( &input, defaultPrecompiledContext );
+        // the call itself never fails, invalid signature is reported by empty output
+        BOOST_REQUIRE_MESSAGE( res.first, test.name );
+        BOOST_CHECK_MESSAGE( toHex( res.second ) == test.expected, test.name );
+    }
+}
+
+BOOST_AUTO_TEST_CASE( p256verifyInvalidInputLength ) {
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "p256verify" );
+
+    bytes const valid = fromHex( p256VerifyTests[0].input );
+    // a valid signature truncated or padded with zeros must be rejected
+    for ( size_t size : { 0, 1, 32, 159, 161, 192 } ) {
+        bytes input = valid;
+        input.resize( size, 0 );
+        auto res = exec( &input, defaultPrecompiledContext );
+        BOOST_REQUIRE( res.first );
+        BOOST_CHECK_MESSAGE( res.second.empty(), "input size " << size );
+    }
+}
+
+BOOST_AUTO_TEST_CASE( p256verifyCost ) {
+    struct PatchableChainParams : public ChainOperationParams {
+        void setPatchTimestamp( SchainPatchEnum _patch, time_t _timestamp ) {
+            sChain._patchTimestamps[static_cast< size_t >( _patch )] = _timestamp;
+        }
+    };
+
+    PrecompiledPricer cost = PrecompiledRegistrar::pricer( "p256verify" );
+
+    ChainParams chainParams{ genesisInfo( eth::Network::IstanbulTransitionTest ) };
+    PrecompiledCallContext ctx{ 1, 1, false };
+    bytes in = fromHex( p256VerifyTests[0].input );
+
+    // not enabled
+    PatchableChainParams disabledPatchParams;
+    SchainPatch::init( disabledPatchParams );
+    BOOST_CHECK_EQUAL( static_cast< int >( cost( ref( in ), chainParams, ctx ) ), 0 );
+
+    PatchableChainParams enabledPatchParams;
+    enabledPatchParams.setPatchTimestamp( SchainPatchEnum::EIP7951Patch, 1 );
+    SchainPatch::init( enabledPatchParams );
+    BOOST_CHECK_EQUAL( static_cast< int >( cost( ref( in ), chainParams, ctx ) ), 6900 );
+    BOOST_CHECK_EQUAL( static_cast< int >( cost( {}, chainParams, ctx ) ), 6900 );
+
+    SchainPatch::init( disabledPatchParams );
 }
 
 static size_t rand_port = ( srand( time( nullptr ) ), 1024 + rand() % 64000 );

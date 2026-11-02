@@ -219,6 +219,7 @@ revert();
             }
         },
         "0000000000000000000000000000000000000008": { "precompiled": { "name": "getBlockRandom", "linear": { "base": 15, "word": 0 } } },
+        "0000000000000000000000000000000000000100": { "precompiled": { "name": "p256verify" } },
         "0x5c4e11842e8be09264dc1976943571d7af6d00f9" : {
             "balance" : "1000000000000000000000000000000"
         },
@@ -330,6 +331,7 @@ static std::string const c_genesisConfigString =
         "0000000000000000000000000000000000000003": { "precompiled": { "name": "ripemd160", "linear": { "base": 600, "word": 120 } } },
         "0000000000000000000000000000000000000004": { "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } } },
         "0000000000000000000000000000000000000008": { "precompiled": { "name": "getBlockRandom", "linear": { "base": 15, "word": 0 } } },
+        "0000000000000000000000000000000000000100": { "precompiled": { "name": "p256verify" } },
         )"
     /*
 pragma solidity ^0.4.25;
@@ -2041,6 +2043,73 @@ BOOST_AUTO_TEST_CASE( eth_estimateGas_chainId ) {
             "0xc04eeb4c000000000000000000000000000000000000000000000000000000000000ffff" );
         BOOST_CHECK_EQUAL( ex.GetMessage(), "EVM revert instruction without description message" );
     }
+}
+
+// EIP-7951
+BOOST_AUTO_TEST_CASE( p256verify ) {
+    std::string _config = c_genesisConfigString;
+    Json::Value ret;
+    Json::Reader().parse( _config, ret );
+
+    ret["skaleConfig"]["sChain"]["EIP7951PatchTimestamp"] = 1;
+
+    // eth_call to a precompiled directly does not return its output,
+    // so call p256verify through a contract that forwards calldata with STATICCALL:
+    // CALLDATACOPY(0, 0, CALLDATASIZE)
+    // STATICCALL(GAS, 0x100, 0, CALLDATASIZE, 0, 0)
+    // RETURNDATACOPY(0, 0, RETURNDATASIZE)
+    // RETURN(0, RETURNDATASIZE)
+    std::string const forwarderAddress = "0x7951000000000000000000000000000000007951";
+    ret["accounts"][forwarderAddress]["balance"] = "0";
+    ret["accounts"][forwarderAddress]["code"] =
+        "0x366000600037600060003660006101005afa503d600060003e3d6000f3";
+    ret["accounts"][forwarderAddress]["nonce"] = "0";
+    ret["accounts"][forwarderAddress]["storage"] = Json::objectValue;
+
+    Json::FastWriter fastWriter;
+    std::string config = fastWriter.write( ret );
+    JsonRpcFixture fixture( config );
+    dev::eth::simulateMining( *( fixture.client ), 1 );
+
+    // hash | r | s | qx | qy
+    std::string const validInput =
+        "0x4cee90eb86eaa050036147a12d49004b6b9c72bd725d39d4785011fe190f0b4d"
+        "a73bd4903f0ce3b639bbbf6e8e80d16931ff4bcf5993d58468e8fb19086e8cac"
+        "36dbcd03009df8c59286b162af3bd7fcc0450c9aa81be5d10d312af6c66b1d60"
+        "4aebd3099c618202fcfe16ae7770b0c49ab5eadf74b754204a3bb6060e44eff3"
+        "7618b065f9832de4ca6ca971a7a1adc826d0f7c00181a5fb2ddf79ae00b4e10e";
+    // the same input with the last byte of the hash changed
+    std::string const invalidInput =
+        "0x4cee90eb86eaa050036147a12d49004b6b9c72bd725d39d4785011fe190f0b4e" +
+        validInput.substr( 2 + 64 );
+
+    Json::Value call;
+    call["to"] = forwarderAddress;
+
+    call["data"] = validInput;
+    BOOST_CHECK_EQUAL( fixture.rpcClient->eth_call( call, "latest" ),
+        "0x0000000000000000000000000000000000000000000000000000000000000001" );
+
+    // invalid signature does not revert and returns empty output
+    call["data"] = invalidInput;
+    BOOST_CHECK_EQUAL( fixture.rpcClient->eth_call( call, "latest" ), "0x" );
+
+    auto gasUsed = [&fixture]( std::string const& _to, std::string const& _data ) {
+        Json::Value tx;
+        tx["to"] = _to;
+        tx["data"] = _data;
+        tx["gas"] = "100000";
+        std::string txHash = fixture.rpcClient->eth_sendTransaction( tx );
+        dev::eth::mineTransaction( *( fixture.client ), 1 );
+        Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+        BOOST_REQUIRE_EQUAL( receipt["status"], std::string( "0x1" ) );
+        return jsToU256( receipt["gasUsed"].asString() );
+    };
+
+    // the same call data to an address without code costs only the intrinsic gas
+    u256 precompileGas = gasUsed( "0x0000000000000000000000000000000000000100", validInput );
+    u256 intrinsicGas = gasUsed( "0x0000000000000000000000000000000000000101", validInput );
+    BOOST_CHECK_EQUAL( precompileGas - intrinsicGas, 6900 );
 }
 
 BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasLimitExceeded ) {
