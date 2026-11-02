@@ -306,6 +306,8 @@ extern bool is_local_private_network_address_ipv6( const std::string& s );
 extern bool is_local_private_network_address_ipv6( const char* s, const char* e );
 extern bool is_local_private_network_address( const std::string& s );
 extern bool is_local_private_network_address( const char* s, const char* e );
+// true only for 127.0.0.0/8, ::1 and ::ffff:127.0.0.0/104
+extern bool is_loopback_address( const std::string& s );
 
 // the following group of methods are accepting URL as parameter, not IP address
 extern bool is_local_private_network_url( const url& an_url );

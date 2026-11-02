@@ -580,7 +580,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         chainParams->sChain.multiTransactionMode = _mtmEnabled;
         chainParams->nodeInfo.syncNode = _isSyncNode;
 
-        auto monitor = make_shared< InstanceMonitor >( "test" );
+        instanceMonitor = make_shared< InstanceMonitor >( tempDir.path() );
 
 
         const std::string& dataDir = _dataDirOverride.empty() ? tempDir.path() : _dataDirOverride;
@@ -591,7 +591,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
                 std::make_shared< SnapshotManager >( chainParams, dataDir, std::string() );
         }
         client.reset( new eth::ClientTest( chainParams, ( int ) chainParams->getNetworkId(),
-            shared_ptr< GasPricer >(), snapshotManager, monitor, dataDir,
+            shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, dataDir,
             WithExisting::Kill ) );
 
         if ( !_generation2 )
@@ -746,6 +746,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
     }
 
     TransientDirectory tempDir;  // ! should exist before client!
+    std::shared_ptr< InstanceMonitor > instanceMonitor;
     unique_ptr< Client > client;
 
     dev::KeyPair coinbase{ KeyPair::create() };
@@ -4289,12 +4290,203 @@ BOOST_AUTO_TEST_CASE( storage_limit_reverted ) {
     BOOST_REQUIRE( receipt["status"] == string( "0x1" ) );
 }
 
+// setSchainExitTime schedules this node's exit, so only loopback callers may use it.
+// The fixture's SkaleHost has no InstanceMonitor, so a scheduled exit never fires during these
+// tests; a future time is used anyway, in case that changes.
+static const uint64_t c_testSchainExitTime = 4000000000;
+static const string c_setSchainExitTimeDenied = "caller have no permition for this action";
+
 BOOST_AUTO_TEST_CASE( setSchainExitTime ) {
+    // the stub client sends positional params; the loopback caller passes the origin check and
+    // the request is rejected for its params, without scheduling an exit
     JsonRpcFixture fixture;
     Json::Value requestJson;
     requestJson["finishTime"] = 100;
-    BOOST_REQUIRE_THROW(
-        fixture.rpcClient->setSchainExitTime( requestJson ), jsonrpc::JsonRpcException );
+    try {
+        fixture.rpcClient->setSchainExitTime( requestJson );
+        BOOST_FAIL( "Exception expected." );
+    } catch ( jsonrpc::JsonRpcException const& _e ) {
+        BOOST_CHECK_MESSAGE( _e.GetMessage().find( "must be object" ) != string::npos &&
+                                 _e.GetMessage().find( c_setSchainExitTimeDenied ) == string::npos,
+            _e.GetMessage() );
+    }
+    BOOST_CHECK( !boost::filesystem::exists(
+        boost::filesystem::path( fixture.tempDir.path() ) / "rotation.json" ) );
+}
+
+static bool schainExitScheduled( JsonRpcFixture& _fixture ) {
+    return _fixture.instanceMonitor->isTimeToRotate( std::numeric_limits< uint64_t >::max() );
+}
+
+static boost::filesystem::path rotationFilePath( JsonRpcFixture& _fixture ) {
+    return boost::filesystem::path( _fixture.tempDir.path() ) / "rotation.json";
+}
+
+// stricter than !schainExitScheduled(): also catches a written but unreadable file
+static bool rotationFileWritten( JsonRpcFixture& _fixture ) {
+    return boost::filesystem::exists( rotationFilePath( _fixture ) );
+}
+
+static void clearSchainExitTime( JsonRpcFixture& _fixture ) {
+    boost::filesystem::remove( rotationFilePath( _fixture ) );
+}
+
+// Calls the protocol-level handler the way the HTTP and WS servers do, with _origin formatted
+// as they format it ("http://1.2.3.4:5555", "http://[2a01::1]:5555", "ws://1.2.3.4").
+// Returns the error message of the response, or an empty string if it carries no error.
+static string callSetSchainExitTime(
+    JsonRpcFixture& _fixture, const string& _origin, const string& _paramsJson ) {
+    string request = R"({"jsonrpc":"2.0","id":1,"method":"setSchainExitTime")";
+    if ( !_paramsJson.empty() )
+        request += R"(,"params":)" + _paramsJson;
+    request += "}";
+
+    rapidjson::Document joRequest;
+    joRequest.Parse( request.data() );
+    BOOST_REQUIRE_MESSAGE( !joRequest.HasParseError(), "bad test request: " << request );
+
+    rapidjson::Document joResponse;
+    joResponse.SetObject();
+    joResponse.AddMember( "jsonrpc", "2.0", joResponse.GetAllocator() );
+    joResponse.AddMember( "id", 1, joResponse.GetAllocator() );
+    rapidjson::Value result;
+    result.SetObject();
+    joResponse.AddMember( "result", result, joResponse.GetAllocator() );
+
+    BOOST_REQUIRE( _fixture.skale_server_connector->handleProtocolSpecificRequest(
+        _origin, joRequest, joResponse ) );
+    // a JSON-RPC response carries either result or error, never both
+    if ( !joResponse.HasMember( "error" ) ) {
+        BOOST_CHECK( joResponse.HasMember( "result" ) );
+        return "";
+    }
+    BOOST_CHECK_MESSAGE( !joResponse.HasMember( "result" ), "error response also has result" );
+    const rapidjson::Value& joError = joResponse["error"];
+    BOOST_REQUIRE(
+        joError.IsObject() && joError.HasMember( "message" ) && joError["message"].IsString() );
+    string message = joError["message"].GetString();
+    BOOST_REQUIRE( !message.empty() );
+    return message;
+}
+
+static bool isSetSchainExitTimeDenied( const string& _errorMessage ) {
+    return _errorMessage.find( c_setSchainExitTimeDenied ) != string::npos;
+}
+
+BOOST_AUTO_TEST_CASE( setSchainExitTime_rejects_non_loopback_origins ) {
+    JsonRpcFixture fixture;
+    const string params = R"({"finishTime":)" + to_string( c_testSchainExitTime ) + "}";
+    // public IPv6 over the HTTP(S) IPv6 listeners
+    const vector< string > origins = { "http://[2a01:4f8::1]:5555", "https://[2001:db8::1]:443",
+        "http://[2600::1]:5555",
+        // public hosts inside 172.0.0.0/8 and 192.0.0.0/8
+        "http://172.104.1.1:5555", "ws://172.104.1.1", "wss://172.64.0.1", "http://192.99.1.1:5555",
+        "ws://192.241.1.1",
+        // private but not loopback: NAT, docker bridge, LAN, ULA, link-local
+        "http://10.0.0.5:5555", "http://172.17.0.1:5555", "ws://192.168.1.10",
+        "http://[fd00::1]:5555", "http://[fe80::1]:5555",
+        // other public addresses
+        "http://8.8.8.8:5555", "ws://8.8.8.8", "http://[::ffff:8.8.8.8]:5555",
+        // the WS server writes IPv6 peers without brackets
+        "ws://2a01:4f8::1", "wss://fe80::1", "ws://::ffff:8.8.8.8",
+        // unspecified, host names and unparsable origins
+        "http://0.0.0.0:5555", "http://[::]:5555", "http://localhost:5555",
+        "http://127.0.0.1.attacker.example:5555", "unknown origin", "" };
+
+    for ( const auto& origin : origins ) {
+        clearSchainExitTime( fixture );
+        string error = callSetSchainExitTime( fixture, origin, params );
+        BOOST_CHECK_MESSAGE(
+            isSetSchainExitTimeDenied( error ), "setSchainExitTime must be denied for origin \""
+                                                    << origin << "\", got \"" << error << "\"" );
+        BOOST_CHECK_MESSAGE( !rotationFileWritten( fixture ),
+            "setSchainExitTime must not schedule an exit for origin \"" << origin << "\"" );
+    }
+    clearSchainExitTime( fixture );
+}
+
+BOOST_AUTO_TEST_CASE( setSchainExitTime_accepts_loopback_origins ) {
+    JsonRpcFixture fixture;
+    const string params = R"({"finishTime":)" + to_string( c_testSchainExitTime ) + "}";
+    const vector< string > origins = { "http://127.0.0.1:5555", "https://127.0.0.1:443",
+        "ws://127.0.0.1", "wss://127.0.0.1", "http://127.1.2.3:5555", "http://[::1]:5555",
+        "http://[::ffff:127.0.0.1]:5555" };
+
+    for ( const auto& origin : origins ) {
+        clearSchainExitTime( fixture );
+        string error = callSetSchainExitTime( fixture, origin, params );
+        BOOST_CHECK_MESSAGE( error.empty(), "setSchainExitTime must succeed for origin \""
+                                                << origin << "\", got \"" << error << "\"" );
+        BOOST_CHECK_MESSAGE( schainExitScheduled( fixture ),
+            "setSchainExitTime must schedule an exit for origin \"" << origin << "\"" );
+    }
+    clearSchainExitTime( fixture );
+}
+
+BOOST_AUTO_TEST_CASE( setSchainExitTime_accepts_loopback_over_http ) {
+    // goes through the real HTTP listener, so the origin string is the one the server builds
+    JsonRpcFixture fixture;
+    clearSchainExitTime( fixture );
+    string response;
+    fixture.httpClient->SendRPCMessage(
+        R"({"jsonrpc":"2.0","id":1,"method":"setSchainExitTime","params":{"finishTime":)" +
+            to_string( c_testSchainExitTime ) + "}}",
+        response );
+    BOOST_CHECK_MESSAGE( nlohmann::json::parse( response ).count( "error" ) == 0, response );
+    BOOST_CHECK( schainExitScheduled( fixture ) );
+    clearSchainExitTime( fixture );
+}
+
+BOOST_AUTO_TEST_CASE( setSchainExitTime_accepts_64bit_finish_time ) {
+    JsonRpcFixture fixture;
+    clearSchainExitTime( fixture );
+    BOOST_CHECK(
+        callSetSchainExitTime( fixture, "http://127.0.0.1:5555", R"({"finishTime":5000000000})" )
+            .empty() );
+    BOOST_CHECK( schainExitScheduled( fixture ) );
+    BOOST_CHECK( !fixture.instanceMonitor->isTimeToRotate( 4999999999 ) );
+    BOOST_CHECK( fixture.instanceMonitor->isTimeToRotate( 5000000000 ) );
+    clearSchainExitTime( fixture );
+}
+
+BOOST_AUTO_TEST_CASE( setSchainExitTime_rejects_malformed_params_from_loopback ) {
+    JsonRpcFixture fixture;
+    const vector< string > paramsList = { "", "null", R"("x")", "[4000000000]",
+        R"([{"finishTime":4000000000}])", "{}", R"({"finishTime":"4000000000"})",
+        R"({"finishTime":-1})", R"({"finishTime":1.5})", R"({"finishTime":null})",
+        R"({"finishTime":18446744073709551616})" };
+
+    for ( const auto& params : paramsList ) {
+        clearSchainExitTime( fixture );
+        // the loopback caller passes the origin check, so the params are what gets rejected
+        string error = callSetSchainExitTime( fixture, "http://127.0.0.1:5555", params );
+        bool paramsError = error.find( "\"params\" must be object" ) != string::npos ||
+                           error.find( "\"finishTime\" parameter" ) != string::npos;
+        BOOST_CHECK_MESSAGE( paramsError && !isSetSchainExitTimeDenied( error ),
+            "setSchainExitTime must fail on params " << params << ", got \"" << error << "\"" );
+        BOOST_CHECK_MESSAGE( !rotationFileWritten( fixture ),
+            "setSchainExitTime must not schedule an exit for params " << params );
+    }
+    clearSchainExitTime( fixture );
+}
+
+BOOST_AUTO_TEST_CASE( setSchainExitTime_rejects_malformed_params_from_remote_origins ) {
+    // the origin check must come before any parsing of the request
+    JsonRpcFixture fixture;
+    const vector< string > paramsList = { "", "[4000000000]", R"({"finishTime":-1})",
+        R"({"finishTime":5000000000})" };
+
+    for ( const string origin : { "http://8.8.8.8:5555", "http://[2a01:4f8::1]:5555" } ) {
+        for ( const auto& params : paramsList ) {
+            clearSchainExitTime( fixture );
+            string error = callSetSchainExitTime( fixture, origin, params );
+            BOOST_CHECK_MESSAGE( isSetSchainExitTimeDenied( error ),
+                "setSchainExitTime must be denied for origin \""
+                    << origin << "\" and params " << params << ", got \"" << error << "\"" );
+            BOOST_CHECK( !rotationFileWritten( fixture ) );
+        }
+    }
+    clearSchainExitTime( fixture );
 }
 
 #ifndef FAIR

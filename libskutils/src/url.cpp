@@ -2,6 +2,8 @@
 // https://github.com/chmike/CxxUrl
 // git@github.com:chmike/CxxUrl.git
 
+#include <arpa/inet.h>
+#include <netinet/in.h>
 #include <skutils/url.h>
 #include <string.h>
 #include <algorithm>
@@ -1112,27 +1114,41 @@ std::string strip_url_user_name_and_password_copy( const std::string& str_url ) 
 }
 
 // the following group of methods are accepting IP address as parameter, not URL
+// they accept only literal addresses in canonical text form (inet_pton), never host names
+static bool parse_ipv4_address( const std::string& s, uint8_t ( &bytes )[4] ) {
+    struct in_addr addr;
+    if ( ::inet_pton( AF_INET, s.c_str(), &addr ) != 1 )
+        return false;
+    ::memcpy( bytes, &addr, 4 );
+    return true;
+}
+static bool parse_ipv6_address( const std::string& s, uint8_t ( &bytes )[16] ) {
+    struct in6_addr addr;
+    if ( ::inet_pton( AF_INET6, s.c_str(), &addr ) != 1 )
+        return false;
+    ::memcpy( bytes, &addr, 16 );
+    return true;
+}
+static bool is_ipv4_mapped_ipv6( const uint8_t ( &bytes )[16] ) {  // ::ffff:0:0/96
+    static const uint8_t prefix[12] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff };
+    return ::memcmp( bytes, prefix, 12 ) == 0;
+}
+static bool is_ipv6_loopback( const uint8_t ( &bytes )[16] ) {  // ::1/128
+    static const uint8_t loopback[16] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 };
+    return ::memcmp( bytes, loopback, 16 ) == 0;
+}
+static bool is_private_ipv4( const uint8_t* b ) {
+    return b[0] == 10                                   // 10.0.0.0/8
+           || b[0] == 127                               // 127.0.0.0/8
+           || ( b[0] == 172 && ( b[1] & 0xf0 ) == 16 )  // 172.16.0.0/12
+           || ( b[0] == 192 && b[1] == 168 );           // 192.168.0.0/16
+}
+
 extern bool is_local_private_network_address_ipv4( const std::string& s ) {
-    if ( s.empty() )
+    uint8_t bytes[4];
+    if ( !parse_ipv4_address( s, bytes ) )
         return false;
-    if ( !( is_ipv4( s ) && is_valid_ipv4( s ) ) )
-        return false;
-    std::vector< std::string > vec = split2vector( s, '.' );
-    if ( vec.size() != 4 )
-        return false;  // ???
-    // note: see "Reserved address blocks" table here https://en.wikipedia.org/wiki/IPv4
-    if ( !is_uint( vec[0], 255 ) )
-        return false;  // ???
-    char* ep = nullptr;
-    unsigned long n = ::strtoul( vec[0].c_str(), &ep, 10 );
-    switch ( n ) {
-    case 10:
-    case 127:
-    case 172:
-    case 192:
-        return true;
-    }  // switch( n )
-    return false;
+    return is_private_ipv4( bytes );
 }
 extern bool is_local_private_network_address_ipv4( const char* s, const char* e ) {
     if ( s == nullptr )
@@ -1141,22 +1157,17 @@ extern bool is_local_private_network_address_ipv4( const char* s, const char* e 
     return is_local_private_network_address_ipv4( tmp );
 }
 extern bool is_local_private_network_address_ipv6( const std::string& s ) {
-    if ( s.empty() )
+    uint8_t bytes[16];
+    if ( !parse_ipv6_address( s, bytes ) )
         return false;
-    if ( !( is_ipv6( s ) && is_valid_ipv6( s ) ) )
-        return false;
-    if ( s == "::1" )
+    if ( is_ipv6_loopback( bytes ) )
         return true;
-    if ( s[0] == ':' )
-        return false;
-    // note: read about address scopes
-    // https://en.wikipedia.org/wiki/IPv6_address
-    // http://www.gestioip.net/docu/ipv6_address_examples.html
-    if ( s[0] == 'f' || s[0] == 'F' )
-        return true;  // note: this method should be additionally re-checked
-    //
-    if ( strncasecmp( s.c_str(), "fc00::", 6 ) != 0 )
+    if ( ( bytes[0] & 0xfe ) == 0xfc )  // fc00::/7 unique local
         return true;
+    if ( bytes[0] == 0xfe && ( bytes[1] & 0xc0 ) == 0x80 )  // fe80::/10 link-local
+        return true;
+    if ( is_ipv4_mapped_ipv6( bytes ) )
+        return is_private_ipv4( bytes + 12 );
     return false;
 }
 extern bool is_local_private_network_address_ipv6( const char* s, const char* e ) {
@@ -1178,6 +1189,17 @@ bool is_local_private_network_address( const std::string& s ) {
     if ( is_local_private_network_address_ipv6( s ) )
         return true;
     return false;
+}
+bool is_loopback_address( const std::string& s ) {
+    uint8_t bytes4[4];
+    if ( parse_ipv4_address( s, bytes4 ) )
+        return bytes4[0] == 127;  // 127.0.0.0/8
+    uint8_t bytes6[16];
+    if ( !parse_ipv6_address( s, bytes6 ) )
+        return false;
+    if ( is_ipv6_loopback( bytes6 ) )
+        return true;
+    return is_ipv4_mapped_ipv6( bytes6 ) && bytes6[12] == 127;  // ::ffff:127.0.0.0/104
 }
 
 // the following group of methods are accepting URL as parameter, not IP address
