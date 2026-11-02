@@ -4296,24 +4296,6 @@ BOOST_AUTO_TEST_CASE( storage_limit_reverted ) {
 static const uint64_t c_testSchainExitTime = 4000000000;
 static const string c_setSchainExitTimeDenied = "caller have no permition for this action";
 
-BOOST_AUTO_TEST_CASE( setSchainExitTime ) {
-    // the stub client sends positional params; the loopback caller passes the origin check and
-    // the request is rejected for its params, without scheduling an exit
-    JsonRpcFixture fixture;
-    Json::Value requestJson;
-    requestJson["finishTime"] = 100;
-    try {
-        fixture.rpcClient->setSchainExitTime( requestJson );
-        BOOST_FAIL( "Exception expected." );
-    } catch ( jsonrpc::JsonRpcException const& _e ) {
-        BOOST_CHECK_MESSAGE( _e.GetMessage().find( "must be object" ) != string::npos &&
-                                 _e.GetMessage().find( c_setSchainExitTimeDenied ) == string::npos,
-            _e.GetMessage() );
-    }
-    BOOST_CHECK( !boost::filesystem::exists(
-        boost::filesystem::path( fixture.tempDir.path() ) / "rotation.json" ) );
-}
-
 static bool schainExitScheduled( JsonRpcFixture& _fixture ) {
     return _fixture.instanceMonitor->isTimeToRotate( std::numeric_limits< uint64_t >::max() );
 }
@@ -4331,10 +4313,12 @@ static void clearSchainExitTime( JsonRpcFixture& _fixture ) {
     boost::filesystem::remove( rotationFilePath( _fixture ) );
 }
 
-// Calls the protocol-level handler the way the HTTP and WS servers do, with _origin formatted
-// as they format it ("http://1.2.3.4:5555", "http://[2a01::1]:5555", "ws://1.2.3.4").
-// Returns the error message of the response, or an empty string if it carries no error.
-static string callSetSchainExitTime(
+// Tests that need a caller other than 127.0.0.1 cannot use rpcClient/httpClient: a real
+// connection in a test always comes from loopback. This calls the handler the HTTP and WS
+// servers dispatch to, passing _origin in the format they build it ("http://1.2.3.4:5555",
+// "http://[2a01::1]:5555", "ws://1.2.3.4"), so the origin check can be tested for any address.
+// Returns the error message of the response, or "" if it carries no error.
+static string callSetSchainExitTimeFromOrigin(
     JsonRpcFixture& _fixture, const string& _origin, const string& _paramsJson ) {
     string request = R"({"jsonrpc":"2.0","id":1,"method":"setSchainExitTime")";
     if ( !_paramsJson.empty() )
@@ -4395,7 +4379,7 @@ BOOST_AUTO_TEST_CASE( setSchainExitTime_rejects_non_loopback_origins ) {
 
     for ( const auto& origin : origins ) {
         clearSchainExitTime( fixture );
-        string error = callSetSchainExitTime( fixture, origin, params );
+        string error = callSetSchainExitTimeFromOrigin( fixture, origin, params );
         BOOST_CHECK_MESSAGE(
             isSetSchainExitTimeDenied( error ), "setSchainExitTime must be denied for origin \""
                                                     << origin << "\", got \"" << error << "\"" );
@@ -4414,7 +4398,7 @@ BOOST_AUTO_TEST_CASE( setSchainExitTime_accepts_loopback_origins ) {
 
     for ( const auto& origin : origins ) {
         clearSchainExitTime( fixture );
-        string error = callSetSchainExitTime( fixture, origin, params );
+        string error = callSetSchainExitTimeFromOrigin( fixture, origin, params );
         BOOST_CHECK_MESSAGE( error.empty(), "setSchainExitTime must succeed for origin \""
                                                 << origin << "\", got \"" << error << "\"" );
         BOOST_CHECK_MESSAGE( schainExitScheduled( fixture ),
@@ -4424,7 +4408,10 @@ BOOST_AUTO_TEST_CASE( setSchainExitTime_accepts_loopback_origins ) {
 }
 
 BOOST_AUTO_TEST_CASE( setSchainExitTime_accepts_loopback_over_http ) {
-    // goes through the real HTTP listener, so the origin string is the one the server builds
+    // The only setSchainExitTime test that uses a real HTTP connection: the server builds the
+    // origin from the socket's peer address (127.0.0.1 here), as in production. The other tests
+    // call the handler directly with a hand-written origin, since a real connection in a test
+    // always comes from loopback.
     JsonRpcFixture fixture;
     clearSchainExitTime( fixture );
     string response;
@@ -4440,9 +4427,9 @@ BOOST_AUTO_TEST_CASE( setSchainExitTime_accepts_loopback_over_http ) {
 BOOST_AUTO_TEST_CASE( setSchainExitTime_accepts_64bit_finish_time ) {
     JsonRpcFixture fixture;
     clearSchainExitTime( fixture );
-    BOOST_CHECK(
-        callSetSchainExitTime( fixture, "http://127.0.0.1:5555", R"({"finishTime":5000000000})" )
-            .empty() );
+    BOOST_CHECK( callSetSchainExitTimeFromOrigin(
+        fixture, "http://127.0.0.1:5555", R"({"finishTime":5000000000})" )
+                     .empty() );
     BOOST_CHECK( schainExitScheduled( fixture ) );
     BOOST_CHECK( !fixture.instanceMonitor->isTimeToRotate( 4999999999 ) );
     BOOST_CHECK( fixture.instanceMonitor->isTimeToRotate( 5000000000 ) );
@@ -4459,7 +4446,7 @@ BOOST_AUTO_TEST_CASE( setSchainExitTime_rejects_malformed_params_from_loopback )
     for ( const auto& params : paramsList ) {
         clearSchainExitTime( fixture );
         // the loopback caller passes the origin check, so the params are what gets rejected
-        string error = callSetSchainExitTime( fixture, "http://127.0.0.1:5555", params );
+        string error = callSetSchainExitTimeFromOrigin( fixture, "http://127.0.0.1:5555", params );
         bool paramsError = error.find( "\"params\" must be object" ) != string::npos ||
                            error.find( "\"finishTime\" parameter" ) != string::npos;
         BOOST_CHECK_MESSAGE( paramsError && !isSetSchainExitTimeDenied( error ),
@@ -4479,7 +4466,7 @@ BOOST_AUTO_TEST_CASE( setSchainExitTime_rejects_malformed_params_from_remote_ori
     for ( const string origin : { "http://8.8.8.8:5555", "http://[2a01:4f8::1]:5555" } ) {
         for ( const auto& params : paramsList ) {
             clearSchainExitTime( fixture );
-            string error = callSetSchainExitTime( fixture, origin, params );
+            string error = callSetSchainExitTimeFromOrigin( fixture, origin, params );
             BOOST_CHECK_MESSAGE( isSetSchainExitTimeDenied( error ),
                 "setSchainExitTime must be denied for origin \""
                     << origin << "\" and params " << params << ", got \"" << error << "\"" );
