@@ -272,7 +272,6 @@ private:
     mutable std::int8_t nIPversion_;
 
 public:
-    bool is_local_private_network_address() const;
     bool update_user_name_and_password( const char* strOptionalUser,
         const char* strOptionalPassword, bool bRemoveIfEmpty );  // returns true if was updated
     bool update_user_name_and_password( const std::string& strOptionalUser,
@@ -299,20 +298,9 @@ extern bool strip_url_user_name_and_password( url& an_url );
 extern bool strip_url_user_name_and_password( std::string& str_url );
 extern std::string strip_url_user_name_and_password_copy( const std::string& str_url );
 
-// the following group of methods are accepting IP address as parameter, not URL
-extern bool is_local_private_network_address_ipv4( const std::string& s );
-extern bool is_local_private_network_address_ipv4( const char* s, const char* e );
-extern bool is_local_private_network_address_ipv6( const std::string& s );
-extern bool is_local_private_network_address_ipv6( const char* s, const char* e );
-extern bool is_local_private_network_address( const std::string& s );
-extern bool is_local_private_network_address( const char* s, const char* e );
+// accepts an IP address as parameter, not URL
 // true only for 127.0.0.0/8, ::1 and ::ffff:127.0.0.0/104
 extern bool is_loopback_address( const std::string& s );
-
-// the following group of methods are accepting URL as parameter, not IP address
-extern bool is_local_private_network_url( const url& an_url );
-extern bool is_local_private_network_url( const std::string& str_url );
-extern bool is_local_private_network_url( const char* s, const char* e );
 
 };  // namespace skutils
 

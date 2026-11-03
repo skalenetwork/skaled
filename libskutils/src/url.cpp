@@ -1004,18 +1004,6 @@ std::ostream& url::output( std::ostream& o ) const {
     return o;
 }
 
-bool url::is_local_private_network_address() const {
-    std::int8_t ip_v = ip_version();
-    switch ( ip_v ) {
-    case 4:
-        return is_local_private_network_address_ipv4( host() );
-    case 6:
-        return is_local_private_network_address_ipv6( host() );
-    default:
-        return false;
-    }  // switch( ip_v )
-}
-
 bool url::update_user_name_and_password( const char* strOptionalUser,
     const char* strOptionalPassword, bool bRemoveIfEmpty ) {  // returns true if was updated
     if ( ( !bRemoveIfEmpty ) && ( strOptionalUser == nullptr || strOptionalUser[0] == '\0' ) )
@@ -1114,7 +1102,7 @@ std::string strip_url_user_name_and_password_copy( const std::string& str_url ) 
 }
 
 // the following group of methods are accepting IP address as parameter, not URL
-// they accept only literal addresses in canonical text form (inet_pton), never host names
+// they accept only numeric address literals (inet_pton), never host names
 static bool parse_ipv4_address( const std::string& s, uint8_t ( &bytes )[4] ) {
     struct in_addr addr;
     if ( ::inet_pton( AF_INET, s.c_str(), &addr ) != 1 )
@@ -1137,59 +1125,7 @@ static bool is_ipv6_loopback( const uint8_t ( &bytes )[16] ) {  // ::1/128
     static const uint8_t loopback[16] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 };
     return ::memcmp( bytes, loopback, 16 ) == 0;
 }
-static bool is_private_ipv4( const uint8_t* b ) {
-    return b[0] == 10                                   // 10.0.0.0/8
-           || b[0] == 127                               // 127.0.0.0/8
-           || ( b[0] == 172 && ( b[1] & 0xf0 ) == 16 )  // 172.16.0.0/12
-           || ( b[0] == 192 && b[1] == 168 );           // 192.168.0.0/16
-}
 
-extern bool is_local_private_network_address_ipv4( const std::string& s ) {
-    uint8_t bytes[4];
-    if ( !parse_ipv4_address( s, bytes ) )
-        return false;
-    return is_private_ipv4( bytes );
-}
-extern bool is_local_private_network_address_ipv4( const char* s, const char* e ) {
-    if ( s == nullptr )
-        return false;
-    std::string tmp( s, size_t( e - s ) );
-    return is_local_private_network_address_ipv4( tmp );
-}
-extern bool is_local_private_network_address_ipv6( const std::string& s ) {
-    uint8_t bytes[16];
-    if ( !parse_ipv6_address( s, bytes ) )
-        return false;
-    if ( is_ipv6_loopback( bytes ) )
-        return true;
-    if ( ( bytes[0] & 0xfe ) == 0xfc )  // fc00::/7 unique local
-        return true;
-    if ( bytes[0] == 0xfe && ( bytes[1] & 0xc0 ) == 0x80 )  // fe80::/10 link-local
-        return true;
-    if ( is_ipv4_mapped_ipv6( bytes ) )
-        return is_private_ipv4( bytes + 12 );
-    return false;
-}
-extern bool is_local_private_network_address_ipv6( const char* s, const char* e ) {
-    if ( s == nullptr )
-        return false;
-    std::string tmp( s, size_t( e - s ) );
-    return is_local_private_network_address_ipv6( tmp );
-}
-bool is_local_private_network_address( const char* s, const char* e ) {
-    if ( is_local_private_network_address_ipv4( s, e ) )
-        return true;
-    if ( is_local_private_network_address_ipv6( s, e ) )
-        return true;
-    return false;
-}
-bool is_local_private_network_address( const std::string& s ) {
-    if ( is_local_private_network_address_ipv4( s ) )
-        return true;
-    if ( is_local_private_network_address_ipv6( s ) )
-        return true;
-    return false;
-}
 bool is_loopback_address( const std::string& s ) {
     uint8_t bytes4[4];
     if ( parse_ipv4_address( s, bytes4 ) )
@@ -1202,22 +1138,4 @@ bool is_loopback_address( const std::string& s ) {
     return is_ipv4_mapped_ipv6( bytes6 ) && bytes6[12] == 127;  // ::ffff:127.0.0.0/104
 }
 
-// the following group of methods are accepting URL as parameter, not IP address
-bool is_local_private_network_url( const url& an_url ) {
-    return an_url.is_local_private_network_address();
-}
-bool is_local_private_network_url( const std::string& str_url ) {
-    try {
-        url an_url( str_url );
-        return is_local_private_network_url( an_url );
-    } catch ( ... ) {
-        return false;
-    }
-}
-extern bool is_local_private_network_url( const char* s, const char* e ) {
-    if ( s == nullptr )
-        return false;
-    std::string tmp( s, size_t( e - s ) );
-    return is_local_private_network_url( tmp );
-}
 };  // namespace skutils
