@@ -42,8 +42,8 @@ using namespace dev::crypto;
 
 namespace {
 
-constexpr size_t c_fieldSize = 32;
-constexpr size_t c_inputSize = 5 * c_fieldSize;
+constexpr size_t FIELD_SIZE = 32;
+constexpr size_t INPUT_SIZE = 5 * FIELD_SIZE;
 
 using BnCtxPtr = unique_ptr< BN_CTX, decltype( &BN_CTX_free ) >;
 using EcPointPtr = unique_ptr< EC_POINT, decltype( &EC_POINT_free ) >;
@@ -76,7 +76,7 @@ P256Group const& p256() {
 
 BIGNUM* bnFromInput( bytesConstRef _in, size_t _index, BN_CTX* _ctx ) {
     BIGNUM* ret = BN_CTX_get( _ctx );
-    ensure( ret && BN_bin2bn( _in.data() + _index * c_fieldSize, c_fieldSize, ret ) );
+    ensure( ret && BN_bin2bn( _in.data() + _index * FIELD_SIZE, FIELD_SIZE, ret ) );
     return ret;
 }
 
@@ -85,7 +85,7 @@ bool isInRange( BIGNUM const* _x, BIGNUM const* _upper ) {
 }
 
 bool verify( bytesConstRef _in ) {
-    if ( _in.size() != c_inputSize )
+    if ( _in.size() != INPUT_SIZE )
         return false;
 
     P256Group const& curve = p256();
