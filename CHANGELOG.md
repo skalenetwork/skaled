@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [5.3.1] - 2026-10-12 (beta)
+
+### Added
+
+- Consensus-managed debug pause/resume, suppressing stuck warnings and restarts while paused
+  ([#2520](https://github.com/skalenetwork/skaled/pull/2520), [skalenetwork/skale-consensus#1033](https://github.com/skalenetwork/skale-consensus/pull/1033), [skalenetwork/skale-consensus#1034](https://github.com/skalenetwork/skale-consensus/issues/1034))
+- Ubuntu 24.04 support for skaled and consensus, with updated CI and build dependencies
+  ([#2531](https://github.com/skalenetwork/skaled/pull/2531), [#2539](https://github.com/skalenetwork/skaled/pull/2539), [skalenetwork/skale-consensus#1038](https://github.com/skalenetwork/skale-consensus/pull/1038))
+
+### Changed
+
+- Lower missing-block/header logs from Warning to Debug
+  ([#2542](https://github.com/skalenetwork/skaled/pull/2542), [#2541](https://github.com/skalenetwork/skaled/issues/2541))
+- Centralize BTRFS test setup/teardown and improve unmount cleanup
+  ([#2504](https://github.com/skalenetwork/skaled/pull/2504), [#2503](https://github.com/skalenetwork/skaled/issues/2503))
+
+### Fixed
+
+- Redact SGX wallet URLs, IPs, and domains from consensus exception logs
+  ([#2540](https://github.com/skalenetwork/skaled/pull/2540), [skalenetwork/skale-consensus#1039](https://github.com/skalenetwork/skale-consensus/pull/1039))
+- Improve BITE decryption-share merging and finalization retries; fix a share-cache memory leak
+  ([#2547](https://github.com/skalenetwork/skaled/pull/2547), [skalenetwork/skale-consensus#1042](https://github.com/skalenetwork/skale-consensus/pull/1042))
+- Fix dependency builds: newer CMake compatibility, curl/libff dependencies, and Git archive races
+  ([#2531](https://github.com/skalenetwork/skaled/pull/2531), [#2532](https://github.com/skalenetwork/skaled/pull/2532), [#2535](https://github.com/skalenetwork/skaled/pull/2535), [#2539](https://github.com/skalenetwork/skaled/pull/2539))
+
 ## [5.3.0] - 2026-08-10 (beta)
 
 London and Paris fork support; snapshot-hash JSON-RPC API; consensus performance improvements.
