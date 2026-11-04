@@ -227,6 +227,13 @@ DEFINE_SIMPLE_PATCH( ContractCreationReadOnlyPatch );
  */
 DEFINE_SIMPLE_PATCH( ParisForkPatch );
 
+/*
+ * Purpose: Enforce path boundary containment and reject traversal, absolute paths,
+ * and embedded NUL bytes in mutating FileStorage precompiled contracts.
+ * Version introduced: 5.3.1
+ */
+DEFINE_SIMPLE_PATCH( FileStorageContainmentPatch );
+
 #ifdef FAIR
 DEFINE_SIMPLE_PATCH( DisableSelfDestructPatch );
 #endif
