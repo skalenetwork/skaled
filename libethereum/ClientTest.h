@@ -24,6 +24,7 @@
 #pragma once
 
 #include <libethereum/Client.h>
+#include <libethereum/SchainPatch.h>
 #include <boost/filesystem/path.hpp>
 #include <functional>
 #include <tuple>
@@ -52,6 +53,19 @@ public:
     // Test-only helper: serialize custom test actions (e.g. manual snapshots)
     // with block import, because height-based synchronization is not enough.
     void withBlockImportBarrier( const std::function< void() >& _action );
+
+#ifndef FAIR
+    // Test-only helper: recompute the group index in the same order as on startup,
+    // where initHistoricGroupIndex runs before SchainPatch is initialized
+    void reinitHistoricGroupIndex() {
+        SchainPatch::init( ChainOperationParams() );
+        SchainPatch::useLatestBlockTimestamp( 0 );
+        initHistoricGroupIndex();
+        SchainPatch::init( chainParams() );
+        SchainPatch::useLatestBlockTimestamp( blockChain().info().timestamp() );
+        updateHistoricGroupIndexOnStartup();
+    }
+#endif
 
     void modifyTimestamp( int64_t _timestamp );
     void rewindToBlock( unsigned _number );

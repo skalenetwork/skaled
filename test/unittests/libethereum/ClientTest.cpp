@@ -1283,6 +1283,127 @@ BOOST_AUTO_TEST_CASE( initAndUpdateHistoricConfigFields ) {
     BOOST_REQUIRE_EQUAL( testClient->getHistoricNodeIndex( 0 ), "0" );
 }
 
+#ifndef FAIR
+BOOST_AUTO_TEST_CASE( groupIndexAfterBlocks ) {
+    std::vector< NodeGroup > nodeGroups( 4 );
+    nodeGroups[0].finishTs = 100;
+    nodeGroups[1].finishTs = 200;
+    nodeGroups[2].finishTs = 300;
+    nodeGroups[3].finishTs = uint64_t( -1 );
+
+    BOOST_REQUIRE_EQUAL( Client::getGroupIndexAfterBlocks( nodeGroups, 0, {} ), 0 );
+    BOOST_REQUIRE_EQUAL( Client::getGroupIndexAfterBlocks( nodeGroups, 0, { 50, 99 } ), 0 );
+    BOOST_REQUIRE_EQUAL( Client::getGroupIndexAfterBlocks( nodeGroups, 0, { 99, 100 } ), 1 );
+    BOOST_REQUIRE_EQUAL( Client::getGroupIndexAfterBlocks( nodeGroups, 0, { 150 } ), 1 );
+    BOOST_REQUIRE_EQUAL( Client::getGroupIndexAfterBlocks( nodeGroups, 1, { 150, 200 } ), 2 );
+    BOOST_REQUIRE_EQUAL( Client::getGroupIndexAfterBlocks( nodeGroups, 3, { 1000000 } ), 3 );
+    // at most one group per block, like the update after each block
+    BOOST_REQUIRE_EQUAL( Client::getGroupIndexAfterBlocks( nodeGroups, 0, { 350 } ), 1 );
+    BOOST_REQUIRE_EQUAL( Client::getGroupIndexAfterBlocks( nodeGroups, 0, { 350, 360 } ), 2 );
+    BOOST_REQUIRE_EQUAL( Client::getGroupIndexAfterBlocks( nodeGroups, 0, { 350, 360, 370 } ), 3 );
+    BOOST_REQUIRE_EQUAL(
+        Client::getGroupIndexAfterBlocks( nodeGroups, 0, { 350, 360, 370, 380 } ), 3 );
+    BOOST_REQUIRE_EQUAL( Client::getGroupIndexAfterBlocks( {}, 0, { 1000000 } ), 0 );
+
+    nodeGroups[1].finishTs = 100;
+    BOOST_REQUIRE_EQUAL( Client::getGroupIndexAfterBlocks( nodeGroups, 0, { 100 } ), 1 );
+    BOOST_REQUIRE_EQUAL( Client::getGroupIndexAfterBlocks( nodeGroups, 0, { 100, 101 } ), 2 );
+
+    // no current group left
+    nodeGroups.pop_back();
+    BOOST_REQUIRE_THROW(
+        Client::getGroupIndexAfterBlocks( nodeGroups, 2, { 300 } ), std::exception );
+}
+
+namespace {
+
+std::array< std::string, 4 > const c_firstGroupBLSPublicKey = {
+    "12457351342169393659284905310882617316356538373005664536506840512800919345414",
+    "11573096151310346982175966190385407867176668720531590318594794283907348596326",
+    "13929944172721019694880576097738949215943314024940461401664534665129747139387",
+    "7375214420811287025501422512322868338311819657776589198925786170409964211914"
+};
+
+std::array< std::string, 4 > const c_secondGroupBLSPublicKey = {
+    "10860211539819517237363395256510340030868592687836950245163587507107792195621",
+    "2419969454136313127863904023626922181546178935031521540751337209075607503568",
+    "3399776985251727272800732947224655319335094876742988846345707000254666193993",
+    "16982202412630419037827505223148517434545454619191931299977913428346639096984"
+};
+
+int currentGroupIndex( ClientTest* _client ) {
+    auto key = _client->getCurrentBLSPublicKey();
+    if ( key == c_firstGroupBLSPublicKey )
+        return 0;
+    if ( key == c_secondGroupBLSPublicKey )
+        return 1;
+    return -1;
+}
+
+void requireGroupIndex( ClientTest* _client, int _expected ) {
+    BOOST_REQUIRE_EQUAL( currentGroupIndex( _client ), _expected );
+#ifdef BITE
+    BOOST_REQUIRE_EQUAL( _client->getCurrentEpochId(), uint64_t( _expected ) );
+#endif
+}
+
+struct SchainPatchRestore {
+    ChainOperationParams params;
+    ~SchainPatchRestore() { SchainPatch::init( params ); }
+};
+
+// the first group finishes at 4294967290, blocks before _blockTimestamps are before it
+void checkGroupIndexOnStartup( const std::vector< uint64_t >& _blockTimestamps, int _expected ) {
+    TestClientFixture fixture( c_genesisInfoSkaleIMABLSPublicKeyTest );
+
+    sleep( 3 );
+
+    ClientTest* testClient = asClientTest( fixture.ethereum() );
+
+    BOOST_REQUIRE( testClient );
+
+    SchainPatchRestore restore{ testClient->chainParams() };
+
+    requireGroupIndex( testClient, 0 );
+
+    for ( uint64_t timestamp : _blockTimestamps ) {
+        testClient->importTransactionsAsBlock( Transactions(),
+#ifdef BITE
+            DecryptedTransactions{ std::make_shared< DecryptedCTXTxsMap >(),
+                std::make_shared< DecryptedRegularTxsMap >() },
+#endif
+            1000, timestamp );
+    }
+
+    sleep( 3 );
+
+    // update after each block
+    requireGroupIndex( testClient, _expected );
+
+    // startup gives the same index
+    testClient->reinitHistoricGroupIndex();
+    requireGroupIndex( testClient, _expected );
+}
+
+}  // namespace
+
+BOOST_AUTO_TEST_CASE( groupIndexOnStartupFirstBlockAfterFinishTs ) {
+    checkGroupIndexOnStartup( { 4294967294 }, 1 );
+}
+
+BOOST_AUTO_TEST_CASE( groupIndexOnStartupBlockAtFinishTs ) {
+    checkGroupIndexOnStartup( { 4294967290 }, 1 );
+}
+
+BOOST_AUTO_TEST_CASE( groupIndexOnStartupBlocksAfterFinishTs ) {
+    checkGroupIndexOnStartup( { 4294967294, 4294967295 }, 1 );
+}
+
+BOOST_AUTO_TEST_CASE( groupIndexOnStartupBeforeFinishTs ) {
+    checkGroupIndexOnStartup( { 4294967280 }, 0 );
+}
+#endif
+
 BOOST_AUTO_TEST_SUITE_END()
 
 #ifndef FAIR

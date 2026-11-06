@@ -168,6 +168,19 @@ public:
 #ifdef FAIR
     void updateLogger() const override {}
 #endif
+
+#ifdef BITE
+    void setEpochId( uint64_t _epochId ) override {
+        epochId = _epochId;
+        ++setEpochIdCalls;
+    }
+    uint64_t getEpochId() const { return epochId; }
+    uint64_t getSetEpochIdCalls() const { return setEpochIdCalls; }
+
+private:
+    std::atomic< uint64_t > epochId = 0;
+    std::atomic< uint64_t > setEpochIdCalls = 0;
+#endif
 };
 
 class ConsensusTestStubFactory : public ConsensusFactory {
@@ -1944,6 +1957,42 @@ BOOST_AUTO_TEST_CASE( encryptTE_same_data ) {
     BOOST_REQUIRE( ciphertextBytes1 == expectedCiphertext1 );
     BOOST_REQUIRE( ciphertextBytes2 == expectedCiphertext2 );
 }
+
+#ifndef FAIR
+BOOST_AUTO_TEST_CASE( epochIdPassedToConsensusAfterFinishTs ) {
+    SkaleHostFixture fixture;
+
+    uint64_t finishTs = std::time( nullptr ) + 100;
+    fixture.setNodeGroups( { { {}, finishTs, { "0", "0", "1", "0" } },
+        { {}, uint64_t( -1 ), { "0", "0", "1", "0" } } } );
+
+    BOOST_REQUIRE_EQUAL( fixture.client->getCurrentEpochId(), 0 );
+    BOOST_REQUIRE_EQUAL( fixture.stub->getSetEpochIdCalls(), 0 );
+
+    auto createEmptyBlock = [&]( uint64_t _timestamp ) {
+        fixture.stub->createBlock( ConsensusExtFace::Transactions(),
+            DecryptedTransactions{ std::make_shared< DecryptedCTXTxsMap >(),
+                std::make_shared< DecryptedRegularTxsMap >() },
+            _timestamp, fixture.client->number() + 1 );
+    };
+
+    // block before finish_ts: the epoch id does not change
+    createEmptyBlock( finishTs - 1 );
+    BOOST_REQUIRE_EQUAL( fixture.client->getCurrentEpochId(), 0 );
+    BOOST_REQUIRE_EQUAL( fixture.stub->getSetEpochIdCalls(), 0 );
+
+    // first block at finish_ts: consensus gets the next epoch id
+    createEmptyBlock( finishTs );
+    BOOST_REQUIRE_EQUAL( fixture.client->getCurrentEpochId(), 1 );
+    BOOST_REQUIRE_EQUAL( fixture.stub->getEpochId(), 1 );
+    BOOST_REQUIRE_EQUAL( fixture.stub->getSetEpochIdCalls(), 1 );
+
+    // later blocks keep it
+    createEmptyBlock( finishTs + 1 );
+    BOOST_REQUIRE_EQUAL( fixture.client->getCurrentEpochId(), 1 );
+    BOOST_REQUIRE_EQUAL( fixture.stub->getSetEpochIdCalls(), 1 );
+}
+#endif
 
 BOOST_AUTO_TEST_CASE( encryptTE_rotation_soon ) {
     SkaleHostFixture fixture;

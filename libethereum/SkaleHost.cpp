@@ -1271,6 +1271,23 @@ std::array< std::string, 4 > SkaleHost::getCurrentBLSPublicKey() const {
 
 #ifdef BITE
 
+void SkaleHost::setConsensusEpochId( uint64_t _epochId ) {
+    if ( !m_consensus ) {
+        BOOST_LOG( m_loggerWarning )
+            << "Consensus is not created, epoch id " << _epochId << " not passed to consensus";
+        return;
+    }
+    try {
+        m_consensus->setEpochId( _epochId );
+        BOOST_LOG( m_loggerInfo ) << "Passed epoch id " << _epochId << " to consensus";
+    } catch ( const std::exception& ex ) {
+        BOOST_LOG( m_loggerError )
+            << "Could not pass epoch id " << _epochId << " to consensus: " << ex.what();
+    } catch ( ... ) {
+        BOOST_LOG( m_loggerError ) << "Could not pass epoch id " << _epochId << " to consensus";
+    }
+}
+
 void SkaleHost::resetEncryptionStateForBlock( uint64_t _blockID ) {
     constexpr bool _isCalledFromTxn = true;
     m_encryptionCounter = 0;

@@ -54,6 +54,10 @@ public:
     void updateLogger() const override {}
 #endif
 
+#ifdef BITE
+    void setEpochId( uint64_t ) override {}
+#endif
+
     void stop();
 
 private:
