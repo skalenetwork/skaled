@@ -351,6 +351,10 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
 
     SchainPatch::init( chainParams() );
     SchainPatch::useLatestBlockTimestamp( blockChain().info().timestamp() );
+#ifndef FAIR
+    if ( chainParams().getNodeGroups().size() > 0 )
+        updateHistoricGroupIndexOnStartup();
+#endif
     TotalStorageUsedPatch::init( this );
     // HACK Needed to set env var for consensus
     AmsterdamFixPatch::isEnabled( *this );
@@ -607,8 +611,15 @@ size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
         BOOST_LOG( m_loggerWarning ) << "Warning: UnsafeRegion still active!";
 
 #ifndef FAIR
-    if ( chainParams().getNodeGroups().size() > 0 )
-        updateHistoricGroupIndex();
+    if ( chainParams().getNodeGroups().size() > 0 ) {
+        bool groupIndexUpdated = updateHistoricGroupIndex();
+#ifdef BITE
+        // consensus reads the epoch id for the next block after this block is imported
+        if ( groupIndexUpdated && m_skaleHost )
+            m_skaleHost->setConsensusEpochId( getCurrentEpochId() );
+#endif
+        ( void ) groupIndexUpdated;
+    }
 #endif
 
 #ifdef FAIR
@@ -1489,6 +1500,64 @@ void Client::initHistoricGroupIndex() {
 
     historicGroupIndex = getGroupIndexForBlockNumber( number() );
 }
+
+#ifndef FAIR
+uint64_t Client::getGroupIndexAfterBlocks( const std::vector< NodeGroup >& _nodeGroups,
+    uint64_t _groupIndex, const std::vector< uint64_t >& _blockTimestamps ) {
+    if ( _nodeGroups.empty() )
+        return 0;
+
+    // same as updateHistoricGroupIndex: at most one group per block
+    uint64_t groupIndex = _groupIndex;
+    for ( uint64_t blockTimestamp : _blockTimestamps ) {
+        if ( groupIndex >= _nodeGroups.size() )
+            break;
+        if ( blockTimestamp >= _nodeGroups[groupIndex].finishTs )
+            ++groupIndex;
+    }
+
+    if ( groupIndex >= _nodeGroups.size() ) {
+        BOOST_THROW_EXCEPTION( std::runtime_error(
+            "No current node group after block timestamp " +
+            std::to_string( _blockTimestamps.empty() ? 0 : _blockTimestamps.back() ) ) );
+    }
+    return groupIndex;
+}
+
+void Client::updateHistoricGroupIndexOnStartup() {
+    uint64_t latestBlockNumber = number();
+    if ( latestBlockNumber == 0 )
+        return;
+
+    // replay the update done after each block over the last nodeGroups.size() blocks,
+    // taking the index as up to date at the first of them
+    auto nodeGroups = chainParams().getNodeGroups();
+    uint64_t firstBlockNumber =
+        latestBlockNumber - std::min< uint64_t >( latestBlockNumber, nodeGroups.size() );
+
+    uint64_t groupIndex = 0;
+    if ( firstBlockNumber > 0 ) {
+        uint64_t firstBlockTimestamp = blockInfo( hashFromNumber( firstBlockNumber ) ).timestamp();
+        groupIndex = std::count_if(
+            nodeGroups.begin(), nodeGroups.end(), [firstBlockTimestamp]( const NodeGroup& _ng ) {
+                return _ng.finishTs <= firstBlockTimestamp;
+            } );
+    }
+
+    std::vector< uint64_t > blockTimestamps;
+    for ( uint64_t blockNumber = firstBlockNumber + 1; blockNumber <= latestBlockNumber;
+          ++blockNumber )
+        blockTimestamps.push_back( blockInfo( hashFromNumber( blockNumber ) ).timestamp() );
+
+    groupIndex = getGroupIndexAfterBlocks( nodeGroups, groupIndex, blockTimestamps );
+    uint64_t previousGroupIndex = historicGroupIndex;
+    if ( groupIndex != previousGroupIndex ) {
+        BOOST_LOG( m_loggerInfo ) << "Startup group index changed from " << previousGroupIndex
+                                  << " to " << groupIndex;
+    }
+    historicGroupIndex = groupIndex;
+}
+#endif
 
 bool Client::updateHistoricGroupIndex() {
     const auto& nodeGroups = chainParams().getNodeGroups();
