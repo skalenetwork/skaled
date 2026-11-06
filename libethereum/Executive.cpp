@@ -20,8 +20,8 @@
 #include "Executive.h"
 
 #include <algorithm>
-#include <map>
 #include <numeric>
+#include <unordered_map>
 
 #include <json/json.h>
 #include <libdevcore/CommonIO.h>
@@ -43,7 +43,7 @@ using namespace dev;
 namespace {
 // Precompileds that are available only after the patch that introduces them is enabled
 bool isPrecompiledPatchEnabled( Address const& _addr ) {
-    static const std::map< Address, bool ( * )() > patchForPrecompiled = {
+    static const std::unordered_map< Address, bool ( * )() > patchForPrecompiled = {
 #ifdef BITE
         { Address( "0x000000000000000000000000000000000000001B" ),
             &Bite2Patch::isEnabledInWorkingBlock },  // submitCTX
