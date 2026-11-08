@@ -56,6 +56,8 @@ SchainPatchEnum getEnumForPatchName( const std::string& _patchName ) {
         return SchainPatchEnum::ContractCreationReadOnlyPatch;
     else if ( _patchName == "ParisForkPatch" )
         return SchainPatchEnum::ParisForkPatch;
+    else if ( _patchName == "EIP7951Patch" )
+        return SchainPatchEnum::EIP7951Patch;
 #ifdef BITE
     else if ( _patchName == "BITE2Patch" || _patchName == "Bite2Patch" )
         return SchainPatchEnum::Bite2Patch;
@@ -118,6 +120,8 @@ std::string getPatchNameForEnum( SchainPatchEnum _enumValue ) {
         return "ContractCreationReadOnlyPatch";
     case SchainPatchEnum::ParisForkPatch:
         return "ParisForkPatch";
+    case SchainPatchEnum::EIP7951Patch:
+        return "EIP7951Patch";
 #ifdef BITE
     case SchainPatchEnum::Bite2Patch:
         return "Bite2Patch";
