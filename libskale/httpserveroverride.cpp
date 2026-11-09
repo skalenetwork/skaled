@@ -2765,66 +2765,45 @@ const SkaleServerOverride::protocol_rpc_map_t SkaleServerOverride::g_protocol_rp
 };
 
 
+// true only if the origin's host is a loopback IP literal; host names and unparsable origins fail
+static bool isLoopbackOrigin( const string& strOrigin ) {
+    try {
+        skutils::url u( strOrigin );
+        return skutils::is_loopback_address( u.host() );
+    } catch ( ... ) {
+        return false;
+    }
+}
+
 void SkaleServerOverride::setSchainExitTime( const string& strOrigin,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
     SkaleServerOverride* pSO = this;
     try {
-        if ( !joRequest.HasMember( "params" ) ) {
-            rapidjson::Value joError;
-            joError.SetObject();
-            joError.AddMember( "code", -32602, joResponse.GetAllocator() );
-            string errorMessage = string( "error in \"" ) + "setSchainExitTime" +
-                                  "\" rpc method, json entry \"params\" must be object";
-            rapidjson::Value v;
-            v.SetString( errorMessage.c_str(), errorMessage.size(), joResponse.GetAllocator() );
-            joError.AddMember( "message", v, joResponse.GetAllocator() );
-            joResponse.AddMember( "error", joError, joResponse.GetAllocator() );
-        } else {
-            const rapidjson::Value& param = joRequest["params"];
-            if ( !param.IsObject() ) {
-                rapidjson::Value joError;
-                joError.SetObject();
-                joError.AddMember( "code", -32602, joResponse.GetAllocator() );
-                string errorMessage = string( "error in \"" ) + "setSchainExitTime" +
-                                      "\" rpc method, json entry \"params\" must be object";
-                rapidjson::Value v;
-                v.SetString( errorMessage.c_str(), errorMessage.size(), joResponse.GetAllocator() );
-                joError.AddMember( "message", v, joResponse.GetAllocator() );
-                joResponse.AddMember( "error", joError, joResponse.GetAllocator() );
-            }
-        }
-        const rapidjson::Value& joParams = joRequest["params"];
-        size_t finishTime = 0;
-        if ( joParams.HasMember( "finishTime" ) > 0 ) {
-            const rapidjson::Value& joValue = joParams["finishTime"];
-            if ( joValue.IsNumber() )
-                finishTime = joValue.GetUint();
-            else
-                throw std::runtime_error(
-                    "invalid value in the \"finishTime\" parameter, need number" );
-        } else {
-            // no "finishTime" present in "params"
-            throw std::runtime_error( "missing the \"finishTime\" parameter" );
-        }
-
-        // get connection info
-        skutils::url u( strOrigin );
-        string strIP = u.host();
-        bool isLocalAddress = skutils::is_local_private_network_address(
-            strIP );  // NOTICE: supports both IPv4 and IPv6
-        // print info about this method call into log output
-        BOOST_LOG( m_loggerDebug )
-            << __FUNCTION__ << " call with finishTime =" << finishTime
-            << ", << origin =" << strOrigin << ", remote IP =" << strIP << ", "
-            << "isLocalAddress =" << isLocalAddress;
-        // return call error if call from outside of local network
-        if ( !isLocalAddress )
+        // this call schedules this node's exit, so the caller is checked before the request
+        // is looked at, and only loopback callers are allowed
+        if ( !isLoopbackOrigin( strOrigin ) ) {
+            BOOST_LOG( m_loggerDebug )
+                << __FUNCTION__ << " call rejected, origin =" << strOrigin << " is not loopback";
             throw std::runtime_error(
                 "caller have no permition for this action" );  // NOTICE: just throw
                                                                // exception and RPC call
                                                                // will extract text from it
                                                                // and return it as call
                                                                // error
+        }
+        if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsObject() )
+            throw std::runtime_error( "json entry \"params\" must be object" );
+        const rapidjson::Value& joParams = joRequest["params"];
+        if ( !joParams.HasMember( "finishTime" ) )
+            throw std::runtime_error( "missing the \"finishTime\" parameter" );
+        const rapidjson::Value& joValue = joParams["finishTime"];
+        if ( !joValue.IsUint64() )
+            throw std::runtime_error(
+                "invalid value in the \"finishTime\" parameter, need non-negative integer" );
+        uint64_t finishTime = joValue.GetUint64();
+
+        BOOST_LOG( m_loggerDebug )
+            << __FUNCTION__ << " call with finishTime =" << finishTime << ", origin =" << strOrigin;
         rapidjson::StringBuffer buffer;
         rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
         joResponse.Accept( writer );
@@ -2835,11 +2814,13 @@ void SkaleServerOverride::setSchainExitTime( const string& strOrigin,
         dev::eth::Client* pClient = dynamic_cast< dev::eth::Client* >( pEthereum );
         if ( !pClient )
             throw std::runtime_error( "internal error, no client interface found" );
-        pClient->setSchainExitTime( uint64_t( finishTime ) );
+        pClient->setSchainExitTime( finishTime );
         joResponse.Parse( strResponse.data() );
     } catch ( const std::exception& ex ) {
         auto errMessage = "setSchainExitTime rpc method, exception " + string( ex.what() );
         BOOST_LOG( m_loggerError ) << errMessage;
+        if ( joResponse.IsObject() )
+            joResponse.RemoveMember( "result" );  // a response carries either result or error
         rapidjson::Value joError;
         joError.SetObject();
         joError.AddMember( "code", -32602, joResponse.GetAllocator() );
@@ -2850,6 +2831,8 @@ void SkaleServerOverride::setSchainExitTime( const string& strOrigin,
     } catch ( ... ) {
         string errMessage = "setSchainExitTime rpc method, unknown exception";
         BOOST_LOG( m_loggerError ) << errMessage;
+        if ( joResponse.IsObject() )
+            joResponse.RemoveMember( "result" );  // a response carries either result or error
         rapidjson::Value joError;
         joError.SetObject();
         joError.AddMember( "code", -32602, joResponse.GetAllocator() );
