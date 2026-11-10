@@ -2,6 +2,8 @@
 // https://github.com/chmike/CxxUrl
 // git@github.com:chmike/CxxUrl.git
 
+#include <arpa/inet.h>
+#include <netinet/in.h>
 #include <skutils/url.h>
 #include <string.h>
 #include <algorithm>
@@ -1002,18 +1004,6 @@ std::ostream& url::output( std::ostream& o ) const {
     return o;
 }
 
-bool url::is_local_private_network_address() const {
-    std::int8_t ip_v = ip_version();
-    switch ( ip_v ) {
-    case 4:
-        return is_local_private_network_address_ipv4( host() );
-    case 6:
-        return is_local_private_network_address_ipv6( host() );
-    default:
-        return false;
-    }  // switch( ip_v )
-}
-
 bool url::update_user_name_and_password( const char* strOptionalUser,
     const char* strOptionalPassword, bool bRemoveIfEmpty ) {  // returns true if was updated
     if ( ( !bRemoveIfEmpty ) && ( strOptionalUser == nullptr || strOptionalUser[0] == '\0' ) )
@@ -1112,90 +1102,40 @@ std::string strip_url_user_name_and_password_copy( const std::string& str_url ) 
 }
 
 // the following group of methods are accepting IP address as parameter, not URL
-extern bool is_local_private_network_address_ipv4( const std::string& s ) {
-    if ( s.empty() )
+// they accept only numeric address literals (inet_pton), never host names
+static bool parse_ipv4_address( const std::string& s, uint8_t ( &bytes )[4] ) {
+    struct in_addr addr;
+    if ( ::inet_pton( AF_INET, s.c_str(), &addr ) != 1 )
         return false;
-    if ( !( is_ipv4( s ) && is_valid_ipv4( s ) ) )
-        return false;
-    std::vector< std::string > vec = split2vector( s, '.' );
-    if ( vec.size() != 4 )
-        return false;  // ???
-    // note: see "Reserved address blocks" table here https://en.wikipedia.org/wiki/IPv4
-    if ( !is_uint( vec[0], 255 ) )
-        return false;  // ???
-    char* ep = nullptr;
-    unsigned long n = ::strtoul( vec[0].c_str(), &ep, 10 );
-    switch ( n ) {
-    case 10:
-    case 127:
-    case 172:
-    case 192:
-        return true;
-    }  // switch( n )
-    return false;
+    ::memcpy( bytes, &addr, 4 );
+    return true;
 }
-extern bool is_local_private_network_address_ipv4( const char* s, const char* e ) {
-    if ( s == nullptr )
+static bool parse_ipv6_address( const std::string& s, uint8_t ( &bytes )[16] ) {
+    struct in6_addr addr;
+    if ( ::inet_pton( AF_INET6, s.c_str(), &addr ) != 1 )
         return false;
-    std::string tmp( s, size_t( e - s ) );
-    return is_local_private_network_address_ipv4( tmp );
+    ::memcpy( bytes, &addr, 16 );
+    return true;
 }
-extern bool is_local_private_network_address_ipv6( const std::string& s ) {
-    if ( s.empty() )
-        return false;
-    if ( !( is_ipv6( s ) && is_valid_ipv6( s ) ) )
-        return false;
-    if ( s == "::1" )
-        return true;
-    if ( s[0] == ':' )
-        return false;
-    // note: read about address scopes
-    // https://en.wikipedia.org/wiki/IPv6_address
-    // http://www.gestioip.net/docu/ipv6_address_examples.html
-    if ( s[0] == 'f' || s[0] == 'F' )
-        return true;  // note: this method should be additionally re-checked
-    //
-    if ( strncasecmp( s.c_str(), "fc00::", 6 ) != 0 )
-        return true;
-    return false;
+static bool is_ipv4_mapped_ipv6( const uint8_t ( &bytes )[16] ) {  // ::ffff:0:0/96
+    static const uint8_t prefix[12] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff };
+    return ::memcmp( bytes, prefix, 12 ) == 0;
 }
-extern bool is_local_private_network_address_ipv6( const char* s, const char* e ) {
-    if ( s == nullptr )
-        return false;
-    std::string tmp( s, size_t( e - s ) );
-    return is_local_private_network_address_ipv6( tmp );
-}
-bool is_local_private_network_address( const char* s, const char* e ) {
-    if ( is_local_private_network_address_ipv4( s, e ) )
-        return true;
-    if ( is_local_private_network_address_ipv6( s, e ) )
-        return true;
-    return false;
-}
-bool is_local_private_network_address( const std::string& s ) {
-    if ( is_local_private_network_address_ipv4( s ) )
-        return true;
-    if ( is_local_private_network_address_ipv6( s ) )
-        return true;
-    return false;
+static bool is_ipv6_loopback( const uint8_t ( &bytes )[16] ) {  // ::1/128
+    static const uint8_t loopback[16] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 };
+    return ::memcmp( bytes, loopback, 16 ) == 0;
 }
 
-// the following group of methods are accepting URL as parameter, not IP address
-bool is_local_private_network_url( const url& an_url ) {
-    return an_url.is_local_private_network_address();
-}
-bool is_local_private_network_url( const std::string& str_url ) {
-    try {
-        url an_url( str_url );
-        return is_local_private_network_url( an_url );
-    } catch ( ... ) {
+bool is_loopback_address( const std::string& s ) {
+    uint8_t bytes4[4];
+    if ( parse_ipv4_address( s, bytes4 ) )
+        return bytes4[0] == 127;  // 127.0.0.0/8
+    uint8_t bytes6[16];
+    if ( !parse_ipv6_address( s, bytes6 ) )
         return false;
-    }
+    if ( is_ipv6_loopback( bytes6 ) )
+        return true;
+    return is_ipv4_mapped_ipv6( bytes6 ) && bytes6[12] == 127;  // ::ffff:127.0.0.0/104
 }
-extern bool is_local_private_network_url( const char* s, const char* e ) {
-    if ( s == nullptr )
-        return false;
-    std::string tmp( s, size_t( e - s ) );
-    return is_local_private_network_url( tmp );
-}
+
 };  // namespace skutils
