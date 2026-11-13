@@ -317,6 +317,13 @@ public:
 
     uint64_t getGroupIndexForBlockNumber( uint64_t _blockNumber ) const;
 
+#ifndef FAIR
+    // apply the update done after each block (move to the next group when a block reaches
+    // its finishTs) to _groupIndex for blocks with these timestamps
+    static uint64_t getGroupIndexAfterBlocks( const std::vector< NodeGroup >& _nodeGroups,
+        uint64_t _groupIndex, const std::vector< uint64_t >& _blockTimestamps );
+#endif
+
 #ifdef BITE
     uint64_t getCurrentEpochId() const { return historicGroupIndex.load(); }
     bool isCommitteeRotationSoon() const;
@@ -625,8 +632,15 @@ protected:
     cache::lru_ordered_memory_constrained_cache< std::string, Json::Value > m_blockTraceCache;
 #endif
 
-private:
+protected:
     void initHistoricGroupIndex();
+#ifndef FAIR
+    // replaces the index set by initHistoricGroupIndex with the one the update
+    // after each block gives for the next block
+    void updateHistoricGroupIndexOnStartup();
+#endif
+
+private:
 #ifndef FAIR
     bool updateHistoricGroupIndex();
 #endif

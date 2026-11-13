@@ -191,6 +191,9 @@ public:
 
 #ifdef BITE
     const dev::eth::Client& client() const { return m_client; }
+
+    // pass the epoch id for the next blocks to consensus; never throws
+    void setConsensusEpochId( uint64_t _epochId );
 #endif
 
 #ifdef FAIR
