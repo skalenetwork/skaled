@@ -302,6 +302,10 @@ extern std::string strip_url_user_name_and_password_copy( const std::string& str
 // true only for 127.0.0.0/8, ::1 and ::ffff:127.0.0.0/104
 extern bool is_loopback_address( const std::string& s );
 
+// the client of a proxy on this host: real_ip when the peer is loopback and real_ip is a valid
+// address, the peer itself otherwise
+extern std::string proxied_client_address( const std::string& peer, const std::string& real_ip );
+
 };  // namespace skutils
 
 #endif  /// SKUTILS_URL_H

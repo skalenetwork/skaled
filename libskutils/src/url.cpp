@@ -5,6 +5,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <skutils/url.h>
+#include <skutils/utils.h>
 #include <string.h>
 #include <algorithm>
 #include <cstdint>
@@ -1136,6 +1137,16 @@ bool is_loopback_address( const std::string& s ) {
     if ( is_ipv6_loopback( bytes6 ) )
         return true;
     return is_ipv4_mapped_ipv6( bytes6 ) && bytes6[12] == 127;  // ::ffff:127.0.0.0/104
+}
+
+std::string proxied_client_address( const std::string& peer, const std::string& real_ip ) {
+    if ( !is_loopback_address( peer ) )
+        return peer;
+    const std::string candidate = skutils::tools::trim_copy( real_ip );
+    uint8_t bytes4[4], bytes6[16];
+    const bool valid =
+        parse_ipv4_address( candidate, bytes4 ) || parse_ipv6_address( candidate, bytes6 );
+    return valid ? candidate : peer;
 }
 
 };  // namespace skutils

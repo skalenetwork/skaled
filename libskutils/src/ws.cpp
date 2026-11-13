@@ -860,7 +860,14 @@ int basic_api::stat_callback_server(
             ::lws_get_peer_addresses( wsi, fd, strPeerClientAddressName,
                 sizeof( strPeerClientAddressName ) - 1, strPeerRemoteIP,
                 sizeof( strPeerRemoteIP ) - 1 );
-            self->onConnect( fd, wsi, strPeerClientAddressName, strPeerRemoteIP );
+            // nginx on this host proxies WebSocket and names the client in X-Real-IP
+            char strRealIP[64] = {};
+            if ( ::lws_hdr_custom_copy(
+                     wsi, strRealIP, ( int ) sizeof( strRealIP ), "x-real-ip:", 10 ) <= 0 )
+                strRealIP[0] = '\0';
+            const std::string strClientIP =
+                skutils::proxied_client_address( strPeerRemoteIP, strRealIP );
+            self->onConnect( fd, wsi, strPeerClientAddressName, strClientIP.c_str() );
             ::lws_callback_on_writable( wsi );
         }
         break;
