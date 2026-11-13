@@ -933,6 +933,9 @@ int main( int argc, char** argv ) {
             "Run informational web3 WSS(IPv6) server(s) on specified port(and next set of ports if "
             "--info-acceptors > 1)" );
 
+        addClientOption( "rpc-loopback",
+            "Run web3 servers on loopback only, consensus keeps bindIP from config" );
+
         addClientOption( "no-snapshot-majority", po::value< string >()->value_name( "<url>" ), "" );
 
         addClientOption( "network-idle-timeout", po::value< long >()->value_name( "<timeout>" ),
@@ -2547,56 +2550,49 @@ int main( int argc, char** argv ) {
                 };
 
                 //
+                const bool isRpcLoopback = vm.count( "rpc-loopback" ) > 0;
+                const string strRpcIP4 = isRpcLoopback ? "127.0.0.1" : chainParams->getSelfNodeIp();
+                const string strRpcIP6 = isRpcLoopback ? "::1" : chainParams->getSelfNodeIpV6();
                 SkaleServerOverride::opts_t serverOpts;
                 inject_rapidjson_handlers( serverOpts, pEthFace );
                 serverOpts.fn_binary_snapshot_download_ = fn_binary_snapshot_download;
                 serverOpts.netOpts_.bindOptsStandard_.cntServers_ = cntServersStd;
-                serverOpts.netOpts_.bindOptsStandard_.strAddrHTTP4_ = chainParams->getSelfNodeIp();
+                serverOpts.netOpts_.bindOptsStandard_.strAddrHTTP4_ = strRpcIP4;
                 serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ = nExplicitPortHTTP4std;
-                serverOpts.netOpts_.bindOptsStandard_.strAddrHTTP6_ =
-                    chainParams->getSelfNodeIpV6();
+                serverOpts.netOpts_.bindOptsStandard_.strAddrHTTP6_ = strRpcIP6;
                 serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP6_ = nExplicitPortHTTP6std;
-                serverOpts.netOpts_.bindOptsStandard_.strAddrHTTPS4_ = chainParams->getSelfNodeIp();
+                serverOpts.netOpts_.bindOptsStandard_.strAddrHTTPS4_ = strRpcIP4;
                 serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTPS4_ = nExplicitPortHTTPS4std;
-                serverOpts.netOpts_.bindOptsStandard_.strAddrHTTPS6_ =
-                    chainParams->getSelfNodeIpV6();
+                serverOpts.netOpts_.bindOptsStandard_.strAddrHTTPS6_ = strRpcIP6;
                 serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTPS6_ = nExplicitPortHTTPS6std;
-                serverOpts.netOpts_.bindOptsStandard_.strAddrWS4_ = chainParams->getSelfNodeIp();
+                serverOpts.netOpts_.bindOptsStandard_.strAddrWS4_ = strRpcIP4;
                 serverOpts.netOpts_.bindOptsStandard_.nBasePortWS4_ = nExplicitPortWS4std;
-                serverOpts.netOpts_.bindOptsStandard_.strAddrWS6_ = chainParams->getSelfNodeIpV6();
+                serverOpts.netOpts_.bindOptsStandard_.strAddrWS6_ = strRpcIP6;
                 serverOpts.netOpts_.bindOptsStandard_.nBasePortWS6_ = nExplicitPortWS6std;
-                serverOpts.netOpts_.bindOptsStandard_.strAddrWSS4_ = chainParams->getSelfNodeIp();
+                serverOpts.netOpts_.bindOptsStandard_.strAddrWSS4_ = strRpcIP4;
                 serverOpts.netOpts_.bindOptsStandard_.nBasePortWSS4_ = nExplicitPortWSS4std;
-                serverOpts.netOpts_.bindOptsStandard_.strAddrWSS6_ = chainParams->getSelfNodeIpV6();
+                serverOpts.netOpts_.bindOptsStandard_.strAddrWSS6_ = strRpcIP6;
                 serverOpts.netOpts_.bindOptsStandard_.nBasePortWSS6_ = nExplicitPortWSS6std;
 
                 serverOpts.netOpts_.bindOptsInformational_.cntServers_ = cntServersNfo;
-                serverOpts.netOpts_.bindOptsInformational_.strAddrHTTP4_ =
-                    chainParams->getSelfNodeIp();
+                serverOpts.netOpts_.bindOptsInformational_.strAddrHTTP4_ = strRpcIP4;
                 serverOpts.netOpts_.bindOptsInformational_.nBasePortHTTP4_ = nExplicitPortHTTP4nfo;
-                serverOpts.netOpts_.bindOptsInformational_.strAddrHTTP6_ =
-                    chainParams->getSelfNodeIpV6();
+                serverOpts.netOpts_.bindOptsInformational_.strAddrHTTP6_ = strRpcIP6;
                 serverOpts.netOpts_.bindOptsInformational_.nBasePortHTTP6_ = nExplicitPortHTTP6nfo;
-                serverOpts.netOpts_.bindOptsInformational_.strAddrHTTPS4_ =
-                    chainParams->getSelfNodeIp();
+                serverOpts.netOpts_.bindOptsInformational_.strAddrHTTPS4_ = strRpcIP4;
                 serverOpts.netOpts_.bindOptsInformational_.nBasePortHTTPS4_ =
                     nExplicitPortHTTPS4nfo;
-                serverOpts.netOpts_.bindOptsInformational_.strAddrHTTPS6_ =
-                    chainParams->getSelfNodeIpV6();
+                serverOpts.netOpts_.bindOptsInformational_.strAddrHTTPS6_ = strRpcIP6;
                 serverOpts.netOpts_.bindOptsInformational_.nBasePortHTTPS6_ =
                     nExplicitPortHTTPS6nfo;
 
-                serverOpts.netOpts_.bindOptsInformational_.strAddrWS4_ =
-                    chainParams->getSelfNodeIp();
+                serverOpts.netOpts_.bindOptsInformational_.strAddrWS4_ = strRpcIP4;
                 serverOpts.netOpts_.bindOptsInformational_.nBasePortWS4_ = nExplicitPortWS4nfo;
-                serverOpts.netOpts_.bindOptsInformational_.strAddrWS6_ =
-                    chainParams->getSelfNodeIpV6();
+                serverOpts.netOpts_.bindOptsInformational_.strAddrWS6_ = strRpcIP6;
                 serverOpts.netOpts_.bindOptsInformational_.nBasePortWS6_ = nExplicitPortWS6nfo;
-                serverOpts.netOpts_.bindOptsInformational_.strAddrWSS4_ =
-                    chainParams->getSelfNodeIp();
+                serverOpts.netOpts_.bindOptsInformational_.strAddrWSS4_ = strRpcIP4;
                 serverOpts.netOpts_.bindOptsInformational_.nBasePortWSS4_ = nExplicitPortWSS4nfo;
-                serverOpts.netOpts_.bindOptsInformational_.strAddrWSS6_ =
-                    chainParams->getSelfNodeIpV6();
+                serverOpts.netOpts_.bindOptsInformational_.strAddrWSS6_ = strRpcIP6;
                 serverOpts.netOpts_.bindOptsInformational_.nBasePortWSS6_ = nExplicitPortWSS6nfo;
 
                 serverOpts.netOpts_.strPathSslKey_ = strPathSslKey;

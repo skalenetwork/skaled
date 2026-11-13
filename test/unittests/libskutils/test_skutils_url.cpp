@@ -37,5 +37,18 @@ BOOST_AUTO_TEST_CASE( malformed_addresses_are_not_loopback ) {
         false );
 }
 
+BOOST_AUTO_TEST_CASE( proxied_client_addresses ) {
+    // a loopback peer is the proxy on this host, so its X-Real-IP names the client
+    BOOST_CHECK_EQUAL(
+        skutils::proxied_client_address( "127.0.0.1", "203.0.113.7" ), "203.0.113.7" );
+    BOOST_CHECK_EQUAL( skutils::proxied_client_address( "::1", " 2001:db8::1 " ), "2001:db8::1" );
+    // any other peer is taken at its own address, whatever it sends
+    BOOST_CHECK_EQUAL(
+        skutils::proxied_client_address( "198.51.100.2", "203.0.113.7" ), "198.51.100.2" );
+    for ( const char* real_ip :
+        { "", "localhost", "203.0.113", "203.0.113.7:80", "[2001:db8::1]" } )
+        BOOST_CHECK_EQUAL( skutils::proxied_client_address( "127.0.0.1", real_ip ), "127.0.0.1" );
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 BOOST_AUTO_TEST_SUITE_END()
