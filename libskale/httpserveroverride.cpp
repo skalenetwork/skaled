@@ -2752,7 +2752,6 @@ bool SkaleServerOverride::handleProtocolSpecificRequest( const string& strOrigin
 }
 
 const SkaleServerOverride::protocol_rpc_map_t SkaleServerOverride::g_protocol_rpc_map = {
-    { "setSchainExitTime", &SkaleServerOverride::setSchainExitTime },
     { "eth_sendRawTransaction", &SkaleServerOverride::eth_sendRawTransaction },
     { "eth_getTransactionReceipt", &SkaleServerOverride::eth_getTransactionReceipt },
     { "eth_call", &SkaleServerOverride::eth_call },
@@ -2764,84 +2763,6 @@ const SkaleServerOverride::protocol_rpc_map_t SkaleServerOverride::g_protocol_rp
     { "eth_getFilterLogs", &SkaleServerOverride::eth_getFilterLogs }
 };
 
-
-// true only if the origin's host is a loopback IP literal; host names and unparsable origins fail
-static bool isLoopbackOrigin( const string& strOrigin ) {
-    try {
-        skutils::url u( strOrigin );
-        return skutils::is_loopback_address( u.host() );
-    } catch ( ... ) {
-        return false;
-    }
-}
-
-void SkaleServerOverride::setSchainExitTime( const string& strOrigin,
-    const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
-    SkaleServerOverride* pSO = this;
-    try {
-        // this call schedules this node's exit, so the caller is checked before the request
-        // is looked at, and only loopback callers are allowed
-        if ( !isLoopbackOrigin( strOrigin ) ) {
-            BOOST_LOG( m_loggerDebug )
-                << __FUNCTION__ << " call rejected, origin =" << strOrigin << " is not loopback";
-            throw std::runtime_error(
-                "caller have no permition for this action" );  // NOTICE: just throw
-                                                               // exception and RPC call
-                                                               // will extract text from it
-                                                               // and return it as call
-                                                               // error
-        }
-        if ( !joRequest.HasMember( "params" ) || !joRequest["params"].IsObject() )
-            throw std::runtime_error( "json entry \"params\" must be object" );
-        const rapidjson::Value& joParams = joRequest["params"];
-        if ( !joParams.HasMember( "finishTime" ) )
-            throw std::runtime_error( "missing the \"finishTime\" parameter" );
-        const rapidjson::Value& joValue = joParams["finishTime"];
-        if ( !joValue.IsUint64() )
-            throw std::runtime_error(
-                "invalid value in the \"finishTime\" parameter, need non-negative integer" );
-        uint64_t finishTime = joValue.GetUint64();
-
-        BOOST_LOG( m_loggerDebug )
-            << __FUNCTION__ << " call with finishTime =" << finishTime << ", origin =" << strOrigin;
-        rapidjson::StringBuffer buffer;
-        rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
-        joResponse.Accept( writer );
-        string strResponse = buffer.GetString();
-        auto pEthereum = pSO->ethereum();
-        if ( !pEthereum )
-            throw std::runtime_error( "internal error, no Ethereum interface found" );
-        dev::eth::Client* pClient = dynamic_cast< dev::eth::Client* >( pEthereum );
-        if ( !pClient )
-            throw std::runtime_error( "internal error, no client interface found" );
-        pClient->setSchainExitTime( finishTime );
-        joResponse.Parse( strResponse.data() );
-    } catch ( const std::exception& ex ) {
-        auto errMessage = "setSchainExitTime rpc method, exception " + string( ex.what() );
-        BOOST_LOG( m_loggerError ) << errMessage;
-        if ( joResponse.IsObject() )
-            joResponse.RemoveMember( "result" );  // a response carries either result or error
-        rapidjson::Value joError;
-        joError.SetObject();
-        joError.AddMember( "code", -32602, joResponse.GetAllocator() );
-        rapidjson::Value v;
-        v.SetString( errMessage.c_str(), errMessage.size(), joResponse.GetAllocator() );
-        joError.AddMember( "message", v, joResponse.GetAllocator() );
-        joResponse.AddMember( "error", joError, joResponse.GetAllocator() );
-    } catch ( ... ) {
-        string errMessage = "setSchainExitTime rpc method, unknown exception";
-        BOOST_LOG( m_loggerError ) << errMessage;
-        if ( joResponse.IsObject() )
-            joResponse.RemoveMember( "result" );  // a response carries either result or error
-        rapidjson::Value joError;
-        joError.SetObject();
-        joError.AddMember( "code", -32602, joResponse.GetAllocator() );
-        rapidjson::Value v;
-        v.SetString( errMessage.c_str(), errMessage.size(), joResponse.GetAllocator() );
-        joError.AddMember( "message", v, joResponse.GetAllocator() );
-        joResponse.AddMember( "error", joError, joResponse.GetAllocator() );
-    }
-}
 
 void SkaleServerOverride::eth_sendRawTransaction( const string& /*strOrigin*/,
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
