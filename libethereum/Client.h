@@ -50,7 +50,6 @@
 #include "BlockChain.h"
 #include "ClientBase.h"
 #include "CommonNet.h"
-#include "InstanceMonitor.h"
 #include "SkaleHost.h"
 #include "SnapshotAgent.h"
 #include "ThreadSafeQueue.h"
@@ -94,7 +93,6 @@ public:
     Client( std::shared_ptr< const ChainParams > _params, int _networkID,
         std::shared_ptr< GasPricer > _gpForAdoption,
         std::shared_ptr< SnapshotManager > _snapshotManager,
-        std::shared_ptr< InstanceMonitor > _instanceMonitor,
         boost::filesystem::path const& _dbPath = boost::filesystem::path(),
         WithExisting _forceAction = WithExisting::Trust,
         TransactionQueue::Limits const& _l = TransactionQueue::Limits{
@@ -616,7 +614,6 @@ protected:
     std::shared_ptr< SnapshotAgent > m_snapshotAgent;
     bool m_snapshotAgentInited = false;
     const static dev::h256 empty_str_hash;
-    std::shared_ptr< InstanceMonitor > m_instanceMonitor;
     fs::path m_dbPath;
 #ifdef HISTORIC_STATE
     cache::lru_ordered_memory_constrained_cache< std::string, Json::Value > m_blockTraceCache;

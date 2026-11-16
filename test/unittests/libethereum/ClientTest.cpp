@@ -72,11 +72,9 @@ public:
 
         auto nodesState = contents( m_tmpDir.path() / fs::path( "network.rlp" ) );
 
-        auto monitor = make_shared< InstanceMonitor >( "test" );
-
         setenv( "DATA_DIR", m_tmpDir.path().c_str(), 1 );
         m_ethereum.reset( new eth::ClientTest( chainParams, ( int ) chainParams->getNetworkId(),
-            shared_ptr< GasPricer >(), NULL, monitor, m_tmpDir.path(), WithExisting::Kill ) );
+            shared_ptr< GasPricer >(), NULL, m_tmpDir.path(), WithExisting::Kill ) );
 
         m_ethereum->setAuthor( coinbase.address() );
 
@@ -215,11 +213,9 @@ public:
         // std::unique_ptr< dev::db::DatabaseFace > db_blocks_and_extras( new dev::db::LevelDB(
         // m_tmpDir.path() / "vol1" / "12041" / "blocks_and_extras" ) );
 
-        auto monitor = make_shared< InstanceMonitor >( "test" );
-
         setenv( "DATA_DIR", m_tmpDir.path().c_str(), 1 );
         m_ethereum.reset( new eth::ClientTest( chainParams, ( int ) chainParams->getNetworkId(),
-            shared_ptr< GasPricer >(), mgr, monitor, m_tmpDir.path(), WithExisting::Kill ) );
+            shared_ptr< GasPricer >(), mgr, m_tmpDir.path(), WithExisting::Kill ) );
 
         // wait for 1st block - because it's always empty
         std::promise< void > block_promise;

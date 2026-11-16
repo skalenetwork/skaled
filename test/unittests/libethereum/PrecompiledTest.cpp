@@ -1921,10 +1921,9 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
 
     std::unique_ptr< dev::eth::Client > client;
     dev::TransientDirectory m_tmpDir;
-    auto monitor = make_shared< InstanceMonitor >( "test" );
     setenv( "DATA_DIR", m_tmpDir.path().c_str(), 1 );
     client.reset( new eth::ClientTest( chainParams, ( int ) chainParams->getNetworkId(),
-        shared_ptr< GasPricer >(), nullptr, monitor, m_tmpDir.path(), dev::WithExisting::Kill ) );
+        shared_ptr< GasPricer >(), nullptr, m_tmpDir.path(), dev::WithExisting::Kill ) );
 
     client->setAuthor( Address( "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF" ) );
 
@@ -2123,10 +2122,9 @@ BOOST_AUTO_TEST_CASE( submitCTX_validateBITECiphertext_Success ) {
 
     std::unique_ptr<dev::eth::Client> client;
     dev::TransientDirectory m_tmpDir;
-    auto monitor = make_shared< InstanceMonitor >("test");
     setenv( "DATA_DIR", m_tmpDir.path().c_str(), 1 );
     client.reset( new eth::ClientTest( chainParams, ( int ) chainParams->getNetworkId(),
-        shared_ptr< GasPricer >(), nullptr, monitor, m_tmpDir.path(), dev::WithExisting::Kill ) );
+        shared_ptr< GasPricer >(), nullptr, m_tmpDir.path(), dev::WithExisting::Kill ) );
 
     client->setAuthor( Address( "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF" ) );
 
@@ -2218,10 +2216,9 @@ BOOST_AUTO_TEST_CASE( submitCTX_validateBITECiphertext_Failure ) {
 
     std::unique_ptr<dev::eth::Client> client;
     dev::TransientDirectory m_tmpDir;
-    auto monitor = make_shared< InstanceMonitor >("test");
     setenv( "DATA_DIR", m_tmpDir.path().c_str(), 1 );
     client.reset( new eth::ClientTest( chainParams, ( int ) chainParams->getNetworkId(),
-        shared_ptr< GasPricer >(), nullptr, monitor, m_tmpDir.path(), dev::WithExisting::Kill ) );
+        shared_ptr< GasPricer >(), nullptr, m_tmpDir.path(), dev::WithExisting::Kill ) );
 
     client->setAuthor( Address( "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF" ) );
 

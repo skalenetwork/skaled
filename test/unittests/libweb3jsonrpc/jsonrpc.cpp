@@ -580,9 +580,6 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         chainParams->sChain.multiTransactionMode = _mtmEnabled;
         chainParams->nodeInfo.syncNode = _isSyncNode;
 
-        instanceMonitor = make_shared< InstanceMonitor >( tempDir.path() );
-
-
         const std::string& dataDir = _dataDirOverride.empty() ? tempDir.path() : _dataDirOverride;
         setenv( "DATA_DIR", dataDir.c_str(), 1 );
         std::shared_ptr< SnapshotManager > snapshotManager;
@@ -591,8 +588,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
                 std::make_shared< SnapshotManager >( chainParams, dataDir, std::string() );
         }
         client.reset( new eth::ClientTest( chainParams, ( int ) chainParams->getNetworkId(),
-            shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, dataDir,
-            WithExisting::Kill ) );
+            shared_ptr< GasPricer >(), snapshotManager, dataDir, WithExisting::Kill ) );
 
         if ( !_generation2 )
             client->setAuthor( coinbase.address() );
@@ -746,7 +742,6 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
     }
 
     TransientDirectory tempDir;  // ! should exist before client!
-    std::shared_ptr< InstanceMonitor > instanceMonitor;
     unique_ptr< Client > client;
 
     dev::KeyPair coinbase{ KeyPair::create() };

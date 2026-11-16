@@ -236,11 +236,10 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         accountHolder->setAccounts( { coinbase, account2 } );
 
         gasPricer = make_shared< eth::TrivialGasPricer >( 0, DefaultGasPrice );
-        auto monitor = make_shared< InstanceMonitor >( "test" );
 
         setenv( "DATA_DIR", tempDir.path().c_str(), 1 );
         client = make_unique< Client >(
-            chainParams, chainParams->getNetworkId(), gasPricer, nullptr, monitor, tempDir.path() );
+            chainParams, chainParams->getNetworkId(), gasPricer, nullptr, tempDir.path() );
         this->tq = client->debugGetTransactionQueue();
         client->setAuthor( coinbase.address() );
 

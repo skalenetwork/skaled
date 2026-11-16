@@ -298,10 +298,6 @@ extern bool strip_url_user_name_and_password( url& an_url );
 extern bool strip_url_user_name_and_password( std::string& str_url );
 extern std::string strip_url_user_name_and_password_copy( const std::string& str_url );
 
-// accepts an IP address as parameter, not URL
-// true only for 127.0.0.0/8, ::1 and ::ffff:127.0.0.0/104
-extern bool is_loopback_address( const std::string& s );
-
 };  // namespace skutils
 
 #endif  /// SKUTILS_URL_H

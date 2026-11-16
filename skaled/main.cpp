@@ -1942,14 +1942,12 @@ int main( int argc, char** argv ) {
 
             if ( chainParams->getSealEngineName() == Ethash::name() ) {
                 g_client.reset( new eth::EthashClient( chainParams, chainParams->getNetworkId(),
-                    shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
-                    withExisting,
+                    shared_ptr< GasPricer >(), snapshotManager, getDataDir(), withExisting,
                     TransactionQueue::Limits{ c_transactionQueueSize, c_futureTransactionQueueSize,
                         c_transactionQueueSizeBytes, c_futureTransactionQueueSizeBytes } ) );
             } else if ( chainParams->getSealEngineName() == NoProof::name() ) {
                 g_client.reset( new eth::Client( chainParams, chainParams->getNetworkId(),
-                    shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
-                    withExisting,
+                    shared_ptr< GasPricer >(), snapshotManager, getDataDir(), withExisting,
                     TransactionQueue::Limits{ c_transactionQueueSize, c_futureTransactionQueueSize,
                         c_transactionQueueSizeBytes, c_futureTransactionQueueSizeBytes } ) );
             } else
