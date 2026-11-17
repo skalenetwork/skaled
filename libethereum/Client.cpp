@@ -1555,6 +1555,8 @@ void Client::updateHistoricGroupIndexOnStartup() {
         BOOST_LOG( m_loggerInfo ) << "Startup group index changed from " << previousGroupIndex
                                   << " to " << groupIndex;
     }
+    BOOST_LOG( m_loggerInfo ) << "Group index at startup is " << groupIndex << ", latest block "
+                              << latestBlockNumber;
     historicGroupIndex = groupIndex;
 }
 #endif
