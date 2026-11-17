@@ -302,10 +302,11 @@ setup_variable WITH_GOOGLE_LOG "no" # built in skale-consensus
 setup_variable WITH_GFLAGS "no" # built in skale-consensus
 setup_variable WITH_FOLLY "no" # built in skale-consensus
 setup_variable WITH_SODIUM "no"
-setup_variable WITH_WANGLE "no" # built in skale-consensus
+setup_variable WITH_WANGLE "yes"
 setup_variable WITH_GTEST "yes"
-setup_variable WITH_FIZZ "no" # built in skale-consensus
-setup_variable WITH_PROXYGEN "no" # built in skale-consensus
+setup_variable WITH_FIZZ "yes"
+setup_variable WITH_MVFST "yes"
+setup_variable WITH_PROXYGEN "yes"
 setup_variable WITH_SNAPPY "yes"
 setup_variable WITH_LIBSCRYPT "yes"
 setup_variable WITH_ETHASH "yes"
@@ -649,6 +650,7 @@ echo -e "${COLOR_VAR_NAME}WITH_SODIUM${COLOR_DOTS}............${COLOR_VAR_DESC}L
 echo -e "${COLOR_VAR_NAME}WITH_WANGLE${COLOR_DOTS}............${COLOR_VAR_DESC}LibWangle${COLOR_DOTS}..............................${COLOR_VAR_VAL}$WITH_WANGLE${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}WITH_GTEST${COLOR_DOTS}.............${COLOR_VAR_DESC}LibGTEST${COLOR_DOTS}...............................${COLOR_VAR_VAL}$WITH_GTEST${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}WITH_FIZZ${COLOR_DOTS}..............${COLOR_VAR_DESC}LibFIZZ${COLOR_DOTS}................................${COLOR_VAR_VAL}$WITH_FIZZ${COLOR_RESET}"
+echo -e "${COLOR_VAR_NAME}WITH_MVFST${COLOR_DOTS}.............${COLOR_VAR_DESC}LibMvfst${COLOR_DOTS}...............................${COLOR_VAR_VAL}$WITH_MVFST${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}WITH_PROXYGEN${COLOR_DOTS}..........${COLOR_VAR_DESC}LibProxygen${COLOR_DOTS}............................${COLOR_VAR_VAL}$WITH_PROXYGEN${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}WITH_SNAPPY${COLOR_DOTS}............${COLOR_VAR_DESC}LibSnappy${COLOR_DOTS}..............................${COLOR_VAR_VAL}$WITH_SNAPPY${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}WITH_LIBSCRYPT${COLOR_DOTS}.........${COLOR_VAR_DESC}LibSCRYPT${COLOR_DOTS}..............................${COLOR_VAR_VAL}$WITH_LIBSCRYPT${COLOR_RESET}"
@@ -2190,6 +2192,7 @@ then
 	fi
 fi
 
+# fizz, wangle, mvfst and proxygen must match the folly built by libconsensus/libBLS deps (5d415b5)
 #https://github.com/facebookincubator/fizz
 #https://github.com/facebookincubator/fizz.git
 if [ "$WITH_FIZZ" = "yes" ];
@@ -2206,7 +2209,7 @@ then
 				echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
 				eval git clone https://github.com/facebookincubator/fizz.git --recursive
                                 cd fizz
-                                eval git checkout 93003f4161f7cebe1c121b3232215db8314c2ce7
+                                eval git checkout fe96dd5
                                 cd ..
                                 echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
 				eval tar -czf fizz-from-git.tar.gz ./fizz
@@ -2255,7 +2258,7 @@ then
 				echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
 				eval git clone https://github.com/facebook/wangle.git --recursive
                                 cd wangle
-                                eval git checkout 7249d3f8d18bcd4bc13649d13654ccb2a771f7b3
+                                eval git checkout a5480e3
                                 cd ..
                                 echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
 				eval tar -czf wangle-from-git.tar.gz ./wangle
@@ -2288,6 +2291,53 @@ then
 	fi
 fi
 
+if [ "$WITH_MVFST" = "yes" ];
+then
+        echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}libMvfst${COLOR_SEPARATOR} ==================================${COLOR_RESET}"
+        if [ ! -f "$INSTALL_ROOT/lib/libmvfst_server.a" ];
+        then
+                env_restore
+                cd "$SOURCES_ROOT"
+                if [ ! -d "mvfst" ];
+                then
+                        if [ ! -f "mvfst-from-git.tar.gz" ];
+                        then
+                                echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
+                                eval git clone https://github.com/facebook/mvfst.git --recursive
+                                cd mvfst
+                                eval git checkout 0396bd6
+                                cd ..
+                                echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
+                                eval tar -czf mvfst-from-git.tar.gz ./mvfst
+                        else
+                                echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
+                                eval tar -xzf mvfst-from-git.tar.gz
+                        fi
+                        echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
+                        cd mvfst
+                        eval mkdir -p build2
+                        cd build2
+                        eval "$CMAKE" "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
+                                -DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_SAMPLES=OFF -DBUILD_SHARED_LIBS=OFF \
+                                -DBOOST_ROOT="$INSTALL_ROOT" -DBOOST_INCLUDEDIR="${INSTALL_ROOT}/include" -DBOOST_LIBRARYDIR="$INSTALL_ROOT/lib" \
+                                -DBoost_NO_BOOST_CMAKE=ON -DCMAKE_INCLUDE_PATH="${INSTALL_ROOT}/include" \
+                                -DCMAKE_LIBRARY_PATH="${INSTALL_ROOT}/lib" \
+                                -DCMAKE_PREFIX_PATH=${INSTALL_ROOT} \
+                                ..
+                        cd ..
+                else
+                        cd mvfst
+                fi
+                echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
+                cd build2
+                eval "$MAKE" "${PARALLEL_MAKE_OPTIONS}"
+                eval "$MAKE" "${PARALLEL_MAKE_OPTIONS}" install
+                cd "$SOURCES_ROOT"
+        else
+                echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
+        fi
+fi
+
 #https://github.com/facebook/proxygen
 #https://habr.com/ru/company/infopulse/blog/243181/
 #git@github.com:facebook/proxygen.git
@@ -2306,7 +2356,7 @@ then
 				echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
 				eval git clone https://github.com/facebook/proxygen.git --recursive
                                 cd proxygen
-                                eval git checkout f666fe2d938a1b06a3281c958cdeb46743a2fa49
+                                eval git checkout 7ff5004
                                 cd ..
 				echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
 				eval tar -czf proxygen-from-git.tar.gz ./proxygen
