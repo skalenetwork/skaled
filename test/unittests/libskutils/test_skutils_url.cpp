@@ -50,5 +50,13 @@ BOOST_AUTO_TEST_CASE( proxied_client_addresses ) {
         BOOST_CHECK_EQUAL( skutils::proxied_client_address( "127.0.0.1", real_ip ), "127.0.0.1" );
 }
 
+BOOST_AUTO_TEST_CASE( url_host_literals ) {
+    // a WebSocket peer's origin is ws://<host>, and unddos reads the client back from its host
+    for ( const char* address : { "203.0.113.7", "2001:db8::1", "::1", "::ffff:203.0.113.7" } )
+        BOOST_CHECK_EQUAL(
+            skutils::url( "ws://" + skutils::url_host_literal( address ) ).host(), address );
+    BOOST_CHECK_EQUAL( skutils::url_host_literal( "2001:db8::1" ), "[2001:db8::1]" );
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 BOOST_AUTO_TEST_SUITE_END()

@@ -1149,4 +1149,8 @@ std::string proxied_client_address( const std::string& peer, const std::string& 
     return valid ? candidate : peer;
 }
 
+std::string url_host_literal( const std::string& address ) {
+    return address.find( ':' ) == std::string::npos ? address : "[" + address + "]";
+}
+
 };  // namespace skutils

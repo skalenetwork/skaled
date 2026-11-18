@@ -2249,9 +2249,11 @@ void server_api::onConnect( connection_identifier_t cid, struct lws* wsi,
     pcd->wsi_ = wsi;
     pcd->creationTime_ = time( nullptr );
     pcd->strPeerClientAddressName_ = strPeerClientAddressName;
+    const std::string strRemoteIP =
+        ( strPeerRemoteIP != nullptr && strPeerRemoteIP[0] != '\0' ) ? strPeerRemoteIP : "unknown";
+    // unddos and the origin checks read the client from url::host() of this string
     pcd->strPeerRemoteIP_ = skutils::tools::format( "%s://%s", ::lws_is_ssl( wsi ) ? "wss" : "ws",
-        ( strPeerRemoteIP != nullptr && strPeerRemoteIP[0] != '\0' ) ? strPeerRemoteIP :
-                                                                       "unknown" );
+        skutils::url_host_literal( strRemoteIP ).c_str() );
     impl_eraseConnection( cid );
     connections_[cid] = pcd;
     if ( onConnect_ )

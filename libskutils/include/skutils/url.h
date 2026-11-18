@@ -306,6 +306,9 @@ extern bool is_loopback_address( const std::string& s );
 // address, the peer itself otherwise
 extern std::string proxied_client_address( const std::string& peer, const std::string& real_ip );
 
+// the address as the host of a URL, IPv6 literals in brackets
+extern std::string url_host_literal( const std::string& address );
+
 };  // namespace skutils
 
 #endif  /// SKUTILS_URL_H
