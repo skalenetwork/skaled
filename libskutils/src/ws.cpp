@@ -861,13 +861,11 @@ int basic_api::stat_callback_server(
                 sizeof( strPeerClientAddressName ) - 1, strPeerRemoteIP,
                 sizeof( strPeerRemoteIP ) - 1 );
             // nginx on this host proxies WebSocket and names the client in X-Real-IP
-            char strRealIP[64] = {};
-            if ( ::lws_hdr_custom_copy(
-                     wsi, strRealIP, ( int ) sizeof( strRealIP ), "x-real-ip:", 10 ) <= 0 )
-                strRealIP[0] = '\0';
-            const std::string strClientIP =
-                skutils::proxied_client_address( strPeerRemoteIP, strRealIP );
-            self->onConnect( fd, wsi, strPeerClientAddressName, strClientIP.c_str() );
+            char realIp[64] = {};
+            if ( ::lws_hdr_custom_copy( wsi, realIp, sizeof( realIp ), "x-real-ip:", 10 ) <= 0 )
+                realIp[0] = '\0';
+            const std::string clientIp = skutils::proxied_client_address( strPeerRemoteIP, realIp );
+            self->onConnect( fd, wsi, strPeerClientAddressName, clientIp.c_str() );
             ::lws_callback_on_writable( wsi );
         }
         break;
@@ -2249,11 +2247,11 @@ void server_api::onConnect( connection_identifier_t cid, struct lws* wsi,
     pcd->wsi_ = wsi;
     pcd->creationTime_ = time( nullptr );
     pcd->strPeerClientAddressName_ = strPeerClientAddressName;
-    const std::string strRemoteIP =
+    const std::string remoteIp =
         ( strPeerRemoteIP != nullptr && strPeerRemoteIP[0] != '\0' ) ? strPeerRemoteIP : "unknown";
     // unddos and the origin checks read the client from url::host() of this string
     pcd->strPeerRemoteIP_ = skutils::tools::format( "%s://%s", ::lws_is_ssl( wsi ) ? "wss" : "ws",
-        skutils::url_host_literal( strRemoteIP ).c_str() );
+        skutils::url_host_literal( remoteIp ).c_str() );
     impl_eraseConnection( cid );
     connections_[cid] = pcd;
     if ( onConnect_ )
