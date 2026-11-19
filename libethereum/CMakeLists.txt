@@ -1,5 +1,5 @@
 
-file( GLOB sources "*.cpp" "*.h" )
+file( GLOB sources "*.cpp" "*.h" "patches/*.cpp" "patches/*.h" )
 add_library( ethereum ${sources} InstanceMonitor.cpp InstanceMonitor.h
     SchainPatchEnum.h)
 
