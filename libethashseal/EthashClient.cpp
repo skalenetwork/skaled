@@ -45,11 +45,10 @@ DEV_SIMPLE_EXCEPTION( ChainParamsNotEthash );
 
 EthashClient::EthashClient( std::shared_ptr< const ChainParams > _params, int _networkID,
     std::shared_ptr< GasPricer > _gpForAdoption,
-    std::shared_ptr< SnapshotManager > _snapshotManager,
-    std::shared_ptr< InstanceMonitor > _instanceMonitor, fs::path const& _dbPath,
+    std::shared_ptr< SnapshotManager > _snapshotManager, fs::path const& _dbPath,
     WithExisting _forceAction, TransactionQueue::Limits const& _limits )
-    : Client( _params, _networkID, _gpForAdoption, _snapshotManager, _instanceMonitor, _dbPath,
-          _forceAction, _limits ) {
+    : Client(
+          _params, _networkID, _gpForAdoption, _snapshotManager, _dbPath, _forceAction, _limits ) {
     // will throw if we're not an Ethash seal engine.
     asEthashClient( *this );
 }

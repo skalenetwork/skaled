@@ -258,11 +258,9 @@ public:
         chainParams->nodeInfo.name = "Node2";
         chainParams->resetJson();
 
-        auto monitor = make_shared< InstanceMonitor >("test");
-
         setenv( "DATA_DIR", m_tempDir.path().c_str(), 1 );
         client.reset( new eth::Client( chainParams, ( int ) chainParams->getNetworkId(),
-            shared_ptr< GasPricer >(), NULL, monitor, m_tempDir.path().c_str(), WithExisting::Kill,
+            shared_ptr< GasPricer >(), NULL, m_tempDir.path().c_str(), WithExisting::Kill,
             TransactionQueue::Limits{ 100000, 1024 } ) );
 
         client->injectSkaleHost();

@@ -419,14 +419,6 @@ Json::Value Eth::eth_unsubscribe( Json::Value const& /*_transaction*/ ) {
     }
 }
 
-Json::Value Eth::setSchainExitTime( Json::Value const& /*_transaction*/ ) {
-    try {
-        throw JsonRpcException( "setSchainExitTime() API is not supported yet over HTTP(S)" );
-    } catch ( Exception const& ) {
-        throw JsonRpcException( exceptionToErrorMessage() );
-    }
-}
-
 
 Json::Value Eth::eth_inspectTransaction( std::string const& _rlp ) {
     try {

@@ -222,7 +222,6 @@ public:
     virtual std::string eth_chainId() override;
     virtual Json::Value eth_subscribe( Json::Value const& _transaction ) override;
     virtual Json::Value eth_unsubscribe( Json::Value const& _transaction ) override;
-    virtual Json::Value setSchainExitTime( Json::Value const& _transaction ) override;
     virtual Json::Value eth_createAccessList(
         const Json::Value& param1, const std::string& param2 ) override;
     virtual Json::Value eth_feeHistory(

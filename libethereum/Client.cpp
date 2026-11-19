@@ -129,8 +129,7 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, ActivityReport const& _r
 
 Client::Client( std::shared_ptr< const ChainParams > _params, int _networkID,
     std::shared_ptr< GasPricer > _gpForAdoption,
-    std::shared_ptr< SnapshotManager > _snapshotManager,
-    std::shared_ptr< InstanceMonitor > _instanceMonitor, fs::path const& _dbPath,
+    std::shared_ptr< SnapshotManager > _snapshotManager, fs::path const& _dbPath,
     WithExisting _forceAction, TransactionQueue::Limits const& _l )
     : Worker( "Client", 0 ),
       m_bc( _params, _dbPath, true, _forceAction ),
@@ -141,7 +140,6 @@ Client::Client( std::shared_ptr< const ChainParams > _params, int _networkID,
       m_working( chainParams().getAccountStartNonce() ),
       m_snapshotAgent( make_shared< SnapshotAgent >(
           _params->getSnapshotIntervalSec(), _snapshotManager, m_debugTracer ) ),
-      m_instanceMonitor( _instanceMonitor ),
       m_dbPath( _dbPath )
 #ifdef HISTORIC_STATE
       ,
@@ -818,10 +816,6 @@ void Client::resetState() {
 
     onPostStateChanged();
     onTransactionQueueReady();
-}
-
-void Client::setSchainExitTime( uint64_t _timestamp ) const {
-    m_instanceMonitor->initRotationParams( _timestamp );
 }
 
 void Client::onChainChanged( ImportRoute const& _ir ) {

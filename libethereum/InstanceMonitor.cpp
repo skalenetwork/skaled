@@ -40,21 +40,6 @@ void InstanceMonitor::prepareRotation() {
     fs::remove( m_rotationInfoFilePath );
 }
 
-void InstanceMonitor::initRotationParams( uint64_t _finishTimestamp ) {
-    try {
-        nlohmann::json rotationJson = nlohmann::json::object();
-        rotationJson["timestamp"] = _finishTimestamp;
-
-        std::ofstream rotationInfoFile( m_rotationInfoFilePath.string() );
-        rotationInfoFile << rotationJson;
-
-        BOOST_LOG( m_loggerInfo ) << "Set rotation time to " << _finishTimestamp;
-    } catch ( ... ) {
-        BOOST_LOG( m_loggerError ) << "Setting rotation timestamp failed";
-        throw_with_nested( std::runtime_error( "cannot save rotation timestamp" ) );
-    }
-}
-
 bool InstanceMonitor::isTimeToRotate( uint64_t _blockTimestamp ) const {
     if ( !fs::exists( m_rotationInfoFilePath ) ) {
         return false;

@@ -26,6 +26,15 @@ public:
     void removeFlagFileTest() { this->reportExitTimeReached( false ); }
 
     uint64_t getRotationTimestamp() const { return this->rotationTimestamp(); }
+
+    // rotation.json is written by the node's admin software; skaled only reads it
+    void writeRotationInfoFile( uint64_t _finishTimestamp ) {
+        nlohmann::json rotationJson = nlohmann::json::object();
+        rotationJson["timestamp"] = _finishTimestamp;
+
+        std::ofstream rotationInfoFile( rotationInfoFilePath().string() );
+        rotationInfoFile << rotationJson;
+    }
 };
 
 class InstanceMonitorTestFixture : public TestOutputHelperFixture {
@@ -63,18 +72,12 @@ public:
 
 BOOST_FIXTURE_TEST_SUITE( InstanceMonitorSuite, InstanceMonitorTestFixture )
 
-BOOST_AUTO_TEST_CASE( test_initRotationParams ) {
+BOOST_AUTO_TEST_CASE( test_rotationTimestamp ) {
     uint64_t ts = 100;
     BOOST_REQUIRE( !fs::exists( instanceMonitor->getRotationInfoFilePath() ) );
-    instanceMonitor->initRotationParams( ts );
-    BOOST_CHECK_EQUAL( instanceMonitor->getRotationTimestamp(), ts );
-
+    instanceMonitor->writeRotationInfoFile( ts );
     BOOST_REQUIRE( fs::exists( instanceMonitor->getRotationInfoFilePath() ) );
-
-
-    std::ifstream rotateFile( instanceMonitor->getRotationInfoFilePath().string() );
-    auto rotateJson = nlohmann::json::parse( rotateFile );
-    BOOST_CHECK_EQUAL( rotateJson["timestamp"].get< uint64_t >(), ts );
+    BOOST_CHECK_EQUAL( instanceMonitor->getRotationTimestamp(), ts );
 }
 
 
@@ -90,7 +93,7 @@ BOOST_AUTO_TEST_CASE( test_isTimeToRotate_false ) {
     uint64_t currentTime = 100;
     uint64_t finishTime = 200;
     BOOST_REQUIRE( !instanceMonitor->isTimeToRotate( currentTime ) );
-    instanceMonitor->initRotationParams( finishTime );
+    instanceMonitor->writeRotationInfoFile( finishTime );
     BOOST_REQUIRE( !instanceMonitor->isTimeToRotate( currentTime ) );
 }
 
@@ -99,10 +102,10 @@ BOOST_AUTO_TEST_CASE( test_isTimeToRotate_true ) {
 
     BOOST_REQUIRE( !instanceMonitor->isTimeToRotate( currentTime ) );
 
-    instanceMonitor->initRotationParams( 100 );
+    instanceMonitor->writeRotationInfoFile( 100 );
     BOOST_REQUIRE( instanceMonitor->isTimeToRotate( currentTime ) );
 
-    instanceMonitor->initRotationParams( 50 );
+    instanceMonitor->writeRotationInfoFile( 50 );
     BOOST_REQUIRE( instanceMonitor->isTimeToRotate( currentTime ) );
 
     currentTime = 49;
@@ -110,7 +113,7 @@ BOOST_AUTO_TEST_CASE( test_isTimeToRotate_true ) {
 }
 
 BOOST_AUTO_TEST_CASE( test_rotation ) {
-    instanceMonitor->initRotationParams( 0 );
+    instanceMonitor->writeRotationInfoFile( 0 );
     instanceMonitor->prepareRotation();
 
     BOOST_REQUIRE( statusAndControlFile->getExitState( StatusAndControl::ExitTimeReached ) );
