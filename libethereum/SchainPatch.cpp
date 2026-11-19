@@ -2,6 +2,10 @@
 
 #include <libethcore/ChainOperationParams.h>
 
+#ifdef BITE
+#include <libethereum/patches/DecryptedTxFieldsPatch.h>
+#endif
+
 using namespace dev::eth;
 
 ChainOperationParams SchainPatch::chainParams;
@@ -59,6 +63,10 @@ SchainPatchEnum getEnumForPatchName( const std::string& _patchName ) {
 #ifdef BITE
     else if ( _patchName == "BITE2Patch" || _patchName == "Bite2Patch" )
         return SchainPatchEnum::Bite2Patch;
+    else if ( _patchName == "DecryptedTxFieldsPatch" )
+        return SchainPatchEnum::DecryptedTxFieldsPatch;
+    else if ( _patchName == "DecryptedTxFieldsLegacyStartPatch" )
+        return SchainPatchEnum::DecryptedTxFieldsLegacyStartPatch;
 #endif  // BITE
 #ifdef FAIR
     else if ( _patchName == "DisableSelfDestructPatch" )
@@ -121,6 +129,10 @@ std::string getPatchNameForEnum( SchainPatchEnum _enumValue ) {
 #ifdef BITE
     case SchainPatchEnum::Bite2Patch:
         return "Bite2Patch";
+    case SchainPatchEnum::DecryptedTxFieldsPatch:
+        return "DecryptedTxFieldsPatch";
+    case SchainPatchEnum::DecryptedTxFieldsLegacyStartPatch:
+        return "DecryptedTxFieldsLegacyStartPatch";
 #endif  // BITE
 #ifdef FAIR
     case SchainPatchEnum::DisableSelfDestructPatch:
@@ -156,6 +168,9 @@ void SchainPatch::init( const dev::eth::ChainOperationParams& _cp ) {
         printInfo( getPatchNameForEnum( static_cast< SchainPatchEnum >( i ) ),
             _cp.getPatchTimestamp( static_cast< SchainPatchEnum >( i ) ) );
     }
+#ifdef BITE
+    dev::eth::patches::logDecryptedFieldsWindow( _cp );
+#endif
 }
 
 void SchainPatch::useLatestBlockTimestamp( time_t _timestamp ) {
