@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [5.x.x] - xxx-xx-xx
+
+### Breaking Changes
+
+| Patch Name                  | Description                                                                          |
+| --------------------------- | ------------------------------------------------------------------------------------ |
+| FileStorageContainmentPatch | Enables stricter path validation in the FileStorage precompiled contracts.           |
+
+### Fixed
+
+- Harden path validation in the FileStorage precompiled contracts, including the `._hash`
+  output path used by `calculateFileHash`. The change is gated by
+  `fileStorageContainmentPatchTimestamp` and has no effect until that timestamp is reached
+  ([skalenetwork/internal-support#1531](https://github.com/skalenetwork/internal-support/issues/1531))
+
 ## [5.3.0] - 2026-08-10 (beta)
 
 London and Paris fork support; snapshot-hash JSON-RPC API; consensus performance improvements.
