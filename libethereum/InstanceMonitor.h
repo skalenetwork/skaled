@@ -41,7 +41,6 @@ public:
         reportExitTimeReached( false );
     }
     void prepareRotation();
-    void initRotationParams( uint64_t _finishTimestamp );
     bool isTimeToRotate( uint64_t _blockTimestamp ) const;
 
 protected:

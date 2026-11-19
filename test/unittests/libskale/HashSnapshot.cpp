@@ -321,14 +321,12 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture {
 
 #endif
         // TODO creation order with dependencies, gasPricer etc..
-        auto monitor = make_shared< InstanceMonitor >( "test" );
-
         setenv( "DATA_DIR", BTRFS_DIR_PATH.c_str(), 1 );
         // Client's internal SnapshotAgent needs a real SnapshotManager whenever
         // snapshotIntervalSec > 0 (its automatic snapshot/hash cycle is enabled and will
         // dereference it); reuse the same `mgr` the test uses for manual snapshot calls.
         client.reset( new eth::ClientTest( chainParams, ( int ) chainParams->getNetworkId(),
-            shared_ptr< GasPricer >(), mgr, monitor, boost::filesystem::path( BTRFS_DIR_PATH ),
+            shared_ptr< GasPricer >(), mgr, boost::filesystem::path( BTRFS_DIR_PATH ),
             WithExisting::Kill ) );
 
         // wait for 1st block to prevent race conditions in UnsafeRegion
