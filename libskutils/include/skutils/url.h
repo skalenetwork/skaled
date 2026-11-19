@@ -298,6 +298,17 @@ extern bool strip_url_user_name_and_password( url& an_url );
 extern bool strip_url_user_name_and_password( std::string& str_url );
 extern std::string strip_url_user_name_and_password_copy( const std::string& str_url );
 
+// accepts an IP address as parameter, not URL
+// true only for 127.0.0.0/8, ::1 and ::ffff:127.0.0.0/104
+extern bool is_loopback_address( const std::string& s );
+
+// the client of a proxy on this host: real_ip when the peer is loopback and real_ip is a valid
+// address, the peer itself otherwise
+extern std::string proxied_client_address( const std::string& peer, const std::string& real_ip );
+
+// the address as the host of a URL, IPv6 literals in brackets
+extern std::string url_host_literal( const std::string& address );
+
 };  // namespace skutils
 
 #endif  /// SKUTILS_URL_H
