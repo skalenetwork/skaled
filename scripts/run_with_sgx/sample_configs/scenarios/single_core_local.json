@@ -1,0 +1,17 @@
+{
+  "name": "single_core_local",
+  "sgxUrl": "http://127.0.0.1:1029",
+  "outputDir": "../../tmp/prepared/single_core_local",
+  "isFair": false,
+  "nodes": [
+    {
+      "nodeId": 1,
+      "role": "core",
+      "nodeType": "normal",
+      "template": "../config_core.json",
+      "outputConfig": "core/updated_config.json",
+      "httpPort": 1237,
+      "workDir": "./tmp/core"
+    }
+  ]
+}
