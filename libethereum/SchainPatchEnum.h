@@ -31,6 +31,8 @@ enum class SchainPatchEnum {
     ParisForkPatch,  // EIP-3675 + EIP-4399
 #ifdef BITE
     Bite2Patch,
+    DecryptedTxFieldsPatch,
+    DecryptedTxFieldsLegacyStartPatch,
 #endif  // BITE
 #ifdef FAIR
     DisableSelfDestructPatch,

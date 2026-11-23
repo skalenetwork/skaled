@@ -36,6 +36,9 @@
 #include <json_spirit/JsonSpiritHeaders.h>
 
 #include <libethcore/SealEngine.h>
+#ifdef BITE
+#include <libethcore/BITECommon.h>
+#endif
 
 #include <libdevcore/TransientDirectory.h>
 
@@ -244,6 +247,17 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
             chainParams->sChain._patchTimestamps[static_cast< size_t >(
                 SchainPatchEnum::SkipInvalidTransactionsPatch )] =
                 stoi( params.at( "skipInvalidTransactionsPatchTimestamp" ) );
+
+#ifdef BITE
+        if ( params.count( "decryptedTxFieldsPatchTimestamp" ) )
+            chainParams->sChain._patchTimestamps[static_cast< size_t >(
+                SchainPatchEnum::DecryptedTxFieldsPatch )] =
+                stoi( params.at( "decryptedTxFieldsPatchTimestamp" ) );
+        if ( params.count( "decryptedTxFieldsLegacyStartPatchTimestamp" ) )
+            chainParams->sChain._patchTimestamps[static_cast< size_t >(
+                SchainPatchEnum::DecryptedTxFieldsLegacyStartPatch )] =
+                stoi( params.at( "decryptedTxFieldsLegacyStartPatchTimestamp" ) );
+#endif
 
         accountHolder.reset( new FixedAccountHolder( [&]() { return client.get(); }, {} ) );
         accountHolder->setAccounts( { coinbase, account2 } );
@@ -1176,6 +1190,88 @@ BOOST_DATA_TEST_CASE(
     REQUIRE_BALANCE_DECREASE( senderAddress, 10000 * dev::eth::szabo );  // only 1st!
 #endif
 }
+
+#if defined( BITE ) && !defined( FAIR )
+// Creates a block with two regular transactions and decrypted fields for the second one.
+// Returns the balance of the address in those fields.
+static u256 createBlockWithDecryptedFields( SkaleHostFixture& fixture ) {
+    auto& client = fixture.client;
+    auto& coinbase = fixture.coinbase;
+    auto& accountHolder = fixture.accountHolder;
+    auto& stub = fixture.stub;
+
+    auto senderAddress = coinbase.address();
+    auto plainReceiver = KeyPair::create();
+    auto innerReceiver = KeyPair::create();
+    u256 gasPrice = 100 * dev::eth::shannon;
+    u256 value = 10000 * dev::eth::szabo;
+
+    Json::Value plainJson;
+    plainJson["from"] = toJS( senderAddress );
+    plainJson["to"] = toJS( plainReceiver.address() );
+    plainJson["value"] = jsToDecimal( toJS( value ) );
+    plainJson["gasPrice"] = jsToDecimal( toJS( gasPrice ) );
+    TransactionSkeleton plainTs = toTransactionSkeleton( plainJson );
+    plainTs = client->populateTransactionWithDefaults( plainTs );
+    Transaction plainTx( plainTs, accountHolder->authenticate( plainTs ).second );
+
+    Json::Value biteJson;
+    biteJson["from"] = toJS( senderAddress );
+    biteJson["to"] = toJS( dev::Address( std::string( BITE_ADDRESS_AS_STRING ) ) );
+    biteJson["value"] = jsToDecimal( toJS( value ) );
+    biteJson["gasPrice"] = jsToDecimal( toJS( gasPrice ) );
+    biteJson["gas"] = "200000";
+    biteJson["data"] = "0x0102030405";  // stands for the ciphertext; not parsed in this path
+    TransactionSkeleton biteTs = toTransactionSkeleton( biteJson );
+    biteTs = client->populateTransactionWithDefaults( biteTs );
+    biteTs.nonce = plainTs.nonce + 1;
+    Transaction biteTx( biteTs, accountHolder->authenticate( biteTs ).second );
+
+    // the map is keyed by the index in the block
+    DecryptedRegularTxFields innerFields;
+    auto innerTo = innerReceiver.address();
+    std::copy( innerTo.data(), innerTo.data() + innerFields.to.size(), innerFields.to.begin() );
+    auto regularTxsMap = std::make_shared< DecryptedRegularTxsMap >();
+    regularTxsMap->emplace( 1, innerFields );
+
+    CHECK_NONCE_BEGIN( senderAddress );
+    CHECK_BLOCK_BEGIN;
+
+    ConsensusExtFace::Transactions txns;
+    txns.pushBackRegular( plainTx.toBytes() );
+    txns.pushBackRegular( biteTx.toBytes() );
+    BOOST_REQUIRE_NO_THROW( stub->createBlock( txns,
+        DecryptedTransactions{ std::make_shared< DecryptedCTXTxsMap >(), regularTxsMap }, utcTime(),
+        1U ) );
+
+    REQUIRE_BLOCK_INCREASE( 1 );
+    REQUIRE_BLOCK_SIZE( 1, 2 );
+    REQUIRE_NONCE_INCREASE( senderAddress, 2 );
+    BOOST_REQUIRE_EQUAL( client->balanceAt( plainReceiver.address() ), value );
+
+    return client->balanceAt( innerReceiver.address() );
+}
+
+// DecryptedTxFieldsPatch not set: the legacy selection is used
+BOOST_AUTO_TEST_CASE( decryptedFieldsSelectionLegacy ) {
+    SkaleHostFixture fixture;
+    BOOST_REQUIRE_EQUAL( createBlockWithDecryptedFields( fixture ), 0 );
+}
+
+// legacy window starts after this block: the current selection is used
+BOOST_AUTO_TEST_CASE( decryptedFieldsSelectionBeforeLegacyStart ) {
+    SkaleHostFixture fixture( std::map< std::string, std::string >(
+        { { "decryptedTxFieldsLegacyStartPatchTimestamp", "2000000000" } } ) );
+    BOOST_REQUIRE_EQUAL( createBlockWithDecryptedFields( fixture ), 10000 * dev::eth::szabo );
+}
+
+// DecryptedTxFieldsPatch enabled: the current selection is used
+BOOST_AUTO_TEST_CASE( decryptedFieldsSelectionCurrent ) {
+    SkaleHostFixture fixture(
+        std::map< std::string, std::string >( { { "decryptedTxFieldsPatchTimestamp", "1" } } ) );
+    BOOST_REQUIRE_EQUAL( createBlockWithDecryptedFields( fixture ), 10000 * dev::eth::szabo );
+}
+#endif  // BITE && !FAIR
 
 // Last transaction should be dropped from block proposal
 BOOST_AUTO_TEST_CASE( gasLimitInBlockProposal ) {

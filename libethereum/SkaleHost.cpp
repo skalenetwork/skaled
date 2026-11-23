@@ -52,6 +52,7 @@ using namespace std;
 #include <libethereum/Client.h>
 #include <libethereum/CommonNet.h>
 #include <libethereum/Executive.h>
+#include <libethereum/patches/DecryptedTxFieldsPatch.h>
 
 #include <libweb3jsonrpc/JsonHelper.h>
 
@@ -1059,11 +1060,15 @@ std::vector< Transaction > SkaleHost::processRegularTransactions(
     std::vector< Transaction > outTxns;
 #ifdef BITE
     CHECK_EXPRESSION( _decryptedTransactions.regularTxsMap );
-    auto regularTxnsIterator = _decryptedTransactions.regularTxsMap->begin();
 #endif
     size_t regularTxnsStartIndex = 0;
 #ifdef BITE
     regularTxnsStartIndex = _approvedTransactions.sizeCTX();
+    // decrypted fields to attach, keyed by block index; which ones depends on the block time,
+    // see libethereum/patches/DecryptedTxFieldsPatch.h
+    const std::shared_ptr< const DecryptedRegularTxsMap > decryptedFields =
+        dev::eth::patches::selectDecryptedFields( _decryptedTransactions.regularTxsMap,
+            regularTxnsStartIndex, _approvedTransactions.size(), latestInfo.timestamp() );
 #endif
     for ( size_t i = regularTxnsStartIndex; i < _approvedTransactions.size(); ++i ) {
         const bytes& data = _approvedTransactions.at( i );
@@ -1080,14 +1085,11 @@ std::vector< Transaction > SkaleHost::processRegularTransactions(
 #endif  // BITE
         );
 #ifdef BITE
-        if ( regularTxnsIterator != _decryptedTransactions.regularTxsMap->end() &&
-             regularTxnsIterator->first == i ) {
-            std::optional< DecryptedRegularTxFields > txFields = regularTxnsIterator->second;
-            if ( txFields.has_value() ) {
-                dev::Address to( txFields->to.data(), dev::Address::ConstructFromPointer );
-                t.setDecryptedFields( std::make_shared< dev::bytes >( txFields->data ),
-                    std::make_shared< dev::Address >( to ) );
-            }
+        auto txFields = decryptedFields->find( i );
+        if ( txFields != decryptedFields->end() && txFields->second.has_value() ) {
+            dev::Address to( txFields->second->to.data(), dev::Address::ConstructFromPointer );
+            t.setDecryptedFields( std::make_shared< dev::bytes >( txFields->second->data ),
+                std::make_shared< dev::Address >( to ) );
         }
 #endif
 
@@ -1106,10 +1108,6 @@ std::vector< Transaction > SkaleHost::processRegularTransactions(
         }
 #endif
         outTxns.push_back( t );
-#ifdef BITE
-        if ( regularTxnsIterator != _decryptedTransactions.regularTxsMap->end() )
-            ++regularTxnsIterator;
-#endif
     }
     return outTxns;
 }

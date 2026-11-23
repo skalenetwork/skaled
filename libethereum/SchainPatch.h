@@ -204,6 +204,47 @@ DEFINE_EVM_PATCH( LondonForkPatch );
  * return a revert and CTX status is not set in TransactionBase constructor.
  */
 DEFINE_SIMPLE_PATCH( Bite2Patch );
+
+/*
+ * DecryptedTxFieldsPatch and DecryptedTxFieldsLegacyStartPatch work as a pair. They choose how
+ * decrypted fields are matched to the BITE transactions of a block. Two behaviours exist,
+ * both in libethereum/patches/DecryptedTxFieldsPatch.cpp:
+ *   - current: each transaction gets the fields stored under its own index in the block;
+ *   - legacy:  the matching used by releases 5.1.0 - 5.3.x, kept only so that blocks
+ *              executed by those releases re-execute to the same result.
+ *
+ * Which one a block uses depends on the timestamp of its parent block, where S is the
+ * DecryptedTxFieldsLegacyStartPatch timestamp and F the DecryptedTxFieldsPatch timestamp:
+ *
+ *   parent timestamp:   before S   |   from S, before F   |   from F
+ *   behaviour:          current    |        legacy        |   current
+ *
+ * DecryptedTxFieldsPatch (decryptedTxFieldsPatchTimestamp)
+ *   Purpose: end the legacy period. Set it to a future time once every node of the chain
+ *   runs a release that has this patch, like any other patch.
+ *   When not set: the legacy period does not end.
+ *   Version introduced: 5.3.1
+ */
+DEFINE_SIMPLE_PATCH( DecryptedTxFieldsPatch );
+
+/*
+ * DecryptedTxFieldsLegacyStartPatch (decryptedTxFieldsLegacyStartPatchTimestamp)
+ *   Purpose: say when the legacy period started on this chain, i.e. when the chain moved to
+ *   release 5.1.0 or later. It describes the past and is only needed to re-execute blocks
+ *   that are older than that. It must be a past timestamp and the same on every node.
+ *   When not set (0): the legacy period starts at the first block. This is what releases
+ *   without this patch do, and it is right for a chain that never ran a release before 5.1.0.
+ *   Note that 0 does NOT mean "disabled" here, unlike other patches.
+ *   Version introduced: 5.3.1
+ */
+class DecryptedTxFieldsLegacyStartPatch : public SchainPatch {
+public:
+    static SchainPatchEnum getEnum() { return SchainPatchEnum::DecryptedTxFieldsLegacyStartPatch; }
+    static bool isReachedWhen( time_t _committedBlockTimestamp ) {
+        time_t startTimestamp = chainParams.getPatchTimestamp( getEnum() );
+        return startTimestamp == 0 || _committedBlockTimestamp >= startTimestamp;
+    }
+};
 #endif  // BITE
 
 /*
