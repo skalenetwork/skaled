@@ -21,6 +21,7 @@
 
 #include <algorithm>
 #include <numeric>
+#include <unordered_map>
 
 #include <json/json.h>
 #include <libdevcore/CommonIO.h>
@@ -39,18 +40,25 @@
 using namespace std;
 using namespace dev;
 
-#ifdef BITE
 namespace {
-bool isBite2OnlyPrecompiled( Address const& _addr ) {
-    static const std::array< Address, 3 > bite2Only = {
-        Address( "0x000000000000000000000000000000000000001B" ),  // submitCTX
-        Address( "0x000000000000000000000000000000000000001C" ),  // encryptECIES
-        Address( "0x000000000000000000000000000000000000001D" ),  // encryptTE
+// Precompileds that are available only after the patch that introduces them is enabled
+bool isPrecompiledPatchEnabled( Address const& _addr ) {
+    static const std::unordered_map< Address, bool ( * )() > patchForPrecompiled = {
+#ifdef BITE
+        { Address( "0x000000000000000000000000000000000000001B" ),
+            &Bite2Patch::isEnabledInWorkingBlock },  // submitCTX
+        { Address( "0x000000000000000000000000000000000000001C" ),
+            &Bite2Patch::isEnabledInWorkingBlock },  // encryptECIES
+        { Address( "0x000000000000000000000000000000000000001D" ),
+            &Bite2Patch::isEnabledInWorkingBlock },  // encryptTE
+#endif
+        { Address( "0x0000000000000000000000000000000000000100" ),
+            &EIP7951Patch::isEnabledInWorkingBlock },  // p256verify
     };
-    return std::find( bite2Only.begin(), bite2Only.end(), _addr ) != bite2Only.end();
+    auto it = patchForPrecompiled.find( _addr );
+    return it == patchForPrecompiled.end() || it->second();
 }
 }  // namespace
-#endif
 using namespace dev::eth;
 using skale::State;
 
@@ -419,12 +427,8 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
 
     bool accessAsPrecompiled = m_chainParams.isPrecompiled( _p.codeAddress, m_envInfo.number() ) &&
                                m_chainParams.precompiledExecutionAllowedFrom(
-                                   _p.codeAddress, _p.senderAddress, m_readOnly );
-#ifdef BITE
-    if ( accessAsPrecompiled && !Bite2Patch::isEnabledInWorkingBlock() &&
-         isBite2OnlyPrecompiled( _p.codeAddress ) )
-        accessAsPrecompiled = false;
-#endif
+                                   _p.codeAddress, _p.senderAddress, m_readOnly ) &&
+                               isPrecompiledPatchEnabled( _p.codeAddress );
     if ( accessAsPrecompiled ) {
         MICROPROFILE_SCOPEI( "Executive", "call-precompiled", MP_CYAN );
         PrecompiledCallContext ctx{ m_envInfo.number(), m_envInfo.committedBlockTimestamp(),

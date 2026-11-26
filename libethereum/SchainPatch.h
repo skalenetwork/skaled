@@ -227,6 +227,12 @@ DEFINE_SIMPLE_PATCH( ContractCreationReadOnlyPatch );
  */
 DEFINE_SIMPLE_PATCH( ParisForkPatch );
 
+/*
+ * Purpose: enable the EIP-7951 p256verify (secp256r1) precompiled at 0x100.
+ * When not enabled: calls to 0x100 behave as calls to an account without code.
+ */
+DEFINE_SIMPLE_PATCH( EIP7951Patch );
+
 #ifdef FAIR
 DEFINE_SIMPLE_PATCH( DisableSelfDestructPatch );
 #endif
