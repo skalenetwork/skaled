@@ -9091,3 +9091,13 @@ BOOST_AUTO_TEST_CASE( test_exceptions ) {
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE( SkaleRelayWSSuite )
+
+BOOST_AUTO_TEST_CASE( refuses_address_of_no_interface ) {
+    // 192.0.2.1 is on no interface, and lws would listen on all of them
+    SkaleRelayWS server( 4, "192.0.2.1", "ws", 0, e_server_mode_t::esm_standard );
+    BOOST_REQUIRE( !server.start( nullptr ) );
+}
+
+BOOST_AUTO_TEST_SUITE_END()

@@ -1474,6 +1474,13 @@ bool SkaleRelayWS::start( SkaleServerOverride* pSO ) {
     stop();
     m_pSO = pSO;
     server_disable_ipv6_ = ( ipVer_ == 6 ) ? false : true;
+    if ( !strBindAddr_.empty() && strInterfaceName_.empty() ) {
+        // lws listens on every interface when it gets no interface name
+        BOOST_LOG( m_loggerError ) << m_strSchemeUC + ": ERROR: no network interface has address " +
+                                          strBindAddr_ + ", server on port " +
+                                          std::to_string( m_nPort ) + " is not started";
+        return false;
+    }
     BOOST_LOG( m_loggerDebug ) << m_strSchemeUC + ": "
                                << ( "Will start server on port " + std::to_string( m_nPort ) );
     if ( !open( m_strScheme_, m_nPort,
